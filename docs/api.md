@@ -7,10 +7,13 @@
   - `email` (required)
   - Optional: `name`, `phone`, `notes`, `city`, `issue`, `availability`, `budget`
 - __Validation__: email regex; strings sanitized (control chars removed; max ~1000 chars).
-- __Behavior__: inserts with `type='patient'`, `status='new'`, packs extras in `metadata` plus `funnel_type='narm'` and `submitted_at`.
+- __Behavior__: inserts with `type='patient'`, `status='new'`, packs extras in `metadata` plus `funnel_type='narm'`, `submitted_at`, as well as `ip` and `user_agent` when available.
+- __Rate limiting__: basic IP-based rate limiting (60s window). Best effort via `x-forwarded-for`. Exceeds return 429.
+- __Notifications (optional)__: If `RESEND_API_KEY` and `LEADS_NOTIFY_EMAIL` are set, the API will send a non-blocking email via Resend on new lead.
 - __Response__:
   - 200: `{ data: { id: uuid }, error: null }`
   - 400: `{ data: null, error: 'Invalid email' | 'Invalid JSON' }`
+  - 429: `{ data: null, error: 'Rate limited' }`
   - 500: `{ data: null, error: 'Failed to save lead' }`
 
 Example:
