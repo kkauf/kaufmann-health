@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { supabaseServer } from '@/lib/supabase-server';
+
+export const runtime = 'nodejs';
 
 /**
  * @endpoint POST /api/leads
@@ -30,13 +33,43 @@ export async function POST(req: Request) {
       name: sanitize(payload.name),
       email,
       phone: sanitize(payload.phone),
-      notes: sanitize(payload.notes),
+      notes: sanitize((payload as any).notes),
     };
 
-    // TODO: Persist to Supabase using a server-side client (Edge Function or service role)
-    // Intentionally not writing here to avoid exposing secrets. See src/lib/supabase.ts
+    // Optional additional fields captured as metadata
+    const city = sanitize((payload as any).city);
+    const issue = sanitize((payload as any).issue);
+    const availability = sanitize((payload as any).availability);
+    const budget = sanitize((payload as any).budget);
 
-    return NextResponse.json({ data, error: null });
+
+    const { data: inserted, error } = await supabaseServer
+      .from('people')
+      .insert({
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        type: 'patient',
+        status: 'new',
+        metadata: {
+          ...(data.notes ? { notes: data.notes } : {}),
+          ...(city ? { city } : {}),
+          ...(issue ? { issue } : {}),
+          ...(availability ? { availability } : {}),
+          ...(budget ? { budget } : {}),
+          funnel_type: 'narm',
+          submitted_at: new Date().toISOString(),
+        },
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Supabase error:', error);
+      return NextResponse.json({ data: null, error: 'Failed to save lead' }, { status: 500 });
+    }
+
+    return NextResponse.json({ data: { id: inserted.id }, error: null });
   } catch (e) {
     return NextResponse.json({ data: null, error: 'Invalid JSON' }, { status: 400 });
   }
