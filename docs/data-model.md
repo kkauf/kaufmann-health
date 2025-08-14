@@ -1,0 +1,31 @@
+# Data Model
+
+## public.people
+- `id uuid pk default gen_random_uuid()`
+- `email text unique not null`
+- `phone text`
+- `name text`
+- `type text check in ('patient','therapist')`
+- `status text default 'new'`
+- `metadata jsonb default '{}'::jsonb`
+- `created_at timestamptz default now()`
+
+Business notes:
+- `metadata` is a flexible bag for form/funnel details (`city`, `issue`, `availability`, `budget`, etc.).
+- Consider future constraints (e.g., email verified) when the funnel evolves.
+
+## public.matches
+- `id uuid pk default gen_random_uuid()`
+- `therapist_id uuid references people(id)`
+- `patient_id uuid references people(id)`
+- `status text default 'proposed'`
+- `commission_collected numeric default 0`
+- `notes text`
+- `created_at timestamptz default now()`
+
+Relationships:
+- `matches.therapist_id` → `people.id`
+- `matches.patient_id` → `people.id`
+
+Future rules to consider:
+- Enforce that `therapist_id` references a `people` row with `type='therapist'` and `patient_id` with `type='patient'` (via views or check constraints with triggers) if needed.
