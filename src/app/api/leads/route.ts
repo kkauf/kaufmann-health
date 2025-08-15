@@ -13,6 +13,10 @@ type LeadPayload = {
   email: string;
   phone?: string;
   notes?: string;
+  city?: string;
+  issue?: string;
+  availability?: string;
+  budget?: string;
 };
 
 function sanitize(v?: string) {
@@ -28,7 +32,22 @@ function getClientIP(headers: Headers) {
   return undefined;
 }
 
-async function sendLeadNotification(row: any) {
+type NotificationRow = {
+  name?: string | null;
+  email: string;
+  phone?: string | null;
+  metadata?: {
+    notes?: string;
+    city?: string;
+    issue?: string;
+    availability?: string;
+    budget?: string;
+    ip?: string;
+    user_agent?: string;
+  } | null;
+};
+
+async function sendLeadNotification(row: NotificationRow) {
   try {
     const apiKey = process.env.RESEND_API_KEY;
     const to = process.env.LEADS_NOTIFY_EMAIL;
@@ -77,14 +96,14 @@ export async function POST(req: Request) {
       name: sanitize(payload.name),
       email,
       phone: sanitize(payload.phone),
-      notes: sanitize((payload as any).notes),
+      notes: sanitize(payload.notes),
     };
 
     // Optional additional fields captured as metadata
-    const city = sanitize((payload as any).city);
-    const issue = sanitize((payload as any).issue);
-    const availability = sanitize((payload as any).availability);
-    const budget = sanitize((payload as any).budget);
+    const city = sanitize(payload.city);
+    const issue = sanitize(payload.issue);
+    const availability = sanitize(payload.availability);
+    const budget = sanitize(payload.budget);
 
     // Basic IP-based rate limiting (60s window). Note: best-effort and
     // dependent on upstream "x-forwarded-for" headers.
@@ -135,7 +154,7 @@ export async function POST(req: Request) {
     // Fire-and-forget notification (optional via env vars)
     void sendLeadNotification(inserted).catch(() => {});
     return NextResponse.json({ data: { id: inserted.id }, error: null });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ data: null, error: 'Invalid JSON' }, { status: 400 });
   }
 }
