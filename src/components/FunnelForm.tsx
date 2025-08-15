@@ -35,8 +35,9 @@ export default function FunnelForm() {
       if (!res.ok) throw new Error(json?.error || 'Request failed');
       setMessage('Danke! Wir melden uns bald.');
       (e.target as HTMLFormElement).reset();
-    } catch (err: any) {
-      setMessage(err.message || 'Fehler beim Senden.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Fehler beim Senden.';
+      setMessage(msg);
     } finally {
       setLoading(false);
     }

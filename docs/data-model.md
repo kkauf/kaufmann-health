@@ -14,6 +14,13 @@ Business notes:
 - `metadata` is a flexible bag for form/funnel details (`city`, `issue`, `availability`, `budget`, etc.).
 - Consider future constraints (e.g., email verified) when the funnel evolves.
 
+Indexes:
+- For lead rate limiting by IP stored in `metadata`, add a JSONB GIN index:
+  ```sql
+  CREATE INDEX IF NOT EXISTS people_metadata_gin_idx
+  ON public.people USING GIN (metadata);
+  ```
+
 ## public.matches
 - `id uuid pk default gen_random_uuid()`
 - `therapist_id uuid references people(id)`

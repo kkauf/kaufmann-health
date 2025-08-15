@@ -13,11 +13,74 @@ type LeadPayload = {
   email: string;
   phone?: string;
   notes?: string;
+  city?: string;
+  issue?: string;
+  availability?: string;
+  budget?: string;
 };
 
 function sanitize(v?: string) {
   if (!v) return undefined;
   return v.toString().replace(/[\u0000-\u001F\u007F]/g, '').slice(0, 1000);
+}
+
+function getClientIP(headers: Headers) {
+  const xff = headers.get('x-forwarded-for');
+  if (xff) return xff.split(',')[0].trim();
+  const xrip = headers.get('x-real-ip');
+  if (xrip) return xrip.trim();
+  return undefined;
+}
+
+type NotificationRow = {
+  name?: string | null;
+  email: string;
+  phone?: string | null;
+  metadata?: {
+    notes?: string;
+    city?: string;
+    issue?: string;
+    availability?: string;
+    budget?: string;
+    ip?: string;
+    user_agent?: string;
+  } | null;
+};
+
+async function sendLeadNotification(row: NotificationRow) {
+  try {
+    const apiKey = process.env.RESEND_API_KEY;
+    const to = process.env.LEADS_NOTIFY_EMAIL;
+    if (!apiKey || !to) return;
+    const text = [
+      `New lead received`,
+      `Name: ${row.name || '-'}`,
+      `Email: ${row.email}`,
+      `Phone: ${row.phone || '-'}`,
+      `Notes: ${row.metadata?.notes || '-'}`,
+      `City: ${row.metadata?.city || '-'}`,
+      `Issue: ${row.metadata?.issue || '-'}`,
+      `Availability: ${row.metadata?.availability || '-'}`,
+      `Budget: ${row.metadata?.budget || '-'}`,
+      `IP: ${row.metadata?.ip || '-'}`,
+      `UA: ${row.metadata?.user_agent || '-'}`,
+    ].join('\n');
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Leads <noreply@kaufmann.earth>',
+        to: [to],
+        subject: 'New lead submission',
+        text,
+      }),
+    });
+  } catch (e) {
+    console.error('[notify] Failed to send email', e);
+  }
 }
 
 export async function POST(req: Request) {
@@ -33,14 +96,31 @@ export async function POST(req: Request) {
       name: sanitize(payload.name),
       email,
       phone: sanitize(payload.phone),
-      notes: sanitize((payload as any).notes),
+      notes: sanitize(payload.notes),
     };
 
     // Optional additional fields captured as metadata
-    const city = sanitize((payload as any).city);
-    const issue = sanitize((payload as any).issue);
-    const availability = sanitize((payload as any).availability);
-    const budget = sanitize((payload as any).budget);
+    const city = sanitize(payload.city);
+    const issue = sanitize(payload.issue);
+    const availability = sanitize(payload.availability);
+    const budget = sanitize(payload.budget);
+
+    // Basic IP-based rate limiting (60s window). Note: best-effort and
+    // dependent on upstream "x-forwarded-for" headers.
+    const ip = getClientIP(req.headers);
+    const ua = req.headers.get('user-agent') || undefined;
+    if (ip) {
+      const cutoff = new Date(Date.now() - 60_000).toISOString();
+      const { data: recentByIp, error: ipErr } = await supabaseServer
+        .from('people')
+        .select('id, created_at')
+        .contains('metadata', { ip })
+        .gte('created_at', cutoff)
+        .limit(1);
+      if (!ipErr && recentByIp && recentByIp.length > 0) {
+        return NextResponse.json({ data: null, error: 'Rate limited' }, { status: 429 });
+      }
+    }
 
 
     const { data: inserted, error } = await supabaseServer
@@ -57,6 +137,8 @@ export async function POST(req: Request) {
           ...(issue ? { issue } : {}),
           ...(availability ? { availability } : {}),
           ...(budget ? { budget } : {}),
+          ...(ip ? { ip } : {}),
+          ...(ua ? { user_agent: ua } : {}),
           funnel_type: 'narm',
           submitted_at: new Date().toISOString(),
         },
@@ -69,8 +151,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ data: null, error: 'Failed to save lead' }, { status: 500 });
     }
 
+    // Fire-and-forget notification (optional via env vars)
+    void sendLeadNotification(inserted).catch(() => {});
     return NextResponse.json({ data: { id: inserted.id }, error: null });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ data: null, error: 'Invalid JSON' }, { status: 400 });
   }
 }
