@@ -1,17 +1,118 @@
-import Link from 'next/link';
+'use client'
+
+import * as React from 'react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Menu, X } from 'lucide-react'
 
 export default function Header() {
+  const [open, setOpen] = React.useState(false)
+  const closeBtnRef = React.useRef<HTMLButtonElement>(null)
+
+  // Close on Escape and lock scroll when menu is open
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    if (open) {
+      const prev = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      // Focus close button when opening
+      closeBtnRef.current?.focus()
+      return () => {
+        document.body.style.overflow = prev
+        document.removeEventListener('keydown', onKey)
+      }
+    }
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open])
+
+  const NavLinks = ({ onClick }: { onClick?: () => void }) => (
+    <>
+      <Link onClick={onClick} className="hover:opacity-80" href="/fuer-therapeuten">
+        Für Therapeuten
+      </Link>
+      <Link onClick={onClick} className="hover:opacity-80" href="/therapie-finden">
+        Therapie finden
+      </Link>
+      <Link onClick={onClick} className="hover:opacity-80" href="/ueber-uns">
+        Über uns
+      </Link>
+    </>
+  )
+
   return (
-    <header className="border-b">
-      <div className="container mx-auto p-4 flex items-center justify-between">
-        <Link href="/" className="font-semibold">Kaufmann Health</Link>
-        <nav className="flex gap-4 text-sm">
-          <Link href="/therapie-finden">Therapie finden</Link>
-          <Link href="/impressum">Impressum</Link>
-          <Link href="/agb">AGB</Link>
-          <Link href="/datenschutz">Datenschutz</Link>
-        </nav>
+    <header className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+      <div className="mx-auto max-w-7xl px-4">
+        <div className="flex h-14 items-center justify-between">
+          {/* Logo */}
+          <Link href="/" className="text-sm font-semibold tracking-tight">
+            Kaufmann Health
+          </Link>
+
+          {/* Desktop nav */}
+          <nav
+            aria-label="Hauptnavigation"
+            className="hidden items-center gap-6 text-sm text-foreground/90 md:flex"
+          >
+            <NavLinks />
+            <Button asChild size="sm" className="ml-2">
+              <Link href="/therapie-finden">Kostenlos starten</Link>
+            </Button>
+          </nav>
+
+          {/* Mobile menu button */}
+          <div className="md:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={open ? 'Menü schließen' : 'Menü öffnen'}
+              aria-expanded={open}
+              aria-controls="mobile-menu"
+              onClick={() => setOpen((v) => !v)}
+            >
+              {open ? <X aria-hidden className="size-5" /> : <Menu aria-hidden className="size-5" />}
+            </Button>
+          </div>
+        </div>
       </div>
+
+      {/* Mobile overlay */}
+      <div
+        className={`fixed inset-0 z-40 transition-opacity ${open ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
+        aria-hidden={!open}
+        onClick={() => setOpen(false)}
+      >
+        <div className="absolute inset-0 bg-black/30" />
+      </div>
+
+      {/* Mobile panel */}
+      <aside
+        id="mobile-menu"
+        role="dialog"
+        aria-modal="true"
+        className={`fixed inset-y-0 right-0 z-50 w-72 translate-x-full bg-white shadow-xl transition-transform duration-200 ease-out ${open ? '!translate-x-0' : ''}`}
+      >
+        <div className="flex h-14 items-center justify-between border-b px-4">
+          <span className="text-sm font-semibold">Menü</span>
+          <Button
+            ref={closeBtnRef}
+            variant="ghost"
+            size="icon"
+            aria-label="Menü schließen"
+            onClick={() => setOpen(false)}
+          >
+            <X aria-hidden className="size-5" />
+          </Button>
+        </div>
+        <nav aria-label="Mobile Hauptnavigation" className="flex flex-col gap-4 px-4 py-6 text-[15px]">
+          <NavLinks onClick={() => setOpen(false)} />
+          <Button asChild className="mt-2">
+            <Link href="/therapie-finden">Kostenlos starten</Link>
+          </Button>
+        </nav>
+      </aside>
     </header>
-  );
+  )
 }
