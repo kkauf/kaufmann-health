@@ -1,17 +1,23 @@
 import Image from 'next/image';
 import TherapieFinderForm from '@/components/TherapieFinderForm';
+import FaqAccordion from '@/components/FaqAccordion';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Activity, Euro, Clock, MapPin, Compass, PhoneCall, ShieldCheck } from 'lucide-react';
 
 export default function TherapieFindenPage() {
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
-      <section className="grid gap-8 lg:grid-cols-2">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Traumata lösen sich nicht durch Reden allein
-          </h1>
-          <p className="mt-4 max-w-xl text-gray-700">
-            Finden Sie körperorientierte Therapeuten in Ihrer Nähe. Durchsuchbares Verzeichnis für Selbstzahler. Termine innerhalb einer Woche.
-          </p>
+      <section aria-labelledby="hero" className="relative overflow-hidden rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-6 sm:p-8">
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_120%_10%,rgba(99,102,241,0.08),transparent_60%),radial-gradient(30rem_16rem_at_-20%_80%,rgba(14,165,233,0.08),transparent_60%)]" />
+        <div className="grid gap-8 lg:grid-cols-2">
+          <div>
+            <h1 id="hero" className="text-3xl font-semibold tracking-tight sm:text-4xl">
+              Traumata lösen sich nicht durch Reden allein
+            </h1>
+            <p className="mt-4 max-w-xl text-gray-700">
+              Finden Sie körperorientierte Therapeuten in Ihrer Nähe. Durchsuchbares Verzeichnis für Selbstzahler. Termine innerhalb einer Woche.
+            </p>
+ 
 
           <div className="mt-6 grid grid-cols-2 items-center gap-6 sm:grid-cols-4">
             <Image
@@ -49,104 +55,166 @@ export default function TherapieFindenPage() {
           </div>
         </div>
 
-        <div className="lg:pl-6">
+        <div className="lg:pl-6" id="top-form">
           <TherapieFinderForm />
+        </div>
         </div>
       </section>
 
       {/* Trust Indicators */}
       <section aria-labelledby="trust" className="mt-12 sm:mt-16">
-        <h2 id="trust" className="text-2xl font-semibold">Warum Körperpsychotherapie?</h2>
-        <p className="mt-4 max-w-3xl text-gray-700">
-          Traumatische Erfahrungen werden nicht nur im Kopf, sondern im gesamten Nervensystem gespeichert. Körperorientierte Therapieformen arbeiten direkt mit diesen somatischen Speicherungen.
-        </p>
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-lg border bg-white p-5 text-center">
-            <div className="text-3xl font-semibold">80%</div>
-            <div className="mt-1 text-sm text-gray-600">der Klienten berichten von Verbesserungen nach 5 Sitzungen</div>
-          </div>
-          <div className="rounded-lg border bg-white p-5 text-center">
-            <div className="text-3xl font-semibold">€80-120</div>
-            <div className="mt-1 text-sm text-gray-600">pro Sitzung bei Selbstzahlung</div>
-          </div>
-          <div className="rounded-lg border bg-white p-5 text-center">
-            <div className="text-3xl font-semibold">7 Tage</div>
-            <div className="mt-1 text-sm text-gray-600">durchschnittliche Zeit bis zum Ersttermin</div>
+        <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-6 sm:p-8">
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_120%_10%,rgba(99,102,241,0.08),transparent_60%),radial-gradient(30rem_16rem_at_-20%_80%,rgba(14,165,233,0.08),transparent_60%)]" />
+          <h2 id="trust" className="text-2xl font-semibold">Warum Körperpsychotherapie?</h2>
+          <p className="mt-3 max-w-3xl text-gray-700">
+            Traumatische Erfahrungen werden nicht nur im Kopf, sondern im gesamten Nervensystem gespeichert. Körperorientierte Therapieformen arbeiten direkt mit diesen somatischen Speicherungen.
+          </p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <Card className="transition-all duration-200 hover:shadow-md">
+              <CardHeader className="flex flex-row items-center gap-3">
+                <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600">
+                  <Activity className="h-5 w-5" />
+                </div>
+                <CardTitle className="text-3xl bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">80%</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>der Klienten berichten von Verbesserungen nach 5 Sitzungen</CardDescription>
+              </CardContent>
+            </Card>
+            <Card className="transition-all duration-200 hover:shadow-md">
+              <CardHeader className="flex flex-row items-center gap-3">
+                <div className="rounded-xl bg-sky-50 p-2 text-sky-600">
+                  <Euro className="h-5 w-5" />
+                </div>
+                <CardTitle className="text-3xl bg-gradient-to-r from-sky-600 to-cyan-600 bg-clip-text text-transparent">€80-120</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>pro Sitzung bei Selbstzahlung</CardDescription>
+              </CardContent>
+            </Card>
+            <Card className="transition-all duration-200 hover:shadow-md">
+              <CardHeader className="flex flex-row items-center gap-3">
+                <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
+                  <Clock className="h-5 w-5" />
+                </div>
+                <CardTitle className="text-3xl bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">7 Tage</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>durchschnittliche Zeit bis zum Ersttermin</CardDescription>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
 
-      {/* Disclaimer */}
-      <section aria-labelledby="disclaimer" className="mt-10">
-        <p id="disclaimer" className="rounded border-l-4 border-amber-400 bg-amber-50 p-3 text-xs text-gray-700">
-          Kaufmann Health ist ein Informationsverzeichnis. Wir stellen Kontaktdaten zur Verfügung, vermitteln aber keine therapeutischen Leistungen. Die Therapiewahl liegt allein bei Ihnen.
-        </p>
-      </section>
+      
 
       {/* Process */}
       <section aria-labelledby="process" className="mt-12 sm:mt-16">
         <h2 id="process" className="text-2xl font-semibold">So funktioniert&#39;s</h2>
         <div className="mt-6 grid gap-6 sm:grid-cols-3">
-          <div className="rounded-lg border bg-white p-5">
-            <div className="text-sm text-gray-500">1</div>
-            <h3 className="mt-1 text-lg font-medium">Verzeichnis durchsuchen</h3>
-            <p className="mt-2 text-sm text-gray-600">Teilen Sie uns Ihren Standort mit und erhalten Sie Kontaktdaten - 100% vertraulich.</p>
-          </div>
-          <div className="rounded-lg border bg-white p-5">
-            <div className="text-sm text-gray-500">2</div>
-            <h3 className="mt-1 text-lg font-medium">Persönliche Orientierungshilfe</h3>
-            <p className="mt-2 text-sm text-gray-600">Unsicher, welche Therapieform passt? Wir besprechen gerne Ihre Optionen und zeigen Ihnen relevante Therapeuten aus unserem Verzeichnis.</p>
-          </div>
-          <div className="rounded-lg border bg-white p-5">
-            <div className="text-sm text-gray-500">3</div>
-            <h3 className="mt-1 text-lg font-medium">Selbst auswählen & kontaktieren</h3>
-            <p className="mt-2 text-sm text-gray-600">Sie erhalten Profile mit Verfügbarkeiten und kontaktieren Therapeuten eigenverantwortlich.</p>
-          </div>
+          <Card className="group relative overflow-hidden transition-all duration-200 hover:shadow-md">
+            <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600">
+                  <MapPin className="h-5 w-5" />
+                </div>
+                <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">1</div>
+              </div>
+              <CardTitle className="mt-2 text-lg">Verzeichnis durchsuchen</CardTitle>
+              <CardDescription>Teilen Sie uns Ihren Standort mit und erhalten Sie Kontaktdaten - 100% vertraulich.</CardDescription>
+            </CardHeader>
+          </Card>
+          <Card className="group relative overflow-hidden transition-all duration-200 hover:shadow-md">
+            <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-sky-50 p-2 text-sky-600">
+                  <Compass className="h-5 w-5" />
+                </div>
+                <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">2</div>
+              </div>
+              <CardTitle className="mt-2 text-lg">Persönliche Orientierungshilfe</CardTitle>
+              <CardDescription>Unsicher, welche Therapieform passt? Wir besprechen gerne Ihre Optionen und zeigen Ihnen relevante Therapeuten aus unserem Verzeichnis.</CardDescription>
+            </CardHeader>
+          </Card>
+          <Card className="group relative overflow-hidden transition-all duration-200 hover:shadow-md">
+            <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
+                  <PhoneCall className="h-5 w-5" />
+                </div>
+                <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">3</div>
+              </div>
+              <CardTitle className="mt-2 text-lg">Selbst auswählen & kontaktieren</CardTitle>
+              <CardDescription>Sie erhalten Profile mit Verfügbarkeiten und kontaktieren Therapeuten eigenverantwortlich.</CardDescription>
+            </CardHeader>
+          </Card>
         </div>
       </section>
 
       {/* Personal Service */}
       <section aria-labelledby="personal-service" className="mt-12 sm:mt-16">
-        <h3 id="personal-service" className="text-xl font-semibold">Persönliche Orientierungshilfe</h3>
-        <p className="mt-2 max-w-3xl text-gray-700">Unsicher, welche Therapieform passt? Wir besprechen gerne Ihre Optionen und zeigen Ihnen relevante Therapeuten aus unserem Verzeichnis.</p>
-        <small className="mt-2 block text-xs text-gray-600">Dies ist eine Informationsberatung, keine medizinische oder therapeutische Empfehlung.</small>
+        <div className="rounded-2xl border bg-white p-6 sm:p-8">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-slate-100 p-2 text-slate-700">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 id="personal-service" className="text-xl font-semibold">Persönliche Orientierungshilfe</h3>
+              <p className="mt-2 max-w-3xl text-gray-700">Unsicher, welche Therapieform passt? Wir besprechen gerne Ihre Optionen und zeigen Ihnen relevante Therapeuten aus unserem Verzeichnis.</p>
+              <small className="mt-2 block text-xs text-gray-600">Dies ist eine Informationsberatung, keine medizinische oder therapeutische Empfehlung.</small>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Qualifications */}
       <section aria-labelledby="qualifications" className="mt-12 sm:mt-16">
         <h2 id="qualifications" className="text-2xl font-semibold">Therapeuten in unserem Verzeichnis</h2>
-        <ul className="mt-4 space-y-2 text-sm text-gray-700">
-          <li>✓ Heilpraktiker für Psychotherapie (staatlich geprüft)</li>
-          <li>✓ Zertifiziert in NARM, Hakomi oder Somatic Experiencing</li>
-          <li>✓ Mindestens 2 Jahre Praxiserfahrung</li>
-          <li>✓ Regelmäßige Supervision und Fortbildung</li>
-        </ul>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-lg border bg-white p-4">✓ Heilpraktiker für Psychotherapie (staatlich geprüft)</div>
+          <div className="rounded-lg border bg-white p-4">✓ Zertifiziert in NARM, Hakomi oder Somatic Experiencing</div>
+          <div className="rounded-lg border bg-white p-4">✓ Mindestens 2 Jahre Praxiserfahrung</div>
+          <div className="rounded-lg border bg-white p-4">✓ Regelmäßige Supervision und Fortbildung</div>
+        </div>
       </section>
 
       {/* FAQ */}
       <section aria-labelledby="faq" className="mt-12 sm:mt-16">
         <h2 id="faq" className="text-2xl font-semibold">Häufige Fragen</h2>
-        <div className="mt-6 space-y-6">
-          <div>
-            <h3 className="font-medium">Was kostet das Therapeuten-Verzeichnis?</h3>
-            <p className="mt-1 text-sm text-gray-600">Das Verzeichnis ist für Sie als Patient komplett kostenlos. Sie zahlen nur die Therapiesitzungen direkt an den Therapeuten Ihrer Wahl.</p>
-          </div>
-          <div>
-            <h3 className="font-medium">Warum Selbstzahler?</h3>
-            <p className="mt-1 text-sm text-gray-600">Als Selbstzahler erhalten Sie sofort einen Termin, bestimmen selbst über Ihre Therapie und vermeiden Diagnosen in Ihrer Krankenakte. Viele Zusatzversicherungen erstatten Heilpraktiker-Leistungen.</p>
-          </div>
-          <div>
-            <h3 className="font-medium">Was ist körperorientierte Psychotherapie?</h3>
-            <p className="mt-1 text-sm text-gray-600">Methoden wie NARM, Hakomi und Somatic Experiencing arbeiten mit der Verbindung zwischen Körper und Psyche. Sie lösen Traumata dort, wo sie gespeichert sind - im Nervensystem.</p>
-          </div>
-          <div>
-            <h3 className="font-medium">Wie schnell bekomme ich einen Termin?</h3>
-            <p className="mt-1 text-sm text-gray-600">Die meisten Therapeuten in unserem Verzeichnis haben innerhalb von 7 Tagen Termine frei. Nach Ihrer Anfrage erhalten Sie innerhalb von 24 Stunden Kontaktmöglichkeiten.</p>
-          </div>
-          <div>
-            <h3 className="font-medium">Kann ich selbst verschiedene Therapeuten kontaktieren?</h3>
-            <p className="mt-1 text-sm text-gray-600">Selbstverständlich. Sie entscheiden eigenverantwortlich, welche Therapeuten Sie kontaktieren möchten. Wir stellen nur die Kontaktinformationen zur Verfügung.</p>
-          </div>
+        <div className="mt-6">
+          <FaqAccordion
+            items={[
+              {
+                id: 'kosten',
+                question: 'Was kostet das Therapeuten-Verzeichnis?',
+                answer: 'Das Verzeichnis ist für Sie als Patient komplett kostenlos. Sie zahlen nur die Therapiesitzungen direkt an den Therapeuten Ihrer Wahl.',
+              },
+              {
+                id: 'selbstzahler',
+                question: 'Warum Selbstzahler?',
+                answer: 'Als Selbstzahler erhalten Sie sofort einen Termin, bestimmen selbst über Ihre Therapie und vermeiden Diagnosen in Ihrer Krankenakte. Viele Zusatzversicherungen erstatten Heilpraktiker-Leistungen.',
+              },
+              {
+                id: 'koerperorientiert',
+                question: 'Was ist körperorientierte Psychotherapie?',
+                answer: 'Methoden wie NARM, Hakomi und Somatic Experiencing arbeiten mit der Verbindung zwischen Körper und Psyche. Sie lösen Traumata dort, wo sie gespeichert sind - im Nervensystem.',
+              },
+              {
+                id: 'termin',
+                question: 'Wie schnell bekomme ich einen Termin?',
+                answer: 'Die meisten Therapeuten in unserem Verzeichnis haben innerhalb von 7 Tagen Termine frei. Nach Ihrer Anfrage erhalten Sie innerhalb von 24 Stunden Kontaktmöglichkeiten.',
+              },
+              {
+                id: 'kontakt',
+                question: 'Kann ich selbst verschiedene Therapeuten kontaktieren?',
+                answer: 'Selbstverständlich. Sie entscheiden eigenverantwortlich, welche Therapeuten Sie kontaktieren möchten. Wir stellen nur die Kontaktinformationen zur Verfügung.',
+              },
+            ]}
+          />
         </div>
       </section>
 

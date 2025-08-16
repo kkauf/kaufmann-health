@@ -19,7 +19,11 @@ export default function Home() {
         </div>
 
         {/* Hero Section (Patient-Focused) */}
-        <section aria-labelledby="hero-heading" className="mb-10 sm:mb-14">
+        <section
+          aria-labelledby="hero-heading"
+          className="mb-10 sm:mb-14 relative overflow-hidden rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-6 sm:p-8"
+        >
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_120%_10%,rgba(99,102,241,0.08),transparent_60%),radial-gradient(30rem_16rem_at_-20%_80%,rgba(14,165,233,0.08),transparent_60%)]" />
           <h1
             id="hero-heading"
             className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl"
@@ -54,18 +58,7 @@ export default function Home() {
           </p>
         </section>
 
-        {/* Legal Disclaimer */}
-        <section aria-labelledby="legal-disclaimer" className="mb-8">
-          <p
-            id="legal-disclaimer"
-            className="rounded border-l-4 border-amber-400 bg-amber-50 p-3 text-xs text-gray-700 sm:text-sm"
-          >
-            Kaufmann Health ist ein Informationsverzeichnis. Wir stellen
-            Kontaktdaten zur Verfügung, vermitteln aber keine therapeutischen
-            Leistungen. Die Therapiewahl liegt allein bei Ihnen.
-          </p>
-        </section>
-
+      
         {/* Social Proof */}
         <section aria-labelledby="social-proof" className="mb-12">
           <h2 id="social-proof" className="text-sm font-medium text-gray-700">
@@ -113,7 +106,7 @@ export default function Home() {
             Was unser Verzeichnis auszeichnet
           </h2>
           <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="rounded-lg border bg-white p-5">
+            <div className="rounded-lg border bg-white p-5 transition-all duration-200 hover:shadow-md">
               <h3 className="text-lg font-medium">Spezialisierte Expertise</h3>
               <p className="mt-2 text-sm text-gray-600">
                 Ausschließlich körperorientierte Trauma-Therapeuten mit
@@ -121,7 +114,7 @@ export default function Home() {
                 Experiencing.
               </p>
             </div>
-            <div className="rounded-lg border bg-white p-5">
+            <div className="rounded-lg border bg-white p-5 transition-all duration-200 hover:shadow-md">
               <h3 className="text-lg font-medium">Persönliche Orientierungshilfe</h3>
               <p className="mt-2 text-sm text-gray-600">
                 Unsicher welche Therapieform passt? Wir besprechen gerne Ihre
@@ -129,7 +122,7 @@ export default function Home() {
                 Verzeichnis.
               </p>
             </div>
-            <div className="rounded-lg border bg-white p-5">
+            <div className="rounded-lg border bg-white p-5 transition-all duration-200 hover:shadow-md">
               <h3 className="text-lg font-medium">Direkter Kontakt</h3>
               <p className="mt-2 text-sm text-gray-600">
                 Sie erhalten Kontaktdaten und vereinbaren Termine direkt mit dem
