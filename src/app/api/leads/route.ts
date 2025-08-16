@@ -17,12 +17,28 @@ type LeadPayload = {
   issue?: string;
   availability?: string;
   budget?: string;
+  specializations?: string[];
 };
 
 function sanitize(v?: string) {
   if (!v) return undefined;
   return v.toString().replace(/[\u0000-\u001F\u007F]/g, '').slice(0, 1000);
 }
+
+// Allowed specializations (slugs)
+const ALLOWED_SPECIALIZATIONS = [
+  'narm',
+  'core-energetics',
+  'hakomi',
+  'somatic-experiencing',
+] as const;
+
+const SPEC_NAME_MAP: Record<string, string> = {
+  'narm': 'NARM',
+  'core-energetics': 'Core Energetics',
+  'hakomi': 'Hakomi',
+  'somatic-experiencing': 'Somatic Experiencing',
+};
 
 function getClientIP(headers: Headers) {
   const xff = headers.get('x-forwarded-for');
@@ -42,6 +58,7 @@ type NotificationRow = {
     issue?: string;
     availability?: string;
     budget?: string;
+    specializations?: string[];
     ip?: string;
     user_agent?: string;
   } | null;
@@ -63,6 +80,7 @@ async function sendLeadNotification(row: NotificationRow) {
       `Issue: ${row.metadata?.issue || '-'}`,
       `Availability: ${row.metadata?.availability || '-'}`,
       `Budget: ${row.metadata?.budget || '-'}`,
+      `Specializations: ${row.metadata?.specializations?.map(s => SPEC_NAME_MAP[s] || s).join(', ') || '-'}`,
       `IP: ${row.metadata?.ip || '-'}`,
       `UA: ${row.metadata?.user_agent || '-'}`,
     ].join('\n');
@@ -105,6 +123,11 @@ export async function POST(req: Request) {
     const issue = sanitize(payload.issue);
     const availability = sanitize(payload.availability);
     const budget = sanitize(payload.budget);
+    const specializations = Array.isArray(payload.specializations)
+      ? payload.specializations
+          .map((s) => sanitize(s)?.toLowerCase().replace(/\s+/g, '-'))
+          .filter((s): s is string => !!s && (ALLOWED_SPECIALIZATIONS as readonly string[]).includes(s))
+      : [];
 
     // Basic IP-based rate limiting (60s window). Note: best-effort and
     // dependent on upstream "x-forwarded-for" headers.
@@ -138,9 +161,10 @@ export async function POST(req: Request) {
           ...(issue ? { issue } : {}),
           ...(availability ? { availability } : {}),
           ...(budget ? { budget } : {}),
+          ...(specializations.length ? { specializations } : {}),
           ...(ip ? { ip } : {}),
           ...(ua ? { user_agent: ua } : {}),
-          funnel_type: 'narm',
+          funnel_type: 'koerperpsychotherapie',
           submitted_at: new Date().toISOString(),
         },
       })

@@ -28,7 +28,7 @@ export default function Home() {
           </h1>
           <p className="mt-4 max-w-2xl text-base text-gray-600 sm:text-lg">
             Durchsuchbares Verzeichnis von Heilpraktikern für Psychotherapie.
-            Spezialisiert auf NARM, Hakomi und Somatic Experiencing.
+            Spezialisiert auf NARM, Core Energetics, Hakomi und Somatic Experiencing.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Button
@@ -75,34 +75,34 @@ export default function Home() {
             <Image
               src="/logos/NARM.png"
               alt="NARM"
-              width={120}
-              height={40}
+              width={240}
+              height={80}
               unoptimized
-              className="h-8 w-auto object-contain opacity-80"
+              className="h-20 w-auto object-contain opacity-80"
             />
             <Image
               src="/logos/Hakomi.png"
               alt="Hakomi"
-              width={120}
-              height={40}
+              width={240}
+              height={80}
               unoptimized
-              className="h-8 w-auto object-contain opacity-80"
+              className="h-20 w-auto object-contain opacity-80"
             />
             <Image
               src="/logos/Somatic-Experiencing.png"
               alt="Somatic Experiencing"
-              width={140}
-              height={40}
+              width={240}
+              height={80}
               unoptimized
-              className="h-8 w-auto object-contain opacity-80"
+              className="h-20 w-auto object-contain opacity-80"
             />
             <Image
               src="/logos/Core-Energetics.png"
               alt="Core Energetics"
-              width={140}
-              height={40}
+              width={240}
+              height={80}
               unoptimized
-              className="h-8 w-auto object-contain opacity-80"
+              className="h-20 w-auto object-contain opacity-80"
             />
           </div>
         </section>
