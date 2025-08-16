@@ -8,14 +8,14 @@ export default function Footer() {
               Kontakt
             </h2>
             <ul className="space-y-1">
-              <li className="text-gray-800">Kaufmann Health</li>
+              <li className="text-gray-800">Konstantin Kaufmann - Kaufmann Health</li>
               <li>
                 Email:{" "}
                 <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="mailto:kontakt@kaufmann-health.de">
                   kontakt@kaufmann-health.de
                 </a>
               </li>
-              <li>Telefon: [Nummer]</li>
+              <li>Telefon: +49 156 79686874</li>
             </ul>
           </section>
           <nav aria-labelledby="footer-legal">
@@ -46,7 +46,7 @@ export default function Footer() {
         </div>
         <div className="mt-8 flex flex-col items-start justify-between gap-3 border-t pt-4 text-xs text-gray-500 sm:flex-row">
           <p>
-            © {new Date().getFullYear()} Kaufmann Health. Alle Rechte vorbehalten.
+            © {new Date().getFullYear()} Konstantin Kaufmann - Kaufmann Health. Alle Rechte vorbehalten.
           </p>
           <p>Berlin, Deutschland</p>
         </div>
