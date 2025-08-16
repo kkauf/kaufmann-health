@@ -11,8 +11,8 @@ export default function Footer() {
               <li className="text-gray-800">Kaufmann Health</li>
               <li>
                 Email:{" "}
-                <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="mailto:info@kaufmann-health.de">
-                  info@kaufmann-health.de
+                <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="mailto:kontakt@kaufmann-health.de">
+                  kontakt@kaufmann-health.de
                 </a>
               </li>
               <li>Telefon: [Nummer]</li>
