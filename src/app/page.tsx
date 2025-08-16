@@ -77,6 +77,7 @@ export default function Home() {
               alt="NARM"
               width={120}
               height={40}
+              unoptimized
               className="h-8 w-auto object-contain opacity-80"
             />
             <Image
@@ -84,6 +85,7 @@ export default function Home() {
               alt="Hakomi"
               width={120}
               height={40}
+              unoptimized
               className="h-8 w-auto object-contain opacity-80"
             />
             <Image
@@ -91,6 +93,7 @@ export default function Home() {
               alt="Somatic Experiencing"
               width={140}
               height={40}
+              unoptimized
               className="h-8 w-auto object-contain opacity-80"
             />
             <Image
@@ -98,6 +101,7 @@ export default function Home() {
               alt="Core Energetics"
               width={140}
               height={40}
+              unoptimized
               className="h-8 w-auto object-contain opacity-80"
             />
           </div>
