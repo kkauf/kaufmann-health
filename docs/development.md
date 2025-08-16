@@ -10,4 +10,9 @@
 - __Deploy (Vercel)__:
   - Set the env vars in Vercel Project Settings (do not commit secrets).
   - API routes needing secrets must run on Node.js runtime.
+- __Logos (homepage social proof)__:
+  - Files live in `public/logos/`.
+  - Current filenames: `narm.png`, `hakomi.png`, `somatic-experiencing.png`, `core-energetics.png`.
+  - Use transparent PNGs around 120–140×40 for consistent height; adjust width for balance.
+  - If the number of logos changes, update grid classes in `src/app/page.tsx` (social proof section), e.g. `grid-cols-2 sm:grid-cols-4 lg:grid-cols-4`.
 - __Migrations__: Schema is managed in Supabase (UUID defaults, timestamptz, RLS). Track future DDL in SQL migrations when patterns emerge.

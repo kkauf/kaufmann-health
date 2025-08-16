@@ -52,6 +52,7 @@ async function sendLeadNotification(row: NotificationRow) {
     const apiKey = process.env.RESEND_API_KEY;
     const to = process.env.LEADS_NOTIFY_EMAIL;
     if (!apiKey || !to) return;
+    const fromAddress = process.env.LEADS_FROM_EMAIL || 'no-reply@kaufmann-health.de';
     const text = [
       `New lead received`,
       `Name: ${row.name || '-'}`,
