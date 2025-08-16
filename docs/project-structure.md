@@ -5,7 +5,9 @@
   /app
     page.tsx                # Homepage (UI only)
     /therapie-finden
-      page.tsx              # NARM funnel page
+      page.tsx              # Funnel page for prospective clients
+    /fuer-therapeuten
+      page.tsx              # Therapist CTA page (mailto)
     /impressum
       page.tsx
     /agb

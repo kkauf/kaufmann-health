@@ -1,114 +1,173 @@
+import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
-export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+export const dynamic = 'force-dynamic';
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <Button size="lg" className="gap-2">
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            shadcn/ui Button Test
-          </Button>
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+export default function Home() {
+  const variant = process.env.NEXT_PUBLIC_EXPERIMENT_HOME_VARIANT || "dual";
+  const showTherapistSection = variant !== "patient-only";
+
+  return (
+    <div className="min-h-screen bg-white" data-variant={variant}>
+      <main className="mx-auto max-w-7xl px-4 py-10 sm:py-16">
+        {/* Announcement Bar */}
+        <div className="mb-6">
+          <div className="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
+            Neu in Berlin, München und Hamburg
+          </div>
         </div>
+
+        {/* Hero Section (Patient-Focused) */}
+        <section aria-labelledby="hero-heading" className="mb-10 sm:mb-14">
+          <h1
+            id="hero-heading"
+            className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl"
+          >
+            Finden Sie körperorientierte Therapeuten in Ihrer Nähe
+          </h1>
+          <p className="mt-4 max-w-2xl text-base text-gray-600 sm:text-lg">
+            Durchsuchbares Verzeichnis von Heilpraktikern für Psychotherapie.
+            Spezialisiert auf NARM, Hakomi und Somatic Experiencing.
+          </p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Button
+              size="lg"
+              asChild
+              data-cta="patients-primary"
+              data-audience="patients"
+            >
+              <Link href="/therapie-finden">Therapeuten finden</Link>
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              asChild
+              data-cta="therapists-secondary"
+              data-audience="therapists"
+            >
+              <Link href="/fuer-therapeuten">Für Therapeuten</Link>
+            </Button>
+          </div>
+          <p className="mt-3 text-sm text-gray-500">
+            Bereits über 250 Therapeuten in unserem Verzeichnis
+          </p>
+        </section>
+
+        {/* Legal Disclaimer */}
+        <section aria-labelledby="legal-disclaimer" className="mb-8">
+          <p
+            id="legal-disclaimer"
+            className="rounded border-l-4 border-amber-400 bg-amber-50 p-3 text-xs text-gray-700 sm:text-sm"
+          >
+            Kaufmann Health ist ein Informationsverzeichnis. Wir stellen
+            Kontaktdaten zur Verfügung, vermitteln aber keine therapeutischen
+            Leistungen. Die Therapiewahl liegt allein bei Ihnen.
+          </p>
+        </section>
+
+        {/* Social Proof */}
+        <section aria-labelledby="social-proof" className="mb-12">
+          <h2 id="social-proof" className="text-sm font-medium text-gray-700">
+            Therapeuten in unserem Verzeichnis sind zertifiziert in:
+          </h2>
+          <div className="mt-4 grid grid-cols-2 items-center gap-6 sm:grid-cols-4 lg:grid-cols-4">
+            <Image
+              src="/logos/narm.png"
+              alt="NARM"
+              width={120}
+              height={40}
+              className="h-8 w-auto object-contain opacity-80"
+            />
+            <Image
+              src="/logos/hakomi.png"
+              alt="Hakomi"
+              width={120}
+              height={40}
+              className="h-8 w-auto object-contain opacity-80"
+            />
+            <Image
+              src="/logos/somatic-experiencing.png"
+              alt="Somatic Experiencing"
+              width={140}
+              height={40}
+              className="h-8 w-auto object-contain opacity-80"
+            />
+            <Image
+              src="/logos/core-energetics.png"
+              alt="Core Energetics"
+              width={140}
+              height={40}
+              className="h-8 w-auto object-contain opacity-80"
+            />
+          </div>
+        </section>
+
+        {/* Features */}
+        <section aria-labelledby="features" className="mb-14">
+          <h2 id="features" className="text-2xl font-semibold">
+            Was unser Verzeichnis auszeichnet
+          </h2>
+          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="rounded-lg border bg-white p-5">
+              <h3 className="text-lg font-medium">Spezialisierte Expertise</h3>
+              <p className="mt-2 text-sm text-gray-600">
+                Ausschließlich körperorientierte Trauma-Therapeuten mit
+                nachgewiesener Ausbildung in NARM, Hakomi, Core Energetics oder Somatic
+                Experiencing.
+              </p>
+            </div>
+            <div className="rounded-lg border bg-white p-5">
+              <h3 className="text-lg font-medium">Persönliche Orientierungshilfe</h3>
+              <p className="mt-2 text-sm text-gray-600">
+                Unsicher welche Therapieform passt? Wir besprechen gerne Ihre
+                Optionen und zeigen Ihnen relevante Therapeuten aus unserem
+                Verzeichnis.
+              </p>
+            </div>
+            <div className="rounded-lg border bg-white p-5">
+              <h3 className="text-lg font-medium">Direkter Kontakt</h3>
+              <p className="mt-2 text-sm text-gray-600">
+                Sie erhalten Kontaktdaten und vereinbaren Termine direkt mit dem
+                Therapeuten Ihrer Wahl. Keine Umwege.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Therapist Section (Secondary) */}
+        {showTherapistSection && (
+          <section
+            aria-labelledby="therapists"
+            className="mb-4 rounded-xl border bg-slate-50 p-6 sm:p-8"
+          >
+            <div className="grid gap-4 lg:grid-cols-[2fr_1fr] lg:items-center">
+              <div>
+                <h2 id="therapists" className="text-2xl font-semibold">
+                  Neue Klienten für Ihre Praxis
+                </h2>
+                <p className="mt-2 text-gray-600">
+                  Werden Sie Teil unseres Therapeuten-Verzeichnisses. Zahlen Sie
+                  nur eine Erfolgsgebühr, wenn Klienten über unsere Plattform zu
+                  Ihnen finden.
+                </p>
+              </div>
+              <div className="justify-self-start lg:justify-self-end">
+                <Button
+                  size="lg"
+                  asChild
+                  data-cta="therapists-primary"
+                  data-audience="therapists"
+                >
+                  <Link href="/fuer-therapeuten">
+                    In Verzeichnis aufnehmen lassen →
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
