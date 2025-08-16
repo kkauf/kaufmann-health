@@ -73,28 +73,28 @@ export default function Home() {
           </h2>
           <div className="mt-4 grid grid-cols-2 items-center gap-6 sm:grid-cols-4 lg:grid-cols-4">
             <Image
-              src="/logos/narm.png"
+              src="/logos/NARM.png"
               alt="NARM"
               width={120}
               height={40}
               className="h-8 w-auto object-contain opacity-80"
             />
             <Image
-              src="/logos/hakomi.png"
+              src="/logos/Hakomi.png"
               alt="Hakomi"
               width={120}
               height={40}
               className="h-8 w-auto object-contain opacity-80"
             />
             <Image
-              src="/logos/somatic-experiencing.png"
+              src="/logos/Somatic-Experiencing.png"
               alt="Somatic Experiencing"
               width={140}
               height={40}
               className="h-8 w-auto object-contain opacity-80"
             />
             <Image
-              src="/logos/core-energetics.png"
+              src="/logos/Core-Energetics.png"
               alt="Core Energetics"
               width={140}
               height={40}
