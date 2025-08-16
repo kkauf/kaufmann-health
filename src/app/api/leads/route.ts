@@ -73,7 +73,7 @@ async function sendLeadNotification(row: NotificationRow) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Leads <noreply@kaufmann.earth>',
+        from: `Leads <${fromAddress}>`,
         to: [to],
         subject: 'New lead submission',
         text,
