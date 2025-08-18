@@ -15,7 +15,6 @@ export default function Footer() {
                   kontakt@kaufmann-health.de
                 </a>
               </li>
-              <li>Telefon: +49 156 79686874</li>
             </ul>
           </section>
           <nav aria-labelledby="footer-legal">

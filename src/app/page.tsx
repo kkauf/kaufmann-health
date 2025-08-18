@@ -28,11 +28,11 @@ export default function Home() {
             id="hero-heading"
             className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl"
           >
-            Finden Sie körperorientierte Therapeuten in Ihrer Nähe
+            Finden Sie körperorientierte Trauma-Therapeuten
           </h1>
           <p className="mt-4 max-w-2xl text-base text-gray-600 sm:text-lg">
-            Durchsuchbares Verzeichnis von Heilpraktikern für Psychotherapie.
-            Spezialisiert auf NARM, Core Energetics, Hakomi und Somatic Experiencing.
+            Durchsuchbares Verzeichnis qualifizierter Therapeuten.
+            Geprüfte Profile. Direkte Kontaktaufnahme.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Button
