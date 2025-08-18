@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 export const metadata: Metadata = {
   title: "Für Therapeuten | Kaufmann Health",
   description:
-    "Werden Sie Teil unseres Therapeuten-Verzeichnisses. Kontakt: info@kaufmann-health.de",
+    "Werden Sie Teil unseres Therapeuten-Verzeichnisses. Kontakt: kontakt@kaufmann-health.de",
 };
 
 export default function TherapistsPage() {
@@ -22,7 +22,7 @@ export default function TherapistsPage() {
           data-cta="therapists-email"
           data-audience="therapists"
         >
-          <Link href="mailto:info@kaufmann-health.de?subject=Verzeichnis-Aufnahme&body=Bitte senden Sie mir Informationen zur Aufnahme in das Therapeuten-Verzeichnis.">
+          <Link href="mailto:kontakt@kaufmann-health.de?subject=Verzeichnis-Aufnahme&body=Bitte senden Sie mir Informationen zur Aufnahme in das Therapeuten-Verzeichnis.">
             E-Mail an info@kaufmann-health.de
           </Link>
         </Button>
