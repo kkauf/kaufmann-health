@@ -23,7 +23,7 @@ export default function TherapistsPage() {
           data-audience="therapists"
         >
           <Link href="mailto:kontakt@kaufmann-health.de?subject=Verzeichnis-Aufnahme&body=Bitte senden Sie mir Informationen zur Aufnahme in das Therapeuten-Verzeichnis.">
-            E-Mail an info@kaufmann-health.de
+            E-Mail an kontakt@kaufmann-health.de
           </Link>
         </Button>
       </div>

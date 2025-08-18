@@ -70,6 +70,7 @@ This doc captures the visual patterns that save debugging time and keep the UI c
 ## Legal & Compliance
 
 - Place legal disclaimers in the footer only; avoid prominent mid-page blocks. Use subtle, non-distracting styles when needed (e.g., small gray text).
+- Wording: Use directory language (e.g., „Informationsverzeichnis“, „zeigen Ihnen Optionen“) and avoid Empfehlungen/Vermittlung oder medizinische Aussagen. Keine Eignungs- oder Erfolgsversprechen.
 
 ## Accessibility & Semantics
 

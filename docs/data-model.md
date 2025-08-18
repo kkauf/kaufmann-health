@@ -12,6 +12,7 @@
 
 Business notes:
 - `metadata` is a flexible bag for form/funnel details (`city`, `issue`, `availability`, `budget`, etc.).
+- Common keys used by the therapy finder funnel: `specializations` (string[] of slugs), `funnel_type='koerperpsychotherapie'`, `submitted_at` (ISO string), `ip`, `user_agent`.
 - Consider future constraints (e.g., email verified) when the funnel evolves.
 
 Indexes:
