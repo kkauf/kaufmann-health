@@ -87,6 +87,21 @@ This doc captures the visual patterns that save debugging time and keep the UI c
 - Use step cards with top rails for ordered processes.
 - Use icon bubbles to visually categorize content without heavy imagery.
 
+## Analytics & Event Tracking
+
+- Endpoint: POST `/api/events` with `{ type: string, id?: string, title?: string }`
+- Event types (use these):
+  - `cta_click` (for button/link clicks)
+  - `faq_open` (FAQ expansion)
+  - `form_submit` or feature-specific (e.g., `therapist_apply_submitted`)
+- eventId naming convention: `{page}-{location}-{action}[-{qualifier}]`
+  - Examples:
+    - `fuer-therapeuten-hero-apply`
+    - `fuer-therapeuten-cta-apply`
+    - `fuer-therapeuten-faq-fee`
+    - `fuer-therapeuten-form-submit`
+- Prefer `navigator.sendBeacon` for reliability; fallback to `fetch(..., { keepalive: true })`.
+
 ## Notes
 
 - Icons from `lucide-react`, size `h-5 w-5` for body, adjust to `h-4 w-4` inside smaller UI.

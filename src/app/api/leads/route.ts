@@ -18,6 +18,11 @@ type LeadPayload = {
   availability?: string;
   budget?: string;
   specializations?: string[];
+  // New (EARTH-19): therapist applications
+  type?: 'patient' | 'therapist';
+  qualification?: string; // e.g., Heilpraktiker f. Psychotherapie, Approbation
+  experience?: string; // free text (e.g., '2-4 Jahre')
+  website?: string;
 };
 
 function sanitize(v?: string) {
@@ -61,6 +66,12 @@ type NotificationRow = {
     specializations?: string[];
     ip?: string;
     user_agent?: string;
+    // New (EARTH-19)
+    lead_type?: 'patient' | 'therapist';
+    qualification?: string;
+    experience?: string;
+    website?: string;
+    funnel_type?: string;
   } | null;
 };
 
@@ -81,6 +92,10 @@ async function sendLeadNotification(row: NotificationRow) {
       `Availability: ${row.metadata?.availability || '-'}`,
       `Budget: ${row.metadata?.budget || '-'}`,
       `Specializations: ${row.metadata?.specializations?.map(s => SPEC_NAME_MAP[s] || s).join(', ') || '-'}`,
+      `Type: ${row.metadata?.lead_type || '-'}`,
+      `Qualification: ${row.metadata?.qualification || '-'}`,
+      `Experience: ${row.metadata?.experience || '-'}`,
+      `Website: ${row.metadata?.website || '-'}`,
       `IP: ${row.metadata?.ip || '-'}`,
       `UA: ${row.metadata?.user_agent || '-'}`,
     ].join('\n');
@@ -123,6 +138,10 @@ export async function POST(req: Request) {
     const issue = sanitize(payload.issue);
     const availability = sanitize(payload.availability);
     const budget = sanitize(payload.budget);
+    const qualification = sanitize(payload.qualification);
+    const experience = sanitize(payload.experience);
+    const website = sanitize(payload.website);
+    const leadType: 'patient' | 'therapist' = payload.type === 'therapist' ? 'therapist' : 'patient';
     const specializations = Array.isArray(payload.specializations)
       ? payload.specializations
           .map((s) => sanitize(s)?.toLowerCase().replace(/\s+/g, '-'))
@@ -153,7 +172,7 @@ export async function POST(req: Request) {
         name: data.name,
         email: data.email,
         phone: data.phone,
-        type: 'patient',
+        type: leadType,
         status: 'new',
         metadata: {
           ...(data.notes ? { notes: data.notes } : {}),
@@ -164,7 +183,11 @@ export async function POST(req: Request) {
           ...(specializations.length ? { specializations } : {}),
           ...(ip ? { ip } : {}),
           ...(ua ? { user_agent: ua } : {}),
-          funnel_type: 'koerperpsychotherapie',
+          ...(qualification ? { qualification } : {}),
+          ...(experience ? { experience } : {}),
+          ...(website ? { website } : {}),
+          lead_type: leadType,
+          funnel_type: leadType === 'therapist' ? 'therapist_acquisition' : 'koerperpsychotherapie',
           submitted_at: new Date().toISOString(),
         },
       })

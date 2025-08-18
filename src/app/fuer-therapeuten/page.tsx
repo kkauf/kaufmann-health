@@ -1,32 +1,266 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
+import FaqAccordion from "@/components/FaqAccordion";
+import TherapistApplicationForm from "@/components/TherapistApplicationForm";
+import { CheckCircle2, Target, Users, Clock, Shield, TrendingUp } from "lucide-react";
+import CtaLink from "@/components/CtaLink";
 
 export const metadata: Metadata = {
-  title: "Für Therapeuten | Kaufmann Health",
+  title: "Neue Klienten für Ihre Praxis | Für Therapeuten | Kaufmann Health",
   description:
-    "Werden Sie Teil unseres Therapeuten-Verzeichnisses. Kontakt: kontakt@kaufmann-health.de",
+    "Werden Sie Teil unseres Therapeuten-Verzeichnisses. Zahlen Sie nur eine Erfolgsgebühr, wenn Klienten über unsere Plattform zu Ihnen finden.",
+  alternates: { canonical: "/fuer-therapeuten" },
+  openGraph: {
+    title: "Neue Klienten für Ihre Praxis | Für Therapeuten",
+    description:
+      "Spezialisiertes Therapeuten-Verzeichnis mit erfolgsbasierter Vergütung. Keine Vorabkosten.",
+  },
 };
+
+const faqItems = [
+  {
+    id: "fuer-therapeuten-faq-fee",
+    question: "Wie hoch ist die Erfolgsgebühr?",
+    answer:
+      "25% der Sitzungsgebühr für die ersten 10 Sitzungen pro Klient, der über unser Verzeichnis zu Ihnen findet. Danach 0%.",
+  },
+  {
+    id: "fuer-therapeuten-faq-who",
+    question: "Welche Therapeuten nehmen Sie in das Verzeichnis auf?",
+    answer:
+      "Heilpraktiker für Psychotherapie oder approbierte Psychotherapeuten mit Spezialisierung auf körperorientierte Verfahren (z. B. NARM, Hakomi, Somatic Experiencing, Core Energetics).",
+  },
+  {
+    id: "fuer-therapeuten-faq-volume",
+    question: "Wie viele Anfragen erhalte ich?",
+    answer:
+      "Das hängt von Ihrer Region und Verfügbarkeit ab. In Ballungsräumen erhalten Therapeuten meist 2–5 Kontakte pro Monat über unser Verzeichnis.",
+  },
+  {
+    id: "fuer-therapeuten-faq-reject",
+    question: "Kann ich Anfragen ablehnen?",
+    answer:
+      "Ja, Sie entscheiden selbst, welche Klienten Sie übernehmen möchten. Es besteht keine Verpflichtung.",
+  },
+  {
+    id: "fuer-therapeuten-faq-diff",
+    question: "Wie unterscheiden Sie sich von anderen Verzeichnissen?",
+    answer:
+      "Wir bieten zusätzlich eine persönliche Orientierungshilfe für Interessenten und fokussieren uns ausschließlich auf körperorientierte Therapieverfahren.",
+  },
+];
 
 export default function TherapistsPage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="text-3xl font-semibold">Für Therapeuten</h1>
-      <p className="mt-4 text-gray-600">
-        Möchten Sie in unser Verzeichnis aufgenommen werden? Schreiben Sie uns eine E-Mail.
-      </p>
-      <div className="mt-6">
-        <Button
-          asChild
-          size="lg"
-          data-cta="therapists-email"
-          data-audience="therapists"
-        >
-          <Link href="mailto:kontakt@kaufmann-health.de?subject=Verzeichnis-Aufnahme&body=Bitte senden Sie mir Informationen zur Aufnahme in das Therapeuten-Verzeichnis.">
-            E-Mail an kontakt@kaufmann-health.de
-          </Link>
-        </Button>
-      </div>
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
+      <script
+        type="application/ld+json"
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            name: "Neue Klienten für Ihre Praxis | Für Therapeuten | Kaufmann Health",
+            description:
+              "Werden Sie Teil unseres Therapeuten-Verzeichnisses. Zahlen Sie nur eine Erfolgsgebühr, wenn Klienten über unsere Plattform zu Ihnen finden.",
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Service",
+            name: "Therapeuten-Verzeichnis",
+            provider: { "@type": "Organization", name: "Kaufmann Health" },
+            areaServed: "DE",
+            audience: { "@type": "Audience", audienceType: "HealthcareProfessional" },
+            offers: {
+              "@type": "Offer",
+              description: "Erfolgsbasierte Vergütung: 25% der ersten 10 Sitzungen, danach 0%",
+            },
+          }),
+        }}
+      />
+      {/* Hero */}
+      <section
+        aria-labelledby="hero"
+        className="relative overflow-hidden rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-6 sm:p-8"
+      >
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_120%_10%,rgba(99,102,241,0.08),transparent_60%),radial-gradient(30rem_16rem_at_-20%_80%,rgba(14,165,233,0.08),transparent_60%)]" />
+        <h1 id="hero" className="text-3xl font-semibold tracking-tight sm:text-4xl">
+          Neue Klienten für Ihre Praxis
+        </h1>
+        <p className="mt-4 max-w-2xl text-base text-gray-600 sm:text-lg">
+          Werden Sie Teil unseres Therapeuten-Verzeichnisses. Zahlen Sie nur eine Erfolgsgebühr, wenn Klienten über unsere Plattform zu Ihnen finden.
+        </p>
+        <div className="mt-6">
+          <Button size="lg" asChild data-cta="therapists-hero-apply" data-audience="therapists">
+            <CtaLink href="#apply-form" eventType="cta_click" eventId="fuer-therapeuten-hero-apply">
+              In Verzeichnis aufnehmen lassen →
+            </CtaLink>
+          </Button>
+        </div>
+      </section>
+
+      {/* Logos strip */}
+      <section aria-labelledby="logos" className="mt-10 sm:mt-12">
+        <h2 id="logos" className="sr-only">Fokus auf körperorientierte Verfahren</h2>
+        <div className="rounded-2xl border bg-white/60 p-4 backdrop-blur-sm">
+          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
+            <Image src="/logos/NARM.png" alt="NARM" width={120} height={40} className="h-8 w-auto opacity-70 grayscale" />
+            <Image src="/logos/Hakomi.png" alt="Hakomi" width={120} height={40} className="h-8 w-auto opacity-70 grayscale" />
+            <Image src="/logos/Somatic-Experiencing.png" alt="Somatic Experiencing" width={160} height={40} className="h-8 w-auto opacity-70 grayscale" />
+            <Image src="/logos/Core-Energetics.png" alt="Core Energetics" width={160} height={40} className="h-8 w-auto opacity-70 grayscale" />
+          </div>
+        </div>
+      </section>
+
+      {/* Problem (Social Proof) */}
+      <section aria-labelledby="problem" className="mt-12 sm:mt-16">
+        <h2 id="problem" className="sr-only">Problem</h2>
+        <blockquote className="rounded-2xl border bg-gradient-to-r from-rose-50 to-orange-50 p-6 text-gray-800 sm:p-8">
+          <p className="text-base sm:text-lg">„Ich habe 175€ für Werbung ausgegeben und keine einzige Anfrage bekommen.“</p>
+          <footer className="mt-2 text-sm text-gray-600">– Hakomi-Therapeutin aus Berlin</footer>
+        </blockquote>
+      </section>
+
+      {/* Solution */}
+      <section aria-labelledby="solution" className="mt-12 sm:mt-16">
+        <h2 id="solution" className="text-2xl font-semibold">Unser Verzeichnis-Service</h2>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-xl border bg-white p-5">
+            <Target className="h-5 w-5 text-indigo-600" />
+            <h3 className="mt-2 font-medium">Spezialisiertes Verzeichnis</h3>
+            <p className="mt-1 text-sm text-gray-600">Fokus auf körperorientierte Verfahren</p>
+          </div>
+          <div className="rounded-xl border bg-white p-5">
+            <TrendingUp className="h-5 w-5 text-indigo-600" />
+            <h3 className="mt-2 font-medium">Erfolgsbasiert</h3>
+            <p className="mt-1 text-sm text-gray-600">25% für die ersten 10 Sitzungen</p>
+          </div>
+          <div className="rounded-xl border bg-white p-5">
+            <Shield className="h-5 w-5 text-indigo-600" />
+            <h3 className="mt-2 font-medium">Faire Konditionen</h3>
+            <p className="mt-1 text-sm text-gray-600">Danach 0%, Klienten gehören Ihnen</p>
+          </div>
+          <div className="rounded-xl border bg-white p-5">
+            <Users className="h-5 w-5 text-indigo-600" />
+            <h3 className="mt-2 font-medium">Flexibel</h3>
+            <p className="mt-1 text-sm text-gray-600">Jederzeit kündbar</p>
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section aria-labelledby="how" className="mt-12 sm:mt-16">
+        <h2 id="how" className="text-2xl font-semibold">So funktioniert unser Verzeichnis</h2>
+        <div className="relative mt-6 pl-8">
+          <div className="absolute inset-y-0 left-3 w-px bg-slate-200" />
+          <ol className="space-y-6 text-gray-700">
+            <li className="relative">
+              <span className="absolute -left-8 top-0 grid size-6 place-items-center rounded-full bg-indigo-600 text-xs font-semibold text-white">1</span>
+              <p><strong>Kostenlose Aufnahme</strong> – Wir prüfen Ihre Qualifikationen und nehmen Sie in unser Verzeichnis auf</p>
+            </li>
+            <li className="relative">
+              <span className="absolute -left-8 top-0 grid size-6 place-items-center rounded-full bg-indigo-600 text-xs font-semibold text-white">2</span>
+              <p><strong>Sichtbarkeit für Interessenten</strong> – Klienten finden Sie über unser Verzeichnis und unsere Orientierungshilfe</p>
+            </li>
+            <li className="relative">
+              <span className="absolute -left-8 top-0 grid size-6 place-items-center rounded-full bg-indigo-600 text-xs font-semibold text-white">3</span>
+              <p><strong>Direkter Kontakt</strong> – Interessenten kontaktieren Sie direkt und vereinbaren Termine</p>
+            </li>
+            <li className="relative">
+              <span className="absolute -left-8 top-0 grid size-6 place-items-center rounded-full bg-indigo-600 text-xs font-semibold text-white">4</span>
+              <p><strong>Erfolgsbasierte Gebühr</strong> – Nur wenn Klienten über unser Verzeichnis zu Ihnen finden, zahlen Sie 25% der ersten 10 Sitzungen</p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      {/* Requirements */}
+      <section aria-labelledby="requirements" className="mt-12 sm:mt-16">
+        <h2 id="requirements" className="text-2xl font-semibold">Voraussetzungen für die Verzeichnis-Aufnahme</h2>
+        <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+          <li className="flex items-start gap-3 rounded-xl border bg-white p-4 text-gray-700"><CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" /> Heilpraktiker für Psychotherapie oder approbierter Psychotherapeut</li>
+          <li className="flex items-start gap-3 rounded-xl border bg-white p-4 text-gray-700"><CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" /> Spezialisierung auf körperorientierte Verfahren (NARM, Hakomi, Somatic Experiencing, Core Energetics)</li>
+          <li className="flex items-start gap-3 rounded-xl border bg-white p-4 text-gray-700"><CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" /> Mindestens 2 Jahre Praxiserfahrung</li>
+          <li className="flex items-start gap-3 rounded-xl border bg-white p-4 text-gray-700"><CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" /> Bereitschaft für Selbstzahler-Klienten</li>
+          <li className="flex items-start gap-3 rounded-xl border bg-white p-4 text-gray-700 sm:col-span-2"><CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" /> Verfügbarkeit für neue Klienten</li>
+        </ul>
+      </section>
+
+      {/* Benefits */}
+      <section aria-labelledby="benefits" className="mt-12 sm:mt-16">
+        <h2 id="benefits" className="text-2xl font-semibold">Ihre Vorteile</h2>
+        <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="rounded-xl border bg-white p-5 transition-all duration-200 hover:shadow-md">
+            <TrendingUp className="h-5 w-5 text-indigo-600" />
+            <h3 className="mt-2 text-lg font-medium">Keine Vorabkosten</h3>
+            <p className="mt-1 text-sm text-gray-600">Zahlen Sie nur bei Erfolg</p>
+          </div>
+          <div className="rounded-xl border bg-white p-5 transition-all duration-200 hover:shadow-md">
+            <Target className="h-5 w-5 text-indigo-600" />
+            <h3 className="mt-2 text-lg font-medium">Zielgerichtete Sichtbarkeit</h3>
+            <p className="mt-1 text-sm text-gray-600">Alle Anfragen kommen von vorinteressierten Selbstzahlern</p>
+          </div>
+          <div className="rounded-xl border bg-white p-5 transition-all duration-200 hover:shadow-md">
+            <Clock className="h-5 w-5 text-indigo-600" />
+            <h3 className="mt-2 text-lg font-medium">Zeitersparnis</h3>
+            <p className="mt-1 text-sm text-gray-600">Kein Marketing, keine Kaltakquise notwendig</p>
+          </div>
+          <div className="rounded-xl border bg-white p-5 transition-all duration-200 hover:shadow-md">
+            <Shield className="h-5 w-5 text-indigo-600" />
+            <h3 className="mt-2 text-lg font-medium">Faire Konditionen</h3>
+            <p className="mt-1 text-sm text-gray-600">Nach 10 Sitzungen gehören Klienten komplett Ihnen</p>
+          </div>
+          <div className="rounded-xl border bg-white p-5 transition-all duration-200 hover:shadow-md">
+            <Users className="h-5 w-5 text-indigo-600" />
+            <h3 className="mt-2 text-lg font-medium">Flexible Teilnahme</h3>
+            <p className="mt-1 text-sm text-gray-600">Jederzeit kündbar, keine Mindestlaufzeit</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Service description (legal wording) */}
+      <section aria-labelledby="service" className="mt-12 sm:mt-16">
+        <h2 id="service" className="text-2xl font-semibold">Unser Service im Detail</h2>
+        <div className="mt-4 rounded-xl border bg-slate-50 p-5">
+          <p className="max-w-prose text-sm text-gray-700">
+            Kaufmann Health betreibt ein Informationsverzeichnis für Heilpraktiker der Psychotherapie. Wir stellen Kontaktmöglichkeiten zwischen Interessenten und Therapeuten her, ohne therapeutische Empfehlungen zu geben oder Behandlungserfolge zu garantieren.
+          </p>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section aria-labelledby="faq" className="mt-12 sm:mt-16">
+        <h2 id="faq" className="text-2xl font-semibold">Häufige Fragen</h2>
+        <div className="mt-4">
+          <FaqAccordion items={faqItems} />
+        </div>
+      </section>
+
+      {/* Application CTA + Form */}
+      <section aria-labelledby="apply" className="mt-12 sm:mt-16">
+        <div className="rounded-2xl border bg-gradient-to-b from-indigo-50 to-white p-6 sm:p-8">
+          <h2 id="apply" className="text-2xl font-semibold">Bereit für mehr Sichtbarkeit?</h2>
+          <p className="mt-2 text-gray-700">
+            Lassen Sie uns besprechen, wie Sie Teil unseres spezialisierten Therapeuten-Verzeichnisses werden können.
+          </p>
+          <div className="mt-4">
+            <Link className="text-sm underline underline-offset-4" href="mailto:kontakt@kaufmann-health.de?subject=Verzeichnis-Aufnahme">
+              Oder per E-Mail an kontakt@kaufmann-health.de
+            </Link>
+          </div>
+          <div className="mt-8">
+            <TherapistApplicationForm />
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
