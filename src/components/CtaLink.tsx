@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { buildEventId } from '@/lib/analytics';
 
 interface CtaLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   eventType: string;
@@ -12,7 +13,10 @@ const CtaLink = React.forwardRef<HTMLAnchorElement, CtaLinkProps>(
     const handleClick = React.useCallback(
       (e: React.MouseEvent<HTMLAnchorElement>) => {
         try {
-          const payload = { type: eventType, id: eventId, title: eventId };
+          const source = (e.currentTarget as HTMLAnchorElement).getAttribute('data-cta') || 'cta';
+          const builtId =
+            eventId || buildEventId(typeof window !== 'undefined' ? window.location.pathname : '', source, 'click');
+          const payload = { type: eventType, id: builtId, title: builtId };
           // Prefer sendBeacon when available
           if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
             const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });

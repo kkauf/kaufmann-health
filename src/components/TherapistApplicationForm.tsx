@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { buildEventId } from '@/lib/analytics';
 
 export default function TherapistApplicationForm() {
   const [loading, setLoading] = useState(false);
@@ -79,10 +80,16 @@ export default function TherapistApplicationForm() {
 
       // Lightweight conversion tracking
       try {
+        const builtId = buildEventId(
+          typeof window !== 'undefined' ? window.location.pathname : '',
+          'form',
+          'submit',
+          'therapist-apply'
+        );
         await fetch('/api/events', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'therapist_apply_submitted', id: 'fuer-therapeuten-form-submit' }),
+          body: JSON.stringify({ type: 'therapist_apply_submitted', id: builtId }),
           keepalive: true,
         });
       } catch {}

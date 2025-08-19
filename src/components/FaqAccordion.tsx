@@ -2,6 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import { useCallback } from "react";
+import { buildEventId } from "@/lib/analytics";
 
 interface FaqItem {
   id: string;
@@ -17,10 +18,16 @@ export default function FaqAccordion({ items }: Props) {
   const track = useCallback(async (item: FaqItem) => {
     try {
       // Lightweight tracking. keepalive ensures it still fires on page unload
+      const builtId = buildEventId(
+        typeof window !== "undefined" ? window.location.pathname : "",
+        "faq",
+        "open",
+        item.id
+      );
       await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "faq_open", id: item.id, title: item.question }),
+        body: JSON.stringify({ type: "faq_open", id: builtId, title: item.question }),
         keepalive: true,
       });
     } catch (err) {
