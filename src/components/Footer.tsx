@@ -1,5 +1,3 @@
-import CookieSettingsLink from "@/components/CookieSettingsLink";
-
 export default function Footer() {
   return (
     <footer className="border-t bg-white">
@@ -32,9 +30,6 @@ export default function Footer() {
               </li>
               <li>
                 <a className="hover:text-gray-900" href="/datenschutz">Datenschutz</a>
-              </li>
-              <li>
-                <CookieSettingsLink />
               </li>
             </ul>
           </nav>
