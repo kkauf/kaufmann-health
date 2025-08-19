@@ -20,6 +20,7 @@ export default function TherapieFinderForm() {
       email: form.get('email')?.toString() || '',
       phone: form.get('phone')?.toString() || undefined,
       city: form.get('city')?.toString() || undefined,
+      session_preference: form.get('session_preference')?.toString() || undefined,
       issue: form.get('issue')?.toString() || undefined,
     };
 
@@ -49,6 +50,11 @@ export default function TherapieFinderForm() {
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="name">Spitzname oder Vorname</Label>
+        <Input id="name" name="name" placeholder="Wie dürfen wir Sie ansprechen?" required />
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="city">Ihre Stadt</Label>
         <Input id="city" name="city" placeholder="Ihre Stadt (z.B. Berlin)" required />
       </div>
@@ -59,9 +65,24 @@ export default function TherapieFinderForm() {
           <Input id="email" name="email" type="email" placeholder="E-Mail-Adresse" required />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="phone">Telefonnummer</Label>
-          <Input id="phone" name="phone" type="tel" placeholder="Telefonnummer" required />
+          <Label htmlFor="phone">Telefonnummer (optional)</Label>
+          <Input id="phone" name="phone" type="tel" placeholder="Telefonnummer (optional)" />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="session_preference">Bevorzugte Sitzungsform</Label>
+        <select
+          id="session_preference"
+          name="session_preference"
+          required
+          className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg/input/30 flex h-9 w-full min-w-0 rounded-md border bg-white px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm"
+          defaultValue=""
+        >
+          <option value="">Bitte auswählen</option>
+          <option value="online">Online</option>
+          <option value="in_person">Vor Ort (in Person)</option>
+        </select>
       </div>
 
       <div className="space-y-2">

@@ -18,6 +18,7 @@ type LeadPayload = {
   availability?: string;
   budget?: string;
   specializations?: string[];
+  session_preference?: 'online' | 'in_person';
   // New (EARTH-19): therapist applications
   type?: 'patient' | 'therapist';
   qualification?: string; // e.g., Heilpraktiker f. Psychotherapie, Approbation
@@ -64,6 +65,7 @@ type NotificationRow = {
     availability?: string;
     budget?: string;
     specializations?: string[];
+    session_preference?: 'online' | 'in_person';
     ip?: string;
     user_agent?: string;
     // New (EARTH-19)
@@ -91,6 +93,7 @@ async function sendLeadNotification(row: NotificationRow) {
       `Issue: ${row.metadata?.issue || '-'}`,
       `Availability: ${row.metadata?.availability || '-'}`,
       `Budget: ${row.metadata?.budget || '-'}`,
+      `Session Preference: ${row.metadata?.session_preference || '-'}`,
       `Specializations: ${row.metadata?.specializations?.map(s => SPEC_NAME_MAP[s] || s).join(', ') || '-'}`,
       `Type: ${row.metadata?.lead_type || '-'}`,
       `Qualification: ${row.metadata?.qualification || '-'}`,
@@ -138,6 +141,9 @@ export async function POST(req: Request) {
     const issue = sanitize(payload.issue);
     const availability = sanitize(payload.availability);
     const budget = sanitize(payload.budget);
+    const sessionPreferenceRaw = sanitize(payload.session_preference as string | undefined);
+    const sessionPreference: 'online' | 'in_person' | undefined =
+      sessionPreferenceRaw === 'online' || sessionPreferenceRaw === 'in_person' ? sessionPreferenceRaw : undefined;
     const qualification = sanitize(payload.qualification);
     const experience = sanitize(payload.experience);
     const website = sanitize(payload.website);
@@ -180,6 +186,7 @@ export async function POST(req: Request) {
           ...(issue ? { issue } : {}),
           ...(availability ? { availability } : {}),
           ...(budget ? { budget } : {}),
+          ...(sessionPreference ? { session_preference: sessionPreference } : {}),
           ...(specializations.length ? { specializations } : {}),
           ...(ip ? { ip } : {}),
           ...(ua ? { user_agent: ua } : {}),
