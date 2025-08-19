@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { buildEventId } from '@/lib/analytics';
+import { hasConsent } from '@/lib/consent';
 
 export default function TherapistApplicationForm() {
   const [loading, setLoading] = useState(false);
@@ -78,20 +79,22 @@ export default function TherapistApplicationForm() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Request failed');
 
-      // Lightweight conversion tracking
+      // Lightweight conversion tracking (only if consent given)
       try {
-        const builtId = buildEventId(
-          typeof window !== 'undefined' ? window.location.pathname : '',
-          'form',
-          'submit',
-          'therapist-apply'
-        );
-        await fetch('/api/events', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'therapist_apply_submitted', id: builtId }),
-          keepalive: true,
-        });
+        if (hasConsent()) {
+          const builtId = buildEventId(
+            typeof window !== 'undefined' ? window.location.pathname : '',
+            'form',
+            'submit',
+            'therapist-apply'
+          );
+          await fetch('/api/events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'therapist_apply_submitted', id: builtId }),
+            keepalive: true,
+          });
+        }
       } catch {}
 
       setMessage('Danke! Wir melden uns zeitnah.');

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { CONSENT_COOKIE_NAME } from '@/lib/consent-constants';
 
 export const runtime = 'nodejs';
 
@@ -16,6 +17,16 @@ export async function POST(req: Request) {
 
     if (!type || typeof type !== 'string') {
       return NextResponse.json({ data: null, error: 'Missing type' }, { status: 400 });
+    }
+
+    // Check consent cookie (regular and legacy). If not granted, ignore event.
+    const cookieHeader = req.headers.get('cookie') || '';
+    const cookies = cookieHeader.split(';').map((c) => c.trim());
+    const findCookie = (name: string) => cookies.find((c) => c.startsWith(name + '='))?.split('=')[1];
+    const consentVal = findCookie(CONSENT_COOKIE_NAME) ?? findCookie(`${CONSENT_COOKIE_NAME}-legacy`);
+    const hasConsent = consentVal === 'true';
+    if (!hasConsent) {
+      return NextResponse.json({ data: { received: false, consent: false }, error: null });
     }
 
     // Optional metadata
