@@ -21,7 +21,7 @@ export default function TherapieFindenPage() {
 
           <div className="mt-6 grid grid-cols-2 items-center gap-6 sm:grid-cols-4">
             <Image
-              src="/logos/NARM.png"
+              src="/logos/Modalities/NARM.png"
               alt="NARM"
               width={240}
               height={80}
@@ -29,7 +29,7 @@ export default function TherapieFindenPage() {
               className="h-20 w-auto object-contain opacity-80"
             />
             <Image
-              src="/logos/Hakomi.png"
+              src="/logos/Modalities/Hakomi.png"
               alt="Hakomi"
               width={240}
               height={80}
@@ -37,7 +37,7 @@ export default function TherapieFindenPage() {
               className="h-20 w-auto object-contain opacity-80"
             />
             <Image
-              src="/logos/Somatic-Experiencing.png"
+              src="/logos/Modalities/Somatic-Experiencing.png"
               alt="Somatic Experiencing"
               width={240}
               height={80}
@@ -45,7 +45,7 @@ export default function TherapieFindenPage() {
               className="h-20 w-auto object-contain opacity-80"
             />
             <Image
-              src="/logos/Core-Energetics.png"
+              src="/logos/Modalities/Core-Energetics.png"
               alt="Core Energetics"
               width={240}
               height={80}

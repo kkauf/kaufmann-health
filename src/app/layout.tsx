@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://kaufmann-health.de"),
   title:
     "Therapeutenverzeichnis – Körperorientierte Therapeuten in Ihrer Nähe | Kaufmann Health",
   description:
@@ -35,10 +36,25 @@ export const metadata: Metadata = {
     siteName: "Kaufmann Health",
     locale: "de_DE",
     type: "website",
+    images: [
+      "/logos/Health Logos - black/Kaufmann_health_logo_large.png",
+    ],
   },
   robots: {
     index: true,
     follow: true,
+  },
+  icons: {
+    icon: [
+      { url: "/logos/Health Logos - tree/Tree.svg", type: "image/svg+xml" },
+      { url: "/logos/Health Logos - tree/Tree_small.png", type: "image/png" },
+    ],
+    apple: [
+      { url: "/logos/Health Logos - tree/Tree_large.png", type: "image/png" },
+    ],
+    shortcut: [
+      { url: "/logos/Health Logos - tree/Tree_small.png", type: "image/png" },
+    ],
   },
   alternates: {
     canonical: "/",

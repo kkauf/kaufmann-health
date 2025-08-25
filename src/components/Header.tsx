@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Menu, X } from 'lucide-react'
 import { createPortal } from 'react-dom'
@@ -51,10 +52,17 @@ export default function Header() {
     <>
     <header className={`sticky top-0 z-[120] isolate border-b ${open ? 'bg-white' : 'bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60'}`}>
       <div className="mx-auto max-w-7xl px-4">
-        <div className="flex h-14 items-center justify-between">
+        <div className="flex h-14 md:h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="text-sm font-semibold tracking-tight">
-            Kaufmann Health
+          <Link href="/" className="inline-flex items-center" aria-label="Kaufmann Health Startseite">
+            <Image
+              src="/logos/Health Logos - black/Kaufmann_health_logo.svg"
+              alt="Kaufmann Health"
+              width={180}
+              height={36}
+              priority
+              className="h-6 w-auto md:h-9 lg:h-10"
+            />
           </Link>
 
           {/* Desktop nav */}
