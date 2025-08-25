@@ -13,13 +13,13 @@ export default function DatenschutzPage() {
                 Website besuchen. Personenbezogene Daten sind alle Daten, mit denen Sie persönlich identifiziert werden können.
               </p>
               <p>
-                Ein Teil der Daten wird erhoben, um eine fehlerfreie Bereitstellung der Website zu gewährleisten. Andere Daten können zur
-                Analyse Ihres Nutzerverhaltens verwendet werden. Sofern über die Website Verträge geschlossen oder angebahnt werden,
-                verarbeiten wir die übermittelten Daten für Vertragsangebote, Bestellungen oder sonstige Auftragsanfragen.
+                Ein Teil der Daten wird erhoben, um eine fehlerfreie Bereitstellung der Website zu gewährleisten. Sofern über die Website
+                Verträge geschlossen oder angebahnt werden, verarbeiten wir die übermittelten Daten für Vertragsangebote, Bestellungen
+                oder sonstige Auftragsanfragen.
               </p>
               <p>
-                Beim Besuch dieser Website kann Ihr Surf-Verhalten statistisch ausgewertet werden. Das geschieht vor allem mit
-                Analyseprogrammen. Details finden Sie in den nachfolgenden Abschnitten.
+                Auf dieser Website verzichten wir auf Tracking und setzen keine Cookies. Es findet keine Auswertung Ihres Surf-Verhaltens
+                durch Analyseprogramme statt. Details finden Sie in den nachfolgenden Abschnitten.
               </p>
             </div>
           </section>
@@ -136,12 +136,21 @@ export default function DatenschutzPage() {
             <h2 id="erfassung" className="text-xl font-semibold">4. Datenerfassung auf dieser Website</h2>
             <div className="mt-3 space-y-4">
               <div>
-                <h3 className="font-medium">Cookies</h3>
-                <p className="mt-2">
-                  Unsere Seiten verwenden Cookies. Notwendige Cookies werden auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO gespeichert.
-                  Sofern wir Ihre Einwilligung abfragen, erfolgt die Verarbeitung auf Grundlage von Art. 6 Abs. 1 lit. a DSGVO und § 25 Abs. 1 TDDDG;
-                  die Einwilligung ist jederzeit widerrufbar. Die Deaktivierung von Cookies kann die Funktionalität der Website einschränken.
-                </p>
+                <h3 id="cookies" className="font-medium">Cookies? Keine.</h3>
+                <div className="mt-2 space-y-2">
+                  <p>
+                    Wir setzen auf dieser Website keine Cookies – weder für Tracking noch für Marketing oder Komfortfunktionen.
+                  </p>
+                  <p>
+                    Für kleine Komfortfunktionen (z. B. damit ein Hinweis pro Sitzung nur einmal erscheint) nutzen wir ggf. den lokalen Speicher
+                    Ihres Browsers (<span className="font-mono">sessionStorage</span>/<span className="font-mono">localStorage</span>). Dabei werden keine personenbezogenen Profile erstellt,
+                    keine Daten an Dritte übermittelt und keine Cookies gesetzt.
+                  </p>
+                  <p>
+                    Technische Server-Logs können aus Sicherheitsgründen Informationen wie IP-Adresse und User-Agent enthalten. Es findet kein Tracking
+                    und kein Profiling statt.
+                  </p>
+                </div>
               </div>
 
               <div>
@@ -188,11 +197,11 @@ export default function DatenschutzPage() {
 export const metadata = {
   title: "Datenschutzerklärung | Kaufmann Health",
   description:
-    "Datenschutzerklärung für Kaufmann Health mit Hinweisen zu Hosting (Vercel, Supabase), Rechtsgrundlagen, Cookies und Betroffenenrechten.",
+    "Datenschutzerklärung für Kaufmann Health – ohne Cookies (kein Tracking/Marketing). Hinweise zu Hosting (Vercel, Supabase), Rechtsgrundlagen und Betroffenenrechten.",
   openGraph: {
     title: "Datenschutzerklärung | Kaufmann Health",
     description:
-      "Informationen zum Datenschutz, Hosting, Cookies und Betroffenenrechten.",
+      "Informationen zum Datenschutz ohne Cookies (kein Tracking/Marketing), Hosting und Betroffenenrechten.",
     url: "https://kaufmann-health.de/datenschutz",
     siteName: "Kaufmann Health",
     locale: "de_DE",

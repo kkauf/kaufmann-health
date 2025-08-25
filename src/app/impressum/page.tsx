@@ -79,42 +79,9 @@ export default function ImpressumPage() {
                   ausdrücklich widersprochen. Die Betreiber der Seiten behalten sich ausdrücklich rechtliche Schritte im Falle der unverlangten
                   Zusendung von Werbeinformationen, etwa durch Spam‑Mails, vor.
                 </p>
-              </div>
-              <div>
-                <h3 className="font-medium">Google Analytics</h3>
                 <p className="mt-2">
-                  Diese Website benutzt Google Analytics, einen Webanalysedienst der Google Inc. (&quot;Google&quot;). Google Analytics verwendet sog.
-                  &quot;Cookies&quot;, Textdateien, die auf Ihrem Computer gespeichert werden und die eine Analyse der Benutzung der Website durch Sie
-                  ermöglicht. Die durch den Cookie erzeugten Informationen über Ihre Benutzung dieser Website (einschließlich Ihrer IP‑Adresse) wird
-                  an einen Server von Google in den USA übertragen und dort gespeichert. Google wird diese Informationen benutzen, um Ihre Nutzung
-                  der Website auszuwerten, um Reports über die Websiteaktivitäten für die Websitebetreiber zusammenzustellen und um weitere mit der
-                  Websitenutzung und der Internetnutzung verbundene Dienstleistungen zu erbringen. Auch wird Google diese Informationen
-                  gegebenenfalls an Dritte übertragen, sofern dies gesetzlich vorgeschrieben oder soweit Dritte diese Daten im Auftrag von Google
-                  verarbeiten. Google wird in keinem Fall Ihre IP‑Adresse mit anderen Daten der Google in Verbindung bringen. Sie können die
-                  Installation der Cookies durch eine entsprechende Einstellung Ihrer Browser Software verhindern; wir weisen Sie jedoch darauf hin,
-                  dass Sie in diesem Fall gegebenenfalls nicht sämtliche Funktionen dieser Website voll umfänglich nutzen können. Durch die Nutzung
-                  dieser Website erklären Sie sich mit der Bearbeitung der über Sie erhobenen Daten durch Google in der zuvor beschriebenen Art und
-                  Weise und zu dem zuvor benannten Zweck einverstanden.
-                </p>
-              </div>
-              <div>
-                <h3 className="font-medium">Google AdSense</h3>
-                <p className="mt-2">
-                  Diese Website benutzt Google AdSense, einen Webanzeigendienst der Google Inc., USA (&quot;Google&quot;). Google AdSense verwendet sog.
-                  &quot;Cookies&quot; (Textdateien), die auf Ihrem Computer gespeichert werden und die eine Analyse der Benutzung der Website durch Sie
-                  ermöglicht. Google AdSense verwendet auch sog. &quot;Web Beacons&quot; (kleine unsichtbare Grafiken) zur Sammlung von Informationen.
-                  Durch die Verwendung des Web Beacons können einfache Aktionen wie der Besucherverkehr auf der Webseite aufgezeichnet und
-                  gesammelt werden. Die durch den Cookie und/oder Web Beacon erzeugten Informationen über Ihre Benutzung dieser Website
-                  (einschließlich Ihrer IP‑Adresse) werden an einen Server von Google in den USA übertragen und dort gespeichert. Google wird diese
-                  Informationen benutzen, um Ihre Nutzung der Website im Hinblick auf die Anzeigen auszuwerten, um Reports über die
-                  Websiteaktivitäten und Anzeigen für die Websitebetreiber zusammenzustellen und um weitere mit der Websitenutzung und der
-                  Internetnutzung verbundene Dienstleistungen zu erbringen. Auch wird Google diese Informationen gegebenenfalls an Dritte
-                  übertragen, sofern dies gesetzlich vorgeschrieben oder soweit Dritte diese Daten im Auftrag von Google verarbeiten. Google wird in
-                  keinem Fall Ihre IP‑Adresse mit anderen Daten der Google in Verbindung bringen. Das Speichern von Cookies auf Ihrer Festplatte und
-                  die Anzeige von Web Beacons können Sie verhindern, indem Sie in Ihren Browser‑Einstellungen &quot;keine Cookies akzeptieren&quot;
-                  wählen; wir weisen Sie jedoch darauf hin, dass Sie in diesem Fall gegebenenfalls nicht sämtliche Funktionen dieser Website voll
-                  umfänglich nutzen können. Durch die Nutzung dieser Website erklären Sie sich mit der Bearbeitung der über Sie erhobenen Daten
-                  durch Google in der zuvor beschriebenen Art und Weise und zu dem zuvor benannten Zweck einverstanden.
+                  Hinweis: Wir verwenden keine Dienste wie Google Analytics oder Google AdSense; es werden keine Cookies zu Tracking- oder
+                  Marketingzwecken gesetzt.
                 </p>
               </div>
               <p className="text-xs text-gray-500">
