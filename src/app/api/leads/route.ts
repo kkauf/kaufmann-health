@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
+import { createHash } from 'crypto';
+import { TERMS_VERSION } from '@/content/therapist-terms';
 
 export const runtime = 'nodejs';
 
@@ -24,6 +26,7 @@ type LeadPayload = {
   qualification?: string; // e.g., Heilpraktiker f. Psychotherapie, Approbation
   experience?: string; // free text (e.g., '2-4 Jahre')
   website?: string;
+  terms_version?: string;
 };
 
 function sanitize(v?: string) {
@@ -76,6 +79,16 @@ type NotificationRow = {
     funnel_type?: string;
   } | null;
 };
+
+function hashIP(ip: string) {
+  try {
+    const salt = process.env.IP_HASH_SALT || '';
+    return createHash('sha256').update(`${salt}${ip}`).digest('hex');
+  } catch {
+    // Fallback: return raw IP if hashing fails (should not happen in Node runtime)
+    return ip;
+  }
+}
 
 async function sendLeadNotification(row: NotificationRow) {
   try {
@@ -150,7 +163,13 @@ export async function POST(req: Request) {
     const leadType: 'patient' | 'therapist' = payload.type === 'therapist' ? 'therapist' : 'patient';
     const specializations = Array.isArray(payload.specializations)
       ? payload.specializations
-          .map((s) => sanitize(s)?.toLowerCase().replace(/\s+/g, '-'))
+          .map((s) =>
+            sanitize(s)
+              ?.toLowerCase()
+              .replace(/\s+/g, '-')
+              .replace(/-+/g, '-')
+              .replace(/^-|-$/g, '')
+          )
           .filter((s): s is string => !!s && (ALLOWED_SPECIALIZATIONS as readonly string[]).includes(s))
       : [];
 
@@ -204,6 +223,21 @@ export async function POST(req: Request) {
     if (error) {
       console.error('Supabase error:', error);
       return NextResponse.json({ data: null, error: 'Failed to save lead' }, { status: 500 });
+    }
+
+    // For therapist submissions, record immediate contract acceptance (best-effort)
+    if (leadType === 'therapist' && inserted?.id) {
+      const { error: contractErr } = await supabaseServer
+        .from('therapist_contracts')
+        .insert({
+          therapist_id: inserted.id,
+          contract_version: TERMS_VERSION,
+          ip_address: ip ? hashIP(ip) : null,
+          user_agent: ua,
+        });
+      if (contractErr) {
+        console.error('Supabase contract insert error:', contractErr);
+      }
     }
 
     // Fire-and-forget notification (optional via env vars)

@@ -249,13 +249,8 @@ export default function TherapistsPage() {
         <div className="rounded-2xl border bg-gradient-to-b from-indigo-50 to-white p-6 sm:p-8">
           <h2 id="apply" className="text-2xl font-semibold">Bereit für mehr Sichtbarkeit?</h2>
           <p className="mt-2 text-gray-700">
-            Lassen Sie uns besprechen, wie Sie Teil unseres spezialisierten Therapeuten-Verzeichnisses werden können.
+            Werden Sie jetzt Teil unseres Verzeichnisses für körperorientierte Psychotherapie.
           </p>
-          <div className="mt-4">
-            <Link className="text-sm underline underline-offset-4" href="mailto:kontakt@kaufmann-health.de?subject=Verzeichnis-Aufnahme">
-              Oder per E-Mail an kontakt@kaufmann-health.de
-            </Link>
-          </div>
           <div className="mt-8">
             <TherapistApplicationForm />
           </div>

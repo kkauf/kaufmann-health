@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { buildEventId } from '@/lib/analytics';
+import { TERMS_VERSION } from '@/content/therapist-terms';
+
+// Re-export for tests to assert version consistency
+export const THERAPIST_TERMS_VERSION = TERMS_VERSION;
 
 export default function TherapistApplicationForm() {
   const [loading, setLoading] = useState(false);
@@ -66,6 +70,7 @@ export default function TherapistApplicationForm() {
       website: website || undefined,
       notes: form.get('notes')?.toString() || undefined,
       specializations: specializations.length ? specializations : undefined,
+      terms_version: TERMS_VERSION,
     };
 
     setLoading(true);
@@ -113,10 +118,6 @@ export default function TherapistApplicationForm() {
 
   return (
     <form id="apply-form" onSubmit={onSubmit} noValidate className="space-y-6 max-w-2xl scroll-mt-28">
-      <div>
-        <h3 className="text-xl font-semibold">Aufnahme-Anfrage</h3>
-        <p className="mt-1 text-sm text-gray-600">Unverbindlich und kostenfrei. Wir prüfen, ob Sie in unser Verzeichnis passen.</p>
-      </div>
 
       {/* Honeypot field (leave empty) */}
       <div className="sr-only" aria-hidden="true">
@@ -215,8 +216,21 @@ export default function TherapistApplicationForm() {
         />
       </div>
 
+      <div className="rounded-lg border bg-amber-50 p-4 text-sm">
+        <p className="text-gray-800">
+          Mit dem Klick auf „Jetzt registrieren“ akzeptieren Sie unsere{' '}
+          <a href="/therapist-terms" target="_blank" className="underline font-medium">
+            25%-Provisionsvereinbarung
+          </a>{' '}
+          und{' '}
+          <a href="/agb" target="_blank" className="underline font-medium">
+            Allgemeinen Geschäftsbedingungen.
+          </a>.
+        </p>
+      </div>
+
       <Button type="submit" disabled={loading}>
-        {loading ? 'Senden…' : 'Anfrage senden'}
+        {loading ? 'Registrieren…' : 'Jetzt registrieren'}
       </Button>
       <small className="block text-xs text-gray-600">Erfolgsbasierte Konditionen. Keine Mindestlaufzeit.</small>
 
