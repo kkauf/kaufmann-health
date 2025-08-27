@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { buildEventId } from '@/lib/analytics';
 import { TERMS_VERSION } from '@/content/therapist-terms';
+import { getAttribution } from '@/lib/attribution';
+import { getOrCreateSessionId } from '@/lib/attribution';
 
 // Re-export for tests to assert version consistency
 export const THERAPIST_TERMS_VERSION = TERMS_VERSION;
@@ -71,6 +73,7 @@ export default function TherapistApplicationForm() {
       notes: form.get('notes')?.toString() || undefined,
       specializations: specializations.length ? specializations : undefined,
       terms_version: TERMS_VERSION,
+      session_id: getOrCreateSessionId(),
     };
 
     setLoading(true);
@@ -91,10 +94,11 @@ export default function TherapistApplicationForm() {
           'submit',
           'therapist-apply'
         );
+        const attrs = getAttribution();
         await fetch('/api/events', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'therapist_apply_submitted', id: builtId }),
+          body: JSON.stringify({ type: 'therapist_apply_submitted', id: builtId, ...attrs }),
           keepalive: true,
         });
       } catch {}

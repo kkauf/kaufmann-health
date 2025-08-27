@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { getOrCreateSessionId } from '@/lib/attribution';
 
 export type LeadForm = {
   name?: string;
@@ -22,6 +23,9 @@ export default function FunnelForm() {
       phone: form.get('phone')?.toString() || undefined,
       notes: form.get('notes')?.toString() || undefined,
     };
+    // Attach session for server-side attribution (not stored in DB, used for events)
+    type LeadFormWithSession = LeadForm & { session_id?: string };
+    const extendedPayload: LeadFormWithSession = { ...payload, session_id: getOrCreateSessionId() };
 
     setLoading(true);
     setMessage(null);
@@ -29,7 +33,7 @@ export default function FunnelForm() {
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(extendedPayload),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Request failed');

@@ -8,6 +8,7 @@ import { buildInternalLeadNotification } from '@/lib/email/internalNotification'
 import type { LeadType } from '@/lib/email/types';
 import { renderTherapistWelcome } from '@/lib/email/templates/therapistWelcome';
 import { logError, track } from '@/lib/logger';
+import { parseAttributionFromRequest } from '@/lib/server-analytics';
 
 export const runtime = 'nodejs';
 
@@ -33,6 +34,8 @@ type LeadPayload = {
   experience?: string; // free text (e.g., '2-4 Jahre')
   website?: string;
   terms_version?: string;
+  // Optional client attribution (no cookies). Only used for event props, not stored in DB.
+  session_id?: string;
 };
 
 function sanitize(v?: string) {
@@ -98,6 +101,7 @@ export async function POST(req: Request) {
     const experience = sanitize(payload.experience);
     const website = sanitize(payload.website);
     const leadType: 'patient' | 'therapist' = payload.type === 'therapist' ? 'therapist' : 'patient';
+    const session_id = sanitize(payload.session_id);
     const specializations = Array.isArray(payload.specializations)
       ? payload.specializations
           .map((s) =>
@@ -123,7 +127,22 @@ export async function POST(req: Request) {
         .gte('created_at', cutoff)
         .limit(1);
       if (!ipErr && recentByIp && recentByIp.length > 0) {
-        void track({ type: 'lead_rate_limited', level: 'warn', source: 'api.leads', ip, ua, props: { city } });
+        const attr = parseAttributionFromRequest(req);
+        void track({
+          type: 'lead_rate_limited',
+          level: 'warn',
+          source: 'api.leads',
+          ip,
+          ua,
+          props: {
+            city,
+            ...(session_id ? { session_id } : {}),
+            ...(attr.referrer ? { referrer: attr.referrer } : {}),
+            ...(attr.utm_source ? { utm_source: attr.utm_source } : {}),
+            ...(attr.utm_medium ? { utm_medium: attr.utm_medium } : {}),
+            ...(attr.utm_campaign ? { utm_campaign: attr.utm_campaign } : {}),
+          },
+        });
         return NextResponse.json({ data: null, error: 'Rate limited' }, { status: 429 });
       }
     }
@@ -209,6 +228,7 @@ export async function POST(req: Request) {
       void logError('api.leads', e, { stage: 'notify' }, ip, ua);
     }
     // Track successful submission (PII-free)
+    const attr = parseAttributionFromRequest(req);
     void track({
       type: 'lead_submitted',
       level: 'info',
@@ -220,6 +240,11 @@ export async function POST(req: Request) {
         lead_type: leadType,
         city: city || null,
         has_specializations: specializations.length > 0,
+        ...(session_id ? { session_id } : {}),
+        ...(attr.referrer ? { referrer: attr.referrer } : {}),
+        ...(attr.utm_source ? { utm_source: attr.utm_source } : {}),
+        ...(attr.utm_medium ? { utm_medium: attr.utm_medium } : {}),
+        ...(attr.utm_campaign ? { utm_campaign: attr.utm_campaign } : {}),
       },
     });
     return NextResponse.json({ data: { id: inserted.id }, error: null });

@@ -3,6 +3,7 @@
 import { ChevronDown } from "lucide-react";
 import { useCallback } from "react";
 import { buildEventId } from "@/lib/analytics";
+import { getAttribution } from "@/lib/attribution";
 
 interface FaqItem {
   id: string;
@@ -24,10 +25,11 @@ export default function FaqAccordion({ items }: Props) {
         "open",
         item.id
       );
+      const attrs = getAttribution();
       await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "faq_open", id: builtId, title: item.question }),
+        body: JSON.stringify({ type: "faq_open", id: builtId, title: item.question, ...attrs }),
         keepalive: true,
       });
     } catch (err) {

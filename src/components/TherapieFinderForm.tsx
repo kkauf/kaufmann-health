@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getOrCreateSessionId } from '@/lib/attribution';
 // CTA form for Therapie-Finder landing
 
 export default function TherapieFinderForm() {
@@ -22,6 +23,7 @@ export default function TherapieFinderForm() {
       city: form.get('city')?.toString() || undefined,
       session_preference: form.get('session_preference')?.toString() || undefined,
       issue: form.get('issue')?.toString() || undefined,
+      session_id: getOrCreateSessionId(),
     };
 
     setLoading(true);
