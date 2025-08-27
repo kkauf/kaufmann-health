@@ -5,6 +5,12 @@ import { useSearchParams } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
+type LoginResponse = {
+  data?: { ok?: boolean; redirect?: string } | null;
+  error?: string | null;
+  message?: string | null;
+};
+
 function AdminLoginInner() {
   const searchParams = useSearchParams();
   const [password, setPassword] = useState('');
@@ -30,7 +36,7 @@ function AdminLoginInner() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ password }),
       });
-      let json: any = null;
+      let json: LoginResponse | null = null;
       try {
         json = await res.json();
       } catch {
