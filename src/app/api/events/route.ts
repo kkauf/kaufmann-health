@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { track } from '@/lib/logger';
+import { parseAttributionFromRequest } from '@/lib/server-analytics';
 
 export const runtime = 'nodejs';
 
@@ -38,8 +39,11 @@ export async function POST(req: Request) {
     // Optional metadata
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
     const ua = req.headers.get('user-agent') || undefined;
-    const referrerHeader = req.headers.get('referer') || undefined;
-    const referrer = (referrerBody || referrerHeader) ?? undefined;
+    const attr = parseAttributionFromRequest(req);
+    const referrer = (referrerBody || attr.referrer) ?? undefined;
+    const utmSourceFinal = utm_source || attr.utm_source;
+    const utmMediumFinal = utm_medium || attr.utm_medium;
+    const utmCampaignFinal = utm_campaign || attr.utm_campaign;
 
     const mergedProps: Record<string, unknown> = {
       id,
@@ -47,9 +51,9 @@ export async function POST(req: Request) {
       path: '/api/events',
       session_id,
       referrer,
-      utm_source,
-      utm_medium,
-      utm_campaign,
+      utm_source: utmSourceFinal,
+      utm_medium: utmMediumFinal,
+      utm_campaign: utmCampaignFinal,
       ...(properties && typeof properties === 'object' ? properties : {}),
     };
 
