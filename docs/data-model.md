@@ -22,6 +22,44 @@ Indexes:
   ON public.people USING GIN (metadata);
   ```
 
+## public.events (unified logging)
+- `id uuid pk default gen_random_uuid()`
+- `level text check in ('info','warn','error') default 'info'` 
+- `type text not null` — business event or error type (e.g., `lead_submitted`, `email_sent`, `error`)
+- `properties jsonb default '{}'::jsonb` — PII-free metadata
+- `hashed_ip text` — sha256(IP_HASH_SALT + ip) or null
+- `user_agent text`
+- `created_at timestamptz default now()`
+
+Create table:
+```sql
+create table if not exists public.events (
+  id uuid primary key default gen_random_uuid(),
+  level text not null default 'info' check (level in ('info','warn','error')),
+  type text not null,
+  properties jsonb not null default '{}'::jsonb,
+  hashed_ip text,
+  user_agent text,
+  created_at timestamptz not null default now()
+);
+```
+
+Indexes:
+- For analytics and ops queries:
+  ```sql
+  create index if not exists events_level_idx on public.events(level);
+  create index if not exists events_type_idx on public.events(type);
+  create index if not exists events_created_at_idx on public.events(created_at desc);
+  ```
+
+RLS:
+- Enable RLS but allow inserts with the service role only. Example:
+  ```sql
+  alter table public.events enable row level security;
+  create policy "service role can insert" on public.events
+    for insert to service_role using (true) with check (true);
+  ```
+
 ## public.matches
 - `id uuid pk default gen_random_uuid()`
 - `therapist_id uuid references people(id)`

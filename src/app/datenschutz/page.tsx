@@ -126,7 +126,7 @@ export default function DatenschutzPage() {
                 <h3 className="font-medium">SSL-/TLS-Verschlüsselung</h3>
                 <p className="mt-2">
                   Diese Seite nutzt aus Sicherheitsgründen und zum Schutz der Übertragung vertraulicher Inhalte eine SSL-/TLS-Verschlüsselung.
-                  Eine verschlüsselte Verbindung erkennen Sie an „https://&quot; und dem Schloss-Symbol im Browser.
+                  Eine verschlüsselte Verbindung erkennen Sie an &quot;https://&quot; und dem Schloss-Symbol im Browser.
                 </p>
               </div>
             </div>
@@ -160,6 +160,24 @@ export default function DatenschutzPage() {
                   ist Art. 6 Abs. 1 lit. b DSGVO (Vertrag/vertragsähnlich) bzw. unser berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO) oder Ihre
                   Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Die Daten verbleiben bei uns bis Widerruf, Löschungsverlangen oder Zweckerreichung.
                 </p>
+              </div>
+
+              <div>
+                <h3 className="font-medium">Ereignis- und Fehlerprotokolle (PII-frei)</h3>
+                <div className="mt-2 space-y-2">
+                  <p>
+                    Zur Sicherstellung des stabilen Betriebs, zur Fehlerdiagnose und zur Missbrauchsabwehr speichern wir technische Ereignisse und
+                    Fehlermeldungen in einem internen Protokoll. Personenbezogene Inhalte werden nicht gespeichert; Protokolldaten enthalten
+                    ausschließlich anonymisierte bzw. abgeleitete Informationen (z. B. Ereignistyp, Zeitpunkt, ggf. gekürzte Metadaten).
+                  </p>
+                  <p>
+                    IP-Adressen werden vor Speicherung mit einem sog. &quot;Salt&quot; irreversibel gehasht. Der verwendete User-Agent kann in gekürzter Form
+                    gespeichert werden. Es erfolgt kein Tracking und kein Profiling.
+                  </p>
+                  <p>
+                    Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an Sicherheit/Stabilität des Dienstes).
+                  </p>
+                </div>
               </div>
 
               <div>

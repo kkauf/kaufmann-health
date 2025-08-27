@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { track } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
@@ -22,16 +23,15 @@ export async function POST(req: Request) {
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
     const ua = req.headers.get('user-agent') || undefined;
 
-    // Log server-side (can be wired to analytics later)
-    console.log('[event]', JSON.stringify({
-      ts: new Date().toISOString(),
+    // Unified logger (best-effort)
+    void track({
       type,
-      id,
-      title,
-      ip,
+      level: 'info',
+      ip: ip || undefined,
       ua,
-      path: '/api/events',
-    }));
+      source: 'api.events',
+      props: { id, title, path: '/api/events' },
+    });
 
     return NextResponse.json({ data: { received: true }, error: null });
   } catch {

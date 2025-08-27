@@ -1,5 +1,6 @@
 import { EMAIL_FROM_DEFAULT } from '@/lib/constants';
 import type { SendEmailParams } from './types';
+import { logError, track } from '@/lib/logger';
 
 /**
  * Thin wrapper around Resend HTTP API.
@@ -34,8 +35,25 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
         ...(params.replyTo ? { reply_to: params.replyTo } : {}),
       }),
     });
+    // fire-and-forget analytics
+    void track({
+      type: 'email_sent',
+      level: 'info',
+      source: 'email.client',
+      props: {
+        to_count: toList.length,
+        has_html: Boolean(params.html),
+        has_text: Boolean(params.text),
+      },
+    });
   } catch (e) {
     // Best-effort logging; do not throw from email client
     console.error('[email.send] Failed to send email', e);
+    void logError('email.client', e, {
+      subject: params.subject,
+      to_count: toList.length,
+      has_html: Boolean(params.html),
+      has_text: Boolean(params.text),
+    });
   }
 }

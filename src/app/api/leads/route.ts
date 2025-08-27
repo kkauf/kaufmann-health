@@ -7,6 +7,7 @@ import { sendEmail } from '@/lib/email/client';
 import { buildInternalLeadNotification } from '@/lib/email/internalNotification';
 import type { LeadType } from '@/lib/email/types';
 import { renderTherapistWelcome } from '@/lib/email/templates/therapistWelcome';
+import { logError, track } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
@@ -122,6 +123,7 @@ export async function POST(req: Request) {
         .gte('created_at', cutoff)
         .limit(1);
       if (!ipErr && recentByIp && recentByIp.length > 0) {
+        void track({ type: 'lead_rate_limited', level: 'warn', source: 'api.leads', ip, ua, props: { city } });
         return NextResponse.json({ data: null, error: 'Rate limited' }, { status: 429 });
       }
     }
@@ -158,6 +160,7 @@ export async function POST(req: Request) {
 
     if (error) {
       console.error('Supabase error:', error);
+      void logError('api.leads', error, { stage: 'insert_lead', lead_type: leadType, city }, ip, ua);
       return NextResponse.json({ data: null, error: 'Failed to save lead' }, { status: 500 });
     }
 
@@ -173,6 +176,7 @@ export async function POST(req: Request) {
         });
       if (contractErr) {
         console.error('Supabase contract insert error:', contractErr);
+        void logError('api.leads', contractErr, { stage: 'insert_contract', id: inserted.id }, ip, ua);
       }
       // Fire-and-forget welcome email to therapist (shared template)
       try {
@@ -186,6 +190,7 @@ export async function POST(req: Request) {
         void sendEmail({ to: data.email, subject: welcome.subject, html: welcome.html }).catch(() => {});
       } catch (e) {
         console.error('[welcome-email] Failed to render/send therapist welcome', e);
+        void logError('api.leads', e, { stage: 'welcome_email' }, ip, ua);
       }
     }
 
@@ -201,9 +206,25 @@ export async function POST(req: Request) {
       }
     } catch (e) {
       console.error('[notify] Failed to build/send notification', e);
+      void logError('api.leads', e, { stage: 'notify' }, ip, ua);
     }
+    // Track successful submission (PII-free)
+    void track({
+      type: 'lead_submitted',
+      level: 'info',
+      source: 'api.leads',
+      ip,
+      ua,
+      props: {
+        id: inserted.id,
+        lead_type: leadType,
+        city: city || null,
+        has_specializations: specializations.length > 0,
+      },
+    });
     return NextResponse.json({ data: { id: inserted.id }, error: null });
-  } catch {
+  } catch (e) {
+    void logError('api.leads', e, { stage: 'json_parse' }, undefined, req.headers.get('user-agent') || undefined);
     return NextResponse.json({ data: null, error: 'Invalid JSON' }, { status: 400 });
   }
 }
