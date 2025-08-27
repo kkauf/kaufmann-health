@@ -45,8 +45,8 @@ export default function UeberUnsPage() {
             wie schwer es für talentierte Therapeuten ist, die richtigen Klienten zu finden - und umgekehrt.
           </p>
           <p>
-            Therapeuten verbringen Stunden mit Marketing statt mit Heilen.
-            Patienten warten Monate auf Termine oder finden niemanden mit der richtigen Spezialisierung.
+            Therapeuten verbringen Stunden damit, sich um Marketing zu kümmern, anstatt die Arbeit zu machen, die sie lieben: Menschen bei ihrem Heilungsprozess zu unterstützen.
+            Gleichzeitig warten warten Patienten Monate lang auf Termine oder finden niemanden mit der richtigen Spezialisierung.
           </p>
           <p>
             Kaufmann Health löst beide Probleme: Wir bringen die richtigen Menschen zusammen.
@@ -78,8 +78,8 @@ export default function UeberUnsPage() {
           <div className="rounded-lg border bg-white p-5 transition-all duration-200 hover:shadow-md">
             <h3 className="text-lg font-medium">Transparent und persönlich</h3>
             <p className="mt-2 text-sm text-gray-600">
-              Keine Algorithmen, keine versteckten Kosten.
-              Ein Familienunternehmen mit echten Menschen.
+             Wir bringen Menschen zusammen. Technologie ist dafür ein Mittel zum Zweck - nicht mehr und nicht weniger.
+             Uns liegt die persönliche Kommunikation mit unseren Therapeuten und Klienten am Herzen.
             </p>
           </div>
         </div>
@@ -102,9 +102,14 @@ export default function UeberUnsPage() {
             />
             <div>
               <p className="font-semibold">Konstantin Kaufmann</p>
-              <p className="text-sm text-gray-600">Product Manager &amp; Unternehmer</p>
+              <p className="text-sm text-gray-600">Gründer &amp; Product Manager</p>
               <blockquote className="mt-3 italic text-gray-700">
-                „Ich glaube an ehrliches Unternehmertum, das echte Probleme löst.“
+                Durch meine Frau, eine Heilpraktikerin für Psychotherapie, kenne ich beide 
+                Seiten: Therapeuten verbringen Stunden mit Marketing statt mit Heilen. 
+                Patienten finden niemanden mit der richtigen Spezialisierung.<br /><br />
+                
+                Nach Jahren im Aufbau digitaler Produkte wusste ich: Das lässt sich besser 
+                lösen. Ehrlich, transparent, ohne dass einer über den Tisch gezogen wird.
               </blockquote>
             </div>
           </div>
@@ -147,12 +152,12 @@ export default function UeberUnsPage() {
 }
 
 export const metadata = {
-  title: "Über Kaufmann Health - Therapie ohne Wartelisten",
+  title: "Über Kaufmann Health - Trauma-Heilung beginnt hier",
   description:
     "Unsere Geschichte, Werte und Kontakt – Therapie ohne Wartelisten. Kaufmann Health bringt Menschen und qualifizierte Therapeuten zusammen.",
   openGraph: {
-    title: "Über Kaufmann Health - Therapie ohne Wartelisten",
-    description: "Unsere Geschichte, Werte und Kontakt – Therapie ohne Wartelisten.",
+    title: "Über Kaufmann Health - Trauma-Heilung beginnt hier",
+    description: "Unsere Geschichte, Werte und Kontakt – Trauma-Heilung beginnt hier.",
     url: "https://kaufmann-health.de/ueber-uns",
     siteName: "Kaufmann Health",
     locale: "de_DE",

@@ -3,6 +3,8 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+
 function AdminLoginInner() {
   const searchParams = useSearchParams();
   const [password, setPassword] = useState('');

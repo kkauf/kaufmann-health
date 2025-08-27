@@ -8,7 +8,7 @@ export async function middleware(req: NextRequest) {
   if (!pathname.startsWith('/admin')) {
     return NextResponse.next();
   }
-  if (pathname === '/admin/login') {
+  if (pathname === '/admin/login' || pathname.startsWith('/admin/login/')) {
     return NextResponse.next();
   }
 
@@ -24,5 +24,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/admin', '/admin/:path*'],
 };
