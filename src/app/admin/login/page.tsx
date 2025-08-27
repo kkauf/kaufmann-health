@@ -14,9 +14,11 @@ function AdminLoginInner() {
   const next = typeof nextParam === 'string' && nextParam.startsWith('/') ? nextParam : '/admin';
 
   useEffect(() => {
-    // Clear any stale error when user types
-    if (error && password) setError(null);
-  }, [password, error]);
+    // Clear error only when the user changes the password after an error.
+    // Avoid clearing immediately after submit.
+    if (error) setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [password]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,9 +30,23 @@ function AdminLoginInner() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ password }),
       });
-      const json = await res.json();
+      let json: any = null;
+      try {
+        json = await res.json();
+      } catch {
+        // ignore parse errors; we'll fallback below
+      }
       if (!res.ok) {
-        setError(json?.error || 'Login fehlgeschlagen');
+        if (res.status === 401) {
+          setError('Falsches Passwort');
+          return;
+        }
+        if (res.status === 429) {
+          const retry = res.headers.get('Retry-After');
+          setError(`Zu viele Versuche. Bitte in ${retry ?? 'einigen'} Sekunden erneut versuchen.`);
+          return;
+        }
+        setError((json && (json.error || json.message)) || 'Login fehlgeschlagen');
         return;
       }
       const redirect = json?.data?.redirect || '/admin';
