@@ -163,6 +163,36 @@ export default function DatenschutzPage() {
               </div>
 
               <div>
+                <h3 id="vertragsdaten" className="font-medium">Vertragsdaten (Therapeuten-Registrierung)</h3>
+                <div className="mt-2 space-y-2">
+                  <p>
+                    Wenn Sie sich als Therapeut:in registrieren, wird zur schnellen Aufnahme in unser Netzwerk ein Dienstleistungsvertrag
+                    automatisch angenommen. Zum Nachweis der Wirksamkeit und zur Erfüllung gesetzlicher Pflichten verarbeiten wir dabei folgende
+                    Metadaten:
+                  </p>
+                  <ul className="list-disc space-y-1 pl-6">
+                    <li>Zeitpunkt der Vertragsannahme (Timestamp)</li>
+                    <li>IP-Adresse zum Zeitpunkt der Annahme (in gehashter Form)</li>
+                    <li>Version der zugrunde liegenden Vertragsbedingungen</li>
+                  </ul>
+                  <p>
+                    Zweck: Sicherstellung der Vertragsgültigkeit, Dokumentation der Annahme sowie rechtliche Nachweispflichten.
+                  </p>
+                  <p>
+                    Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung bzw. Durchführung vorvertraglicher Maßnahmen).
+                  </p>
+                  <p>
+                    Speicherdauer: Für die Dauer der Geschäftsbeziehung und darüber hinaus entsprechend gesetzlicher Aufbewahrungsfristen.
+                  </p>
+                  <p>
+                    Weitere Informationen zu den Vertragsbedingungen finden Sie unter
+                    {' '}
+                    <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="/therapist-terms">/therapist-terms</a>.
+                  </p>
+                </div>
+              </div>
+
+              <div>
                 <h3 className="font-medium">Anfrage per E-Mail, Telefon oder Telefax</h3>
                 <p className="mt-2">
                   Wenn Sie uns per E-Mail, Telefon oder Telefax kontaktieren, verarbeiten wir Ihre Anfrage inkl. personenbezogener Daten zur
