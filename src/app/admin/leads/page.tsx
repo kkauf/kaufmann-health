@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export const dynamic = 'force-dynamic';
+
+type PersonMeta = {
+  city?: string;
+  session_preference?: 'online' | 'in_person';
+  issue?: string;
+  specializations?: string[];
+};
 
 type Person = {
   id: string;
@@ -15,7 +22,7 @@ type Person = {
   phone: string | null;
   type: 'patient' | 'therapist';
   status: string | null;
-  metadata: any;
+  metadata: PersonMeta;
   created_at: string;
 };
 
@@ -55,7 +62,7 @@ export default function AdminLeadsPage() {
   // Prefill therapist filters when a patient is selected
   useEffect(() => {
     if (selectedPatient) {
-      const meta = selectedPatient.metadata || {};
+      const meta: PersonMeta = selectedPatient.metadata || {};
       if (meta.city) setTherCity(String(meta.city));
       if (meta.session_preference) setTherSessionPref(String(meta.session_preference));
       // If patient provided modality preferences, prefill first one.
@@ -66,7 +73,7 @@ export default function AdminLeadsPage() {
     }
   }, [selectedPatient]);
 
-  async function fetchLeads() {
+  const fetchLeads = useCallback(async () => {
     setLoadingLeads(true);
     setLeadError(null);
     setMessage(null);
@@ -80,20 +87,21 @@ export default function AdminLeadsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Fehler beim Laden der Leads');
       setLeads(json.data || []);
-    } catch (e: any) {
-      setLeadError(e?.message || 'Unbekannter Fehler');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
+      setLeadError(msg);
       setLeads([]);
     } finally {
       setLoadingLeads(false);
     }
-  }
+  }, [leadCity, leadSessionPref]);
 
   async function fetchTherapistsForPatient(p: Person) {
     try {
       setModalLoading(true);
       setModalError(null);
       const url = new URL('/admin/api/therapists', window.location.origin);
-      const meta = p.metadata || {};
+      const meta: PersonMeta = p.metadata || {};
       if (meta.city) url.searchParams.set('city', String(meta.city));
       if (meta.session_preference) url.searchParams.set('session_preference', String(meta.session_preference));
       const specs: string[] = Array.isArray(meta.specializations) ? meta.specializations : [];
@@ -108,10 +116,11 @@ export default function AdminLeadsPage() {
       const list: Person[] = json.data || [];
       setModalTherapists(list);
       setSelectedTherapistId(list[0]?.id || '');
-    } catch (e: any) {
+    } catch (e) {
       setModalTherapists([]);
       setSelectedTherapistId('');
-      setModalError(e?.message || 'Unbekannter Fehler');
+      const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
+      setModalError(msg);
     } finally {
       setModalLoading(false);
     }
@@ -144,8 +153,9 @@ export default function AdminLeadsPage() {
       if (!res.ok) throw new Error(json?.error || 'Match fehlgeschlagen');
       setMessage('Match erstellt');
       closeMatchModal();
-    } catch (e: any) {
-      setModalError(e?.message || 'Match fehlgeschlagen');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Match fehlgeschlagen';
+      setModalError(msg);
     } finally {
       setModalLoading(false);
     }
@@ -157,7 +167,7 @@ export default function AdminLeadsPage() {
     setMessage(null);
     try {
       const url = new URL('/admin/api/therapists', window.location.origin);
-      const fallbackMeta = (selectedPatient?.metadata ?? {}) as any;
+      const fallbackMeta: PersonMeta = (selectedPatient?.metadata ?? {}) as PersonMeta;
       const city = therCity || (fallbackMeta.city ? String(fallbackMeta.city) : '');
       const sessionPref = therSessionPref || (fallbackMeta.session_preference ? String(fallbackMeta.session_preference) : '');
       const specs: string[] = Array.isArray(fallbackMeta.specializations) ? fallbackMeta.specializations : [];
@@ -171,8 +181,9 @@ export default function AdminLeadsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Fehler beim Laden der Therapeuten');
       setTherapists(json.data || []);
-    } catch (e: any) {
-      setTherError(e?.message || 'Unbekannter Fehler');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
+      setTherError(msg);
       setTherapists([]);
     } finally {
       setLoadingTherapists(false);
@@ -192,15 +203,16 @@ export default function AdminLeadsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Match fehlgeschlagen');
       setMessage('Match erstellt');
-    } catch (e: any) {
-      setMessage(e?.message || 'Match fehlgeschlagen');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Match fehlgeschlagen';
+      setMessage(message);
     }
   }
 
   // Initial fetch on mount
   useEffect(() => {
     fetchLeads().catch(() => {});
-  }, []);
+  }, [fetchLeads]);
 
   const selectedCity = useMemo(() => (selectedPatient?.metadata?.city ? String(selectedPatient.metadata.city) : ''), [selectedPatient]);
   const selectedPref = useMemo(() => (selectedPatient?.metadata?.session_preference ? String(selectedPatient.metadata.session_preference) : ''), [selectedPatient]);

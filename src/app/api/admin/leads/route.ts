@@ -48,13 +48,13 @@ export async function GET(req: Request) {
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (status) query = (query as any).eq('status', status);
-    if (city) query = (query as any).contains('metadata', { city });
+    if (status) query = query.eq('status', status);
+    if (city) query = query.ilike('metadata->>city', `%${city}%`);
     if (sessionPref === 'online' || sessionPref === 'in_person') {
-      query = (query as any).contains('metadata', { session_preference: sessionPref });
+      query = query.contains('metadata', { session_preference: sessionPref });
     }
 
-    const { data, error } = await (query as any);
+    const { data, error } = await query;
     if (error) {
       await logError('api.admin.leads', error, { stage: 'fetch' });
       return NextResponse.json({ data: null, error: 'Failed to fetch leads' }, { status: 500 });

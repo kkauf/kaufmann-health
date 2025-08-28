@@ -56,18 +56,18 @@ export async function GET(req: Request) {
     if (city) {
       // Case-insensitive partial match on city stored in JSON metadata
       // Using ->> to extract text and ILIKE with wildcards for substring search.
-      query = (query as any).ilike('metadata->>city', `%${city}%`);
+      query = query.ilike('metadata->>city', `%${city}%`);
     }
     if (sessionPref === 'online' || sessionPref === 'in_person') {
-      query = (query as any).contains('metadata', { session_preference: sessionPref });
+      query = query.contains('metadata', { session_preference: sessionPref });
     }
     if (specialization) {
       // JSON containment: specializations array contains given value
       // TODO (future): support multiple values (OR / ANY) if provided.
-      query = (query as any).contains('metadata', { specializations: [specialization] });
+      query = query.contains('metadata', { specializations: [specialization] });
     }
 
-    const { data, error } = await (query as any);
+    const { data, error } = await query;
     if (error) {
       await logError('admin.api.therapists', error, { stage: 'fetch' });
       return NextResponse.json({ data: null, error: 'Failed to fetch therapists' }, { status: 500 });
