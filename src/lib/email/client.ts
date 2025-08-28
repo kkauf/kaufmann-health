@@ -78,7 +78,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
         has_html: Boolean(params.html),
         has_text: Boolean(params.text),
         status,
-        status_text: (resp as any).statusText,
+        status_text: resp.statusText,
         body,
         attempt,
         ...(params.context || {}),

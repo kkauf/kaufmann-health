@@ -139,7 +139,7 @@ async function persistEvent(params: Required<Pick<TrackParams, 'type'>> &
         // Avoid calling logError here to prevent recursion loops
         console.warn('[logger] persistEvent non-OK', {
           status: resp.status,
-          statusText: (resp as any).statusText,
+          statusText: resp.statusText,
           type: params.type,
           source: params.source,
           body,
@@ -148,7 +148,7 @@ async function persistEvent(params: Required<Pick<TrackParams, 'type'>> &
     } catch (e) {
       clearTimeout(timer);
       console.warn('[logger] persistEvent failed', {
-        error: (e as any)?.message || String(e),
+        error: e instanceof Error ? e.message : String(e),
         type: params.type,
         source: params.source,
       });
