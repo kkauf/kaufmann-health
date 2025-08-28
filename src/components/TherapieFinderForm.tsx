@@ -23,6 +23,8 @@ export default function TherapieFinderForm() {
       city: form.get('city')?.toString() || undefined,
       session_preference: form.get('session_preference')?.toString() || undefined,
       issue: form.get('issue')?.toString() || undefined,
+      // Collect selected modalities as slugs the API expects
+      specializations: (form.getAll('specializations') || []).map((v) => String(v)),
       session_id: getOrCreateSessionId(),
     };
 
@@ -102,6 +104,29 @@ export default function TherapieFinderForm() {
           <option value="Depression/Erschöpfung">Depression/Erschöpfung</option>
           <option value="Sonstiges">Sonstiges</option>
         </select>
+      </div>
+
+      {/* Modality preferences (optional) */}
+      <div className="space-y-2">
+        <Label>Bevorzugte Methoden (optional)</Label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="specializations" value="narm" className="h-4 w-4" />
+            <span>NARM</span>
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="specializations" value="hakomi" className="h-4 w-4" />
+            <span>Hakomi</span>
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="specializations" value="somatic-experiencing" className="h-4 w-4" />
+            <span>Somatic Experiencing</span>
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="specializations" value="core-energetics" className="h-4 w-4" />
+            <span>Core Energetics</span>
+          </label>
+        </div>
       </div>
 
       <Button type="submit" disabled={loading}>

@@ -1,6 +1,5 @@
 # Technical Decisions (Non-obvious)
 
-- See also: RTF design document for documenting Google Ads Enhanced Conversions: [kaufmann-health-api-design.rtf](./kaufmann-health-api-design.rtf)
 - __Next.js 15 + App Router__: modern file-based routing, server components; dev with Turbopack.
 - __Tailwind v4 + shadcn/ui__: fast UI iteration with accessible primitives. Theme: "new-york", base color: slate. Installed deps: `class-variance-authority`, `tailwind-merge`, `tailwindcss-animate`, `lucide-react`.
 - __Path aliases__: `@/*` to `src/*` for clean imports (`tsconfig.json`).

@@ -21,6 +21,7 @@ export function buildInternalLeadNotification(row: NotificationRow): EmailConten
     `Lead received (${type} · ${city})`,
     `Lead ID: ${row.id}`,
     'Note: PII is available only in Supabase.',
+    'Review and match: /admin/leads',
   ];
   if (type === 'therapist') {
     lines.push('Contract signed automatically');

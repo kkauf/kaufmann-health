@@ -8,6 +8,8 @@ export type LeadForm = {
   email: string;
   phone?: string;
   notes?: string;
+  // Optional modality preferences; sanitized on server in /api/leads
+  specializations?: string[];
 };
 
 export default function FunnelForm() {
@@ -22,6 +24,7 @@ export default function FunnelForm() {
       email: form.get('email')?.toString() || '',
       phone: form.get('phone')?.toString() || undefined,
       notes: form.get('notes')?.toString() || undefined,
+      specializations: (form.getAll('specializations') || []).map((v) => String(v)),
     };
     // Attach session for server-side attribution (not stored in DB, used for events)
     type LeadFormWithSession = LeadForm & { session_id?: string };
@@ -64,6 +67,28 @@ export default function FunnelForm() {
       <div>
         <label className="block text-sm font-medium">Notizen</label>
         <textarea name="notes" rows={4} className="mt-1 w-full border p-2 rounded" />
+      </div>
+      {/* Modality preferences (optional) */}
+      <div>
+        <span className="block text-sm font-medium">Bevorzugte Methoden (optional)</span>
+        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="specializations" value="narm" className="h-4 w-4" />
+            <span>NARM</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="specializations" value="hakomi" className="h-4 w-4" />
+            <span>Hakomi</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="specializations" value="somatic-experiencing" className="h-4 w-4" />
+            <span>Somatic Experiencing</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="specializations" value="core-energetics" className="h-4 w-4" />
+            <span>Core Energetics</span>
+          </label>
+        </div>
       </div>
       <button type="submit" disabled={loading} className="bg-black text-white px-4 py-2 rounded">
         {loading ? 'Senden…' : 'Anfrage senden'}
