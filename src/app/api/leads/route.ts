@@ -7,6 +7,7 @@ import { sendEmail } from '@/lib/email/client';
 import { buildInternalLeadNotification } from '@/lib/email/internalNotification';
 import type { LeadType } from '@/lib/email/types';
 import { renderTherapistWelcome } from '@/lib/email/templates/therapistWelcome';
+import { renderPatientConfirmation } from '@/lib/email/templates/patientConfirmation';
 import { logError, track } from '@/lib/logger';
 import { parseAttributionFromRequest } from '@/lib/server-analytics';
 
@@ -210,6 +211,22 @@ export async function POST(req: Request) {
       } catch (e) {
         console.error('[welcome-email] Failed to render/send therapist welcome', e);
         void logError('api.leads', e, { stage: 'welcome_email' }, ip, ua);
+      }
+    }
+
+    // For patient submissions, send confirmation email (best-effort, fire-and-forget)
+    if (leadType === 'patient' && inserted?.id) {
+      try {
+        const confirmation = renderPatientConfirmation({
+          name: data.name,
+          city,
+          issue,
+          sessionPreference: sessionPreference ?? null,
+        });
+        void sendEmail({ to: data.email, subject: confirmation.subject, html: confirmation.html }).catch(() => {});
+      } catch (e) {
+        console.error('[patient-confirmation-email] Failed to render/send patient confirmation', e);
+        void logError('api.leads', e, { stage: 'patient_confirmation_email' }, ip, ua);
       }
     }
 

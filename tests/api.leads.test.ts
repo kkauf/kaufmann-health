@@ -5,6 +5,7 @@ let rateLimited = false;
 let lastInsertedPayload: any = null;
 let insertError: any = null;
 let insertResultId = 'test-id-123';
+let sentEmails: any[] = [];
 
 vi.mock('@/lib/supabase-server', () => {
   const supabaseServer = {
@@ -48,6 +49,15 @@ vi.mock('@/lib/supabase-server', () => {
   return { supabaseServer };
 });
 
+// Mock email client to observe sends
+vi.mock('@/lib/email/client', () => {
+  return {
+    sendEmail: vi.fn(async (params: any) => {
+      sentEmails.push(params);
+    }),
+  } as any;
+});
+
 function makeReq(body: any, headers?: Record<string, string>) {
   return new Request('http://localhost/api/leads', {
     method: 'POST',
@@ -64,6 +74,7 @@ beforeEach(() => {
   // Ensure notification code is disabled
   process.env.RESEND_API_KEY = '';
   process.env.LEADS_NOTIFY_EMAIL = '';
+  sentEmails = [];
 });
 
 describe('/api/leads POST', () => {
@@ -104,5 +115,79 @@ describe('/api/leads POST', () => {
     const specs = lastInsertedPayload.metadata?.specializations || [];
     // Order is preserved for allowed entries after normalization
     expect(specs).toEqual(['narm', 'somatic-experiencing', 'hakomi']);
+  });
+
+  it('sends patient confirmation email on patient lead success', async () => {
+    const { POST } = await import('@/app/api/leads/route');
+    const res = await POST(
+      makeReq({
+        email: 'patient@example.com',
+        type: 'patient',
+        name: 'Max Mustermann',
+        city: 'Berlin',
+        issue: 'Trauma-Begleitung',
+        session_preference: 'in_person',
+      }),
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ data: { id: 'test-id-123' }, error: null });
+
+    // One confirmation email is sent to the patient
+    expect(sentEmails.length).toBe(1);
+    const email = sentEmails[0];
+    expect(email.to).toBe('patient@example.com');
+    expect(email.subject).toBe('Ihre Anfrage bei Kaufmann Health erhalten');
+    expect(email.html).toBeTruthy();
+    expect(email.html).toContain('Ihre Angaben');
+    expect(email.html).toContain('Berlin');
+    expect(email.html).toContain('Trauma-Begleitung');
+    expect(email.html).toContain('Vor Ort');
+  });
+
+  it('handles missing optional fields gracefully and still sends confirmation', async () => {
+    const { POST } = await import('@/app/api/leads/route');
+    const res = await POST(
+      makeReq({
+        email: 'patient2@example.com',
+        type: 'patient',
+        // no city / issue / session_preference
+      }),
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ data: { id: 'test-id-123' }, error: null });
+
+    expect(sentEmails.length).toBe(1);
+    const email = sentEmails[0];
+    expect(email.to).toBe('patient2@example.com');
+    expect(email.subject).toBe('Ihre Anfrage bei Kaufmann Health erhalten');
+    expect(email.html).toBeTruthy();
+    expect(email.html).toContain('Ihre Angaben');
+    expect(email.html).toContain('Sitzungsart');
+  });
+
+  it("email send failure doesn't break patient submission (fire-and-forget)", async () => {
+    const emailClient: any = await import('@/lib/email/client');
+    // Make the next call reject but still record the attempt
+    emailClient.sendEmail.mockImplementationOnce(async (params: any) => {
+      sentEmails.push(params);
+      throw new Error('send failed');
+    });
+
+    const { POST } = await import('@/app/api/leads/route');
+    const res = await POST(
+      makeReq({
+        email: 'patient3@example.com',
+        type: 'patient',
+      }),
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ data: { id: 'test-id-123' }, error: null });
+
+    // Attempt was made
+    expect(sentEmails.length).toBe(1);
+    expect(sentEmails[0].to).toBe('patient3@example.com');
   });
 });
