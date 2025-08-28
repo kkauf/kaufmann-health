@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 import { logError } from '@/lib/logger';
+import { sendEmail } from '@/lib/email/client';
+import { renderTherapistOutreach } from '@/lib/email/templates/therapistOutreach';
+import { BASE_URL } from '@/lib/constants';
+import { ServerAnalytics } from '@/lib/server-analytics';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,8 +50,8 @@ export async function POST(req: Request) {
 
     // Validate entities exist with expected types
     const [{ data: patient, error: patientErr }, { data: therapist, error: therapistErr }] = await Promise.all([
-      supabaseServer.from('people').select('id, type').eq('id', patient_id).single(),
-      supabaseServer.from('people').select('id, type').eq('id', therapist_id).single(),
+      supabaseServer.from('people').select('id, type, metadata').eq('id', patient_id).single(),
+      supabaseServer.from('people').select('id, type, email, name').eq('id', therapist_id).single(),
     ]);
     if (patientErr || therapistErr) {
       await logError('admin.api.matches', patientErr || therapistErr, { stage: 'load_entities', patient_id, therapist_id });
@@ -69,6 +73,72 @@ export async function POST(req: Request) {
     if (error) {
       await logError('admin.api.matches', error, { stage: 'insert', patient_id, therapist_id });
       return NextResponse.json({ data: null, error: 'Failed to create match' }, { status: 500 });
+    }
+
+    // Fire-and-forget therapist outreach email with magic link
+    try {
+      type MatchRow = { id: string };
+      type MatchDetail = { secure_uuid?: string | null; created_at?: string | null };
+      type PatientRow = { metadata?: { city?: string; issue?: string } | null };
+      type TherapistRow = { email?: string | null; name?: string | null };
+
+      const matchId = (data as MatchRow).id;
+      // Fetch secure_uuid separately to remain compatible before the migration lands
+      let secure_uuid: string | undefined;
+      try {
+        const { data: matchRow, error: matchErr } = await supabaseServer
+          .from('matches')
+          .select('secure_uuid, created_at')
+          .eq('id', matchId)
+          .single();
+        const mr = matchRow as unknown as MatchDetail | null;
+        if (!matchErr && mr && typeof mr.secure_uuid === 'string') {
+          secure_uuid = mr.secure_uuid;
+        }
+      } catch {
+        // ignore
+      }
+      const magicUrl = secure_uuid ? `${BASE_URL}/match/${secure_uuid}` : undefined;
+      const t = therapist as unknown as TherapistRow | null;
+      const p = patient as unknown as PatientRow | null;
+      const therapistEmail = typeof t?.email === 'string' ? t.email.trim() : '';
+      const therapistName = typeof t?.name === 'string' ? t.name : undefined;
+      const city = typeof p?.metadata?.city === 'string' ? p.metadata.city : undefined;
+      const issue = typeof p?.metadata?.issue === 'string' ? p.metadata.issue : undefined;
+
+      if (magicUrl && therapistEmail) {
+        const content = renderTherapistOutreach({
+          therapistName,
+          city,
+          issueCategory: issue,
+          magicUrl,
+          expiresHours: 72,
+        });
+        // Do not await; email client handles retries and logs internally
+        void sendEmail({
+          to: therapistEmail,
+          subject: content.subject,
+          html: content.html,
+          context: { kind: 'therapist_outreach', match_id: matchId, patient_id, therapist_id },
+        });
+
+        // Analytics: enqueue event tied to the admin request (PII-free)
+        void ServerAnalytics.trackEventFromRequest(req, {
+          type: 'match_outreach_enqueued',
+          source: 'admin.api.matches',
+          props: { match_id: matchId, patient_id, therapist_id },
+        });
+      } else {
+        // Missing secure_uuid or therapist email: skip for now (pre-migration) and log
+        void ServerAnalytics.trackEventFromRequest(req, {
+          type: 'match_outreach_skipped_no_secure_uuid',
+          source: 'admin.api.matches',
+          props: { match_id: matchId, patient_id, therapist_id },
+        });
+      }
+    } catch (e) {
+      // Never block creation flow
+      void logError('admin.api.matches', e, { stage: 'email_outreach_enqueue', patient_id, therapist_id });
     }
 
     return NextResponse.json({ data: { id: data?.id }, error: null }, { status: 200 });
