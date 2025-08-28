@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export const dynamic = 'force-dynamic';
 
 type PersonMeta = {
   city?: string;
   session_preference?: 'online' | 'in_person';
+  session_preferences?: ('online' | 'in_person')[];
   issue?: string;
   specializations?: string[];
 };
@@ -32,6 +34,17 @@ function formatDate(iso?: string) {
   } catch {
     return iso || '';
   }
+}
+
+function formatSession(meta?: PersonMeta): string {
+  if (!meta) return '—';
+  const arr = Array.isArray(meta.session_preferences) ? meta.session_preferences : [];
+  const singles = meta.session_preference ? [meta.session_preference] : [];
+  const set = new Set<"online" | "in_person">([...arr, ...singles]);
+  if (set.size === 0) return '—';
+  return Array.from(set)
+    .map((v) => (v === 'in_person' ? 'Vor Ort' : 'Online'))
+    .join('/');
 }
 
 export default function AdminLeadsPage() {
@@ -64,7 +77,9 @@ export default function AdminLeadsPage() {
     if (selectedPatient) {
       const meta: PersonMeta = selectedPatient.metadata || {};
       if (meta.city) setTherCity(String(meta.city));
-      if (meta.session_preference) setTherSessionPref(String(meta.session_preference));
+      const prefFromArray = Array.isArray(meta.session_preferences) && meta.session_preferences.length > 0 ? meta.session_preferences[0] : undefined;
+      if (prefFromArray) setTherSessionPref(prefFromArray);
+      else if (meta.session_preference) setTherSessionPref(String(meta.session_preference));
       // If patient provided modality preferences, prefill first one.
       // NOTE: Future improvement could support multi-select matching.
       if (Array.isArray(meta.specializations) && meta.specializations.length > 0) {
@@ -103,7 +118,12 @@ export default function AdminLeadsPage() {
       const url = new URL('/admin/api/therapists', window.location.origin);
       const meta: PersonMeta = p.metadata || {};
       if (meta.city) url.searchParams.set('city', String(meta.city));
-      if (meta.session_preference) url.searchParams.set('session_preference', String(meta.session_preference));
+      {
+        const pref = (Array.isArray(meta.session_preferences) && meta.session_preferences.length > 0)
+          ? meta.session_preferences[0]
+          : (meta.session_preference || '');
+        if (pref) url.searchParams.set('session_preference', String(pref));
+      }
       const specs: string[] = Array.isArray(meta.specializations) ? meta.specializations : [];
       if (specs.length > 0) {
         // Currently API supports a single specialization param. Pick the first.
@@ -169,7 +189,11 @@ export default function AdminLeadsPage() {
       const url = new URL('/admin/api/therapists', window.location.origin);
       const fallbackMeta: PersonMeta = (selectedPatient?.metadata ?? {}) as PersonMeta;
       const city = therCity || (fallbackMeta.city ? String(fallbackMeta.city) : '');
-      const sessionPref = therSessionPref || (fallbackMeta.session_preference ? String(fallbackMeta.session_preference) : '');
+      const sessionPref = therSessionPref || (
+        (Array.isArray(fallbackMeta.session_preferences) && fallbackMeta.session_preferences.length > 0)
+          ? String(fallbackMeta.session_preferences[0])
+          : (fallbackMeta.session_preference ? String(fallbackMeta.session_preference) : '')
+      );
       const specs: string[] = Array.isArray(fallbackMeta.specializations) ? fallbackMeta.specializations : [];
       const specialization = therSpecialization || (specs.length > 0 ? String(specs[0]) : '');
 
@@ -220,7 +244,17 @@ export default function AdminLeadsPage() {
   }, [fetchTherapists]);
 
   const selectedCity = useMemo(() => (selectedPatient?.metadata?.city ? String(selectedPatient.metadata.city) : ''), [selectedPatient]);
-  const selectedPref = useMemo(() => (selectedPatient?.metadata?.session_preference ? String(selectedPatient.metadata.session_preference) : ''), [selectedPatient]);
+  const selectedPref = useMemo(() => {
+    const meta: PersonMeta | undefined = selectedPatient?.metadata || undefined;
+    if (!meta) return '';
+    const arr = Array.isArray(meta.session_preferences) ? meta.session_preferences : [];
+    const singles = meta.session_preference ? [meta.session_preference] : [];
+    const set = new Set<"online" | "in_person">([...arr, ...singles]);
+    if (set.size === 0) return '';
+    return Array.from(set)
+      .map((v) => (v === 'in_person' ? 'Vor Ort' : 'Online'))
+      .join('/');
+  }, [selectedPatient]);
 
   return (
     <main className="min-h-screen p-6 space-y-6">
@@ -254,55 +288,46 @@ export default function AdminLeadsPage() {
           </div>
           {leadError && <p className="text-sm text-red-600 mb-2">{leadError}</p>}
 
-          <div className="overflow-auto border rounded">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="text-left px-3 py-2">Name</th>
-                  <th className="text-left px-3 py-2">E-Mail</th>
-                  <th className="text-left px-3 py-2">Stadt</th>
-                  <th className="text-left px-3 py-2">Thema</th>
-                  <th className="text-left px-3 py-2">Sitzung</th>
-                  <th className="text-left px-3 py-2">Methode</th>
-                  <th className="text-left px-3 py-2">Eingang</th>
-                  <th className="text-left px-3 py-2">Aktion</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leads.map((p) => {
-                  const meta = p.metadata || {};
-                  const city = meta.city || '';
-                  const pref = meta.session_preference === 'in_person' ? 'Vor Ort' : (meta.session_preference === 'online' ? 'Online' : '—');
-                  const issue = meta.issue || '—';
-                  const specs: string[] = Array.isArray(meta.specializations) ? meta.specializations : [];
-                  return (
-                    <tr key={p.id} className={selectedPatient?.id === p.id ? 'bg-amber-50' : ''}>
-                      <td className="px-3 py-2">{p.name || '—'}</td>
-                      <td className="px-3 py-2">{p.email || '—'}</td>
-                      <td className="px-3 py-2">{city || '—'}</td>
-                      <td className="px-3 py-2">{issue}</td>
-                      <td className="px-3 py-2">{pref}</td>
-                      <td className="px-3 py-2">{specs.length ? specs.join(', ') : '—'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">{formatDate(p.created_at)}</td>
-                      <td className="px-3 py-2">
-                        <div className="flex gap-2">
-                          <Button size="sm" variant={selectedPatient?.id === p.id ? 'default' : 'secondary'} onClick={() => setSelectedPatient(p)}>
-                            {selectedPatient?.id === p.id ? 'Ausgewählt' : 'Wählen'}
-                          </Button>
-                          <Button size="sm" onClick={() => openMatchModal(p)}>Match</Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {leads.length === 0 && !loadingLeads && (
-                  <tr><td className="px-3 py-6 text-center text-gray-500" colSpan={8}>Keine Leads gefunden</td></tr>
-                )}
-                {loadingLeads && (
-                  <tr><td className="px-3 py-6 text-center text-gray-500" colSpan={8}>Laden…</td></tr>
-                )}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {leads.map((p) => {
+              const meta: PersonMeta = p.metadata || {};
+              const city = meta.city || '';
+              const pref = formatSession(meta);
+              const issue = meta.issue || '—';
+              const specs: string[] = Array.isArray(meta.specializations) ? meta.specializations : [];
+              const isSelected = selectedPatient?.id === p.id;
+              return (
+                <Card key={p.id} className={isSelected ? 'border-amber-400 bg-amber-50' : ''} aria-selected={isSelected}>
+                  <CardHeader className="flex flex-row items-start justify-between">
+                    <div>
+                      <CardTitle>{p.name || '—'}</CardTitle>
+                      <CardDescription>{p.email || '—'}</CardDescription>
+                    </div>
+                    <CardAction className="flex gap-2">
+                      <Button size="sm" variant={isSelected ? 'default' : 'secondary'} onClick={() => setSelectedPatient(p)}>
+                        {isSelected ? 'Ausgewählt' : 'Wählen'}
+                      </Button>
+                      <Button size="sm" onClick={() => openMatchModal(p)}>Match</Button>
+                    </CardAction>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div><span className="text-gray-500">Stadt:</span> {city || '—'}</div>
+                      <div><span className="text-gray-500">Thema:</span> {issue}</div>
+                      <div><span className="text-gray-500">Sitzung:</span> {pref}</div>
+                      <div><span className="text-gray-500">Methode:</span> {specs.length ? specs.join(', ') : '—'}</div>
+                      <div className="col-span-2 text-xs text-gray-500">Eingang: {formatDate(p.created_at)}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+            {leads.length === 0 && !loadingLeads && (
+              <p className="col-span-full px-3 py-6 text-center text-gray-500">Keine Leads gefunden</p>
+            )}
+            {loadingLeads && (
+              <p className="col-span-full px-3 py-6 text-center text-gray-500">Laden…</p>
+            )}
           </div>
         </div>
 
@@ -346,48 +371,41 @@ export default function AdminLeadsPage() {
           </div>
           {therError && <p className="text-sm text-red-600 mb-2">{therError}</p>}
 
-          <div className="overflow-auto border rounded">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="text-left px-3 py-2">Name</th>
-                  <th className="text-left px-3 py-2">Stadt</th>
-                  <th className="text-left px-3 py-2">Sitzung</th>
-                  <th className="text-left px-3 py-2">Spezialisierungen</th>
-                  <th className="text-left px-3 py-2">Aktion</th>
-                </tr>
-              </thead>
-              <tbody>
-                {therapists.map((t) => {
-                  const meta = t.metadata || {};
-                  const city = meta.city || '';
-                  const pref = meta.session_preference === 'in_person' ? 'Vor Ort' : (meta.session_preference === 'online' ? 'Online' : '—');
-                  const specs: string[] = Array.isArray(meta.specializations) ? meta.specializations : [];
-                  return (
-                    <tr key={t.id}>
-                      <td className="px-3 py-2">
-                        <div className="font-medium">{t.name || '—'}</div>
-                        <div className="text-gray-500 text-xs">{t.email}</div>
-                      </td>
-                      <td className="px-3 py-2">{city || '—'}</td>
-                      <td className="px-3 py-2">{pref}</td>
-                      <td className="px-3 py-2">{specs.length ? specs.join(', ') : '—'}</td>
-                      <td className="px-3 py-2">
-                        <Button size="sm" disabled={!selectedPatient} onClick={() => createMatch(t.id)}>
-                          Match mit {selectedPatient ? (selectedPatient.name || selectedPatient.email || 'Lead') : 'Lead'}
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {therapists.length === 0 && !loadingTherapists && (
-                  <tr><td className="px-3 py-6 text-center text-gray-500" colSpan={5}>Keine Therapeuten gefunden</td></tr>
-                )}
-                {loadingTherapists && (
-                  <tr><td className="px-3 py-6 text-center text-gray-500" colSpan={5}>Laden…</td></tr>
-                )}
-              </tbody>
-            </table>
+          <div className="space-y-3">
+            {therapists.map((t) => {
+              const meta: PersonMeta = t.metadata || {};
+              const city = meta.city || '';
+              const pref = formatSession(meta);
+              const specs: string[] = Array.isArray(meta.specializations) ? meta.specializations : [];
+              return (
+                <Card key={t.id}>
+                  <CardHeader className="flex flex-row items-start justify-between">
+                    <div>
+                      <CardTitle>{t.name || '—'}</CardTitle>
+                      <CardDescription>{t.email || '—'}</CardDescription>
+                    </div>
+                    <CardAction>
+                      <Button size="sm" disabled={!selectedPatient} onClick={() => createMatch(t.id)}>
+                        Match {selectedPatient ? `mit ${selectedPatient.name || selectedPatient.email || 'Lead'}` : ''}
+                      </Button>
+                    </CardAction>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div><span className="text-gray-500">Stadt:</span> {city || '—'}</div>
+                      <div><span className="text-gray-500">Sitzung:</span> {pref}</div>
+                      <div className="col-span-2"><span className="text-gray-500">Spezialisierungen:</span> {specs.length ? specs.join(', ') : '—'}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+            {therapists.length === 0 && !loadingTherapists && (
+              <p className="px-3 py-6 text-center text-gray-500">Keine Therapeuten gefunden</p>
+            )}
+            {loadingTherapists && (
+              <p className="px-3 py-6 text-center text-gray-500">Laden…</p>
+            )}
           </div>
         </div>
       </section>
@@ -401,7 +419,7 @@ export default function AdminLeadsPage() {
             <div className="space-y-3">
               <div className="text-sm text-gray-700">
                 <div><span className="font-medium">Lead:</span> {selectedPatient?.name || selectedPatient?.email || '—'}</div>
-                <div className="text-xs text-gray-500">{selectedPatient?.metadata?.city || '—'} · {selectedPatient?.metadata?.session_preference || '—'}</div>
+                <div className="text-xs text-gray-500">{selectedPatient?.metadata?.city || '—'} · {formatSession(selectedPatient?.metadata)}</div>
               </div>
               {modalError && <p className="text-sm text-red-600">{modalError}</p>}
               {modalLoading ? (

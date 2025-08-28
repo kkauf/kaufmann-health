@@ -58,9 +58,8 @@ export async function GET(req: Request) {
       // Using ->> to extract text and ILIKE with wildcards for substring search.
       query = query.ilike('metadata->>city', `%${city}%`);
     }
-    if (sessionPref === 'online' || sessionPref === 'in_person') {
-      query = query.contains('metadata', { session_preference: sessionPref });
-    }
+    // Session preference filter: support legacy single field and new array field.
+    // We fetch first (bounded by limit) and filter in code to support OR logic across fields.
     if (specialization) {
       // JSON containment: specializations array contains given value
       // TODO (future): support multiple values (OR / ANY) if provided.
@@ -72,7 +71,15 @@ export async function GET(req: Request) {
       await logError('admin.api.therapists', error, { stage: 'fetch' });
       return NextResponse.json({ data: null, error: 'Failed to fetch therapists' }, { status: 500 });
     }
-    return NextResponse.json({ data, error: null });
+    let result = (data || []) as Array<{ metadata?: unknown }>;
+    if (sessionPref === 'online' || sessionPref === 'in_person') {
+      result = result.filter((p) => {
+        const meta = (p?.metadata ?? {}) as { session_preference?: 'online' | 'in_person'; session_preferences?: ('online' | 'in_person')[] };
+        const arr = Array.isArray(meta.session_preferences) ? meta.session_preferences : [];
+        return meta.session_preference === sessionPref || arr.includes(sessionPref);
+      });
+    }
+    return NextResponse.json({ data: result, error: null });
   } catch (e) {
     await logError('admin.api.therapists', e, { stage: 'exception' });
     return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });

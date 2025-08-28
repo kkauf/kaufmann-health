@@ -30,6 +30,7 @@ type LeadPayload = {
   budget?: string;
   specializations?: string[];
   session_preference?: 'online' | 'in_person';
+  session_preferences?: ('online' | 'in_person')[];
   // New (EARTH-19): therapist applications
   type?: 'patient' | 'therapist';
   qualification?: string; // e.g., Heilpraktiker f. Psychotherapie, Approbation
@@ -129,6 +130,10 @@ export async function POST(req: Request) {
     const sessionPreferenceRaw = sanitize(payload.session_preference as string | undefined);
     const sessionPreference: 'online' | 'in_person' | undefined =
       sessionPreferenceRaw === 'online' || sessionPreferenceRaw === 'in_person' ? sessionPreferenceRaw : undefined;
+    const sessionPreferencesRaw = Array.isArray(payload.session_preferences) ? payload.session_preferences : [];
+    const sessionPreferences = sessionPreferencesRaw
+      .map((s) => sanitize(String(s))?.toLowerCase())
+      .filter((s): s is 'online' | 'in_person' => s === 'online' || s === 'in_person');
     const qualification = sanitize(payload.qualification);
     const experience = sanitize(payload.experience);
     const website = sanitize(payload.website);
@@ -198,6 +203,7 @@ export async function POST(req: Request) {
           ...(availability ? { availability } : {}),
           ...(budget ? { budget } : {}),
           ...(sessionPreference ? { session_preference: sessionPreference } : {}),
+          ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
           ...(specializations.length ? { specializations } : {}),
           ...(ip ? { ip } : {}),
           ...(ua ? { user_agent: ua } : {}),

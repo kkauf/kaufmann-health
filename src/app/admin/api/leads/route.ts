@@ -53,16 +53,23 @@ export async function GET(req: Request) {
       // Case-insensitive partial match on city from JSON metadata
       query = query.ilike('metadata->>city', `%${city}%`);
     }
-    if (sessionPref === 'online' || sessionPref === 'in_person') {
-      query = query.contains('metadata', { session_preference: sessionPref });
-    }
+    // Session preference filter: support legacy single field and new array field.
+    // We fetch first (bounded by limit) and filter in code to support OR logic across fields.
 
     const { data, error } = await query;
     if (error) {
       await logError('admin.api.leads', error, { stage: 'fetch' });
       return NextResponse.json({ data: null, error: 'Failed to fetch leads' }, { status: 500 });
     }
-    return NextResponse.json({ data, error: null });
+    let result = (data || []) as Array<{ metadata?: unknown }>;
+    if (sessionPref === 'online' || sessionPref === 'in_person') {
+      result = result.filter((p) => {
+        const meta = (p?.metadata ?? {}) as { session_preference?: 'online' | 'in_person'; session_preferences?: ('online' | 'in_person')[] };
+        const arr = Array.isArray(meta.session_preferences) ? meta.session_preferences : [];
+        return meta.session_preference === sessionPref || arr.includes(sessionPref);
+      });
+    }
+    return NextResponse.json({ data: result, error: null });
   } catch (e) {
     await logError('admin.api.leads', e, { stage: 'exception' });
     return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });
