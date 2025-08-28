@@ -161,7 +161,7 @@ export default function AdminLeadsPage() {
     }
   }
 
-  async function fetchTherapists() {
+  const fetchTherapists = useCallback(async () => {
     setLoadingTherapists(true);
     setTherError(null);
     setMessage(null);
@@ -188,7 +188,7 @@ export default function AdminLeadsPage() {
     } finally {
       setLoadingTherapists(false);
     }
-  }
+  }, [therCity, therSessionPref, therSpecialization, selectedPatient]);
 
   async function createMatch(therapistId: string) {
     if (!selectedPatient) return;
@@ -213,6 +213,11 @@ export default function AdminLeadsPage() {
   useEffect(() => {
     fetchLeads().catch(() => {});
   }, [fetchLeads]);
+
+  // Initial therapists fetch on mount and when relevant filters change (consistent with leads)
+  useEffect(() => {
+    fetchTherapists().catch(() => {});
+  }, [fetchTherapists]);
 
   const selectedCity = useMemo(() => (selectedPatient?.metadata?.city ? String(selectedPatient.metadata.city) : ''), [selectedPatient]);
   const selectedPref = useMemo(() => (selectedPatient?.metadata?.session_preference ? String(selectedPatient.metadata.session_preference) : ''), [selectedPatient]);
