@@ -85,7 +85,7 @@ export default function TherapieFinderForm() {
         >
           <option value="">Bitte auswählen</option>
           <option value="online">Online</option>
-          <option value="in_person">Vor Ort (in Person)</option>
+          <option value="in_person">Vor Ort (Praxis)</option>
         </select>
       </div>
 
