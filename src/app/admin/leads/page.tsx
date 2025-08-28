@@ -288,7 +288,7 @@ export default function AdminLeadsPage() {
           </div>
           {leadError && <p className="text-sm text-red-600 mb-2">{leadError}</p>}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-3">
             {leads.map((p) => {
               const meta: PersonMeta = p.metadata || {};
               const city = meta.city || '';
@@ -300,8 +300,8 @@ export default function AdminLeadsPage() {
                 <Card key={p.id} className={isSelected ? 'border-amber-400 bg-amber-50' : ''} aria-selected={isSelected}>
                   <CardHeader>
                     <div className="min-w-0">
-                      <CardTitle className="truncate">{p.name || '—'}</CardTitle>
-                      <CardDescription className="truncate">{p.email || '—'}</CardDescription>
+                      <CardTitle className="truncate" title={p.name || undefined}>{p.name || '—'}</CardTitle>
+                      <CardDescription className="truncate" title={p.email || undefined}>{p.email || '—'}</CardDescription>
                     </div>
                     <CardAction className="flex gap-2">
                       <Button size="sm" variant={isSelected ? 'default' : 'secondary'} onClick={() => setSelectedPatient(p)}>
