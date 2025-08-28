@@ -7,6 +7,8 @@ export type SendEmailParams = {
   text?: string;
   from?: string;
   replyTo?: string;
+  // Optional extra properties to include in logging (PII-free), e.g. { correlation_id, lead_id, kind }
+  context?: Record<string, unknown>;
 };
 
 export type EmailContent = {

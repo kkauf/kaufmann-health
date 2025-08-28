@@ -45,6 +45,33 @@ function sanitize(v?: string) {
   return v.toString().replace(/[\u0000-\u001F\u007F]/g, '').slice(0, 1000);
 }
 
+// Provide a helpful GET handler to diagnose accidental wrong-method calls (e.g., prefetch)
+export async function GET(req: Request) {
+  try {
+    const ip = getClientIP(req.headers);
+    const ua = req.headers.get('user-agent') || undefined;
+    const path = (() => {
+      try {
+        return new URL(req.url).pathname;
+      } catch {
+        return '/api/leads';
+      }
+    })();
+    void track({
+      type: 'leads_wrong_method',
+      level: 'warn',
+      source: 'api.leads',
+      ip,
+      ua,
+      props: { method: 'GET', path },
+    });
+  } catch {}
+  return NextResponse.json(
+    { data: null, error: 'Use POST' },
+    { status: 405, headers: { 'Cache-Control': 'no-store' } },
+  );
+}
+
 // Allowed specializations (slugs)
 const ALLOWED_SPECIALIZATIONS = [
   'narm',
@@ -81,7 +108,10 @@ export async function POST(req: Request) {
     const email = sanitize(payload.email)?.toLowerCase();
 
     if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      return NextResponse.json({ data: null, error: 'Invalid email' }, { status: 400 });
+      return NextResponse.json(
+        { data: null, error: 'Invalid email' },
+        { status: 400, headers: { 'Cache-Control': 'no-store' } },
+      );
     }
 
     const data: LeadPayload = {
@@ -145,7 +175,10 @@ export async function POST(req: Request) {
             ...(attr.utm_campaign ? { utm_campaign: attr.utm_campaign } : {}),
           },
         });
-        return NextResponse.json({ data: null, error: 'Rate limited' }, { status: 429 });
+        return NextResponse.json(
+          { data: null, error: 'Rate limited' },
+          { status: 429, headers: { 'Cache-Control': 'no-store' } },
+        );
       }
     }
 
@@ -182,7 +215,10 @@ export async function POST(req: Request) {
     if (error) {
       console.error('Supabase error:', error);
       void logError('api.leads', error, { stage: 'insert_lead', lead_type: leadType, city }, ip, ua);
-      return NextResponse.json({ data: null, error: 'Failed to save lead' }, { status: 500 });
+      return NextResponse.json(
+        { data: null, error: 'Failed to save lead' },
+        { status: 500, headers: { 'Cache-Control': 'no-store' } },
+      );
     }
 
     // For therapist submissions, record immediate contract acceptance (best-effort)
@@ -208,7 +244,26 @@ export async function POST(req: Request) {
           isActiveCity,
           termsVersion: TERMS_VERSION,
         });
-        void sendEmail({ to: data.email, subject: welcome.subject, html: welcome.html }).catch(() => {});
+        // Audit: attempted send
+        void track({
+          type: 'email_attempted',
+          level: 'info',
+          source: 'api.leads',
+          ip,
+          ua,
+          props: {
+            stage: 'therapist_welcome',
+            lead_id: inserted.id,
+            lead_type: leadType,
+            ...(session_id ? { session_id } : {}),
+          },
+        });
+        void sendEmail({
+          to: data.email,
+          subject: welcome.subject,
+          html: welcome.html,
+          context: { stage: 'therapist_welcome', lead_id: inserted.id, lead_type: leadType, ...(session_id ? { session_id } : {}) },
+        }).catch(() => {});
       } catch (e) {
         console.error('[welcome-email] Failed to render/send therapist welcome', e);
         void logError('api.leads', e, { stage: 'welcome_email' }, ip, ua);
@@ -224,7 +279,26 @@ export async function POST(req: Request) {
           issue,
           sessionPreference: sessionPreference ?? null,
         });
-        void sendEmail({ to: data.email, subject: confirmation.subject, html: confirmation.html }).catch(() => {});
+        // Audit: attempted send
+        void track({
+          type: 'email_attempted',
+          level: 'info',
+          source: 'api.leads',
+          ip,
+          ua,
+          props: {
+            stage: 'patient_confirmation',
+            lead_id: inserted.id,
+            lead_type: leadType,
+            ...(session_id ? { session_id } : {}),
+          },
+        });
+        void sendEmail({
+          to: data.email,
+          subject: confirmation.subject,
+          html: confirmation.html,
+          context: { stage: 'patient_confirmation', lead_id: inserted.id, lead_type: leadType, ...(session_id ? { session_id } : {}) },
+        }).catch(() => {});
       } catch (e) {
         console.error('[patient-confirmation-email] Failed to render/send patient confirmation', e);
         void logError('api.leads', e, { stage: 'patient_confirmation_email' }, ip, ua);
@@ -237,6 +311,21 @@ export async function POST(req: Request) {
         const conversionActionAlias = leadType === 'therapist' ? 'therapist_registration' : 'patient_registration';
         const value = leadType === 'therapist' ? 25 : 10; // EUR
         // Only hashed email is sent to Google; wrapper no-ops if not configured
+        // Audit attempt
+        void track({
+          type: 'google_ads_attempted',
+          level: 'info',
+          source: 'api.leads',
+          ip,
+          ua,
+          props: {
+            action: conversionActionAlias,
+            order_id: inserted.id,
+            lead_type: leadType,
+            value,
+            ...(session_id ? { session_id } : {}),
+          },
+        });
         void googleAdsTracker
           .trackConversion({
             email: data.email,
@@ -258,7 +347,41 @@ export async function POST(req: Request) {
           id: inserted.id,
           metadata: inserted.metadata as unknown as { lead_type?: LeadType; city?: string | null } | null,
         });
-        void sendEmail({ to, subject: notif.subject, text: notif.text }).catch(() => {});
+        // Audit: attempted send
+        void track({
+          type: 'email_attempted',
+          level: 'info',
+          source: 'api.leads',
+          ip,
+          ua,
+          props: {
+            stage: 'internal_notification',
+            lead_id: inserted.id,
+            lead_type: leadType,
+            ...(session_id ? { session_id } : {}),
+          },
+        });
+        void sendEmail({
+          to,
+          subject: notif.subject,
+          text: notif.text,
+          context: { stage: 'internal_notification', lead_id: inserted.id, lead_type: leadType, ...(session_id ? { session_id } : {}) },
+        }).catch(() => {});
+      } else {
+        // Make missing config visible
+        void track({
+          type: 'notify_skipped',
+          level: 'warn',
+          source: 'api.leads',
+          ip,
+          ua,
+          props: {
+            reason: 'missing_recipient',
+            lead_id: inserted.id,
+            lead_type: leadType,
+            ...(session_id ? { session_id } : {}),
+          },
+        });
       }
     } catch (e) {
       console.error('[notify] Failed to build/send notification', e);
@@ -284,9 +407,15 @@ export async function POST(req: Request) {
         ...(attr.utm_campaign ? { utm_campaign: attr.utm_campaign } : {}),
       },
     });
-    return NextResponse.json({ data: { id: inserted.id }, error: null });
+    return NextResponse.json(
+      { data: { id: inserted.id }, error: null },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
   } catch (e) {
     void logError('api.leads', e, { stage: 'json_parse' }, undefined, req.headers.get('user-agent') || undefined);
-    return NextResponse.json({ data: null, error: 'Invalid JSON' }, { status: 400 });
+    return NextResponse.json(
+      { data: null, error: 'Invalid JSON' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
   }
 }

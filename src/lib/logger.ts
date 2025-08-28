@@ -115,16 +115,44 @@ async function persistEvent(params: Required<Pick<TrackParams, 'type'>> &
       // created_at defaults to now() on DB
     } as const;
 
-    await fetch(`${url}/rest/v1/events`, {
-      method: 'POST',
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=minimal',
-      },
-      body: JSON.stringify(payload),
-    }).catch(() => {});
+    // Add a short timeout and warn on non-OK to improve observability without recursion
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+    try {
+      const resp = await fetch(`${url}/rest/v1/events`, {
+        method: 'POST',
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!resp.ok) {
+        let body = '';
+        try {
+          body = (await resp.text()).slice(0, 300);
+        } catch {}
+        // Avoid calling logError here to prevent recursion loops
+        console.warn('[logger] persistEvent non-OK', {
+          status: resp.status,
+          statusText: (resp as any).statusText,
+          type: params.type,
+          source: params.source,
+          body,
+        });
+      }
+    } catch (e) {
+      clearTimeout(timer);
+      console.warn('[logger] persistEvent failed', {
+        error: (e as any)?.message || String(e),
+        type: params.type,
+        source: params.source,
+      });
+    }
   } catch {
     // swallow
   }

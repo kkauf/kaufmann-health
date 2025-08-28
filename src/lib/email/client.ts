@@ -19,41 +19,87 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
 
   const fromAddress = params.from || process.env.LEADS_FROM_EMAIL || EMAIL_FROM_DEFAULT;
 
-  try {
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: `Kaufmann Health <${fromAddress}>`,
-        to: toList,
+  // Minimal resiliency: short timeout + retry on 429/5xx. Never throw.
+  const maxAttempts = 3;
+  const timeoutMs = 5000;
+
+  const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+  const backoff = (attempt: number) => [100, 500, 1500][Math.min(attempt - 1, 2)];
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const resp = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: `Kaufmann Health <${fromAddress}>`,
+          to: toList,
+          subject: params.subject,
+          ...(params.html ? { html: params.html } : {}),
+          ...(params.text ? { text: params.text } : {}),
+          ...(params.replyTo ? { reply_to: params.replyTo } : {}),
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+
+      if (resp.ok) {
+        // Success: log once and exit.
+        void track({
+          type: 'email_sent',
+          level: 'info',
+          source: 'email.client',
+          props: {
+            to_count: toList.length,
+            has_html: Boolean(params.html),
+            has_text: Boolean(params.text),
+            attempt,
+            ...(params.context || {}),
+          },
+        });
+        return;
+      }
+
+      const status = resp.status;
+      let body = '';
+      try {
+        body = (await resp.text()).slice(0, 500);
+      } catch {}
+
+      const retryable = status === 429 || (status >= 500 && status < 600);
+      void logError('email.client', { name: 'EmailNonOk', message: `Resend returned ${status}` }, {
         subject: params.subject,
-        ...(params.html ? { html: params.html } : {}),
-        ...(params.text ? { text: params.text } : {}),
-        ...(params.replyTo ? { reply_to: params.replyTo } : {}),
-      }),
-    });
-    // fire-and-forget analytics
-    void track({
-      type: 'email_sent',
-      level: 'info',
-      source: 'email.client',
-      props: {
         to_count: toList.length,
         has_html: Boolean(params.html),
         has_text: Boolean(params.text),
-      },
-    });
-  } catch (e) {
-    // Best-effort logging; do not throw from email client
-    console.error('[email.send] Failed to send email', e);
-    void logError('email.client', e, {
-      subject: params.subject,
-      to_count: toList.length,
-      has_html: Boolean(params.html),
-      has_text: Boolean(params.text),
-    });
+        status,
+        status_text: (resp as any).statusText,
+        body,
+        attempt,
+        ...(params.context || {}),
+      });
+
+      if (!retryable || attempt === maxAttempts) return; // give up
+      await delay(backoff(attempt));
+    } catch (e) {
+      clearTimeout(timer);
+      // Network error or timeout; log and maybe retry.
+      void logError('email.client', e, {
+        subject: params.subject,
+        to_count: toList.length,
+        has_html: Boolean(params.html),
+        has_text: Boolean(params.text),
+        attempt,
+        timeout_ms: timeoutMs,
+        ...(params.context || {}),
+      });
+      if (attempt === maxAttempts) return;
+      await delay(backoff(attempt));
+    }
   }
 }
