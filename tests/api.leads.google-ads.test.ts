@@ -1,0 +1,98 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Mutable state for the supabase mock
+let rateLimited = false;
+let insertError: any = null;
+let insertResultId = 'lead-xyz';
+
+vi.mock('@/lib/supabase-server', () => {
+  const supabaseServer = {
+    from: (table: string) => {
+      if (table === 'people') {
+        return {
+          select: (_cols?: string) => ({
+            contains: (_col?: string, _val?: any) => ({
+              gte: (_col?: string, _cutoff?: string) => ({
+                limit: (_n?: number) => Promise.resolve({ data: rateLimited ? [{}] : [], error: null }),
+              }),
+            }),
+          }),
+          insert: (_payload: any) => ({
+            select: () => ({
+              single: () =>
+                Promise.resolve(
+                  insertError ? { data: null, error: insertError } : { data: { id: insertResultId }, error: null },
+                ),
+            }),
+          }),
+        } as any;
+      }
+      if (table === 'therapist_contracts') {
+        return {
+          insert: (_payload: any) => Promise.resolve({ data: { id: 'contract-id' }, error: null }),
+        } as any;
+      }
+      throw new Error(`Unexpected table ${table}`);
+    },
+  } as any;
+  return { supabaseServer };
+});
+
+// Mock email client (not relevant here, but route calls it)
+vi.mock('@/lib/email/client', () => ({
+  sendEmail: vi.fn(async () => {}),
+}));
+
+// Spy on google ads tracker
+const trackConversion = vi.fn(async (_d: any) => {});
+vi.mock('@/lib/google-ads', () => ({
+  googleAdsTracker: { trackConversion },
+}));
+
+function makeReq(body: any, headers?: Record<string, string>) {
+  return new Request('http://localhost/api/leads', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...(headers || {}) },
+    body: JSON.stringify(body),
+  });
+}
+
+beforeEach(() => {
+  rateLimited = false;
+  insertError = null;
+  insertResultId = 'lead-xyz';
+  trackConversion.mockClear();
+});
+
+describe('/api/leads Google Ads conversions', () => {
+  it('fires patient_registration conversion with value 10 on patient lead', async () => {
+    const { POST } = await import('@/app/api/leads/route');
+    const res = await POST(
+      makeReq({ email: 'patient@example.com', type: 'patient' }, { 'x-forwarded-for': '1.2.3.4' }),
+    );
+    expect(res.status).toBe(200);
+
+    // fire-and-forget; allow microtask flush
+    await Promise.resolve();
+    expect(trackConversion).toHaveBeenCalledTimes(1);
+    const call = trackConversion.mock.calls[0][0];
+    expect(call.conversionAction).toBe('patient_registration');
+    expect(call.conversionValue).toBe(10);
+    expect(call.orderId).toBe('lead-xyz');
+    expect(call.email).toBe('patient@example.com');
+  });
+
+  it('fires therapist_registration conversion with value 25 on therapist lead', async () => {
+    const { POST } = await import('@/app/api/leads/route');
+    const res = await POST(makeReq({ email: 'therapist@example.com', type: 'therapist' }));
+    expect(res.status).toBe(200);
+
+    await Promise.resolve();
+    expect(trackConversion).toHaveBeenCalledTimes(1);
+    const call = trackConversion.mock.calls[0][0];
+    expect(call.conversionAction).toBe('therapist_registration');
+    expect(call.conversionValue).toBe(25);
+    expect(call.orderId).toBe('lead-xyz');
+    expect(call.email).toBe('therapist@example.com');
+  });
+});
