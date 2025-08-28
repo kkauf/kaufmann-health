@@ -298,10 +298,10 @@ export default function AdminLeadsPage() {
               const isSelected = selectedPatient?.id === p.id;
               return (
                 <Card key={p.id} className={isSelected ? 'border-amber-400 bg-amber-50' : ''} aria-selected={isSelected}>
-                  <CardHeader className="flex flex-row items-start justify-between">
-                    <div>
-                      <CardTitle>{p.name || '—'}</CardTitle>
-                      <CardDescription>{p.email || '—'}</CardDescription>
+                  <CardHeader>
+                    <div className="min-w-0">
+                      <CardTitle className="truncate">{p.name || '—'}</CardTitle>
+                      <CardDescription className="truncate">{p.email || '—'}</CardDescription>
                     </div>
                     <CardAction className="flex gap-2">
                       <Button size="sm" variant={isSelected ? 'default' : 'secondary'} onClick={() => setSelectedPatient(p)}>
@@ -379,10 +379,10 @@ export default function AdminLeadsPage() {
               const specs: string[] = Array.isArray(meta.specializations) ? meta.specializations : [];
               return (
                 <Card key={t.id}>
-                  <CardHeader className="flex flex-row items-start justify-between">
-                    <div>
-                      <CardTitle>{t.name || '—'}</CardTitle>
-                      <CardDescription>{t.email || '—'}</CardDescription>
+                  <CardHeader>
+                    <div className="min-w-0">
+                      <CardTitle className="truncate">{t.name || '—'}</CardTitle>
+                      <CardDescription className="truncate">{t.email || '—'}</CardDescription>
                     </div>
                     <CardAction>
                       <Button size="sm" disabled={!selectedPatient} onClick={() => createMatch(t.id)}>
