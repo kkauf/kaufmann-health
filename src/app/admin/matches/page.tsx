@@ -58,6 +58,10 @@ export default function AdminMatchesPage() {
   const [rows, setRows] = useState<MatchRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailTarget, setEmailTarget] = useState<{ id: string; patientName?: string; therapistName?: string } | null>(null);
+  const [emailTemplate, setEmailTemplate] = useState<'match_found' | 'custom'>('match_found');
+  const [emailMessage, setEmailMessage] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -74,6 +78,42 @@ export default function AdminMatchesPage() {
       setLoading(false);
     }
   }, []);
+
+  const openEmail = useCallback((r: MatchRow) => {
+    setEmailTarget({ id: r.id, patientName: r.patient.name, therapistName: r.therapist.name });
+    setEmailTemplate('match_found');
+    setEmailMessage('');
+  }, []);
+
+  const closeEmail = useCallback(() => {
+    setEmailTarget(null);
+    setEmailMessage('');
+    setEmailTemplate('match_found');
+  }, []);
+
+  const sendPatientEmail = useCallback(async () => {
+    if (!emailTarget) return;
+    setEmailSending(true);
+    try {
+      const res = await fetch('/admin/api/matches/email', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: emailTarget.id, template: emailTemplate, message: emailMessage }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.error || `Senden fehlgeschlagen (${res.status})`);
+      }
+      alert('E-Mail gesendet.');
+      closeEmail();
+    } catch (e: unknown) {
+      console.error('Send email failed:', e);
+      const msg = e instanceof Error ? e.message : 'E-Mail konnte nicht gesendet werden';
+      alert(msg);
+    } finally {
+      setEmailSending(false);
+    }
+  }, [emailTarget, emailTemplate, emailMessage, closeEmail]);
 
   useEffect(() => {
     void load();
@@ -193,12 +233,55 @@ export default function AdminMatchesPage() {
                     />
                   </td>
                   <td className="py-2 px-2">
-                    <Button variant="outline" size="sm" disabled title="Kommt im nächsten Schritt (EARTH-44)">Patient informieren</Button>
+                    <Button variant="outline" size="sm" onClick={() => openEmail(r)}>Patient informieren</Button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {emailTarget && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg rounded-md bg-white p-4 shadow-2xl">
+            <div className="mb-2">
+              <h2 className="text-lg font-semibold">E-Mail an Patient senden</h2>
+              <p className="text-xs text-muted-foreground">
+                Patient: <strong>{emailTarget.patientName || '—'}</strong>{' '}· Therapeut: <strong>{emailTarget.therapistName || '—'}</strong>
+              </p>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm mb-1">Vorlage</label>
+                <select
+                  className="w-full rounded border bg-transparent px-2 py-1"
+                  value={emailTemplate}
+                  onChange={(e) => setEmailTemplate(e.currentTarget.value as 'match_found' | 'custom')}
+                >
+                  <option value="match_found">Match gefunden (Therapeut meldet sich)</option>
+                  <option value="custom">Individuelles Update</option>
+                </select>
+              </div>
+              {emailTemplate === 'custom' && (
+                <div>
+                  <label className="block text-sm mb-1">Nachricht (optional)</label>
+                  <textarea
+                    className="w-full min-h-28 rounded border bg-transparent px-2 py-1"
+                    value={emailMessage}
+                    onChange={(e) => setEmailMessage(e.currentTarget.value)}
+                    placeholder="Kurze persönliche Nachricht an den Patienten…"
+                  />
+                </div>
+              )}
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={closeEmail} disabled={emailSending}>Abbrechen</Button>
+                <Button onClick={() => void sendPatientEmail()} disabled={emailSending}>
+                  {emailSending ? 'Senden…' : 'Senden'}
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </main>
