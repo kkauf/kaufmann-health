@@ -2,7 +2,7 @@ import Image from 'next/image';
 import TherapieFinderForm from '@/components/TherapieFinderForm';
 import FaqAccordion from '@/components/FaqAccordion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity, Euro, Clock, MapPin, Compass, PhoneCall, ShieldCheck } from 'lucide-react';
+import { Activity, Euro, Clock, MessageCircle, UserCheck, PhoneCall, ShieldCheck } from 'lucide-react';
 
 export default function TherapieFindenPage() {
   return (
@@ -15,7 +15,7 @@ export default function TherapieFindenPage() {
               Traumata lösen sich nicht durch Reden allein
             </h1>
             <p className="mt-4 max-w-xl text-gray-700">
-              Finden Sie körperorientierte Therapeuten in Ihrer Nähe. Durchsuchbares Verzeichnis für Selbstzahler. Termine innerhalb einer Woche.
+              Finden Sie körperorientierte Therapeuten in Ihrer Nähe. Persönlich kuratierte Empfehlungen für Selbstzahler. Termine innerhalb einer Woche.
             </p>
  
 
@@ -118,12 +118,12 @@ export default function TherapieFindenPage() {
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600">
-                  <MapPin className="h-5 w-5" />
+                  <MessageCircle className="h-5 w-5" />
                 </div>
                 <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">1</div>
               </div>
-              <CardTitle className="mt-2 text-lg">Verzeichnis durchsuchen</CardTitle>
-              <CardDescription>Teilen Sie uns Ihren Standort mit und erhalten Sie Kontaktdaten - 100% vertraulich.</CardDescription>
+              <CardTitle className="mt-2 text-lg">Sie schildern uns Ihre Situation</CardTitle>
+              <CardDescription>Beschreiben Sie kurz Ihr Anliegen und Ihre Präferenzen.</CardDescription>
             </CardHeader>
           </Card>
           <Card className="group relative overflow-hidden transition-all duration-200 hover:shadow-md">
@@ -131,12 +131,12 @@ export default function TherapieFindenPage() {
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="rounded-lg bg-sky-50 p-2 text-sky-600">
-                  <Compass className="h-5 w-5" />
+                  <UserCheck className="h-5 w-5" />
                 </div>
                 <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">2</div>
               </div>
-              <CardTitle className="mt-2 text-lg">Persönliche Orientierungshilfe</CardTitle>
-              <CardDescription>Unsicher, welche Therapieform passt? Wir besprechen gerne Ihre Optionen und zeigen Ihnen relevante Therapeuten aus unserem Verzeichnis.</CardDescription>
+              <CardTitle className="mt-2 text-lg">Wir wählen passende Therapeuten aus</CardTitle>
+              <CardDescription>Wir prüfen unsere kuratierte Liste und wählen passende Therapeuten für Sie aus.</CardDescription>
             </CardHeader>
           </Card>
           <Card className="group relative overflow-hidden transition-all duration-200 hover:shadow-md">
@@ -148,8 +148,8 @@ export default function TherapieFindenPage() {
                 </div>
                 <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">3</div>
               </div>
-              <CardTitle className="mt-2 text-lg">Selbst auswählen & kontaktieren</CardTitle>
-              <CardDescription>Sie erhalten Profile mit Verfügbarkeiten und kontaktieren Therapeuten eigenverantwortlich.</CardDescription>
+              <CardTitle className="mt-2 text-lg">Direkter Kontakt zu ausgewählten Therapeuten</CardTitle>
+              <CardDescription>Sie erhalten direkte Kontaktdaten der ausgewählten Therapeuten.</CardDescription>
             </CardHeader>
           </Card>
         </div>
@@ -163,8 +163,8 @@ export default function TherapieFindenPage() {
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <h3 id="personal-service" className="text-xl font-semibold">Persönliche Orientierungshilfe</h3>
-              <p className="mt-2 max-w-3xl text-gray-700">Unsicher, welche Therapieform passt? Wir besprechen gerne Ihre Optionen und zeigen Ihnen relevante Therapeuten aus unserem Verzeichnis.</p>
+              <h3 id="personal-service" className="text-xl font-semibold">Expertenbasierte Therapeuten-Auswahl</h3>
+              <p className="mt-2 max-w-3xl text-gray-700">Wir kennen jeden Therapeuten persönlich und prüfen Qualifikation, Arbeitsweise und Verfügbarkeit. Auf dieser Basis sprechen wir eine kuratierte Auswahl aus.</p>
               <small className="mt-2 block text-xs text-gray-600">Dies ist eine Informationsberatung, keine medizinische oder therapeutische Empfehlung.</small>
             </div>
           </div>
@@ -173,7 +173,7 @@ export default function TherapieFindenPage() {
 
       {/* Qualifications */}
       <section aria-labelledby="qualifications" className="mt-12 sm:mt-16">
-        <h2 id="qualifications" className="text-2xl font-semibold">Therapeuten in unserem Verzeichnis</h2>
+        <h2 id="qualifications" className="text-2xl font-semibold">Unsere sorgfältig geprüften Therapeuten</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <div className="rounded-lg border bg-white p-4">✓ Heilpraktiker für Psychotherapie (staatlich geprüft)</div>
           <div className="rounded-lg border bg-white p-4">✓ Zertifiziert in NARM, Hakomi oder Somatic Experiencing</div>
@@ -190,8 +190,8 @@ export default function TherapieFindenPage() {
             items={[
               {
                 id: 'kosten',
-                question: 'Was kostet das Therapeuten-Verzeichnis?',
-                answer: 'Das Verzeichnis ist für Sie als Patient komplett kostenlos. Sie zahlen nur die Therapiesitzungen direkt an den Therapeuten Ihrer Wahl.',
+                question: 'Was kostet die Therapeuten-Empfehlung?',
+                answer: 'Unser Service ist für Sie als Patient komplett kostenlos. Sie zahlen nur die Therapiesitzungen direkt an den Therapeuten Ihrer Wahl.',
               },
               {
                 id: 'selbstzahler',
@@ -206,7 +206,7 @@ export default function TherapieFindenPage() {
               {
                 id: 'termin',
                 question: 'Wie schnell bekomme ich einen Termin?',
-                answer: 'Die meisten Therapeuten in unserem Verzeichnis haben innerhalb von 7 Tagen Termine frei. Nach Ihrer Anfrage erhalten Sie innerhalb von 24 Stunden Kontaktmöglichkeiten.',
+                answer: 'Die meisten unserer sorgfältig geprüften Therapeuten haben innerhalb von 7 Tagen Termine frei. Nach Ihrer Anfrage erhalten Sie innerhalb von 24 Stunden Kontaktmöglichkeiten.',
               },
               {
                 id: 'kontakt',
@@ -220,18 +220,18 @@ export default function TherapieFindenPage() {
 
       {/* Final CTA */}
       <section aria-labelledby="final-cta" className="mt-12 sm:mt-16 text-center">
-        <h2 id="final-cta" className="text-2xl font-semibold">Bereit für Veränderung?</h2>
-        <p className="mt-2 text-gray-700">Lassen Sie uns Ihnen Kontaktmöglichkeiten zu passenden Therapeuten zeigen.</p>
+        <h2 id="final-cta" className="text-2xl font-semibold">Lassen Sie uns Ihnen den passenden Therapeuten vorschlagen</h2>
+        <p className="mt-2 text-gray-700">Erhalten Sie eine persönliche, kuratierte Empfehlung – kostenlos & unverbindlich.</p>
         <div className="mt-4 flex justify-center">
-          <a href="#top-form" className="inline-flex items-center justify-center rounded-md bg-black px-5 py-2 text-white">Kostenloses Verzeichnis durchsuchen →</a>
+          <a href="#top-form" className="inline-flex items-center justify-center rounded-md bg-black px-5 py-2 text-white">Kostenlose Therapeuten-Empfehlung erhalten →</a>
         </div>
-        <small className="mt-2 block text-xs text-gray-600">Wir senden Ihnen innerhalb von 24 Stunden Kontaktdaten</small>
+        <small className="mt-2 block text-xs text-gray-600">Wir melden uns innerhalb von 24 Stunden mit einer Auswahl</small>
       </section>
 
       {/* Footer legal note (page-specific) */}
       <section aria-labelledby="footer-legal" className="mt-12 sm:mt-16">
         <p id="footer-legal" className="text-xs text-gray-600">
-          Kaufmann Health betreibt ein Informationsverzeichnis für Heilpraktiker für Psychotherapie. Wir treffen keine Auswahl oder Empfehlung bezüglich der Eignung einzelner Therapeuten für spezifische Behandlungen. Die Entscheidung über eine Therapie treffen Sie eigenverantwortlich.
+          Kaufmann Health ist eine Informationsplattform für Heilpraktiker für Psychotherapie. Wir stellen Kontaktmöglichkeiten her und geben keine medizinischen oder therapeutischen Empfehlungen oder Erfolgsversprechen. Die Entscheidung über eine Therapie treffen Sie eigenverantwortlich.
         </p>
       </section>
     </main>

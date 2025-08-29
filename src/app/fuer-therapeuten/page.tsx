@@ -9,12 +9,12 @@ import CtaLink from "@/components/CtaLink";
 export const metadata: Metadata = {
   title: "Neue Klienten für Ihre Praxis | Für Therapeuten | Kaufmann Health",
   description:
-    "Werden Sie Teil unseres Therapeuten-Verzeichnisses. Zahlen Sie nur eine Erfolgsgebühr, wenn Klienten über unsere Plattform zu Ihnen finden.",
+    "Werden Sie Teil unseres kuratierten Netzwerks. Zahlen Sie nur eine Erfolgsgebühr, wenn Klienten über unsere Plattform zu Ihnen finden.",
   alternates: { canonical: "/fuer-therapeuten" },
   openGraph: {
     title: "Neue Klienten für Ihre Praxis | Für Therapeuten",
     description:
-      "Spezialisiertes Therapeuten-Verzeichnis mit erfolgsbasierter Vergütung. Keine Vorabkosten.",
+      "Spezialisiertes, kuratiertes Therapeuten-Netzwerk mit erfolgsbasierter Vergütung. Keine Vorabkosten.",
   },
 };
 
@@ -23,11 +23,11 @@ const faqItems = [
     id: "fuer-therapeuten-faq-fee",
     question: "Wie hoch ist die Erfolgsgebühr?",
     answer:
-      "25% der Sitzungsgebühr für die ersten 10 Sitzungen pro Klient, der über unser Verzeichnis zu Ihnen findet. Danach 0%.",
+      "25% der Sitzungsgebühr für die ersten 10 Sitzungen pro Klient, der über unser Netzwerk zu Ihnen findet. Danach 0%.",
   },
   {
     id: "fuer-therapeuten-faq-who",
-    question: "Welche Therapeuten nehmen Sie in das Verzeichnis auf?",
+    question: "Welche Therapeuten nehmen Sie in das Netzwerk auf?",
     answer:
       "Heilpraktiker für Psychotherapie oder approbierte Psychotherapeuten mit Spezialisierung auf körperorientierte Verfahren (z. B. NARM, Hakomi, Somatic Experiencing, Core Energetics).",
   },
@@ -35,7 +35,7 @@ const faqItems = [
     id: "fuer-therapeuten-faq-volume",
     question: "Wie viele Anfragen erhalte ich?",
     answer:
-      "Das hängt von Ihrer Region und Verfügbarkeit ab. In Ballungsräumen erhalten Therapeuten meist 2–5 Kontakte pro Monat über unser Verzeichnis.",
+      "Das hängt von Ihrer Region und Verfügbarkeit ab. In Ballungsräumen erhalten Therapeuten meist 2–5 Kontakte pro Monat über unser Netzwerk.",
   },
   {
     id: "fuer-therapeuten-faq-reject",
@@ -45,7 +45,7 @@ const faqItems = [
   },
   {
     id: "fuer-therapeuten-faq-diff",
-    question: "Wie unterscheiden Sie sich von anderen Verzeichnissen?",
+    question: "Wie unterscheiden Sie sich von anderen Plattformen?",
     answer:
       "Wir bieten zusätzlich eine persönliche Orientierungshilfe für Interessenten und fokussieren uns ausschließlich auf körperorientierte Therapieverfahren.",
   },
@@ -63,7 +63,7 @@ export default function TherapistsPage() {
             "@type": "WebPage",
             name: "Neue Klienten für Ihre Praxis | Für Therapeuten | Kaufmann Health",
             description:
-              "Werden Sie Teil unseres Therapeuten-Verzeichnisses. Zahlen Sie nur eine Erfolgsgebühr, wenn Klienten über unsere Plattform zu Ihnen finden.",
+              "Werden Sie Teil unseres kuratierten Netzwerks. Zahlen Sie nur eine Erfolgsgebühr, wenn Klienten über unsere Plattform zu Ihnen finden.",
           }),
         }}
       />
@@ -74,7 +74,7 @@ export default function TherapistsPage() {
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Service",
-            name: "Therapeuten-Verzeichnis",
+            name: "Therapeuten-Empfehlungen",
             provider: { "@type": "Organization", name: "Kaufmann Health" },
             areaServed: "DE",
             audience: { "@type": "Audience", audienceType: "HealthcareProfessional" },
@@ -95,12 +95,12 @@ export default function TherapistsPage() {
           Neue Klienten für Ihre Praxis
         </h1>
         <p className="mt-4 max-w-2xl text-base text-gray-600 sm:text-lg">
-          Werden Sie Teil unseres Therapeuten-Verzeichnisses. Zahlen Sie nur eine Erfolgsgebühr, wenn Klienten über unsere Plattform zu Ihnen finden.
+          Werden Sie Teil unseres kuratierten Netzwerks. Zahlen Sie nur eine Erfolgsgebühr, wenn Klienten über unsere Plattform zu Ihnen finden.
         </p>
         <div className="mt-6">
           <Button size="lg" asChild data-cta="therapists-hero-apply" data-audience="therapists">
             <CtaLink href="#apply-form" eventType="cta_click" eventId="fuer-therapeuten-hero-apply">
-              In Verzeichnis aufnehmen lassen →
+              In Netzwerk aufnehmen lassen →
             </CtaLink>
           </Button>
         </div>
@@ -130,11 +130,11 @@ export default function TherapistsPage() {
 
       {/* Solution */}
       <section aria-labelledby="solution" className="mt-12 sm:mt-16">
-        <h2 id="solution" className="text-2xl font-semibold">Unser Verzeichnis-Service</h2>
+        <h2 id="solution" className="text-2xl font-semibold">Unser Empfehlungsservice</h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-xl border bg-white p-5">
             <Target className="h-5 w-5 text-indigo-600" />
-            <h3 className="mt-2 font-medium">Spezialisiertes Verzeichnis</h3>
+            <h3 className="mt-2 font-medium">Spezialisiertes Netzwerk</h3>
             <p className="mt-1 text-sm text-gray-600">Fokus auf körperorientierte Verfahren</p>
           </div>
           <div className="rounded-xl border bg-white p-5">
@@ -157,17 +157,17 @@ export default function TherapistsPage() {
 
       {/* How it works */}
       <section aria-labelledby="how" className="mt-12 sm:mt-16">
-        <h2 id="how" className="text-2xl font-semibold">So funktioniert unser Verzeichnis</h2>
+        <h2 id="how" className="text-2xl font-semibold">So funktioniert unser Empfehlungsservice</h2>
         <div className="relative mt-6 pl-8">
           <div className="absolute inset-y-0 left-3 w-px bg-slate-200" />
           <ol className="space-y-6 text-gray-700">
             <li className="relative">
               <span className="absolute -left-8 top-0 grid size-6 place-items-center rounded-full bg-indigo-600 text-xs font-semibold text-white">1</span>
-              <p><strong>Kostenlose Aufnahme</strong> – Wir prüfen Ihre Qualifikationen und nehmen Sie in unser Verzeichnis auf</p>
+              <p><strong>Kostenlose Aufnahme</strong> – Wir prüfen Ihre Qualifikationen und nehmen Sie in unser Netzwerk auf</p>
             </li>
             <li className="relative">
               <span className="absolute -left-8 top-0 grid size-6 place-items-center rounded-full bg-indigo-600 text-xs font-semibold text-white">2</span>
-              <p><strong>Sichtbarkeit für Interessenten</strong> – Klienten finden Sie über unser Verzeichnis und unsere Orientierungshilfe</p>
+              <p><strong>Sichtbarkeit für Interessenten</strong> – Klienten finden Sie über unser Netzwerk und unsere Orientierungshilfe</p>
             </li>
             <li className="relative">
               <span className="absolute -left-8 top-0 grid size-6 place-items-center rounded-full bg-indigo-600 text-xs font-semibold text-white">3</span>
@@ -175,7 +175,7 @@ export default function TherapistsPage() {
             </li>
             <li className="relative">
               <span className="absolute -left-8 top-0 grid size-6 place-items-center rounded-full bg-indigo-600 text-xs font-semibold text-white">4</span>
-              <p><strong>Erfolgsbasierte Gebühr</strong> – Nur wenn Klienten über unser Verzeichnis zu Ihnen finden, zahlen Sie 25% der ersten 10 Sitzungen</p>
+              <p><strong>Erfolgsbasierte Gebühr</strong> – Nur wenn Klienten über unser Netzwerk zu Ihnen finden, zahlen Sie 25% der ersten 10 Sitzungen</p>
             </li>
           </ol>
         </div>
@@ -183,7 +183,7 @@ export default function TherapistsPage() {
 
       {/* Requirements */}
       <section aria-labelledby="requirements" className="mt-12 sm:mt-16">
-        <h2 id="requirements" className="text-2xl font-semibold">Voraussetzungen für die Verzeichnis-Aufnahme</h2>
+        <h2 id="requirements" className="text-2xl font-semibold">Voraussetzungen für die Aufnahme ins Netzwerk</h2>
         <ul className="mt-4 grid gap-3 sm:grid-cols-2">
           <li className="flex items-start gap-3 rounded-xl border bg-white p-4 text-gray-700"><CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" /> Heilpraktiker für Psychotherapie oder approbierter Psychotherapeut</li>
           <li className="flex items-start gap-3 rounded-xl border bg-white p-4 text-gray-700"><CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" /> Spezialisierung auf körperorientierte Verfahren (NARM, Hakomi, Somatic Experiencing, Core Energetics)</li>
@@ -230,7 +230,7 @@ export default function TherapistsPage() {
         <h2 id="service" className="text-2xl font-semibold">Unser Service im Detail</h2>
         <div className="mt-4 rounded-xl border bg-slate-50 p-5">
           <p className="max-w-prose text-sm text-gray-700">
-            Kaufmann Health betreibt ein Informationsverzeichnis für Heilpraktiker der Psychotherapie. Wir stellen Kontaktmöglichkeiten zwischen Interessenten und Therapeuten her, ohne therapeutische Empfehlungen zu geben oder Behandlungserfolge zu garantieren.
+            Kaufmann Health ist eine Informationsplattform für Heilpraktiker der Psychotherapie. Wir stellen Kontaktmöglichkeiten zwischen Interessenten und Therapeuten her. Wir geben keine medizinischen oder therapeutischen Empfehlungen und garantieren keine Behandlungserfolge.
           </p>
         </div>
       </section>
@@ -248,7 +248,7 @@ export default function TherapistsPage() {
         <div className="rounded-2xl border bg-gradient-to-b from-indigo-50 to-white p-6 sm:p-8">
           <h2 id="apply" className="text-2xl font-semibold">Bereit für mehr Sichtbarkeit?</h2>
           <p className="mt-2 text-gray-700">
-            Werden Sie jetzt Teil unseres Verzeichnisses für körperorientierte Psychotherapie.
+            Werden Sie jetzt Teil unseres kuratierten Netzwerks für körperorientierte Psychotherapie.
           </p>
           <div className="mt-8">
             <TherapistApplicationForm />

@@ -38,8 +38,8 @@ export default function Footer() {
               Über Kaufmann Health
             </h2>
             <p className="max-w-prose text-sm leading-relaxed text-gray-600">
-              Kaufmann Health ist ein Informationsverzeichnis. Wir stellen Kontaktdaten zur Verfügung, vermitteln aber keine
-              therapeutischen Leistungen. Die Therapiewahl liegt allein bei Ihnen.
+              Kaufmann Health ist eine Informationsplattform. Wir stellen den Kontakt zu sorgfältig geprüften Therapeuten her und
+              geben keine medizinischen oder therapeutischen Empfehlungen oder Erfolgsversprechen. Die Therapiewahl liegt allein bei Ihnen.
             </p>
           </section>
         </div>

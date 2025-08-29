@@ -62,7 +62,7 @@ export default function Home() {
         {/* Social Proof */}
         <section aria-labelledby="social-proof" className="mb-12">
           <h2 id="social-proof" className="text-sm font-medium text-gray-700">
-            Therapeuten in unserem Verzeichnis sind zertifiziert in:
+            Unsere sorgfältig geprüften Therapeuten sind zertifiziert in:
           </h2>
           <div className="mt-4 grid grid-cols-2 items-center gap-6 sm:grid-cols-4 lg:grid-cols-4">
             <Image
@@ -103,7 +103,7 @@ export default function Home() {
         {/* Features */}
         <section aria-labelledby="features" className="mb-14">
           <h2 id="features" className="text-2xl font-semibold">
-            Was unser Verzeichnis auszeichnet
+            Was unsere Empfehlungen auszeichnet
           </h2>
           <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-lg border bg-white p-5 transition-all duration-200 hover:shadow-md">
@@ -118,8 +118,8 @@ export default function Home() {
               <h3 className="text-lg font-medium">Persönliche Orientierungshilfe</h3>
               <p className="mt-2 text-sm text-gray-600">
                 Unsicher welche Therapieform passt? Wir besprechen gerne Ihre
-                Optionen und zeigen Ihnen relevante Therapeuten aus unserem
-                Verzeichnis.
+                Optionen und schlagen Ihnen passende Therapeuten aus unserem Netzwerk
+                sorgfältig geprüfter Therapeuten vor.
               </p>
             </div>
             <div className="rounded-lg border bg-white p-5 transition-all duration-200 hover:shadow-md">
@@ -144,7 +144,7 @@ export default function Home() {
                   Neue Klienten für Ihre Praxis
                 </h2>
                 <p className="mt-2 text-gray-600">
-                  Werden Sie Teil unseres Therapeuten-Verzeichnisses. Zahlen Sie
+                  Werden Sie Teil unseres kuratierten Netzwerks. Zahlen Sie
                   nur eine Erfolgsgebühr, wenn Klienten über unsere Plattform zu
                   Ihnen finden.
                 </p>
@@ -157,7 +157,7 @@ export default function Home() {
                   data-audience="therapists"
                 >
                   <Link href="/fuer-therapeuten">
-                    In Verzeichnis aufnehmen lassen →
+                    In Netzwerk aufnehmen lassen →
                   </Link>
                 </Button>
               </div>

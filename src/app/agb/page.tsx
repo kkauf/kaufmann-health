@@ -10,9 +10,9 @@ export default function AgbPage() {
           <section aria-labelledby="geltungsbereich">
             <h2 id="geltungsbereich" className="text-xl font-semibold">1. Geltungsbereich und Vertragscharakter</h2>
             <p className="mt-3">
-              Diese AGB gelten für alle Dienstverträge über die Nutzung der Informationsplattform Kaufmann Health, die als
-              Therapeutenverzeichnis und Kontaktherstellungsdienst zwischen Heilpraktikern für Psychotherapie/Psychotherapeuten
-              (&quot;Anbieter&quot;) und Klienten dient. Die Plattform bietet Orientierungshilfe und Qualitätsprüfung der Profile. Abweichende
+              Diese AGB gelten für alle Dienstverträge über die Nutzung der Informationsplattform Kaufmann Health als
+              Informations‑ und Kontaktvermittlungsdienst zwischen Heilpraktikern für Psychotherapie/Psychotherapeuten
+              (&quot;Anbieter&quot;) und Klienten. Die Plattform bietet Orientierungshilfe und Qualitätsprüfung der Profile. Abweichende
               Bedingungen des Nutzers gelten nur bei ausdrücklicher schriftlicher Zustimmung. Soweit diese AGB keine abweichenden
               Regelungen treffen, gelten die gesetzlichen Bestimmungen der §§ 611 ff. BGB (Dienstvertrag).
             </p>
@@ -42,15 +42,15 @@ export default function AgbPage() {
           <section aria-labelledby="leistungen">
             <h2 id="leistungen" className="text-xl font-semibold">3. Leistungen der Plattform</h2>
             <ul className="mt-3 list-disc space-y-1 pl-6">
-              <li>Bereitstellung eines Therapeutenverzeichnisses</li>
+              <li>Bereitstellung einer Informationsplattform mit Profilen sorgfältig geprüfter Therapeuten</li>
               <li>Kontaktherstellung zwischen Klienten und Anbietern basierend auf Präferenzen</li>
               <li>Orientierungshilfe bei der Therapeutensuche</li>
               <li>Qualitätsprüfung der Anbieterprofile</li>
               <li>Dashboard für Anbieter zur Verwaltung ihrer Profile</li>
             </ul>
             <p className="mt-3">
-              Die Plattform bietet ausschließlich Informationsvermittlung und Kontaktherstellung. Eine Empfehlung, Beratung oder Auswahl
-              bestimmter Anbieter erfolgt nicht.
+              Die Plattform bietet Informationsvermittlung, Kontaktaufnahme und Orientierungshilfe. Es erfolgen keine medizinischen oder
+              therapeutischen Empfehlungen und keine Erfolgsversprechen.
             </p>
           </section>
 

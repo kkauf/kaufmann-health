@@ -33,11 +33,11 @@ export function renderPatientConfirmation(params: {
     <div style="background-color:#FFFFFF; padding:16px; border-radius:8px; border:1px solid #E5E7EB;">
       <h3 style="margin:0 0 8px; color:#1A365D; font-size:16px;">Wie geht es weiter?</h3>
       <ol style="margin:0 0 0 18px; padding:0;">
-        <li style="margin:0 0 6px;">Wir prüfen Ihre Anfrage und suchen passende Therapeuten aus unserem Verzeichnis.</li>
+        <li style="margin:0 0 6px;">Wir prüfen Ihre Anfrage und wählen passende Profile aus unserem kuratierten Netzwerk sorgfältig geprüfter Therapeuten.</li>
         <li style="margin:0 0 6px;">Sie erhalten in der Regel innerhalb von 24&nbsp;Stunden eine Rückmeldung per E‑Mail.</li>
         <li style="margin:0;">Bei Rückfragen melden wir uns direkt bei Ihnen. Antworten Sie gerne auf diese E‑Mail.</li>
       </ol>
-      <div style="text-align:center; margin-top:12px;">${renderButton(BASE_URL + '/therapie-finden', 'Therapeuten ansehen')}</div>
+      <div style="text-align:center; margin-top:12px;">${renderButton(BASE_URL + '/therapie-finden', 'Mehr zur Therapeuten-Empfehlung')}</div>
     </div>
     <p style="color:#6B7280; font-size:12px; margin-top:16px;">Sie können jederzeit auf diese Nachricht antworten, falls Sie Ergänzungen oder Fragen haben.</p>
   `;

@@ -18,21 +18,21 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://kaufmann-health.de"),
   title:
-    "Therapeutenverzeichnis – Körperorientierte Therapeuten in Ihrer Nähe | Kaufmann Health",
+    "Therapeuten-Empfehlung – Sorgfältig geprüfte Therapeuten in Ihrer Nähe | Kaufmann Health",
   description:
-    "Finden Sie körperorientierte Therapeuten in Ihrer Nähe. Verzeichnis für Heilpraktiker der Psychotherapie – spezialisiert auf NARM, Hakomi und Somatic Experiencing.",
+    "Persönlich kuratierte Therapeuten-Empfehlungen für körperorientierte Psychotherapie (NARM, Hakomi, Somatic Experiencing). Direkter Kontakt, transparente Auswahl, ohne Wartezeit.",
   keywords: [
     "Therapeuten finden",
-    "Therapeutenverzeichnis",
+    "Therapeuten-Empfehlung",
     "Körperorientierte Psychotherapie",
     "NARM",
     "Hakomi",
     "Somatic Experiencing",
   ],
   openGraph: {
-    title: "Therapeutenverzeichnis | Kaufmann Health",
+    title: "Therapeuten-Empfehlung | Kaufmann Health",
     description:
-      "Durchsuchbares Verzeichnis von Heilpraktikern für Psychotherapie. Spezialisiert auf NARM, Hakomi und Somatic Experiencing.",
+      "Persönlich kuratierte Empfehlungen und Kontaktdaten sorgfältig geprüfter Therapeuten (NARM, Hakomi, Somatic Experiencing).",
     url: "https://kaufmann-health.de/",
     siteName: "Kaufmann Health",
     locale: "de_DE",

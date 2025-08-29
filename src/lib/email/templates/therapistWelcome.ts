@@ -12,7 +12,7 @@ export function renderTherapistWelcome(params: {
   const city = (params.city || '').trim();
 
   const leadStatusMessage = params.isActiveCity
-    ? 'Sie können ab sofort Klienten-Anfragen über unser Verzeichnis erhalten.'
+    ? 'Sie können ab sofort Klienten‑Anfragen über unser Netzwerk erhalten.'
     : `Kaufmann Health startet bald in ${city || 'Ihrer Stadt'}. Wir melden uns, sobald wir live sind.`;
 
   const termsUrl = `${BASE_URL}/therapist-terms?version=${encodeURIComponent(params.termsVersion)}`;
@@ -22,12 +22,12 @@ export function renderTherapistWelcome(params: {
   const contentHtml = `
     <h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Willkommen bei Kaufmann Health!</h1>
     <p style="margin:0 0 12px;">Hallo${name ? ` ${escapeHtml(name)}` : ''},</p>
-    <p style="margin:0 0 12px;">vielen Dank für Ihre Registrierung in unserem Therapeuten-Verzeichnis. Ihr Vertrag ist ab sofort aktiv.</p>
+    <p style="margin:0 0 12px;">vielen Dank für Ihre Registrierung in unserem kuratierten Netzwerk. Ihr Vertrag ist ab sofort aktiv.</p>
     <p style="margin:0 0 16px;"><strong>${escapeHtml(leadStatusMessage)}</strong></p>
 
     <div style="background-color:#F9FAFB; padding:16px; border-radius:8px; border:1px solid #E5E7EB; margin: 20px 0;">
       <h3 style="margin:0 0 8px; color:#1A365D; font-size:16px;">Nächste Schritte</h3>
-      <p style="margin:0 0 8px;">Haben Sie Fragen zum Ablauf oder möchten Sie mehr über unser Verzeichnis erfahren?</p>
+      <p style="margin:0 0 8px;">Haben Sie Fragen zum Ablauf oder möchten Sie mehr über unseren Empfehlungsservice erfahren?</p>
       <p style="margin:0 0 16px;">Buchen Sie gerne ein kurzes Kennenlernen mit uns:</p>
       <div style="text-align:center;">${renderButton('https://cal.com/kkauf/15min', 'Kennenlern-Call buchen')}</div>
     </div>
