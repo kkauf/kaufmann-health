@@ -34,6 +34,8 @@ async function assertAdmin(req: Request): Promise<boolean> {
 
 const ALLOWED_STATUSES = new Set([
   'proposed',
+  'accepted',
+  'declined',
   'therapist_contacted',
   'therapist_responded',
   'session_booked',
@@ -153,6 +155,7 @@ export async function PATCH(req: Request) {
       const nowIso = new Date().toISOString();
       if (status === 'therapist_contacted') update['therapist_contacted_at'] = nowIso;
       if (status === 'therapist_responded') update['therapist_responded_at'] = nowIso;
+      if (status === 'accepted' || status === 'declined') update['therapist_responded_at'] = nowIso;
       if (status === 'session_booked' || status === 'completed') update['patient_confirmed_at'] = nowIso;
     }
     if (typeof notes === 'string') update.notes = notes;

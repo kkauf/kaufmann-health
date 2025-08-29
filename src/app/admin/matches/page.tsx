@@ -26,6 +26,8 @@ type MatchRow = {
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'proposed', label: 'Vorgeschlagen' },
+  { value: 'accepted', label: 'Akzeptiert' },
+  { value: 'declined', label: 'Abgelehnt' },
   { value: 'therapist_contacted', label: 'Therapeut kontaktiert' },
   { value: 'therapist_responded', label: 'Therapeut antwortete' },
   { value: 'session_booked', label: 'Sitzung gebucht' },
@@ -36,6 +38,10 @@ const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
 function StatusBadge({ status }: { status: string }) {
   const cls = useMemo(() => {
     switch (status) {
+      case 'accepted':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'declined':
+        return 'bg-red-100 text-red-800 border-red-200';
       case 'therapist_contacted':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'therapist_responded':

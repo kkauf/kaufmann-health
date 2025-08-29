@@ -100,7 +100,10 @@ export function Actions({
           {loading === 'decline' ? 'Bitte warten…' : 'Ablehnen'}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">Hinweis: Es werden keine Cookies gesetzt. Ihre Antwort wird nur zur Bearbeitung dieser Anfrage verwendet.</p>
+      <p className="text-xs text-muted-foreground">
+        Datenschutz: Wir setzen keine Cookies oder Tracker. Dieser Link läuft aus Sicherheitsgründen nach 72&nbsp;Stunden automatisch ab. Mehr Infos unter{' '}
+        <a href="/datenschutz#cookies" className="underline">Datenschutz</a>.
+      </p>
     </div>
   );
 }

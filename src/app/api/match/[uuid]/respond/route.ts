@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
+import { sendEmail } from '@/lib/email/client';
+import { renderPatientCustomUpdate, renderPatientMatchFound } from '@/lib/email/templates/patientUpdates';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -36,7 +38,7 @@ export async function POST(req: Request) {
 
     const { data: match, error: matchErr } = await supabaseServer
       .from('matches')
-      .select('id, status, created_at, patient_id')
+      .select('id, status, created_at, patient_id, therapist_id')
       .eq('secure_uuid', uuid)
       .single();
 
@@ -45,7 +47,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
     }
 
-    type MatchRow = { id: string; status?: string | null; created_at?: string | null; patient_id: string };
+    type MatchRow = { id: string; status?: string | null; created_at?: string | null; patient_id: string; therapist_id: string };
     const m = match as unknown as MatchRow;
     const age = hoursSince(m.created_at ?? undefined);
     if (age == null || age > 72) {
@@ -106,6 +108,52 @@ export async function POST(req: Request) {
       source: 'api.match.respond',
       props: { match_id: m.id, action: nextStatus },
     });
+
+    // Fire-and-forget: notify patient about the update (best-effort)
+    try {
+      type PersonRow = { id: string; name?: string | null; email?: string | null };
+      const ids = [m.patient_id, m.therapist_id];
+      const { data: people, error: pErr } = await supabaseServer
+        .from('people')
+        .select('id, name, email')
+        .in('id', ids);
+      if (!pErr && Array.isArray(people)) {
+        const persons = people as unknown as PersonRow[];
+        const byId = new Map<string, PersonRow>();
+        for (const p of persons) byId.set(String(p.id), p);
+        const patient = byId.get(m.patient_id);
+        const therapist = byId.get(m.therapist_id);
+        const patientEmail = (patient?.email || '').trim();
+        const patientName = (patient?.name || '') || null;
+        if (patientEmail) {
+          if (nextStatus === 'accepted') {
+            const therapistName = (therapist?.name || '') || null;
+            const content = renderPatientMatchFound({ patientName, therapistName, specializations: [] });
+            void sendEmail({
+              to: patientEmail,
+              subject: content.subject,
+              html: content.html,
+              text: content.text,
+              context: { kind: 'patient_update_auto', template: 'match_found', match_id: m.id, patient_id: m.patient_id, therapist_id: m.therapist_id },
+            });
+          } else if (nextStatus === 'declined') {
+            const message =
+              'kurzes Update: Der vorgeschlagene Therapeut kann Ihren Fall leider nicht übernehmen. Wir suchen weiterhin nach einer passenden Option und melden uns schnellstmöglich.';
+            const content = renderPatientCustomUpdate({ patientName, message });
+            void sendEmail({
+              to: patientEmail,
+              subject: content.subject,
+              html: content.html,
+              text: content.text,
+              context: { kind: 'patient_update_auto', template: 'declined', match_id: m.id, patient_id: m.patient_id, therapist_id: m.therapist_id },
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Never block the response flow; log for observability.
+      void logError('api.match.respond', e, { stage: 'notify_patient', match_id: m.id, action: nextStatus });
+    }
 
     return NextResponse.json({ data: { status: nextStatus }, error: null });
   } catch (e) {
