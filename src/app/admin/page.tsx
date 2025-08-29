@@ -17,7 +17,10 @@ export default async function AdminHomePage() {
       <h1 className="text-2xl font-semibold mb-2">Admin Dashboard</h1>
       <p className="text-muted-foreground">Willkommen. Dies ist ein Platzhalter für die kommenden Matching-Tools.</p>
       <div className="mt-4">
-        <Link href="/admin/leads" className="underline">Zu den Leads & Matching →</Link>
+        <div className="flex gap-4 flex-wrap">
+          <Link href="/admin/leads" className="underline">Zu den Leads & Matching →</Link>
+          <Link href="/admin/matches" className="underline">Match-Status-Dashboard →</Link>
+        </div>
       </div>
     </main>
   );
