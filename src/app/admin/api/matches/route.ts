@@ -165,7 +165,7 @@ export async function PATCH(req: Request) {
       supabaseServer.from('matches').update(payload).eq('id', id);
 
     // Try update with progressive fallback removing columns that don't exist
-    let payload: Record<string, unknown> = { ...update };
+    const payload: Record<string, unknown> = { ...update };
     let lastError: unknown = null;
     for (let attempt = 0; attempt < 5; attempt++) {
       const attemptPayload = { ...payload };
