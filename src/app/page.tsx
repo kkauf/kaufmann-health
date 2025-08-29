@@ -31,8 +31,8 @@ export default function Home() {
             Finden Sie körperorientierte Trauma-Therapeuten
           </h1>
           <p className="mt-4 max-w-2xl text-base text-gray-600 sm:text-lg">
-            Durchsuchbares Verzeichnis qualifizierter Therapeuten.
-            Geprüfte Profile. Direkte Kontaktaufnahme.
+          Persönlich kuratierte Therapeuten-Empfehlungen.
+          Handverlesen und persönlich geprüft, für eine Empfehlung, der Sie vertrauen können.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Button
@@ -54,7 +54,7 @@ export default function Home() {
             </Button>
           </div>
           <p className="mt-3 text-sm text-gray-500">
-            Bereits über 250 Therapeuten in unserem Verzeichnis
+            Persönlich kuratierte Therapeuten-Empfehlungen
           </p>
         </section>
 
