@@ -4,10 +4,13 @@ import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { buildEventId } from '@/lib/analytics';
 import { TERMS_VERSION } from '@/content/therapist-terms';
 import { getAttribution } from '@/lib/attribution';
 import { getOrCreateSessionId } from '@/lib/attribution';
+import { getEmailError } from '@/lib/validation';
+import Link from 'next/link';
 
 // Re-export for tests to assert version consistency
 export const THERAPIST_TERMS_VERSION = TERMS_VERSION;
@@ -16,12 +19,15 @@ export default function TherapistApplicationForm() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const statusRef = useRef<HTMLDivElement>(null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setMessage(null);
     setSubmitted(false);
+    setErrors({});
 
     const form = new FormData(e.currentTarget);
     // Honeypot field: if filled, silently accept and bail
@@ -37,23 +43,21 @@ export default function TherapistApplicationForm() {
     }
 
     // Client-side validation (German messages)
-    const email = form.get('email')?.toString().trim() || '';
-    if (!email) {
-      setMessage('Bitte geben Sie Ihre E‑Mail-Adresse ein.');
+    const emailRaw = form.get('email')?.toString();
+    const emailErr = getEmailError(emailRaw);
+    if (emailErr) {
+      setErrors({ email: emailErr });
       return;
     }
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      setMessage('Bitte geben Sie eine gültige E‑Mail-Adresse ein.');
-      return;
-    }
+    const email = (emailRaw || '').trim();
     const qualification = form.get('qualification')?.toString() || '';
     if (!qualification) {
-      setMessage('Bitte wählen Sie Ihre Qualifikation.');
+      setErrors({ qualification: 'Bitte wählen Sie Ihre Qualifikation.' });
       return;
     }
     const experience = form.get('experience')?.toString() || '';
     if (!experience) {
-      setMessage('Bitte wählen Sie Ihre Berufserfahrung.');
+      setErrors({ experience: 'Bitte wählen Sie Ihre Berufserfahrung.' });
       return;
     }
 
@@ -63,7 +67,7 @@ export default function TherapistApplicationForm() {
       .map((v) => v.toString())
       .filter((v) => v === 'online' || v === 'in_person') as ('online' | 'in_person')[];
     if (session_preferences.length === 0) {
-      setMessage('Bitte wählen Sie Ihre Sitzungsart.');
+      setErrors({ session_preference: 'Bitte wählen Sie Ihre Sitzungsart.' });
       return;
     }
     const session_preference = session_preferences.length === 1 ? session_preferences[0] : undefined;
@@ -125,21 +129,31 @@ export default function TherapistApplicationForm() {
       } catch {}
 
       setSubmitted(true);
+      setSubmittedEmail(email);
       requestAnimationFrame(() => {
         statusRef.current?.focus();
         statusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
       (e.target as HTMLFormElement).reset();
     } catch (err: unknown) {
-      let msg = err instanceof Error ? err.message : 'Fehler beim Senden.';
+      const msg = err instanceof Error ? err.message : 'Fehler beim Senden.';
       const map: Record<string, string> = {
         'Invalid email': 'Bitte geben Sie eine gültige E‑Mail-Adresse ein.',
         'Rate limited': 'Zu viele Anfragen. Bitte versuchen Sie es in einer Minute erneut.',
         'Failed to save lead': 'Speichern fehlgeschlagen. Bitte später erneut versuchen.',
         'Invalid JSON': 'Ungültige Eingabe. Bitte Formular prüfen.',
       };
-      if (map[msg]) msg = map[msg];
-      setMessage(msg);
+      if (map[msg]) {
+        const friendly = map[msg];
+        if (friendly.includes('E‑Mail-Adresse')) {
+          setErrors({ email: friendly });
+          setMessage(null);
+        } else {
+          setMessage(friendly);
+        }
+      } else {
+        setMessage(msg);
+      }
       setSubmitted(false);
     } finally {
       setLoading(false);
@@ -147,31 +161,33 @@ export default function TherapistApplicationForm() {
   }
 
   return (
-    <form id="apply-form" onSubmit={onSubmit} noValidate className="max-w-2xl scroll-mt-28 space-y-6">
+    <>
+      {submitted && (
+        <Card ref={statusRef} tabIndex={-1} className="max-w-2xl scroll-mt-28 mb-6">
+          <CardHeader>
+            <CardTitle>Registrierung erfolgreich</CardTitle>
+            <CardDescription>Wir haben Ihre Registrierung erhalten.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm">
+              Wir haben Ihnen eine Bestätigungs-E‑Mail{submittedEmail ? ` an ${submittedEmail}` : ''} gesendet. Bitte prüfen Sie auch Ihren SPAM‑Ordner, sollten Sie die E‑Mail nicht erhalten haben.
+            </p>
+            <p className="text-sm mt-3">
+              Falls Ihre E‑Mail-Adresse falsch ist, schreiben Sie uns direkt: <a className="underline" href="mailto:kontakt@kaufmann-health.de">kontakt@kaufmann-health.de</a>.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Link href="/" className="underline text-sm">Zur Startseite</Link>
+          </CardFooter>
+        </Card>
+      )}
+      <form id="apply-form" onSubmit={onSubmit} noValidate className="max-w-2xl scroll-mt-28 space-y-6" hidden={submitted}>
 
       {/* Honeypot field (leave empty) */}
       <div className="sr-only" aria-hidden="true">
         <Label htmlFor="company">Firma</Label>
         <Input id="company" name="company" tabIndex={-1} autoComplete="off" />
       </div>
-
-      {/* Success banner */}
-      {submitted && (
-        <div
-          ref={statusRef}
-          role="alert"
-          tabIndex={-1}
-          className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-900 flex gap-3"
-        >
-          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" className="mt-0.5">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.707a1 1 0 00-1.414-1.414L9 10.172 7.707 8.879a1 1 0 10-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-          </svg>
-          <div>
-            <p className="font-medium">Registrierung erfolgreich</p>
-            <p className="text-sm">Vielen Dank! Wir haben Ihre Registrierung erhalten. Sie erhalten in Kürze eine E‑Mail mit weiteren Informationen.</p>
-          </div>
-        </div>
-      )}
 
       {/* Compact two‑column layout */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -186,7 +202,8 @@ export default function TherapistApplicationForm() {
 
         <div className="space-y-2">
           <Label htmlFor="email">E-Mail-Adresse</Label>
-          <Input id="email" name="email" type="email" placeholder="E-Mail-Adresse" />
+          <Input id="email" name="email" type="email" placeholder="E-Mail-Adresse" aria-invalid={Boolean(errors.email)} className={errors.email ? 'border-red-500 focus-visible:ring-red-500' : undefined} />
+          {errors.email && <p className="text-xs text-red-600">{errors.email}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="phone">Telefonnummer</Label>
@@ -210,6 +227,7 @@ export default function TherapistApplicationForm() {
             </label>
           </div>
           <p className="text-xs text-gray-500">Wählen Sie eine oder beide Optionen.</p>
+          {errors.session_preference && <p className="text-xs text-red-600">{errors.session_preference}</p>}
         </fieldset>
 
         <div className="space-y-2">
@@ -218,12 +236,16 @@ export default function TherapistApplicationForm() {
             id="qualification"
             name="qualification"
             defaultValue=""
-            className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 flex h-9 w-full min-w-0 rounded-md border bg-white px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm"
+            className={
+              "border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 flex h-9 w-full min-w-0 rounded-md border bg-white px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm" +
+              (errors.qualification ? ' border-red-500 focus-visible:ring-red-500' : '')
+            }
           >
             <option value="" disabled>Bitte wählen</option>
             <option value="Heilpraktiker für Psychotherapie">Heilpraktiker für Psychotherapie</option>
             <option value="Approbierter Psychotherapeut">Approbierter Psychotherapeut</option>
           </select>
+          {errors.qualification && <p className="text-xs text-red-600">{errors.qualification}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="experience">Berufserfahrung</Label>
@@ -231,13 +253,17 @@ export default function TherapistApplicationForm() {
             id="experience"
             name="experience"
             defaultValue=""
-            className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 flex h-9 w-full min-w-0 rounded-md border bg-white px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm"
+            className={
+              "border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 flex h-9 w-full min-w-0 rounded-md border bg-white px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm" +
+              (errors.experience ? ' border-red-500 focus-visible:ring-red-500' : '')
+            }
           >
             <option value="" disabled>Bitte wählen</option>
             <option value="< 2 Jahre">Weniger als 2 Jahre</option>
             <option value="2-4 Jahre">2–4 Jahre</option>
             <option value="> 4 Jahre">Mehr als 4 Jahre</option>
           </select>
+          {errors.experience && <p className="text-xs text-red-600">{errors.experience}</p>}
         </div>
 
         <fieldset className="space-y-2 sm:col-span-2">
@@ -294,8 +320,9 @@ export default function TherapistApplicationForm() {
 
       {/* Non-success inline status for errors */}
       <div aria-live="polite" role="status">
-        {!submitted && message && <p className="text-sm text-gray-700">{message}</p>}
+        {!submitted && message && <p className="text-sm text-red-600">{message}</p>}
       </div>
     </form>
+    </>
   );
 }
