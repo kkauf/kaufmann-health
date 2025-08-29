@@ -8,14 +8,32 @@ import { logError, track } from '@/lib/logger';
  */
 export async function sendEmail(params: SendEmailParams): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return; // disabled in tests or locally
+  if (!apiKey) {
+    // Observability: make it visible when emailing is disabled
+    await track({
+      type: 'email_skipped',
+      level: 'warn',
+      source: 'email.client',
+      props: { reason: 'missing_api_key', subject: params.subject, ...(params.context || {}) },
+    });
+    return; // disabled in tests or locally
+  }
 
   const toList = !params.to
     ? []
     : Array.isArray(params.to)
     ? params.to
     : [params.to];
-  if (toList.length === 0) return;
+  if (toList.length === 0) {
+    // Observability: no recipient provided
+    await track({
+      type: 'email_skipped',
+      level: 'warn',
+      source: 'email.client',
+      props: { reason: 'missing_recipient', subject: params.subject, ...(params.context || {}) },
+    });
+    return;
+  }
 
   const fromAddress = params.from || process.env.LEADS_FROM_EMAIL || EMAIL_FROM_DEFAULT;
 
@@ -50,11 +68,12 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
 
       if (resp.ok) {
         // Success: log once and exit.
-        void track({
+        await track({
           type: 'email_sent',
           level: 'info',
           source: 'email.client',
           props: {
+            subject: params.subject,
             to_count: toList.length,
             has_html: Boolean(params.html),
             has_text: Boolean(params.text),
@@ -72,7 +91,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
       } catch {}
 
       const retryable = status === 429 || (status >= 500 && status < 600);
-      void logError('email.client', { name: 'EmailNonOk', message: `Resend returned ${status}` }, {
+      await logError('email.client', { name: 'EmailNonOk', message: `Resend returned ${status}` }, {
         subject: params.subject,
         to_count: toList.length,
         has_html: Boolean(params.html),
@@ -89,7 +108,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
     } catch (e) {
       clearTimeout(timer);
       // Network error or timeout; log and maybe retry.
-      void logError('email.client', e, {
+      await logError('email.client', e, {
         subject: params.subject,
         to_count: toList.length,
         has_html: Boolean(params.html),

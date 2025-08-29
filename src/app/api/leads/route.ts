@@ -261,15 +261,16 @@ export async function POST(req: Request) {
             stage: 'therapist_welcome',
             lead_id: inserted.id,
             lead_type: leadType,
+            subject: welcome.subject,
             ...(session_id ? { session_id } : {}),
           },
         });
-        void sendEmail({
+        await sendEmail({
           to: data.email,
           subject: welcome.subject,
           html: welcome.html,
           context: { stage: 'therapist_welcome', lead_id: inserted.id, lead_type: leadType, ...(session_id ? { session_id } : {}) },
-        }).catch(() => {});
+        });
       } catch (e) {
         console.error('[welcome-email] Failed to render/send therapist welcome', e);
         void logError('api.leads', e, { stage: 'welcome_email' }, ip, ua);
@@ -296,15 +297,16 @@ export async function POST(req: Request) {
             stage: 'patient_confirmation',
             lead_id: inserted.id,
             lead_type: leadType,
+            subject: confirmation.subject,
             ...(session_id ? { session_id } : {}),
           },
         });
-        void sendEmail({
+        await sendEmail({
           to: data.email,
           subject: confirmation.subject,
           html: confirmation.html,
           context: { stage: 'patient_confirmation', lead_id: inserted.id, lead_type: leadType, ...(session_id ? { session_id } : {}) },
-        }).catch(() => {});
+        });
       } catch (e) {
         console.error('[patient-confirmation-email] Failed to render/send patient confirmation', e);
         void logError('api.leads', e, { stage: 'patient_confirmation_email' }, ip, ua);
@@ -364,6 +366,7 @@ export async function POST(req: Request) {
             stage: 'internal_notification',
             lead_id: inserted.id,
             lead_type: leadType,
+            subject: notif.subject,
             ...(session_id ? { session_id } : {}),
           },
         });
