@@ -202,7 +202,7 @@ export class GoogleAdsTracker {
       if (!token) return;
 
       const operations = conversions.map((c) => this.buildOperation(c));
-      const url = `https://googleads.googleapis.com/v17/customers/${this.customerId}:uploadUserData`;
+      const url = `https://googleads.googleapis.com/v20/customers/${this.customerId}:uploadUserData`;
       const headers: Record<string, string> = {
         Authorization: `Bearer ${token}`,
         'developer-token': this.developerToken!,
