@@ -88,6 +88,16 @@ export class GoogleAdsTracker {
     );
   }
 
+  private missingConfig(): string[] {
+    const missing: string[] = [];
+    if (!this.clientId) missing.push('GOOGLE_ADS_CLIENT_ID');
+    if (!this.clientSecret) missing.push('GOOGLE_ADS_CLIENT_SECRET');
+    if (!this.refreshToken) missing.push('GOOGLE_ADS_REFRESH_TOKEN');
+    if (!this.developerToken) missing.push('GOOGLE_ADS_DEVELOPER_TOKEN');
+    if (!this.customerId) missing.push('GOOGLE_ADS_CUSTOMER_ID');
+    return missing;
+  }
+
   private resolveConversionAction(nameOrAlias: string): string | undefined {
     if (!nameOrAlias) return undefined;
     if (nameOrAlias.startsWith('customers/')) return nameOrAlias; // already a resource name
@@ -176,12 +186,14 @@ export class GoogleAdsTracker {
 
   async uploadEnhancedConversions(conversions: EnhancedConversion[]): Promise<void> {
     try {
+      const actions = conversions.map((c) => c.conversion_action);
+      const orderIds = conversions.map((c) => c.order_id).filter(Boolean);
       // If not configured, no-op but keep an internal trace for observability
       if (!this.isConfigured()) {
         await track({
           type: 'google_ads_noop',
           source: 'google_ads',
-          props: { count: conversions.length },
+          props: { count: conversions.length, actions, order_ids: orderIds, missing: this.missingConfig() },
           level: 'info',
         });
         return;
@@ -194,12 +206,23 @@ export class GoogleAdsTracker {
       if (unresolved.length > 0) {
         await logError('google_ads', new Error('missing_conversion_action_mapping'), {
           missing: unresolved.map((u) => u.a),
+          expected_env_keys: unresolved.map((u) => aliasToEnvKey(u.a)),
+          actions,
+          order_ids: orderIds,
         });
         return;
       }
 
       const token = await this.getAccessToken();
-      if (!token) return;
+      if (!token) {
+        await track({
+          type: 'google_ads_token_unavailable',
+          source: 'google_ads',
+          level: 'warn',
+          props: { count: conversions.length, actions, order_ids: orderIds },
+        });
+        return;
+      }
 
       const operations = conversions.map((c) => this.buildOperation(c));
       const url = `https://googleads.googleapis.com/v20/customers/${this.customerId}:uploadUserData`;
@@ -224,18 +247,62 @@ export class GoogleAdsTracker {
 
       if (!resp.ok) {
         const text = await resp.text().catch(() => '');
-        throw new Error(`upload_error ${resp.status}: ${text}`);
+        throw new Error(`upload_error ${resp.status}: ${text.slice(0, 500)}`);
       }
 
-      // Swallow body; log success metric
+      // Parse response to capture partial failures and received count
+      let raw: unknown = null;
+      try {
+        raw = await resp.json();
+      } catch {}
+      const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object';
+      const getNumber = (o: unknown, key: string): number | undefined => {
+        if (!isObj(o)) return undefined;
+        const v = o[key];
+        return typeof v === 'number' ? v : undefined;
+      };
+      const getObject = (o: unknown, key: string): Record<string, unknown> | undefined => {
+        if (!isObj(o)) return undefined;
+        const v = o[key];
+        return isObj(v) ? v : undefined;
+      };
+      const received = getNumber(raw, 'receivedOperationsCount');
+      const partial = getObject(raw, 'partialFailureError');
+
+      if (partial) {
+        await track({
+          type: 'google_ads_partial_failure',
+          source: 'google_ads',
+          level: 'warn',
+          props: {
+            actions,
+            order_ids: orderIds,
+            code: getNumber(partial, 'code'),
+            message: (() => {
+              const m = partial['message'];
+              return typeof m === 'string' ? m : undefined;
+            })(),
+          },
+        });
+      }
+
       await track({
         type: 'google_ads_uploaded',
         source: 'google_ads',
         level: 'info',
-        props: { count: conversions.length },
+        props: {
+          count: conversions.length,
+          received,
+          actions,
+          order_ids: orderIds,
+        },
       });
     } catch (e) {
-      await logError('google_ads', e, { stage: 'upload_enhanced_conversions' });
+      await logError('google_ads', e, { stage: 'upload_enhanced_conversions' ,
+        actions: (conversions || []).map((c) => c.conversion_action),
+        order_ids: (conversions || []).map((c) => c.order_id).filter(Boolean),
+        count: (conversions || []).length,
+      });
     }
   }
 }
