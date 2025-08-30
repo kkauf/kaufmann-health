@@ -334,14 +334,47 @@ export async function POST(req: Request) {
             ...(session_id ? { session_id } : {}),
           },
         });
-        void googleAdsTracker
-          .trackConversion({
-            email: data.email,
-            conversionAction: conversionActionAlias,
-            conversionValue: value,
-            orderId: inserted.id,
-          })
-          .catch(() => {});
+        // Allow a short wait so success/failure events from google-ads tracker can flush.
+        const gaPromise = googleAdsTracker.trackConversion({
+          email: data.email,
+          conversionAction: conversionActionAlias,
+          conversionValue: value,
+          orderId: inserted.id,
+        });
+
+        // Wait up to GOOGLE_ADS_WAIT_MS (default: 500 in dev, 0 in prod);
+        // if not finished, mark as deferred so we know to look for follow-ups.
+        let gaDone = false;
+        gaPromise.then(
+          () => {
+            gaDone = true;
+          },
+          async (err) => {
+            gaDone = true;
+            void logError('api.leads', err, { stage: 'google_ads_conversion' }, ip, ua);
+          },
+        );
+        const waitMs = Number(process.env.GOOGLE_ADS_WAIT_MS ?? (process.env.NODE_ENV === 'development' ? 500 : 0));
+        if (waitMs > 0) {
+          await new Promise((r) => setTimeout(r, waitMs));
+          if (!gaDone) {
+            void track({
+              type: 'google_ads_deferred',
+              level: 'info',
+              source: 'api.leads',
+              ip,
+              ua,
+              props: {
+                action: conversionActionAlias,
+                order_id: inserted.id,
+                lead_type: leadType,
+                value,
+                timeout_ms: waitMs,
+                ...(session_id ? { session_id } : {}),
+              },
+            });
+          }
+        }
       }
     } catch (e) {
       void logError('api.leads', e, { stage: 'google_ads_conversion', lead_type: leadType }, ip, ua);
