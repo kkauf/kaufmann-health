@@ -21,3 +21,13 @@
   - Safety: No-op unless env is configured; errors go through unified logger. Secrets live in server env only.
   - Mapping: Conversion action aliases (e.g., `patient_registration`) map to resource names via env `GOOGLE_ADS_CA_*` (see `.env.example`). This lets us add/rename actions without code changes.
   - Trigger points: `POST /api/leads` fires `patient_registration` (10 EUR) and `therapist_registration` (25 EUR) after successful insert. Future events (match, payment, etc.) can call the tracker with their alias.
+
+## Admin Stats & Error Monitoring
+
+- __Why__: Provide operational visibility (therapists/clients/matches totals + short-term trend) and faster error triage without DB access.
+- __Security__: Admin-only via `kh_admin` cookie scoped to `/admin` using HMAC-signed tokens (`src/lib/auth/adminSession.ts`). API responses consistently `{ data, error }`. No PII in metrics.
+- __Performance__: Stats time-series default 7 days, capped at 30; grouped by UTC day. Avoids heavy queries and large payloads.
+- __Data sources__: `people` and `matches` for stats; unified `events` table for error logs.
+- __Error filters__: Multi-level filtering using `levels` query param (comma-separated: `error,warn,info`). Defaults to `error` to ensure useful results and prevent empty state.
+- __UI__: Minimal dashboard on `/admin` with 3 cards + 7-day bar chart; `/admin/errors` shows level badges and quick filters.
+- __Build note__: Rarely, a stale artifact causes build errors (e.g., "Cannot find module for page: /_not-found"). Workaround: clean `.next` and rebuild.

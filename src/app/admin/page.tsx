@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
+import AdminStats from './AdminStats';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -15,13 +15,13 @@ export default async function AdminHomePage() {
   return (
     <main className="min-h-screen p-6">
       <h1 className="text-2xl font-semibold mb-2">Admin Dashboard</h1>
-      <p className="text-muted-foreground">Willkommen. Dies ist ein Platzhalter für die kommenden Matching-Tools.</p>
-      <div className="mt-4">
-        <div className="flex gap-4 flex-wrap">
-          <Link href="/admin/leads" className="underline">Zu den Leads & Matching →</Link>
-          <Link href="/admin/matches" className="underline">Match-Status-Dashboard →</Link>
-        </div>
+      <p className="text-muted-foreground">Schnellzugriff auf Leads, Matches und Fehler-Logs.</p>
+      <div className="mt-6">
+        <AdminStats />
       </div>
+
     </main>
   );
 }
+
+

@@ -53,4 +53,21 @@ describe('Admin API unauthorized', () => {
     const json = await res.json();
     expect(json).toEqual({ data: null, error: 'Unauthorized' });
   });
+
+  it('GET /admin/api/errors returns 401 without admin cookie', async () => {
+    const { GET } = await import('@/app/admin/api/errors/route');
+    const res = await GET(makeGet('http://localhost/admin/api/errors'));
+    expect(res.status).toBe(401);
+    const json = await res.json();
+    expect(json).toEqual({ data: null, error: 'Unauthorized' });
+  });
+
+  it('GET /admin/api/stats returns 401 without admin cookie', async () => {
+    const { GET } = await import('@/app/admin/api/stats/route');
+    const res = await GET(makeGet('http://localhost/admin/api/stats'));
+    expect(res.status).toBe(401);
+    const json = await res.json();
+    expect(json).toEqual({ data: null, error: 'Unauthorized' });
+  });
 });
+
