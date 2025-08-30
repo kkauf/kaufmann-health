@@ -19,16 +19,21 @@ export function Actions({
   matchId,
   expired: expiredInitial,
   initialStatus,
+  initialContact,
 }: {
   uuid: string;
   matchId: string;
   expired: boolean;
   initialStatus: string;
+  initialContact?: { name?: string | null; email?: string | null; phone?: string | null };
 }) {
   const [status, setStatus] = useState(initialStatus);
   const [expired, setExpired] = useState(expiredInitial);
   const [loading, setLoading] = useState<'accept' | 'decline' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [contact, setContact] = useState<{ name?: string | null; email?: string | null; phone?: string | null } | null>(
+    initialContact || null,
+  );
 
   const isFinal = useMemo(() => status === 'accepted' || status === 'declined', [status]);
 
@@ -59,6 +64,27 @@ export function Actions({
       if (newStatus === 'accepted' || newStatus === 'declined') {
         setStatus(newStatus);
       }
+      // If accepted, try to reveal contact info
+      if (newStatus === 'accepted') {
+        const revealed = json?.data?.contact;
+        if (revealed && (revealed.email || revealed.phone)) {
+          setContact(revealed);
+        } else {
+          // Best-effort: call again idempotently with reveal=1 to fetch contact
+          try {
+            const res2 = await fetch(`/api/match/${encodeURIComponent(uuid)}/respond?reveal=1`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ action: 'accept' }),
+            });
+            if (res2.ok) {
+              const j2 = await res2.json();
+              const c = j2?.data?.contact;
+              if (c && (c.email || c.phone)) setContact(c);
+            }
+          } catch {}
+        }
+      }
     } catch (e: unknown) {
       let msg = 'Etwas ist schief gelaufen';
       if (e instanceof Error) msg = e.message;
@@ -81,7 +107,36 @@ export function Actions({
     return (
       <div className="space-y-3">
         {status === 'accepted' ? (
-          <p className="text-sm">Vielen Dank! Sie haben die Anfrage angenommen. Wir melden uns mit den nächsten Schritten.</p>
+          <div className="space-y-2">
+            <p className="text-sm">Vielen Dank! Sie haben die Anfrage angenommen.</p>
+            {contact ? (
+              <div className="rounded-md border p-3 text-sm">
+                <p className="font-medium">Kontaktdaten</p>
+                {contact.name ? <p>Name: {contact.name}</p> : null}
+                {contact.email ? (
+                  <p>
+                    E-Mail:{' '}
+                    <a className="underline" href={`mailto:${contact.email}`}>
+                      {contact.email}
+                    </a>
+                  </p>
+                ) : null}
+                {contact.phone ? (
+                  <p>
+                    Telefon:{' '}
+                    <a className="underline" href={`tel:${contact.phone}`}>
+                      {contact.phone}
+                    </a>
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Kontaktdaten werden geladen …</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Bitte behandeln Sie diese Kontaktdaten vertraulich. Kontaktieren Sie den/die Patient:in idealerweise innerhalb von 48&nbsp;Stunden.
+            </p>
+          </div>
         ) : (
           <p className="text-sm">Vielen Dank! Sie haben die Anfrage abgelehnt.</p>
         )}
@@ -107,3 +162,4 @@ export function Actions({
     </div>
   );
 }
+

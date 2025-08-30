@@ -16,11 +16,12 @@ function hoursSince(iso: string | null | undefined): number | null {
 }
 
 export async function POST(req: Request) {
-  const pathname = (() => {
+  const { pathname, searchParams } = (() => {
     try {
-      return new URL(req.url).pathname;
+      const u = new URL(req.url);
+      return { pathname: u.pathname, searchParams: u.searchParams };
     } catch {
-      return '';
+      return { pathname: '', searchParams: new URLSearchParams() } as const;
     }
   })();
   const parts = pathname.split('/').filter(Boolean);
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
   const matchIdx = parts.indexOf('match');
   const uuid = matchIdx >= 0 && parts.length > matchIdx + 1 ? decodeURIComponent(parts[matchIdx + 1]) : '';
   if (!uuid) return NextResponse.json({ data: null, error: 'Missing uuid' }, { status: 400 });
+  const reveal = searchParams.get('reveal') === '1';
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -62,6 +64,24 @@ export async function POST(req: Request) {
     const current = String(m.status || '').toLowerCase();
     const nextStatus = action === 'accept' ? 'accepted' : 'declined';
 
+    async function maybeGetContact() {
+      try {
+        const { data: patientContact } = await supabaseServer
+          .from('people')
+          .select('name, email, phone')
+          .eq('id', m.patient_id)
+          .single();
+        if (patientContact) {
+          const c = patientContact as unknown as { name?: string | null; email?: string | null; phone?: string | null };
+          return { name: c.name ?? null, email: c.email ?? null, phone: c.phone ?? null } as const;
+        }
+      } catch (e) {
+        // best-effort; ignore errors
+        void logError('api.match.respond', e, { stage: 'load_contact', match_id: m.id });
+      }
+      return null;
+    }
+
     if (current === 'accepted' || current === 'declined') {
       // Idempotent: return current state
       void ServerAnalytics.trackEventFromRequest(req, {
@@ -69,6 +89,10 @@ export async function POST(req: Request) {
         source: 'api.match.respond',
         props: { match_id: m.id, action: current },
       });
+      if (reveal && current === 'accepted') {
+        const contact = await maybeGetContact();
+        return NextResponse.json({ data: { status: current, ...(contact ? { contact } : {}) }, error: null });
+      }
       return NextResponse.json({ data: { status: current }, error: null });
     }
 
@@ -155,9 +179,14 @@ export async function POST(req: Request) {
       void logError('api.match.respond', e, { stage: 'notify_patient', match_id: m.id, action: nextStatus });
     }
 
+    if (reveal && nextStatus === 'accepted') {
+      const contact = await maybeGetContact();
+      return NextResponse.json({ data: { status: nextStatus, ...(contact ? { contact } : {}) }, error: null });
+    }
     return NextResponse.json({ data: { status: nextStatus }, error: null });
   } catch (e) {
     await logError('api.match.respond', e, { stage: 'exception', uuid });
     return NextResponse.json({ data: null, error: 'Invalid JSON' }, { status: 400 });
   }
 }
+
