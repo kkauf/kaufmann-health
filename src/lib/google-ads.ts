@@ -139,19 +139,15 @@ export class GoogleAdsTracker {
     }
   }
 
-  private buildOperation(ec: EnhancedConversion) {
-    // JSON field names use lowerCamelCase for Google Ads REST mapping
+  private buildClickConversion(ec: EnhancedConversion) {
+    // REST JSON for ConversionUploadService.uploadClickConversions
     return {
-      create: {
-        userIdentifiers: ec.user_identifiers.map((u) => ({ hashedEmail: u.hashed_email })),
-        transactionAttribute: {
-          conversionAction: this.resolveConversionAction(ec.conversion_action),
-          conversionDateTime: ec.conversion_date_time,
-          transactionAmountMicros: Math.round(ec.conversion_value * 1_000_000),
-          currencyCode: ec.currency,
-          ...(ec.order_id ? { orderId: ec.order_id } : {}),
-        },
-      },
+      conversionAction: this.resolveConversionAction(ec.conversion_action)!,
+      conversionDateTime: ec.conversion_date_time,
+      conversionValue: ec.conversion_value,
+      currencyCode: ec.currency,
+      ...(ec.order_id ? { orderId: ec.order_id } : {}),
+      userIdentifiers: ec.user_identifiers.map((u) => ({ hashedEmail: u.hashed_email })),
     } as const;
   }
 
@@ -224,8 +220,8 @@ export class GoogleAdsTracker {
         return;
       }
 
-      const operations = conversions.map((c) => this.buildOperation(c));
-      const url = `https://googleads.googleapis.com/v20/customers/${this.customerId}:uploadUserData`;
+      const clickConversions = conversions.map((c) => this.buildClickConversion(c));
+      const url = `https://googleads.googleapis.com/v20/customers/${this.customerId}:uploadClickConversions`;
       const headers: Record<string, string> = {
         Authorization: `Bearer ${token}`,
         'developer-token': this.developerToken!,
@@ -234,8 +230,8 @@ export class GoogleAdsTracker {
       if (this.loginCustomerId) headers['login-customer-id'] = this.loginCustomerId;
 
       const payload = {
-        operations,
-        enablePartialFailure: true,
+        conversions: clickConversions,
+        partialFailure: true,
         validateOnly: false,
       } as const;
 
@@ -250,7 +246,7 @@ export class GoogleAdsTracker {
         throw new Error(`upload_error ${resp.status}: ${text.slice(0, 500)}`);
       }
 
-      // Parse response to capture partial failures and received count
+      // Parse response to capture partial failures and results count
       let raw: unknown = null;
       try {
         raw = await resp.json();
@@ -266,7 +262,13 @@ export class GoogleAdsTracker {
         const v = o[key];
         return isObj(v) ? v : undefined;
       };
-      const received = getNumber(raw, 'receivedOperationsCount');
+      const getArray = (o: unknown, key: string): unknown[] | undefined => {
+        if (!isObj(o)) return undefined;
+        const v = o[key];
+        return Array.isArray(v) ? v : undefined;
+      };
+      const results = getArray(raw, 'results');
+      const received = Array.isArray(results) ? results.length : undefined;
       const partial = getObject(raw, 'partialFailureError');
 
       if (partial) {
