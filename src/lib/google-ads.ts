@@ -3,7 +3,7 @@ import { logError, track } from '@/lib/logger';
 
 // Google Ads Enhanced Conversions (server-side) minimal wrapper.
 // - Uses OAuth2 refresh token flow to obtain access tokens
-// - Uploads hashed user identifiers and conversion attributes via UserDataService
+// - Uploads hashed user identifiers and conversion attributes via ConversionUploadService
 // - Falls back to no-op with internal event logging when not configured
 
 export type ConversionData = {
@@ -29,7 +29,17 @@ export type EnhancedConversion = {
 };
 
 function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase().replace(/\s+/g, '');
+  // Normalize per Google requirements: lowercase, trim, remove spaces,
+  // and for gmail/googlemail remove dots in the local-part.
+  const cleaned = email.trim().toLowerCase().replace(/\s+/g, '');
+  const atIdx = cleaned.indexOf('@');
+  if (atIdx === -1) return cleaned;
+  const local = cleaned.slice(0, atIdx);
+  const domain = cleaned.slice(atIdx + 1);
+  if (/^(gmail|googlemail)\.com$/.test(domain)) {
+    return `${local.replace(/\./g, '')}@${domain}`;
+  }
+  return cleaned;
 }
 
 function sha256LowerHex(input: string): string {
@@ -147,7 +157,10 @@ export class GoogleAdsTracker {
       conversionValue: ec.conversion_value,
       currencyCode: ec.currency,
       ...(ec.order_id ? { orderId: ec.order_id } : {}),
-      userIdentifiers: ec.user_identifiers.map((u) => ({ hashedEmail: u.hashed_email })),
+      userIdentifiers: ec.user_identifiers.map((u) => ({
+        hashedEmail: u.hashed_email,
+        userIdentifierSource: 'FIRST_PARTY',
+      })),
     } as const;
   }
 
@@ -221,7 +234,7 @@ export class GoogleAdsTracker {
       }
 
       const clickConversions = conversions.map((c) => this.buildClickConversion(c));
-      const url = `https://googleads.googleapis.com/v20/customers/${this.customerId}:uploadClickConversions`;
+      const url = `https://googleads.googleapis.com/v21/customers/${this.customerId}:uploadClickConversions`;
       const headers: Record<string, string> = {
         Authorization: `Bearer ${token}`,
         'developer-token': this.developerToken!,
