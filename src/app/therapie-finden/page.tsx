@@ -204,6 +204,11 @@ export default function TherapieFindenPage() {
                 answer: 'Methoden wie NARM, Hakomi und Somatic Experiencing arbeiten mit der Verbindung zwischen Körper und Psyche. Sie lösen Traumata dort, wo sie gespeichert sind - im Nervensystem.',
               },
               {
+                id: 'auswahl-prozess',
+                question: 'Nach welchen Kriterien wählen Sie Therapeuten aus?',
+                answer: 'Wir berücksichtigen Ihre geografischen Präferenzen, die Art Ihrer Problematik, gewünschte Therapieform und persönliche Faktoren. Da wir jeden Therapeuten in unserem Netzwerk persönlich kennen und regelmäßig mit ihnen in Kontakt stehen, können wir gezielt den für Sie passenden vorschlagen.'
+              },
+              {
                 id: 'termin',
                 question: 'Wie schnell bekomme ich einen Termin?',
                 answer: 'Die meisten unserer sorgfältig geprüften Therapeuten haben innerhalb von 7 Tagen Termine frei. Nach Ihrer Anfrage erhalten Sie innerhalb von 24 Stunden Kontaktmöglichkeiten.',
@@ -231,7 +236,7 @@ export default function TherapieFindenPage() {
       {/* Footer legal note (page-specific) */}
       <section aria-labelledby="footer-legal" className="mt-12 sm:mt-16">
         <p id="footer-legal" className="text-xs text-gray-600">
-          Kaufmann Health ist eine Informationsplattform für Heilpraktiker für Psychotherapie. Wir stellen Kontaktmöglichkeiten her und geben keine medizinischen oder therapeutischen Empfehlungen oder Erfolgsversprechen. Die Entscheidung über eine Therapie treffen Sie eigenverantwortlich.
+          Kaufmann Health schlägt qualifizierte Therapeuten vor basierend auf deren Qualifikationen, Verfügbarkeit und Ihren Präferenzen. Wir treffen keine medizinischen Empfehlungen bezüglich spezifischer Behandlungen. Die Entscheidung über eine Therapie treffen Sie eigenverantwortlich.
         </p>
       </section>
     </main>

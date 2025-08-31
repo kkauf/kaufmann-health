@@ -49,6 +49,11 @@ const faqItems = [
     answer:
       "Wir bieten zusätzlich eine persönliche Orientierungshilfe für Interessenten und fokussieren uns ausschließlich auf körperorientierte Therapieverfahren.",
   },
+  {
+    id: 'auswahl-prozess',
+    question: 'Nach welchen Kriterien wählen Sie Therapeuten aus?',
+    answer: 'Wir berücksichtigen Ihre geografischen Präferenzen, die Art Ihrer Problematik, gewünschte Therapieform und persönliche Faktoren. Da wir jeden Therapeuten in unserem Netzwerk persönlich kennen und regelmäßig mit ihnen in Kontakt stehen, können wir gezielt den für Sie passenden vorschlagen.'
+  },
 ];
 
 export default function TherapistsPage() {

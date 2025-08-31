@@ -123,10 +123,9 @@ export default function Home() {
               </p>
             </div>
             <div className="rounded-lg border bg-white p-5 transition-all duration-200 hover:shadow-md">
-              <h3 className="text-lg font-medium">Direkter Kontakt</h3>
+              <h3 className="text-lg font-medium">Gezielte Auswahl</h3>
               <p className="mt-2 text-sm text-gray-600">
-                Sie erhalten Kontaktdaten und vereinbaren Termine direkt mit dem
-                Therapeuten Ihrer Wahl. Keine Umwege.
+                Sie erhalten Kontaktdaten zu 2-3 passenden Therapeuten und wählen selbst aus, wen Sie kontaktieren möchten. Direkter Kontakt, keine Umwege.
               </p>
             </div>
           </div>
