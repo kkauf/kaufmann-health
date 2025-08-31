@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import TherapyModalityExplanations from "@/components/TherapyModalityExplanations";
 
 export const dynamic = 'force-dynamic';
 
@@ -130,6 +131,9 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* Therapy Modalities (Education) */}
+        <TherapyModalityExplanations />
 
         {/* Therapist Section (Secondary) */}
         {showTherapistSection && (

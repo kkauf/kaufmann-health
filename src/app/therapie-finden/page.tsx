@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import TherapieFinderForm from '@/components/TherapieFinderForm';
 import FaqAccordion from '@/components/FaqAccordion';
+import TherapyModalityExplanations from '@/components/TherapyModalityExplanations';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, Euro, Clock, MessageCircle, UserCheck, PhoneCall, ShieldCheck } from 'lucide-react';
 
@@ -181,6 +182,9 @@ export default function TherapieFindenPage() {
           <div className="rounded-lg border bg-white p-4">✓ Regelmäßige Supervision und Fortbildung</div>
         </div>
       </section>
+
+      {/* Therapy Modalities Explanations */}
+      <TherapyModalityExplanations />
 
       {/* FAQ */}
       <section aria-labelledby="faq" className="mt-12 sm:mt-16">
