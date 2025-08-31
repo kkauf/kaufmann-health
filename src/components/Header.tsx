@@ -72,7 +72,7 @@ export default function Header() {
           >
             <NavLinks />
             <Button asChild size="sm" className="ml-2">
-              <Link href="/therapie-finden">Kostenlos starten</Link>
+              <Link href="/therapie-finden">Therapeut finden</Link>
             </Button>
           </nav>
 
@@ -128,7 +128,7 @@ export default function Header() {
           <nav aria-label="Mobile Hauptnavigation" className="flex flex-col gap-4 px-4 py-6 text-[15px]">
             <NavLinks onClick={() => setOpen(false)} />
             <Button asChild className="mt-2">
-              <Link href="/therapie-finden">Kostenlos starten</Link>
+              <Link href="/therapie-finden">Therapeut finden</Link>
             </Button>
           </nav>
         </aside>

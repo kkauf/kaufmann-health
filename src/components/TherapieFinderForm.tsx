@@ -199,9 +199,9 @@ export default function TherapieFinderForm() {
       </div>
 
       <Button type="submit" disabled={loading}>
-        {loading ? 'Senden…' : 'Therapeuten in meiner Nähe anzeigen →'}
+        {loading ? 'Senden…' : 'Passende Therapeuten vorschlagen lassen →'}
       </Button>
-      <small className="block text-xs text-gray-600">100% kostenlos & unverbindlich für Patienten</small>
+      <small className="block text-xs text-gray-600">100% kostenlos & unverbindlich - persönliche Auswahl durch Experten</small>
 
       {/* Non-success inline status */}
       {!submitted && message && <p className="text-sm text-red-600">{message}</p>}

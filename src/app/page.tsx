@@ -115,11 +115,11 @@ export default function Home() {
               </p>
             </div>
             <div className="rounded-lg border bg-white p-5 transition-all duration-200 hover:shadow-md">
-              <h3 className="text-lg font-medium">Persönliche Orientierungshilfe</h3>
+              <h3 className="text-lg font-medium">Expertenbasierte Therapeuten-Auswahl</h3>
               <p className="mt-2 text-sm text-gray-600">
-                Unsicher welche Therapieform passt? Wir besprechen gerne Ihre
-                Optionen und schlagen Ihnen passende Therapeuten aus unserem Netzwerk
-                sorgfältig geprüfter Therapeuten vor.
+                Als Experten für körperorientierte Therapie kennen wir jeden 
+                Therapeuten persönlich und wählen basierend auf Ihrer Situation 
+                den passenden aus.
               </p>
             </div>
             <div className="rounded-lg border bg-white p-5 transition-all duration-200 hover:shadow-md">
