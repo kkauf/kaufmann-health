@@ -46,7 +46,7 @@ export default function UeberUnsPage() {
           </p>
           <p>
             Therapeuten verbringen Stunden damit, sich um Marketing zu kümmern, anstatt die Arbeit zu machen, die sie lieben: Menschen bei ihrem Heilungsprozess zu unterstützen.
-            Gleichzeitig warten warten Patienten Monate lang auf Termine oder finden niemanden mit der richtigen Spezialisierung.
+            Gleichzeitig warten Patienten Monate lang auf Termine oder finden niemanden mit der richtigen Spezialisierung.
           </p>
           <p>
             Kaufmann Health löst beide Probleme: Wir bringen die richtigen Menschen zusammen.

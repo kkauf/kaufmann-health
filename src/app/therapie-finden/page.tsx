@@ -79,7 +79,7 @@ export default function TherapieFindenPage() {
                 <CardTitle className="text-3xl bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">80%</CardTitle>
               </CardHeader>
               <CardContent>
-                <CardDescription>der Klienten berichten von Verbesserungen nach 5 Sitzungen</CardDescription>
+                <CardDescription>der Klienten berichten von Verbesserungen nach fünf Sitzungen</CardDescription>
               </CardContent>
             </Card>
             <Card className="transition-all duration-200 hover:shadow-md">

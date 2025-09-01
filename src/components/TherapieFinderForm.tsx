@@ -207,7 +207,7 @@ export default function TherapieFinderForm() {
       </div>
 
       <Button type="submit" disabled={loading}>
-        {loading ? 'Senden…' : 'Therapeuten in meiner Nähe anzeigen →'}
+        {loading ? 'Senden…' : 'Jetzt Therapeuten finden →'}
       </Button>
       <p className="mt-2 text-xs text-gray-600">
         Durch Absenden stimmen Sie der Weitergabe Ihrer Daten an passende Therapeuten zu. Details:{' '}
