@@ -29,7 +29,7 @@ export default function Home() {
             id="hero-heading"
             className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl"
           >
-            Finden Sie körperorientierte Trauma-Therapeuten
+            Finden Sie geprüfte körperorientierte Trauma-Therapeuten
           </h1>
           <p className="mt-4 max-w-2xl text-base text-gray-600 sm:text-lg">
           Persönlich kuratierte Therapeuten-Empfehlungen.

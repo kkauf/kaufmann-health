@@ -65,6 +65,9 @@ export default function AdminLeadsPage() {
 
   const [message, setMessage] = useState<string | null>(null);
 
+  // Patients with an active/ongoing match should be visually de-prioritized and sorted to bottom
+  const [deprioritizedPatients, setDeprioritizedPatients] = useState<Set<string>>(new Set());
+
   // Match modal state
   const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
   const [modalTherapists, setModalTherapists] = useState<Person[]>([]);
@@ -76,17 +79,39 @@ export default function AdminLeadsPage() {
   useEffect(() => {
     if (selectedPatient) {
       const meta: PersonMeta = selectedPatient.metadata || {};
-      if (meta.city) setTherCity(String(meta.city));
       const prefFromArray = Array.isArray(meta.session_preferences) && meta.session_preferences.length > 0 ? meta.session_preferences[0] : undefined;
-      if (prefFromArray) setTherSessionPref(prefFromArray);
-      else if (meta.session_preference) setTherSessionPref(String(meta.session_preference));
-      // If patient provided modality preferences, prefill first one.
-      // NOTE: Future improvement could support multi-select matching.
-      if (Array.isArray(meta.specializations) && meta.specializations.length > 0) {
-        setTherSpecialization(String(meta.specializations[0]));
-      }
+      const pref = prefFromArray || (meta.session_preference ? String(meta.session_preference) : undefined);
+      if (pref) setTherSessionPref(pref);
+      // For online preference, clear city to show all by default; otherwise prefill patient's city if present
+      if (pref === 'online') setTherCity('');
+      else if (meta.city) setTherCity(String(meta.city));
+      // Do not prefill a single specialization; allow ANY of patient's specializations by default
+      // Also clear any previously selected specialization override
+      setTherSpecialization('');
     }
   }, [selectedPatient]);
+
+  const loadPatientMatchFlags = useCallback(async (leadList: Person[]) => {
+    try {
+      const res = await fetch('/admin/api/matches', { credentials: 'include', cache: 'no-store' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Fehler beim Laden der Matches');
+      const active = new Set(['accepted', 'therapist_contacted', 'therapist_responded', 'session_booked', 'completed']);
+      const leadIds = new Set(leadList.map((p) => p.id));
+      const s = new Set<string>();
+      const arr = Array.isArray(json?.data) ? json.data : [];
+      for (const m of arr) {
+        const pid = (m?.patient?.id ?? '') as string;
+        const st = (m?.status ?? '') as string;
+        if (pid && leadIds.has(pid) && active.has(st)) {
+          s.add(pid);
+        }
+      }
+      setDeprioritizedPatients(s);
+    } catch {
+      setDeprioritizedPatients(new Set());
+    }
+  }, []);
 
   const fetchLeads = useCallback(async () => {
     setLoadingLeads(true);
@@ -97,11 +122,14 @@ export default function AdminLeadsPage() {
       if (leadCity) url.searchParams.set('city', leadCity);
       if (leadSessionPref) url.searchParams.set('session_preference', leadSessionPref);
       url.searchParams.set('status', 'new');
-      url.searchParams.set('limit', '100');
+      url.searchParams.set('limit', '200');
       const res = await fetch(url.toString(), { credentials: 'include' });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Fehler beim Laden der Leads');
-      setLeads(json.data || []);
+      const list: Person[] = json.data || [];
+      setLeads(list);
+      // Load match flags to de-prioritize leads with active matches
+      void loadPatientMatchFlags(list);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
       setLeadError(msg);
@@ -109,7 +137,7 @@ export default function AdminLeadsPage() {
     } finally {
       setLoadingLeads(false);
     }
-  }, [leadCity, leadSessionPref]);
+  }, [leadCity, leadSessionPref, loadPatientMatchFlags]);
 
   async function fetchTherapistsForPatient(p: Person) {
     try {
@@ -117,19 +145,21 @@ export default function AdminLeadsPage() {
       setModalError(null);
       const url = new URL('/admin/api/therapists', window.location.origin);
       const meta: PersonMeta = p.metadata || {};
-      if (meta.city) url.searchParams.set('city', String(meta.city));
-      {
-        const pref = (Array.isArray(meta.session_preferences) && meta.session_preferences.length > 0)
-          ? meta.session_preferences[0]
-          : (meta.session_preference || '');
-        if (pref) url.searchParams.set('session_preference', String(pref));
+      // Determine session preference first to decide city filter
+      const pref = (Array.isArray(meta.session_preferences) && meta.session_preferences.length > 0)
+        ? meta.session_preferences[0]
+        : (meta.session_preference || '');
+      if (pref) url.searchParams.set('session_preference', String(pref));
+      // For online preference, do not restrict by city
+      if (pref !== 'online' && meta.city) {
+        url.searchParams.set('city', String(meta.city));
       }
       const specs: string[] = Array.isArray(meta.specializations) ? meta.specializations : [];
       if (specs.length > 0) {
-        // Currently API supports a single specialization param. Pick the first.
-        url.searchParams.set('specialization', String(specs[0]));
+        // Send all specializations as repeated params to match ANY in API
+        for (const s of specs) url.searchParams.append('specialization', String(s));
       }
-      url.searchParams.set('limit', '100');
+      url.searchParams.set('limit', '200');
       const res = await fetch(url.toString(), { credentials: 'include' });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Fehler beim Laden der Therapeuten');
@@ -195,12 +225,19 @@ export default function AdminLeadsPage() {
           : (fallbackMeta.session_preference ? String(fallbackMeta.session_preference) : '')
       );
       const specs: string[] = Array.isArray(fallbackMeta.specializations) ? fallbackMeta.specializations : [];
-      const specialization = therSpecialization || (specs.length > 0 ? String(specs[0]) : '');
+      const specialization = therSpecialization || '';
 
-      if (city) url.searchParams.set('city', city);
       if (sessionPref) url.searchParams.set('session_preference', sessionPref);
-      if (specialization) url.searchParams.set('specialization', specialization);
-      url.searchParams.set('limit', '100');
+      // If admin did not override city and patient's preference is online, omit city filter
+      if (city && !(sessionPref === 'online' && !therCity)) {
+        url.searchParams.set('city', city);
+      }
+      if (specialization) {
+        url.searchParams.set('specialization', specialization);
+      } else if (specs.length > 0) {
+        for (const s of specs) url.searchParams.append('specialization', String(s));
+      }
+      url.searchParams.set('limit', '200');
       const res = await fetch(url.toString(), { credentials: 'include' });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Fehler beim Laden der Therapeuten');
@@ -256,6 +293,17 @@ export default function AdminLeadsPage() {
       .join('/');
   }, [selectedPatient]);
 
+  // Sort: leads needing action first, those with active matches to the bottom
+  const leadsSorted = useMemo(() => {
+    if (!deprioritizedPatients || deprioritizedPatients.size === 0) return leads;
+    const needs: Person[] = [];
+    const noAction: Person[] = [];
+    for (const p of leads) {
+      (deprioritizedPatients.has(p.id) ? noAction : needs).push(p);
+    }
+    return [...needs, ...noAction];
+  }, [leads, deprioritizedPatients]);
+
   return (
     <main className="min-h-screen p-6 space-y-6">
       <h1 className="text-2xl font-semibold">Leads & Matching</h1>
@@ -289,19 +337,32 @@ export default function AdminLeadsPage() {
           {leadError && <p className="text-sm text-red-600 mb-2">{leadError}</p>}
 
           <div className="space-y-3">
-            {leads.map((p) => {
+            {leadsSorted.map((p) => {
               const meta: PersonMeta = p.metadata || {};
               const city = meta.city || '';
               const pref = formatSession(meta);
               const issue = meta.issue || '—';
               const specs: string[] = Array.isArray(meta.specializations) ? meta.specializations : [];
               const isSelected = selectedPatient?.id === p.id;
+              const isDeprioritized = deprioritizedPatients.has(p.id);
               return (
-                <Card key={p.id} className={isSelected ? 'border-amber-400 bg-amber-50' : ''} aria-selected={isSelected}>
+                <Card key={p.id} className={`${isSelected ? 'border-amber-400 bg-amber-50' : ''} ${isDeprioritized ? 'opacity-70' : ''}`} aria-selected={isSelected}>
                   <CardHeader>
                     <div className="min-w-0">
                       <CardTitle className="truncate" title={p.name || undefined}>{p.name || '—'}</CardTitle>
                       <CardDescription className="truncate" title={p.email || undefined}>{p.email || '—'}</CardDescription>
+                      {p.phone && (
+                        <CardDescription className="truncate" title={p.phone || undefined}>
+                          <a className="underline font-mono" href={`tel:${p.phone}`}>{p.phone}</a>
+                        </CardDescription>
+                      )}
+                      {isDeprioritized && (
+                        <div className="mt-1">
+                          <span className="inline-flex items-center rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-800">
+                            Kein Handlungsbedarf
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <CardAction className="flex gap-2">
                       <Button size="sm" variant={isSelected ? 'default' : 'secondary'} onClick={() => setSelectedPatient(p)}>
@@ -383,6 +444,11 @@ export default function AdminLeadsPage() {
                     <div className="min-w-0">
                       <CardTitle className="truncate">{t.name || '—'}</CardTitle>
                       <CardDescription className="truncate">{t.email || '—'}</CardDescription>
+                      {t.phone && (
+                        <CardDescription className="truncate">
+                          <a className="underline font-mono" href={`tel:${t.phone}`}>{t.phone}</a>
+                        </CardDescription>
+                      )}
                     </div>
                     <CardAction>
                       <Button size="sm" disabled={!selectedPatient} onClick={() => createMatch(t.id)}>

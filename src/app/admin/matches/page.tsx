@@ -11,6 +11,7 @@ type Person = {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   city?: string;
   issue?: string;
 };
@@ -125,6 +126,41 @@ export default function AdminMatchesPage() {
     void load();
   }, [load]);
 
+  const sortedRows = useMemo(() => {
+    const list = rows ? [...rows] : [];
+    if (list.length === 0) return list;
+    const weight: Record<string, number> = {
+      proposed: 0,
+      declined: 1,
+      failed: 1,
+      accepted: 2,
+      therapist_contacted: 3,
+      therapist_responded: 4,
+      session_booked: 5,
+      completed: 6,
+    };
+    list.sort((a, b) => {
+      const wa = weight[a.status] ?? 99;
+      const wb = weight[b.status] ?? 99;
+      if (wa !== wb) return wa - wb;
+      // Secondary: newest first
+      const ta = a.created_at ? Date.parse(a.created_at) : 0;
+      const tb = b.created_at ? Date.parse(b.created_at) : 0;
+      return tb - ta;
+    });
+    return list;
+  }, [rows]);
+
+  const isDeprioritized = useCallback((status: string) => {
+    return (
+      status === 'accepted' ||
+      status === 'therapist_contacted' ||
+      status === 'therapist_responded' ||
+      status === 'session_booked' ||
+      status === 'completed'
+    );
+  }, []);
+
   const updateStatus = useCallback(async (id: string, status: string) => {
     try {
       const res = await fetch('/admin/api/matches', {
@@ -203,17 +239,29 @@ export default function AdminMatchesPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map(r => (
-                <tr key={r.id} className="border-b hover:bg-accent/10">
+              {sortedRows.map(r => (
+                <tr key={r.id} className={`border-b hover:bg-accent/10 ${isDeprioritized(r.status) ? 'opacity-70' : ''}`}>
                   <td className="py-2 px-2 min-w-48">{r.patient.name || '—'}</td>
                   <td className="py-2 px-2 min-w-44">
-                    {r.patient.email ? (
-                      <a className="underline" href={`mailto:${r.patient.email}`}>{r.patient.email}</a>
-                    ) : '—'}
+                    <div className="flex flex-col gap-0.5">
+                      {r.patient.email ? (
+                        <a className="underline" href={`mailto:${r.patient.email}`}>{r.patient.email}</a>
+                      ) : <span>—</span>}
+                      {r.patient.phone ? (
+                        <a className="underline font-mono text-xs" href={`tel:${r.patient.phone}`}>{r.patient.phone}</a>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="py-2 px-2">{r.patient.city || '—'}</td>
                   <td className="py-2 px-2 max-w-56 truncate" title={r.patient.issue || ''}>{r.patient.issue || '—'}</td>
-                  <td className="py-2 px-2 min-w-44">{r.therapist.name || '—'}</td>
+                  <td className="py-2 px-2 min-w-44">
+                    <div className="flex flex-col gap-0.5">
+                      <span>{r.therapist.name || '—'}</span>
+                      {r.therapist.phone ? (
+                        <a className="underline font-mono text-xs" href={`tel:${r.therapist.phone}`}>{r.therapist.phone}</a>
+                      ) : null}
+                    </div>
+                  </td>
                   <td className="py-2 px-2 min-w-56">
                     <div className="flex items-center gap-2">
                       <StatusBadge status={r.status} />

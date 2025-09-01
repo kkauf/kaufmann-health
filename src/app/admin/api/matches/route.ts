@@ -56,6 +56,7 @@ type PersonRow = {
   id: string;
   name?: string | null;
   email?: string | null;
+  phone?: string | null;
   metadata?: { city?: string; issue?: string } | null;
 };
 
@@ -91,7 +92,7 @@ export async function GET(req: Request) {
 
     const { data: people, error: pErr } = await supabaseServer
       .from('people')
-      .select('id, name, email, metadata')
+      .select('id, name, email, phone, metadata')
       .in('id', Array.from(ids));
 
     if (pErr) {
@@ -114,11 +115,11 @@ export async function GET(req: Request) {
         notes: r.notes || '',
         created_at: r.created_at,
         patient: patient
-          ? { id: patient.id, name: patient.name || '', email: patient.email || '', city, issue }
-          : { id: r.patient_id, name: '', email: '', city, issue },
+          ? { id: patient.id, name: patient.name || '', email: patient.email || '', phone: patient.phone || '', city, issue }
+          : { id: r.patient_id, name: '', email: '', phone: '', city, issue },
         therapist: therapist
-          ? { id: therapist.id, name: therapist.name || '', email: therapist.email || '' }
-          : { id: r.therapist_id, name: '', email: '' },
+          ? { id: therapist.id, name: therapist.name || '', email: therapist.email || '', phone: therapist.phone || '' }
+          : { id: r.therapist_id, name: '', email: '', phone: '' },
       } as const;
     });
 
