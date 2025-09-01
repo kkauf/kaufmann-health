@@ -18,8 +18,7 @@ export default function DatenschutzPage() {
                 oder sonstige Auftragsanfragen.
               </p>
               <p>
-                Auf dieser Website verzichten wir auf Tracking und setzen keine Cookies. Es findet keine Auswertung Ihres Surf-Verhaltens
-                durch Analyseprogramme statt. Details finden Sie in den nachfolgenden Abschnitten.
+                Auf dieser Website verwenden wir server-seitiges Tracking ohne Cookies. Details finden Sie in den nachfolgenden Abschnitten.
               </p>
             </div>
           </section>
@@ -136,10 +135,10 @@ export default function DatenschutzPage() {
             <h2 id="erfassung" className="text-xl font-semibold">4. Datenerfassung auf dieser Website</h2>
             <div className="mt-3 space-y-4">
               <div>
-                <h3 id="cookies" className="font-medium">Cookies? Keine.</h3>
+                <h3 id="cookies" className="font-medium">Tracking und Cookies</h3>
                 <div className="mt-2 space-y-2">
                   <p>
-                    Wir setzen auf dieser Website keine Cookies – weder für Tracking noch für Marketing oder Komfortfunktionen.
+                    Wir setzen auf dieser Website keine Tracking-Cookies. Zur Erfolgsmessung unserer Werbung verwenden wir server-seitige Technologien ohne Cookies auf Ihrem Gerät.
                   </p>
                   <p>
                     Für kleine Komfortfunktionen (z. B. damit ein Hinweis pro Sitzung nur einmal erscheint) nutzen wir ggf. den lokalen Speicher
@@ -159,6 +158,13 @@ export default function DatenschutzPage() {
                   Wenn Sie uns per Formular Anfragen senden, verarbeiten wir Ihre Angaben zur Bearbeitung und für Anschlussfragen. Rechtsgrundlage
                   ist Art. 6 Abs. 1 lit. b DSGVO (Vertrag/vertragsähnlich) bzw. unser berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO) oder Ihre
                   Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Die Daten verbleiben bei uns bis Widerruf, Löschungsverlangen oder Zweckerreichung.
+                </p>
+                <p className="mt-2">
+                  <strong>Erfolgsmessung unserer Werbung</strong><br />
+                  Zur Optimierung unserer Werbekampagnen übermitteln wir verschlüsselte E-Mail-Adressen an Google Ads, wenn Sie unser Kontaktformular nutzen. Dies erfolgt server-seitig ohne Cookies auf Ihrem Gerät.
+                </p>
+                <p className="mt-2">
+                  Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse). Widerspruchsrecht: kontakt@kaufmann-health.de
                 </p>
               </div>
 
