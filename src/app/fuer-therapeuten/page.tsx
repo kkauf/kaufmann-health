@@ -23,7 +23,7 @@ const faqItems = [
     id: "fuer-therapeuten-faq-fee",
     question: "Wie hoch ist die Erfolgsgebühr?",
     answer:
-      "25% der Sitzungsgebühr für die ersten 10 Sitzungen pro Klient, der über unser Netzwerk zu Ihnen findet. Danach 0%.",
+      "Für jeden vermittelten Klienten fallen für die ersten 10 Sitzungen jeweils 25% des Sitzungshonorars als Erfolgsgebühr an. Diese Gebühr fällt nur für Klienten an, die über unser Netzwerk zu Ihnen findet. Nach 10 Sitzungen gehören die Klienten Ihnen, d.h. es fallen keine weiteren Gebühren an. Kommt ein Klient nicht mehr, zahlen Sie nicht mehr.",
   },
   {
     id: "fuer-therapeuten-faq-who",
