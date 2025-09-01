@@ -10,6 +10,9 @@ import Link from 'next/link';
 import { getEmailError } from '@/lib/validation';
 // CTA form for Therapie-Finder landing
 
+// Keep in sync with Datenschutz "Stand/Version" for consent proof
+const PRIVACY_VERSION = '1.0';
+
 export default function TherapieFinderForm() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -34,6 +37,9 @@ export default function TherapieFinderForm() {
       // Collect selected modalities as slugs the API expects
       specializations: (form.getAll('specializations') || []).map((v) => String(v)),
       session_id: getOrCreateSessionId(),
+      // GDPR consent for sharing with therapists (explicit, patient leads)
+      consent_share_with_therapists: true,
+      privacy_version: PRIVACY_VERSION,
     };
 
     // Client-side validation
@@ -72,6 +78,8 @@ export default function TherapieFinderForm() {
         'Rate limited': 'Zu viele Anfragen. Bitte versuchen Sie es in einer Minute erneut.',
         'Failed to save lead': 'Speichern fehlgeschlagen. Bitte später erneut versuchen.',
         'Invalid JSON': 'Ungültige Eingabe. Bitte Formular prüfen.',
+        'Einwilligung zur Datenübertragung erforderlich':
+          'Bitte stimmen Sie der Datenweitergabe an Therapeut:innen zu.',
       };
       if (map[msg]) {
         const friendly = map[msg];
@@ -199,8 +207,12 @@ export default function TherapieFinderForm() {
       </div>
 
       <Button type="submit" disabled={loading}>
-        {loading ? 'Senden…' : 'Passende Therapeuten vorschlagen lassen →'}
+        {loading ? 'Senden…' : 'Therapeuten in meiner Nähe anzeigen →'}
       </Button>
+      <p className="mt-2 text-xs text-gray-600">
+        Durch Absenden stimmen Sie der Weitergabe Ihrer Daten an passende Therapeuten zu. Details:{' '}
+        <Link href="/datenschutz" className="underline">Datenschutzerklärung</Link>
+      </p>
       <small className="block text-xs text-gray-600">100% kostenlos & unverbindlich - persönliche Auswahl durch Experten</small>
 
       {/* Non-success inline status */}

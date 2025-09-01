@@ -122,6 +122,24 @@ export default function DatenschutzPage() {
               </div>
 
               <div>
+                <h3 className="font-medium">Betroffenenrechte</h3>
+                <p className="mt-2">
+                  Für alle Anfragen zu Ihren Datenschutzrechten (Auskunft, Berichtigung,
+                  Löschung, Einschränkung, Datenübertragbarkeit, Widerspruch) wenden Sie
+                  sich bitte an:
+                </p>
+                <p className="mt-1 font-medium">
+                  E-Mail:{' '}
+                  <a
+                    className="text-blue-600 underline"
+                    href="mailto:kontakt@kaufmann-health.de"
+                  >
+                    kontakt@kaufmann-health.de
+                  </a>
+                </p>
+              </div>
+
+              <div>
                 <h3 className="font-medium">SSL-/TLS-Verschlüsselung</h3>
                 <p className="mt-2">
                   Diese Seite nutzt aus Sicherheitsgründen und zum Schutz der Übertragung vertraulicher Inhalte eine SSL-/TLS-Verschlüsselung.
@@ -217,6 +235,44 @@ export default function DatenschutzPage() {
               </div>
 
               <div>
+                <h3 id="therapeutenvermittlung" className="font-medium">
+                  Therapeutenvermittlung und Kontaktherstellung
+                </h3>
+                <div className="mt-2 space-y-2">
+                  <p>
+                    <strong>Zweck:</strong> Weitergabe Ihrer Kontakt- und Gesundheitsdaten an
+                    {' '}passende Therapeuten zur Kontaktaufnahme
+                  </p>
+                  <p>
+                    <strong>Rechtsgrundlage:</strong> Ihre Einwilligung (Art. 6 Abs. 1 lit. a DSGVO,
+                    {' '}Art. 9 Abs. 2 lit. a DSGVO für Gesundheitsdaten)
+                  </p>
+                  <p>
+                    <strong>Empfänger:</strong> Ausgewählte Heilpraktiker für Psychotherapie basierend
+                    {' '}auf Ihren Präferenzen und Ihrem Standort
+                  </p>
+                  <p>
+                    <strong>Übertragene Daten:</strong> Name, E‑Mail, Telefon, Stadt, Therapiewünsche,
+                    {' '}gesundheitsbezogene Angaben aus Ihren Formulareingaben
+                  </p>
+                  <p>
+                    <strong>Widerruf:</strong> Jederzeit per E‑Mail an{' '}
+                    <a
+                      className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900"
+                      href="mailto:kontakt@kaufmann-health.de"
+                    >
+                      kontakt@kaufmann-health.de
+                    </a>{' '}
+                    möglich. Nach Widerruf werden Ihre Daten innerhalb von 30 Tagen gelöscht.
+                  </p>
+                  <p>
+                    <strong>Speicherdauer:</strong> Daten werden gelöscht, sobald Sie Ihre Einwilligung
+                    {' '}widerrufen oder nach 2 Jahren ohne Aktivität.
+                  </p>
+                </div>
+              </div>
+
+              <div>
                 <h3 className="font-medium">Anfrage per E-Mail, Telefon oder Telefax</h3>
                 <p className="mt-2">
                   Wenn Sie uns per E-Mail, Telefon oder Telefax kontaktieren, verarbeiten wir Ihre Anfrage inkl. personenbezogener Daten zur
@@ -241,7 +297,7 @@ export default function DatenschutzPage() {
             </div>
           </section>
 
-          <p className="text-sm text-gray-600">Stand: August 2025</p>
+          <p className="text-sm text-gray-600">Stand: September 2025 | Version 1.0</p>
         </div>
       </section>
     </main>
@@ -251,11 +307,11 @@ export default function DatenschutzPage() {
 export const metadata = {
   title: "Datenschutzerklärung | Kaufmann Health",
   description:
-    "Datenschutzerklärung für Kaufmann Health – ohne Cookies (kein Tracking/Marketing). Hinweise zu Hosting (Vercel, Supabase), Rechtsgrundlagen und Betroffenenrechten.",
+    "Datenschutzerklärung für Kaufmann Health – Therapeutenvermittlung und Kontaktherstellung, GDPR‑konforme Datenverarbeitung (ohne Tracking‑Cookies), Ihre Rechte und Widerrufsmöglichkeiten.",
   openGraph: {
     title: "Datenschutzerklärung | Kaufmann Health",
     description:
-      "Informationen zum Datenschutz ohne Cookies (kein Tracking/Marketing), Hosting und Betroffenenrechten.",
+      "Informationen zur Therapeutenvermittlung, Datenschutz ohne Tracking‑Cookies, Hosting und Ihren Betroffenenrechten.",
     url: "https://kaufmann-health.de/datenschutz",
     siteName: "Kaufmann Health",
     locale: "de_DE",

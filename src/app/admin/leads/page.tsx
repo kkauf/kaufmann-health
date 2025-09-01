@@ -15,6 +15,10 @@ type PersonMeta = {
   session_preferences?: ('online' | 'in_person')[];
   issue?: string;
   specializations?: string[];
+  // GDPR consent (patient)
+  consent_share_with_therapists?: boolean;
+  consent_privacy_version?: string;
+  consent_share_with_therapists_at?: string; // ISO timestamp
 };
 
 type Person = {
@@ -377,6 +381,13 @@ export default function AdminLeadsPage() {
                       <div><span className="text-gray-500">Thema:</span> {issue}</div>
                       <div><span className="text-gray-500">Sitzung:</span> {pref}</div>
                       <div><span className="text-gray-500">Methode:</span> {specs.length ? specs.join(', ') : '—'}</div>
+                      {p.type === 'patient' && (
+                        <>
+                          <div><span className="text-gray-500">Einwilligung:</span> {meta.consent_share_with_therapists ? 'Ja' : 'Nein'}</div>
+                          <div><span className="text-gray-500">Version:</span> {meta.consent_privacy_version || '—'}</div>
+                          <div className="col-span-2 text-xs text-gray-500">Einw.-Zeitpunkt: {formatDate(meta.consent_share_with_therapists_at)}</div>
+                        </>
+                      )}
                       <div className="col-span-2 text-xs text-gray-500">Eingang: {formatDate(p.created_at)}</div>
                     </div>
                   </CardContent>

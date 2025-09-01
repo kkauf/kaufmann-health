@@ -68,11 +68,33 @@ describe('/api/leads Google Ads conversions', () => {
   it('fires patient_registration conversion with value 10 on patient lead', async () => {
     const { POST } = await import('@/app/api/leads/route');
     const res = await POST(
-      makeReq({ email: 'patient@example.com', type: 'patient' }, { 'x-forwarded-for': '1.2.3.4' }),
+      makeReq(
+        { email: 'patient@example.com', type: 'patient', consent_share_with_therapists: true, privacy_version: 'test-v1' },
+        { 'x-forwarded-for': '1.2.3.4' },
+      ),
     );
     expect(res.status).toBe(200);
 
     // fire-and-forget; allow microtask flush
+    await Promise.resolve();
+    expect(trackConversion).toHaveBeenCalledTimes(1);
+    const call = trackConversion.mock.calls[0][0];
+    expect(call.conversionAction).toBe('patient_registration');
+    expect(call.conversionValue).toBe(10);
+    expect(call.orderId).toBe('lead-xyz');
+    expect(call.email).toBe('patient@example.com');
+  });
+
+  it('fires patient_registration conversion with value 10 on patient lead', async () => {
+    const { POST } = await import('@/app/api/leads/route');
+    const res = await POST(
+      makeReq(
+        { email: 'patient@example.com', type: 'patient', consent_share_with_therapists: true },
+        { 'x-forwarded-for': '1.2.3.4' },
+      ),
+    );
+    expect(res.status).toBe(200);
+
     await Promise.resolve();
     expect(trackConversion).toHaveBeenCalledTimes(1);
     const call = trackConversion.mock.calls[0][0];

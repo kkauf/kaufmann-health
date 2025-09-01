@@ -37,6 +37,9 @@ type LeadPayload = {
   experience?: string; // free text (e.g., '2-4 Jahre')
   website?: string;
   terms_version?: string;
+  // GDPR consent for sharing patient data with therapists
+  consent_share_with_therapists?: boolean;
+  privacy_version?: string;
   // Optional client attribution (no cookies). Only used for event props, not stored in DB.
   session_id?: string;
 };
@@ -139,6 +142,9 @@ export async function POST(req: Request) {
     const website = sanitize(payload.website);
     const leadType: 'patient' | 'therapist' = payload.type === 'therapist' ? 'therapist' : 'patient';
     const session_id = sanitize(payload.session_id);
+    // Consent flags (patient only)
+    const consentShare = Boolean(payload.consent_share_with_therapists);
+    const privacyVersion = sanitize(payload.privacy_version);
     const specializations = Array.isArray(payload.specializations)
       ? payload.specializations
           .map((s) =>
@@ -150,6 +156,8 @@ export async function POST(req: Request) {
           )
           .filter((s): s is string => !!s && (ALLOWED_SPECIALIZATIONS as readonly string[]).includes(s))
       : [];
+
+    // Consent validation handled later with comprehensive tracking
 
     // Basic IP-based rate limiting (60s window). Note: best-effort and
     // dependent on upstream "x-forwarded-for" headers.
@@ -187,6 +195,13 @@ export async function POST(req: Request) {
       }
     }
 
+    // Enforce explicit consent for patient leads (GDPR Art. 6(1)(a), 9(2)(a))
+    if (leadType === 'patient' && !consentShare) {
+      return NextResponse.json(
+        { data: null, error: 'Einwilligung zur Datenübertragung erforderlich' },
+        { status: 400, headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
 
     const { data: inserted, error } = await supabaseServer
       .from('people')
@@ -210,7 +225,13 @@ export async function POST(req: Request) {
           ...(qualification ? { qualification } : {}),
           ...(experience ? { experience } : {}),
           ...(website ? { website } : {}),
-          lead_type: leadType,
+          ...(leadType === 'patient' && consentShare
+            ? {
+                consent_share_with_therapists: true,
+                consent_share_with_therapists_at: new Date().toISOString(),
+                ...(privacyVersion ? { consent_privacy_version: privacyVersion } : {}),
+              }
+            : {}),
           funnel_type: leadType === 'therapist' ? 'therapist_acquisition' : 'koerperpsychotherapie',
           submitted_at: new Date().toISOString(),
         },

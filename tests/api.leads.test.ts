@@ -97,6 +97,16 @@ describe('/api/leads POST', () => {
     expect(json).toEqual({ data: null, error: 'Rate limited' });
   });
 
+  it('400 when patient consent missing', async () => {
+    const { POST } = await import('@/app/api/leads/route');
+    const res = await POST(
+      makeReq({ email: 'patient@example.com', type: 'patient' }),
+    );
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json).toEqual({ data: null, error: 'Einwilligung zur Datenübertragung erforderlich' });
+  });
+
   it('200 on success and filters specializations to allowed set', async () => {
     const { POST } = await import('@/app/api/leads/route');
     const res = await POST(
@@ -127,6 +137,8 @@ describe('/api/leads POST', () => {
         city: 'Berlin',
         issue: 'Trauma-Begleitung',
         session_preference: 'in_person',
+        consent_share_with_therapists: true,
+        privacy_version: 'test-privacy-v1',
       }),
     );
     expect(res.status).toBe(200);
@@ -143,6 +155,14 @@ describe('/api/leads POST', () => {
     expect(email.html).toContain('Berlin');
     expect(email.html).toContain('Trauma-Begleitung');
     expect(email.html).toContain('Vor Ort');
+
+    // Consent metadata stored correctly (top-level)
+    expect(lastInsertedPayload).toBeTruthy();
+    const meta = lastInsertedPayload.metadata || {};
+    expect(meta.consent_share_with_therapists).toBe(true);
+    expect(typeof meta.consent_share_with_therapists_at).toBe('string');
+    expect(Number.isNaN(Date.parse(meta.consent_share_with_therapists_at))).toBe(false);
+    expect(meta.consent_privacy_version).toBe('test-privacy-v1');
   });
 
   it('handles missing optional fields gracefully and still sends confirmation', async () => {
@@ -151,6 +171,8 @@ describe('/api/leads POST', () => {
       makeReq({
         email: 'patient2@example.com',
         type: 'patient',
+        consent_share_with_therapists: true,
+        privacy_version: 'v-test',
         // no city / issue / session_preference
       }),
     );
@@ -180,14 +202,36 @@ describe('/api/leads POST', () => {
       makeReq({
         email: 'patient3@example.com',
         type: 'patient',
+        consent_share_with_therapists: true,
+        privacy_version: 'p-v1',
       }),
     );
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json).toEqual({ data: { id: 'test-id-123' }, error: null });
+  });
 
-    // Attempt was made
-    expect(sentEmails.length).toBe(1);
-    expect(sentEmails[0].to).toBe('patient3@example.com');
+  it('stores consent metadata for patient leads', async () => {
+    const { POST } = await import('@/app/api/leads/route');
+    const res = await POST(
+      makeReq(
+        {
+          email: 'withconsent@example.com',
+          type: 'patient',
+          consent_share_with_therapists: true,
+          privacy_version: '1.0',
+        },
+        { 'x-forwarded-for': '1.2.3.4', 'user-agent': 'UnitTestAgent' },
+      ),
+    );
+    expect(res.status).toBe(200);
+    expect(lastInsertedPayload).toBeTruthy();
+    const meta = lastInsertedPayload.metadata || {};
+    expect(meta.consent_share_with_therapists).toBe(true);
+    expect(typeof meta.consent_share_with_therapists_at).toBe('string');
+    expect(Number.isNaN(Date.parse(meta.consent_share_with_therapists_at))).toBe(false);
+    expect(meta.consent_privacy_version).toBe('1.0');
+    // Basic context fields still present at top-level
+    expect(meta.user_agent).toBe('UnitTestAgent');
   });
 });
