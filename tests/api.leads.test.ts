@@ -127,6 +127,34 @@ describe('/api/leads POST', () => {
     expect(specs).toEqual(['narm', 'somatic-experiencing', 'hakomi']);
   });
 
+  it("therapist leads default to status 'pending_verification'", async () => {
+    const { POST } = await import('@/app/api/leads/route');
+    const res = await POST(
+      makeReq({
+        email: 'therapist@example.com',
+        type: 'therapist',
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(lastInsertedPayload).toBeTruthy();
+    expect(lastInsertedPayload.status).toBe('pending_verification');
+  });
+
+  it("patient leads default to status 'new'", async () => {
+    const { POST } = await import('@/app/api/leads/route');
+    const res = await POST(
+      makeReq({
+        email: 'patient-status@example.com',
+        type: 'patient',
+        consent_share_with_therapists: true,
+        privacy_version: 'test-v1',
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(lastInsertedPayload).toBeTruthy();
+    expect(lastInsertedPayload.status).toBe('new');
+  });
+
   it('sends patient confirmation email on patient lead success', async () => {
     const { POST } = await import('@/app/api/leads/route');
     const res = await POST(

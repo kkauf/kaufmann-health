@@ -210,7 +210,7 @@ export async function POST(req: Request) {
         email: data.email,
         phone: data.phone,
         type: leadType,
-        status: 'new',
+        status: leadType === 'therapist' ? 'pending_verification' : 'new',
         metadata: {
           ...(data.notes ? { notes: data.notes } : {}),
           ...(city ? { city } : {}),

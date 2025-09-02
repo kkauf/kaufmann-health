@@ -6,7 +6,7 @@
 - `phone text`
 - `name text`
 - `type text check in ('patient','therapist')`
-- `status text default 'new'`
+- `status text default 'new'` — values: `new`, `pending_verification` (therapists default), `verified`, `rejected`
 - `metadata jsonb default '{}'::jsonb`
 - `created_at timestamptz default now()`
 
@@ -14,6 +14,12 @@ Business notes:
 - `metadata` is a flexible bag for form/funnel details (`city`, `issue`, `availability`, `budget`, etc.).
 - Common keys used by the therapy finder funnel: `specializations` (string[] of slugs), `funnel_type='koerperpsychotherapie'`, `submitted_at` (ISO string), `ip`, `user_agent`.
 - Consider future constraints (e.g., email verified) when the funnel evolves.
+- Therapist verification metadata:
+  - `metadata.documents`: paths in Supabase Storage bucket `therapist-documents` (private).
+    - `heilpraktiker_license`, `specialization_cert`, `liability_insurance` (strings: storage paths)
+    - `uploaded_at` (ISO string)
+  - `metadata.verification`: review audit trail by admin
+    - `reviewed_by` (admin user id), `reviewed_at` (ISO string), `notes` (string)
 
 Indexes:
 - For lead rate limiting by IP stored in `metadata`, add a JSONB GIN index:
