@@ -76,6 +76,7 @@ export class GoogleAdsTracker {
   private developerToken?: string;
   private customerId?: string;
   private loginCustomerId?: string;
+  private lastTokenError?: string;
 
   private cachedAccessToken?: { token: string; exp: number };
 
@@ -86,6 +87,7 @@ export class GoogleAdsTracker {
     this.developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
     this.customerId = process.env.GOOGLE_ADS_CUSTOMER_ID;
     this.loginCustomerId = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID;
+    this.lastTokenError = undefined;
   }
 
   private isConfigured(): boolean {
@@ -130,20 +132,54 @@ export class GoogleAdsTracker {
         grant_type: 'refresh_token',
       });
 
-      const resp = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body,
-      });
-      if (!resp.ok) {
-        const text = await resp.text().catch(() => '');
-        throw new Error(`oauth_token_error ${resp.status}: ${text}`);
+      // Add short timeout + limited retries to handle transient TLS/network issues
+      const maxAttempts = 3;
+      const timeouts = [5000, 6000, 8000];
+      const backoff = (i: number) => [100, 500, 1200][Math.min(i, 2)];
+
+      let lastErr: unknown = undefined;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeouts[attempt] ?? 5000);
+        try {
+          const resp = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body,
+            signal: controller.signal,
+          });
+          clearTimeout(timer);
+          if (!resp.ok) {
+            const text = await resp.text().catch(() => '');
+            // Non-OK is likely non-transient (e.g., invalid_grant). Do not retry further.
+            throw new Error(`oauth_token_error ${resp.status}: ${text}`);
+          }
+          const json = (await resp.json()) as { access_token: string; expires_in?: number };
+          const exp = Date.now() + Math.max(30, (json.expires_in || 3600) - 30) * 1000;
+          this.cachedAccessToken = { token: json.access_token, exp };
+          this.lastTokenError = undefined;
+          return json.access_token;
+        } catch (err) {
+          clearTimeout(timer);
+          lastErr = err;
+          // Retry only on network/timeout errors; for oauth_token_error, break immediately.
+          const msg = (err instanceof Error ? err.message : String(err)) || '';
+          if (msg.startsWith('oauth_token_error')) {
+            break;
+          }
+          if (attempt < maxAttempts - 1) {
+            await new Promise((r) => setTimeout(r, backoff(attempt)));
+            continue;
+          }
+        }
       }
-      const json = (await resp.json()) as { access_token: string; expires_in?: number };
-      const exp = Date.now() + Math.max(30, (json.expires_in || 3600) - 30) * 1000;
-      this.cachedAccessToken = { token: json.access_token, exp };
-      return json.access_token;
+      // Final failure: log once and return null
+      this.lastTokenError = (lastErr instanceof Error ? lastErr.message : String(lastErr)) || 'unknown_error';
+      await logError('google_ads', lastErr, { stage: 'get_access_token' });
+      return null;
     } catch (e) {
+      // Unexpected failure path
+      this.lastTokenError = e instanceof Error ? e.message : String(e);
       await logError('google_ads', e, { stage: 'get_access_token' });
       return null;
     }
@@ -228,7 +264,12 @@ export class GoogleAdsTracker {
           type: 'google_ads_token_unavailable',
           source: 'google_ads',
           level: 'warn',
-          props: { count: conversions.length, actions, order_ids: orderIds },
+          props: {
+            count: conversions.length,
+            actions,
+            order_ids: orderIds,
+            last_error_message: this.lastTokenError,
+          },
         });
         return;
       }
