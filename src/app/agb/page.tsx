@@ -10,7 +10,7 @@ export default function AgbPage() {
           <section aria-labelledby="geltungsbereich">
             <h2 id="geltungsbereich" className="text-xl font-semibold">1. Geltungsbereich und Vertragscharakter</h2>
             <p className="mt-3">
-              Diese AGB gelten für alle Dienstverträge über die Nutzung der Informationsplattform Kaufmann Health als
+              Diese AGB gelten für alle Dienstverträge über die Nutzung der Vermittlungsplattform Kaufmann Health als
               Informations‑ und Kontaktvermittlungsdienst zwischen Heilpraktikern für Psychotherapie/Psychotherapeuten
               (&quot;Anbieter&quot;) und Klienten. Die Plattform bietet Orientierungshilfe und Qualitätsprüfung der Profile. Abweichende
               Bedingungen des Nutzers gelten nur bei ausdrücklicher schriftlicher Zustimmung. Soweit diese AGB keine abweichenden

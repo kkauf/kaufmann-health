@@ -235,7 +235,9 @@ export default function TherapistsPage() {
         <h2 id="service" className="text-2xl font-semibold">Unser Service im Detail</h2>
         <div className="mt-4 rounded-xl border bg-slate-50 p-5">
           <p className="max-w-prose text-sm text-gray-700">
-            Kaufmann Health ist eine Informationsplattform für Heilpraktiker der Psychotherapie. Wir stellen Kontaktmöglichkeiten zwischen Interessenten und Therapeuten her. Wir geben keine medizinischen oder therapeutischen Empfehlungen und garantieren keine Behandlungserfolge.
+            Kaufmann Health ist eine Vermittlungsplattform für Heilpraktiker der Psychotherapie. 
+            Wir vermitteln qualifizierte Therapeuten an passende Klienten. 
+            Wir geben keine medizinischen oder therapeutischen Empfehlungen und garantieren keine Behandlungserfolge.
           </p>
         </div>
       </section>

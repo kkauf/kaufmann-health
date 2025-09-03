@@ -98,10 +98,10 @@ export default function TherapieFindenPage() {
                 <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
                   <Clock className="h-5 w-5" />
                 </div>
-                <CardTitle className="text-3xl bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">7 Tage</CardTitle>
+                <CardTitle className="text-3xl bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">Schnell</CardTitle>
               </CardHeader>
               <CardContent>
-                <CardDescription>durchschnittliche Zeit bis zum Ersttermin</CardDescription>
+                <CardDescription>Meist Termine innerhalb weniger Tage verfügbar</CardDescription>
               </CardContent>
             </Card>
           </div>
@@ -164,7 +164,7 @@ export default function TherapieFindenPage() {
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <h3 id="personal-service" className="text-xl font-semibold">Expertenbasierte Therapeuten-Auswahl</h3>
+              <h3 id="personal-service" className="text-xl font-semibold">Persönlich ausgewählte Therapeuten-Empfehlungen</h3>
               <p className="mt-2 max-w-3xl text-gray-700">Wir kennen jeden Therapeuten persönlich und prüfen Qualifikation, Arbeitsweise und Verfügbarkeit. Auf dieser Basis sprechen wir eine kuratierte Auswahl aus.</p>
               <small className="mt-2 block text-xs text-gray-600">Dies ist eine Informationsberatung, keine medizinische oder therapeutische Empfehlung.</small>
             </div>
@@ -215,7 +215,7 @@ export default function TherapieFindenPage() {
               {
                 id: 'termin',
                 question: 'Wie schnell bekomme ich einen Termin?',
-                answer: 'Die meisten unserer sorgfältig geprüften Therapeuten haben innerhalb von 7 Tagen Termine frei. Nach Ihrer Anfrage erhalten Sie innerhalb von 24 Stunden Kontaktmöglichkeiten.',
+                answer: 'Nach Ihrer Anfrage erhalten Sie innerhalb von 24 Stunden Kontaktdaten passender Therapeuten. Die meisten haben kurzfristig Termine verfügbar.',
               },
               {
                 id: 'kontakt',
@@ -240,7 +240,7 @@ export default function TherapieFindenPage() {
       {/* Footer legal note (page-specific) */}
       <section aria-labelledby="footer-legal" className="mt-12 sm:mt-16">
         <p id="footer-legal" className="text-xs text-gray-600">
-          Kaufmann Health schlägt qualifizierte Therapeuten vor basierend auf deren Qualifikationen, Verfügbarkeit und Ihren Präferenzen. Wir treffen keine medizinischen Empfehlungen bezüglich spezifischer Behandlungen. Die Entscheidung über eine Therapie treffen Sie eigenverantwortlich.
+          Kaufmann Health vermittelt qualifizierte Therapeuten basierend auf deren Qualifikationen, Verfügbarkeit und Ihren Präferenzen. Wir treffen keine medizinischen Empfehlungen bezüglich spezifischer Behandlungen. Die Entscheidung über eine Therapie treffen Sie eigenverantwortlich.
         </p>
       </section>
     </main>

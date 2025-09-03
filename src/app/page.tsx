@@ -116,11 +116,10 @@ export default function Home() {
               </p>
             </div>
             <div className="rounded-lg border bg-white p-5 transition-all duration-200 hover:shadow-md">
-              <h3 className="text-lg font-medium">Expertenbasierte Therapeuten-Auswahl</h3>
+              <h3 className="text-lg font-medium">Persönlich ausgewählte Therapeuten-Empfehlungen</h3>
               <p className="mt-2 text-sm text-gray-600">
-                Als Experten für körperorientierte Therapie kennen wir jeden 
-                Therapeuten persönlich und wählen basierend auf Ihrer Situation 
-                den passenden aus.
+                Wir kennen jeden Therapeuten persönlich und wählen basierend auf 
+                Ihren Bedürfnissen und deren Spezialisierung passende Kandidaten aus.
               </p>
             </div>
             <div className="rounded-lg border bg-white p-5 transition-all duration-200 hover:shadow-md">

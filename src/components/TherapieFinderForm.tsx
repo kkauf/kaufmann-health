@@ -213,7 +213,7 @@ export default function TherapieFinderForm() {
         Durch Absenden stimmen Sie der Weitergabe Ihrer Daten an passende Therapeuten zu. Details:{' '}
         <Link href="/datenschutz" className="underline">Datenschutzerklärung</Link>
       </p>
-      <small className="block text-xs text-gray-600">100% kostenlos & unverbindlich - persönliche Auswahl durch Experten</small>
+      <small className="block text-xs text-gray-600">100% kostenlos & unverbindlich</small>
 
       {/* Non-success inline status */}
       {!submitted && message && <p className="text-sm text-red-600">{message}</p>}
