@@ -5,7 +5,6 @@ import { TERMS_VERSION } from '@/content/therapist-terms';
 import { ACTIVE_CITIES } from '@/lib/constants';
 import { sendEmail } from '@/lib/email/client';
 import { buildInternalLeadNotification } from '@/lib/email/internalNotification';
-import type { LeadType } from '@/lib/email/types';
 import { renderTherapistWelcome } from '@/lib/email/templates/therapistWelcome';
 import { renderPatientConfirmation } from '@/lib/email/templates/patientConfirmation';
 import { logError, track } from '@/lib/logger';
@@ -407,7 +406,10 @@ export async function POST(req: Request) {
       if (to) {
         const notif = buildInternalLeadNotification({
           id: inserted.id,
-          metadata: inserted.metadata as unknown as { lead_type?: LeadType; city?: string | null } | null,
+          metadata: {
+            lead_type: leadType,
+            city: city ?? null,
+          },
         });
         // Audit: attempted send
         void track({
