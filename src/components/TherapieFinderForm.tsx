@@ -119,7 +119,7 @@ export default function TherapieFinderForm() {
           </CardFooter>
         </Card>
       )}
-      <form id="top-form" onSubmit={onSubmit} className="space-y-6 max-w-xl" hidden={submitted}>
+      <form onSubmit={onSubmit} className="space-y-6 max-w-xl" hidden={submitted}>
       <div>
         <h2 className="text-xl font-semibold">Kostenlose Therapeuten-Empfehlung</h2>
       </div>

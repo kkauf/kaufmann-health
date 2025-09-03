@@ -3,7 +3,8 @@ import TherapieFinderForm from '@/components/TherapieFinderForm';
 import FaqAccordion from '@/components/FaqAccordion';
 import TherapyModalityExplanations from '@/components/TherapyModalityExplanations';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity, Euro, Clock, MessageCircle, UserCheck, PhoneCall, ShieldCheck, Lock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Activity, Euro, Clock, MessageCircle, UserCheck, PhoneCall, ShieldCheck, Lock, Check } from 'lucide-react';
 
 export default function TherapieFindenPage() {
   return (
@@ -25,7 +26,7 @@ export default function TherapieFindenPage() {
               </span>
               <span className="inline-flex items-center gap-2">
                 <Lock className="h-4 w-4 text-slate-700" />
-                Keine Cookies
+                Keine Tracking‑Cookies
               </span>
               <span className="inline-flex items-center gap-2">
                 <UserCheck className="h-4 w-4 text-indigo-600" />
@@ -84,7 +85,7 @@ export default function TherapieFindenPage() {
             Traumatische Erfahrungen werden nicht nur im Kopf, sondern im gesamten Nervensystem gespeichert. Körperorientierte Therapieformen arbeiten direkt mit diesen somatischen Speicherungen.
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            <Card className="transition-all duration-200 hover:shadow-md">
+            <Card className="transition-all duration-200">
               <CardHeader className="flex flex-row items-center gap-3">
                 <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600">
                   <Activity className="h-5 w-5" />
@@ -95,7 +96,7 @@ export default function TherapieFindenPage() {
                 <CardDescription>der Klienten berichten von Verbesserungen nach fünf Sitzungen</CardDescription>
               </CardContent>
             </Card>
-            <Card className="transition-all duration-200 hover:shadow-md">
+            <Card className="transition-all duration-200">
               <CardHeader className="flex flex-row items-center gap-3">
                 <div className="rounded-xl bg-sky-50 p-2 text-sky-600">
                   <Euro className="h-5 w-5" />
@@ -106,7 +107,7 @@ export default function TherapieFindenPage() {
                 <CardDescription>pro Sitzung bei Selbstzahlung</CardDescription>
               </CardContent>
             </Card>
-            <Card className="transition-all duration-200 hover:shadow-md">
+            <Card className="transition-all duration-200">
               <CardHeader className="flex flex-row items-center gap-3">
                 <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
                   <Clock className="h-5 w-5" />
@@ -126,27 +127,39 @@ export default function TherapieFindenPage() {
         <div className="rounded-2xl border bg-white p-6 sm:p-8">
           <h2 id="privacy-trust" className="text-2xl font-semibold">Datenschutz & Vertrauen</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">
-              <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-600" />
-              <div>
-                <p className="font-medium">Geprüfte Therapeuten</p>
-                <p className="text-sm text-gray-600">Wir verifizieren Qualifikationen und Spezialisierungen manuell.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">
-              <Lock className="mt-0.5 h-5 w-5 text-slate-700" />
-              <div>
-                <p className="font-medium">Keine Cookies</p>
-                <p className="text-sm text-gray-600">Keine Tracking-Cookies. Verwendung Ihrer Angaben nur zur Kontaktaufnahme.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">
-              <UserCheck className="mt-0.5 h-5 w-5 text-indigo-600" />
-              <div>
-                <p className="font-medium">Transparente Prozesse</p>
-                <p className="text-sm text-gray-600">DSGVO-konforme Verarbeitung. Details in unserer <a className="underline" href="/datenschutz">Datenschutzerklärung</a>.</p>
-              </div>
-            </div>
+            <Card className="transition-all duration-200">
+              <CardHeader className="flex items-center gap-3">
+                <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <CardTitle className="font-medium">Geprüfte Therapeuten</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>Wir verifizieren Qualifikationen und Spezialisierungen manuell.</CardDescription>
+              </CardContent>
+            </Card>
+            <Card className="transition-all duration-200">
+              <CardHeader className="flex items-center gap-3">
+                <div className="rounded-xl bg-slate-100 p-2 text-slate-700">
+                  <Lock className="h-5 w-5" />
+                </div>
+                <CardTitle className="font-medium">Keine Tracking‑Cookies</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>Keine Tracking-Cookies. Verwendung Ihrer Angaben nur zur Kontaktaufnahme.</CardDescription>
+              </CardContent>
+            </Card>
+            <Card className="transition-all duration-200">
+              <CardHeader className="flex items-center gap-3">
+                <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600">
+                  <UserCheck className="h-5 w-5" />
+                </div>
+                <CardTitle className="font-medium">Transparente Prozesse</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>DSGVO-konforme Verarbeitung. Details in unserer <a className="underline" href="/datenschutz#cookies">Datenschutzerklärung</a>.</CardDescription>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
@@ -155,7 +168,7 @@ export default function TherapieFindenPage() {
       <section aria-labelledby="process" className="mt-12 sm:mt-16">
         <h2 id="process" className="text-2xl font-semibold">So funktioniert&#39;s</h2>
         <div className="mt-6 grid gap-6 sm:grid-cols-3">
-          <Card className="group relative overflow-hidden transition-all duration-200 hover:shadow-md">
+          <Card className="group relative overflow-hidden transition-all duration-200">
             <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -168,7 +181,7 @@ export default function TherapieFindenPage() {
               <CardDescription>Beschreiben Sie kurz Ihr Anliegen und Ihre Präferenzen.</CardDescription>
             </CardHeader>
           </Card>
-          <Card className="group relative overflow-hidden transition-all duration-200 hover:shadow-md">
+          <Card className="group relative overflow-hidden transition-all duration-200">
             <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -181,7 +194,7 @@ export default function TherapieFindenPage() {
               <CardDescription>Wir prüfen unsere kuratierte Liste und wählen passende Therapeuten für Sie aus.</CardDescription>
             </CardHeader>
           </Card>
-          <Card className="group relative overflow-hidden transition-all duration-200 hover:shadow-md">
+          <Card className="group relative overflow-hidden transition-all duration-200">
             <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -217,10 +230,22 @@ export default function TherapieFindenPage() {
       <section aria-labelledby="qualifications" className="mt-12 sm:mt-16">
         <h2 id="qualifications" className="text-2xl font-semibold">Unsere sorgfältig geprüften Therapeuten</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border bg-white p-4">✓ Heilpraktiker für Psychotherapie (staatlich geprüft)</div>
-          <div className="rounded-lg border bg-white p-4">✓ Zertifiziert in NARM, Hakomi oder Somatic Experiencing</div>
-          <div className="rounded-lg border bg-white p-4">✓ Mindestens 2 Jahre Praxiserfahrung</div>
-          <div className="rounded-lg border bg-white p-4">✓ Regelmäßige Supervision und Fortbildung</div>
+          <div className="flex items-start gap-2 rounded-lg border bg-white p-3 text-sm">
+            <Check className="mt-0.5 h-4 w-4 text-slate-600" />
+            <span>Heilpraktiker für Psychotherapie (staatlich geprüft)</span>
+          </div>
+          <div className="flex items-start gap-2 rounded-lg border bg-white p-3 text-sm">
+            <Check className="mt-0.5 h-4 w-4 text-slate-600" />
+            <span>Zertifiziert in NARM, Hakomi oder Somatic Experiencing</span>
+          </div>
+          <div className="flex items-start gap-2 rounded-lg border bg-white p-3 text-sm">
+            <Check className="mt-0.5 h-4 w-4 text-slate-600" />
+            <span>Mindestens 2 Jahre Praxiserfahrung</span>
+          </div>
+          <div className="flex items-start gap-2 rounded-lg border bg-white p-3 text-sm">
+            <Check className="mt-0.5 h-4 w-4 text-slate-600" />
+            <span>Regelmäßige Supervision und Fortbildung</span>
+          </div>
         </div>
       </section>
 
@@ -283,7 +308,9 @@ export default function TherapieFindenPage() {
         <h2 id="final-cta" className="text-2xl font-semibold">Lassen Sie uns Ihnen den passenden Therapeuten vorschlagen</h2>
         <p className="mt-2 text-gray-700">Erhalten Sie eine persönliche, kuratierte Empfehlung – kostenlos & unverbindlich.</p>
         <div className="mt-4 flex justify-center">
-          <a href="#top-form" className="inline-flex items-center justify-center rounded-md bg-black px-5 py-2 text-white">Kostenlose Therapeuten-Empfehlung erhalten →</a>
+          <Button asChild size="lg">
+            <a href="#top-form">Kostenlose Therapeuten-Empfehlung erhalten →</a>
+          </Button>
         </div>
         <small className="mt-2 block text-xs text-gray-600">Wir melden uns innerhalb von 24 Stunden mit einer Auswahl</small>
       </section>
