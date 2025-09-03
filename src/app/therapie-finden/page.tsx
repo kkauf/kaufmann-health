@@ -3,7 +3,7 @@ import TherapieFinderForm from '@/components/TherapieFinderForm';
 import FaqAccordion from '@/components/FaqAccordion';
 import TherapyModalityExplanations from '@/components/TherapyModalityExplanations';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity, Euro, Clock, MessageCircle, UserCheck, PhoneCall, ShieldCheck } from 'lucide-react';
+import { Activity, Euro, Clock, MessageCircle, UserCheck, PhoneCall, ShieldCheck, Lock } from 'lucide-react';
 
 export default function TherapieFindenPage() {
   return (
@@ -18,7 +18,20 @@ export default function TherapieFindenPage() {
             <p className="mt-4 max-w-xl text-gray-700">
               Finden Sie körperorientierte Therapeuten in Ihrer Nähe. Persönlich kuratierte Empfehlungen für Selbstzahler. Termine innerhalb einer Woche.
             </p>
- 
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-700" aria-label="Vertrauen">
+              <span className="inline-flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                Geprüfte Profile
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Lock className="h-4 w-4 text-slate-700" />
+                Keine Cookies
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <UserCheck className="h-4 w-4 text-indigo-600" />
+                Transparente Datenverarbeitung
+              </span>
+            </div>
 
           <div className="mt-6 grid grid-cols-2 items-center gap-6 sm:grid-cols-4">
             <Image
@@ -108,7 +121,35 @@ export default function TherapieFindenPage() {
         </div>
       </section>
 
-      
+      {/* Datenschutz & Vertrauen */}
+      <section aria-labelledby="privacy-trust" className="mt-12 sm:mt-16">
+        <div className="rounded-2xl border bg-white p-6 sm:p-8">
+          <h2 id="privacy-trust" className="text-2xl font-semibold">Datenschutz & Vertrauen</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">
+              <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-600" />
+              <div>
+                <p className="font-medium">Geprüfte Therapeuten</p>
+                <p className="text-sm text-gray-600">Wir verifizieren Qualifikationen und Spezialisierungen manuell.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">
+              <Lock className="mt-0.5 h-5 w-5 text-slate-700" />
+              <div>
+                <p className="font-medium">Keine Cookies</p>
+                <p className="text-sm text-gray-600">Keine Tracking-Cookies. Verwendung Ihrer Angaben nur zur Kontaktaufnahme.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">
+              <UserCheck className="mt-0.5 h-5 w-5 text-indigo-600" />
+              <div>
+                <p className="font-medium">Transparente Prozesse</p>
+                <p className="text-sm text-gray-600">DSGVO-konforme Verarbeitung. Details in unserer <a className="underline" href="/datenschutz">Datenschutzerklärung</a>.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Process */}
       <section aria-labelledby="process" className="mt-12 sm:mt-16">
@@ -221,6 +262,16 @@ export default function TherapieFindenPage() {
                 id: 'kontakt',
                 question: 'Kann ich selbst verschiedene Therapeuten kontaktieren?',
                 answer: 'Selbstverständlich. Sie entscheiden eigenverantwortlich, welche Therapeuten Sie kontaktieren möchten. Wir stellen nur die Kontaktinformationen zur Verfügung.',
+              },
+              {
+                id: 'datenschutz',
+                question: 'Wie gehen Sie mit meinen Daten um?',
+                answer: 'Wir verwenden Ihre Angaben ausschließlich, um passende Therapeuten vorzuschlagen und Ihnen deren Kontaktdaten bereitzustellen. Keine Cookies, kein Tracking. Details finden Sie in unserer Datenschutzerklärung.',
+              },
+              {
+                id: 'qualifikation',
+                question: 'Wie stellen Sie die Qualifikation der Therapeuten sicher?',
+                answer: 'Wir kennen jeden Therapeuten persönlich und prüfen Qualifikationen, Spezialisierungen und Verfügbarkeit vor der Empfehlung.',
               },
             ]}
           />

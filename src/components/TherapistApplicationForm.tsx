@@ -11,6 +11,7 @@ import { getAttribution } from '@/lib/attribution';
 import { getOrCreateSessionId } from '@/lib/attribution';
 import { getEmailError } from '@/lib/validation';
 import Link from 'next/link';
+import { ShieldCheck, Lock, UserCheck } from 'lucide-react';
 
 // Re-export for tests to assert version consistency
 export const THERAPIST_TERMS_VERSION = TERMS_VERSION;
@@ -187,6 +188,34 @@ export default function TherapistApplicationForm() {
       <div className="sr-only" aria-hidden="true">
         <Label htmlFor="company">Firma</Label>
         <Input id="company" name="company" tabIndex={-1} autoComplete="off" />
+      </div>
+
+      {/* Trust panel */}
+      <div className="rounded-lg border bg-white p-4 sm:p-5">
+        <h3 className="text-sm font-medium text-gray-800">Unser Versprechen</h3>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div className="flex items-start gap-2 text-sm text-gray-700">
+            <ShieldCheck className="mt-0.5 h-4 w-4 text-emerald-600" />
+            <div>
+              <p className="font-medium">Geprüfte Anfragen</p>
+              <p className="text-xs text-gray-600">Qualifizierte, passende Klienten</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 text-sm text-gray-700">
+            <Lock className="mt-0.5 h-4 w-4 text-slate-700" />
+            <div>
+              <p className="font-medium">Keine Cookies</p>
+              <p className="text-xs text-gray-600">DSGVO‑konform, kein Tracking</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 text-sm text-gray-700">
+            <UserCheck className="mt-0.5 h-4 w-4 text-indigo-600" />
+            <div>
+              <p className="font-medium">Transparente Daten</p>
+              <p className="text-xs text-gray-600">Nutzung nur zur Vermittlung</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Compact two‑column layout */}

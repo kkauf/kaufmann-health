@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import TherapyModalityExplanations from "@/components/TherapyModalityExplanations";
+import { ShieldCheck, Lock, UserCheck } from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 
@@ -57,6 +58,20 @@ export default function Home() {
           <p className="mt-3 text-sm text-gray-500">
             Persönlich kuratierte Therapeuten-Empfehlungen
           </p>
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-700" aria-label="Vertrauen">
+            <span className="inline-flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-600" />
+              Geprüfte Profile
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <Lock className="h-4 w-4 text-slate-700" />
+              Keine Cookies
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <UserCheck className="h-4 w-4 text-indigo-600" />
+              Transparente Datenverarbeitung
+            </span>
+          </div>
         </section>
 
       
@@ -127,6 +142,36 @@ export default function Home() {
               <p className="mt-2 text-sm text-gray-600">
                 Sie erhalten Kontaktdaten zu 2-3 passenden Therapeuten und wählen selbst aus, wen Sie kontaktieren möchten. Direkter Kontakt, keine Umwege.
               </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Trust Promise */}
+        <section aria-labelledby="trust-promise" className="mb-14">
+          <div className="rounded-2xl border bg-white p-6 sm:p-8">
+            <h2 id="trust-promise" className="text-2xl font-semibold">Unser Vertrauensversprechen</h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">
+                <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-600" />
+                <div>
+                  <p className="font-medium">Geprüfte Therapeuten</p>
+                  <p className="text-sm text-gray-600">Qualifikationen und Spezialisierungen werden manuell verifiziert.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">
+                <Lock className="mt-0.5 h-5 w-5 text-slate-700" />
+                <div>
+                  <p className="font-medium">Keine Cookies</p>
+                  <p className="text-sm text-gray-600">Keine Tracking-Cookies. DSGVO-konforme, transparente Prozesse.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">
+                <UserCheck className="mt-0.5 h-5 w-5 text-indigo-600" />
+                <div>
+                  <p className="font-medium">Kontrolle über Ihre Daten</p>
+                  <p className="text-sm text-gray-600">Nutzung Ihrer Angaben ausschließlich zur Kontaktaufnahme mit ausgewählten Therapeuten.</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>

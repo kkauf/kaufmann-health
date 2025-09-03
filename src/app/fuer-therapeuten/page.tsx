@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import FaqAccordion from "@/components/FaqAccordion";
 import TherapistApplicationForm from "@/components/TherapistApplicationForm";
-import { CheckCircle2, Target, Users, Clock, Shield, TrendingUp } from "lucide-react";
+import { CheckCircle2, Target, Users, Clock, Shield, TrendingUp, ShieldCheck, Lock, UserCheck } from "lucide-react";
 import CtaLink from "@/components/CtaLink";
 
 export const metadata: Metadata = {
@@ -54,6 +54,11 @@ const faqItems = [
     question: 'Nach welchen Kriterien wählen Sie Therapeuten aus?',
     answer: 'Wir berücksichtigen Ihre geografischen Präferenzen, die Art Ihrer Problematik, gewünschte Therapieform und persönliche Faktoren. Da wir jeden Therapeuten in unserem Netzwerk persönlich kennen und regelmäßig mit ihnen in Kontakt stehen, können wir gezielt den für Sie passenden vorschlagen.'
   },
+  {
+    id: 'datenschutz-therapeuten',
+    question: 'Wie gehen Sie mit meinen Daten um?',
+    answer: 'Wir verwenden Ihre Angaben ausschließlich zur Prüfung Ihrer Aufnahme und zur Vermittlung passender Klienten. Keine Cookies, kein Tracking. Details in unserer Datenschutzerklärung.'
+  },
 ];
 
 export default function TherapistsPage() {
@@ -102,6 +107,20 @@ export default function TherapistsPage() {
         <p className="mt-4 max-w-2xl text-base text-gray-600 sm:text-lg">
           Werden Sie Teil unseres kuratierten Netzwerks. Zahlen Sie nur eine Erfolgsgebühr, wenn Klienten über unsere Plattform zu Ihnen finden.
         </p>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-700" aria-label="Vertrauen">
+          <span className="inline-flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-emerald-600" />
+            Geprüfte Anfragen
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <Lock className="h-4 w-4 text-slate-700" />
+            Keine Cookies
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <UserCheck className="h-4 w-4 text-indigo-600" />
+            Transparente Datenverarbeitung
+          </span>
+        </div>
         <div className="mt-6">
           <Button size="lg" asChild data-cta="therapists-hero-apply" data-audience="therapists">
             <CtaLink href="#apply-form" eventType="cta_click" eventId="fuer-therapeuten-hero-apply">
@@ -226,6 +245,36 @@ export default function TherapistsPage() {
             <Users className="h-5 w-5 text-indigo-600" />
             <h3 className="mt-2 text-lg font-medium">Flexible Teilnahme</h3>
             <p className="mt-1 text-sm text-gray-600">Jederzeit kündbar, keine Mindestlaufzeit</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Qualitätsversprechen */}
+      <section aria-labelledby="quality-promise" className="mt-12 sm:mt-16">
+        <div className="rounded-2xl border bg-white p-6 sm:p-8">
+          <h2 id="quality-promise" className="text-2xl font-semibold">Qualitätsversprechen</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">
+              <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-600" />
+              <div>
+                <p className="font-medium">Geprüfte Klienten</p>
+                <p className="text-sm text-gray-600">Anfragen werden vorqualifiziert und zielgerichtet weitergeleitet.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">
+              <Lock className="mt-0.5 h-5 w-5 text-slate-700" />
+              <div>
+                <p className="font-medium">Keine Cookies</p>
+                <p className="text-sm text-gray-600">Keine Tracking-Cookies. DSGVO-konforme Prozesse.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">
+              <UserCheck className="mt-0.5 h-5 w-5 text-indigo-600" />
+              <div>
+                <p className="font-medium">Transparente Datenverarbeitung</p>
+                <p className="text-sm text-gray-600">Ihre Daten werden ausschließlich zur Vermittlung verwendet.</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -1,3 +1,5 @@
+import { ShieldCheck, Lock } from "lucide-react";
+
 export default function Footer() {
   return (
     <footer className="border-t bg-white">
@@ -41,6 +43,23 @@ export default function Footer() {
               Kaufmann Health bringt Menschen mit qualifizierten körperorientierten Therapeuten zusammen. Wir schlagen passende Therapeuten vor und stellen Kontakte her, vermitteln aber keine therapeutischen Leistungen. Die Therapiewahl liegt allein bei Ihnen.
             </p>
           </section>
+        </div>
+        {/* Trust badges row */}
+        <div className="mt-8 rounded-xl border bg-slate-50 p-4">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-gray-700" aria-label="Sicherheitsmerkmale">
+            <span className="inline-flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-600" />
+              DSGVO-konform
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <Lock className="h-4 w-4 text-slate-700" />
+              Keine Cookies
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <Lock className="h-4 w-4 text-indigo-600" />
+              Verschlüsselte Übertragung
+            </span>
+          </div>
         </div>
         <div className="mt-8 flex flex-col items-start justify-between gap-3 border-t pt-4 text-xs text-gray-500 sm:flex-row">
           <p>
