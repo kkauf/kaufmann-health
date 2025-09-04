@@ -41,16 +41,11 @@ export default function UeberUnsPage() {
         </h2>
         <div className="mt-3 max-w-3xl space-y-4 text-gray-700">
           <p>
-            Als meine Frau ihre Praxis als Heilpraktikerin für Psychotherapie aufbaute, sah ich hautnah,
-            wie schwer es für talentierte Therapeuten ist, die richtigen Klienten zu finden - und umgekehrt.
+          Erfolgreich nach jeder Metrik – außer der wichtigsten: Lebendigkeit. Ich hatte alles optimiert, nur nicht meine Verbindung zu mir selbst.
           </p>
+          <p>Körpertherapie hat das geändert. Nicht durch noch mehr Denken, sondern durch Spüren. Durch die Erkenntnis, dass unser Körper Antworten hat, die unser Verstand nicht mal als Fragen erkennt.</p>
           <p>
-            Therapeuten verbringen Stunden damit, sich um Marketing zu kümmern, anstatt die Arbeit zu machen, die sie lieben: Menschen bei ihrem Heilungsprozess zu unterstützen.
-            Gleichzeitig warten Patienten Monate lang auf Termine oder finden niemanden mit der richtigen Spezialisierung.
-          </p>
-          <p>
-            Kaufmann Health löst beide Probleme: Wir bringen die richtigen Menschen zusammen.
-            Ohne Umwege. Ohne Wartelisten.
+          Kaufmann Health ist für Menschen wie uns: Die in Zahlen denken und trotzdem spüren wollen. Die Exzellenz suchen – nicht nur im Job, sondern im Menschsein. Unsere Therapeut:innen verstehen beide Welten. Und bauen Brücken zwischen ihnen.
           </p>
         </div>
       </section>
@@ -131,7 +126,7 @@ export default function UeberUnsPage() {
                 className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900"
               >
                 kontakt@kaufmann-health.de
-              </a>/</p>
+              </a></p>
           </div>
           <div className="rounded-lg border bg-white p-4">
             <p className="font-medium">Rechtliches</p>
