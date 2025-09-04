@@ -20,6 +20,7 @@ Business notes:
     - `uploaded_at` (ISO string)
   - `metadata.verification`: review audit trail by admin
     - `reviewed_by` (admin user id), `reviewed_at` (ISO string), `notes` (string)
+- Storage RLS: `therapist-documents` is private; authenticated users can insert; only `service_role` has read/manage. Reason: keep sensitive verification docs off the public surface.
 
 Indexes:
 - For lead rate limiting by IP stored in `metadata`, add a JSONB GIN index:
@@ -70,14 +71,38 @@ RLS:
 - `id uuid pk default gen_random_uuid()`
 - `therapist_id uuid references people(id)`
 - `patient_id uuid references people(id)`
-- `status text default 'proposed'`
+- `status text default 'proposed'` — semantics: `proposed` (Vorgeschlagen), `accepted` (Akzeptiert), `declined` (Abgelehnt)
 - `commission_collected numeric default 0`
 - `notes text`
 - `created_at timestamptz default now()`
+- `secure_uuid uuid not null default gen_random_uuid()` — used for magic links
+- `responded_at timestamptz` — legacy/fallback response timestamp
+- `therapist_contacted_at timestamptz`
+- `therapist_responded_at timestamptz`
+- `patient_confirmed_at timestamptz`
 
 Relationships:
 - `matches.therapist_id` → `people.id`
 - `matches.patient_id` → `people.id`
 
+Indexes:
+- Unique `secure_uuid` to enforce one-time magic links and fast lookups:
+```sql
+create unique index if not exists matches_secure_uuid_key
+  on public.matches(secure_uuid);
+```
+
 Future rules to consider:
 - Enforce that `therapist_id` references a `people` row with `type='therapist'` and `patient_id` with `type='patient'` (via views or check constraints with triggers) if needed.
+
+See also: [security](./security.md), [technical decisions](./technical-decisions.md)
+
+## public.therapist_contracts
+- `id uuid pk default gen_random_uuid()`
+- `therapist_id uuid references people(id)`
+- `contract jsonb default '{}'::jsonb`
+- `created_at timestamptz default now()`
+- `updated_at timestamptz default now()`
+
+Relationships:
+- `therapist_contracts.therapist_id` → `people.id`

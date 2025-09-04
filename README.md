@@ -3,94 +3,58 @@
 ## Core Architecture Decisions
 
 **Tech Stack:**
-- **Frontend:** Next.js App Router, TypeScript, Tailwind, ShadCN/UI
-- **Backend:** Next.js API routes, Supabase (PostgreSQL + RLS)
-- **Email:** Resend API (German templates)
+- **Frontend:** Next.js App Router, TypeScript, Tailwind, shadcn/ui
+- **Backend:** Next.js API routes (Edge/Node as appropriate)
+- **Database:** Supabase (PostgreSQL) with RLS; Storage for private documents (e.g., `therapist-documents` bucket)
+- **Email:** Resend (German templates)
+- **Analytics/Attribution:** Server-side measurement (no cookies); Google Ads Enhanced Conversions (hashed email)
 - **Deployment:** Vercel
-- **Analytics:** Server-side first (no cookie banners needed)
 
-**Key Patterns:**
-1. **Unified events table** - Single table for errors + analytics
-2. **Fire-and-forget operations** - Email/logging never blocks user flow
-3. **PII-safe by default** - IP hashing with `IP_HASH_SALT`
-4. **GDPR-first** - Server-side tracking, German language, compliance built-in
-5. **Manual-first MVP** - Admin tools before automation
+**Key Decisions:**
+1. **Unified events table** — One table for errors and analytics
+2. **Fire-and-forget operations** — Email/logging never blocks user flow
+3. **PII-safe by default** — IP hashing with `IP_HASH_SALT`; no client tracking cookies
+4. **GDPR-first** — Public site is cookie-free; server-side measurement only
+5. **Manual-first MVP** — Admin tools before automation
+6. **API shape** — Endpoints return `{ data, error }`
 
 **Database Patterns:**
 - UUID defaults on all tables
 - `timestamptz` for all timestamps
 - Metadata JSON for flexible form storage
-- Service role for server operations only
 - Proper indexing on query columns
 
-**Security:**
-- Admin: Simple password + JWT (24hr expiry)
-- Magic links: Secure UUIDs (72hr expiration)
-- Rate limiting on sensitive endpoints
+**Security and Privacy:**
+- **Admin authentication** — `POST /api/admin/login` verifies `ADMIN_PASSWORD` and sets an HTTP-only session cookie `kh_admin` (HMAC-signed via Web Crypto, 24h expiry, scoped to `/admin`). Edge middleware protects `/admin/*`. Public site remains cookie-free.
+- **Magic links** — Secure UUIDs with 72h expiration; no cookies. Responses record `responded_at`.
+- **RLS everywhere** — Row Level Security enforced for tables; storage buckets are private by default and managed server-side.
+- **Service role usage** — Service role keys are used only server-side.
 
-## Common Code Patterns
+## Architecture Rules
 
-**Event Tracking:**
-```typescript
-await track({
-  type: 'lead_submitted',
-  level: 'info',
-  source: 'api.leads',
-  props: { lead_type: 'patient', city: city || null }
-});
-```
+- **Boundaries** — Components are UI-only (render + local state). Hooks handle data fetching and business logic. Start inline; extract when repeated 3x or files exceed ~200 lines.
+- **Data flow** — Frontend never writes directly to the DB. API always returns `{ data, error }`. Keep state close to usage; use context only when prop drilling hurts (>3 levels).
+- **Documentation** — Focus on the “why”: business rules, performance hacks, security decisions, and necessary workarounds. Skip CRUD explanations and framework basics.
+- **Tech choices** — Use shadcn/ui, Tailwind, and Edge Functions for secrets when needed. Avoid heavy state libraries and custom build tools.
 
-**Error Logging:**
-```typescript
-catch (e) {
-  void logError('api.leads', e, { stage: 'validation' }, ip, ua);
-  return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
-}
-```
+## Testing and QA
 
-**Fire-and-Forget Email:**
-```typescript
-void sendConfirmationEmail(data).catch(() => {
-  void logError('email', 'send_failed', { type: 'confirmation' });
-});
-```
+- **Focus** — Prioritize tests for money flows and complex logic. Keep them fast and targeted.
+- **Quick run** — `npm run test:critical` before deploy. Ensure `npm run build` succeeds.
+- **Principles** — Test observable outcomes, not internals; mock fire-and-forget operations.
+- **Representative flows** — Patient registration, therapist registration (contract + status), manual matching (outreach + response timestamps).
 
-## Testing Strategy
+## Environment and Deployment
 
-**Critical Business Flows (Must Have E2E Tests):**
-1. **Patient Registration** → DB record → Confirmation email → Admin notification
-2. **Therapist Registration** → Contract binding → Welcome email
-3. **Manual Matching** → Therapist outreach → Response tracking
-
-**Testing Principles:**
-- Tests as documentation of actual behavior
-- Test user-facing outcomes, not implementation
-- Mock fire-and-forget operations (email, logging)
-- All critical flows must pass before deploy
-
-See `tests/README.md` for implementation details.
-
-## Deployment Checklist
-
-**Environment Variables Required:**
-```bash
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-IP_HASH_SALT=
-RESEND_API_KEY=
-LEADS_NOTIFY_EMAIL=
-LEADS_FROM_EMAIL=
-ADMIN_PASSWORD=
-```
+- **Environment variables** — See `.env.example` for the authoritative list. Critical keys include Supabase URL/keys, `IP_HASH_SALT`, Resend keys, lead notification emails, `ADMIN_PASSWORD`, Google Ads variables for Enhanced Conversions, and terms/privacy versioning.
 
 **Before Production:**
-1. Run health check: `npm run test:critical`
-2. Verify environment variables in Vercel
-3. Test German email templates
-4. Confirm admin authentication works
-5. Verify analytics events firing
-6. Check error logging operational
+1. `npm run test:critical`
+2. `npm run build`
+3. Verify environment variables in Vercel
+4. Confirm admin authentication works (`/admin/login`)
+5. Verify emails send (Resend) and Enhanced Conversions fire server-side
+6. Check error logging and events are recorded
 
 **Success Metrics:**
 - Landing → Signup: >15%
@@ -99,13 +63,13 @@ ADMIN_PASSWORD=
 - Match success rate: >60%
 
 ## Project Docs
-- Architecture: `docs/architecture.md`
-- Data model: `docs/data-model.md`
-- Security decisions: `docs/security.md`
-- Technical decisions: `docs/technical-decisions.md`
-- API: `docs/api.md`
-- Development: `docs/development.md`
-- Project structure: `docs/project-structure.md`
+- [Architecture](./docs/architecture.md)
+- [Data model](./docs/data-model.md)
+- [Security](./docs/security.md)
+- [Technical decisions](./docs/technical-decisions.md)
+- [API](./docs/api.md)
+- [Development](./docs/development.md)
+- [Project structure](./docs/project-structure.md)
 
 ## License
 Licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

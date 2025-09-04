@@ -15,12 +15,22 @@
 - __CORS__: Not added; funnel submits same-origin. If cross-origin is needed, add `OPTIONS` handler and CORS headers on `/api/leads`.
 - __Service role writes__: Writes handled only on the server via `supabaseServer` (service role). Never expose service role keys to the browser.
 
+## Privacy & Cookies
+- __Cookie policy__: No tracking/marketing cookies on the public site. Reason: privacy-first UX and legal clarity. Functional cookies allowed only under `/admin`.
+- __Admin protection__: Edge Middleware guards `/admin/*`. Login sets HTTP-only `kh_admin` cookie scoped to `/admin` with 24h expiry (HMAC via Web Crypto). Reason: confines cookies to the restricted area while keeping public site cookie-free. See also: [security](./security.md), [architecture](./architecture.md).
+
 - __Google Ads Enhanced Conversions__:
   - Why: Accurate attribution without cookies; complies with our cookie policy (no tracking cookies on public site).
   - How: Server-side only (`src/lib/google-ads.ts`) uploads hashed email (SHA-256) + conversion attributes. API routes run on Node runtime.
   - Safety: No-op unless env is configured; errors go through unified logger. Secrets live in server env only.
   - Mapping: Conversion action aliases (e.g., `patient_registration`) map to resource names via env `GOOGLE_ADS_CA_*` (see `.env.example`). This lets us add/rename actions without code changes.
   - Trigger points: `POST /api/leads` fires `patient_registration` (10 EUR) and `therapist_registration` (25 EUR) after successful insert. Future events (match, payment, etc.) can call the tracker with their alias.
+  - Observability: staged logs for OAuth (`get_access_token`) and upload, logs missing config keys, parses `receivedOperationsCount` and partial failures for actionable diagnostics. See also: [architecture](./architecture.md).
+
+## Verification Workflow
+- __Why__: Maintain therapist quality and legal compliance before introductions.
+- __How__: Therapist leads default to `pending_verification` (in `public.people.status`); admins review docs stored in private bucket `therapist-documents` and update to `verified` or `rejected`. Audit timestamps on `public.matches` (`therapist_contacted_at`, `therapist_responded_at`, `patient_confirmed_at`) support traceability.
+- __Security__: Storage is private; authenticated insert allowed, reads/manage restricted to `service_role`. See also: [data model](./data-model.md), [security](./security.md).
 
 ## Admin Stats & Error Monitoring
 

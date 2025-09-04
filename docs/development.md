@@ -11,6 +11,10 @@
 - __Deploy (Vercel)__:
   - Set the env vars in Vercel Project Settings (do not commit secrets).
   - API routes needing secrets must run on Node.js runtime.
+ 
+- __Pre-deploy quick checks__:
+  - `npm run test:critical`
+  - `npm run build`
   
 - __Unified logger__:
   - Events and errors are written to `public.events` via Supabase REST from server routes.
