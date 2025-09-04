@@ -2,13 +2,15 @@
   "name": "kaufmann-health",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "reupload:leads": "tsx google_ads_api_scripts/reupload-leads.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
@@ -39,6 +41,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
     "jsdom": "^26.1.0",
+    "tsx": "^4.19.2",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.6",
     "typescript": "^5",

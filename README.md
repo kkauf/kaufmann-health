@@ -107,6 +107,9 @@ ADMIN_PASSWORD=
 - Development: `docs/development.md`
 - Project structure: `docs/project-structure.md`
 
+## License
+Licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
