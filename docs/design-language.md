@@ -147,6 +147,24 @@ This doc captures the visual patterns that save debugging time and keep the UI c
     - `fuer-therapeuten-form-submit`
 - Prefer `navigator.sendBeacon` for reliability; fallback to `fetch(..., { keepalive: true })`.
 
+## Animations & Reveal Patterns
+
+- Entrance reveal (IO-based)
+  - Target elements include the attribute `data-reveal`.
+  - Initial state: `opacity-0 translate-y-2 transition-all duration-300`.
+  - On intersect: add `opacity-100 translate-y-0` and remove the initial classes.
+  - Keep animations subtle (≤ 300ms) and CSS-only where possible.
+
+- Applying reveals
+  - For lists (e.g., checklist tokens, card grids), either:
+    - Attach an `IntersectionObserver` in the component itself to observe each `li[data-reveal]`/card, or
+    - Wrap the grid with a lightweight `RevealContainer` that observes descendants marked with `data-reveal`.
+  - Stagger with inline delay: `style={{ transitionDelay: '60ms' }}` per item (e.g., 0ms/60ms/120ms).
+
+- When to abstract
+  - Start simple per our rules. If we repeat this pattern ≥ 3 times, extract a tiny util/hook (e.g., `useRevealObserver`) or keep using `RevealContainer`.
+  - Respect `prefers-reduced-motion` if we add more animation later (optional enhancement).
+
 ## Notes
 
 - Icons from `lucide-react`, size `h-5 w-5` for body, adjust to `h-4 w-4` inside smaller UI.
