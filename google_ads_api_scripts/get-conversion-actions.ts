@@ -1,6 +1,6 @@
 // Run this to get your conversion action resource names
 import { config as dotenvConfig } from 'dotenv';
-dotenvConfig({ path: '.env.local', override: false });
+dotenvConfig({ path: '.env.local', override: true });
 dotenvConfig();
 // dotenv loaded; will dynamically import google-ads after env is ready
 

@@ -10,8 +10,10 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 const envLocalPath = path.join(rootDir, '.env.local');
 if (fs.existsSync(envLocalPath)) {
-  dotenv.config({ path: envLocalPath });
+  // Override ensures we don't accidentally keep stale values from parent env
+  dotenv.config({ path: envLocalPath, override: true });
 } else {
+  // Load .env only for missing values
   dotenv.config();
 }
 
