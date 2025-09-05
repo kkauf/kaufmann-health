@@ -5,7 +5,8 @@ dotenvConfig();
 // dotenv loaded; will dynamically import google-ads after env is ready
 
 async function getConversionActions() {
-  const { googleAdsTracker } = await import('@/lib/google-ads');
+  // Import after env is loaded; use relative path to avoid tsconfig paths at runtime
+  const { googleAdsTracker } = await import('../src/lib/google-ads');
   const token = await (googleAdsTracker as any).getAccessToken();
   if (!token) {
     console.log('Failed to get access token');
