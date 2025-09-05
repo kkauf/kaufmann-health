@@ -39,7 +39,7 @@ const CtaLink = React.forwardRef<HTMLAnchorElement, CtaLinkProps>(
     );
 
     return (
-      <a ref={ref} {...rest} onClick={handleClick}>
+      <a ref={ref} data-cta-handled="true" {...rest} onClick={handleClick}>
         {children}
       </a>
     );
