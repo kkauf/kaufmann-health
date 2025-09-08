@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
+    "test:critical": "vitest run --exclude tests/storage.health.test.ts",
     "test:watch": "vitest",
     "reupload:leads": "tsx google_ads_api_scripts/reupload-leads.ts"
   },
