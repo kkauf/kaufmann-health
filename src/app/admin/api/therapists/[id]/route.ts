@@ -28,6 +28,68 @@ async function assertAdmin(req: Request): Promise<boolean> {
   }
 }
 
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const isAdmin = await assertAdmin(req);
+  if (!isAdmin) return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
+
+  try {
+    const { id } = await ctx.params;
+    const { data: row, error } = await supabaseServer
+      .from('therapists')
+      .select('id, first_name, last_name, email, phone, city, status, metadata, photo_url')
+      .eq('id', id)
+      .single();
+    if (error || !row) {
+      await logError('admin.api.therapists.detail', error, { stage: 'fetch', therapist_id: id });
+      return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
+    }
+
+    function isObject(v: unknown): v is Record<string, unknown> {
+      return typeof v === 'object' && v !== null;
+    }
+    const meta = (row as Record<string, unknown>).metadata;
+    const metadata = isObject(meta) ? meta : {};
+    const profile = isObject((metadata as Record<string, unknown>).profile)
+      ? ((metadata as Record<string, unknown>).profile as Record<string, unknown>)
+      : {};
+    const pendingPath = typeof profile.photo_pending_path === 'string' ? (profile.photo_pending_path as string) : undefined;
+    const approachText = typeof profile.approach_text === 'string'
+      ? (profile.approach_text as string)
+      : (typeof (row as Record<string, unknown>).approach_text === 'string' ? ((row as Record<string, unknown>).approach_text as string) : undefined);
+
+    let photo_pending_url: string | undefined;
+    if (pendingPath) {
+      const { data: signed, error: signErr } = await supabaseServer.storage
+        .from('therapist-applications')
+        .createSignedUrl(pendingPath, 60 * 5);
+      if (!signErr && signed?.signedUrl) {
+        photo_pending_url = signed.signedUrl;
+      }
+    }
+
+    const name = [row.first_name || '', row.last_name || ''].join(' ').trim() || null;
+    return NextResponse.json({
+      data: {
+        id: row.id,
+        name,
+        email: row.email || null,
+        phone: row.phone || null,
+        city: row.city || null,
+        status: row.status || 'pending_verification',
+        profile: {
+          photo_pending_url,
+          approach_text: approachText,
+          photo_url: (row as Record<string, unknown>).photo_url || undefined,
+        },
+      },
+      error: null,
+    });
+  } catch (e) {
+    await logError('admin.api.therapists.detail', e, { stage: 'exception' });
+    return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });
+  }
+}
+
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const isAdmin = await assertAdmin(req);
   if (!isAdmin) return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
@@ -37,17 +99,84 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     const payload = await req.json();
     const status = typeof payload.status === 'string' ? payload.status : undefined;
     const verification_notes = typeof payload.verification_notes === 'string' ? payload.verification_notes : undefined;
+    const approve_profile = Boolean(payload.approve_profile);
+    const approach_text = typeof payload.approach_text === 'string' ? String(payload.approach_text) : undefined;
 
-    if (!status && typeof verification_notes !== 'string') {
+    if (!status && typeof verification_notes !== 'string' && !approve_profile && typeof approach_text !== 'string') {
       return NextResponse.json({ data: null, error: 'Missing fields' }, { status: 400 });
     }
     if (status && !['pending_verification', 'verified', 'rejected'].includes(status)) {
       return NextResponse.json({ data: null, error: 'Invalid status' }, { status: 400 });
     }
+    if (approach_text && approach_text.length > 2000) {
+      return NextResponse.json({ data: null, error: 'approach_text too long (max 2000 chars)' }, { status: 400 });
+    }
 
     const update: Record<string, unknown> = {};
     if (status) update.status = status;
     if (typeof verification_notes === 'string') update.verification_notes = verification_notes;
+
+    // Load current metadata to optionally update profile info and process photo approval
+    const { data: current, error: fetchErr } = await supabaseServer
+      .from('therapists')
+      .select('metadata, photo_url')
+      .eq('id', id)
+      .single();
+    if (fetchErr) {
+      await logError('admin.api.therapists.update', fetchErr, { stage: 'fetch', therapist_id: id });
+      return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
+    }
+
+    function isObject(v: unknown): v is Record<string, unknown> {
+      return typeof v === 'object' && v !== null;
+    }
+    const currMeta = isObject(current?.metadata) ? (current!.metadata as Record<string, unknown>) : {};
+    const profileMeta = isObject(currMeta.profile) ? (currMeta.profile as Record<string, unknown>) : {};
+
+    if (typeof approach_text === 'string') {
+      profileMeta.approach_text = approach_text;
+    }
+
+    if (approve_profile) {
+      const pendingPath = typeof profileMeta.photo_pending_path === 'string' ? (profileMeta.photo_pending_path as string) : undefined;
+      if (!pendingPath) {
+        return NextResponse.json({ data: null, error: 'No pending profile photo to approve' }, { status: 400 });
+      }
+      // Download from applications bucket
+      const { data: file, error: dlErr } = await supabaseServer.storage
+        .from('therapist-applications')
+        .download(pendingPath);
+      if (dlErr || !file) {
+        await logError('admin.api.therapists.update', dlErr, { stage: 'download_profile_photo', path: pendingPath });
+        return NextResponse.json({ data: null, error: 'Failed to read pending photo' }, { status: 500 });
+      }
+      const ab = await file.arrayBuffer();
+      const buf = Buffer.from(ab);
+      const extMatch = pendingPath.toLowerCase().match(/\.(jpg|jpeg|png)$/);
+      const ext = extMatch ? (extMatch[1] === 'jpeg' ? '.jpg' : `.${extMatch[1]}`) : '.jpg';
+      const publicBucket = 'therapist-profiles';
+      const destPath = `${id}${ext}`;
+      const { error: upErr } = await supabaseServer.storage
+        .from(publicBucket)
+        .upload(destPath, buf, { contentType: ext === '.png' ? 'image/png' : 'image/jpeg', upsert: true });
+      if (upErr) {
+        await logError('admin.api.therapists.update', upErr, { stage: 'upload_public_photo', dest: destPath });
+        return NextResponse.json({ data: null, error: 'Failed to publish photo' }, { status: 500 });
+      }
+      // Remove pending file (best-effort)
+      await supabaseServer.storage.from('therapist-applications').remove([pendingPath]).catch(() => {});
+
+      const { data: pub } = supabaseServer.storage.from(publicBucket).getPublicUrl(destPath);
+      const photo_url = pub?.publicUrl;
+      if (photo_url) {
+        update.photo_url = photo_url;
+      }
+      // Clear pending path
+      delete profileMeta.photo_pending_path;
+    }
+
+    const newMeta: Record<string, unknown> = { ...currMeta, profile: profileMeta };
+    update.metadata = newMeta;
 
     const { error } = await supabaseServer
       .from('therapists')

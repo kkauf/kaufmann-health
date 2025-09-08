@@ -26,3 +26,11 @@
   - Use transparent PNGs around 120–140×40 for consistent height; adjust width for balance.
   - If the number of logos changes, update grid classes in `src/app/page.tsx` (social proof section), e.g. `grid-cols-2 sm:grid-cols-4 lg:grid-cols-4`.
 - __Migrations__: Schema is managed in Supabase (UUID defaults, timestamptz, RLS). Track future DDL in SQL migrations when patterns emerge.
+
+## Images & Resizing (Profile Photos)
+
+- WHY: Normalize therapist profile photos to ensure consistent display and reduce payload size.
+- HOW: Server-side best-effort resize to max 800×800 (fit: inside) is performed in `src/app/api/leads/route.ts` using `sharp` if available; otherwise it falls back to the original file. UI-level optimizations (e.g., Next/Vercel responsive images) still apply.
+- Enable resizing in production:
+  - `npm i sharp`
+  - No other configuration required. The API dynamically imports `sharp` and gracefully continues if missing.

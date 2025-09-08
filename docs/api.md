@@ -32,6 +32,9 @@
   - `specialization_cert_{slug}`: at least one certificate per selected specialization.
     - Supported slugs: `narm`, `core-energetics`, `hakomi`, `somatic-experiencing`
     - Multiple files allowed per slug (send multiple fields of the same name)
+- __Optional profile fields__ (EARTH-116):
+  - `profile_photo`: JPEG or PNG, max 5MB. Stored in private `therapist-applications` bucket under `applications/<therapist-id>/profile-photo-<ts>.(jpg|png)` pending admin review.
+  - `approach_text`: string, max 2000 chars. Stored in `therapists.metadata.profile.approach_text`.
 - __Behavior__: Files are stored in the private Supabase Storage bucket `therapist-documents`. The API stores storage paths under `therapists.metadata.documents`:
   ```json
   {
@@ -39,6 +42,15 @@
     "specialization": {
       "narm": ["therapists/<id>/specialization-narm-<ts>.pdf"],
       "hakomi": ["..."]
+    }
+  }
+  ```
+  Profile fields are stored under `therapists.metadata.profile`:
+  ```json
+  {
+    "profile": {
+      "photo_pending_path": "applications/<id>/profile-photo-<ts>.jpg",
+      "approach_text": "<therapeutic approach>"
     }
   }
   ```
@@ -95,13 +107,27 @@ curl -X POST /api/leads \
   - 401: `{ data: null, error: 'Unauthorized' }`
   - 500: `{ data: null, error: 'Failed to fetch therapists' }`
 
-## PATCH /admin/api/therapists/:id
-- __Purpose__: Update therapist verification status and notes.
+## GET /admin/api/therapists/:id
+- __Purpose__: Retrieve single therapist details including profile data for review.
 - __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
-- __Body__: `{ status?: 'pending_verification'|'verified'|'rejected', verification_notes?: string }`
+- __Response__:
+  - 200: `{ data: { id, name, email, phone, city, status, profile: { photo_pending_url?: string, approach_text?: string, photo_url?: string } }, error: null }`
+  - 401: `{ data: null, error: 'Unauthorized' }`
+  - 404: `{ data: null, error: 'Not found' }`
+  - 500: `{ data: null, error: 'Unexpected error' }`
+
+## PATCH /admin/api/therapists/:id
+- __Purpose__: Update therapist verification status, notes, and profile approval.
+- __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
+- __Body__:
+  - `status?`: `pending_verification` | `verified` | `rejected`
+  - `verification_notes?`: string
+  - `approve_profile?`: boolean — when true, moves pending photo from `therapist-applications` to public `therapist-profiles` and sets `photo_url`. Also clears `metadata.profile.photo_pending_path`.
+  - `approach_text?`: string (max 2000) — updates `metadata.profile.approach_text`.
 - __Response__:
   - 200: `{ data: { ok: true }, error: null }`
-  - 401/400/500 on failure.
+  - 400: `{ data: null, error: 'Missing fields' | 'Invalid status' | 'approach_text too long (max 2000 chars)' | 'No pending profile photo to approve' }`
+  - 401/404/500 on failure.
 
 ## GET /admin/api/therapists/:id/documents/[...type]
 - __Purpose__: Securely serve stored documents for admin review.

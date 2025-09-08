@@ -49,7 +49,10 @@ export async function GET(req: Request) {
 
 // File validation configuration
 const ALLOWED_FILE_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png']);
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB (documents)
+// Profile photo specific limits
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png']);
+const MAX_PROFILE_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
 
 function getClientIP(headers: Headers) {
   const xff = headers.get('x-forwarded-for');
@@ -80,6 +83,28 @@ function getFileExtension(fileName: string, contentType: string): string {
 async function fileToBuffer(file: File): Promise<Buffer> {
   const ab = await file.arrayBuffer();
   return Buffer.from(ab);
+}
+
+// Images: minimal server-side normalization for profile photos
+// WHY: Ensure consistent display and reduce payload size for therapist profile photos.
+// HOW: Best-effort resize to 800x800 (fit: 'inside'), preserve type. If 'sharp' is not
+// installed or errors, we fall back to the original buffer. This keeps the API robust
+// and avoids hard dependency on native modules. To enable resizing in prod, install:
+//   npm i sharp
+// Note: UI can still apply additional responsive optimizations on render (Next/Vercel).
+async function resizeProfilePhotoIfPossible(file: File, original: Buffer): Promise<{ buffer: Buffer; contentType: string }> {
+  // Best-effort resize to 800x800 max. Falls back to original if sharp unavailable or fails.
+  try {
+    const mod: any = await import('sharp').catch(() => null);
+    const sharp = mod?.default || mod;
+    if (!sharp) return { buffer: original, contentType: file.type };
+    const isPng = file.type === 'image/png' || (file.name || '').toLowerCase().endsWith('.png');
+    const pipeline = sharp(original).rotate().resize(800, 800, { fit: 'inside', withoutEnlargement: true });
+    const out = isPng ? await pipeline.png({ compressionLevel: 9 }).toBuffer() : await pipeline.jpeg({ quality: 82 }).toBuffer();
+    return { buffer: out, contentType: isPng ? 'image/png' : 'image/jpeg' };
+  } catch {
+    return { buffer: original, contentType: file.type };
+  }
 }
 
 function isValidUpload(file: File): { ok: true } | { ok: false; reason: string } {
@@ -128,6 +153,14 @@ async function handleTherapistMultipart(req: Request) {
     .map((v) => sanitize(String(v))?.toLowerCase())
     .filter((s): s is 'online' | 'in_person' => s === 'online' || s === 'in_person');
   const specializations = normalizeSpecializations(form.getAll('specializations') || []);
+  const approachTextRaw = form.get('approach_text')?.toString();
+  if (approachTextRaw && approachTextRaw.length > 2000) {
+    return NextResponse.json(
+      { data: null, error: 'approach_text too long (max 2000 chars)' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+  const approach_text = sanitize(approachTextRaw);
 
   // Rate limiting (same as JSON path)
   if (ip) {
@@ -231,6 +264,38 @@ async function handleTherapistMultipart(req: Request) {
   // Upload files
   const bucket = 'therapist-documents';
   const documents: { license?: string; specialization?: Record<string, string[]> } = { specialization: {} };
+  // Optional profile photo (stored in applications bucket, pending review)
+  let profilePendingPath: string | undefined;
+  const maybeProfilePhoto = form.get('profile_photo');
+  if (maybeProfilePhoto instanceof File && maybeProfilePhoto.size > 0) {
+    if (!ALLOWED_IMAGE_TYPES.has(maybeProfilePhoto.type)) {
+      return NextResponse.json(
+        { data: null, error: 'profile_photo: Unsupported file type (JPEG/PNG only)' },
+        { status: 400, headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
+    if (maybeProfilePhoto.size > MAX_PROFILE_PHOTO_BYTES) {
+      return NextResponse.json(
+        { data: null, error: 'profile_photo: File too large (max 5MB)' },
+        { status: 400, headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
+    const ext = getFileExtension(maybeProfilePhoto.name || '', maybeProfilePhoto.type);
+    const applicationsBucket = 'therapist-applications';
+    const photoPath = `applications/${therapistId}/profile-photo-${Date.now()}${ext}`;
+    const original = await fileToBuffer(maybeProfilePhoto);
+    const processed = await resizeProfilePhotoIfPossible(maybeProfilePhoto, original);
+    const { error: photoErr } = await supabaseServer.storage
+      .from(applicationsBucket)
+      .upload(photoPath, processed.buffer, { contentType: processed.contentType, upsert: false });
+    if (photoErr) {
+      console.error('Upload profile photo failed:', photoErr);
+      void logError('api.leads', photoErr, { stage: 'upload_profile_photo', therapist_id: therapistId }, ip, ua);
+      // Graceful fallback: continue without profile photo
+    } else {
+      profilePendingPath = photoPath;
+    }
+  }
 
   if (licenseFile) {
     const valid = isValidUpload(licenseFile);
@@ -286,10 +351,17 @@ async function handleTherapistMultipart(req: Request) {
     documents.specialization![slug] = paths;
   }
 
-  // Persist document paths into therapists.metadata.documents
+  // Persist document paths and profile data into therapists.metadata
+  const profileMeta: Record<string, unknown> = {};
+  if (profilePendingPath) profileMeta.photo_pending_path = profilePendingPath;
+  if (approach_text) profileMeta.approach_text = approach_text;
+  const metadata: Record<string, unknown> = { documents };
+  if (Object.keys(profileMeta).length > 0) {
+    metadata.profile = profileMeta;
+  }
   const { error: metaErr } = await supabaseServer
     .from('therapists')
-    .update({ metadata: { documents } })
+    .update({ metadata })
     .eq('id', therapistId);
   if (metaErr) {
     console.error('Metadata update failed:', metaErr);
