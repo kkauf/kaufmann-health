@@ -25,6 +25,42 @@
   - 429: `{ data: null, error: 'Rate limited' }`
   - 500: `{ data: null, error: 'Failed to save lead' }`
 
+### Therapist uploads (multipart)
+- __Content-Type__: `multipart/form-data`
+- __Required files__:
+  - `license`: one document proving qualification. Accepted: Psychologischer Psychotherapeut (approbiert), Heilpraktiker für Psychotherapie, Großer Heilpraktiker. Formats: PDF, JPG, PNG. Max 10MB.
+  - `specialization_cert_{slug}`: at least one certificate per selected specialization.
+    - Supported slugs: `narm`, `core-energetics`, `hakomi`, `somatic-experiencing`
+    - Multiple files allowed per slug (send multiple fields of the same name)
+- __Behavior__: Files are stored in the private Supabase Storage bucket `therapist-documents`. The API stores storage paths under `therapists.metadata.documents`:
+  ```json
+  {
+    "license": "therapists/<id>/license-<ts>.pdf",
+    "specialization": {
+      "narm": ["therapists/<id>/specialization-narm-<ts>.pdf"],
+      "hakomi": ["..."]
+    }
+  }
+  ```
+  Access is restricted; only server (service role) and admin endpoints can fetch files.
+
+Example (multipart):
+```bash
+curl -X POST http://localhost:3000/api/leads \
+  -F type=therapist \
+  -F email=therapist@example.com \
+  -F name="Max Muster" \
+  -F city=Berlin \
+  -F "session_preference=online" \
+  -F "specializations=narm" \
+  -F "specializations=hakomi" \
+  -F license=@/path/to/license.pdf \
+  -F specialization_cert_narm=@/path/to/narm-cert-1.pdf \
+  -F specialization_cert_hakomi=@/path/to/hakomi-cert-1.jpg \
+  -H "Accept: application/json"
+```
+
+
 Example:
 ```bash
 curl -X POST /api/leads \
@@ -52,11 +88,28 @@ curl -X POST /api/leads \
   - `city` (optional)
   - `session_preference` (optional: `online` | `in_person`)
   - `specialization` (optional: slug, e.g. `narm`)
+  - `status` (optional: `pending_verification` | `verified` | `rejected`, default `pending_verification`)
   - `limit` (optional, default 50, max 200)
 - __Response__:
   - 200: `{ data: Array<Pick<people, 'id'|'name'|'email'|'phone'|'type'|'status'|'metadata'|'created_at'>>, error: null }`
   - 401: `{ data: null, error: 'Unauthorized' }`
   - 500: `{ data: null, error: 'Failed to fetch therapists' }`
+
+## PATCH /admin/api/therapists/:id
+- __Purpose__: Update therapist verification status and notes.
+- __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
+- __Body__: `{ status?: 'pending_verification'|'verified'|'rejected', verification_notes?: string }`
+- __Response__:
+  - 200: `{ data: { ok: true }, error: null }`
+  - 401/400/500 on failure.
+
+## GET /admin/api/therapists/:id/documents/[...type]
+- __Purpose__: Securely serve stored documents for admin review.
+- __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
+- __Path params__:
+  - `license` → serves license document
+  - `specialization/<slug>/<index>` → serves nth certificate for specialization
+- __Response__: Binary file with appropriate `Content-Type` and `Cache-Control: no-store`.
 
 ## POST /api/admin/login
 - __Purpose__: Authenticate admin and set a session cookie for `/admin`.

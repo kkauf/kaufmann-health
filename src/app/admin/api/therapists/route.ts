@@ -48,6 +48,7 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const city = url.searchParams.get('city')?.trim() || undefined;
+    const status = (url.searchParams.get('status')?.trim() || 'pending_verification') as 'pending_verification' | 'verified' | 'rejected' | undefined;
     const sessionPref = url.searchParams.get('session_preference') as 'online' | 'in_person' | null;
     // Accept multiple specialization params: ?specialization=narm&specialization=hakomi
     // Match ANY of the provided values (OR). Backwards compatible with single value.
@@ -59,10 +60,13 @@ export async function GET(req: Request) {
 
     let query = supabaseServer
       .from('therapists')
-      .select('id, first_name, last_name, email, phone, city, session_preferences, modalities, created_at')
+      .select('id, first_name, last_name, email, phone, city, session_preferences, modalities, status, created_at')
       .order('created_at', { ascending: false })
       .limit(limit);
 
+    if (status) {
+      query = query.eq('status', status);
+    }
     if (city && sessionPref !== 'online') {
       // Case-insensitive partial match on city column
       query = query.ilike('city', `%${city}%`);
@@ -123,6 +127,7 @@ export async function GET(req: Request) {
         name,
         email: r.email || null,
         phone: r.phone || null,
+        status: (r as any).status || 'pending_verification',
         metadata,
         created_at: r.created_at || null,
       };

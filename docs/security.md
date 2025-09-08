@@ -19,3 +19,5 @@
   - `authenticated` users can `insert` into this bucket (uploads only). Paths are application-controlled.
   - `service_role` can `select` and `all` (manage) for admin workflows.
 - __Why__: Keep verification documents out of the public scope; enforce least privilege via RLS. Public site remains cookie-free; authentication only used in restricted areas.
+ - __Validation__: Server accepts only PDF/JPG/PNG; 10MB max per file.
+ - __Serving__: Documents are never exposed via public signed URLs. Admin-only routes stream files server-side using the service role.

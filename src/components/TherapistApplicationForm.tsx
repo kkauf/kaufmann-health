@@ -85,29 +85,50 @@ export default function TherapistApplicationForm() {
     }
 
     const specializations = form.getAll('specializations').map((v) => v.toString());
-    const payload = {
-      type: 'therapist' as const,
-      name: form.get('name')?.toString() || undefined,
-      email,
-      phone: form.get('phone')?.toString() || undefined,
-      city: form.get('city')?.toString() || undefined,
-      qualification,
-      experience,
-      website: website || undefined,
-      notes: form.get('notes')?.toString() || undefined,
-      specializations: specializations.length ? specializations : undefined,
-      session_preference,
-      session_preferences,
-      terms_version: TERMS_VERSION,
-      session_id: getOrCreateSessionId(),
-    };
+
+    // File requirements (EARTH-70)
+    // - Required: Zulassung/Lizenz (Approbation ODER Heilpraktiker für Psychotherapie ODER Großer Heilpraktiker)
+    //   Field name: license (server accepts legacy heilpraktiker_license as fallback)
+    // - Required per selected specialization: specialization_cert_{slug} (supports multiple files)
+    const license = (form.get('license') as File | null) || (form.get('heilpraktiker_license') as File | null);
+    const selectedSpecs = new Set(specializations);
+    const missingDocs: string[] = [];
+    if (!(license instanceof File) || license.size === 0) {
+      missingDocs.push('Zulassung/Lizenz');
+    }
+    const specFields = [
+      'narm',
+      'hakomi',
+      'somatic-experiencing',
+      'core-energetics',
+    ] as const;
+    for (const slug of specFields) {
+      if (selectedSpecs.has(slug)) {
+        const all = form.getAll(`specialization_cert_${slug}`);
+        const files = all.filter((x) => x instanceof File && (x as File).size > 0) as File[];
+        if (files.length === 0) {
+          missingDocs.push(`Zertifikat (${slug})`);
+        }
+      }
+    }
+    if (missingDocs.length > 0) {
+      setErrors({ specialization: `Bitte laden Sie folgende Dokumente hoch: ${missingDocs.join(', ')}.` });
+      return;
+    }
+
+    // Build FormData payload for multipart submission
+    const formData = new FormData(e.currentTarget);
+    formData.set('type', 'therapist');
+    formData.set('terms_version', TERMS_VERSION);
+    const sid = getOrCreateSessionId();
+    if (sid) formData.set('session_id', sid);
 
     setLoading(true);
     try {
       const res = await fetch('/api/leads', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        // Do not set Content-Type; browser will set multipart boundary
+        body: formData,
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Request failed');
@@ -143,6 +164,9 @@ export default function TherapistApplicationForm() {
         'Rate limited': 'Zu viele Anfragen. Bitte versuchen Sie es in einer Minute erneut.',
         'Failed to save lead': 'Speichern fehlgeschlagen. Bitte später erneut versuchen.',
         'Invalid JSON': 'Ungültige Eingabe. Bitte Formular prüfen.',
+        'Missing required documents': 'Bitte laden Sie alle erforderlichen Dokumente hoch.',
+        'Unsupported file type': 'Dateityp nicht unterstützt. Erlaubt sind PDF, JPG oder PNG.',
+        'File too large': 'Datei zu groß. Maximal 10MB erlaubt.',
       };
       if (map[msg]) {
         const friendly = map[msg];
@@ -182,7 +206,14 @@ export default function TherapistApplicationForm() {
           </CardFooter>
         </Card>
       )}
-      <form id="apply-form" onSubmit={onSubmit} noValidate className="max-w-2xl scroll-mt-28 space-y-6" hidden={submitted}>
+      <form
+        id="apply-form"
+        onSubmit={onSubmit}
+        noValidate
+        encType="multipart/form-data"
+        className="max-w-2xl scroll-mt-28 space-y-6"
+        hidden={submitted}
+      >
 
       {/* Honeypot field (leave empty) */}
       <div className="sr-only" aria-hidden="true">
@@ -315,6 +346,35 @@ export default function TherapistApplicationForm() {
               Core Energetics
             </label>
           </div>
+        </fieldset>
+
+        {/* Dokumente für Verifizierung */}
+        <fieldset className="space-y-3 sm:col-span-2">
+          <legend className="text-sm font-medium">Dokumente für Verifizierung</legend>
+          <p className="text-xs text-gray-600">Bitte laden Sie Ihre Zulassung/Lizenz hoch (Approbation, Heilpraktiker für Psychotherapie oder Großer Heilpraktiker). Für jeden ausgewählten Schwerpunkt laden Sie zusätzlich mindestens ein Zertifikat hoch.</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label htmlFor="license">Zulassung/Lizenz (Approbation, Heilpraktiker für Psychotherapie, Großer Heilpraktiker) – PDF/JPG/PNG, max. 10MB</Label>
+              <Input id="license" name="license" type="file" accept=".pdf,.jpg,.jpeg,.png" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="specialization_cert_narm">Zertifikat – NARM (falls ausgewählt)</Label>
+              <Input id="specialization_cert_narm" name="specialization_cert_narm" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="specialization_cert_hakomi">Zertifikat – Hakomi (falls ausgewählt)</Label>
+              <Input id="specialization_cert_hakomi" name="specialization_cert_hakomi" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="specialization_cert_somatic-experiencing">Zertifikat – Somatic Experiencing (falls ausgewählt)</Label>
+              <Input id="specialization_cert_somatic-experiencing" name="specialization_cert_somatic-experiencing" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="specialization_cert_core-energetics">Zertifikat – Core Energetics (falls ausgewählt)</Label>
+              <Input id="specialization_cert_core-energetics" name="specialization_cert_core-energetics" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple />
+            </div>
+          </div>
+          {errors.specialization && <p className="text-xs text-red-600">{errors.specialization}</p>}
         </fieldset>
 
         <div className="space-y-2 sm:col-span-2">

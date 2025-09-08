@@ -13,13 +13,7 @@
 Business notes:
 - `metadata` is a flexible bag for form/funnel details (`city`, `issue`, `availability`, `budget`, etc.).
 - Common keys used by the therapy finder funnel: `specializations` (string[] of slugs), `funnel_type='koerperpsychotherapie'`, `submitted_at` (ISO string), `ip`, `user_agent`.
-- Consider future constraints (e.g., email verified) when the funnel evolves.
-- Therapist verification metadata:
-  - `metadata.documents`: paths in Supabase Storage bucket `therapist-documents` (private).
-    - `heilpraktiker_license`, `specialization_cert`, `liability_insurance` (strings: storage paths)
-    - `uploaded_at` (ISO string)
-  - `metadata.verification`: review audit trail by admin
-    - `reviewed_by` (admin user id), `reviewed_at` (ISO string), `notes` (string)
+- Therapist verification documents are stored on the `public.therapists` table (see below). Patient leads remain in `public.people`.
 - Storage RLS: `therapist-documents` is private; authenticated users can insert; only `service_role` has read/manage. Reason: keep sensitive verification docs off the public surface.
 
 Indexes:
@@ -82,7 +76,7 @@ RLS:
 - `patient_confirmed_at timestamptz`
 
 Relationships:
-- `matches.therapist_id` → `people.id`
+- `matches.therapist_id` → `therapists.id`
 - `matches.patient_id` → `people.id`
 
 Indexes:
@@ -105,4 +99,41 @@ See also: [security](./security.md), [technical decisions](./technical-decisions
 - `updated_at timestamptz default now()`
 
 Relationships:
-- `therapist_contracts.therapist_id` → `people.id`
+- `therapist_contracts.therapist_id` → `therapists.id`
+
+## public.therapists
+
+- `id uuid pk default gen_random_uuid()`
+- `first_name text`
+- `last_name text`
+- `email text unique`
+- `phone text`
+- `city text`
+- `modalities jsonb not null default '[]'::jsonb` — array of specialization slugs (e.g., `narm`, `hakomi`)
+- `session_preferences jsonb not null default '[]'::jsonb` — array of `online` | `in_person`
+- `status text not null default 'pending_verification' check in ('pending_verification','verified','rejected')`
+- `metadata jsonb not null default '{}'::jsonb`
+- `verification_notes text`
+- `created_at timestamptz not null default now()`
+- `updated_at timestamptz not null default now()`
+
+Documents structure (stored in Supabase Storage bucket `therapist-documents`, paths recorded under `metadata.documents`):
+
+```json
+{
+  "license": "therapists/<id>/license-<ts>.<ext>",
+  "specialization": {
+    "narm": ["therapists/<id>/specialization-narm-<ts>.<ext>"]
+  }
+}
+```
+
+- License can be: Psychologischer Psychotherapeut (approbiert), Heilpraktiker für Psychotherapie, Großer Heilpraktiker.
+- Multiple certificates allowed per specialization.
+
+Indexes:
+
+```sql
+create index if not exists therapists_metadata_gin_idx
+  on public.therapists using gin (metadata);
+```
