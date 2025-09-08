@@ -7,6 +7,7 @@
 
 ## Data Flow (Frontend → API → DB)
 - UI submits to `POST /api/leads` for patient/therapist intake.
+  - Therapist intake supports `multipart/form-data` for verification: one `license` file and per-specialization certificates (multiple allowed). Files land in private Storage; only server/admin can read.
 - Attribution events go to `POST /api/events` (server merges session/referrer/UTM; no client cookies).
 - Magic link actions go to `POST /api/match/[uuid]/respond` (therapist accept/decline).
 - Admin dashboard uses `/admin/api/*` routes for stats and match actions (protected; see Security).

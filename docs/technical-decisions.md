@@ -31,6 +31,7 @@
 - __Why__: Maintain therapist quality and legal compliance before introductions.
 - __How__: Therapist leads default to `pending_verification` (in `public.people.status`); admins review docs stored in private bucket `therapist-documents` and update to `verified` or `rejected`. Audit timestamps on `public.matches` (`therapist_contacted_at`, `therapist_responded_at`, `patient_confirmed_at`) support traceability.
 - __Security__: Storage is private; authenticated insert allowed, reads/manage restricted to `service_role`. See also: [data model](./data-model.md), [security](./security.md).
+ - __Transport__: Therapist uploads use `multipart/form-data` to support multiple certification files per specialization. Server validates type/size and writes only storage paths (no public URLs) into `therapists.metadata.documents`. License proof can be Approbation, Heilpraktiker für Psychotherapie, or Großer Heilpraktiker.
 
 ## Admin Stats & Error Monitoring
 
