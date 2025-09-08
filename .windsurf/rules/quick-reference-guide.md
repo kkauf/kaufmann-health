@@ -154,6 +154,26 @@ const templates = {
 };
 ```
 
+## Analytics & Tracking Guidelines
+
+**CRITICAL**: All features must follow the dual analytics system documented in `docs/analytics.md`.
+
+**Quick Reference:**
+- **Supabase Events**: Business logic, detailed user behavior, errors (`ServerAnalytics.trackEventFromRequest()`)
+- **Vercel Analytics**: High-level funnel conversions only (`track('Major Event')`)
+- **No duplication**: Different systems for different purposes
+
+**For any new feature development:**
+1. Check `docs/analytics.md` for event patterns
+2. Plan tracking during feature design, not as afterthought  
+3. Follow event naming conventions: `{page}-{location}-{action}[-{qualifier}]`
+4. Always implement Supabase events for business logic
+5. Only add Vercel events for major conversion milestones
+
+**Common mistake to avoid**: Don't duplicate the same event in both systems. Each serves different analytical needs.
+
+**When in doubt**: Check existing implementations in the codebase and follow established patterns from `docs/analytics.md`.
+
 ## Testing
 
 ### Quick Test Run

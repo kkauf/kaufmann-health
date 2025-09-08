@@ -30,12 +30,18 @@
 - **RLS everywhere** — Row Level Security enforced for tables; storage buckets are private by default and managed server-side.
 - **Service role usage** — Service role keys are used only server-side.
 
+**Analytics & Tracking:**
+- All features follow dual analytics system (Supabase + Vercel)
+- See `docs/analytics.md` for implementation patterns and event conventions
+- Plan tracking during feature design, test both systems work
+
 ## Architecture Rules
 
 - **Boundaries** — Components are UI-only (render + local state). Hooks handle data fetching and business logic. Start inline; extract when repeated 3x or files exceed ~200 lines.
 - **Data flow** — Frontend never writes directly to the DB. API always returns `{ data, error }`. Keep state close to usage; use context only when prop drilling hurts (>3 levels).
 - **Documentation** — Focus on the “why”: business rules, performance hacks, security decisions, and necessary workarounds. Skip CRUD explanations and framework basics.
 - **Tech choices** — Use shadcn/ui, Tailwind, and Edge Functions for secrets when needed. Avoid heavy state libraries and custom build tools.
+
 
 ## Testing and QA
 
