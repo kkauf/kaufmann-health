@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { track } from '@vercel/analytics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +22,7 @@ export default function TherapieFinderForm() {
   const [submitted, setSubmitted] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const statusRef = useRef<HTMLDivElement>(null);
+  const startedTracked = useRef(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -67,6 +69,8 @@ export default function TherapieFinderForm() {
       if (!res.ok) throw new Error(json?.error || 'Request failed');
       setSubmitted(true);
       setSubmittedEmail(email);
+      // High-level conversion tracking (cookieless)
+      try { track('Lead Submitted'); } catch {}
       requestAnimationFrame(() => {
         statusRef.current?.focus();
         statusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -119,7 +123,17 @@ export default function TherapieFinderForm() {
           </CardFooter>
         </Card>
       )}
-      <form onSubmit={onSubmit} className="space-y-6 max-w-xl" hidden={submitted}>
+      <form
+        onSubmit={onSubmit}
+        onFocus={() => {
+          if (!startedTracked.current) {
+            try { track('Lead Started'); } catch {}
+            startedTracked.current = true;
+          }
+        }}
+        className="space-y-6 max-w-xl"
+        hidden={submitted}
+      >
       <div>
         <h2 className="text-xl font-semibold">Kostenlose Therapeuten-Empfehlung</h2>
       </div>

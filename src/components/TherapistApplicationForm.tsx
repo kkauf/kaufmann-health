@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { track } from '@vercel/analytics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +24,7 @@ export default function TherapistApplicationForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const statusRef = useRef<HTMLDivElement>(null);
+  const startedTracked = useRef(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -71,7 +73,6 @@ export default function TherapistApplicationForm() {
       setErrors({ session_preference: 'Bitte wählen Sie Ihre Sitzungsart.' });
       return;
     }
-    const session_preference = session_preferences.length === 1 ? session_preferences[0] : undefined;
 
     // Normalize website: auto-prefix https:// if missing
     let website = form.get('website')?.toString().trim();
@@ -151,6 +152,8 @@ export default function TherapistApplicationForm() {
       } catch {}
 
       setSubmitted(true);
+      // High-level cookieless analytics
+      try { track('Therapist Application Submitted'); } catch {}
       setSubmittedEmail(email);
       requestAnimationFrame(() => {
         statusRef.current?.focus();
@@ -212,6 +215,12 @@ export default function TherapistApplicationForm() {
         noValidate
         encType="multipart/form-data"
         className="max-w-2xl scroll-mt-28 space-y-6"
+        onFocus={() => {
+          if (!startedTracked.current) {
+            try { track('Therapist Applied'); } catch {}
+            startedTracked.current = true;
+          }
+        }}
         hidden={submitted}
       >
 

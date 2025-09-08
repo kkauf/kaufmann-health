@@ -171,6 +171,20 @@ export default function DatenschutzPage() {
               </div>
 
               <div>
+                <h3 className="font-medium">Web-Analyse (cookieless)</h3>
+                <div className="mt-2 space-y-2">
+                  <p>
+                    Zur Verbesserung unserer Website nutzen wir eine cookielose Web-Analyse (Vercel Web Analytics). Dabei werden ausschließlich
+                    aggregierte Nutzungsdaten (z. B. Seitenaufrufe, grundlegende Performance-Metriken) erfasst. Es werden keine Tracking-Cookies gesetzt
+                    und keine personenbezogenen Profile erstellt.
+                  </p>
+                  <p>
+                    Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der Optimierung und Stabilität unseres Online-Angebots).
+                  </p>
+                </div>
+              </div>
+
+              <div>
                 <h3 className="font-medium">Kontaktformular</h3>
                 <p className="mt-2">
                   Wenn Sie uns per Formular Anfragen senden, verarbeiten wir Ihre Angaben zur Bearbeitung und für Anschlussfragen. Rechtsgrundlage

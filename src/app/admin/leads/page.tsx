@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { track } from '@vercel/analytics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -206,6 +207,7 @@ export default function AdminLeadsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Match fehlgeschlagen');
       setMessage('Match erstellt');
+      try { track('Match Created'); } catch {}
       closeMatchModal();
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Match fehlgeschlagen';
@@ -268,6 +270,7 @@ export default function AdminLeadsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Match fehlgeschlagen');
       setMessage('Match erstellt');
+      try { track('Match Created'); } catch {}
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Match fehlgeschlagen';
       setMessage(message);

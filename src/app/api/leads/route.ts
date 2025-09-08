@@ -95,6 +95,7 @@ async function fileToBuffer(file: File): Promise<Buffer> {
 async function resizeProfilePhotoIfPossible(file: File, original: Buffer): Promise<{ buffer: Buffer; contentType: string }> {
   // Best-effort resize to 800x800 max. Falls back to original if sharp unavailable or fails.
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mod: any = await import('sharp').catch(() => null);
     const sharp = mod?.default || mod;
     if (!sharp) return { buffer: original, contentType: file.type };
@@ -532,9 +533,8 @@ export async function POST(req: Request) {
     const sessionPreferences = sessionPreferencesRaw
       .map((s) => sanitize(String(s))?.toLowerCase())
       .filter((s): s is 'online' | 'in_person' => s === 'online' || s === 'in_person');
-    const qualification = sanitize(payload.qualification);
-    const experience = sanitize(payload.experience);
-    const website = sanitize(payload.website);
+    // Note: qualification/experience/website are therapist-only fields collected in multipart route
+    // and therefore are ignored in the JSON patient path here to avoid unused variables.
     const leadType: 'patient' | 'therapist' = payload.type === 'therapist' ? 'therapist' : 'patient';
     const session_id = sanitize(payload.session_id);
     // Consent flags (patient only)
