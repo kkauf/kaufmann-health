@@ -89,6 +89,7 @@ export async function GET(req: Request) {
       city?: string | null;
       session_preferences?: unknown;
       modalities?: unknown;
+      status?: 'pending_verification' | 'verified' | 'rejected' | null;
       created_at?: string | null;
     };
     let rows = (data || []) as Row[];
@@ -127,7 +128,7 @@ export async function GET(req: Request) {
         name,
         email: r.email || null,
         phone: r.phone || null,
-        status: (r as any).status || 'pending_verification',
+        status: r.status || 'pending_verification',
         metadata,
         created_at: r.created_at || null,
       };

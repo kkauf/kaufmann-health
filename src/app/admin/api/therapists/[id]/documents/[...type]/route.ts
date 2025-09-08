@@ -57,8 +57,29 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; typ
       await logError('admin.api.therapists.documents', error, { stage: 'fetch_therapist', therapist_id: id });
       return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
     }
-    const meta = (row?.metadata as any) || {};
-    const docs = (meta.documents as any) || {};
+    type Documents = { license?: string; specialization?: Record<string, string[]> };
+    function isObject(v: unknown): v is Record<string, unknown> {
+      return typeof v === 'object' && v !== null;
+    }
+    function isDocuments(v: unknown): v is Documents {
+      if (!isObject(v)) return false;
+      if ('license' in v && typeof (v as Record<string, unknown>).license !== 'string') return false;
+      if ('specialization' in v) {
+        const spec = (v as Record<string, unknown>).specialization;
+        if (!isObject(spec)) return false;
+        for (const val of Object.values(spec)) {
+          if (!Array.isArray(val) || !val.every((s) => typeof s === 'string')) return false;
+        }
+      }
+      return true;
+    }
+
+    const metadataUnknown = (row?.metadata ?? {}) as unknown;
+    let docs: Documents = {};
+    if (isObject(metadataUnknown)) {
+      const maybeDocs = (metadataUnknown as { documents?: unknown }).documents;
+      if (isDocuments(maybeDocs)) docs = maybeDocs;
+    }
 
     let path: string | undefined;
     if (segments[0] === 'license') {
@@ -66,8 +87,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; typ
     } else if (segments[0] === 'specialization') {
       const slug = segments[1];
       const index = Number(segments[2] ?? '0');
-      if (slug && Array.isArray(docs.specialization?.[slug]) && Number.isInteger(index) && index >= 0) {
-        path = docs.specialization[slug][index];
+      const specMap = docs.specialization || {};
+      const arr = slug ? specMap[slug] : undefined;
+      if (slug && Array.isArray(arr) && Number.isInteger(index) && index >= 0 && index < arr.length) {
+        path = arr[index];
       }
     }
 
