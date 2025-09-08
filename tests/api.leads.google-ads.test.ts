@@ -27,6 +27,18 @@ vi.mock('@/lib/supabase-server', () => {
           }),
         } as any;
       }
+      if (table === 'therapists') {
+        return {
+          insert: (_payload: any) => ({
+            select: () => ({
+              single: () =>
+                Promise.resolve(
+                  insertError ? { data: null, error: insertError } : { data: { id: insertResultId }, error: null },
+                ),
+            }),
+          }),
+        } as any;
+      }
       if (table === 'therapist_contracts') {
         return {
           insert: (_payload: any) => Promise.resolve({ data: { id: 'contract-id' }, error: null }),

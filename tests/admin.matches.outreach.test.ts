@@ -51,9 +51,20 @@ vi.mock('@/lib/supabase-server', () => {
                     error: null,
                   };
                 }
+                return { data: null, error: { message: 'not found' } };
+              },
+            }),
+          }),
+        } as any;
+      }
+      if (table === 'therapists') {
+        return {
+          select: (_cols?: string) => ({
+            eq: (_col: string, id: string) => ({
+              single: async () => {
                 if (id === 't-1') {
                   return {
-                    data: { id: 't-1', type: 'therapist', email: therapistEmail, name: therapistName },
+                    data: { id: 't-1', email: therapistEmail, first_name: therapistName, last_name: null },
                     error: null,
                   };
                 }

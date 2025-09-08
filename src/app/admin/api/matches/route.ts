@@ -84,29 +84,29 @@ export async function GET(req: Request) {
       return NextResponse.json({ data: [], error: null }, { status: 200 });
     }
 
-    const ids = new Set<string>();
-    for (const r of rows) {
-      ids.add(String(r.patient_id));
-      ids.add(String(r.therapist_id));
-    }
+    const patientIds = Array.from(new Set(rows.map((r) => String(r.patient_id))));
+    const therapistIds = Array.from(new Set(rows.map((r) => String(r.therapist_id))));
 
-    const { data: people, error: pErr } = await supabaseServer
-      .from('people')
-      .select('id, name, email, phone, metadata')
-      .in('id', Array.from(ids));
+    const [{ data: people, error: pErr }, { data: therapists, error: tErr }] = await Promise.all([
+      supabaseServer.from('people').select('id, name, email, phone, metadata').in('id', patientIds),
+      supabaseServer.from('therapists').select('id, first_name, last_name, email, phone').in('id', therapistIds),
+    ]);
 
-    if (pErr) {
-      await logError('admin.api.matches', pErr, { stage: 'load_people' });
-      return NextResponse.json({ data: null, error: 'Failed to load people' }, { status: 500 });
+    if (pErr || tErr) {
+      await logError('admin.api.matches', pErr || tErr, { stage: 'load_entities' });
+      return NextResponse.json({ data: null, error: 'Failed to load related entities' }, { status: 500 });
     }
 
     const persons = (people || []) as PersonRow[];
-    const byId = new Map<string, PersonRow>();
-    for (const p of persons) byId.set(p.id, p);
+    const therapistRows = (therapists || []) as Array<{ id: string; first_name?: string | null; last_name?: string | null; email?: string | null; phone?: string | null }>;
+    const patientsById = new Map<string, PersonRow>();
+    for (const p of persons) patientsById.set(p.id, p);
+    const therapistsById = new Map<string, { id: string; first_name?: string | null; last_name?: string | null; email?: string | null; phone?: string | null }>();
+    for (const t of therapistRows) therapistsById.set(t.id, t);
 
     const data = rows.map((r: MatchRow) => {
-      const patient = byId.get(r.patient_id) || null;
-      const therapist = byId.get(r.therapist_id) || null;
+      const patient = patientsById.get(r.patient_id) || null;
+      const therapist = therapistsById.get(r.therapist_id) || null;
       const city = typeof patient?.metadata?.city === 'string' ? patient.metadata.city : undefined;
       const issue = typeof patient?.metadata?.issue === 'string' ? patient.metadata.issue : undefined;
       return {
@@ -118,7 +118,12 @@ export async function GET(req: Request) {
           ? { id: patient.id, name: patient.name || '', email: patient.email || '', phone: patient.phone || '', city, issue }
           : { id: r.patient_id, name: '', email: '', phone: '', city, issue },
         therapist: therapist
-          ? { id: therapist.id, name: therapist.name || '', email: therapist.email || '', phone: therapist.phone || '' }
+          ? {
+              id: therapist.id,
+              name: [therapist.first_name || '', therapist.last_name || ''].join(' ').trim(),
+              email: therapist.email || '',
+              phone: therapist.phone || '',
+            }
           : { id: r.therapist_id, name: '', email: '', phone: '' },
       } as const;
     });
@@ -230,7 +235,7 @@ export async function POST(req: Request) {
     // Validate entities exist with expected types
     const [{ data: patient, error: patientErr }, { data: therapist, error: therapistErr }] = await Promise.all([
       supabaseServer.from('people').select('id, type, metadata').eq('id', patient_id).single(),
-      supabaseServer.from('people').select('id, type, email, name').eq('id', therapist_id).single(),
+      supabaseServer.from('therapists').select('id, first_name, last_name, email').eq('id', therapist_id).single(),
     ]);
     if (patientErr || therapistErr) {
       await logError('admin.api.matches', patientErr || therapistErr, { stage: 'load_entities', patient_id, therapist_id });
@@ -239,7 +244,7 @@ export async function POST(req: Request) {
     if (!patient || patient.type !== 'patient') {
       return NextResponse.json({ data: null, error: 'Invalid patient_id' }, { status: 400 });
     }
-    if (!therapist || therapist.type !== 'therapist') {
+    if (!therapist) {
       return NextResponse.json({ data: null, error: 'Invalid therapist_id' }, { status: 400 });
     }
 
@@ -259,7 +264,7 @@ export async function POST(req: Request) {
       type MatchRow = { id: string };
       type MatchDetail = { secure_uuid?: string | null; created_at?: string | null };
       type PatientRow = { metadata?: { city?: string; issue?: string } | null };
-      type TherapistRow = { email?: string | null; name?: string | null };
+      type TherapistRow = { email?: string | null; first_name?: string | null; last_name?: string | null };
 
       const matchId = (data as MatchRow).id;
       // Fetch secure_uuid separately to remain compatible before the migration lands
@@ -281,7 +286,7 @@ export async function POST(req: Request) {
       const t = therapist as unknown as TherapistRow | null;
       const p = patient as unknown as PatientRow | null;
       const therapistEmail = typeof t?.email === 'string' ? t.email.trim() : '';
-      const therapistName = typeof t?.name === 'string' ? t.name : undefined;
+      const therapistName = [t?.first_name || '', t?.last_name || ''].join(' ').trim() || undefined;
       const city = typeof p?.metadata?.city === 'string' ? p.metadata.city : undefined;
       const issue = typeof p?.metadata?.issue === 'string' ? p.metadata.issue : undefined;
 

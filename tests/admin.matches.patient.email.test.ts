@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 let sentEmails: any[] = [];
 let matchById: Record<string, { id: string; patient_id: string; therapist_id: string }> = {};
 let peopleById: Record<string, { id: string; name?: string | null; email?: string | null; metadata?: any }> = {};
+let therapistsById: Record<string, { id: string; first_name?: string | null; last_name?: string | null }> = {};
 
 vi.mock('@/lib/auth/adminSession', () => {
   return {
@@ -45,6 +46,24 @@ vi.mock('@/lib/supabase-server', () => {
               const arr = ids.map((id) => peopleById[id]).filter(Boolean);
               return Promise.resolve({ data: arr, error: null });
             },
+            eq: (_col: string, id: string) => ({
+              single: async () => {
+                const p = peopleById[id];
+                return p ? { data: p, error: null } : { data: null, error: { message: 'not found' } };
+              },
+            }),
+          }),
+        } as any;
+      }
+      if (table === 'therapists') {
+        return {
+          select: (_cols?: string) => ({
+            eq: (_col: string, id: string) => ({
+              single: async () => {
+                const t = therapistsById[id];
+                return t ? { data: t, error: null } : { data: null, error: { message: 'not found' } };
+              },
+            }),
           }),
         } as any;
       }
@@ -66,6 +85,7 @@ beforeEach(() => {
   sentEmails = [];
   matchById = {};
   peopleById = {};
+  therapistsById = {};
 });
 
 describe('/admin/api/matches/email POST', () => {
@@ -87,7 +107,7 @@ describe('/admin/api/matches/email POST', () => {
     matchById['m-1'] = { id: 'm-1', patient_id: 'p-1', therapist_id: 't-1' };
     // patient has no email
     peopleById['p-1'] = { id: 'p-1', name: 'P X' } as any;
-    peopleById['t-1'] = { id: 't-1', name: 'T Y', email: 'thera@example.com' } as any;
+    therapistsById['t-1'] = { id: 't-1', first_name: 'T', last_name: 'Y' } as any;
 
     const { POST } = await import('@/app/admin/api/matches/email/route');
     const res = await POST(makePost({ id: 'm-1', template: 'match_found' }));
@@ -99,7 +119,7 @@ describe('/admin/api/matches/email POST', () => {
   it('sends match_found email', async () => {
     matchById['m-1'] = { id: 'm-1', patient_id: 'p-1', therapist_id: 't-1' };
     peopleById['p-1'] = { id: 'p-1', name: 'Patient X', email: 'patient@example.com' } as any;
-    peopleById['t-1'] = { id: 't-1', name: 'Thera Y', email: 't@example.com' } as any;
+    therapistsById['t-1'] = { id: 't-1', first_name: 'Thera', last_name: 'Y' } as any;
 
     const { POST } = await import('@/app/admin/api/matches/email/route');
     const res = await POST(makePost({ id: 'm-1', template: 'match_found' }));

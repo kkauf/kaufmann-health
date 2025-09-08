@@ -56,7 +56,7 @@ export async function GET(req: Request) {
 
     // Totals
     const [therapistsRes, clientsRes, matchesTotalRes] = await Promise.all([
-      supabaseServer.from('people').select('id', { count: 'exact', head: true }).eq('type', 'therapist'),
+      supabaseServer.from('therapists').select('id', { count: 'exact', head: true }),
       supabaseServer.from('people').select('id', { count: 'exact', head: true }).eq('type', 'patient'),
       supabaseServer.from('matches').select('id', { count: 'exact', head: true }),
     ]);

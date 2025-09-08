@@ -202,41 +202,66 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data: inserted, error } = await supabaseServer
-      .from('people')
-      .insert({
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        type: leadType,
-        status: leadType === 'therapist' ? 'pending_verification' : 'new',
-        metadata: {
-          ...(data.notes ? { notes: data.notes } : {}),
-          ...(city ? { city } : {}),
-          ...(issue ? { issue } : {}),
-          ...(availability ? { availability } : {}),
-          ...(budget ? { budget } : {}),
-          ...(sessionPreference ? { session_preference: sessionPreference } : {}),
-          ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
-          ...(specializations.length ? { specializations } : {}),
-          ...(ip ? { ip } : {}),
-          ...(ua ? { user_agent: ua } : {}),
-          ...(qualification ? { qualification } : {}),
-          ...(experience ? { experience } : {}),
-          ...(website ? { website } : {}),
-          ...(leadType === 'patient' && consentShare
-            ? {
-                consent_share_with_therapists: true,
-                consent_share_with_therapists_at: new Date().toISOString(),
-                ...(privacyVersion ? { consent_privacy_version: privacyVersion } : {}),
-              }
-            : {}),
-          funnel_type: leadType === 'therapist' ? 'therapist_acquisition' : 'koerperpsychotherapie',
-          submitted_at: new Date().toISOString(),
-        },
-      })
-      .select()
-      .single();
+    let inserted: { id: string } | null = null;
+    let error: unknown = null;
+    if (leadType === 'therapist') {
+      // Split full name into first/last for therapists table
+      const fullName = (data.name || '').trim();
+      const first_name = fullName ? fullName.split(/\s+/)[0] : null;
+      const last_name = fullName ? fullName.replace(/^\S+\s*/, '').trim() || null : null;
+      const modalities = specializations; // normalized above
+      const { data: ins, error: err } = await supabaseServer
+        .from('therapists')
+        .insert({
+          first_name,
+          last_name,
+          email: data.email,
+          phone: data.phone,
+          city: city || null,
+          session_preferences: sessionPreferences,
+          modalities,
+          status: 'pending_verification',
+        })
+        .select('id')
+        .single();
+      inserted = (ins as unknown as { id: string }) || null;
+      error = err;
+    } else {
+      const res = await supabaseServer
+        .from('people')
+        .insert({
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          type: 'patient',
+          status: 'new',
+          metadata: {
+            ...(data.notes ? { notes: data.notes } : {}),
+            ...(city ? { city } : {}),
+            ...(issue ? { issue } : {}),
+            ...(availability ? { availability } : {}),
+            ...(budget ? { budget } : {}),
+            ...(sessionPreference ? { session_preference: sessionPreference } : {}),
+            ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
+            ...(specializations.length ? { specializations } : {}),
+            ...(ip ? { ip } : {}),
+            ...(ua ? { user_agent: ua } : {}),
+            ...(leadType === 'patient' && consentShare
+              ? {
+                  consent_share_with_therapists: true,
+                  consent_share_with_therapists_at: new Date().toISOString(),
+                  ...(privacyVersion ? { consent_privacy_version: privacyVersion } : {}),
+                }
+              : {}),
+            funnel_type: 'koerperpsychotherapie',
+            submitted_at: new Date().toISOString(),
+          },
+        })
+        .select('id')
+        .single();
+      inserted = (res.data as unknown as { id: string }) || null;
+      error = res.error;
+    }
 
     if (error) {
       console.error('Supabase error:', error);

@@ -58,41 +58,76 @@ export async function GET(req: Request) {
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '200', 10) || 200, 200);
 
     let query = supabaseServer
-      .from('people')
-      .select('id, name, email, phone, type, status, metadata, created_at')
-      .eq('type', 'therapist')
+      .from('therapists')
+      .select('id, first_name, last_name, email, phone, city, session_preferences, modalities, created_at')
       .order('created_at', { ascending: false })
       .limit(limit);
 
     if (city && sessionPref !== 'online') {
-      // Case-insensitive partial match on city stored in JSON metadata
-      // Using ->> to extract text and ILIKE with wildcards for substring search.
-      query = query.ilike('metadata->>city', `%${city}%`);
+      // Case-insensitive partial match on city column
+      query = query.ilike('city', `%${city}%`);
     }
-    // Session preference filter: support legacy single field and new array field.
-    // We fetch first (bounded by limit) and filter in code to support OR logic across fields.
-    // Note: We intentionally avoid DB prefilter on specializations to allow normalization (spaces vs hyphens, etc.).
+    // Session preference filter: fetch first (bounded by limit) and filter in code to support OR logic.
+    // Note: We intentionally avoid DB prefilter on modalities to allow normalization (spaces vs hyphens, etc.).
 
     const { data, error } = await query;
     if (error) {
       await logError('admin.api.therapists', error, { stage: 'fetch' });
       return NextResponse.json({ data: null, error: 'Failed to fetch therapists' }, { status: 500 });
     }
-    let result = (data || []) as Array<{ metadata?: unknown }>;
+    // Normalize to existing shape expected by Admin UI
+    type Row = {
+      id: string;
+      first_name?: string | null;
+      last_name?: string | null;
+      email?: string | null;
+      phone?: string | null;
+      city?: string | null;
+      session_preferences?: unknown;
+      modalities?: unknown;
+      created_at?: string | null;
+    };
+    let rows = (data || []) as Row[];
+
     if (sessionPref === 'online' || sessionPref === 'in_person') {
-      result = result.filter((p) => {
-        const meta = (p?.metadata ?? {}) as { session_preference?: 'online' | 'in_person'; session_preferences?: ('online' | 'in_person')[] };
-        const arr = Array.isArray(meta.session_preferences) ? meta.session_preferences : [];
-        return meta.session_preference === sessionPref || arr.includes(sessionPref);
+      const target = sessionPref;
+      rows = rows.filter((r) => {
+        const prefs = Array.isArray(r.session_preferences)
+          ? (r.session_preferences as unknown[]).map((v) => String(v))
+          : [];
+        return prefs.includes(target);
       });
     }
     if (specializationParams.length > 0) {
-      result = result.filter((p) => {
-        const meta = (p?.metadata ?? {}) as { specializations?: string[] };
-        const specs = Array.isArray(meta.specializations) ? meta.specializations.map((s) => normalizeSpec(String(s))) : [];
+      rows = rows.filter((r) => {
+        const specs = Array.isArray(r.modalities)
+          ? (r.modalities as unknown[]).map((v) => normalizeSpec(String(v)))
+          : [];
         return specializationParams.some((s) => specs.includes(s));
       });
     }
+
+    const result = rows.map((r) => {
+      const name = [r.first_name || '', r.last_name || ''].join(' ').trim() || null;
+      const metadata = {
+        city: r.city || undefined,
+        session_preferences: Array.isArray(r.session_preferences)
+          ? (r.session_preferences as unknown[]).map((v) => (v === 'in_person' || v === 'online' ? v : String(v)))
+          : [],
+        specializations: Array.isArray(r.modalities)
+          ? (r.modalities as unknown[]).map((v) => String(v))
+          : [],
+      } as const;
+      return {
+        id: r.id,
+        name,
+        email: r.email || null,
+        phone: r.phone || null,
+        metadata,
+        created_at: r.created_at || null,
+      };
+    });
+
     return NextResponse.json({ data: result, error: null });
   } catch (e) {
     await logError('admin.api.therapists', e, { stage: 'exception' });

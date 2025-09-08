@@ -135,23 +135,20 @@ export async function POST(req: Request) {
 
     // Fire-and-forget: notify patient about the update (best-effort)
     try {
-      type PersonRow = { id: string; name?: string | null; email?: string | null };
-      const ids = [m.patient_id, m.therapist_id];
-      const { data: people, error: pErr } = await supabaseServer
-        .from('people')
-        .select('id, name, email')
-        .in('id', ids);
-      if (!pErr && Array.isArray(people)) {
-        const persons = people as unknown as PersonRow[];
-        const byId = new Map<string, PersonRow>();
-        for (const p of persons) byId.set(String(p.id), p);
-        const patient = byId.get(m.patient_id);
-        const therapist = byId.get(m.therapist_id);
+      type PatientRow = { id: string; name?: string | null; email?: string | null };
+      const [{ data: patientRow }, { data: therapistRow }] = await Promise.all([
+        supabaseServer.from('people').select('id, name, email').eq('id', m.patient_id).single(),
+        supabaseServer.from('therapists').select('id, first_name, last_name').eq('id', m.therapist_id).single(),
+      ]);
+      if (patientRow) {
+        const patient = patientRow as unknown as PatientRow;
         const patientEmail = (patient?.email || '').trim();
         const patientName = (patient?.name || '') || null;
         if (patientEmail) {
           if (nextStatus === 'accepted') {
-            const therapistName = (therapist?.name || '') || null;
+            const therapistName = therapistRow
+              ? ([therapistRow.first_name || '', therapistRow.last_name || ''].join(' ').trim() || null)
+              : null;
             const content = renderPatientMatchFound({ patientName, therapistName, specializations: [] });
             void sendEmail({
               to: patientEmail,

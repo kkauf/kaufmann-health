@@ -21,7 +21,24 @@ vi.mock('@/lib/supabase-server', () => {
               }),
             }),
           }),
-          // Insert path
+          // Insert path for patient leads
+          insert: (payload: any) => {
+            lastInsertedPayload = payload;
+            return {
+              select: () => ({
+                single: () =>
+                  Promise.resolve(
+                    insertError
+                      ? { data: null, error: insertError }
+                      : { data: { id: insertResultId }, error: null },
+                  ),
+              }),
+            };
+          },
+        } as any;
+      }
+      if (table === 'therapists') {
+        return {
           insert: (payload: any) => {
             lastInsertedPayload = payload;
             return {
@@ -120,9 +137,9 @@ describe('/api/leads POST', () => {
     const json = await res.json();
     expect(json).toEqual({ data: { id: 'test-id-123' }, error: null });
 
-    // Assert payload was filtered and normalized
+    // Assert payload was filtered and normalized (therapists.modalities)
     expect(lastInsertedPayload).toBeTruthy();
-    const specs = lastInsertedPayload.metadata?.specializations || [];
+    const specs = lastInsertedPayload.modalities || [];
     // Order is preserved for allowed entries after normalization
     expect(specs).toEqual(['narm', 'somatic-experiencing', 'hakomi']);
   });

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mutable state for mocks
 let matchRows: any[] = [];
 let peopleRows: any[] = [];
+let therapistRows: any[] = [];
 let updateCalls: Array<{ id: string; payload: Record<string, unknown> }> = [];
 let updateMode: 'ok' | 'missing_column' | 'error' = 'ok';
 
@@ -49,6 +50,13 @@ vi.mock('@/lib/supabase-server', () => {
           }),
         } as any;
       }
+      if (table === 'therapists') {
+        return {
+          select: (_cols?: string) => ({
+            in: async (_col: string, _ids: string[]) => ({ data: therapistRows, error: null }),
+          }),
+        } as any;
+      }
       throw new Error(`Unexpected table ${table}`);
     },
   } as any;
@@ -66,6 +74,7 @@ function makeReq(method: string, body?: any) {
 beforeEach(() => {
   matchRows = [];
   peopleRows = [];
+  therapistRows = [];
   updateCalls = [];
   updateMode = 'ok';
 });
@@ -85,7 +94,9 @@ describe('/admin/api/matches GET', () => {
     ];
     peopleRows = [
       { id: 'p1', name: 'Alice', email: 'alice@example.com', metadata: { city: 'Berlin', issue: 'Trauma' } },
-      { id: 't1', name: 'Dr. Bob', email: 'bob@example.com' },
+    ];
+    therapistRows = [
+      { id: 't1', first_name: 'Dr.', last_name: 'Bob', email: 'bob@example.com', phone: '' },
     ];
     const { GET } = await import('@/app/admin/api/matches/route');
     const res = await GET(makeReq('GET'));

@@ -79,23 +79,18 @@ export async function POST(req: Request) {
     }
 
     const m = match as Match;
-    const ids = [m.patient_id, m.therapist_id];
-    const { data: people, error: pErr } = await supabaseServer
+    const { data: patientRow, error: pErr } = await supabaseServer
       .from('people')
       .select('id, name, email, metadata')
-      .in('id', ids);
+      .eq('id', m.patient_id)
+      .single();
 
     if (pErr) {
-      await logError('admin.api.matches.email', pErr, { stage: 'load_people', id });
-      return NextResponse.json({ data: null, error: 'Failed to load people' }, { status: 500 });
+      await logError('admin.api.matches.email', pErr, { stage: 'load_patient', id });
+      return NextResponse.json({ data: null, error: 'Failed to load entities' }, { status: 500 });
     }
 
-    const persons = (people || []) as Person[];
-    const byId = new Map<string, Person>();
-    for (const p of persons) byId.set(String(p.id), p);
-
-    const patient = byId.get(m.patient_id);
-    const therapist = byId.get(m.therapist_id);
+    const patient = (patientRow || null) as Person | null;
 
     const patientEmail = (patient?.email || '').trim();
     const patientName = (patient?.name || '') || null;
@@ -107,7 +102,19 @@ export async function POST(req: Request) {
     let content: EmailContent;
 
     if (template === 'match_found') {
-      const therapistName = (therapist?.name || '') || null;
+      // Load therapist only when needed
+      const { data: therapistRow, error: tErr } = await supabaseServer
+        .from('therapists')
+        .select('id, first_name, last_name')
+        .eq('id', m.therapist_id)
+        .single();
+      if (tErr) {
+        await logError('admin.api.matches.email', tErr, { stage: 'load_therapist', id });
+        return NextResponse.json({ data: null, error: 'Failed to load entities' }, { status: 500 });
+      }
+      const therapistName = therapistRow
+        ? ([therapistRow.first_name || '', therapistRow.last_name || ''].join(' ').trim() || null)
+        : null;
       // For MVP we skip specializations until stored/available consistently
       content = renderPatientMatchFound({ patientName: patientName, therapistName, specializations: [] });
     } else {
