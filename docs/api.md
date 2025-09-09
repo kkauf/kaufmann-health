@@ -39,7 +39,7 @@
   - `profile_photo`: JPEG or PNG, max 5MB. Stored pending review.
   - `approach_text`: string, max 2000 chars.
 - __Storage__:
-  - Documents are stored in private bucket `therapist-documents` under `therapists/<id>/...` and merged into `therapists.metadata.documents` as:
+  - Documents are stored in private bucket `therapist-documents` under `therapists/<id>/...` and merged into `therapists.metadata.documnpnts` as:
     ```json
     {
       "documents": {
