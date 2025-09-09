@@ -9,6 +9,15 @@ import { BASE_URL } from '@/lib/constants';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+type TherapistRowLite = {
+  id: string;
+  status?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  metadata?: unknown;
+};
+
 function parseCookie(header?: string | null): Map<string, string> {
   const map = new Map<string, string>();
   if (!header) return map;
@@ -69,9 +78,10 @@ export async function GET(req: Request) {
     let skippedNoMissing = 0;
     const examples: Array<{ id: string; missing: string[] }> = [];
 
-    for (const t of rows || []) {
+    const rowsTyped: TherapistRowLite[] = (rows as TherapistRowLite[] | null) || [];
+    for (const t of rowsTyped) {
       processed++;
-      const metadata = isObject((t as any).metadata) ? ((t as any).metadata as Record<string, unknown>) : {};
+      const metadata = isObject(t.metadata) ? (t.metadata as Record<string, unknown>) : {};
 
       const docsUnknown = (metadata as { documents?: unknown }).documents;
       const docs = isObject(docsUnknown) ? (docsUnknown as Record<string, unknown>) : {};
@@ -91,13 +101,11 @@ export async function GET(req: Request) {
         continue;
       }
 
-      const to = (t as any).email as string | null;
+      const to = t.email || undefined;
       if (!to) continue;
 
-      const name = [((t as any).first_name as string | null) || '', ((t as any).last_name as string | null) || '']
-        .join(' ')
-        .trim();
-      const uploadUrl = `${BASE_URL}/therapists/upload-documents/${(t as any).id}`;
+      const name = [(t.first_name || ''), (t.last_name || '')].join(' ').trim();
+      const uploadUrl = `${BASE_URL}/therapists/upload-documents/${t.id}`;
 
       const reminder = renderTherapistReminder({
         name,
@@ -109,18 +117,18 @@ export async function GET(req: Request) {
       });
 
       try {
-        void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.reminders.batch', props: { stage: 'therapist_profile_reminder', therapist_id: (t as any).id, subject: reminder.subject } });
-        await sendEmail({ to, subject: reminder.subject, html: reminder.html, context: { stage: 'therapist_profile_reminder', therapist_id: (t as any).id } });
+        void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.reminders.batch', props: { stage: 'therapist_profile_reminder', therapist_id: t.id, subject: reminder.subject } });
+        await sendEmail({ to, subject: reminder.subject, html: reminder.html, context: { stage: 'therapist_profile_reminder', therapist_id: t.id } });
         sent++;
         if (examples.length < 3) {
           const miss: string[] = [];
           if (missingDocuments) miss.push('documents');
           if (missingPhoto) miss.push('photo');
           if (missingApproach) miss.push('approach');
-          examples.push({ id: (t as any).id as string, missing: miss });
+          examples.push({ id: t.id as string, missing: miss });
         }
       } catch (e) {
-        await logError('admin.api.therapists.reminders.batch', e, { stage: 'send_email', therapist_id: (t as any).id }, ip, ua);
+        await logError('admin.api.therapists.reminders.batch', e, { stage: 'send_email', therapist_id: t.id }, ip, ua);
       }
     }
 
@@ -151,10 +159,12 @@ export async function POST(req: Request) {
   const ua = req.headers.get('user-agent') || undefined;
 
   try {
-    // Auth: allow either admin cookie OR Cron secret (header or query param)
+    // Auth: allow either admin cookie OR Cron secret (Authorization header, custom header, or query param)
     const cronSecretHeader = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
     const cronSecret = process.env.CRON_SECRET;
-    let isCron = Boolean(cronSecret && cronSecretHeader && cronSecretHeader === cronSecret);
+    const authHeader = req.headers.get('authorization') || '';
+    const isAuthBearer = Boolean(cronSecret && authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret);
+    let isCron = (Boolean(cronSecret && cronSecretHeader && cronSecretHeader === cronSecret) || isAuthBearer);
     if (!isCron && cronSecret) {
       try {
         const url = new URL(req.url);
@@ -191,9 +201,10 @@ export async function POST(req: Request) {
     let skippedNoMissing = 0;
     const examples: Array<{ id: string; missing: string[] }> = [];
 
-    for (const t of rows || []) {
+    const rowsTyped: TherapistRowLite[] = (rows as TherapistRowLite[] | null) || [];
+    for (const t of rowsTyped) {
       processed++;
-      const metadata = isObject((t as any).metadata) ? ((t as any).metadata as Record<string, unknown>) : {};
+      const metadata = isObject(t.metadata) ? (t.metadata as Record<string, unknown>) : {};
 
       const docsUnknown = (metadata as { documents?: unknown }).documents;
       const docs = isObject(docsUnknown) ? (docsUnknown as Record<string, unknown>) : {};
@@ -213,13 +224,11 @@ export async function POST(req: Request) {
         continue;
       }
 
-      const to = (t as any).email as string | null;
+      const to = t.email || undefined;
       if (!to) continue;
 
-      const name = [((t as any).first_name as string | null) || '', ((t as any).last_name as string | null) || '']
-        .join(' ')
-        .trim();
-      const uploadUrl = `${BASE_URL}/therapists/upload-documents/${(t as any).id}`;
+      const name = [(t.first_name || ''), (t.last_name || '')].join(' ').trim();
+      const uploadUrl = `${BASE_URL}/therapists/upload-documents/${t.id}`;
 
       const reminder = renderTherapistReminder({
         name,
@@ -231,18 +240,18 @@ export async function POST(req: Request) {
       });
 
       try {
-        void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.reminders.batch', props: { stage: 'therapist_profile_reminder', therapist_id: (t as any).id, subject: reminder.subject } });
-        await sendEmail({ to, subject: reminder.subject, html: reminder.html, context: { stage: 'therapist_profile_reminder', therapist_id: (t as any).id } });
+        void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.reminders.batch', props: { stage: 'therapist_profile_reminder', therapist_id: t.id, subject: reminder.subject } });
+        await sendEmail({ to, subject: reminder.subject, html: reminder.html, context: { stage: 'therapist_profile_reminder', therapist_id: t.id } });
         sent++;
         if (examples.length < 3) {
           const miss: string[] = [];
           if (missingDocuments) miss.push('documents');
           if (missingPhoto) miss.push('photo');
           if (missingApproach) miss.push('approach');
-          examples.push({ id: (t as any).id as string, missing: miss });
+          examples.push({ id: t.id as string, missing: miss });
         }
       } catch (e) {
-        await logError('admin.api.therapists.reminders.batch', e, { stage: 'send_email', therapist_id: (t as any).id }, ip, ua);
+        await logError('admin.api.therapists.reminders.batch', e, { stage: 'send_email', therapist_id: t.id }, ip, ua);
       }
     }
 
