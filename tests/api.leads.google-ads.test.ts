@@ -118,7 +118,7 @@ describe('/api/leads Google Ads conversions', () => {
 
   it('fires therapist_registration conversion with value 25 on therapist lead', async () => {
     const { POST } = await import('@/app/api/leads/route');
-    const res = await POST(makeReq({ email: 'therapist@example.com', type: 'therapist' }));
+    const res = await POST(makeReq({ email: 'therapist@example.com', type: 'therapist', specializations: ['narm'] }));
     expect(res.status).toBe(200);
 
     await Promise.resolve();

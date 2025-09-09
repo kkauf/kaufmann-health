@@ -8,7 +8,7 @@
   - Optional common: `name`, `phone`, `notes`, `city`, `issue`, `availability`, `budget`, `specializations` (array of slugs)
   - Lead type: `type` (optional: `patient` | `therapist`, default `patient`)
   - Patient-only: `session_preference`, `session_preferences`, `consent_share_with_therapists` (required), `privacy_version`
-  - Therapist-only: `qualification`, `experience`, `website`
+  - Therapist JSON: requires at least one `specializations` entry (modality)
 - __Validation__: email regex; strings sanitized (control chars removed; ~1000 chars max). Server requires `email`. For patient leads, explicit consent is required via `consent_share_with_therapists`.
 - __Behavior__:
   - `type` set from payload (default `patient`).
@@ -24,6 +24,45 @@
   - 400: `{ data: null, error: 'Invalid email' | 'Invalid JSON' | 'Einwilligung zur Datenübertragung erforderlich' }`
   - 429: `{ data: null, error: 'Rate limited' }`
   - 500: `{ data: null, error: 'Failed to save lead' }`
+
+## POST /api/therapists/:id/documents
+
+- __Purpose__: Upload required verification documents and optional profile fields after signup (email link). Builds on EARTH-71 and EARTH-115.
+- __Auth__: None (access via emailed link). The endpoint validates that the therapist exists and is in `pending_verification`; otherwise returns 404 to avoid information leaks.
+- __Content-Type__: `multipart/form-data`
+- __Path Param__:
+  - `:id` — therapist UUID returned from `/api/leads` (therapist JSON or multipart path)
+- __Required fields__:
+  - `psychotherapy_license`: one document proving qualification. Formats: PDF, JPG, PNG. Max 10MB.
+  - `specialization_cert`: at least one modality certificate. Multiple files allowed (send multiple fields of the same name). Formats: PDF, JPG, PNG. Max 10MB each.
+- __Optional fields__:
+  - `profile_photo`: JPEG or PNG, max 5MB. Stored pending review.
+  - `approach_text`: string, max 2000 chars.
+- __Storage__:
+  - Documents are stored in private bucket `therapist-documents` under `therapists/<id>/...` and merged into `therapists.metadata.documents` as:
+    ```json
+    {
+      "documents": {
+        "license": "therapists/<id>/license-<ts>.<ext>",
+        "specialization": { "uncategorized": ["therapists/<id>/specialization-<ts>.<ext>"] }
+      }
+    }
+    ```
+  - Profile data is stored under `therapists.metadata.profile`:
+    ```json
+    {
+      "profile": {
+        "photo_pending_path": "applications/<id>/profile-photo-<ts>.<ext>",
+        "approach_text": "<therapeutic approach>"
+      }
+    }
+    ```
+  - Buckets per EARTH-116: private `therapist-applications` (pending photos) and public `therapist-profiles` (approved photos via admin flow).
+- __Responses__:
+  - 200: `{ data: { ok: true }, error: null }`
+  - 400: `{ data: null, error: 'Missing psychotherapy_license' | 'license: <reason>' | 'profile_photo: <reason>' | 'approach_text too long (max 2000 chars)' }`
+  - 404: `{ data: null, error: 'Not found' }`
+  - 500: `{ data: null, error: 'Failed to upload document' | 'Failed to update' | 'Unexpected error' }`
 
 ### Therapist uploads (multipart)
 - __Content-Type__: `multipart/form-data`

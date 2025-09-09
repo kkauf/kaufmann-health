@@ -7,6 +7,8 @@ export const dynamic = 'force-dynamic';
 
 const ALLOWED_FILE_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png']);
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB
+const ALLOWED_PHOTO_TYPES = new Set(['image/jpeg', 'image/png']);
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
 
 function getFileExtension(fileName: string, contentType: string): string {
   if (contentType === 'application/pdf') return '.pdf';
@@ -19,6 +21,12 @@ function getFileExtension(fileName: string, contentType: string): string {
 function isValidUpload(file: File): { ok: true } | { ok: false; reason: string } {
   if (!ALLOWED_FILE_TYPES.has(file.type)) return { ok: false, reason: 'Unsupported file type' };
   if (file.size > MAX_UPLOAD_BYTES) return { ok: false, reason: 'File too large' };
+  return { ok: true };
+}
+
+function isValidPhoto(file: File): { ok: true } | { ok: false; reason: string } {
+  if (!ALLOWED_PHOTO_TYPES.has(file.type)) return { ok: false, reason: 'Unsupported file type' };
+  if (file.size > MAX_PHOTO_BYTES) return { ok: false, reason: 'File too large' };
   return { ok: true };
 }
 
@@ -53,6 +61,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const form = await req.formData();
     const license = form.get('psychotherapy_license');
     const specAll = form.getAll('specialization_cert');
+    const profilePhoto = form.get('profile_photo');
+    const approachRaw = form.get('approach_text');
 
     if (!(license instanceof File) || license.size === 0) {
       return NextResponse.json({ data: null, error: 'Missing psychotherapy_license' }, { status: 400 });
@@ -116,6 +126,43 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     metaObj.documents = docs;
 
+    // Optional: profile completion
+    let uploadedProfilePhotoPath: string | undefined;
+    if (profilePhoto instanceof File && profilePhoto.size > 0) {
+      const valid = isValidPhoto(profilePhoto);
+      if (!valid.ok) {
+        return NextResponse.json({ data: null, error: `profile_photo: ${valid.reason}` }, { status: 400 });
+      }
+      const photoExt = getFileExtension(profilePhoto.name || '', profilePhoto.type);
+      const photoPath = `applications/${id}/profile-photo-${Date.now()}${photoExt}`;
+      const buf = await fileToBuffer(profilePhoto);
+      const { error: upPhotoErr } = await supabaseServer.storage
+        .from('therapist-applications')
+        .upload(photoPath, buf, { contentType: profilePhoto.type, upsert: false });
+      if (upPhotoErr) {
+        await logError('api.therapists.documents', upPhotoErr, { stage: 'upload_profile_photo', therapist_id: id, path: photoPath }, ip, ua);
+        return NextResponse.json({ data: null, error: 'Failed to upload profile photo' }, { status: 500 });
+      }
+      uploadedProfilePhotoPath = photoPath;
+    }
+
+    let approach_text: string | undefined;
+    if (typeof approachRaw === 'string') {
+      const trimmed = approachRaw.trim();
+      if (trimmed.length > 2000) {
+        return NextResponse.json({ data: null, error: 'approach_text too long (max 2000 chars)' }, { status: 400 });
+      }
+      if (trimmed.length > 0) approach_text = trimmed;
+    }
+
+    if (uploadedProfilePhotoPath || typeof approach_text === 'string') {
+      const profileUnknown = (metaObj as { profile?: unknown }).profile;
+      const profile: Record<string, unknown> = isObject(profileUnknown) ? (profileUnknown as Record<string, unknown>) : {};
+      if (uploadedProfilePhotoPath) profile.photo_pending_path = uploadedProfilePhotoPath;
+      if (typeof approach_text === 'string') profile.approach_text = approach_text;
+      metaObj.profile = profile;
+    }
+
     const { error: updateErr } = await supabaseServer
       .from('therapists')
       .update({ metadata: metaObj })
@@ -125,7 +172,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return NextResponse.json({ data: null, error: 'Failed to update' }, { status: 500 });
     }
 
-    void track({ type: 'therapist_documents_uploaded', level: 'info', source: 'api.therapists.documents', ip, ua, props: { therapist_id: id, license: true, specialization_count: specPaths.length } });
+    void track({ type: 'therapist_documents_uploaded', level: 'info', source: 'api.therapists.documents', ip, ua, props: { therapist_id: id, license: true, specialization_count: specPaths.length, profile_photo: Boolean(uploadedProfilePhotoPath), approach_text: Boolean(approach_text) } });
 
     return NextResponse.json({ data: { ok: true }, error: null }, { status: 200 });
   } catch (e) {

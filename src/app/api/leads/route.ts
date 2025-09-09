@@ -585,13 +585,6 @@ export async function POST(req: Request) {
     }
     // Delegate to handlers for actual processing
     if (leadType === 'therapist') {
-      // EARTH-71: Require at least one modality for therapist signups
-      if (specializations.length === 0) {
-        return NextResponse.json(
-          { data: null, error: 'Missing specialization' },
-          { status: 400, headers: { 'Cache-Control': 'no-store' } },
-        );
-      }
       return await handleTherapistLead(
         { req, ip, ua },
         {

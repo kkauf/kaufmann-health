@@ -150,6 +150,7 @@ describe('/api/leads POST', () => {
       makeReq({
         email: 'therapist@example.com',
         type: 'therapist',
+        specializations: ['narm'],
       }),
     );
     expect(res.status).toBe(200);
