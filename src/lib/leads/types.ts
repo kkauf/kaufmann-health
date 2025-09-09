@@ -14,6 +14,7 @@ export type LeadPayload = {
   specializations?: string[];
   session_preference?: 'online' | 'in_person';
   session_preferences?: ('online' | 'in_person')[];
+  gender_preference?: 'male' | 'female' | 'no_preference';
   type?: LeadType;
   qualification?: string;
   experience?: string;

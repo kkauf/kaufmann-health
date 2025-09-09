@@ -22,6 +22,7 @@ export type PatientHandlerInput = {
   sessionPreference?: 'online' | 'in_person';
   sessionPreferences: ('online' | 'in_person')[];
   specializations: string[];
+  genderPreference?: 'male' | 'female' | 'no_preference';
   consentShare: boolean;
   privacyVersion?: string;
   session_id?: string;
@@ -46,6 +47,7 @@ export async function handlePatientLead(ctx: HandlerContext, input: PatientHandl
     sessionPreference,
     sessionPreferences,
     specializations,
+    genderPreference,
     consentShare,
     privacyVersion,
     session_id,
@@ -68,6 +70,7 @@ export async function handlePatientLead(ctx: HandlerContext, input: PatientHandl
         ...(sessionPreference ? { session_preference: sessionPreference } : {}),
         ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
         ...(specializations.length ? { specializations } : {}),
+        ...(genderPreference ? { gender_preference: genderPreference } : {}),
         ...(ip ? { ip } : {}),
         ...(ua ? { user_agent: ua } : {}),
         ...(consentShare

@@ -543,6 +543,10 @@ export async function POST(req: Request) {
     const consentShare = Boolean(payload.consent_share_with_therapists);
     const privacyVersion = sanitize(payload.privacy_version);
     const specializations = normalizeSpecializations(payload.specializations ?? []);
+    // Optional gender preference (patient)
+    const genderPrefRaw = sanitize(payload.gender_preference as string | undefined);
+    const genderPreference: 'male' | 'female' | 'no_preference' | undefined =
+      genderPrefRaw === 'male' || genderPrefRaw === 'female' || genderPrefRaw === 'no_preference' ? genderPrefRaw : undefined;
 
     // Consent validation handled later with comprehensive tracking
 
@@ -607,6 +611,7 @@ export async function POST(req: Request) {
           sessionPreference: sessionPreference || undefined,
           sessionPreferences,
           specializations,
+          genderPreference,
           consentShare,
           privacyVersion: privacyVersion || undefined,
           session_id: session_id || undefined,
