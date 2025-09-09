@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:critical": "vitest run --exclude tests/storage.health.test.ts",
     "test:watch": "vitest",
-    "reupload:leads": "tsx google_ads_api_scripts/reupload-leads.ts"
+    "reupload:leads": "tsx google_ads_api_scripts/reupload-leads.ts",
+    "reminders:run": "tsx scripts/send-therapist-reminders.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",

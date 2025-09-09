@@ -12,7 +12,7 @@ describe('therapist welcome email', () => {
       isActiveCity: true,
       termsVersion: version,
     });
-    expect(subject).toBe('Willkommen bei Kaufmann Health');
+    expect(subject).toBe('Willkommen! Vervollständigen Sie Ihr Profil');
     expect(html).toContain(`https://kaufmann-health.de/therapist-terms?version=${encodeURIComponent(version)}`);
     expect(html).toContain(version);
   });

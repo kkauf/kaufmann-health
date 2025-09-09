@@ -208,3 +208,47 @@ curl -X POST /api/leads \
   - 400: `{ data: null, error: 'patient_id and therapist_id are required' | 'Invalid patient_id' | 'Invalid therapist_id' | 'Invalid JSON' }`
   - 401: `{ data: null, error: 'Unauthorized' }`
   - 500: `{ data: null, error: 'Failed to create match' | 'Failed to verify entities' }`
+
+---
+
+## POST /admin/api/therapists/:id/reminder
+
+- __Purpose__: Send a profile completion reminder email to a specific therapist, based on missing items derived from `therapists.metadata`.
+- __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
+- __Body__ (JSON):
+  - `stage?`: Optional label for the email subject (e.g. "Erinnerung", "Zweite Erinnerung", "Letzte Erinnerung").
+- __Behavior__:
+  - Computes missing items: `documents` (license), `photo` (pending path), `approach` (text).
+  - Sends reminder email including CTA link to `/therapists/upload-documents/:id`.
+- __Response__:
+  - 200: `{ data: { ok: true }, error: null }`
+  - 400: `{ data: null, error: 'Missing email' | 'Not applicable' }`
+  - 401/404/500 on failure.
+
+__Why__: Server-side reminders keep logic and security in the backend (no public cookies), and let us batch-trigger via Cron without exposing internal states to the client.
+
+## POST /admin/api/therapists/reminders
+
+- __Purpose__: Batch-send profile completion reminders to therapists in `pending_verification`.
+- __Auth__: Either Admin session cookie (`kh_admin`) OR Cron secret header `x-cron-secret` matching `CRON_SECRET`.
+- __Body__ (JSON):
+  - `limit?`: number (default 100, max 1000)
+  - `stage?`: Optional label (e.g. "Erinnerung", "Zweite Erinnerung", "Letzte Erinnerung")
+- __Behavior__:
+  - Fetches up to `limit` therapists with `status='pending_verification'`.
+  - For each, computes missing items from metadata and sends a reminder if anything is missing.
+  - Returns simple stats and examples for observability.
+- __Response__:
+  - 200: `{ data: { processed, sent, skipped_no_missing, examples: Array<{ id, missing: string[] }> }, error: null }`
+  - 401/500 on failure.
+
+__Why__: Enables Vercel Cron scheduling for reminder cadence (24h/72h/7d) with a single secured server endpoint; no duplication in clients.
+
+## Email side-effects (EARTH-73)
+
+Some endpoints send non-blocking emails (best-effort):
+- `/api/leads` (therapist): Welcome email prompts profile completion.
+- `/api/therapists/:id/documents` (POST): Upload confirmation after successful submission.
+- `/admin/api/therapists/:id` (PATCH): Sends approval/rejection emails when status changes.
+
+__Why__: Keeping email rendering/sending on the server preserves the cookie-free public site and centralizes logging/observability.

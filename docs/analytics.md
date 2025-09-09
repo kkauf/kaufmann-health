@@ -210,3 +210,22 @@ When adding new tracking:
 3. Deploy incrementally
 4. Monitor for 24h after deployment
 5. Update this documentation
+
+## Profile Completion Funnel (EARTH-73)
+
+__Why__: Profile completion touches both documents and profile data. Tracking server-side keeps the public site cookie-free and centralizes observability in one place without duplicating high-level analytics.
+
+__Server Events__ (Supabase):
+- `therapist_documents_uploaded` — emitted by `POST /api/therapists/:id/documents`
+  - props: `license: boolean`, `specialization_count: number`, `profile_photo: boolean`, `approach_text: boolean`
+- `email_attempted` — emitted around upload confirmation, approval, rejection, and reminder sends
+- Optional additions (if needed later): `therapist_profile_approved`, `therapist_profile_rejected`
+
+__Vercel Analytics__:
+- No additional events; keep high-level only. Existing page-level conversions are sufficient.
+
+__Queries__: Use the `events` table to derive:
+- Signup → Document upload rate
+- Document upload → Approval rate
+- Signup → Profile completion rate (photo + approach)
+- Completion → Activation rate (approval with `photo_url`)

@@ -21,21 +21,35 @@ export function renderTherapistWelcome(params: {
   const founderImg = `${BASE_URL}/profile-pictures/konstantin-kaufmann.jpg`;
 
   const contentHtml = `
-    <h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Willkommen bei Kaufmann Health!</h1>
-    <p style="margin:0 0 12px;">Hallo${name ? ` ${escapeHtml(name)}` : ''},</p>
-    <p style="margin:0 0 12px;">vielen Dank für Ihre Registrierung in unserem kuratierten Netzwerk. Ihr Vertrag ist ab sofort aktiv.</p>
-    <p style="margin:0 0 16px;"><strong>${escapeHtml(leadStatusMessage)}</strong></p>
+    <h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Willkommen! Vervollständigen Sie Ihr Profil</h1>
+    <p style="margin:0 0 12px;">Hi${name ? ` ${escapeHtml(name)}` : ''},</p>
+    <p style="margin:0 0 12px;">vielen Dank für Ihre Anmeldung bei Kaufmann Health!</p>
+    <p style="margin:0 0 12px;"><strong>${escapeHtml(leadStatusMessage)}</strong></p>
 
-    <div style="background-color:#F9FAFB; padding:16px; border-radius:8px; border:1px solid #E5E7EB; margin: 20px 0;">
-      <h3 style="margin:0 0 8px; color:#1A365D; font-size:16px;">Nächste Schritte</h3>
-      ${params.uploadUrl ? `
-      <p style=\"margin:0 0 8px;\"><strong>Wichtig:</strong> Bitte laden Sie jetzt Ihre Nachweise hoch (erforderlich für die Aktivierung).</p>
-      <div style=\"text-align:center; margin: 12px 0;\">${renderButton(params.uploadUrl, 'Dokumente hochladen')}</div>
-      <hr style=\"border:0; border-top:1px solid #E5E7EB; margin:16px 0;\" />
-      ` : ''}
-      <p style="margin:0 0 8px;">Haben Sie Fragen zum Ablauf oder möchten Sie mehr über unseren Empfehlungsservice erfahren?</p>
-      <p style="margin:0 0 16px;">Buchen Sie gerne ein kurzes Kennenlernen mit uns:</p>
-      <div style="text-align:center;">${renderButton('https://cal.com/kkauf/15min', 'Kennenlern-Call buchen')}</div>
+    ${params.uploadUrl ? `
+    <div style="text-align:center; margin: 12px 0 16px;">${renderButton(params.uploadUrl, 'Profil vervollständigen')}</div>
+    ` : ''}
+
+    <div style="background-color:#F9FAFB; padding:16px; border-radius:8px; border:1px solid #E5E7EB; margin: 12px 0 16px;">
+      <h3 style="margin:0 0 8px; color:#1A365D; font-size:16px;">Was wir benötigen</h3>
+      <div style="display:block;">
+        <div style="margin:8px 0 0;">
+          <div style="font-weight:600; color:#111827;">📋 QUALIFIKATIONSNACHWEISE:</div>
+          <ul style="margin:6px 0 0 18px; color:#374151;">
+            <li>• Staatlich anerkannte Psychotherapie‑Berechtigung (erforderlich)</li>
+            <li>• Spezialisierungs‑Zertifikat (NARM, Hakomi, Core Energetics, Somatic Experiencing)</li>
+            <li>• Berufshaftpflicht (optional)</li>
+          </ul>
+        </div>
+        <div style="margin:12px 0 0;">
+          <div style="font-weight:600; color:#111827;">👤 IHR THERAPEUTENPROFIL:</div>
+          <ul style="margin:6px 0 0 18px; color:#374151;">
+            <li>• Professionelles Foto (für Ihr Verzeichnisprofil)</li>
+            <li>• Beschreibung Ihres therapeutischen Ansatzes (2–3 Absätze)</li>
+          </ul>
+        </div>
+      </div>
+      <p style="margin:12px 0 0; color:#374151;">Alles in einem Schritt – dauert nur 5–10 Minuten. Wir prüfen innerhalb von 2 Werktagen.</p>
     </div>
 
     <div style="margin: 8px 0 0; padding:12px; border:1px solid #E5E7EB; border-radius:8px; background:#FFFFFF;">
@@ -61,7 +75,7 @@ export function renderTherapistWelcome(params: {
   `;
 
   return {
-    subject: 'Willkommen bei Kaufmann Health',
+    subject: 'Willkommen! Vervollständigen Sie Ihr Profil',
     html: renderLayout({ title: 'Willkommen bei Kaufmann Health', contentHtml }),
   };
 }

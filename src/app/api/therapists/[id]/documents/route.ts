@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
+import { sendEmail } from '@/lib/email/client';
+import { renderTherapistUploadConfirmation } from '@/lib/email/templates/therapistUploadConfirmation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -44,7 +46,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     // Validate therapist exists and is pending verification
     const { data: therapist, error: fetchErr } = await supabaseServer
       .from('therapists')
-      .select('id, status, metadata')
+      .select('id, status, metadata, first_name, last_name, email')
       .eq('id', id)
       .single();
 
@@ -173,6 +175,21 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     void track({ type: 'therapist_documents_uploaded', level: 'info', source: 'api.therapists.documents', ip, ua, props: { therapist_id: id, license: true, specialization_count: specPaths.length, profile_photo: Boolean(uploadedProfilePhotoPath), approach_text: Boolean(approach_text) } });
+
+    // Best-effort upload confirmation email
+    try {
+      const firstName = (therapist as { first_name?: string | null }).first_name || '';
+      const lastName = (therapist as { last_name?: string | null }).last_name || '';
+      const name = [firstName, lastName].join(' ').trim() || undefined;
+      const to = (therapist as { email?: string | null }).email || undefined;
+      if (to) {
+        const confirmation = renderTherapistUploadConfirmation({ name });
+        void track({ type: 'email_attempted', level: 'info', source: 'api.therapists.documents', ip, ua, props: { stage: 'therapist_upload_confirmation', therapist_id: id, subject: confirmation.subject } });
+        await sendEmail({ to, subject: confirmation.subject, html: confirmation.html, context: { stage: 'therapist_upload_confirmation', therapist_id: id } });
+      }
+    } catch (e) {
+      await logError('api.therapists.documents', e, { stage: 'send_upload_confirmation', therapist_id: id }, ip, ua);
+    }
 
     return NextResponse.json({ data: { ok: true }, error: null }, { status: 200 });
   } catch (e) {
