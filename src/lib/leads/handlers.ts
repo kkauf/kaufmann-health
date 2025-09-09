@@ -5,6 +5,7 @@ import { ACTIVE_CITIES } from '@/lib/constants';
 import { sendEmail } from '@/lib/email/client';
 import { buildInternalLeadNotification } from '@/lib/email/internalNotification';
 import { renderTherapistWelcome } from '@/lib/email/templates/therapistWelcome';
+import { BASE_URL } from '@/lib/constants';
 import { renderPatientConfirmation } from '@/lib/email/templates/patientConfirmation';
 import { logError, track } from '@/lib/logger';
 import { googleAdsTracker } from '@/lib/google-ads';
@@ -270,7 +271,8 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
       void logError('api.leads', contractErr, { stage: 'insert_contract', id: therapistId }, ip, ua);
     }
     const isActiveCity = ACTIVE_CITIES.has((city || '').toLowerCase());
-    const welcome = renderTherapistWelcome({ name: data.name, city, isActiveCity, termsVersion: TERMS_VERSION });
+    const uploadUrl = `${BASE_URL}/therapists/upload-documents/${therapistId}`;
+    const welcome = renderTherapistWelcome({ name: data.name, city, isActiveCity, termsVersion: TERMS_VERSION, uploadUrl });
     void track({ type: 'email_attempted', level: 'info', source: 'api.leads', ip, ua, props: { stage: 'therapist_welcome', lead_id: therapistId, lead_type: 'therapist', subject: welcome.subject, ...(session_id ? { session_id } : {}) } });
     await sendEmail({ to: data.email, subject: welcome.subject, html: welcome.html, context: { stage: 'therapist_welcome', lead_id: therapistId, lead_type: 'therapist', ...(session_id ? { session_id } : {}) } });
   } catch (e) {

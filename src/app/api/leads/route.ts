@@ -6,6 +6,7 @@ import { sendEmail } from '@/lib/email/client';
 import { buildInternalLeadNotification } from '@/lib/email/internalNotification';
 import { renderTherapistWelcome } from '@/lib/email/templates/therapistWelcome';
 import { logError, track } from '@/lib/logger';
+import { BASE_URL } from '@/lib/constants';
 import { googleAdsTracker } from '@/lib/google-ads';
 import { parseAttributionFromRequest } from '@/lib/server-analytics';
 import { sanitize, normalizeSpecializations, hashIP } from '@/lib/leads/validation';
@@ -384,7 +385,8 @@ async function handleTherapistMultipart(req: Request) {
       void logError('api.leads', contractErr, { stage: 'insert_contract', id: therapistId }, ip, ua);
     }
     const isActiveCity = ACTIVE_CITIES.has((city || '').toLowerCase());
-    const welcome = renderTherapistWelcome({ name: data.name, city, isActiveCity, termsVersion: TERMS_VERSION });
+    const uploadUrl = `${BASE_URL}/therapists/upload-documents/${therapistId}`;
+    const welcome = renderTherapistWelcome({ name: data.name, city, isActiveCity, termsVersion: TERMS_VERSION, uploadUrl });
     void track({
       type: 'email_attempted',
       level: 'info',
@@ -583,6 +585,13 @@ export async function POST(req: Request) {
     }
     // Delegate to handlers for actual processing
     if (leadType === 'therapist') {
+      // EARTH-71: Require at least one modality for therapist signups
+      if (specializations.length === 0) {
+        return NextResponse.json(
+          { data: null, error: 'Missing specialization' },
+          { status: 400, headers: { 'Cache-Control': 'no-store' } },
+        );
+      }
       return await handleTherapistLead(
         { req, ip, ua },
         {

@@ -7,6 +7,7 @@ export function renderTherapistWelcome(params: {
   city?: string | null;
   isActiveCity: boolean;
   termsVersion: string;
+  uploadUrl?: string;
 }): EmailContent {
   const name = (params.name || '').trim();
   const city = (params.city || '').trim();
@@ -27,6 +28,11 @@ export function renderTherapistWelcome(params: {
 
     <div style="background-color:#F9FAFB; padding:16px; border-radius:8px; border:1px solid #E5E7EB; margin: 20px 0;">
       <h3 style="margin:0 0 8px; color:#1A365D; font-size:16px;">Nächste Schritte</h3>
+      ${params.uploadUrl ? `
+      <p style=\"margin:0 0 8px;\"><strong>Wichtig:</strong> Bitte laden Sie jetzt Ihre Nachweise hoch (erforderlich für die Aktivierung).</p>
+      <div style=\"text-align:center; margin: 12px 0;\">${renderButton(params.uploadUrl, 'Dokumente hochladen')}</div>
+      <hr style=\"border:0; border-top:1px solid #E5E7EB; margin:16px 0;\" />
+      ` : ''}
       <p style="margin:0 0 8px;">Haben Sie Fragen zum Ablauf oder möchten Sie mehr über unseren Empfehlungsservice erfahren?</p>
       <p style="margin:0 0 16px;">Buchen Sie gerne ein kurzes Kennenlernen mit uns:</p>
       <div style="text-align:center;">${renderButton('https://cal.com/kkauf/15min', 'Kennenlern-Call buchen')}</div>
