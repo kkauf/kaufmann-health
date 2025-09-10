@@ -59,6 +59,7 @@ export async function POST(req: Request) {
       secure: process.env.NODE_ENV === 'production',
       path: '/admin',
       maxAge: ADMIN_SESSION_MAX_AGE_SEC, // seconds
+      expires: new Date(Date.now() + ADMIN_SESSION_MAX_AGE_SEC * 1000),
     });
     await track({ type: 'admin_login_success', props: { }, ua, ip, source: 'api.admin.login' });
     return res;

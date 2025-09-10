@@ -34,6 +34,7 @@ function AdminLoginInner() {
       const res = await fetch(`/api/admin/login?next=${encodeURIComponent(next)}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ password }),
       });
       let json: LoginResponse | null = null;
