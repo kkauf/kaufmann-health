@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { TherapistPreview } from '@/components/TherapistPreview';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +18,9 @@ type PersonMeta = {
   session_preferences?: ('online' | 'in_person')[];
   issue?: string;
   specializations?: string[];
+  gender_preference?: 'male' | 'female' | 'no_preference';
+  lost_reason?: string;
+  lost_reason_at?: string;
   // GDPR consent (patient)
   consent_share_with_therapists?: boolean;
   consent_privacy_version?: string;
@@ -31,6 +36,7 @@ type Person = {
   status: string | null;
   metadata: PersonMeta;
   created_at: string;
+  accepting_new?: boolean;
 };
 
 function formatDate(iso?: string) {
@@ -69,6 +75,9 @@ export default function AdminLeadsPage() {
   const [therError, setTherError] = useState<string | null>(null);
 
   const [message, setMessage] = useState<string | null>(null);
+  const [updatingLeadId, setUpdatingLeadId] = useState<string | null>(null);
+  const [lostReasons, setLostReasons] = useState<Record<string, string>>({});
+  const [hideLost, setHideLost] = useState<boolean>(true);
 
   // Patients with an active/ongoing match should be visually de-prioritized and sorted to bottom
   const [deprioritizedPatients, setDeprioritizedPatients] = useState<Set<string>>(new Set());
@@ -126,7 +135,7 @@ export default function AdminLeadsPage() {
       const url = new URL('/admin/api/leads', window.location.origin);
       if (leadCity) url.searchParams.set('city', leadCity);
       if (leadSessionPref) url.searchParams.set('session_preference', leadSessionPref);
-      url.searchParams.set('status', 'new');
+      url.searchParams.set('status', 'all');
       url.searchParams.set('limit', '200');
       const res = await fetch(url.toString(), { credentials: 'include' });
       const json = await res.json();
@@ -178,6 +187,52 @@ export default function AdminLeadsPage() {
       setModalError(msg);
     } finally {
       setModalLoading(false);
+    }
+  }
+
+  async function updateLeadStatus(id: string, status: 'new' | 'rejected', lostReason?: string) {
+    try {
+      setUpdatingLeadId(id);
+      setMessage(null);
+      const res = await fetch(`/admin/api/leads/${id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(
+          status === 'rejected' && typeof lostReason === 'string' && lostReason.trim()
+            ? { status, lost_reason: lostReason.trim() }
+            : { status }
+        ),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Status-Update fehlgeschlagen');
+      setLeads((prev: Person[]) => prev.map((p: Person) => {
+        if (p.id !== id) return p;
+        const next: Person = { ...p, status };
+        if (status === 'rejected' && typeof lostReason === 'string' && lostReason.trim()) {
+          next.metadata = { ...(p.metadata || {}), lost_reason: lostReason.trim(), lost_reason_at: new Date().toISOString() } as PersonMeta;
+        } else if (status === 'new') {
+          const meta = (p.metadata || {}) as PersonMeta;
+          const rest: PersonMeta = { ...meta };
+          delete (rest as Record<string, unknown>).lost_reason;
+          delete (rest as Record<string, unknown>).lost_reason_at;
+          next.metadata = rest;
+        }
+        return next;
+      }));
+      setMessage('Status aktualisiert');
+      if (status === 'new') {
+        setLostReasons((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Status-Update fehlgeschlagen';
+      setMessage(msg);
+    } finally {
+      setUpdatingLeadId(null);
     }
   }
 
@@ -300,16 +355,27 @@ export default function AdminLeadsPage() {
       .join('/');
   }, [selectedPatient]);
 
+  const cityOmittedForOnline = useMemo(() => {
+    const fallbackMeta: PersonMeta = (selectedPatient?.metadata ?? {}) as PersonMeta;
+    const sessionPref = therSessionPref || (
+      (Array.isArray(fallbackMeta.session_preferences) && fallbackMeta.session_preferences.length > 0)
+        ? String(fallbackMeta.session_preferences[0])
+        : (fallbackMeta.session_preference ? String(fallbackMeta.session_preference) : '')
+    );
+    return sessionPref === 'online' && !therCity;
+  }, [therCity, therSessionPref, selectedPatient]);
+
   // Sort: leads needing action first, those with active matches to the bottom
   const leadsSorted = useMemo(() => {
-    if (!deprioritizedPatients || deprioritizedPatients.size === 0) return leads;
+    const base = hideLost ? leads.filter((p) => p.status !== 'rejected') : leads;
+    if (!deprioritizedPatients || deprioritizedPatients.size === 0) return base;
     const needs: Person[] = [];
     const noAction: Person[] = [];
-    for (const p of leads) {
+    for (const p of base) {
       (deprioritizedPatients.has(p.id) ? noAction : needs).push(p);
     }
     return [...needs, ...noAction];
-  }, [leads, deprioritizedPatients]);
+  }, [leads, deprioritizedPatients, hideLost]);
 
   return (
     <main className="min-h-screen p-6 space-y-6">
@@ -339,6 +405,13 @@ export default function AdminLeadsPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1">
+              <Label htmlFor="hide-lost">Ansicht</Label>
+              <label className="flex items-center gap-2 text-sm">
+                <input id="hide-lost" type="checkbox" className="h-4 w-4" checked={hideLost} onChange={(e) => setHideLost(e.target.checked)} />
+                <span>Verlorene ausblenden</span>
+              </label>
+            </div>
             <Button onClick={fetchLeads} disabled={loadingLeads}>{loadingLeads ? 'Lädt…' : 'Filtern'}</Button>
           </div>
           {leadError && <p className="text-sm text-red-600 mb-2">{leadError}</p>}
@@ -349,6 +422,7 @@ export default function AdminLeadsPage() {
               const city = meta.city || '';
               const pref = formatSession(meta);
               const issue = meta.issue || '—';
+              const genderPref = meta.gender_preference === 'female' ? 'Weiblich' : meta.gender_preference === 'male' ? 'Männlich' : meta.gender_preference === 'no_preference' ? 'Keine Präferenz' : '—';
               const specs: string[] = Array.isArray(meta.specializations) ? meta.specializations : [];
               const isSelected = selectedPatient?.id === p.id;
               const isDeprioritized = deprioritizedPatients.has(p.id);
@@ -370,8 +444,35 @@ export default function AdminLeadsPage() {
                           </span>
                         </div>
                       )}
+                      {p.status === 'rejected' && (
+                        <div className="mt-1">
+                          <Badge
+                            variant="outline"
+                            className="border-red-200 bg-red-50 text-red-700"
+                            title={meta.lost_reason_at ? `Verloren seit: ${formatDate(meta.lost_reason_at)}` : 'Verloren'}
+                          >
+                            Verloren
+                          </Badge>
+                        </div>
+                      )}
                     </div>
-                    <CardAction className="flex gap-2">
+                    <CardAction className="flex gap-2 items-center">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs text-gray-600">Status</Label>
+                        <Select
+                          value={p.status === 'rejected' ? 'rejected' : 'new'}
+                          onValueChange={(v) => updateLeadStatus(p.id, v as 'new' | 'rejected')}
+                          disabled={updatingLeadId === p.id}
+                        >
+                          <SelectTrigger className="h-8 min-w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="new">Neu</SelectItem>
+                            <SelectItem value="rejected">Verloren</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <Button size="sm" variant={isSelected ? 'default' : 'secondary'} onClick={() => setSelectedPatient(p)}>
                         {isSelected ? 'Ausgewählt' : 'Wählen'}
                       </Button>
@@ -381,6 +482,7 @@ export default function AdminLeadsPage() {
                   <CardContent>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div><span className="text-gray-500">Stadt:</span> {city || '—'}</div>
+                      <div><span className="text-gray-500">Geschlecht:</span> {genderPref}</div>
                       <div><span className="text-gray-500">Thema:</span> {issue}</div>
                       <div><span className="text-gray-500">Sitzung:</span> {pref}</div>
                       <div><span className="text-gray-500">Methode:</span> {specs.length ? specs.join(', ') : '—'}</div>
@@ -393,6 +495,33 @@ export default function AdminLeadsPage() {
                       )}
                       <div className="col-span-2 text-xs text-gray-500">Eingang: {formatDate(p.created_at)}</div>
                     </div>
+
+                    {p.status === 'rejected' && (
+                      <div className="mt-3 space-y-2">
+                        <Label htmlFor={`lost-${p.id}`}>Verloren-Grund (optional)</Label>
+                        {(() => {
+                          const currentReason: string = lostReasons[p.id] ?? (typeof meta.lost_reason === 'string' ? meta.lost_reason : '');
+                          return (
+                            <>
+                              <textarea
+                                id={`lost-${p.id}`}
+                                rows={2}
+                                className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg/input/30 w-full rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                                placeholder="z.B. Nicht erreichbar, gesetzliche Kasse, kein Interesse, bereits versorgt"
+                                value={currentReason}
+                                onChange={(e) => setLostReasons((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                              />
+                              <div className="flex items-center justify-between">
+                                <small className="text-xs text-gray-500">{meta.lost_reason_at ? `Letzte Aktualisierung: ${formatDate(meta.lost_reason_at)}` : ''}</small>
+                                <Button size="sm" variant="secondary" onClick={() => updateLeadStatus(p.id, 'rejected', currentReason)} disabled={updatingLeadId === p.id}>
+                                  Grund speichern
+                                </Button>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
@@ -445,39 +574,38 @@ export default function AdminLeadsPage() {
             <Button onClick={fetchTherapists} disabled={loadingTherapists}>{loadingTherapists ? 'Lädt…' : 'Filtern'}</Button>
           </div>
           {therError && <p className="text-sm text-red-600 mb-2">{therError}</p>}
+          {cityOmittedForOnline && (
+            <p className="text-xs text-gray-500 mb-2">Hinweis: Online-Präferenz – Stadtfilter derzeit deaktiviert. Zum Eingrenzen bitte eine Stadt eingeben.</p>
+          )}
 
           <div className="space-y-3">
             {therapists.map((t) => {
               const meta: PersonMeta = t.metadata || {};
-              const city = meta.city || '';
-              const pref = formatSession(meta);
+              const city = String(meta.city || '');
               const specs: string[] = Array.isArray(meta.specializations) ? meta.specializations : [];
+              // Map Admin API shape to TherapistPreview props
+              const [first, ...rest] = (t.name || '').trim().split(/\s+/);
+              const previewTherapist = {
+                id: t.id,
+                first_name: first || (t.name || ''),
+                last_name: rest.join(' '),
+                photo_url: undefined,
+                modalities: specs,
+                approach_text: '',
+                accepting_new: Boolean(t.accepting_new),
+                city,
+              } as const;
               return (
-                <Card key={t.id}>
-                  <CardHeader>
-                    <div className="min-w-0">
-                      <CardTitle className="truncate">{t.name || '—'}</CardTitle>
-                      <CardDescription className="truncate">{t.email || '—'}</CardDescription>
-                      {t.phone && (
-                        <CardDescription className="truncate">
-                          <a className="underline font-mono" href={`tel:${t.phone}`}>{t.phone}</a>
-                        </CardDescription>
-                      )}
-                    </div>
-                    <CardAction>
-                      <Button size="sm" disabled={!selectedPatient} onClick={() => createMatch(t.id)}>
-                        Match {selectedPatient ? `mit ${selectedPatient.name || selectedPatient.email || 'Lead'}` : ''}
-                      </Button>
-                    </CardAction>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div><span className="text-gray-500">Stadt:</span> {city || '—'}</div>
-                      <div><span className="text-gray-500">Sitzung:</span> {pref}</div>
-                      <div className="col-span-2"><span className="text-gray-500">Spezialisierungen:</span> {specs.length ? specs.join(', ') : '—'}</div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <TherapistPreview
+                  key={t.id}
+                  therapist={previewTherapist}
+                  variant="admin"
+                  actionButton={(
+                    <Button size="sm" disabled={!selectedPatient} onClick={() => createMatch(t.id)}>
+                      Match {selectedPatient ? `mit ${selectedPatient.name || selectedPatient.email || 'Lead'}` : ''}
+                    </Button>
+                  )}
+                />
               );
             })}
             {therapists.length === 0 && !loadingTherapists && (

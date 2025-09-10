@@ -38,7 +38,7 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const city = url.searchParams.get('city')?.trim() || undefined;
     const sessionPref = url.searchParams.get('session_preference') as 'online' | 'in_person' | null;
-    const status = url.searchParams.get('status') || 'new';
+    const statusParam = (url.searchParams.get('status') || 'new').trim();
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 200);
 
     let query = supabaseServer
@@ -48,7 +48,7 @@ export async function GET(req: Request) {
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (status) query = query.eq('status', status);
+    if (statusParam && statusParam !== 'all') query = query.eq('status', statusParam);
     if (city) {
       // Case-insensitive partial match on city from JSON metadata
       query = query.ilike('metadata->>city', `%${city}%`);

@@ -48,7 +48,7 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const city = url.searchParams.get('city')?.trim() || undefined;
-    const status = (url.searchParams.get('status')?.trim() || 'pending_verification') as 'pending_verification' | 'verified' | 'rejected' | undefined;
+    const status = (url.searchParams.get('status')?.trim() || 'verified') as 'pending_verification' | 'verified' | 'rejected' | undefined;
     const sessionPref = url.searchParams.get('session_preference') as 'online' | 'in_person' | null;
     // Accept multiple specialization params: ?specialization=narm&specialization=hakomi
     // Match ANY of the provided values (OR). Backwards compatible with single value.
@@ -60,12 +60,16 @@ export async function GET(req: Request) {
 
     let query = supabaseServer
       .from('therapists')
-      .select('id, first_name, last_name, email, phone, city, session_preferences, modalities, status, created_at')
+      .select('id, first_name, last_name, email, phone, city, session_preferences, modalities, accepting_new, status, created_at')
       .order('created_at', { ascending: false })
       .limit(limit);
 
     if (status) {
       query = query.eq('status', status);
+    }
+    // Only show therapists currently accepting new clients by default when viewing verified therapists
+    if (!status || status === 'verified') {
+      query = query.eq('accepting_new', true);
     }
     if (city && sessionPref !== 'online') {
       // Case-insensitive partial match on city column
@@ -89,6 +93,7 @@ export async function GET(req: Request) {
       city?: string | null;
       session_preferences?: unknown;
       modalities?: unknown;
+      accepting_new?: boolean | null;
       status?: 'pending_verification' | 'verified' | 'rejected' | null;
       created_at?: string | null;
     };
@@ -128,6 +133,7 @@ export async function GET(req: Request) {
         name,
         email: r.email || null,
         phone: r.phone || null,
+        accepting_new: typeof (r as Row).accepting_new === 'boolean' ? (r as Row).accepting_new : undefined,
         status: r.status || 'pending_verification',
         metadata,
         created_at: r.created_at || null,
