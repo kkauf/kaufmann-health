@@ -5,6 +5,14 @@
 - __API routes__: Server-only logic in `src/app/api/*` with `export const runtime = 'nodejs'` where secrets (service role) are required. Public site stays cookie-free; only server routes touch the database or secrets.
 - __Lib__: Shared utilities in `src/lib/` including Supabase clients.
 
+### Shared UI: TherapistPreview
+- Variants: `web` (customer-facing), `admin` (richer triage info), `email` (inline-styled, client-safe). Location: `src/components/TherapistPreview.tsx` and email snippet in `src/lib/email/components/therapistPreview.ts`.
+- Admin-only fields: status, availability, email, phone, and created_at render in the `admin` variant to support triage; these are hidden in the public/customer variant.
+- Modality presentation (business rule):
+  - Casing: NARM is `NARM`; others are Title Case (e.g., `Hakomi`, `Somatic Experiencing`, `Core Energetics`).
+  - Style: Solid brand pills with overflow `+N` when many modalities are present. Email uses the same labels/colors but inline styles.
+- Why: Single source of truth for therapist cards across web/admin/email to prevent divergence and keep UX consistent.
+
 ## Data Flow (Frontend → API → DB)
 - UI submits to `POST /api/leads` for patient/therapist intake.
   - Therapist intake supports `multipart/form-data` for verification: one `license` file and per-specialization certificates (multiple allowed). Files land in private Storage; only server/admin can read.
@@ -26,9 +34,14 @@ Why this design:
 - RLS enabled on tables. Note: the service role client bypasses RLS by design—route handlers must validate inputs and enforce rules.
 - Storage: private bucket `therapist-documents` for verification uploads. RLS: authenticated insert; `service_role` can read/manage. Reason: keep PHI-like docs out of public scope and downloadable only by backend.
 
-Key flows and decisions:
+## Key flows and decisions:
 - Therapist verification: therapist leads default to `pending_verification`; admin can move to `verified/rejected`. Reason: quality control before introductions.
 - Matches include `secure_uuid` used for magic links; timestamps like `therapist_contacted_at`, `therapist_responded_at`, `patient_confirmed_at` support auditability.
+
+### Two-Step Therapist Onboarding (EARTH-129)
+- Why: Conversion dropped when profile text/photo and compliance docs were coupled. Many therapists abandon if they can't scan the license immediately. Splitting flows reduces time-to-first-success.
+- Design: Step 1 (fun & fast) collects only profile basics and pending photo; Step 2 (compliance) uploads the license (certificates optional). Public pages mirror this logic so users always see the next actionable step.
+- Emails/Reminders: Subjects and CTAs adapt to what's actually missing (license vs profile). This keeps nudges relevant without extra client logic.
 
 ## Runtime & Hosting
 - Next.js (App Router), Tailwind v4, shadcn/ui (style: new-york, baseColor: slate).

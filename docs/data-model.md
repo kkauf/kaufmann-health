@@ -65,7 +65,16 @@ RLS:
 - `id uuid pk default gen_random_uuid()`
 - `therapist_id uuid references people(id)`
 - `patient_id uuid references people(id)`
-- `status text default 'proposed'` — semantics: `proposed` (Vorgeschlagen), `accepted` (Akzeptiert), `declined` (Abgelehnt)
+- `status text default 'proposed'` — allowed values:
+  - `proposed` (Vorgeschlagen)
+  - `therapist_contacted`
+  - `therapist_responded`
+  - `patient_selected` (patient selection email flow; used by EARTH-125)
+  - `accepted` (Akzeptiert)
+  - `declined` (Abgelehnt)
+  - `session_booked`
+  - `completed`
+  - `failed`
 - `commission_collected numeric default 0`
 - `notes text`
 - `created_at timestamptz default now()`
@@ -128,8 +137,21 @@ Documents structure (stored in Supabase Storage bucket `therapist-documents`, pa
 }
 ```
 
-- License can be: Psychologischer Psychotherapeut (approbiert), Heilpraktiker für Psychotherapie, Großer Heilpraktiker.
-- Multiple certificates allowed per specialization.
+- License can be: Psychologischer Psychotherapeut (approbiert), Heilpraktiker für Psychotherapie, Großer Heilpraktiker. Required.
+- Specialization certificates are optional (can be provided later). Multiple documents allowed per specialization.
+
+Profile metadata (stored under `metadata.profile`):
+
+```json
+{
+  "photo_pending_path": "applications/<id>/profile-photo-<ts>.(jpg|png)",
+  "approach_text": "<therapeutic approach text>"
+}
+```
+
+Buckets:
+- `therapist-applications` (private): holds pending profile photos before admin approval.
+- `therapist-profiles` (public): holds approved profile photos; set by the admin PATCH flow.
 
 Indexes:
 
