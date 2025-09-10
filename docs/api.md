@@ -196,18 +196,28 @@ curl -X POST /api/leads \
   - 500: `{ data: null, error: 'Server misconfiguration' | 'Unexpected error' }`
 
 ## POST /admin/api/matches
-- __Purpose__: Create a proposed match between a patient and a therapist.
+- __Purpose__: Create one or more proposed matches between a patient and selected therapists.
 - __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
 - __Request Body__ (JSON):
   - `patient_id` (uuid, required)
-  - `therapist_id` (uuid, required)
+  - One of:
+    - `therapist_id` (uuid) — single selection
+    - `therapist_ids` (uuid[]) — multiple selection (max 3)
   - `notes` (string, optional)
-- __Validation__: Ensures `patient_id` references `people(type='patient')` and `therapist_id` references `people(type='therapist')`.
+- __Validation__:
+  - Verifies `patient_id` references `people(type='patient')`.
+  - Verifies all `therapist_id(s)` reference existing therapists.
+  - Enforces selection size: max 3.
+- __Behavior__:
+  - Inserts one `matches` row per therapist with `status='proposed'`.
+  - Enqueues therapist outreach emails (best-effort) with magic link, identical to single-create behavior.
+  - Side-effect: logs business opportunity records when a selection contains preference mismatches (see `business_opportunities` in Data Model).
 - __Response__:
-  - 200: `{ data: { id: uuid }, error: null }`
-  - 400: `{ data: null, error: 'patient_id and therapist_id are required' | 'Invalid patient_id' | 'Invalid therapist_id' | 'Invalid JSON' }`
+  - 200: when 1 match created → `{ data: { id: uuid }, error: null }`
+  - 200: when 2–3 matches created → `{ data: { ids: uuid[] }, error: null }`
+  - 400: `{ data: null, error: 'patient_id is required' | 'therapist_id or therapist_ids is required' | 'Invalid patient_id' | 'Invalid therapist_id: <id>' | 'Maximum of 3 therapists allowed' | 'Invalid JSON' }`
   - 401: `{ data: null, error: 'Unauthorized' }`
-  - 500: `{ data: null, error: 'Failed to create match' | 'Failed to verify entities' }`
+  - 500: `{ data: null, error: 'Failed to verify therapists' | 'No matches created' }`
 
 ---
 
@@ -227,11 +237,17 @@ curl -X POST /api/leads \
 
 __Why__: Server-side reminders keep logic and security in the backend (no public cookies), and let us batch-trigger via Cron without exposing internal states to the client.
 
-## POST /admin/api/therapists/reminders
+## POST/GET /admin/api/therapists/reminders
 
 - __Purpose__: Batch-send profile completion reminders to therapists in `pending_verification`.
-- __Auth__: Either Admin session cookie (`kh_admin`) OR Cron secret header `x-cron-secret` matching `CRON_SECRET`.
-- __Body__ (JSON):
+- __Auth__: One of:
+  - Admin session cookie (`kh_admin`), or
+  - Cron secret header `x-cron-secret` matching `CRON_SECRET`, or
+  - Vercel platform header `x-vercel-cron` (only present when invoked by Vercel Cron)
+- __Methods__:
+  - `POST` with JSON body (recommended for manual/scripted runs)
+  - `GET` with query params (used by Vercel Cron per `vercel.json`)
+- __Body__ (JSON) or Query Params (GET):
   - `limit?`: number (default 100, max 1000)
   - `stage?`: Optional label (e.g. "Erinnerung", "Zweite Erinnerung", "Letzte Erinnerung")
 - __Behavior__:
@@ -242,7 +258,13 @@ __Why__: Server-side reminders keep logic and security in the backend (no public
   - 200: `{ data: { processed, sent, skipped_no_missing, examples: Array<{ id, missing: string[] }> }, error: null }`
   - 401/500 on failure.
 
-__Why__: Enables Vercel Cron scheduling for reminder cadence (24h/72h/7d) with a single secured server endpoint; no duplication in clients.
+__Monitoring__:
+- Emits events to `public.events` via unified logger:
+  - `cron_executed` at start (props include `stage`, `limit`, `triggered_by: manual|secret|vercel_cron`, `method`)
+  - `cron_completed` on success (props include `processed`, `sent`, `skipped_no_missing`, `duration_ms`, `stage`, `method`)
+  - `cron_failed` on error (props include `duration_ms`, `method`)
+
+__Why__: Enables Vercel Cron scheduling for reminder cadence (24h/72h/7d) with a single secured server endpoint; no duplication in clients. Monitoring ensures failures are visible in ops analytics.
 
 ## Email side-effects (EARTH-73)
 

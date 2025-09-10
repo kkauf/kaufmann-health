@@ -1,7 +1,7 @@
 {
   "crons": [
     { "path": "/admin/api/therapists/reminders?stage=Erinnerung&limit=200", "schedule": "0 9 * * *" },
-    { "path": "/admin/api/therapists/reminders?stage=Zweite%20Erinnerung&limit=200", "schedule": "0 9 */3 * *" },
-    { "path": "/admin/api/therapists/reminders?stage=Letzte%20Erinnerung&limit=200", "schedule": "0 9 * * 1" }
+    { "path": "/admin/api/therapists/reminders?stage=Zweite%20Erinnerung&limit=200", "schedule": "30 9 */3 * *" },
+    { "path": "/admin/api/therapists/reminders?stage=Letzte%20Erinnerung&limit=200", "schedule": "0 10 * * 1" }
   ]
 }

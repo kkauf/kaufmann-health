@@ -32,6 +32,7 @@ function parseCookie(header?: string | null): Map<string, string> {
 export async function GET(req: Request) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   const ua = req.headers.get('user-agent') || undefined;
+  const startedAt = Date.now();
 
   try {
     // Auth: allow either admin cookie OR Cron secret (header or query param)
@@ -49,6 +50,10 @@ export async function GET(req: Request) {
         }
       } catch {}
     }
+    // Allow native Vercel Cron header as an auth signal in the platform environment
+    if (!isCron && req.headers.get('x-vercel-cron')) {
+      isCron = true;
+    }
 
     const isAdmin = await assertAdmin(req);
     if (!isAdmin && !isCron) {
@@ -60,6 +65,22 @@ export async function GET(req: Request) {
     const limitQS = url.searchParams.get('limit');
     const stageLabel = url.searchParams.get('stage') || undefined;
     const limit = Math.max(1, Math.min(Number(limitQS || 100), 1000));
+
+    // Monitoring: log cron start
+    const isVercelCron = Boolean(req.headers.get('x-vercel-cron'));
+    void track({
+      type: 'cron_executed',
+      level: 'info',
+      source: 'admin.api.therapists.reminders.batch',
+      props: {
+        stage: stageLabel,
+        limit,
+        triggered_by: isCron ? (isVercelCron ? 'vercel_cron' : 'secret') : 'manual',
+        method: 'GET',
+      },
+      ip,
+      ua,
+    });
 
     // Fetch therapists pending verification (reuse logic from POST)
     const initial = await supabaseServer
@@ -157,9 +178,35 @@ export async function GET(req: Request) {
       }
     }
 
+    // Monitoring: success completion
+    void track({
+      type: 'cron_completed',
+      level: 'info',
+      source: 'admin.api.therapists.reminders.batch',
+      props: {
+        processed,
+        sent,
+        skipped_no_missing: skippedNoMissing,
+        duration_ms: Date.now() - startedAt,
+        stage: stageLabel,
+        method: 'GET',
+      },
+      ip,
+      ua,
+    });
+
     return NextResponse.json({ data: { processed, sent, skipped_no_missing: skippedNoMissing, examples }, error: null });
   } catch (e) {
     await logError('admin.api.therapists.reminders.batch', e, { stage: 'exception' }, ip, ua);
+    // Monitoring: failure
+    void track({
+      type: 'cron_failed',
+      level: 'error',
+      source: 'admin.api.therapists.reminders.batch',
+      props: { duration_ms: Date.now() - startedAt, method: 'GET' },
+      ip,
+      ua,
+    });
     return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });
   }
 }
@@ -182,6 +229,7 @@ function isObject(v: unknown): v is Record<string, unknown> {
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   const ua = req.headers.get('user-agent') || undefined;
+  const startedAt = Date.now();
 
   try {
     // Auth: allow either admin cookie OR Cron secret (Authorization header, custom header, or query param)
@@ -199,6 +247,10 @@ export async function POST(req: Request) {
         }
       } catch {}
     }
+    // Allow native Vercel Cron header as an auth signal in the platform environment
+    if (!isCron && req.headers.get('x-vercel-cron')) {
+      isCron = true;
+    }
 
     const isAdmin = await assertAdmin(req);
     if (!isAdmin && !isCron) {
@@ -208,6 +260,22 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const limit = Math.max(1, Math.min(Number(body.limit || 100), 1000));
     const stageLabel = typeof body.stage === 'string' ? body.stage : undefined;
+
+    // Monitoring: log cron start
+    const isVercelCron = Boolean(req.headers.get('x-vercel-cron'));
+    void track({
+      type: 'cron_executed',
+      level: 'info',
+      source: 'admin.api.therapists.reminders.batch',
+      props: {
+        stage: stageLabel,
+        limit,
+        triggered_by: isCron ? (isVercelCron ? 'vercel_cron' : 'secret') : 'manual',
+        method: 'POST',
+      },
+      ip,
+      ua,
+    });
 
     // Fetch therapists pending verification
     const initial = await supabaseServer
@@ -306,9 +374,35 @@ export async function POST(req: Request) {
       }
     }
 
+    // Monitoring: success completion (POST)
+    void track({
+      type: 'cron_completed',
+      level: 'info',
+      source: 'admin.api.therapists.reminders.batch',
+      props: {
+        processed,
+        sent,
+        skipped_no_missing: skippedNoMissing,
+        duration_ms: Date.now() - startedAt,
+        stage: stageLabel,
+        method: 'POST',
+      },
+      ip,
+      ua,
+    });
+
     return NextResponse.json({ data: { processed, sent, skipped_no_missing: skippedNoMissing, examples }, error: null });
   } catch (e) {
     await logError('admin.api.therapists.reminders.batch', e, { stage: 'exception' }, ip, ua);
+    // Monitoring: failure (POST)
+    void track({
+      type: 'cron_failed',
+      level: 'error',
+      source: 'admin.api.therapists.reminders.batch',
+      props: { duration_ms: Date.now() - startedAt, method: 'POST' },
+      ip,
+      ua,
+    });
     return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });
   }
 }
