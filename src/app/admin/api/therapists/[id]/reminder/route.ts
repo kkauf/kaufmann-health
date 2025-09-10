@@ -49,7 +49,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     const { data: t, error } = await supabaseServer
       .from('therapists')
-      .select('id, status, first_name, last_name, email, metadata')
+      .select('id, status, first_name, last_name, email, gender, city, accepting_new, metadata')
       .eq('id', id)
       .single();
 
@@ -93,12 +93,24 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (!to) return NextResponse.json({ data: null, error: 'Missing email' }, { status: 400 });
 
     const uploadUrl = `${BASE_URL}/therapists/upload-documents/${id}`;
+    const profileUrl = `${BASE_URL}/therapists/complete-profile/${id}`;
+
+    const genderVal = (t as { gender?: string | null }).gender || null;
+    const cityVal = (t as { city?: string | null }).city || null;
+    const acceptingVal = (t as { accepting_new?: boolean | null }).accepting_new;
+    const genderOk = genderVal === 'male' || genderVal === 'female' || genderVal === 'diverse';
+    const cityOk = typeof cityVal === 'string' && cityVal.trim().length > 0;
+    const acceptingOk = typeof acceptingVal === 'boolean';
+    const missingBasic = !(genderOk && cityOk && acceptingOk);
+
     const reminder = renderTherapistReminder({
       name,
+      profileUrl,
       uploadUrl,
       missingDocuments,
       missingPhoto,
       missingApproach,
+      missingBasic,
       stageLabel,
     });
 

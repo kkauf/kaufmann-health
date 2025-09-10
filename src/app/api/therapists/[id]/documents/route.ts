@@ -71,9 +71,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     const specializationFiles = specAll.filter((x): x is File => x instanceof File && x.size > 0);
-    if (specializationFiles.length === 0) {
-      return NextResponse.json({ data: null, error: 'Missing specialization_cert' }, { status: 400 });
-    }
 
     // Validate and upload license
     const licValid = isValidUpload(license);
@@ -92,7 +89,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return NextResponse.json({ data: null, error: 'Failed to upload document' }, { status: 500 });
     }
 
-    // Validate and upload specialization certs
+    // Validate and upload specialization certs (optional)
     const specPaths: string[] = [];
     for (const file of specializationFiles) {
       const v = isValidUpload(file);

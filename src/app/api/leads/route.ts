@@ -385,7 +385,8 @@ async function handleTherapistMultipart(req: Request) {
       void logError('api.leads', contractErr, { stage: 'insert_contract', id: therapistId }, ip, ua);
     }
     const isActiveCity = ACTIVE_CITIES.has((city || '').toLowerCase());
-    const uploadUrl = `${BASE_URL}/therapists/upload-documents/${therapistId}`;
+    // EARTH-129: Link to the new profile completion step first
+    const uploadUrl = `${BASE_URL}/therapists/complete-profile/${therapistId}`;
     const welcome = renderTherapistWelcome({ name: data.name, city, isActiveCity, termsVersion: TERMS_VERSION, uploadUrl });
     void track({
       type: 'email_attempted',

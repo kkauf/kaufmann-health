@@ -11,7 +11,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   // Basic validation: therapist must exist and be in pending state
   const { data: row } = await supabaseServer
     .from('therapists')
-    .select('id, status, first_name, last_name')
+    .select('id, status, first_name, last_name, metadata')
     .eq('id', id)
     .single();
 
@@ -22,6 +22,13 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     // Show a simple 404 to avoid information leak
     return notFound();
   }
+
+  function isObject(v: unknown): v is Record<string, unknown> { return typeof v === 'object' && v !== null; }
+  const metaUnknown = (row as { metadata?: unknown }).metadata;
+  const metadata = isObject(metaUnknown) ? (metaUnknown as Record<string, unknown>) : {};
+  const docsUnknown = (metadata as { documents?: unknown }).documents;
+  const documents = isObject(docsUnknown) ? (docsUnknown as Record<string, unknown>) : {};
+  const hasLicense = typeof documents.license === 'string' && (documents.license as string).length > 0;
 
   const name = [
     (row as { first_name?: string }).first_name || '',
@@ -34,12 +41,23 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       {name ? (
         <p className="mt-2 text-sm text-gray-700">Therapeut/in: {name}</p>
       ) : null}
-      <p className="mt-4 text-sm text-gray-700">
-        Bitte laden Sie Ihre staatliche Psychotherapie-Berechtigung und mindestens ein Abschlusszertifikat eines Therapieverfahrens hoch. PDF oder Bilddatei, maximal 10MB pro Datei.
-      </p>
-      <div className="mt-6">
-        <UploadForm therapistId={id} />
-      </div>
+      {hasLicense ? (
+        <div className="mt-6 rounded-lg border bg-white p-4">
+          <p className="text-sm text-gray-700">Ihre Lizenz ist bereits hinterlegt. Zusätzliche Zertifikate können Sie später nachreichen.</p>
+          <p className="text-sm text-gray-700 mt-2">
+            Nächster Schritt: <a className="underline" href={`/therapists/complete-profile/${id}`}>Profil vervollständigen</a>
+          </p>
+        </div>
+      ) : (
+        <>
+          <p className="mt-4 text-sm text-gray-700">
+            Bitte laden Sie Ihre staatliche Psychotherapie-Berechtigung hoch. PDF oder Bilddatei, maximal 10MB pro Datei. Zertifikate sind optional und können später nachgereicht werden.
+          </p>
+          <div className="mt-6">
+            <UploadForm therapistId={id} />
+          </div>
+        </>
+      )}
     </main>
   );
 }

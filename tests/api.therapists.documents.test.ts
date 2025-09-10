@@ -62,14 +62,14 @@ describe('/api/therapists/:id/documents POST', () => {
     expect(json.error).toContain('Missing psychotherapy_license');
   });
 
-  it('400 when specialization_cert missing', async () => {
+  it('200 when specialization_cert omitted (optional)', async () => {
     const { POST } = await import('@/app/api/therapists/[id]/documents/route');
     const form = new FormData();
     form.set('psychotherapy_license', new File([new Uint8Array([0])], 'license.pdf', { type: 'application/pdf' }));
     const res = await POST(makeReq(form), { params: Promise.resolve({ id: 'tid-1' }) });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.error).toContain('Missing specialization_cert');
+    expect(json).toEqual({ data: { ok: true }, error: null });
   });
 
   it('404 when therapist not found or not pending', async () => {

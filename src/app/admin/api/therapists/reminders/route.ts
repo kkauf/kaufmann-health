@@ -85,7 +85,7 @@ export async function GET(req: Request) {
     // Fetch therapists pending verification (reuse logic from POST)
     const initial = await supabaseServer
       .from('therapists')
-      .select('id, status, first_name, last_name, email, metadata')
+      .select('id, status, first_name, last_name, email, gender, city, accepting_new, metadata')
       .eq('status', 'pending_verification')
       .limit(limit);
 
@@ -152,13 +152,24 @@ export async function GET(req: Request) {
 
       const name = [(t.first_name || ''), (t.last_name || '')].join(' ').trim();
       const uploadUrl = `${BASE_URL}/therapists/upload-documents/${t.id}`;
+      const profileUrl = `${BASE_URL}/therapists/complete-profile/${t.id}`;
+
+      const genderVal = (t as { gender?: string | null }).gender || null;
+      const cityVal = (t as { city?: string | null }).city || null;
+      const acceptingVal = (t as { accepting_new?: boolean | null }).accepting_new;
+      const genderOk = genderVal === 'male' || genderVal === 'female' || genderVal === 'diverse';
+      const cityOk = typeof cityVal === 'string' && cityVal.trim().length > 0;
+      const acceptingOk = typeof acceptingVal === 'boolean';
+      const missingBasic = !(genderOk && cityOk && acceptingOk);
 
       const reminder = renderTherapistReminder({
         name,
+        profileUrl,
         uploadUrl,
         missingDocuments,
         missingPhoto,
         missingApproach,
+        missingBasic,
         stageLabel,
       });
 
@@ -280,7 +291,7 @@ export async function POST(req: Request) {
     // Fetch therapists pending verification
     const initial = await supabaseServer
       .from('therapists')
-      .select('id, status, first_name, last_name, email, metadata')
+      .select('id, status, first_name, last_name, email, gender, city, accepting_new, metadata')
       .eq('status', 'pending_verification')
       .limit(limit);
 
@@ -348,13 +359,24 @@ export async function POST(req: Request) {
 
       const name = [(t.first_name || ''), (t.last_name || '')].join(' ').trim();
       const uploadUrl = `${BASE_URL}/therapists/upload-documents/${t.id}`;
+      const profileUrl = `${BASE_URL}/therapists/complete-profile/${t.id}`;
+
+      const genderVal = (t as { gender?: string | null }).gender || null;
+      const cityVal = (t as { city?: string | null }).city || null;
+      const acceptingVal = (t as { accepting_new?: boolean | null }).accepting_new;
+      const genderOk = genderVal === 'male' || genderVal === 'female' || genderVal === 'diverse';
+      const cityOk = typeof cityVal === 'string' && cityVal.trim().length > 0;
+      const acceptingOk = typeof acceptingVal === 'boolean';
+      const missingBasic = !(genderOk && cityOk && acceptingOk);
 
       const reminder = renderTherapistReminder({
         name,
+        profileUrl,
         uploadUrl,
         missingDocuments,
         missingPhoto,
         missingApproach,
+        missingBasic,
         stageLabel,
       });
 

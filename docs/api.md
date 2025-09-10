@@ -27,19 +27,19 @@
 
 ## POST /api/therapists/:id/documents
 
-- __Purpose__: Upload required verification documents and optional profile fields after signup (email link). Builds on EARTH-71 and EARTH-115.
+- __Purpose__: Step 2 of the two-step flow (EARTH-129). Upload required verification documents after signup (email link).
 - __Auth__: None (access via emailed link). The endpoint validates that the therapist exists and is in `pending_verification`; otherwise returns 404 to avoid information leaks.
 - __Content-Type__: `multipart/form-data`
 - __Path Param__:
   - `:id` — therapist UUID returned from `/api/leads` (therapist JSON or multipart path)
 - __Required fields__:
   - `psychotherapy_license`: one document proving qualification. Formats: PDF, JPG, PNG. Max 10MB.
-  - `specialization_cert`: at least one modality certificate. Multiple files allowed (send multiple fields of the same name). Formats: PDF, JPG, PNG. Max 10MB each.
 - __Optional fields__:
+  - `specialization_cert`: zero or more modality certificates. Multiple files allowed (send multiple fields of the same name). Formats: PDF, JPG, PNG. Max 10MB each.
   - `profile_photo`: JPEG or PNG, max 5MB. Stored pending review.
   - `approach_text`: string, max 2000 chars.
 - __Storage__:
-  - Documents are stored in private bucket `therapist-documents` under `therapists/<id>/...` and merged into `therapists.metadata.documnpnts` as:
+  - Documents are stored in private bucket `therapist-documents` under `therapists/<id>/...` and merged into `therapists.metadata.documents` as:
     ```json
     {
       "documents": {
@@ -63,6 +63,33 @@
   - 400: `{ data: null, error: 'Missing psychotherapy_license' | 'license: <reason>' | 'profile_photo: <reason>' | 'approach_text too long (max 2000 chars)' }`
   - 404: `{ data: null, error: 'Not found' }`
   - 500: `{ data: null, error: 'Failed to upload document' | 'Failed to update' | 'Unexpected error' }`
+
+### Two-Step Flow (EARTH-129)
+- Step 1: `/api/therapists/:id/profile` (new, see below)
+- Step 2: `/api/therapists/:id/documents` (this endpoint)
+- The public page `/therapists/upload-documents/:id` renders the document upload form only when no license is present; otherwise it guides the user to complete their profile.
+
+## POST /api/therapists/:id/profile
+
+- __Purpose__: Step 1 (fast profile completion): capture or update basic profile fields and optional pending photo.
+- __Auth__: None (access via emailed link). Validates therapist exists and is in `pending_verification`; otherwise returns 404.
+- __Content-Type__: `multipart/form-data` or `application/json`
+- __Path Param__:
+  - `:id` — therapist UUID
+- __Accepted fields__:
+  - `gender?`: `male | female | diverse`
+  - `city?`: string
+  - `accepting_new?`: boolean (JSON) or `'true'|'false'` (form)
+  - `approach_text?`: string (max 2000)
+  - `profile_photo?`: JPEG/PNG (max 5MB). Stored pending approval.
+- __Storage__:
+  - `profile_photo` is stored in private bucket `therapist-applications` under `applications/<id>/profile-photo-<ts>.(jpg|png)`
+  - `approach_text` and `photo_pending_path` are merged into `therapists.metadata.profile`
+- __Response__:
+  - 200: `{ data: { ok: true, nextStep: '/therapists/upload-documents/<id>' }, error: null }`
+  - 400: `{ data: null, error: 'invalid gender' | 'approach_text too long (max 2000 chars)' | 'profile_photo: <reason>' }`
+  - 404: `{ data: null, error: 'Not found' }`
+  - 500: `{ data: null, error: 'Failed to update' | 'Failed to upload profile photo' | 'Unexpected error' }`
 
 ### Therapist uploads (multipart)
 - __Content-Type__: `multipart/form-data`
@@ -138,13 +165,16 @@ curl -X POST /api/leads \
 - __Query Params__:
   - `city` (optional)
   - `session_preference` (optional: `online` | `in_person`)
-  - `specialization` (optional: slug, e.g. `narm`)
-  - `status` (optional: `pending_verification` | `verified` | `rejected`, default `pending_verification`)
+  - `specialization` (optional: slug, e.g. `narm`). Can be repeated; ANY of the provided values will match.
+  - `status` (optional: `pending_verification` | `verified` | `rejected`, default `verified`)
   - `limit` (optional, default 50, max 200)
 - __Response__:
-  - 200: `{ data: Array<Pick<people, 'id'|'name'|'email'|'phone'|'type'|'status'|'metadata'|'created_at'>>, error: null }`
+  - 200: `{ data: Array<{ id, name, email, phone, status, accepting_new?, metadata, created_at }>, error: null }`
   - 401: `{ data: null, error: 'Unauthorized' }`
   - 500: `{ data: null, error: 'Failed to fetch therapists' }`
+
+__Notes__:
+- When `status` is `verified` (or omitted), only therapists with `accepting_new=true` are returned by default. This keeps admin matching focused on currently available therapists.
 
 ## GET /admin/api/therapists/:id
 - __Purpose__: Retrieve single therapist details including profile data for review.
@@ -154,6 +184,19 @@ curl -X POST /api/leads \
   - 401: `{ data: null, error: 'Unauthorized' }`
   - 404: `{ data: null, error: 'Not found' }`
   - 500: `{ data: null, error: 'Unexpected error' }`
+
+## PATCH /admin/api/leads/:id
+
+- __Purpose__: Update a patient lead’s status during admin triage.
+- __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
+- __Body__ (JSON):
+  - `status`: `new` | `rejected`
+  - `lost_reason?`: string (optional). When provided with `status='rejected'`, the reason and timestamp are stored in `people.metadata`.
+- __Behavior__:
+  - Updates `people.status`. On `rejected`, also sets `metadata.lost_reason` and `metadata.lost_reason_at`.
+- __Response__:
+  - 200: `{ data: { ok: true }, error: null }`
+  - 400/401/404/500 on failure.
 
 ## PATCH /admin/api/therapists/:id
 - __Purpose__: Update therapist verification status, notes, and profile approval.
@@ -219,6 +262,25 @@ curl -X POST /api/leads \
   - 401: `{ data: null, error: 'Unauthorized' }`
   - 500: `{ data: null, error: 'Failed to verify therapists' | 'No matches created' }`
 
+### POST /admin/api/matches/email
+
+- __Purpose__: Send a patient-facing email related to a specific match (either a templated “match found” message or a custom update). Intended as part of the admin outreach workflow.
+- __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
+- __Request Body__ (JSON):
+  - `id` (uuid, required) — the `matches.id` to reference
+  - `template?` (`'match_found' | 'custom'`, default `'custom'`)
+  - `message?` (string) — only used when `template='custom'`; max 4000 chars
+- __Behavior__:
+  - Loads the match by id and the related patient; verifies patient email exists.
+  - For `template='match_found'`, also loads therapist name and sends a templated confirmation.
+  - Uses the server email client; failures are logged and a 500 is returned.
+- __Response__:
+  - 200: `{ data: { ok: true }, error: null }`
+  - 400: `{ data: null, error: 'id is required' | 'Invalid JSON' | 'Patient email missing' }`
+  - 401: `{ data: null, error: 'Unauthorized' }`
+  - 404: `{ data: null, error: 'Match not found' }`
+  - 500: `{ data: null, error: 'Failed to load entities' | 'Unexpected error' }`
+
 ---
 
 ## POST /admin/api/therapists/:id/reminder
@@ -228,8 +290,10 @@ curl -X POST /api/leads \
 - __Body__ (JSON):
   - `stage?`: Optional label for the email subject (e.g. "Erinnerung", "Zweite Erinnerung", "Letzte Erinnerung").
 - __Behavior__:
-  - Computes missing items: `documents` (license), `photo` (pending path), `approach` (text).
-  - Sends reminder email including CTA link to `/therapists/upload-documents/:id`.
+  - Computes missing items: `documents` (license), `photo` (pending path), `approach` (text), and basic profile fields (`gender`, `city`, `accepting_new`).
+  - Chooses CTA link dynamically (EARTH-129 two-step flow):
+    - If only `documents` are missing → link to `/therapists/upload-documents/:id` and subject "Lizenz‑Nachweis ausstehend".
+    - If `photo` or `approach` or basic fields missing → link to `/therapists/complete-profile/:id` and subject "Profil vervollständigen" (or "Profilbild fehlt noch" when only photo is missing).
 - __Response__:
   - 200: `{ data: { ok: true }, error: null }`
   - 400: `{ data: null, error: 'Missing email' | 'Not applicable' }`
@@ -253,6 +317,7 @@ __Why__: Server-side reminders keep logic and security in the backend (no public
 - __Behavior__:
   - Fetches up to `limit` therapists with `status='pending_verification'`.
   - For each, computes missing items from metadata and sends a reminder if anything is missing.
+  - Selects the CTA link and subject per therapist as in the single reminder endpoint (EARTH-129).
   - Returns simple stats and examples for observability.
 - __Response__:
   - 200: `{ data: { processed, sent, skipped_no_missing, examples: Array<{ id, missing: string[] }> }, error: null }`
@@ -274,3 +339,5 @@ Some endpoints send non-blocking emails (best-effort):
 - `/admin/api/therapists/:id` (PATCH): Sends approval/rejection emails when status changes.
 
 __Why__: Keeping email rendering/sending on the server preserves the cookie-free public site and centralizes logging/observability.
+
+__UI Consistency__: Email templates reuse a small, inline-styled therapist preview snippet to ensure consistent presentation with the public directory cards while remaining email-client safe.

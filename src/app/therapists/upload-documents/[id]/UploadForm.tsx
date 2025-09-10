@@ -52,8 +52,11 @@ export default function UploadForm({ therapistId }: Props) {
         >
           <h2 className="text-lg font-semibold">Dokumente hochgeladen</h2>
           <p className="text-sm text-gray-700 mt-2">
-            Ihre Dokumente wurden übermittelt. Wir prüfen diese und melden uns innerhalb von 2 Werktagen.
+            Ihre Dokumente wurden übermittelt. Wir prüfen diese und melden uns in 24h.
           </p>
+          {message && (
+            <p className="text-xs text-gray-600 mt-2">{message}</p>
+          )}
         </div>
       ) : null}
 
@@ -70,39 +73,31 @@ export default function UploadForm({ therapistId }: Props) {
         <div className="space-y-2">
           <Label htmlFor="specialization_cert">
             Abschlusszertifikate Ihrer Therapieverfahren
-            <span className="text-xs text-gray-500">(NARM, Hakomi, etc.)</span>
+            <span className="text-xs text-gray-500"> (optional)</span>
           </Label>
-          <Input id="specialization_cert" name="specialization_cert" type="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" multiple required />
-          <p className="text-xs text-gray-500">Mindestens ein Zertifikat ist erforderlich. Mehrere Dateien möglich.</p>
+          <Input id="specialization_cert" name="specialization_cert" type="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" multiple />
+          <p className="text-xs text-gray-500">Optional. Sie können Zertifikate auch später nachreichen.</p>
         </div>
 
-        <h2 className="text-2xl font-semibold mt-8">Profil vervollständigen</h2>
-        <div className="space-y-2">
-          <Label htmlFor="profile_photo">
-            Professionelles Foto <span className="text-xs text-gray-500">(JPG/PNG, max 5MB)</span>
-          </Label>
-          <Input id="profile_photo" name="profile_photo" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" />
-          <p className="text-xs text-gray-500">Klarer, professioneller Portraitausschnitt für Ihr Profil</p>
+        <div className="flex items-center gap-3">
+          <Button type="submit" disabled={loading}>
+            {loading ? "Hochladen…" : "Dokumente hochladen"}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setSubmitted(true);
+              setMessage("Sie können die Dokumente später hochladen. Die Profilprüfung startet erst nach Eingang der Lizenz.");
+              requestAnimationFrame(() => {
+                statusRef.current?.focus();
+                statusRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              });
+            }}
+          >
+            Später hochladen
+          </Button>
         </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="approach_text">
-            Ihr therapeutischer Ansatz <span className="text-xs text-gray-500">(2-3 Absätze)</span>
-          </Label>
-          <textarea
-            id="approach_text"
-            name="approach_text"
-            rows={6}
-            maxLength={2000}
-            placeholder="Beschreiben Sie Ihren therapeutischen Ansatz und wie Sie mit Klient:innen arbeiten..."
-            className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-          />
-          <p className="text-xs text-gray-500">Fokus auf Methode und Herangehensweise, kein Lebenslauf.</p>
-        </div>
-
-        <Button type="submit" disabled={loading}>
-          {loading ? "Hochladen…" : "Dokumente hochladen"}
-        </Button>
 
         <div aria-live="polite" role="status">
           {!submitted && message && <p className="text-sm text-red-600">{message}</p>}
