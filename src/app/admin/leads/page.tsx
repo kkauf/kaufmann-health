@@ -594,6 +594,10 @@ export default function AdminLeadsPage() {
                 approach_text: '',
                 accepting_new: Boolean(t.accepting_new),
                 city,
+                email: t.email || null,
+                phone: t.phone || null,
+                status: t.status || null,
+                created_at: t.created_at || null,
               } as const;
               return (
                 <TherapistPreview
@@ -602,7 +606,7 @@ export default function AdminLeadsPage() {
                   variant="admin"
                   actionButton={(
                     <Button size="sm" disabled={!selectedPatient} onClick={() => createMatch(t.id)}>
-                      Match {selectedPatient ? `mit ${selectedPatient.name || selectedPatient.email || 'Lead'}` : ''}
+                      Therapeut kontaktieren
                     </Button>
                   )}
                 />
