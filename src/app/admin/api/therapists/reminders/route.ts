@@ -62,16 +62,41 @@ export async function GET(req: Request) {
     const limit = Math.max(1, Math.min(Number(limitQS || 100), 1000));
 
     // Fetch therapists pending verification (reuse logic from POST)
-    const { data: rows, error } = await supabaseServer
+    const initial = await supabaseServer
       .from('therapists')
       .select('id, status, first_name, last_name, email, metadata')
       .eq('status', 'pending_verification')
       .limit(limit);
 
-    if (error) {
-      await logError('admin.api.therapists.reminders.batch', error, { stage: 'fetch' }, ip, ua);
-      return NextResponse.json({ data: null, error: 'Failed to fetch' }, { status: 500 });
+    if (initial.error) {
+      const msg = (initial.error as { message?: string } | null)?.message || '';
+      if (msg.includes('does not exist') && msg.includes('metadata')) {
+        const retry = await supabaseServer
+          .from('therapists')
+          .select('id, status, first_name, last_name, email')
+          .eq('status', 'pending_verification')
+          .limit(limit);
+        if (retry.error) {
+          await logError('admin.api.therapists.reminders.batch', retry.error, { stage: 'fetch' }, ip, ua);
+          return NextResponse.json({ data: null, error: 'Failed to fetch' }, { status: 500 });
+        }
+        const processed = ((retry.data as unknown[]) || []).length;
+        void track({
+          type: 'therapist_reminder_skipped_metadata_missing',
+          level: 'warn',
+          source: 'admin.api.therapists.reminders.batch',
+          props: { count: processed, stage: 'fetch' },
+          ip,
+          ua,
+        });
+        return NextResponse.json({ data: { processed, sent: 0, skipped_no_missing: processed, examples: [] }, error: null }, { status: 200 });
+      } else {
+        await logError('admin.api.therapists.reminders.batch', initial.error, { stage: 'fetch' }, ip, ua);
+        return NextResponse.json({ data: null, error: 'Failed to fetch' }, { status: 500 });
+      }
     }
+
+    const rows = (initial.data as TherapistRowLite[] | null) || [];
 
     let processed = 0;
     let sent = 0;
@@ -185,16 +210,42 @@ export async function POST(req: Request) {
     const stageLabel = typeof body.stage === 'string' ? body.stage : undefined;
 
     // Fetch therapists pending verification
-    const { data: rows, error } = await supabaseServer
+    const initial = await supabaseServer
       .from('therapists')
       .select('id, status, first_name, last_name, email, metadata')
       .eq('status', 'pending_verification')
       .limit(limit);
 
-    if (error) {
-      await logError('admin.api.therapists.reminders.batch', error, { stage: 'fetch' }, ip, ua);
+    // Fallback if metadata column is missing in production
+    const msg = (initial.error as { message?: string } | null)?.message || '';
+    if (initial.error && msg.includes('does not exist') && msg.includes('metadata')) {
+      const retry = await supabaseServer
+        .from('therapists')
+        .select('id, status, first_name, last_name, email')
+        .eq('status', 'pending_verification')
+        .limit(limit);
+      if (retry.error) {
+        await logError('admin.api.therapists.reminders.batch', retry.error, { stage: 'fetch' }, ip, ua);
+        return NextResponse.json({ data: null, error: 'Failed to fetch' }, { status: 500 });
+      }
+      const processed = ((retry.data as unknown[]) || []).length;
+      void track({
+        type: 'therapist_reminder_skipped_metadata_missing',
+        level: 'warn',
+        source: 'admin.api.therapists.reminders.batch',
+        props: { count: processed, stage: 'fetch' },
+        ip,
+        ua,
+      });
+      return NextResponse.json({ data: { processed, sent: 0, skipped_no_missing: processed, examples: [] }, error: null }, { status: 200 });
+    }
+
+    if (initial.error) {
+      await logError('admin.api.therapists.reminders.batch', initial.error, { stage: 'fetch' }, ip, ua);
       return NextResponse.json({ data: null, error: 'Failed to fetch' }, { status: 500 });
     }
+
+    const rows = (initial.data as TherapistRowLite[] | null) || [];
 
     let processed = 0;
     let sent = 0;

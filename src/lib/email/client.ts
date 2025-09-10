@@ -39,10 +39,10 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
 
   // Minimal resiliency: short timeout + retry on 429/5xx. Never throw.
   const maxAttempts = 3;
-  const timeoutMs = 5000;
+  const timeoutMs = Number(process.env.RESEND_TIMEOUT_MS || 10000);
 
   const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
-  const backoff = (attempt: number) => [100, 500, 1500][Math.min(attempt - 1, 2)];
+  const backoff = (attempt: number) => [200, 1000, 3000][Math.min(attempt - 1, 2)];
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const controller = new AbortController();
@@ -91,6 +91,28 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
       } catch {}
 
       const retryable = status === 429 || (status >= 500 && status < 600);
+      if (retryable && attempt < maxAttempts) {
+        await track({
+          type: 'email_retry',
+          level: 'warn',
+          source: 'email.client',
+          props: {
+            subject: params.subject,
+            to_count: toList.length,
+            has_html: Boolean(params.html),
+            has_text: Boolean(params.text),
+            status,
+            status_text: resp.statusText,
+            body,
+            attempt,
+            ...(params.context || {}),
+          },
+        });
+        await delay(backoff(attempt));
+        continue;
+      }
+
+      // Final failure (non-retryable or last attempt): log error once and stop.
       await logError('email.client', { name: 'EmailNonOk', message: `Resend returned ${status}` }, {
         subject: params.subject,
         to_count: toList.length,
@@ -102,12 +124,28 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
         attempt,
         ...(params.context || {}),
       });
-
-      if (!retryable || attempt === maxAttempts) return; // give up
-      await delay(backoff(attempt));
+      return; // give up
     } catch (e) {
       clearTimeout(timer);
       // Network error or timeout; log and maybe retry.
+      if (attempt < maxAttempts) {
+        await track({
+          type: 'email_timeout_retry',
+          level: 'warn',
+          source: 'email.client',
+          props: {
+            subject: params.subject,
+            to_count: toList.length,
+            has_html: Boolean(params.html),
+            has_text: Boolean(params.text),
+            attempt,
+            timeout_ms: timeoutMs,
+            ...(params.context || {}),
+          },
+        });
+        await delay(backoff(attempt));
+        continue;
+      }
       await logError('email.client', e, {
         subject: params.subject,
         to_count: toList.length,
@@ -117,8 +155,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
         timeout_ms: timeoutMs,
         ...(params.context || {}),
       });
-      if (attempt === maxAttempts) return;
-      await delay(backoff(attempt));
+      return;
     }
   }
 }
