@@ -6,6 +6,7 @@ import { sendEmail } from '@/lib/email/client';
 import { renderTherapistOutreach } from '@/lib/email/templates/therapistOutreach';
 import { BASE_URL } from '@/lib/constants';
 import { ServerAnalytics } from '@/lib/server-analytics';
+import { computeMismatches } from '@/lib/leads/match';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -225,107 +226,196 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const patient_id = String(body?.patient_id || '').trim();
-    const therapist_id = String(body?.therapist_id || '').trim();
+    const therapist_id_single = typeof body?.therapist_id === 'string' ? String(body.therapist_id).trim() : '';
+    const therapist_ids_array: string[] = Array.isArray(body?.therapist_ids) ? (body.therapist_ids as unknown[]).map((v) => String(v).trim()).filter(Boolean) : [];
     const notes = typeof body?.notes === 'string' ? body.notes.slice(0, 2000) : undefined;
 
-    if (!patient_id || !therapist_id) {
-      return NextResponse.json({ data: null, error: 'patient_id and therapist_id are required' }, { status: 400 });
+    if (!patient_id) {
+      return NextResponse.json({ data: null, error: 'patient_id is required' }, { status: 400 });
+    }
+    const therapist_ids: string[] = therapist_ids_array.length > 0 ? therapist_ids_array : (therapist_id_single ? [therapist_id_single] : []);
+    if (therapist_ids.length === 0) {
+      return NextResponse.json({ data: null, error: 'therapist_id or therapist_ids is required' }, { status: 400 });
+    }
+    if (therapist_ids.length > 3) {
+      return NextResponse.json({ data: null, error: 'Maximum of 3 therapists allowed' }, { status: 400 });
     }
 
     // Validate entities exist with expected types
-    const [{ data: patient, error: patientErr }, { data: therapist, error: therapistErr }] = await Promise.all([
+    const [{ data: patient, error: patientErr }] = await Promise.all([
       supabaseServer.from('people').select('id, type, metadata').eq('id', patient_id).single(),
-      supabaseServer.from('therapists').select('id, first_name, last_name, email').eq('id', therapist_id).single(),
     ]);
-    if (patientErr || therapistErr) {
-      await logError('admin.api.matches', patientErr || therapistErr, { stage: 'load_entities', patient_id, therapist_id });
-      return NextResponse.json({ data: null, error: 'Failed to verify entities' }, { status: 500 });
+    if (patientErr) {
+      await logError('admin.api.matches', patientErr, { stage: 'load_patient', patient_id });
+      return NextResponse.json({ data: null, error: 'Failed to verify patient' }, { status: 500 });
     }
     if (!patient || patient.type !== 'patient') {
       return NextResponse.json({ data: null, error: 'Invalid patient_id' }, { status: 400 });
     }
-    if (!therapist) {
-      return NextResponse.json({ data: null, error: 'Invalid therapist_id' }, { status: 400 });
-    }
 
-    const { data, error } = await supabaseServer
-      .from('matches')
-      .insert({ patient_id, therapist_id, status: 'proposed', notes })
-      .select('id')
-      .single();
-
-    if (error) {
-      await logError('admin.api.matches', error, { stage: 'insert', patient_id, therapist_id });
-      return NextResponse.json({ data: null, error: 'Failed to create match' }, { status: 500 });
-    }
-
-    // Fire-and-forget therapist outreach email with magic link
+    // Load all therapists (keep columns minimal). Use eq when only one id to match existing test stubs.
+    type TherapistBasic = { id: string; first_name?: string | null; last_name?: string | null; email?: string | null };
+    let therapistsList: TherapistBasic[] | null = null;
+    let tErr: unknown = null;
     try {
-      type MatchRow = { id: string };
-      type MatchDetail = { secure_uuid?: string | null; created_at?: string | null };
-      type PatientRow = { metadata?: { city?: string; issue?: string } | null };
-      type TherapistRow = { email?: string | null; first_name?: string | null; last_name?: string | null };
-
-      const matchId = (data as MatchRow).id;
-      // Fetch secure_uuid separately to remain compatible before the migration lands
-      let secure_uuid: string | undefined;
-      try {
-        const { data: matchRow, error: matchErr } = await supabaseServer
-          .from('matches')
-          .select('secure_uuid, created_at')
-          .eq('id', matchId)
+      if (therapist_ids.length === 1) {
+        const { data, error } = await supabaseServer
+          .from('therapists')
+          .select('id, first_name, last_name, email')
+          .eq('id', therapist_ids[0])
           .single();
-        const mr = matchRow as unknown as MatchDetail | null;
-        if (!matchErr && mr && typeof mr.secure_uuid === 'string') {
-          secure_uuid = mr.secure_uuid;
-        }
-      } catch {
-        // ignore
-      }
-      const magicUrl = secure_uuid ? `${BASE_URL}/match/${secure_uuid}` : undefined;
-      const t = therapist as unknown as TherapistRow | null;
-      const p = patient as unknown as PatientRow | null;
-      const therapistEmail = typeof t?.email === 'string' ? t.email.trim() : '';
-      const therapistName = [t?.first_name || '', t?.last_name || ''].join(' ').trim() || undefined;
-      const city = typeof p?.metadata?.city === 'string' ? p.metadata.city : undefined;
-      const issue = typeof p?.metadata?.issue === 'string' ? p.metadata.issue : undefined;
-
-      if (magicUrl && therapistEmail) {
-        const content = renderTherapistOutreach({
-          therapistName,
-          city,
-          issueCategory: issue,
-          magicUrl,
-          expiresHours: 72,
-        });
-        // Do not await; email client handles retries and logs internally
-        void sendEmail({
-          to: therapistEmail,
-          subject: content.subject,
-          html: content.html,
-          context: { kind: 'therapist_outreach', match_id: matchId, patient_id, therapist_id },
-        });
-
-        // Analytics: enqueue event tied to the admin request (PII-free)
-        void ServerAnalytics.trackEventFromRequest(req, {
-          type: 'match_outreach_enqueued',
-          source: 'admin.api.matches',
-          props: { match_id: matchId, patient_id, therapist_id },
-        });
+        tErr = error;
+        therapistsList = data ? [data as TherapistBasic] : [];
       } else {
-        // Missing secure_uuid or therapist email: skip for now (pre-migration) and log
-        void ServerAnalytics.trackEventFromRequest(req, {
-          type: 'match_outreach_skipped_no_secure_uuid',
-          source: 'admin.api.matches',
-          props: { match_id: matchId, patient_id, therapist_id },
-        });
+        const { data, error } = await supabaseServer
+          .from('therapists')
+          .select('id, first_name, last_name, email')
+          .in('id', therapist_ids);
+        tErr = error;
+        therapistsList = (data as TherapistBasic[]) || [];
       }
     } catch (e) {
-      // Never block creation flow
-      void logError('admin.api.matches', e, { stage: 'email_outreach_enqueue', patient_id, therapist_id });
+      tErr = e;
+    }
+    if (tErr) {
+      await logError('admin.api.matches', tErr, { stage: 'load_therapists', therapist_ids });
+      return NextResponse.json({ data: null, error: 'Failed to verify therapists' }, { status: 500 });
+    }
+    const therapistsById = new Map<string, TherapistBasic>();
+    for (const t of therapistsList || []) therapistsById.set(String(t.id), t);
+    for (const id of therapist_ids) {
+      if (!therapistsById.has(id)) {
+        return NextResponse.json({ data: null, error: `Invalid therapist_id: ${id}` }, { status: 400 });
+      }
     }
 
-    return NextResponse.json({ data: { id: data?.id }, error: null }, { status: 200 });
+    // Fetch additional details for mismatch logging (best-effort)
+    type TherapistDetails = { id: string; gender?: string | null; modalities?: unknown; session_preferences?: unknown };
+    const detailsById = new Map<string, TherapistDetails>();
+    try {
+      if (therapist_ids.length === 1) {
+        const { data } = await supabaseServer
+          .from('therapists')
+          .select('id, gender, modalities, session_preferences')
+          .eq('id', therapist_ids[0])
+          .single();
+        if (data) {
+          const d = data as TherapistDetails;
+          detailsById.set(String(d.id), d);
+        }
+      } else {
+        const { data } = await supabaseServer
+          .from('therapists')
+          .select('id, gender, modalities, session_preferences')
+          .in('id', therapist_ids);
+        const arr = (data as TherapistDetails[]) || [];
+        for (const d of arr) detailsById.set(String(d.id), d);
+      }
+    } catch {
+      // ignore
+    }
+
+    // Insert matches and enqueue outreach per therapist
+    const created: string[] = [];
+    for (const tid of therapist_ids) {
+      const { data, error } = await supabaseServer
+        .from('matches')
+        .insert({ patient_id, therapist_id: tid, status: 'proposed', notes })
+        .select('id')
+        .single();
+
+      if (error) {
+        await logError('admin.api.matches', error, { stage: 'insert', patient_id, therapist_id: tid });
+        continue; // proceed with others
+      }
+
+      const matchId = (data as { id: string }).id;
+      created.push(matchId);
+
+      // Outreach with magic link (best-effort)
+      try {
+        // secure_uuid lookup
+        let secure_uuid: string | undefined;
+        try {
+          const { data: matchRow } = await supabaseServer
+            .from('matches')
+            .select('secure_uuid, created_at')
+            .eq('id', matchId)
+            .single();
+          const mr = matchRow as { secure_uuid?: string | null } | null;
+          if (mr && typeof mr.secure_uuid === 'string') secure_uuid = mr.secure_uuid;
+        } catch {}
+        const magicUrl = secure_uuid ? `${BASE_URL}/match/${secure_uuid}` : undefined;
+        const t = therapistsById.get(tid) as { email?: string | null; first_name?: string | null; last_name?: string | null } | undefined;
+        const p = patient as { metadata?: { city?: string; issue?: string } | null };
+        const therapistEmail = (t?.email || '').trim();
+        const therapistName = [t?.first_name || '', t?.last_name || ''].join(' ').trim() || undefined;
+        const city = typeof p?.metadata?.city === 'string' ? p.metadata!.city : undefined;
+        const issue = typeof p?.metadata?.issue === 'string' ? p.metadata!.issue : undefined;
+
+        if (magicUrl && therapistEmail) {
+          const content = renderTherapistOutreach({ therapistName, city, issueCategory: issue, magicUrl, expiresHours: 72 });
+          void sendEmail({ to: therapistEmail, subject: content.subject, html: content.html, context: { kind: 'therapist_outreach', match_id: matchId, patient_id, therapist_id: tid } });
+          void ServerAnalytics.trackEventFromRequest(req, { type: 'match_outreach_enqueued', source: 'admin.api.matches', props: { match_id: matchId, patient_id, therapist_id: tid } });
+        } else {
+          void ServerAnalytics.trackEventFromRequest(req, { type: 'match_outreach_skipped_no_secure_uuid', source: 'admin.api.matches', props: { match_id: matchId, patient_id, therapist_id: tid } });
+        }
+      } catch (e) {
+        void logError('admin.api.matches', e, { stage: 'email_outreach_enqueue', patient_id, therapist_id: tid });
+      }
+
+      // Business opportunity logging (best-effort)
+      try {
+        type PatientMetaServer = {
+          city?: string;
+          session_preference?: 'online' | 'in_person';
+          session_preferences?: ('online' | 'in_person')[];
+          issue?: string;
+          specializations?: string[];
+          gender_preference?: 'male' | 'female' | 'no_preference';
+        };
+        type PatientRow = { metadata?: PatientMetaServer | null };
+        const pMeta: PatientMetaServer = ((patient as PatientRow)?.metadata) || {};
+        const tRow: TherapistDetails = (detailsById.get(tid) || { id: tid });
+        const mm = computeMismatches(
+          {
+            city: pMeta.city,
+            session_preference: pMeta.session_preference,
+            session_preferences: pMeta.session_preferences,
+            issue: pMeta.issue,
+            specializations: pMeta.specializations,
+            gender_preference: pMeta.gender_preference,
+          },
+          {
+            id: tid,
+            gender: tRow.gender || null,
+            city: undefined,
+            session_preferences: Array.isArray(tRow.session_preferences) ? (tRow.session_preferences as string[]) : [],
+            modalities: Array.isArray(tRow.modalities) ? (tRow.modalities as string[]) : [],
+          }
+        );
+        const reasons = mm.reasons; // ['gender','location','modality'] subset
+        if (reasons.length > 0) {
+          type BusinessOpportunityInsert = { patient_id: string; mismatch_type: 'gender' | 'location' | 'modality'; city?: string | null };
+          const rows: BusinessOpportunityInsert[] = reasons.map((r) => ({ patient_id, mismatch_type: r as 'gender' | 'location' | 'modality', city: typeof pMeta.city === 'string' ? pMeta.city : null }));
+          // Insert; ignore failures
+          await supabaseServer.from('business_opportunities').insert(rows).select('id').limit(1).maybeSingle();
+          void ServerAnalytics.trackEventFromRequest(req, { type: 'business_opportunity_logged', source: 'admin.api.matches', props: { patient_id, reasons } });
+        }
+      } catch (e) {
+        void logError('admin.api.matches', e, { stage: 'log_business_opportunity', patient_id, therapist_id: tid });
+      }
+    }
+
+    if (created.length === 0) {
+      return NextResponse.json({ data: null, error: 'No matches created' }, { status: 500 });
+    }
+
+    // Backward compatibility: if only one match created, return single id shape
+    if (created.length === 1) {
+      return NextResponse.json({ data: { id: created[0] }, error: null }, { status: 200 });
+    }
+    return NextResponse.json({ data: { ids: created }, error: null }, { status: 200 });
   } catch (e) {
     await logError('admin.api.matches', e, { stage: 'exception' });
     return NextResponse.json({ data: null, error: 'Invalid JSON' }, { status: 400 });

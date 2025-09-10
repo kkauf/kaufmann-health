@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TherapistPreview } from '@/components/TherapistPreview';
+import { computeMismatches } from '@/lib/leads/match';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,7 @@ type Person = {
   metadata: PersonMeta;
   created_at: string;
   accepting_new?: boolean;
+  gender?: string | null;
 };
 
 function formatDate(iso?: string) {
@@ -73,11 +75,31 @@ export default function AdminLeadsPage() {
   const [loadingTherapists, setLoadingTherapists] = useState(false);
   const [therapists, setTherapists] = useState<Person[]>([]);
   const [therError, setTherError] = useState<string | null>(null);
+  const [onlyPerfect, setOnlyPerfect] = useState<boolean>(false);
 
   const [message, setMessage] = useState<string | null>(null);
   const [updatingLeadId, setUpdatingLeadId] = useState<string | null>(null);
   const [lostReasons, setLostReasons] = useState<Record<string, string>>({});
   const [hideLost, setHideLost] = useState<boolean>(true);
+
+  // Multi-select for therapists (max 3)
+  const [selectedTherapists, setSelectedTherapists] = useState<Set<string>>(new Set());
+  const toggleTherapistSelection = useCallback((id: string) => {
+    setSelectedTherapists((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        return next;
+      }
+      if (next.size >= 3) {
+        // Enforce limit
+        setMessage('Maximal 3 Therapeuten auswählbar');
+        return next;
+      }
+      next.add(id);
+      return next;
+    });
+  }, []);
 
   // Patients with an active/ongoing match should be visually de-prioritized and sorted to bottom
   const [deprioritizedPatients, setDeprioritizedPatients] = useState<Set<string>>(new Set());
@@ -103,6 +125,11 @@ export default function AdminLeadsPage() {
       // Also clear any previously selected specialization override
       setTherSpecialization('');
     }
+  }, [selectedPatient]);
+
+  // Clear therapist selections when patient changes
+  useEffect(() => {
+    setSelectedTherapists(new Set());
   }, [selectedPatient]);
 
   const loadPatientMatchFlags = useCallback(async (leadList: Person[]) => {
@@ -168,11 +195,7 @@ export default function AdminLeadsPage() {
       if (pref !== 'online' && meta.city) {
         url.searchParams.set('city', String(meta.city));
       }
-      const specs: string[] = Array.isArray(meta.specializations) ? meta.specializations : [];
-      if (specs.length > 0) {
-        // Send all specializations as repeated params to match ANY in API
-        for (const s of specs) url.searchParams.append('specialization', String(s));
-      }
+      // Do not filter by specialization automatically; mismatches will be shown as badges.
       url.searchParams.set('limit', '200');
       const res = await fetch(url.toString(), { credentials: 'include' });
       const json = await res.json();
@@ -285,7 +308,6 @@ export default function AdminLeadsPage() {
           ? String(fallbackMeta.session_preferences[0])
           : (fallbackMeta.session_preference ? String(fallbackMeta.session_preference) : '')
       );
-      const specs: string[] = Array.isArray(fallbackMeta.specializations) ? fallbackMeta.specializations : [];
       const specialization = therSpecialization || '';
 
       if (sessionPref) url.searchParams.set('session_preference', sessionPref);
@@ -295,8 +317,6 @@ export default function AdminLeadsPage() {
       }
       if (specialization) {
         url.searchParams.set('specialization', specialization);
-      } else if (specs.length > 0) {
-        for (const s of specs) url.searchParams.append('specialization', String(s));
       }
       url.searchParams.set('limit', '200');
       const res = await fetch(url.toString(), { credentials: 'include' });
@@ -332,6 +352,29 @@ export default function AdminLeadsPage() {
     }
   }
 
+  async function contactSelectedTherapists() {
+    if (!selectedPatient) return;
+    const ids = Array.from(selectedTherapists);
+    if (ids.length === 0) return;
+    try {
+      setMessage(null);
+      const res = await fetch('/admin/api/matches', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ patient_id: selectedPatient.id, therapist_ids: ids }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Kontaktierung fehlgeschlagen');
+      setMessage(`${ids.length} Kontakt${ids.length > 1 ? 'e' : ''} gestartet`);
+      setSelectedTherapists(new Set());
+      try { track('Match Created'); } catch {}
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Kontaktierung fehlgeschlagen';
+      setMessage(msg);
+    }
+  }
+
   // Initial fetch on mount
   useEffect(() => {
     fetchLeads().catch(() => {});
@@ -364,6 +407,33 @@ export default function AdminLeadsPage() {
     );
     return sessionPref === 'online' && !therCity;
   }, [therCity, therSessionPref, selectedPatient]);
+
+  // Prepare therapist items with mismatch computation and sorting for better usability
+  const therapistItems = useMemo(() => {
+    const items = therapists.map((t) => {
+      const meta: PersonMeta = t.metadata || {};
+      const city = String(meta.city || '');
+      const specs: string[] = Array.isArray(meta.specializations) ? meta.specializations : [];
+      const mm = computeMismatches(selectedPatient?.metadata || {}, {
+        id: t.id,
+        gender: t.gender || null,
+        city: city || null,
+        session_preferences: Array.isArray(meta.session_preferences) ? meta.session_preferences : [],
+        modalities: specs,
+      });
+      return { t, city, specs, mm } as const;
+    });
+    // Sort: perfect first, then by fewer reasons, then accepting_new true first, then newest first
+    items.sort((a, b) => {
+      if (a.mm.isPerfect !== b.mm.isPerfect) return a.mm.isPerfect ? -1 : 1;
+      if (a.mm.reasons.length !== b.mm.reasons.length) return a.mm.reasons.length - b.mm.reasons.length;
+      const aAvail = Boolean(a.t.accepting_new);
+      const bAvail = Boolean(b.t.accepting_new);
+      if (aAvail !== bAvail) return aAvail ? -1 : 1;
+      return (new Date(b.t.created_at).getTime()) - (new Date(a.t.created_at).getTime());
+    });
+    return items;
+  }, [therapists, selectedPatient]);
 
   // Sort: leads needing action first, those with active matches to the bottom
   const leadsSorted = useMemo(() => {
@@ -538,6 +608,9 @@ export default function AdminLeadsPage() {
         {/* Therapists */}
         <div className="border rounded-md p-4">
           <h2 className="text-lg font-semibold mb-3">Therapeuten</h2>
+          {selectedPatient && (
+            <div className="mb-2 text-xs text-gray-600">Bis zu 3 Therapeuten auswählen und auf einmal kontaktieren.</div>
+          )}
           <div className="flex flex-wrap gap-3 mb-3 items-end">
             <div className="space-y-1">
               <Label htmlFor="ther-city">Stadt</Label>
@@ -571,6 +644,13 @@ export default function AdminLeadsPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1">
+              <Label htmlFor="only-perfect">Ansicht</Label>
+              <label className="flex items-center gap-2 text-sm">
+                <input id="only-perfect" type="checkbox" className="h-4 w-4" checked={onlyPerfect} onChange={(e) => setOnlyPerfect(e.target.checked)} />
+                <span>Nur perfekte Matches</span>
+              </label>
+            </div>
             <Button onClick={fetchTherapists} disabled={loadingTherapists}>{loadingTherapists ? 'Lädt…' : 'Filtern'}</Button>
           </div>
           {therError && <p className="text-sm text-red-600 mb-2">{therError}</p>}
@@ -578,11 +658,22 @@ export default function AdminLeadsPage() {
             <p className="text-xs text-gray-500 mb-2">Hinweis: Online-Präferenz – Stadtfilter derzeit deaktiviert. Zum Eingrenzen bitte eine Stadt eingeben.</p>
           )}
 
+          {/* Batch actions */}
+          {selectedTherapists.size > 0 && (
+            <div className="mb-2 flex items-center justify-between sticky top-0 z-10 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b px-2 py-1 rounded">
+              <div className="text-sm text-gray-700">Ausgewählt: {selectedTherapists.size} / 3</div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={contactSelectedTherapists} disabled={!selectedPatient}>
+                  Ausgewählte kontaktieren
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => setSelectedTherapists(new Set())}>Auswahl leeren</Button>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-3">
-            {therapists.map((t) => {
-              const meta: PersonMeta = t.metadata || {};
-              const city = String(meta.city || '');
-              const specs: string[] = Array.isArray(meta.specializations) ? meta.specializations : [];
+            {(therapistItems.filter((it) => (onlyPerfect ? it.mm.isPerfect : true))).map(({ t, city, specs, mm }) => {
+              const checked = selectedTherapists.has(t.id);
               // Map Admin API shape to TherapistPreview props
               const [first, ...rest] = (t.name || '').trim().split(/\s+/);
               const previewTherapist = {
@@ -600,16 +691,45 @@ export default function AdminLeadsPage() {
                 created_at: t.created_at || null,
               } as const;
               return (
-                <TherapistPreview
-                  key={t.id}
-                  therapist={previewTherapist}
-                  variant="admin"
-                  actionButton={(
-                    <Button size="sm" disabled={!selectedPatient} onClick={() => createMatch(t.id)}>
-                      Therapeut kontaktieren
-                    </Button>
-                  )}
-                />
+                <div key={t.id} className="flex items-start gap-2 cursor-pointer select-none" onClick={() => toggleTherapistSelection(t.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTherapistSelection(t.id); } }}>
+                  <div className="pt-2" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={checked}
+                      onChange={() => toggleTherapistSelection(t.id)}
+                      aria-label="Therapeut auswählen"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <TherapistPreview
+                      therapist={previewTherapist}
+                      variant="admin"
+                      actionButton={(
+                        <div className="flex items-center gap-2">
+                          {/* Match quality badges */}
+                          {mm.isPerfect ? (
+                            <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 px-1.5 py-0">Perfekt</Badge>
+                          ) : (
+                            <>
+                              <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 px-1.5 py-0">Teilweise</Badge>
+                              {mm.reasons.map((r) => {
+                                const map: Record<string, string> = { gender: 'Geschlecht', location: 'Ort/Sitzung', modality: 'Methode' };
+                                const label = map[r] || r;
+                                return (
+                                  <Badge key={r} variant="secondary" className="px-1.5 py-0 text-[10px]" title="Nicht passend zur Patientenpräferenz">{label}</Badge>
+                                );
+                              })}
+                            </>
+                          )}
+                          <Button size="sm" disabled={!selectedPatient} onClick={(e) => { e.stopPropagation(); void createMatch(t.id); }}>
+                            Therapeut kontaktieren
+                          </Button>
+                        </div>
+                      )}
+                    />
+                  </div>
+                </div>
               );
             })}
             {therapists.length === 0 && !loadingTherapists && (

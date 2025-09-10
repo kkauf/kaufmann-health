@@ -60,7 +60,7 @@ export async function GET(req: Request) {
 
     let query = supabaseServer
       .from('therapists')
-      .select('id, first_name, last_name, email, phone, city, session_preferences, modalities, accepting_new, status, created_at')
+      .select('id, first_name, last_name, email, phone, gender, city, session_preferences, modalities, accepting_new, status, created_at')
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -90,6 +90,7 @@ export async function GET(req: Request) {
       last_name?: string | null;
       email?: string | null;
       phone?: string | null;
+      gender?: string | null;
       city?: string | null;
       session_preferences?: unknown;
       modalities?: unknown;
@@ -133,6 +134,7 @@ export async function GET(req: Request) {
         name,
         email: r.email || null,
         phone: r.phone || null,
+        gender: r.gender || null,
         accepting_new: typeof (r as Row).accepting_new === 'boolean' ? (r as Row).accepting_new : undefined,
         status: r.status || 'pending_verification',
         metadata,

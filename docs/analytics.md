@@ -221,6 +221,12 @@ __Server Events__ (Supabase):
 - `email_attempted` — emitted around upload confirmation, approval, rejection, and reminder sends
 - Optional additions (if needed later): `therapist_profile_approved`, `therapist_profile_rejected`
 
+### Business Opportunities (EARTH-124)
+
+- `business_opportunity_logged` — emitted by `POST /admin/api/matches` when selected therapists don't perfectly match a patient's preferences.
+  - props: `{ patient_id: string, reasons: ('gender'|'location'|'modality')[] }`
+  - Also persisted in `public.business_opportunities` for monthly summaries.
+
 __Vercel Analytics__:
 - No additional events; keep high-level only. Existing page-level conversions are sufficient.
 

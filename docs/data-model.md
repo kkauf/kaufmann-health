@@ -137,3 +137,24 @@ Indexes:
 create index if not exists therapists_metadata_gin_idx
   on public.therapists using gin (metadata);
 ```
+
+## public.business_opportunities
+
+- `id uuid pk default gen_random_uuid()`
+- `patient_id uuid not null references public.people(id) on delete cascade`
+- `mismatch_type text not null check in ('gender','location','modality')`
+- `city text`
+- `created_at timestamptz not null default now()`
+
+Purpose:
+- When admin suggests therapists that partially match a patient's preferences, we log specific mismatch reasons to quantify unmet demand (e.g., requests for male therapists in Munich).
+
+Indexes:
+```sql
+create index if not exists bo_created_at_idx on public.business_opportunities(created_at);
+create index if not exists bo_mismatch_type_created_at_idx on public.business_opportunities(mismatch_type, created_at);
+create index if not exists bo_city_idx on public.business_opportunities(city);
+```
+
+RLS:
+- Enabled. Only the service role inserts/queries via server-side admin APIs. No public access.
