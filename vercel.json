@@ -2,6 +2,9 @@
   "crons": [
     { "path": "/admin/api/therapists/reminders?stage=Erinnerung&limit=200", "schedule": "0 9 * * *" },
     { "path": "/admin/api/therapists/reminders?stage=Zweite%20Erinnerung&limit=200", "schedule": "30 9 */3 * *" },
-    { "path": "/admin/api/therapists/reminders?stage=Letzte%20Erinnerung&limit=200", "schedule": "0 10 * * 1" }
+    { "path": "/admin/api/therapists/reminders?stage=Letzte%20Erinnerung&limit=200", "schedule": "0 10 * * 1" },
+    { "path": "/admin/api/matches/selection-reminders?stage=24h", "schedule": "0 12 * * *" },
+    { "path": "/admin/api/matches/selection-reminders?stage=48h", "schedule": "0 16 * * *" },
+    { "path": "/admin/api/matches/selection-reminders?stage=72h", "schedule": "0 18 * * *" }
   ]
 }

@@ -13,7 +13,7 @@ export function renderTherapistWelcome(params: {
   const city = (params.city || '').trim();
 
   const leadStatusMessage = params.isActiveCity
-    ? 'Sie können ab sofort Klienten‑Anfragen über unser Netzwerk erhalten.'
+    ? 'Sie können schon bald Klienten‑Anfragen über unser Netzwerk erhalten.'
     : `Kaufmann Health startet bald in ${city || 'Ihrer Stadt'}. Wir melden uns, sobald wir live sind.`;
 
   const termsUrl = `${BASE_URL}/therapist-terms?version=${encodeURIComponent(params.termsVersion)}`;
@@ -36,16 +36,16 @@ export function renderTherapistWelcome(params: {
         <div style="margin:8px 0 0;">
           <div style="font-weight:600; color:#111827;">📋 QUALIFIKATIONSNACHWEISE:</div>
           <ul style="margin:6px 0 0 18px; color:#374151;">
-            <li>• Staatlich anerkannte Psychotherapie‑Berechtigung (erforderlich)</li>
-            <li>• Spezialisierungs‑Zertifikat (NARM, Hakomi, Core Energetics, Somatic Experiencing)</li>
-            <li>• Berufshaftpflicht (optional)</li>
+            <li> Staatlich anerkannte Psychotherapie‑Berechtigung (erforderlich)</li>
+            <li> Spezialisierungs‑Zertifikat (NARM, Hakomi, Core Energetics, Somatic Experiencing)</li>
+            <li> Berufshaftpflicht (optional)</li>
           </ul>
         </div>
         <div style="margin:12px 0 0;">
           <div style="font-weight:600; color:#111827;">👤 IHR THERAPEUTENPROFIL:</div>
           <ul style="margin:6px 0 0 18px; color:#374151;">
-            <li>• Professionelles Foto (für Ihr Verzeichnisprofil)</li>
-            <li>• Beschreibung Ihres therapeutischen Ansatzes (2–3 Absätze)</li>
+            <li> Professionelles Foto (für Ihr Verzeichnisprofil)</li>
+            <li> Beschreibung Ihres therapeutischen Ansatzes (2–3 Absätze)</li>
           </ul>
         </div>
       </div>

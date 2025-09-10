@@ -341,3 +341,68 @@ Some endpoints send non-blocking emails (best-effort):
 __Why__: Keeping email rendering/sending on the server preserves the cookie-free public site and centralizes logging/observability.
 
 __UI Consistency__: Email templates reuse a small, inline-styled therapist preview snippet to ensure consistent presentation with the public directory cards while remaining email-client safe.
+
+## EARTH-125: Patient Selection Flow
+
+### POST/GET /api/match/:uuid/select
+
+- Purpose: Record a patient’s active selection of a specific therapist from a set of proposals.
+- Auth: None (access via magic link UUID sent by email).
+- Query Params or Body:
+  - `therapist` (uuid) in query string, or `therapist_id` in JSON body.
+- Behavior:
+  - Resolves `:uuid` to the patient via `matches.secure_uuid`.
+  - Updates the specific match row for `(patient_id, therapist_id)` to `status='patient_selected'`.
+  - Sends fire-and-forget emails:
+    - To therapist: selection notification with basic client contact info (name/email/phone if available).
+    - To patient: confirmation that the selected therapist will reach out (German copy).
+  - Emits event `patient_selected` via `ServerAnalytics`.
+- Responses:
+  - 200: `{ data: { ok: true }, error: null }`
+  - 400: `{ data: null, error: 'Missing uuid' | 'therapist is required' | 'Invalid JSON' }`
+  - 404: `{ data: null, error: 'Not found' | 'Match not available' }`
+  - 500: `{ data: null, error: 'Failed to update' }`
+
+### POST /admin/api/matches/email (extended)
+
+- New template `selection` for patient-facing "active selection" email with urgency and up to 3 proposals.
+- Request Body (JSON):
+  - `template: 'selection'`
+  - `patient_id` (uuid, required when `template='selection'`)
+  - `therapist_ids?` (uuid[], optional; falls back to latest `status='proposed'` for the patient; max 3)
+- Behavior:
+  - Builds an email with one "Best match" + up to two alternatives
+  - Buttons link to `/api/match/:uuid/select?therapist=<id>` (uses existing `matches.secure_uuid`).
+  - Sorts proposals using existing mismatch logic (perfect matches first).
+- Responses:
+  - 200: `{ data: { ok: true }, error: null }`
+  - 400/401/404/500 on failure with descriptive messages.
+
+### GET /admin/api/matches/selection-reminders
+
+- Purpose: Vercel Cron-driven follow-up sequence if no selection was made yet.
+- Auth: Admin cookie or Cron secret (`x-cron-secret` / `Authorization: Bearer`), or Vercel platform header `x-vercel-cron`.
+- Query Params:
+  - `stage`: `24h` | `48h` | `72h`
+- Behavior:
+  - Aggregates recent `status='proposed'` matches by patient.
+  - Skips patients who already have any `status='patient_selected'` match.
+  - For `24h` and `48h`, sends the selection email again (48h version uses a stronger urgency banner).
+  - For `72h`, marks analytics event `patient_unresponsive` (no status change) and skips emailing.
+- Responses:
+  - 200: `{ data: { processed, sent, marked }, error: null }`
+  - 401/500 on failure.
+
+### Cron Configuration
+
+Vercel Cron is configured in `vercel.json`:
+
+```
+{ "path": "/admin/api/matches/selection-reminders?stage=24h", "schedule": "0 12 * * *" }
+{ "path": "/admin/api/matches/selection-reminders?stage=48h", "schedule": "0 16 * * *" }
+{ "path": "/admin/api/matches/selection-reminders?stage=72h", "schedule": "0 18 * * *" }
+```
+
+Notes:
+- Email HTML uses inline styles and the existing `renderTherapistPreviewEmail()` to ensure client compatibility.
+- All email sending is best-effort and logged via the unified logger (`email_sent`, `email_retry`, `email_timeout_retry`).

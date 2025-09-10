@@ -42,6 +42,8 @@ const ALLOWED_STATUSES = new Set([
   'session_booked',
   'completed',
   'failed',
+  // New status used by patient selection flow (EARTH-125)
+  'patient_selected',
 ]);
 
 type MatchRow = {
