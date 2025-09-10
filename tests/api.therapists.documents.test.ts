@@ -52,14 +52,14 @@ beforeEach(() => {
 });
 
 describe('/api/therapists/:id/documents POST', () => {
-  it('400 when psychotherapy_license missing', async () => {
+  it('400 when psychotherapy_license missing and certificate provided (license must be uploaded first)', async () => {
     const { POST } = await import('@/app/api/therapists/[id]/documents/route');
     const form = new FormData();
     form.set('specialization_cert', new File([new Uint8Array([0])], 'cert.pdf', { type: 'application/pdf' }));
     const res = await POST(makeReq(form), { params: Promise.resolve({ id: 'tid-1' }) });
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toContain('Missing psychotherapy_license');
+    expect(json.error).toContain('License must be uploaded first');
   });
 
   it('200 when specialization_cert omitted (optional)', async () => {
@@ -95,8 +95,8 @@ describe('/api/therapists/:id/documents POST', () => {
     let res = await POST(makeReq(form), { params: Promise.resolve({ id: 'tid-1' }) });
     expect(res.status).toBe(400);
 
-    // too large (10MB + 1)
-    const big = new Uint8Array(10 * 1024 * 1024 + 1);
+    // too large (4MB + 1)
+    const big = new Uint8Array(4 * 1024 * 1024 + 1);
     form = new FormData();
     form.set('psychotherapy_license', new File([big], 'license.pdf', { type: 'application/pdf' }));
     form.set('specialization_cert', new File([new Uint8Array([0])], 'cert.pdf', { type: 'application/pdf' }));

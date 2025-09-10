@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const ALLOWED_FILE_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png']);
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4MB (align with serverless request limits)
 const ALLOWED_PHOTO_TYPES = new Set(['image/jpeg', 'image/png']);
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
 
@@ -66,27 +66,45 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const profilePhoto = form.get('profile_photo');
     const approachRaw = form.get('approach_text');
 
-    if (!(license instanceof File) || license.size === 0) {
-      return NextResponse.json({ data: null, error: 'Missing psychotherapy_license' }, { status: 400 });
-    }
+    // Determine if therapist already has a license on file to support certificate-only uploads
+    function isObject(v: unknown): v is Record<string, unknown> { return typeof v === 'object' && v !== null; }
+    const existingMeta = (therapist as { metadata?: unknown }).metadata;
+    const existingMetaObj: Record<string, unknown> = isObject(existingMeta) ? (existingMeta as Record<string, unknown>) : {};
+    const existingDocsUnknown = (existingMetaObj as { documents?: unknown }).documents;
+    const existingDocs: { license?: string } = isObject(existingDocsUnknown) ? (existingDocsUnknown as { license?: string }) : {};
+    const hasExistingLicense = typeof existingDocs.license === 'string' && existingDocs.license.length > 0;
 
     const specializationFiles = specAll.filter((x): x is File => x instanceof File && x.size > 0);
+    if (!(license instanceof File) || license.size === 0) {
+      // Allow certificate-only upload if license already exists; otherwise require license first
+      if (specializationFiles.length > 0) {
+        if (!hasExistingLicense) {
+          return NextResponse.json({ data: null, error: 'License must be uploaded first' }, { status: 400 });
+        }
+        // proceed with specialization-only upload path
+      } else {
+        return NextResponse.json({ data: null, error: 'Missing psychotherapy_license or specialization_cert' }, { status: 400 });
+      }
+    }
 
     // Validate and upload license
-    const licValid = isValidUpload(license);
-    if (!licValid.ok) {
-      return NextResponse.json({ data: null, error: `license: ${licValid.reason}` }, { status: 400 });
-    }
+    let licPath: string | undefined;
     const bucket = 'therapist-documents';
-    const licExt = getFileExtension(license.name || '', license.type);
-    const licPath = `therapists/${id}/license-${Date.now()}${licExt}`;
-    const licBuf = await fileToBuffer(license);
-    const { error: upLicErr } = await supabaseServer.storage
-      .from(bucket)
-      .upload(licPath, licBuf, { contentType: license.type, upsert: false });
-    if (upLicErr) {
-      await logError('api.therapists.documents', upLicErr, { stage: 'upload_license', therapist_id: id, path: licPath }, ip, ua);
-      return NextResponse.json({ data: null, error: 'Failed to upload document' }, { status: 500 });
+    if (license instanceof File && license.size > 0) {
+      const licValid = isValidUpload(license);
+      if (!licValid.ok) {
+        return NextResponse.json({ data: null, error: `license: ${licValid.reason}` }, { status: 400 });
+      }
+      const licExt = getFileExtension(license.name || '', license.type);
+      licPath = `therapists/${id}/license-${Date.now()}${licExt}`;
+      const licBuf = await fileToBuffer(license);
+      const { error: upLicErr } = await supabaseServer.storage
+        .from(bucket)
+        .upload(licPath, licBuf, { contentType: license.type, upsert: false });
+      if (upLicErr) {
+        await logError('api.therapists.documents', upLicErr, { stage: 'upload_license', therapist_id: id, path: licPath }, ip, ua);
+        return NextResponse.json({ data: null, error: 'Failed to upload document' }, { status: 500 });
+      }
     }
 
     // Validate and upload specialization certs (optional)
@@ -108,9 +126,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     // Merge metadata.documents
-    function isObject(v: unknown): v is Record<string, unknown> {
-      return typeof v === 'object' && v !== null;
-    }
     const metadata = (therapist as { metadata?: unknown }).metadata;
     const metaObj: Record<string, unknown> = isObject(metadata) ? (metadata as Record<string, unknown>) : {};
     const docsUnknown = (metaObj as { documents?: unknown }).documents;
@@ -118,7 +133,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       ? (docsUnknown as { license?: string; specialization?: Record<string, string[]> })
       : {};
 
-    docs.license = licPath;
+    if (licPath) docs.license = licPath;
     const spec = docs.specialization || {};
     spec.uncategorized = [...(spec.uncategorized || []), ...specPaths];
     docs.specialization = spec;

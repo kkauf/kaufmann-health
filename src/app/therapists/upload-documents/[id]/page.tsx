@@ -28,7 +28,10 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const metadata = isObject(metaUnknown) ? (metaUnknown as Record<string, unknown>) : {};
   const docsUnknown = (metadata as { documents?: unknown }).documents;
   const documents = isObject(docsUnknown) ? (docsUnknown as Record<string, unknown>) : {};
-  const hasLicense = typeof documents.license === 'string' && (documents.license as string).length > 0;
+  const hasLicense = typeof (documents as { license?: unknown }).license === 'string' && Boolean((documents as { license?: string }).license);
+  const specialization = (documents as { specialization?: Record<string, string[]> }).specialization || {};
+  const certCount = Object.values(specialization).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+  const hasCert = certCount > 0;
 
   const name = [
     (row as { first_name?: string }).first_name || '',
@@ -41,22 +44,31 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       {name ? (
         <p className="mt-2 text-sm text-gray-700">Therapeut/in: {name}</p>
       ) : null}
-      {hasLicense ? (
+      {!hasLicense ? (
+        <>
+          <p className="mt-4 text-sm text-gray-700">
+            Bitte laden Sie zuerst Ihre staatliche Psychotherapie-Berechtigung hoch. PDF oder Bilddatei, maximal 4MB pro Datei.
+          </p>
+          <div className="mt-6">
+            <UploadForm therapistId={id} mode="license" />
+          </div>
+        </>
+      ) : !hasCert ? (
+        <>
+          <p className="mt-4 text-sm text-gray-700">
+            Danke. Als nächstes laden Sie bitte mindestens ein Abschlusszertifikat Ihrer Therapieverfahren hoch (je Datei max. 4MB).
+          </p>
+          <div className="mt-6">
+            <UploadForm therapistId={id} mode="certs" />
+          </div>
+        </>
+      ) : (
         <div className="mt-6 rounded-lg border bg-white p-4">
-          <p className="text-sm text-gray-700">Ihre Zulassung als Psychotherapeut ist bereits hinterlegt. Zusätzliche Zertifikate können Sie später nachreichen.</p>
+          <p className="text-sm text-gray-700">Ihre Zulassung und mindestens ein Zertifikat sind hinterlegt.</p>
           <p className="text-sm text-gray-700 mt-2">
             Nächster Schritt: <a className="underline" href={`/therapists/complete-profile/${id}`}>Profil vervollständigen</a>
           </p>
         </div>
-      ) : (
-        <>
-          <p className="mt-4 text-sm text-gray-700">
-            Bitte laden Sie Ihre staatliche Psychotherapie-Berechtigung hoch. PDF oder Bilddatei, maximal 10MB pro Datei. Zertifikate sind optional und können später nachgereicht werden.
-          </p>
-          <div className="mt-6">
-            <UploadForm therapistId={id} />
-          </div>
-        </>
       )}
     </main>
   );

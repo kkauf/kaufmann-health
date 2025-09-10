@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const ALLOWED_PHOTO_TYPES = new Set(['image/jpeg', 'image/png']);
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4MB
 
 function getFileExtension(fileName: string, contentType: string): string {
   if (contentType === 'image/jpeg') return '.jpg';

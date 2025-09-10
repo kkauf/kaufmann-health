@@ -27,16 +27,17 @@
 
 ## POST /api/therapists/:id/documents
 
-- __Purpose__: Step 2 of the two-step flow (EARTH-129). Upload required verification documents after signup (email link).
+- __Purpose__: Step 2 of the two-step flow (EARTH-129). Upload required verification documents after signup (email link). The flow is split to respect serverless body limits and ensure at least one specialization certificate is provided.
 - __Auth__: None (access via emailed link). The endpoint validates that the therapist exists and is in `pending_verification`; otherwise returns 404 to avoid information leaks.
 - __Content-Type__: `multipart/form-data`
 - __Path Param__:
   - `:id` — therapist UUID returned from `/api/leads` (therapist JSON or multipart path)
-- __Required fields__:
-  - `psychotherapy_license`: one document proving qualification. Formats: PDF, JPG, PNG. Max 10MB.
+- __Two-step requirement__:
+  - Step 2a (license): `psychotherapy_license` is required first (PDF/JPG/PNG, max 4MB).
+  - Step 2b (certificates): At least one `specialization_cert` is required next (PDF/JPG/PNG, each max 4MB). Upload one file at a time if needed.
+  - API behavior: If a license is already on file, the endpoint accepts certificate-only uploads. If no license exists and only certificates are provided, the endpoint returns 400 (`License must be uploaded first`).
 - __Optional fields__:
-  - `specialization_cert`: zero or more modality certificates. Multiple files allowed (send multiple fields of the same name). Formats: PDF, JPG, PNG. Max 10MB each.
-  - `profile_photo`: JPEG or PNG, max 5MB. Stored pending review.
+  - `profile_photo`: JPEG or PNG, max 4MB. Stored pending review.
   - `approach_text`: string, max 2000 chars.
 - __Storage__:
   - Documents are stored in private bucket `therapist-documents` under `therapists/<id>/...` and merged into `therapists.metadata.documents` as:
@@ -67,7 +68,10 @@
 ### Two-Step Flow (EARTH-129)
 - Step 1: `/api/therapists/:id/profile` (new, see below)
 - Step 2: `/api/therapists/:id/documents` (this endpoint)
-- The public page `/therapists/upload-documents/:id` renders the document upload form only when no license is present; otherwise it guides the user to complete their profile.
+- The public page `/therapists/upload-documents/:id` enforces the order:
+  - If no license on file → shows license upload.
+  - If license exists but no certificate → shows certificates upload (at least one required).
+  - If both present → shows completion message and next step.
 
 ## POST /api/therapists/:id/profile
 
@@ -81,7 +85,7 @@
   - `city?`: string
   - `accepting_new?`: boolean (JSON) or `'true'|'false'` (form)
   - `approach_text?`: string (max 2000)
-  - `profile_photo?`: JPEG/PNG (max 5MB). Stored pending approval.
+  - `profile_photo?`: JPEG/PNG (max 4MB). Stored pending approval.
 - __Storage__:
   - `profile_photo` is stored in private bucket `therapist-applications` under `applications/<id>/profile-photo-<ts>.(jpg|png)`
   - `approach_text` and `photo_pending_path` are merged into `therapists.metadata.profile`
@@ -93,13 +97,13 @@
 
 ### Therapist uploads (multipart)
 - __Content-Type__: `multipart/form-data`
-- __Required files__:
-  - `license`: one document proving qualification. Accepted: Psychologischer Psychotherapeut (approbiert), Heilpraktiker für Psychotherapie, Großer Heilpraktiker. Formats: PDF, JPG, PNG. Max 10MB.
-  - `specialization_cert_{slug}`: at least one certificate per selected specialization.
+- __Required files (flow-enforced)__:
+  - License first: one document proving qualification. Accepted: Psychologischer Psychotherapeut (approbiert), Heilpraktiker für Psychotherapie, Großer Heilpraktiker. Formats: PDF, JPG, PNG. Max 4MB.
+  - Then at least one specialization certificate (per selected specialization as available). UI sends `specialization_cert` fields; server stores under `documents.specialization`.
     - Supported slugs: `narm`, `core-energetics`, `hakomi`, `somatic-experiencing`
     - Multiple files allowed per slug (send multiple fields of the same name)
 - __Optional profile fields__ (EARTH-116):
-  - `profile_photo`: JPEG or PNG, max 5MB. Stored in private `therapist-applications` bucket under `applications/<therapist-id>/profile-photo-<ts>.(jpg|png)` pending admin review.
+  - `profile_photo`: JPEG or PNG, max 4MB. Stored in private `therapist-applications` bucket under `applications/<therapist-id>/profile-photo-<ts>.(jpg|png)` pending admin review.
   - `approach_text`: string, max 2000 chars. Stored in `therapists.metadata.profile.approach_text`.
 - __Behavior__: Files are stored in the private Supabase Storage bucket `therapist-documents`. The API stores storage paths under `therapists.metadata.documents`:
   ```json

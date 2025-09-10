@@ -21,6 +21,7 @@ type Props = {
 };
 
 export default function ProfileForm({ therapistId, showGender, showCity, showAcceptingNew, showApproachText, showProfilePhoto, defaults }: Props) {
+  const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4MB
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -88,10 +89,24 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
       if (!showApproachText) form.delete('approach_text'); else form.set('approach_text', approach);
       if (!showProfilePhoto) form.delete('profile_photo');
 
+      // Client-side size validation to avoid server 413
+      if (showProfilePhoto) {
+        const input = (e.currentTarget.querySelector('#profile_photo') as HTMLInputElement | null);
+        const file = input?.files?.[0];
+        if (file && file.size > MAX_PHOTO_BYTES) {
+          setMessage('Profilfoto zu groß (max. 4MB). Bitte reduzieren Sie die Dateigröße.');
+          setLoading(false);
+          return;
+        }
+      }
+
       const res = await fetch(`/api/therapists/${therapistId}/profile`, {
         method: 'POST',
         body: form,
       });
+      if (res.status === 413) {
+        throw new Error('Profilfoto zu groß (max. 4MB). Bitte reduzieren Sie die Dateigröße.');
+      }
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || 'Speichern fehlgeschlagen');
       setSubmitted(true);
@@ -187,7 +202,7 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
 
         {showProfilePhoto && (
           <div className="space-y-2">
-            <Label htmlFor="profile_photo">Profilfoto (JPG/PNG, max 5MB)</Label>
+            <Label htmlFor="profile_photo">Profilfoto (JPG/PNG, max. 4MB)</Label>
             <Input id="profile_photo" name="profile_photo" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" onChange={onPhotoChange} />
             {photoPreview && (
               <div className="mt-2">

@@ -16,7 +16,22 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
   if (!row) return notFound();
   const status = (row as { status?: string }).status || 'pending_verification';
-  if (status !== 'pending_verification') return notFound();
+  if (status !== 'pending_verification') {
+    // Do not 404 to avoid confusion when therapists revisit the email link later.
+    // Keep the content generic to avoid information leakage.
+    return (
+      <main className="mx-auto max-w-3xl px-4 py-8">
+        <h1 className="text-2xl font-semibold">Profil vervollständigen</h1>
+        <div className="mt-6 rounded-lg border bg-white p-4">
+          <p className="text-sm">Dieser Link ist nicht mehr aktiv oder Ihr Profil wurde bereits bearbeitet.</p>
+          <p className="text-sm mt-2">
+            Wenn Sie Unterstützung benötigen, schreiben Sie uns bitte an{' '}
+            <a className="underline" href="mailto:hallo@kaufmann-health.de">hallo@kaufmann-health.de</a>.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   function isObject(v: unknown): v is Record<string, unknown> { return typeof v === 'object' && v !== null; }
   const meta = (row as { metadata?: unknown }).metadata;
