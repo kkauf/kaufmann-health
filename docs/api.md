@@ -292,7 +292,7 @@ __Notes__:
 - __Behavior__:
   - Computes missing items: `documents` (license), `photo` (pending path), `approach` (text), and basic profile fields (`gender`, `city`, `accepting_new`).
   - Chooses CTA link dynamically (EARTH-129 two-step flow):
-    - If only `documents` are missing → link to `/therapists/upload-documents/:id` and subject "Lizenz‑Nachweis ausstehend".
+    - If only `documents` are missing → link to `/therapists/upload-documents/:id` and subject "Zulassungs‑Nachweis ausstehend".
     - If `photo` or `approach` or basic fields missing → link to `/therapists/complete-profile/:id` and subject "Profil vervollständigen" (or "Profilbild fehlt noch" when only photo is missing).
 - __Response__:
   - 200: `{ data: { ok: true }, error: null }`

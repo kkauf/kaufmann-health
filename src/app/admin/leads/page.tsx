@@ -103,6 +103,8 @@ export default function AdminLeadsPage() {
 
   // Patients with an active/ongoing match should be visually de-prioritized and sorted to bottom
   const [deprioritizedPatients, setDeprioritizedPatients] = useState<Set<string>>(new Set());
+  // Proposed match counts per patient (for selection email CTA)
+  const [proposedCounts, setProposedCounts] = useState<Record<string, number>>({});
 
   // Match modal state
   const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
@@ -140,17 +142,21 @@ export default function AdminLeadsPage() {
       const active = new Set(['accepted', 'therapist_contacted', 'therapist_responded', 'session_booked', 'completed']);
       const leadIds = new Set(leadList.map((p) => p.id));
       const s = new Set<string>();
+      const counts: Record<string, number> = {};
       const arr = Array.isArray(json?.data) ? json.data : [];
       for (const m of arr) {
         const pid = (m?.patient?.id ?? '') as string;
         const st = (m?.status ?? '') as string;
-        if (pid && leadIds.has(pid) && active.has(st)) {
-          s.add(pid);
+        if (pid && leadIds.has(pid)) {
+          if (active.has(st)) s.add(pid);
+          if (st === 'proposed') counts[pid] = (counts[pid] || 0) + 1;
         }
       }
       setDeprioritizedPatients(s);
+      setProposedCounts(counts);
     } catch {
       setDeprioritizedPatients(new Set());
+      setProposedCounts({});
     }
   }, []);
 
@@ -371,6 +377,26 @@ export default function AdminLeadsPage() {
       try { track('Match Created'); } catch {}
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Kontaktierung fehlgeschlagen';
+      setMessage(msg);
+    }
+  }
+
+  async function sendSelectionEmail() {
+    if (!selectedPatient) return;
+    try {
+      setMessage(null);
+      const res = await fetch('/admin/api/matches/email', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ template: 'selection', patient_id: selectedPatient.id }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'E-Mail-Versand fehlgeschlagen');
+      setMessage('Auswahl-E-Mail gesendet');
+      try { track('Selection Email Sent'); } catch {}
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'E-Mail-Versand fehlgeschlagen';
       setMessage(msg);
     }
   }
@@ -656,6 +682,18 @@ export default function AdminLeadsPage() {
           {therError && <p className="text-sm text-red-600 mb-2">{therError}</p>}
           {cityOmittedForOnline && (
             <p className="text-xs text-gray-500 mb-2">Hinweis: Online-Präferenz – Stadtfilter derzeit deaktiviert. Zum Eingrenzen bitte eine Stadt eingeben.</p>
+          )}
+
+          {/* Selection email CTA when patient already has 2–3 proposed matches */}
+          {selectedPatient && (proposedCounts[selectedPatient.id] || 0) >= 2 && (proposedCounts[selectedPatient.id] || 0) <= 3 && (
+            <div className="mb-2 flex items-center justify-between sticky top-0 z-10 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b px-2 py-1 rounded">
+              <div className="text-sm text-gray-700">Bereits vorgeschlagen: {proposedCounts[selectedPatient.id]} / 3</div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={sendSelectionEmail} disabled={!selectedPatient}>
+                  Auswahl-E-Mail senden
+                </Button>
+              </div>
+            </div>
           )}
 
           {/* Batch actions */}

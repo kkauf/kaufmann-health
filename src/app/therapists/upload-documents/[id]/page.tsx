@@ -43,7 +43,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       ) : null}
       {hasLicense ? (
         <div className="mt-6 rounded-lg border bg-white p-4">
-          <p className="text-sm text-gray-700">Ihre Lizenz ist bereits hinterlegt. Zusätzliche Zertifikate können Sie später nachreichen.</p>
+          <p className="text-sm text-gray-700">Ihre Zulassung als Psychotherapeut ist bereits hinterlegt. Zusätzliche Zertifikate können Sie später nachreichen.</p>
           <p className="text-sm text-gray-700 mt-2">
             Nächster Schritt: <a className="underline" href={`/therapists/complete-profile/${id}`}>Profil vervollständigen</a>
           </p>

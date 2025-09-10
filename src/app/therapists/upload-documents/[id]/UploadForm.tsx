@@ -88,7 +88,7 @@ export default function UploadForm({ therapistId }: Props) {
             variant="secondary"
             onClick={() => {
               setSubmitted(true);
-              setMessage("Sie können die Dokumente später hochladen. Die Profilprüfung startet erst nach Eingang der Lizenz.");
+              setMessage("Sie können die Dokumente später hochladen. Die Profilprüfung startet erst nach Eingang der Zulassung als Psychotherapeut.");
               requestAnimationFrame(() => {
                 statusRef.current?.focus();
                 statusRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });

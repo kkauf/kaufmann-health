@@ -116,7 +116,7 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
       {submitted ? (
         <div ref={statusRef} tabIndex={-1} className="rounded-lg border bg-white p-4 mb-6" aria-live="polite">
           <h2 className="text-lg font-semibold">Profil aktualisiert</h2>
-          <p className="text-sm text-gray-700 mt-2">Ihr Profil ist jetzt fast fertig. Als nächstes laden Sie bitte Ihre Lizenz hoch.</p>
+          <p className="text-sm text-gray-700 mt-2">Ihr Profil ist jetzt fast fertig. Als nächstes laden Sie bitte Ihre Zulassung als Psychotherapeut hoch.</p>
           <div className="mt-3">
             <a className="underline" href={`/therapists/upload-documents/${therapistId}`}>Weiter: Dokumente hochladen</a>
           </div>
