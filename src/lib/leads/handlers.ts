@@ -274,7 +274,7 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
       void logError('api.leads', contractErr, { stage: 'insert_contract', id: therapistId }, ip, ua);
     }
     const isActiveCity = ACTIVE_CITIES.has((city || '').toLowerCase());
-    const uploadUrl = `${BASE_URL}/therapists/upload-documents/${therapistId}`;
+    const uploadUrl = `${BASE_URL}/therapists/complete-profile/${therapistId}`;
     const welcome = renderTherapistWelcome({ name: data.name, city, isActiveCity, termsVersion: TERMS_VERSION, uploadUrl });
     void track({ type: 'email_attempted', level: 'info', source: 'api.leads', ip, ua, props: { stage: 'therapist_welcome', lead_id: therapistId, lead_type: 'therapist', subject: welcome.subject, ...(session_id ? { session_id } : {}) } });
     await sendEmail({ to: data.email, subject: welcome.subject, html: welcome.html, context: { stage: 'therapist_welcome', lead_id: therapistId, lead_type: 'therapist', ...(session_id ? { session_id } : {}) } });

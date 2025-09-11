@@ -613,7 +613,8 @@ export default function AdminTherapistsPage() {
                           </a>
                         </div>
                         {/* Admin upload controls for documents */}
-                        <details className="mt-3 rounded-md border bg-gray-50 open:bg-white">
+                        {detail.status === "pending_verification" ? (
+                          <details className="mt-3 rounded-md border bg-gray-50 open:bg-white">
                           <summary className="cursor-pointer px-3 py-2 text-sm font-medium">Dateien hochladen (optional)</summary>
                           <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div className="space-y-1">
@@ -669,7 +670,12 @@ export default function AdminTherapistsPage() {
                               </Button>
                             </div>
                           </div>
-                        </details>
+                          </details>
+                        ) : (
+                          <p className="mt-2 text-xs text-gray-500">
+                            Dokument-Uploads sind nur im Status <strong>Ausstehend</strong> möglich.
+                          </p>
+                        )}
                       </div>
 
                       {/* Profile Photo (pending/public) */}
@@ -689,47 +695,53 @@ export default function AdminTherapistsPage() {
                             ) : (
                               <div className="text-xs text-gray-500">Kein ausstehendes Foto</div>
                             )}
-                            <details className="mt-2 rounded-md border bg-gray-50 open:bg-white">
-                              <summary className="cursor-pointer px-2 py-1 text-sm font-medium">Foto hochladen</summary>
-                              <div className="p-2">
-                                <Label htmlFor="profilePhoto">Profilfoto hochladen (JPG/PNG)</Label>
-                                <input
-                                  id="profilePhoto"
-                                  type="file"
-                                  accept="image/jpeg,image/png"
-                                  onChange={(e) => setProfilePhotoFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
-                                />
-                                <div className="mt-1">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    disabled={updating || !profilePhotoFile}
-                                    onClick={async () => {
-                                      if (!detail?.id || !profilePhotoFile) return;
-                                      try {
-                                        setUpdating(true);
-                                        setMessage(null);
-                                        const fd = new FormData();
-                                        fd.append('profile_photo', profilePhotoFile);
-                                        const res = await fetch(`/api/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
-                                        const json = await res.json();
-                                        if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
-                                        setMessage('Profilfoto hochgeladen');
-                                        setProfilePhotoFile(null);
-                                        await openDetail(detail.id);
-                                      } catch (e) {
-                                        const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
-                                        setMessage(msg);
-                                      } finally {
-                                        setUpdating(false);
-                                      }
-                                    }}
-                                  >
-                                    Foto hochladen
-                                  </Button>
+                            {detail.status === "pending_verification" ? (
+                              <details className="mt-2 rounded-md border bg-gray-50 open:bg-white">
+                                <summary className="cursor-pointer px-2 py-1 text-sm font-medium">Foto hochladen</summary>
+                                <div className="p-2">
+                                  <Label htmlFor="profilePhoto">Profilfoto hochladen (JPG/PNG)</Label>
+                                  <input
+                                    id="profilePhoto"
+                                    type="file"
+                                    accept="image/jpeg,image/png"
+                                    onChange={(e) => setProfilePhotoFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
+                                  />
+                                  <div className="mt-1">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={updating || !profilePhotoFile}
+                                      onClick={async () => {
+                                        if (!detail?.id || !profilePhotoFile) return;
+                                        try {
+                                          setUpdating(true);
+                                          setMessage(null);
+                                          const fd = new FormData();
+                                          fd.append('profile_photo', profilePhotoFile);
+                                          const res = await fetch(`/api/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
+                                          const json = await res.json();
+                                          if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
+                                          setMessage('Profilfoto hochgeladen');
+                                          setProfilePhotoFile(null);
+                                          await openDetail(detail.id);
+                                        } catch (e) {
+                                          const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
+                                          setMessage(msg);
+                                        } finally {
+                                          setUpdating(false);
+                                        }
+                                      }}
+                                    >
+                                      Foto hochladen
+                                    </Button>
+                                  </div>
                                 </div>
-                              </div>
-                            </details>
+                              </details>
+                            ) : (
+                              <p className="mt-2 text-xs text-gray-500">
+                                Foto-Uploads sind nur im Status <strong>Ausstehend</strong> möglich.
+                              </p>
+                            )}
                           </div>
                           <div className="border rounded-md p-2">
                             <div className="text-xs text-gray-600 mb-1">Veröffentlicht</div>
