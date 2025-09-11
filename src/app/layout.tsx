@@ -5,6 +5,8 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import NoCookieToast from "@/components/NoCookieToast";
 import AnalyticsProvider from "@/components/AnalyticsProvider";
+import Script from "next/script";
+import { COOKIES_ENABLED } from "@/lib/config";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -73,6 +75,31 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
+        {process.env.NEXT_PUBLIC_GOOGLE_ADS_ID ? (
+          <>
+            <Script id="gtag-init" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('consent', 'default', {
+                  'ad_storage': '${COOKIES_ENABLED ? "granted" : "denied"}',
+                  'analytics_storage': 'denied',
+                  'ad_user_data': 'denied',
+                  'ad_personalization': 'denied'
+                });
+                gtag('js', new Date());
+                gtag('config', '${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}', {
+                  'allow_ad_personalization_signals': false,
+                  ${COOKIES_ENABLED ? "'conversion_linker': true" : "'url_passthrough': true"}
+                });
+              `}
+            </Script>
+            <Script
+              strategy="afterInteractive"
+              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}`}
+            />
+          </>
+        ) : null}
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-gray-900 focus:px-3 focus:py-2 focus:text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-900">
           Zum Inhalt springen
         </a>
@@ -80,7 +107,7 @@ export default function RootLayout({
         <main id="main" className="flex-1">{children}</main>
         <Footer />
         <AnalyticsProvider />
-        <NoCookieToast />
+        {!COOKIES_ENABLED && <NoCookieToast />}
       </body>
     </html>
   );

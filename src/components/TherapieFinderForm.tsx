@@ -145,6 +145,35 @@ export default function TherapieFinderForm() {
       setSubmittedEmail(email);
       // High-level conversion tracking (cookieless)
       try { track('Lead Submitted'); } catch {}
+      // Minimal Google Ads conversion signal (no PII, consent denied by default)
+      try {
+        if (
+          typeof window !== 'undefined' &&
+          process.env.NEXT_PUBLIC_GOOGLE_ADS_ID &&
+          process.env.NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL
+        ) {
+          type GtagEventParams = {
+            send_to: string;
+            value: number;
+            currency: 'EUR';
+            transaction_id: string;
+          };
+          type Gtag = (
+            command: 'event',
+            action: 'conversion',
+            params: GtagEventParams
+          ) => void;
+          const g = (window as Window & { gtag?: Gtag }).gtag;
+          if (g) {
+            g('event', 'conversion', {
+              send_to: `${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}/${process.env.NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL}`,
+              value: 1.0,
+              currency: 'EUR',
+              transaction_id: ''
+            });
+          }
+        }
+      } catch {}
       requestAnimationFrame(() => {
         statusRef.current?.focus();
         statusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
