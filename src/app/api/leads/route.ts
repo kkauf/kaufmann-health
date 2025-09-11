@@ -156,9 +156,9 @@ async function handleTherapistMultipart(req: Request) {
     .filter((s): s is 'online' | 'in_person' => s === 'online' || s === 'in_person');
   const specializations = normalizeSpecializations(form.getAll('specializations') || []);
   const approachTextRaw = form.get('approach_text')?.toString();
-  if (approachTextRaw && approachTextRaw.length > 2000) {
+  if (approachTextRaw && approachTextRaw.length > 500) {
     return NextResponse.json(
-      { data: null, error: 'approach_text too long (max 2000 chars)' },
+      { data: null, error: 'approach_text too long (max 500 chars)' },
       { status: 400, headers: { 'Cache-Control': 'no-store' } },
     );
   }

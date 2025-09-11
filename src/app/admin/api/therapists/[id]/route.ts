@@ -112,8 +112,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (status && !['pending_verification', 'verified', 'rejected'].includes(status)) {
       return NextResponse.json({ data: null, error: 'Invalid status' }, { status: 400 });
     }
-    if (approach_text && approach_text.length > 2000) {
-      return NextResponse.json({ data: null, error: 'approach_text too long (max 2000 chars)' }, { status: 400 });
+    if (approach_text && approach_text.length > 500) {
+      return NextResponse.json({ data: null, error: 'approach_text too long (max 500 chars)' }, { status: 400 });
     }
 
     const update: Record<string, unknown> = {};

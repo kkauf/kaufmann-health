@@ -60,7 +60,7 @@ export async function GET(req: Request) {
 
     let query = supabaseServer
       .from('therapists')
-      .select('id, first_name, last_name, email, phone, gender, city, session_preferences, modalities, accepting_new, status, created_at')
+      .select('id, first_name, last_name, email, phone, gender, city, session_preferences, modalities, accepting_new, status, created_at, metadata, photo_url')
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -97,6 +97,8 @@ export async function GET(req: Request) {
       accepting_new?: boolean | null;
       status?: 'pending_verification' | 'verified' | 'rejected' | null;
       created_at?: string | null;
+      metadata?: unknown;
+      photo_url?: string | null;
     };
     let rows = (data || []) as Row[];
 
@@ -118,8 +120,29 @@ export async function GET(req: Request) {
       });
     }
 
+    function isObject(v: unknown): v is Record<string, unknown> {
+      return typeof v === 'object' && v !== null;
+    }
+
     const result = rows.map((r) => {
       const name = [r.first_name || '', r.last_name || ''].join(' ').trim() || null;
+      const md = isObject((r as Row).metadata) ? ((r as Row).metadata as Record<string, unknown>) : {};
+      const profileVal = (md as Record<string, unknown>)['profile'];
+      const profileMeta = isObject(profileVal) ? (profileVal as Record<string, unknown>) : {};
+      const has_photo_pending = typeof profileMeta.photo_pending_path === 'string' && !!String(profileMeta.photo_pending_path);
+      const has_approach_text = typeof profileMeta.approach_text === 'string' && String(profileMeta.approach_text).trim().length > 0;
+      const has_photo_public = typeof (r as Row).photo_url === 'string' && !!(r as Row).photo_url;
+      const documentsVal = (md as Record<string, unknown>)['documents'];
+      const documentsObj = isObject(documentsVal) ? (documentsVal as Record<string, unknown>) : {};
+      const has_license_doc = typeof documentsObj.license === 'string' && String(documentsObj.license).length > 0;
+      let has_specialization_docs = false;
+      const specVal = documentsObj.specialization;
+      if (isObject(specVal)) {
+        for (const v of Object.values(specVal as Record<string, unknown>)) {
+          if (Array.isArray(v) && v.length > 0) { has_specialization_docs = true; break; }
+        }
+      }
+      const requires_action = Boolean(has_license_doc || has_specialization_docs || has_photo_pending || has_approach_text);
       const metadata = {
         city: r.city || undefined,
         session_preferences: Array.isArray(r.session_preferences)
@@ -139,6 +162,16 @@ export async function GET(req: Request) {
         status: r.status || 'pending_verification',
         metadata,
         created_at: r.created_at || null,
+        profile: {
+          has_photo_pending,
+          has_photo_public,
+          has_approach_text,
+        },
+        documents: {
+          has_license_doc,
+          has_specialization_docs,
+        },
+        requires_action,
       };
     });
 

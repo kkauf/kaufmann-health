@@ -5,8 +5,11 @@ import { supabaseServer } from '@/lib/supabase-server';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export default async function Page(props: { params: Promise<{ id: string }> }) {
+export default async function Page(props: { params: Promise<{ id: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await props.params;
+  const sp = (await (props.searchParams || Promise.resolve({}))) as Record<string, string | string[] | undefined>;
+  const stepRaw = sp?.['step'];
+  const step = Array.isArray(stepRaw) ? stepRaw[0] : stepRaw;
 
   // Basic validation: therapist must exist and be in pending state
   const { data: row } = await supabaseServer
@@ -38,13 +41,15 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     (row as { last_name?: string }).last_name || '',
   ].join(' ').trim();
 
+  const forceCertsStep = step === 'certs';
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="text-2xl font-semibold">Dokumente hochladen</h1>
       {name ? (
         <p className="mt-2 text-sm text-gray-700">Therapeut/in: {name}</p>
       ) : null}
-      {!hasLicense ? (
+      {!hasLicense && !forceCertsStep ? (
         <>
           <p className="mt-4 text-sm text-gray-700">
             Bitte laden Sie zuerst Ihre staatliche Psychotherapie-Berechtigung hoch. PDF oder Bilddatei, maximal 4MB pro Datei.

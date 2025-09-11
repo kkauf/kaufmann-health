@@ -124,7 +124,7 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
     }
   }, [therapistId, showGender, showCity, showAcceptingNew, showApproachText, showProfilePhoto, gender, city, acceptingNew, approach, storageKey]);
 
-  const remaining = 2000 - approach.length;
+  const remaining = 500 - approach.length;
 
   return (
     <div className="max-w-2xl">
@@ -179,14 +179,14 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
               id="approach_text"
               name="approach_text"
               rows={6}
-              maxLength={2000}
+              maxLength={500}
               value={approach}
               onChange={(e) => setApproach(e.target.value)}
               placeholder="Beschreiben Sie Ihren therapeutischen Ansatz und wie Sie mit Klient:innen arbeiten..."
               className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg/input/30 border-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
             />
             <div className="text-xs text-gray-500 flex items-center justify-between">
-              <span>Max. 2000 Zeichen</span>
+              <span>Max. 500 Zeichen</span>
               <span>{remaining} Zeichen verbleibend</span>
             </div>
             <div className="text-xs text-gray-600">
