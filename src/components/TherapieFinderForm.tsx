@@ -168,7 +168,7 @@ export default function TherapieFinderForm() {
           if (g) {
             g('event', 'conversion', {
               send_to: `${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}/${process.env.NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL}`,
-              value: 1.0,
+              value: 10.0,
               currency: 'EUR',
               transaction_id: ''
             });

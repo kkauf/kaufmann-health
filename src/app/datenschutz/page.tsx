@@ -1,3 +1,5 @@
+import { COOKIES_ENABLED } from '@/lib/config';
+
 export default function DatenschutzPage() {
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
@@ -18,7 +20,15 @@ export default function DatenschutzPage() {
                 oder sonstige Auftragsanfragen.
               </p>
               <p>
-                Auf dieser Website verwenden wir server-seitiges Tracking ohne Cookies. Details finden Sie in den nachfolgenden Abschnitten.
+                {COOKIES_ENABLED ? (
+                  <>
+                    Auf dieser Website setzen wir keine Analytics‑Cookies. Für die Zuordnung von Werbeklicks zu erfolgreichen Formularsendungen kann ein First‑Party‑Cookie (Google Ads Conversion Linker) gesetzt werden. Details finden Sie in den nachfolgenden Abschnitten.
+                  </>
+                ) : (
+                  <>
+                    Auf dieser Website verwenden wir server‑seitiges Tracking ohne Cookies. Details finden Sie in den nachfolgenden Abschnitten.
+                  </>
+                )}
               </p>
             </div>
           </section>
@@ -156,8 +166,16 @@ export default function DatenschutzPage() {
                 <h3 id="cookies" className="font-medium">Tracking und Cookies</h3>
                 <div className="mt-2 space-y-2">
                   <p>
-                    Wir setzen auf dieser Website keine Tracking-Cookies. Zur Erfolgsmessung unserer Werbung verwenden wir server-seitige Technologien ohne Cookies auf Ihrem Gerät.
+                    {COOKIES_ENABLED
+                      ? 'Wir setzen keine Analytics‑Cookies. Für eine bessere Zuordnung von Werbeklicks zu erfolgreichen Formularsendungen kann ein First‑Party‑Cookie (Google Ads Conversion Linker) gesetzt werden.'
+                      : 'Wir setzen auf dieser Website keine Tracking‑Cookies. Zur Erfolgsmessung unserer Werbung verwenden wir server‑seitige Technologien ohne Cookies auf Ihrem Gerät.'}
                   </p>
+                  {COOKIES_ENABLED && (
+                    <p>
+                      Der Conversion‑Linker dient ausschließlich der werblichen Erfolgsmessung auf unserer eigenen Website. Es findet kein Cross‑Site‑Tracking statt und es werden keine personenbezogenen Nutzungsprofile erstellt. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse). Widerspruch per E‑Mail an{' '}
+                      <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="mailto:kontakt@kaufmann-health.de">kontakt@kaufmann-health.de</a>.
+                    </p>
+                  )}
                   <p>
                     Für kleine Komfortfunktionen (z. B. damit ein Hinweis pro Sitzung nur einmal erscheint) nutzen wir ggf. den lokalen Speicher
                     Ihres Browsers (<span className="font-mono">sessionStorage</span>/<span className="font-mono">localStorage</span>). Dabei werden keine personenbezogenen Profile erstellt,
@@ -321,11 +339,11 @@ export default function DatenschutzPage() {
 export const metadata = {
   title: "Datenschutzerklärung | Kaufmann Health",
   description:
-    "Datenschutzerklärung für Kaufmann Health – Therapeutenvermittlung und Kontaktherstellung, GDPR‑konforme Datenverarbeitung (ohne Tracking‑Cookies), Ihre Rechte und Widerrufsmöglichkeiten.",
+    "Datenschutzerklärung für Kaufmann Health – Therapeutenvermittlung und Kontaktherstellung, GDPR‑konforme Datenverarbeitung, Ihre Rechte und Widerrufsmöglichkeiten.",
   openGraph: {
     title: "Datenschutzerklärung | Kaufmann Health",
     description:
-      "Informationen zur Therapeutenvermittlung, Datenschutz ohne Tracking‑Cookies, Hosting und Ihren Betroffenenrechten.",
+      "Informationen zur Therapeutenvermittlung, Datenschutz, Hosting und Ihren Betroffenenrechten.",
     url: "https://kaufmann-health.de/datenschutz",
     siteName: "Kaufmann Health",
     locale: "de_DE",
