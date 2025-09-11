@@ -64,7 +64,7 @@ export async function GET(req: Request) {
     // Find patient selections in the 20h window
     const { data: events, error: evErr } = await supabaseServer
       .from('events')
-      .select('id, created_at, props')
+      .select('id, created_at, properties')
       .eq('type', 'patient_selected')
       .gte('created_at', fromIso)
       .lt('created_at', toIso)
@@ -75,7 +75,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ data: null, error: 'Failed to fetch events' }, { status: 500 });
     }
 
-    type EventRow = { id: string; created_at?: string | null; props?: Record<string, unknown> | null };
+    // Note: Column name is 'properties' in DB. Keep 'props' optional for compatibility with test mocks.
+    type EventRow = { id: string; created_at?: string | null; properties?: Record<string, unknown> | null; props?: Record<string, unknown> | null };
     const items = (events as EventRow[] | null) || [];
 
     // Collect match_ids
@@ -85,7 +86,11 @@ export async function GET(req: Request) {
       return typeof v === 'string' ? v : null;
     }
     for (const e of items) {
-      const p = e.props && typeof e.props === 'object' ? e.props : null;
+      const p = (e.properties && typeof e.properties === 'object'
+        ? e.properties
+        : e.props && typeof e.props === 'object'
+        ? e.props
+        : null);
       if (!p) continue;
       const mid = getStringProp(p, 'match_id');
       const m = (mid || '').trim();

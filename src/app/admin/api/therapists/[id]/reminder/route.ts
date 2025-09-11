@@ -49,7 +49,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     const { data: t, error } = await supabaseServer
       .from('therapists')
-      .select('id, status, first_name, last_name, email, gender, city, accepting_new, metadata')
+      .select('id, status, first_name, last_name, email, gender, city, accepting_new, photo_url, metadata')
       .eq('id', id)
       .single();
 
@@ -74,9 +74,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const profile = isObject(profileUnknown) ? (profileUnknown as Record<string, unknown>) : {};
     const hasPhotoPending = typeof profile.photo_pending_path === 'string' && (profile.photo_pending_path as string).length > 0;
     const hasApproach = typeof profile.approach_text === 'string' && (profile.approach_text as string).trim().length > 0;
+    const approvedPhoto = (t as { photo_url?: string | null }).photo_url || null;
+    const hasPhotoApproved = typeof approvedPhoto === 'string' && approvedPhoto.length > 0;
 
     const missingDocuments = !hasLicense; // specialization optional by business rule
-    const missingPhoto = !hasPhotoPending; // until approved
+    const missingPhoto = !(hasPhotoApproved || hasPhotoPending); // either approved or pending satisfies
     const missingApproach = !hasApproach;
 
     // If nothing missing, skip

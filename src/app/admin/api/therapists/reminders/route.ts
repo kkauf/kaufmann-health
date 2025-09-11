@@ -85,7 +85,7 @@ export async function GET(req: Request) {
     // Fetch therapists pending verification (reuse logic from POST)
     const initial = await supabaseServer
       .from('therapists')
-      .select('id, status, first_name, last_name, email, gender, city, accepting_new, metadata')
+      .select('id, status, first_name, last_name, email, gender, city, accepting_new, photo_url, metadata')
       .eq('status', 'pending_verification')
       .limit(limit);
 
@@ -137,9 +137,11 @@ export async function GET(req: Request) {
       const profile = isObject(profileUnknown) ? (profileUnknown as Record<string, unknown>) : {};
       const hasPhotoPending = typeof profile.photo_pending_path === 'string' && (profile.photo_pending_path as string).length > 0;
       const hasApproach = typeof profile.approach_text === 'string' && (profile.approach_text as string).trim().length > 0;
+      const approvedPhoto = (t as { photo_url?: string | null }).photo_url || null;
+      const hasPhotoApproved = typeof approvedPhoto === 'string' && approvedPhoto.length > 0;
 
       const missingDocuments = !hasLicense;
-      const missingPhoto = !hasPhotoPending;
+      const missingPhoto = !(hasPhotoApproved || hasPhotoPending);
       const missingApproach = !hasApproach;
 
       if (!missingDocuments && !missingPhoto && !missingApproach) {
@@ -291,7 +293,7 @@ export async function POST(req: Request) {
     // Fetch therapists pending verification
     const initial = await supabaseServer
       .from('therapists')
-      .select('id, status, first_name, last_name, email, gender, city, accepting_new, metadata')
+      .select('id, status, first_name, last_name, email, gender, city, accepting_new, photo_url, metadata')
       .eq('status', 'pending_verification')
       .limit(limit);
 
@@ -344,9 +346,10 @@ export async function POST(req: Request) {
       const profile = isObject(profileUnknown) ? (profileUnknown as Record<string, unknown>) : {};
       const hasPhotoPending = typeof profile.photo_pending_path === 'string' && (profile.photo_pending_path as string).length > 0;
       const hasApproach = typeof profile.approach_text === 'string' && (profile.approach_text as string).trim().length > 0;
-
+      const approvedPhoto = (t as { photo_url?: string | null }).photo_url || null;
+      const hasPhotoApproved = typeof approvedPhoto === 'string' && approvedPhoto.length > 0;
       const missingDocuments = !hasLicense;
-      const missingPhoto = !hasPhotoPending;
+      const missingPhoto = !(hasPhotoApproved || hasPhotoPending);
       const missingApproach = !hasApproach;
 
       if (!missingDocuments && !missingPhoto && !missingApproach) {
