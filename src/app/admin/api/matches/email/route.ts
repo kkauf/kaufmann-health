@@ -89,6 +89,7 @@ export async function POST(req: Request) {
 
   try {
     let patient_id: string;
+    let selectionTherapistCount: number | undefined = undefined; // used for metadata hinting
     let m: Match | null = null;
     if (template === 'selection') {
       patient_id = String(body?.patient_id || '').trim();
@@ -170,6 +171,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ data: null, error: 'No therapists provided or found for selection' }, { status: 400 });
       }
       if (therapistIds.length > 3) therapistIds = therapistIds.slice(0, 3);
+      selectionTherapistCount = therapistIds.length;
 
       // Fetch therapist details
       type TherapistRow = {
@@ -289,6 +291,33 @@ export async function POST(req: Request) {
       text: content.text,
       context,
     });
+
+    // Mark selection email sent (best-effort) so Admin UI can highlight "done for now"
+    if (template === 'selection') {
+      try {
+        // Helper to merge JSON metadata
+        function isObject(v: unknown): v is Record<string, unknown> {
+          return typeof v === 'object' && v !== null && !Array.isArray(v);
+        }
+        const nowIso = new Date().toISOString();
+        const currentMetaRaw = (patient?.metadata ?? null) as unknown;
+        const currentMeta = isObject(currentMetaRaw) ? currentMetaRaw : {};
+        const nextMeta: Record<string, unknown> = {
+          ...currentMeta,
+          selection_email_sent_at: nowIso,
+        };
+        if (typeof selectionTherapistCount === 'number') {
+          nextMeta.selection_email_count = selectionTherapistCount;
+        }
+        await supabaseServer
+          .from('people')
+          .update({ metadata: nextMeta })
+          .eq('id', patient_id);
+      } catch (e) {
+        // Non-fatal, just log
+        await logError('admin.api.matches.email', e, { stage: 'mark_selection_sent', patient_id });
+      }
+    }
 
     return NextResponse.json({ data: { ok: true }, error: null }, { status: 200 });
   } catch (e) {

@@ -294,6 +294,8 @@ export default function AdminLeadsPage() {
       setMessage('Match erstellt');
       try { track('Match Created'); } catch {}
       closeMatchModal();
+      // Refresh proposed counts so Selection CTA appears without manual reload
+      void loadPatientMatchFlags(leads);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Match fehlgeschlagen';
       setModalError(msg);
@@ -353,6 +355,8 @@ export default function AdminLeadsPage() {
       if (!res.ok) throw new Error(json?.error || 'Match fehlgeschlagen');
       setMessage('Match erstellt');
       try { track('Match Created'); } catch {}
+      // Refresh proposed counts so Selection CTA appears without manual reload
+      void loadPatientMatchFlags(leads);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Match fehlgeschlagen';
       setMessage(message);
@@ -376,6 +380,8 @@ export default function AdminLeadsPage() {
       setMessage(`${ids.length} Kontakt${ids.length > 1 ? 'e' : ''} gestartet`);
       setSelectedTherapists(new Set());
       try { track('Match Created'); } catch {}
+      // Refresh proposed counts so Selection CTA appears without manual reload
+      void loadPatientMatchFlags(leads);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Kontaktierung fehlgeschlagen';
       setMessage(msg);
@@ -386,16 +392,47 @@ export default function AdminLeadsPage() {
     if (!selectedPatient) return;
     try {
       setMessage(null);
+      const patientId = selectedPatient.id;
+      const alreadyProposed = proposedCounts[patientId] || 0;
+      const selectedIds = Array.from(selectedTherapists);
+      const totalCandidates = alreadyProposed + selectedIds.length;
+
+      // Require at least two options for a meaningful selection
+      if (totalCandidates < 2) {
+        setMessage('Mindestens 2 Therapeuten benötigt, um eine Auswahl zu senden.');
+        return;
+      }
+
+      // If admin currently selected 2–3 therapists, ensure proposals exist for them first
+      if (selectedIds.length >= 2) {
+        const resCreate = await fetch('/admin/api/matches', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ patient_id: patientId, therapist_ids: selectedIds }),
+        });
+        const jCreate = await resCreate.json();
+        if (!resCreate.ok) {
+          throw new Error(jCreate?.error || 'Konnte Vorschläge nicht anlegen');
+        }
+      }
+
+      // Send selection email; pass therapist_ids when we have a current selection to control the list
+      const payload: Record<string, unknown> = { template: 'selection', patient_id: patientId };
+      if (selectedIds.length >= 2) payload['therapist_ids'] = selectedIds;
       const res = await fetch('/admin/api/matches/email', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ template: 'selection', patient_id: selectedPatient.id }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'E-Mail-Versand fehlgeschlagen');
       setMessage('Auswahl-E-Mail gesendet');
+      setSelectedTherapists(new Set());
       try { track('Selection Email Sent'); } catch {}
+      // Refresh counts after sending
+      void loadPatientMatchFlags(leads);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'E-Mail-Versand fehlgeschlagen';
       setMessage(msg);
@@ -538,6 +575,13 @@ export default function AdminLeadsPage() {
                         <div className="mt-1">
                           <span className="inline-flex items-center rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-800">
                             Kein Handlungsbedarf
+                          </span>
+                        </div>
+                      )}
+                      {(proposedCounts[p.id] || 0) > 0 && (
+                        <div className="mt-1">
+                          <span className="inline-flex items-center rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+                            Vorgeschlagen: {proposedCounts[p.id]} / 3
                           </span>
                         </div>
                       )}
@@ -702,6 +746,9 @@ export default function AdminLeadsPage() {
             <div className="mb-2 flex items-center justify-between sticky top-0 z-10 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b px-2 py-1 rounded">
               <div className="text-sm text-gray-700">Ausgewählt: {selectedTherapists.size} / 3</div>
               <div className="flex gap-2">
+                <Button size="sm" onClick={sendSelectionEmail} disabled={!selectedPatient || selectedTherapists.size < 2}>
+                  Auswahl-E-Mail senden
+                </Button>
                 <Button size="sm" onClick={contactSelectedTherapists} disabled={!selectedPatient}>
                   Ausgewählte kontaktieren
                 </Button>
