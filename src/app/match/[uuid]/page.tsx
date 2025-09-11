@@ -126,7 +126,7 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
     <div className="mx-auto max-w-xl px-4 py-10">
       <Card>
         <CardHeader>
-          <CardTitle>Neue Patientenanfrage</CardTitle>
+          <CardTitle>Neue Klientenanfrage</CardTitle>
           {subtitleParts.length ? (
             <CardDescription>{subtitleParts.join(' · ')}</CardDescription>
           ) : null}
@@ -141,7 +141,7 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
             <div className="space-y-1 text-sm">
               {data.name ? (
                 <p>
-                  <span className="text-muted-foreground">Patient:</span> {data.name}
+                  <span className="text-muted-foreground">Klient:in:</span> {data.name}
                 </p>
               ) : null}
               {data.sessionPreference ? (

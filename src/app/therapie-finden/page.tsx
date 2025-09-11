@@ -17,7 +17,7 @@ export default function TherapieFindenPage() {
               Traumata lösen sich nicht durch Reden allein
             </h1>
             <p className="mt-4 max-w-xl text-gray-700">
-              Finden Sie körperorientierte Therapeuten in Ihrer Nähe. Persönlich kuratierte Empfehlungen für Selbstzahler. Termine innerhalb einer Woche.
+              Finden Sie körperorientierte Therapeut:innen in Ihrer Nähe. Persönlich kuratierte Empfehlungen für Selbstzahler. Termine innerhalb einer Woche.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-700" aria-label="Vertrauen">
               <span className="inline-flex items-center gap-2">
@@ -132,7 +132,7 @@ export default function TherapieFindenPage() {
                 <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
                   <ShieldCheck className="h-5 w-5" />
                 </div>
-                <CardTitle className="font-medium">Geprüfte Therapeuten</CardTitle>
+                <CardTitle className="font-medium">Geprüfte Therapeut:innen</CardTitle>
               </CardHeader>
               <CardContent>
                 <CardDescription>Wir verifizieren Qualifikationen und Spezialisierungen manuell.</CardDescription>
@@ -190,8 +190,8 @@ export default function TherapieFindenPage() {
                 </div>
                 <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">2</div>
               </div>
-              <CardTitle className="mt-2 text-lg">Wir wählen passende Therapeuten aus</CardTitle>
-              <CardDescription>Wir prüfen unsere kuratierte Liste und wählen passende Therapeuten für Sie aus.</CardDescription>
+              <CardTitle className="mt-2 text-lg">Wir wählen passende Therapeut:innen aus</CardTitle>
+              <CardDescription>Wir prüfen unsere kuratierte Liste und wählen passende Therapeut:innen für Sie aus.</CardDescription>
             </CardHeader>
           </Card>
           <Card className="group relative overflow-hidden transition-all duration-200">
@@ -203,8 +203,8 @@ export default function TherapieFindenPage() {
                 </div>
                 <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">3</div>
               </div>
-              <CardTitle className="mt-2 text-lg">Direkter Kontakt zu ausgewählten Therapeuten</CardTitle>
-              <CardDescription>Sie erhalten direkte Kontaktdaten der ausgewählten Therapeuten.</CardDescription>
+              <CardTitle className="mt-2 text-lg">Direkter Kontakt zu ausgewählten Therapeut:innen</CardTitle>
+              <CardDescription>Sie erhalten direkte Kontaktdaten der ausgewählten Therapeut:innen.</CardDescription>
             </CardHeader>
           </Card>
         </div>
@@ -218,8 +218,8 @@ export default function TherapieFindenPage() {
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <h3 id="personal-service" className="text-xl font-semibold">Persönlich ausgewählte Therapeuten-Empfehlungen</h3>
-              <p className="mt-2 max-w-3xl text-gray-700">Wir kennen jeden Therapeuten persönlich und prüfen Qualifikation, Arbeitsweise und Verfügbarkeit. Auf dieser Basis sprechen wir eine kuratierte Auswahl aus.</p>
+              <h3 id="personal-service" className="text-xl font-semibold">Persönlich ausgewählte Therapeut:innen-Empfehlungen</h3>
+              <p className="mt-2 max-w-3xl text-gray-700">Wir kennen jede:n Therapeut:in persönlich und prüfen Qualifikation, Arbeitsweise und Verfügbarkeit. Auf dieser Basis sprechen wir eine kuratierte Auswahl aus.</p>
               <small className="mt-2 block text-xs text-gray-600">Dies ist eine Informationsberatung, keine medizinische oder therapeutische Empfehlung.</small>
             </div>
           </div>
@@ -228,7 +228,7 @@ export default function TherapieFindenPage() {
 
       {/* Qualifications */}
       <section aria-labelledby="qualifications" className="mt-12 sm:mt-16">
-        <h2 id="qualifications" className="text-2xl font-semibold">Unsere sorgfältig geprüften Therapeuten</h2>
+        <h2 id="qualifications" className="text-2xl font-semibold">Unsere sorgfältig geprüften Therapeut:innen</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <div className="flex items-start gap-2 rounded-lg border bg-white p-3 text-sm">
             <Check className="mt-0.5 h-4 w-4 text-slate-600" />
@@ -260,8 +260,8 @@ export default function TherapieFindenPage() {
             items={[
               {
                 id: 'kosten',
-                question: 'Was kostet die Therapeuten-Empfehlung?',
-                answer: 'Unser Service ist für Sie als Patient komplett kostenlos. Sie zahlen nur die Therapiesitzungen direkt an den Therapeuten Ihrer Wahl.',
+                question: 'Was kostet die Therapeut:innen-Empfehlung?',
+                answer: 'Unser Service ist für Sie als Klient:in komplett kostenlos. Sie zahlen nur die Therapiesitzungen direkt an der/die Therapeut:in Ihrer Wahl.',
               },
               {
                 id: 'selbstzahler',
@@ -275,28 +275,28 @@ export default function TherapieFindenPage() {
               },
               {
                 id: 'auswahl-prozess',
-                question: 'Nach welchen Kriterien wählen Sie Therapeuten aus?',
-                answer: 'Wir berücksichtigen Ihre geografischen Präferenzen, die Art Ihrer Problematik, gewünschte Therapieform und persönliche Faktoren. Da wir jeden Therapeuten in unserem Netzwerk persönlich kennen und regelmäßig mit ihnen in Kontakt stehen, können wir gezielt den für Sie passenden vorschlagen.'
+                question: 'Nach welchen Kriterien wählen Sie Therapeut:innen aus?',
+                answer: 'Wir berücksichtigen Ihre geografischen Präferenzen, die Art Ihrer Problematik, gewünschte Therapieform und persönliche Faktoren. Da wir jede:n Therapeut:in in unserem Netzwerk persönlich kennen und regelmäßig in Kontakt stehen, können wir gezielt den/die für Sie passende:n vorschlagen.'
               },
               {
                 id: 'termin',
                 question: 'Wie schnell bekomme ich einen Termin?',
-                answer: 'Nach Ihrer Anfrage erhalten Sie innerhalb von 24 Stunden Kontaktdaten passender Therapeuten. Die meisten haben kurzfristig Termine verfügbar.',
+                answer: 'Nach Ihrer Anfrage erhalten Sie innerhalb von 24 Stunden Kontaktdaten passender Therapeut:innen. Die meisten haben kurzfristig Termine verfügbar.',
               },
               {
                 id: 'kontakt',
-                question: 'Kann ich selbst verschiedene Therapeuten kontaktieren?',
-                answer: 'Selbstverständlich. Sie entscheiden eigenverantwortlich, welche Therapeuten Sie kontaktieren möchten. Wir stellen nur die Kontaktinformationen zur Verfügung.',
+                question: 'Kann ich selbst verschiedene Therapeut:innen kontaktieren?',
+                answer: 'Selbstverständlich. Sie entscheiden eigenverantwortlich, welche Therapeut:innen Sie kontaktieren möchten. Wir stellen nur die Kontaktinformationen zur Verfügung.',
               },
               {
                 id: 'datenschutz',
                 question: 'Wie gehen Sie mit meinen Daten um?',
-                answer: 'Wir verwenden Ihre Angaben ausschließlich, um passende Therapeuten vorzuschlagen und Ihnen deren Kontaktdaten bereitzustellen. Keine Cookies, kein Tracking. Details finden Sie in unserer Datenschutzerklärung.',
+                answer: 'Wir verwenden Ihre Angaben ausschließlich, um passende Therapeut:innen vorzuschlagen und Ihnen deren Kontaktdaten bereitzustellen. Keine Cookies, kein Tracking. Details finden Sie in unserer Datenschutzerklärung.',
               },
               {
                 id: 'qualifikation',
-                question: 'Wie stellen Sie die Qualifikation der Therapeuten sicher?',
-                answer: 'Wir kennen jeden Therapeuten persönlich und prüfen Qualifikationen, Spezialisierungen und Verfügbarkeit vor der Empfehlung.',
+                question: 'Wie stellen Sie die Qualifikation der Therapeut:innen sicher?',
+                answer: 'Wir kennen jede:n Therapeut:in persönlich und prüfen Qualifikationen, Spezialisierungen und Verfügbarkeit vor der Empfehlung.',
               },
             ]}
           />
@@ -305,11 +305,11 @@ export default function TherapieFindenPage() {
 
       {/* Final CTA */}
       <section aria-labelledby="final-cta" className="mt-12 sm:mt-16 text-center">
-        <h2 id="final-cta" className="text-2xl font-semibold">Lassen Sie uns Ihnen den passenden Therapeuten vorschlagen</h2>
+        <h2 id="final-cta" className="text-2xl font-semibold">Lassen Sie uns Ihnen die passende:n Therapeut:in vorschlagen</h2>
         <p className="mt-2 text-gray-700">Erhalten Sie eine persönliche, kuratierte Empfehlung – kostenlos & unverbindlich.</p>
         <div className="mt-4 flex justify-center">
           <Button asChild size="lg">
-            <a href="#top-form">Kostenlose Therapeuten-Empfehlung erhalten →</a>
+            <a href="#top-form">Kostenlose Therapeut:innen-Empfehlung erhalten →</a>
           </Button>
         </div>
         <small className="mt-2 block text-xs text-gray-600">Wir melden uns innerhalb von 24 Stunden mit einer Auswahl</small>
@@ -318,7 +318,7 @@ export default function TherapieFindenPage() {
       {/* Footer legal note (page-specific) */}
       <section aria-labelledby="footer-legal" className="mt-12 sm:mt-16">
         <p id="footer-legal" className="text-xs text-gray-600">
-          Kaufmann Health vermittelt qualifizierte Therapeuten basierend auf deren Qualifikationen, Verfügbarkeit und Ihren Präferenzen. Wir treffen keine medizinischen Empfehlungen bezüglich spezifischer Behandlungen. Die Entscheidung über eine Therapie treffen Sie eigenverantwortlich.
+          Kaufmann Health vermittelt qualifizierte Therapeut:innen basierend auf deren Qualifikationen, Verfügbarkeit und Ihren Präferenzen. Wir treffen keine medizinischen Empfehlungen bezüglich spezifischer Behandlungen. Die Entscheidung über eine Therapie treffen Sie eigenverantwortlich.
         </p>
       </section>
     </main>

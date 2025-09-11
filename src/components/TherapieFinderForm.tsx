@@ -409,11 +409,11 @@ export default function TherapieFinderForm() {
 
           <div className="flex items-center gap-3">
             <Button type="button" variant="outline" onClick={() => setCurrentStep(2)}>Zurück</Button>
-            <Button type="submit" disabled={loading}>{loading ? 'Senden…' : 'Jetzt Therapeuten finden →'}</Button>
+            <Button type="submit" disabled={loading}>{loading ? 'Senden…' : 'Jetzt Therapeut:innen finden →'}</Button>
           </div>
 
           <p className="mt-2 text-xs text-gray-600">
-            Durch Absenden stimmen Sie der Weitergabe Ihrer Daten an passende Therapeuten zu. Details:{' '}
+            Durch Absenden stimmen Sie der Weitergabe Ihrer Daten an passende Therapeut:innen zu. Details:{' '}
             <Link href="/datenschutz" className="underline">Datenschutzerklärung</Link>
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-700" aria-label="Vertrauen">

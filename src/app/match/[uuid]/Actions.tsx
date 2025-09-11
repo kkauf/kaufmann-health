@@ -134,7 +134,7 @@ export function Actions({
               <p className="text-sm text-muted-foreground">Kontaktdaten werden geladen …</p>
             )}
             <p className="text-xs text-muted-foreground">
-              Bitte behandeln Sie diese Kontaktdaten vertraulich. Kontaktieren Sie den/die Patient:in idealerweise innerhalb von 48&nbsp;Stunden.
+              Bitte behandeln Sie diese Kontaktdaten vertraulich. Kontaktieren Sie den/die Klient:in idealerweise innerhalb von 48&nbsp;Stunden.
             </p>
           </div>
         ) : (

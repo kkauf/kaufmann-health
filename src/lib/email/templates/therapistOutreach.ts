@@ -19,7 +19,7 @@ export function renderTherapistOutreach(params: {
 
   const subjectCity = city || 'unbekannt';
   const subjectIssue = issue || 'Allgemein';
-  const subject = `Neue Patientenanfrage – ${subjectCity} – ${subjectIssue}`;
+  const subject = `Neue Klientenanfrage – ${subjectCity} – ${subjectIssue}`;
 
   const detailsHtml = `
     <div style="background-color:#F9FAFB; padding:16px; border-radius:8px; border:1px solid #E5E7EB; margin: 16px 0;">
@@ -33,9 +33,9 @@ export function renderTherapistOutreach(params: {
   `;
 
   const contentHtml = `
-    <h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Neue Patientenanfrage</h1>
+    <h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Neue Klientenanfrage</h1>
     <p style="margin:0 0 12px;">Hallo${name ? ` ${escapeHtml(name)}` : ''},</p>
-    <p style="margin:0 0 12px;">Sie wurden für eine neue Patientenanfrage vorgeschlagen. Bitte prüfen Sie die Details und geben Sie Ihre Rückmeldung.</p>
+    <p style="margin:0 0 12px;">Sie wurden für eine neue Klientenanfrage vorgeschlagen. Bitte prüfen Sie die Details und geben Sie Ihre Rückmeldung.</p>
     ${detailsHtml}
     <div style="background-color:#FFFFFF; padding:16px; border-radius:8px; border:1px solid #E5E7EB;">
       <p style="margin:0 0 12px;">Der Link ist aus Sicherheitsgründen nur für ${expiresHours} Stunden gültig.</p>
@@ -48,7 +48,7 @@ export function renderTherapistOutreach(params: {
 
   return {
     subject,
-    html: renderLayout({ title: 'Neue Patientenanfrage', contentHtml }),
+    html: renderLayout({ title: 'Neue Klientenanfrage', contentHtml }),
   };
 }
 

@@ -384,7 +384,7 @@ export default function AdminLeadsPage() {
     if (!selectedPatient) return;
     setMessage(null);
     try {
-      if (!confirm('Diesen Therapeuten jetzt kontaktieren?')) return;
+      if (!confirm('Diese:n Therapeut:in jetzt kontaktieren?')) return;
       const res = await fetch('/admin/api/matches', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -789,9 +789,9 @@ export default function AdminLeadsPage() {
 
         {/* Therapists */}
         <div className="border rounded-md p-4">
-          <h2 className="text-lg font-semibold mb-3">Therapeuten</h2>
+          <h2 className="text-lg font-semibold mb-3">Therapeut:innen</h2>
           {selectedPatient && (
-            <div className="mb-2 text-xs text-gray-600">Bis zu 3 Therapeuten auswählen und auf einmal kontaktieren.</div>
+            <div className="mb-2 text-xs text-gray-600">Bis zu 3 Therapeut:innen auswählen und auf einmal kontaktieren.</div>
           )}
           <div className="flex flex-wrap gap-3 mb-3 items-end">
             <div className="space-y-1">
@@ -855,7 +855,7 @@ export default function AdminLeadsPage() {
           {/* Flow Mode Toggle */}
           <div className="mb-2 flex items-center gap-2">
             <span className="text-xs text-gray-600">Flow</span>
-            <Button size="sm" variant={flowMode === 'therapist' ? 'default' : 'outline'} onClick={() => setFlowMode('therapist')}>Therapeuten kontaktieren</Button>
+            <Button size="sm" variant={flowMode === 'therapist' ? 'default' : 'outline'} onClick={() => setFlowMode('therapist')}>Therapeut:innen kontaktieren</Button>
             <Button size="sm" variant={flowMode === 'patient' ? 'default' : 'outline'} onClick={() => setFlowMode('patient')}>Klienten-Auswahl</Button>
           </div>
           <div className="mb-2 text-xs text-gray-600">
@@ -948,9 +948,9 @@ export default function AdminLeadsPage() {
                               e.stopPropagation();
                               if (flowMode === 'patient') void proposeTherapist(t.id); else void createMatch(t.id);
                             }}
-                            title={flowMode === 'patient' ? 'Als Vorschlag vormerken (ohne E-Mail an Therapeut/in)' : 'Therapeut/in jetzt kontaktieren'}
+                            title={flowMode === 'patient' ? 'Als Vorschlag vormerken (ohne E-Mail an Therapeut*in)' : 'Therapeut*in jetzt kontaktieren'}
                           >
-                            {flowMode === 'patient' ? 'Als Vorschlag vormerken' : 'Therapeut kontaktieren'}
+                            {flowMode === 'patient' ? 'Als Vorschlag vormerken' : 'Therapeut*in kontaktieren'}
                           </Button>
                         </div>
                       )}
@@ -960,7 +960,7 @@ export default function AdminLeadsPage() {
               );
             })}
             {therapists.length === 0 && !loadingTherapists && (
-              <p className="px-3 py-6 text-center text-gray-500">Keine Therapeuten gefunden</p>
+              <p className="px-3 py-6 text-center text-gray-500">Keine Therapeut:innen gefunden</p>
             )}
             {loadingTherapists && (
               <p className="px-3 py-6 text-center text-gray-500">Laden…</p>
@@ -985,20 +985,20 @@ export default function AdminLeadsPage() {
                 <p className="text-sm text-gray-600">Laden…</p>
               ) : (
                 <div className="space-y-2">
-                  <Label htmlFor="therapist-select">Therapeut</Label>
+                  <Label htmlFor="therapist-select">Therapeut:in</Label>
                   <select
                     id="therapist-select"
                     className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg/input/30 flex h-9 w-full min-w-0 rounded-md border bg-white px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm"
                     value={selectedTherapistId}
                     onChange={(e) => setSelectedTherapistId(e.target.value)}
                   >
-                    {modalTherapists.length === 0 && <option value="">Keine Therapeuten gefunden</option>}
+                    {modalTherapists.length === 0 && <option value="">Keine Therapeut:innen gefunden</option>}
                     {modalTherapists.map((t) => {
                       const city = t?.metadata?.city || '—';
                       const specs: string[] = Array.isArray(t?.metadata?.specializations) ? t.metadata.specializations : [];
                       return (
                         <option key={t.id} value={t.id}>
-                          {(t.name || t.email || 'Therapeut')} · {city}{specs.length ? ` · ${specs.join(', ')}` : ''}
+                          {(t.name || t.email || 'Therapeut:in')} · {city}{specs.length ? ` · ${specs.join(', ')}` : ''}
                         </option>
                       );
                     })}

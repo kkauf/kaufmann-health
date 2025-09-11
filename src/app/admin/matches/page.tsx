@@ -30,8 +30,8 @@ const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'patient_selected', label: 'Klient gewählt' },
   { value: 'accepted', label: 'Akzeptiert' },
   { value: 'declined', label: 'Abgelehnt' },
-  { value: 'therapist_contacted', label: 'Therapeut kontaktiert' },
-  { value: 'therapist_responded', label: 'Therapeut antwortete' },
+  { value: 'therapist_contacted', label: 'Therapeut:in kontaktiert' },
+  { value: 'therapist_responded', label: 'Therapeut:in antwortete' },
   { value: 'session_booked', label: 'Sitzung gebucht' },
   { value: 'completed', label: 'Abgeschlossen' },
   { value: 'failed', label: 'Fehlgeschlagen' },
@@ -231,11 +231,11 @@ export default function AdminMatchesPage() {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b bg-accent/30">
-                <th className="text-left py-2 px-2">Patient</th>
+                <th className="text-left py-2 px-2">Klient</th>
                 <th className="text-left py-2 px-2">Kontakt</th>
                 <th className="text-left py-2 px-2">Stadt</th>
                 <th className="text-left py-2 px-2">Anliegen</th>
-                <th className="text-left py-2 px-2">Therapeut</th>
+                <th className="text-left py-2 px-2">Therapeut:in</th>
                 <th className="text-left py-2 px-2">Status</th>
                 <th className="text-left py-2 px-2">Erstellt</th>
                 <th className="text-left py-2 px-2">Notizen</th>
@@ -291,7 +291,7 @@ export default function AdminMatchesPage() {
                     />
                   </td>
                   <td className="py-2 px-2">
-                    <Button variant="outline" size="sm" onClick={() => openEmail(r)}>Patient informieren</Button>
+                    <Button variant="outline" size="sm" onClick={() => openEmail(r)}>Klient informieren</Button>
                   </td>
                 </tr>
               ))}
@@ -304,9 +304,9 @@ export default function AdminMatchesPage() {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="w-full max-w-lg rounded-md bg-white p-4 shadow-2xl">
             <div className="mb-2">
-              <h2 className="text-lg font-semibold">E-Mail an Patient senden</h2>
+              <h2 className="text-lg font-semibold">E-Mail an Klient senden</h2>
               <p className="text-xs text-muted-foreground">
-                Patient: <strong>{emailTarget.patientName || '—'}</strong>{' '}· Therapeut: <strong>{emailTarget.therapistName || '—'}</strong>
+                Klient: <strong>{emailTarget.patientName || '—'}</strong>{' '}· Therapeut:in: <strong>{emailTarget.therapistName || '—'}</strong>
               </p>
             </div>
             <div className="space-y-3">
@@ -317,7 +317,7 @@ export default function AdminMatchesPage() {
                   value={emailTemplate}
                   onChange={(e) => setEmailTemplate(e.currentTarget.value as 'match_found' | 'custom')}
                 >
-                  <option value="match_found">Match gefunden (Therapeut meldet sich)</option>
+                  <option value="match_found">Match gefunden (Therapeut:in meldet sich)</option>
                   <option value="custom">Individuelles Update</option>
                 </select>
               </div>
@@ -328,7 +328,7 @@ export default function AdminMatchesPage() {
                     className="w-full min-h-28 rounded border bg-transparent px-2 py-1"
                     value={emailMessage}
                     onChange={(e) => setEmailMessage(e.currentTarget.value)}
-                    placeholder="Kurze persönliche Nachricht an den Patienten…"
+                    placeholder="Kurze persönliche Nachricht an den Klienten…"
                   />
                 </div>
               )}

@@ -55,7 +55,7 @@ async function handle(req: Request) {
     // Find the target match row for this patient + therapist
     const { data: targetMatch, error: tmErr } = await supabaseServer
       .from('matches')
-      .select('id, therapist_id')
+      .select('id, therapist_id, status')
       .eq('patient_id', patient_id)
       .eq('therapist_id', therapist_id)
       .limit(1)
@@ -68,17 +68,22 @@ async function handle(req: Request) {
     }
 
     const match_id = (targetMatch as { id: string }).id;
+    const existingStatus = String((targetMatch as { status?: string | null }).status || '').toLowerCase();
 
-    // Update status to patient_selected (idempotent-ish)
-    const { error: updErr } = await supabaseServer
-      .from('matches')
-      .update({ status: 'patient_selected' })
-      .eq('id', match_id);
+    // Determine whether we should update and notify. We only transition from 'proposed' to 'patient_selected'.
+    const shouldTransition = existingStatus === 'proposed';
+    const alreadySelected = existingStatus === 'patient_selected' || existingStatus === 'accepted';
 
-    if (updErr) {
-      await logError('api.match.select', updErr, { stage: 'update_status', match_id });
-      if (isGet) return NextResponse.redirect(`${BASE_URL}/auswahl-bestaetigt?error=update_failed`);
-      return NextResponse.json({ data: null, error: 'Failed to update' }, { status: 500 });
+    if (shouldTransition) {
+      const { error: updErr } = await supabaseServer
+        .from('matches')
+        .update({ status: 'patient_selected' })
+        .eq('id', match_id);
+      if (updErr) {
+        await logError('api.match.select', updErr, { stage: 'update_status', match_id });
+        if (isGet) return NextResponse.redirect(`${BASE_URL}/auswahl-bestaetigt?error=update_failed`);
+        return NextResponse.json({ data: null, error: 'Failed to update' }, { status: 500 });
+      }
     }
 
     void ServerAnalytics.trackEventFromRequest(req, {
@@ -87,8 +92,16 @@ async function handle(req: Request) {
       props: { match_id, patient_id, therapist_id },
     });
 
-    // Fire-and-forget notifications
+    // Fire-and-forget notifications (only on first transition to patient_selected)
     try {
+      if (!shouldTransition) {
+        // Skip notifying if the match is already selected/accepted to avoid duplicate emails.
+        // Still proceed to redirect/return success for UX.
+        if (isGet) {
+          return NextResponse.redirect(`${BASE_URL}/auswahl-bestaetigt?ok=1`);
+        }
+        return NextResponse.json({ data: { ok: true }, error: null }, { status: 200 });
+      }
       // Load entities
       const [{ data: patientRow }, { data: therapistRow }] = await Promise.all([
         supabaseServer.from('people').select('id, name, email, phone, metadata').eq('id', patient_id).single(),

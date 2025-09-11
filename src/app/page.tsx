@@ -30,10 +30,10 @@ export default function Home() {
             id="hero-heading"
             className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl"
           >
-            Finden Sie geprüfte körperorientierte Trauma-Therapeuten
+            Finden Sie geprüfte körperorientierte Trauma-Therapeut:innen
           </h1>
           <p className="mt-4 max-w-2xl text-base text-gray-600 sm:text-lg">
-          Persönlich kuratierte Therapeuten-Empfehlungen.
+          Persönlich kuratierte Therapeut:innen-Empfehlungen.
           Handverlesen und persönlich geprüft, für eine Empfehlung, der Sie vertrauen können.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -43,7 +43,7 @@ export default function Home() {
               data-cta="patients-primary"
               data-audience="patients"
             >
-              <Link href="/therapie-finden">Therapeuten finden</Link>
+              <Link href="/therapie-finden">Therapeut:innen finden</Link>
             </Button>
             <Button
               size="lg"
@@ -52,11 +52,11 @@ export default function Home() {
               data-cta="therapists-secondary"
               data-audience="therapists"
             >
-              <Link href="/fuer-therapeuten">Für Therapeuten</Link>
+              <Link href="/fuer-therapeuten">Für Therapeut:innen</Link>
             </Button>
           </div>
           <p className="mt-3 text-sm text-gray-500">
-            Persönlich kuratierte Therapeuten-Empfehlungen
+            Persönlich kuratierte Therapeut:innen-Empfehlungen
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-700" aria-label="Vertrauen">
             <span className="inline-flex items-center gap-2">
@@ -78,7 +78,7 @@ export default function Home() {
         {/* Social Proof */}
         <section aria-labelledby="social-proof" className="mb-12">
           <h2 id="social-proof" className="text-sm font-medium text-gray-700">
-            Unsere sorgfältig geprüften Therapeuten sind zertifiziert in:
+            Unsere sorgfältig geprüften Therapeut:innen sind zertifiziert in:
           </h2>
           <div className="mt-4 grid grid-cols-2 items-center gap-6 sm:grid-cols-4 lg:grid-cols-4">
             <Image
@@ -125,22 +125,22 @@ export default function Home() {
             <div className="rounded-lg border bg-white p-5 transition-all duration-200 hover:shadow-md">
               <h3 className="text-lg font-medium">Spezialisierte Expertise</h3>
               <p className="mt-2 text-sm text-gray-600">
-                Ausschließlich körperorientierte Trauma-Therapeuten mit
+                Ausschließlich körperorientierte Trauma-Therapeut:innen mit
                 nachgewiesener Ausbildung in NARM, Hakomi, Core Energetics oder Somatic
                 Experiencing.
               </p>
             </div>
             <div className="rounded-lg border bg-white p-5 transition-all duration-200 hover:shadow-md">
-              <h3 className="text-lg font-medium">Persönlich ausgewählte Therapeuten-Empfehlungen</h3>
+              <h3 className="text-lg font-medium">Persönlich ausgewählte Therapeut:innen-Empfehlungen</h3>
               <p className="mt-2 text-sm text-gray-600">
-                Wir kennen jeden Therapeuten persönlich und wählen basierend auf 
-                Ihren Bedürfnissen und deren Spezialisierung passende Kandidaten aus.
+                Wir kennen jede:n Therapeut:in persönlich und wählen basierend auf 
+                Ihren Bedürfnissen und deren Spezialisierung passende Kandidat:innen aus.
               </p>
             </div>
             <div className="rounded-lg border bg-white p-5 transition-all duration-200 hover:shadow-md">
               <h3 className="text-lg font-medium">Gezielte Auswahl</h3>
               <p className="mt-2 text-sm text-gray-600">
-                Sie erhalten Kontaktdaten zu 2-3 passenden Therapeuten und wählen selbst aus, wen Sie kontaktieren möchten. Direkter Kontakt, keine Umwege.
+                Sie erhalten Kontaktdaten zu 2–3 passenden Therapeut:innen und wählen selbst aus, wen Sie kontaktieren möchten. Direkter Kontakt, keine Umwege.
               </p>
             </div>
           </div>
@@ -154,7 +154,7 @@ export default function Home() {
               <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">
                 <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-600" />
                 <div>
-                  <p className="font-medium">Geprüfte Therapeuten</p>
+                  <p className="font-medium">Geprüfte Therapeut:innen</p>
                   <p className="text-sm text-gray-600">Qualifikationen und Spezialisierungen werden manuell verifiziert.</p>
                 </div>
               </div>
@@ -169,7 +169,7 @@ export default function Home() {
                 <UserCheck className="mt-0.5 h-5 w-5 text-indigo-600" />
                 <div>
                   <p className="font-medium">Kontrolle über Ihre Daten</p>
-                  <p className="text-sm text-gray-600">Nutzung Ihrer Angaben ausschließlich zur Kontaktaufnahme mit ausgewählten Therapeuten.</p>
+                  <p className="text-sm text-gray-600">Nutzung Ihrer Angaben ausschließlich zur Kontaktaufnahme mit ausgewählten Therapeut:innen.</p>
                 </div>
               </div>
             </div>

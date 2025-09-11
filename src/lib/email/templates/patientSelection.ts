@@ -36,7 +36,7 @@ export function renderPatientSelectionEmail(params: {
   // Urgency notice (shown after cards by default, can be overridden by admin)
   const urgencyBox = params.bannerOverrideHtml ?? `
     <div style="background:#FEF3C7; padding:12px; border-radius:8px; margin-top:20px;">
-      ⏰ <strong>Diese Therapeuten haben begrenzte Kapazitäten.</strong><br/>
+      ⏰ <strong>Diese Therapeut:innen haben begrenzte Kapazitäten.</strong><br/>
       Bitte wählen Sie innerhalb von 48 Stunden, damit wir die Kapazitäten für Sie sichern können.
     </div>
   `;
@@ -57,7 +57,7 @@ export function renderPatientSelectionEmail(params: {
       <ul style="margin:8px 0 0 18px; padding:0; color:#374151;">
         <li style="margin:4px 0;">Wir haben uns Ihrer Anfrage persönlich angenommen.</li>
         <li style="margin:4px 0;">Auf Basis Ihrer Präferenzen (z.&nbsp;B. online oder vor Ort) ausgewählt.</li>
-        <li style="margin:4px 0;">Wir prüfen die Qualifikationen der Therapeuten gründlich (Ausbildung, zertifizierte Fortbildungen, Erfahrung, aktuelle Verfügbarkeit).</li>
+        <li style="margin:4px 0;">Wir prüfen die Qualifikationen der Therapeut:innen gründlich (Ausbildung, zertifizierte Fortbildungen, Erfahrung, aktuelle Verfügbarkeit).</li>
         <li style="margin:4px 0;">Spezielle Ausbildungen für Körpertherapie sind in den farbigen Abzeichen sichtbar (z.&nbsp;B. NARM, Somatic Experiencing, Hakomi, Core Energetics).</li>
       </ul>
       <p style="margin:12px 0 0; color:#111827;">Sie können dieser Auswahl guten Gewissens vertrauen.</p>
@@ -66,12 +66,12 @@ export function renderPatientSelectionEmail(params: {
  
   // Availability framing (7 days)
   const availabilityLine = `
-    <p style="margin:0 0 12px;">Folgende Therapeuten haben freie Kapazitäten innerhalb der kommenden 7 Tage.</p>
+    <p style="margin:0 0 12px;">Folgende Therapeut:innen haben freie Kapazitäten innerhalb der kommenden 7 Tage.</p>
   `;
 
   const cardsHtml = items
     .map((it) => {
-      const button = renderButton(it.selectUrl, '✓ Diese/n Therapeut/in auswählen');
+      const button = renderButton(it.selectUrl, '✓ Diese:n Therapeut:in auswählen');
       const preview = renderTherapistPreviewEmail({
         id: it.id,
         first_name: it.first_name,

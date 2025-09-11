@@ -37,7 +37,7 @@ export default function Header() {
   const NavLinks = ({ onClick }: { onClick?: () => void }) => (
     <>
       <Link onClick={onClick} className="hover:opacity-80" href="/fuer-therapeuten">
-        Für Therapeuten
+        Für Therapeut:innen
       </Link>
       <Link onClick={onClick} className="hover:opacity-80" href="/therapie-finden">
         Therapie finden
@@ -72,7 +72,7 @@ export default function Header() {
           >
             <NavLinks />
             <Button asChild size="sm" className="ml-2">
-              <Link href="/therapie-finden">Therapeut finden</Link>
+              <Link href="/therapie-finden">Therapeut:in finden</Link>
             </Button>
           </nav>
 
@@ -128,7 +128,7 @@ export default function Header() {
           <nav aria-label="Mobile Hauptnavigation" className="flex flex-col gap-4 px-4 py-6 text-[15px]">
             <NavLinks onClick={() => setOpen(false)} />
             <Button asChild className="mt-2">
-              <Link href="/therapie-finden">Therapeut finden</Link>
+              <Link href="/therapie-finden">Therapeut:in finden</Link>
             </Button>
           </nav>
         </aside>

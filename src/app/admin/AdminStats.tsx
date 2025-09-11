@@ -72,7 +72,7 @@ export default function AdminStats() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Patient:innen</CardTitle>
+            <CardTitle>Klient:innen</CardTitle>
             <CardDescription>Gesamtzahl registrierter Personen</CardDescription>
           </CardHeader>
           <CardContent>

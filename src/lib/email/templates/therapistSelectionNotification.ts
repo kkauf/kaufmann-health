@@ -32,11 +32,11 @@ export function renderTherapistSelectionNotification(params: {
   const lines: string[] = [];
   lines.push(`<p style=\"margin:0 0 12px;\">Hallo${tName ? ` ${esc(tName)}` : ''},</p>`);
   lines.push('<div style="background:#10B981; color:white; padding:16px; border-radius:8px; margin: 0 0 16px;">');
-  lines.push('<h2 style="margin:0 0 8px; font-size:20px;">Ein Klient möchte mit Ihnen arbeiten!</h2>');
-  lines.push(`<p style=\"margin:0;\">${pName ? esc(pName) : 'Ein/e Klient/in'} hat Sie als Therapeut/in ausgewählt.</p>`);
+  lines.push('<h2 style="margin:0 0 8px; font-size:20px;">Ein:e Klient:in möchte mit Ihnen arbeiten!</h2>');
+  lines.push(`<p style=\"margin:0;\">${pName ? esc(pName) : 'Ein:e Klient:in'} hat Sie als Therapeut:in ausgewählt.</p>`);
   lines.push('</div>');
 
-  lines.push('<h3 style="margin:12px 0 8px; font-size:16px;">Klienteninformationen:</h3>');
+  lines.push('<h3 style="margin:12px 0 8px; font-size:16px;">Informationen zur Klient:in:</h3>');
   lines.push('<ul style="margin:0 0 12px 16px; padding:0;">');
   lines.push(`<li><strong>Name:</strong> ${pName ? esc(pName) : 'Unbekannt'}</li>`);
   if (pIssue) lines.push(`<li><strong>Anliegen:</strong> ${esc(pIssue)}</li>`);
@@ -47,19 +47,19 @@ export function renderTherapistSelectionNotification(params: {
   lines.push('</ul>');
 
   lines.push('<div style="background:#FEF3C7; padding:12px; border-radius:8px;">');
-  lines.push('⚡ <strong>Nächster Schritt: Kontaktieren Sie den Klienten JETZT</strong><br/>Der Klient erwartet Ihre Nachricht innerhalb von 24 Stunden.');
+  lines.push('⚡ <strong>Nächster Schritt: Kontaktieren Sie den/die Klient:in JETZT</strong><br/>Der/die Klient:in erwartet Ihre Nachricht innerhalb von 24 Stunden.');
   lines.push('</div>');
 
   // Big CTA button opening the therapist's email client with prefilled content via tracking redirect
   const ctaUrl = params.ctaUrl;
   lines.push('<div style="margin:20px 0;">');
-  lines.push(`<a href="${ctaUrl}" style="background:#2563EB; color:white; padding:16px 32px; display:inline-block; text-decoration:none; border-radius:8px; font-size:18px;">📧 E-Mail an Klient senden (öffnet in Ihrem E-Mail-Programm)</a>`);
+  lines.push(`<a href="${ctaUrl}" style="background:#2563EB; color:white; padding:16px 32px; display:inline-block; text-decoration:none; border-radius:8px; font-size:18px;">📧 E-Mail an Klient:in senden (öffnet in Ihrem E-Mail-Programm)</a>`);
   lines.push('</div>');
 
-  const html = renderLayout({ title: 'Neue Auswahl durch Klient/in', contentHtml: lines.join('') });
+  const html = renderLayout({ title: 'Neue Auswahl durch Klient:in', contentHtml: lines.join('') });
 
   return {
-    subject: params.subjectOverride?.trim() || '🎉 Neuer Klient hat Sie ausgewählt - Bitte innerhalb 24 Std. kontaktieren',
+    subject: params.subjectOverride?.trim() || '🎉 Ein:e Klient:in hat Sie ausgewählt – bitte innerhalb 24 Std. kontaktieren',
     html,
   };
 }

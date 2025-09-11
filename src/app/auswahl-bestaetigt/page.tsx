@@ -17,15 +17,15 @@ export default async function Page({
   const error = typeof sp?.error === 'string' ? sp.error : undefined;
 
   let title = 'Auswahl bestätigt';
-  let description = 'Vielen Dank! Wir haben Ihre Auswahl erhalten und benachrichtigen jetzt den Therapeuten. Sie erhalten in der Regel innerhalb von 24 Stunden eine Antwort.';
+  let description = 'Vielen Dank! Wir haben Ihre Auswahl erhalten und benachrichtigen jetzt den/die Therapeut:in. Sie erhalten in der Regel innerhalb von 24 Stunden eine Antwort.';
 
   if (!ok && error) {
     title = 'Auswahl nicht möglich';
     description =
       error === 'missing'
-        ? 'Der Link ist unvollständig. Bitte öffnen Sie die E‑Mail erneut und klicken Sie auf den Button bei Ihrem bevorzugten Therapeuten.'
+        ? 'Der Link ist unvollständig. Bitte öffnen Sie die E‑Mail erneut und klicken Sie auf den Button bei Ihrer/Ihrem bevorzugte:n Therapeut:in.'
         : error === 'missing_therapist'
-        ? 'Es fehlt die Angabe des Therapeuten. Bitte klicken Sie in der E‑Mail erneut direkt auf den Auswahl‑Button.'
+        ? 'Es fehlt die Angabe des/der Therapeut:in. Bitte klicken Sie in der E‑Mail erneut direkt auf den Auswahl‑Button.'
         : error === 'not_found'
         ? 'Der Link ist ungültig oder abgelaufen.'
         : error === 'unavailable'

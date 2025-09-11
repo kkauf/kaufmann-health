@@ -1,6 +1,7 @@
 import { EMAIL_FROM_DEFAULT } from '@/lib/constants';
 import type { SendEmailParams } from './types';
 import { logError, track } from '@/lib/logger';
+import { createHash } from 'crypto';
 
 /**
  * Thin wrapper around Resend HTTP API.
@@ -41,6 +42,27 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
   const maxAttempts = 3;
   const timeoutMs = Number(process.env.RESEND_TIMEOUT_MS || 10000);
 
+  // Build a stable idempotency key to avoid duplicate deliveries when our request
+  // times out locally but was already accepted by the provider.
+  const idempotencyKey = (() => {
+    try {
+      const ctx = (params.context || {}) as Record<string, unknown>;
+      const stable = {
+        to: toList,
+        subject: params.subject,
+        match_id: ctx['match_id'],
+        patient_id: ctx['patient_id'],
+        therapist_id: ctx['therapist_id'],
+        kind: ctx['kind'],
+        template: (ctx as Record<string, unknown>)['template'],
+      };
+      const raw = JSON.stringify(stable);
+      return createHash('sha256').update(raw).digest('hex');
+    } catch {
+      return undefined;
+    }
+  })();
+
   const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
   const backoff = (attempt: number) => [200, 1000, 3000][Math.min(attempt - 1, 2)];
 
@@ -53,6 +75,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
+          ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
         },
         body: JSON.stringify({
           from: `Kaufmann Health <${fromAddress}>`,
