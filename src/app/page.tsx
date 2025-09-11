@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import TherapyModalityExplanations from "@/components/TherapyModalityExplanations";
 import { ShieldCheck, Lock, UserCheck } from "lucide-react";
+import { COOKIES_ENABLED } from "@/lib/config";
 
 export const dynamic = 'force-dynamic';
 
@@ -63,10 +64,12 @@ export default function Home() {
               <ShieldCheck className="h-4 w-4 text-emerald-600" />
               Geprüfte Profile
             </span>
-            <span className="inline-flex items-center gap-2">
-              <Lock className="h-4 w-4 text-slate-700" />
-              Keine Cookies
-            </span>
+            {!COOKIES_ENABLED && (
+              <span className="inline-flex items-center gap-2">
+                <Lock className="h-4 w-4 text-slate-700" />
+                Keine Cookies
+              </span>
+            )}
             <span className="inline-flex items-center gap-2">
               <UserCheck className="h-4 w-4 text-indigo-600" />
               Transparente Datenverarbeitung
@@ -161,8 +164,8 @@ export default function Home() {
               <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">
                 <Lock className="mt-0.5 h-5 w-5 text-slate-700" />
                 <div>
-                  <p className="font-medium">Keine Cookies</p>
-                  <p className="text-sm text-gray-600">Keine Tracking-Cookies. DSGVO-konforme, transparente Prozesse.</p>
+                  <p className="font-medium">{COOKIES_ENABLED ? 'Datenschutzfreundlich' : 'Keine Cookies'}</p>
+                  <p className="text-sm text-gray-600">{COOKIES_ENABLED ? 'Minimales Conversion‑Signal; keine Analytics‑Cookies.' : 'Keine Tracking‑Cookies. DSGVO‑konforme, transparente Prozesse.'}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">

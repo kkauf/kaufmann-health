@@ -5,6 +5,7 @@ import FaqAccordion from "@/components/FaqAccordion";
 import TherapistApplicationForm from "@/components/TherapistApplicationForm";
 import { CheckCircle2, Target, Users, Clock, Shield, TrendingUp, ShieldCheck, Lock, UserCheck } from "lucide-react";
 import CtaLink from "@/components/CtaLink";
+import { COOKIES_ENABLED } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "Neue Klienten für Ihre Praxis | Für Therapeuten | Kaufmann Health",
@@ -57,7 +58,9 @@ const faqItems = [
   {
     id: 'datenschutz-therapeuten',
     question: 'Wie gehen Sie mit meinen Daten um?',
-    answer: 'Wir verwenden Ihre Angaben ausschließlich zur Prüfung Ihrer Aufnahme und zur Vermittlung passender Klienten. Keine Cookies, kein Tracking. Details in unserer Datenschutzerklärung.'
+    answer: COOKIES_ENABLED
+      ? 'Wir verwenden Ihre Angaben ausschließlich zur Prüfung Ihrer Aufnahme und zur Vermittlung passender Klienten. Keine Analytics‑Cookies. Es wird lediglich ein minimales Conversion‑Signal an Google Ads gesendet. Details in unserer Datenschutzerklärung.'
+      : 'Wir verwenden Ihre Angaben ausschließlich zur Prüfung Ihrer Aufnahme und zur Vermittlung passender Klienten. Keine Cookies, kein Tracking. Details in unserer Datenschutzerklärung.'
   },
 ];
 
@@ -112,10 +115,12 @@ export default function TherapistsPage() {
             <ShieldCheck className="h-4 w-4 text-emerald-600" />
             Geprüfte Anfragen
           </span>
-          <span className="inline-flex items-center gap-2">
-            <Lock className="h-4 w-4 text-slate-700" />
-            Keine Cookies
-          </span>
+          {!COOKIES_ENABLED && (
+            <span className="inline-flex items-center gap-2">
+              <Lock className="h-4 w-4 text-slate-700" />
+              Keine Cookies
+            </span>
+          )}
           <span className="inline-flex items-center gap-2">
             <UserCheck className="h-4 w-4 text-indigo-600" />
             Transparente Datenverarbeitung
@@ -264,8 +269,8 @@ export default function TherapistsPage() {
             <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">
               <Lock className="mt-0.5 h-5 w-5 text-slate-700" />
               <div>
-                <p className="font-medium">Keine Cookies</p>
-                <p className="text-sm text-gray-600">Keine Tracking-Cookies. DSGVO-konforme Prozesse.</p>
+                <p className="font-medium">{COOKIES_ENABLED ? 'Datenschutzfreundlich' : 'Keine Cookies'}</p>
+                <p className="text-sm text-gray-600">{COOKIES_ENABLED ? 'Minimales Conversion‑Signal; keine Analytics‑Cookies.' : 'Keine Tracking‑Cookies. DSGVO‑konforme Prozesse.'}</p>
               </div>
             </div>
             <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">

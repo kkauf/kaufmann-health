@@ -1,4 +1,5 @@
 import { ShieldCheck, Lock } from "lucide-react";
+import { COOKIES_ENABLED } from "@/lib/config";
 
 export default function Footer() {
   return (
@@ -51,10 +52,12 @@ export default function Footer() {
               <ShieldCheck className="h-4 w-4 text-emerald-600" />
               DSGVO-konform
             </span>
-            <span className="inline-flex items-center gap-2">
-              <Lock className="h-4 w-4 text-slate-700" />
-              Keine Cookies
-            </span>
+            {!COOKIES_ENABLED && (
+              <span className="inline-flex items-center gap-2">
+                <Lock className="h-4 w-4 text-slate-700" />
+                Keine Cookies
+              </span>
+            )}
             <span className="inline-flex items-center gap-2">
               <Lock className="h-4 w-4 text-indigo-600" />
               Verschlüsselte Übertragung

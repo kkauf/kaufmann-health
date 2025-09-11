@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { getEmailError } from '@/lib/validation';
 import { ShieldCheck, Lock, UserCheck } from 'lucide-react';
 import { buildEventId } from '@/lib/analytics';
+import { COOKIES_ENABLED } from '@/lib/config';
 // CTA form for Therapie-Finder landing
 
 // Keep in sync with Datenschutz "Stand/Version" for consent proof
@@ -450,10 +451,12 @@ export default function TherapieFinderForm() {
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
               Geprüfte Profile
             </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Lock className="h-3.5 w-3.5 text-slate-700" />
-              Keine Cookies
-            </span>
+            {!COOKIES_ENABLED && (
+              <span className="inline-flex items-center gap-1.5">
+                <Lock className="h-3.5 w-3.5 text-slate-700" />
+                Keine Cookies
+              </span>
+            )}
             <span className="inline-flex items-center gap-1.5">
               <UserCheck className="h-3.5 w-3.5 text-indigo-600" />
               Transparente Datenverarbeitung

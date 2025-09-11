@@ -235,3 +235,50 @@ __Queries__: Use the `events` table to derive:
 - Document upload → Approval rate
 - Signup → Profile completion rate (photo + approach)
 - Completion → Activation rate (approval with `photo_url`)
+
+## Minimal Google Ads Conversion (EARTH-132)
+
+__Why__: Google Ads' optimization algorithms require a client-side conversion signal to learn which clicks lead to conversions. Our server-side Enhanced Conversions remain the source of truth, but without a browser-side ping Google cannot attribute conversions to ad clicks, hurting optimization and budget scaling.
+
+__What__: A single, minimal client-side `gtag` conversion event fired only after a successful Klient:in lead submission on `TherapieFinderForm`.
+
+__Privacy__: Consent Mode defaults to `denied` for all storages. No cookies/tracking, no PII, and no cross-site profiling. This yields a cookieless conversion signal suitable for model-based attribution.
+
+__Implementation__:
+- `app/layout.tsx`: inject Google Ads tag with Consent Mode defaults (all denied). Load only when `NEXT_PUBLIC_GOOGLE_ADS_ID` is set.
+- `components/TherapieFinderForm.tsx`: after successful submit, call
+  `gtag('event', 'conversion', { send_to: "AW-XXXX/YYYY", value: 1.0, currency: 'EUR' })` guarded by environment checks.
+
+__Environment__:
+```
+NEXT_PUBLIC_GOOGLE_ADS_ID=AW-XXXXXXXXX
+NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL=XXXXXXXXXXXXX
+NEXT_PUBLIC_COOKIES=false | true
+```
+
+__Notes__:
+- This does not replace server-side tracking; it complements it for Ads optimization only.
+- Keep disabled in non-production environments by leaving env vars unset.
+
+## Cookie Toggle for Google Ads Linking (EARTH-133)
+
+__Goal__: Allow switching between a strictly cookie-free setup and a slightly more involved setup that improves Google Ads attribution quality.
+
+__Environment__:
+```
+NEXT_PUBLIC_COOKIES=false | true
+```
+
+__Behavior__:
+- When `false` (default):
+  - Consent Mode defaults to denied for all storages.
+  - gtag configured with `url_passthrough: true` (no cookies).
+  - Public UI shows “Keine Cookies” badges.
+- When `true`:
+  - Consent Mode grants only `ad_storage`; `ad_user_data`, `analytics_storage`, and `ad_personalization` remain denied.
+  - gtag configured with `conversion_linker: true` to set first‑party linking cookies for better attribution.
+  - Public UI updates badges to privacy‑friendly messaging (no analytics cookies).
+
+__Notes__:
+- Vercel Analytics remains cookieless in both modes.
+- We do not enable analytics cookies in either mode.

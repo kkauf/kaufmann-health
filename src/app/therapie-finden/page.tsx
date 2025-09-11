@@ -5,6 +5,7 @@ import TherapyModalityExplanations from '@/components/TherapyModalityExplanation
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Activity, Euro, Clock, MessageCircle, UserCheck, PhoneCall, ShieldCheck, Lock, Check } from 'lucide-react';
+import { COOKIES_ENABLED } from '@/lib/config';
 
 export default function TherapieFindenPage() {
   return (
@@ -24,10 +25,12 @@ export default function TherapieFindenPage() {
                 <ShieldCheck className="h-4 w-4 text-emerald-600" />
                 Geprüfte Profile
               </span>
-              <span className="inline-flex items-center gap-2">
-                <Lock className="h-4 w-4 text-slate-700" />
-                Keine Tracking‑Cookies
-              </span>
+              {!COOKIES_ENABLED && (
+                <span className="inline-flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-slate-700" />
+                  Keine Tracking‑Cookies
+                </span>
+              )}
               <span className="inline-flex items-center gap-2">
                 <UserCheck className="h-4 w-4 text-indigo-600" />
                 Transparente Datenverarbeitung
@@ -143,10 +146,10 @@ export default function TherapieFindenPage() {
                 <div className="rounded-xl bg-slate-100 p-2 text-slate-700">
                   <Lock className="h-5 w-5" />
                 </div>
-                <CardTitle className="font-medium">Keine Tracking‑Cookies</CardTitle>
+                <CardTitle className="font-medium">{COOKIES_ENABLED ? 'Datenschutzfreundlich' : 'Keine Tracking‑Cookies'}</CardTitle>
               </CardHeader>
               <CardContent>
-                <CardDescription>Keine Tracking-Cookies. Verwendung Ihrer Angaben nur zur Kontaktaufnahme.</CardDescription>
+                <CardDescription>{COOKIES_ENABLED ? 'Minimales Conversion‑Signal; keine Analytics‑Cookies.' : 'Keine Tracking‑Cookies. Verwendung Ihrer Angaben nur zur Kontaktaufnahme.'}</CardDescription>
               </CardContent>
             </Card>
             <Card className="transition-all duration-200">
@@ -291,7 +294,9 @@ export default function TherapieFindenPage() {
               {
                 id: 'datenschutz',
                 question: 'Wie gehen Sie mit meinen Daten um?',
-                answer: 'Wir verwenden Ihre Angaben ausschließlich, um passende Therapeut:innen vorzuschlagen und Ihnen deren Kontaktdaten bereitzustellen. Keine Cookies, kein Tracking. Details finden Sie in unserer Datenschutzerklärung.',
+                answer: COOKIES_ENABLED
+                  ? 'Wir verwenden Ihre Angaben ausschließlich, um passende Therapeut:innen vorzuschlagen und Ihnen deren Kontaktdaten bereitzustellen. Keine Analytics‑Cookies. Es wird lediglich ein minimales Conversion‑Signal an Google Ads gesendet. Details finden Sie in unserer Datenschutzerklärung.'
+                  : 'Wir verwenden Ihre Angaben ausschließlich, um passende Therapeut:innen vorzuschlagen und Ihnen deren Kontaktdaten bereitzustellen. Keine Cookies, kein Tracking. Details finden Sie in unserer Datenschutzerklärung.',
               },
               {
                 id: 'qualifikation',

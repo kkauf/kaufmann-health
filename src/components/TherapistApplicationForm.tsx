@@ -13,6 +13,7 @@ import { getOrCreateSessionId } from '@/lib/attribution';
 import { getEmailError } from '@/lib/validation';
 import Link from 'next/link';
 import { ShieldCheck, Lock, UserCheck } from 'lucide-react';
+import { COOKIES_ENABLED } from '@/lib/config';
 
 // Re-export for tests to assert version consistency
 export const THERAPIST_TERMS_VERSION = TERMS_VERSION;
@@ -228,8 +229,8 @@ export default function TherapistApplicationForm() {
           <div className="flex items-start gap-2 text-sm text-gray-700">
             <Lock className="mt-0.5 h-4 w-4 text-slate-700" />
             <div>
-              <p className="font-medium">Keine Cookies</p>
-              <p className="text-xs text-gray-600">DSGVO‑konform, kein Tracking</p>
+              <p className="font-medium">{COOKIES_ENABLED ? 'Datenschutzfreundlich' : 'Keine Cookies'}</p>
+              <p className="text-xs text-gray-600">{COOKIES_ENABLED ? 'Minimales Conversion‑Signal; keine Analytics‑Cookies.' : 'DSGVO‑konform, kein Tracking'}</p>
             </div>
           </div>
           <div className="flex items-start gap-2 text-sm text-gray-700">
