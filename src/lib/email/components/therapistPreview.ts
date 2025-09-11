@@ -48,16 +48,17 @@ export function renderTherapistPreviewEmail(params: {
   const approach = truncateSentences(params.approach_text || "", 3);
 
   const photo = params.photo_url
-    ? `<img src="${escapeHtml(params.photo_url)}" alt="${escapeHtml(params.first_name)} ${escapeHtml(params.last_name)}" style="width:100%;height:100%;object-fit:cover;display:block;" />`
-    : `<div style="width:100%;height:100%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;">${escapeHtml(initials)}</div>`;
+    ? `<img src="${escapeHtml(params.photo_url)}" alt="${escapeHtml(params.first_name)} ${escapeHtml(params.last_name)}" width="56" height="56" style="width:56px;height:56px;object-fit:cover;display:block;border-radius:999px;" />`
+    : `<div style="width:56px;height:56px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;border-radius:999px;">${escapeHtml(initials)}</div>`;
   // Build multiple modality badges
   const badgeItems = buildBadgeItems(params.modalities || []);
   const maxBadges = 3;
   const shown = badgeItems.slice(0, maxBadges);
   const extra = badgeItems.length - shown.length;
+  const badgeBase = 'display:inline-block;border-radius:999px;font-size:12px;padding:2px 8px;line-height:1;vertical-align:middle;margin:2px 4px 2px 6px;';
   const badgesHtml = [
-    ...shown.map((b) => `<span style="display:inline-flex;align-items:center;border-radius:999px;background:${b.color};color:#fff;font-size:12px;padding:2px 8px;">${escapeHtml(b.label)}</span>`),
-    ...(extra > 0 ? [`<span style="display:inline-flex;align-items:center;border-radius:999px;background:#e5e7eb;color:#111827;font-size:12px;padding:2px 8px;">+${extra}</span>`] : []),
+    ...shown.map((b) => `<span style="${badgeBase}background:${b.color};color:#fff;">${escapeHtml(b.label)}</span>`),
+    ...(extra > 0 ? [`<span style="${badgeBase}background:#e5e7eb;color:#111827;">+${extra}</span>`] : []),
   ].join("");
 
   const availability = params.accepting_new
@@ -67,11 +68,11 @@ export function renderTherapistPreviewEmail(params: {
   const action = params.actionButtonHtml ? `<div style="margin-top:8px;">${params.actionButtonHtml}</div>` : "";
 
   return [
-    `<div style="display:flex;align-items:flex-start;gap:12px;">`,
-    `  <div style="width:56px;height:56px;border-radius:999px;overflow:hidden;background:${avatarColor};flex:0 0 auto;">${photo}</div>`,
+    `<div style="display:flex;align-items:flex-start;">`,
+    `  <div style="width:56px;height:56px;border-radius:999px;overflow:hidden;background:${avatarColor};flex:0 0 auto;margin-right:12px;">${photo}</div>`,
     `  <div style="flex:1;min-width:0;">`,
-    `    <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap;">`,
-    `      <div style="font-weight:600;">${escapeHtml(params.first_name)} ${escapeHtml(params.last_name)}</div>`,
+    `    <div style="display:block;margin-bottom:4px;">`,
+    `      <span style="font-weight:600;vertical-align:middle;">${escapeHtml(params.first_name)} ${escapeHtml(params.last_name)}</span>`,
     `      ${badgesHtml}`,
     `    </div>`,
     `    <div style="color:#475569;font-size:14px;margin-bottom:4px;">${escapeHtml(params.city || "")}</div>`,
