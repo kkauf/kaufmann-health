@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import CheckList from "@/components/CheckList";
 import SectionViewTracker from "@/components/SectionViewTracker";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Leaf, Compass, Heart } from "lucide-react";
+import WhatToExpectSection from "@/components/WhatToExpectSection";
 import RevealContainer from "@/components/RevealContainer";
 import FaqAccordion from "@/components/FaqAccordion";
 
@@ -216,74 +216,7 @@ export default function WiederLebendigPage() {
         </SectionViewTracker>
 
         {/* What to Expect */}
-        <SectionViewTracker location="what-to-expect">
-          <section aria-labelledby="expect-heading" className="mt-10 sm:mt-14">
-            <h2 id="expect-heading" className="text-2xl font-semibold tracking-tight">
-              Was dich erwartet
-            </h2>
-
-            <RevealContainer>
-              <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {/* Card 1 */}
-                <Card
-                  data-reveal
-                  className="opacity-0 translate-y-2 transition-all duration-500 hover:shadow-md"
-                  style={{ transitionDelay: "0ms" }}
-                >
-                  <CardHeader className="flex items-center gap-3">
-                    <Leaf className="h-5 w-5 text-emerald-600" aria-hidden="true" />
-                    <CardTitle>Raum zum Ankommen</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-1.5 text-sm text-gray-700">
-                      <li>Zeit ohne Leistungsdruck</li>
-                      <li>Dein Tempo, deine Themen</li>
-                      <li>Kein Optimierungszwang</li>
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                {/* Card 2 */}
-                <Card
-                  data-reveal
-                  className="opacity-0 translate-y-2 transition-all duration-500 hover:shadow-md"
-                  style={{ transitionDelay: "60ms" }}
-                >
-                  <CardHeader className="flex items-center gap-3">
-                    <Compass className="h-5 w-5 text-sky-600" aria-hidden="true" />
-                    <CardTitle>Körper als Kompass</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-1.5 text-sm text-gray-700">
-                      <li>Wieder spüren lernen, was du brauchst</li>
-                      <li>Körpersignale verstehen und nutzen</li>
-                      <li>Vom Kopf zurück ins Gefühl</li>
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                {/* Card 3 */}
-                <Card
-                  data-reveal
-                  className="opacity-0 translate-y-2 transition-all duration-500 hover:shadow-md"
-                  style={{ transitionDelay: "120ms" }}
-                >
-                  <CardHeader className="flex items-center gap-3">
-                    <Heart className="h-5 w-5 text-rose-600" aria-hidden="true" />
-                    <CardTitle>Echte Verbindung</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-1.5 text-sm text-gray-700">
-                      <li>Therapeuten, die selbst alternative Wege gehen</li>
-                      <li>Authentische Begegnung statt Behandlung</li>
-                      <li>Raum für alles, was du jahrelang weggedrückt hast</li>
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
-            </RevealContainer>
-          </section>
-        </SectionViewTracker>
+        <WhatToExpectSection />
 
         {/* Investment & Pricing */}
         <SectionViewTracker location="pricing">
