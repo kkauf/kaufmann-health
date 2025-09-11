@@ -197,6 +197,21 @@ export default function AdminTherapistsPage() {
     setDetailError(null);
   }, []);
 
+  // Improve modal UX: Esc to close and prevent background scroll while open
+  useEffect(() => {
+    if (!openId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeDetail();
+    };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [openId, closeDetail]);
+
   async function updateStatus(newStatus: "verified" | "rejected") {
     if (!openId) return;
     try {
@@ -519,48 +534,47 @@ export default function AdminTherapistsPage() {
 
       {/* Modal */}
       {openId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="dialog" aria-modal="true">
-          <div className="w-full max-w-4xl rounded-md bg-white shadow-lg">
-            <div className="flex items-center justify-between border-b px-4 py-2">
-              <h2 className="text-lg font-semibold">Verifizierung</h2>
-              <button className="text-sm underline" onClick={closeDetail}>Schließen</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/40" onClick={closeDetail} />
+          <div
+            className="relative w-full max-w-5xl h-[85vh] md:h-[80vh] rounded-lg bg-white shadow-lg flex flex-col"
+          >
+            <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
+              <h2 className="text-base font-semibold">Verifizierung</h2>
+              <button className="text-sm underline" onClick={closeDetail} title="Esc zum Schließen">Schließen</button>
             </div>
 
-            <div className="p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto p-4">
               {detailLoading && <p className="text-sm text-gray-600">Laden…</p>}
               {detailError && <p className="text-sm text-red-600">{detailError}</p>}
 
               {detail && (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <div className="mb-2">
-                        <div className="font-medium">{detail.name || "—"}</div>
-                        <div className="text-sm text-gray-600">{detail.email || "—"}</div>
-                        <div className="text-sm text-gray-600">{detail.city || "—"}</div>
-                        <div className="text-xs text-gray-500">Status: {detail.status}</div>
-                      </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div className="mb-2">
+                      <div className="font-medium">{detail.name || "—"}</div>
+                      <div className="text-sm text-gray-600">{detail.email || "—"}</div>
+                      <div className="text-sm text-gray-600">{detail.city || "—"}</div>
+                      <div className="text-xs text-gray-500">Status: {detail.status}</div>
+                    </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="approach">Therapie-Ansatz (max 500 Zeichen)</Label>
-                        <textarea
-                          id="approach"
-                          rows={4}
-                          className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg/input/30 w-full rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-                          value={approachText}
-                          onChange={(e) => setApproachText(e.target.value)}
-                          maxLength={500}
-                        />
-                        <div className="text-xs text-gray-500">{approachText.length} / 500</div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="secondary" disabled={updating} onClick={() => updateStatus("verified")}>Freigeben</Button>
-                          <Button size="sm" variant="destructive" disabled={updating} onClick={() => updateStatus("rejected")}>Ablehnen</Button>
-                          <Button size="sm" variant="outline" disabled={updating} onClick={sendReminder}>Erinnerung senden</Button>
-                        </div>
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="approach">Therapie-Ansatz (max 500 Zeichen)</Label>
+                      <textarea
+                        id="approach"
+                        rows={4}
+                        className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg/input/30 w-full rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                        value={approachText}
+                        onChange={(e) => setApproachText(e.target.value)}
+                        maxLength={500}
+                      />
+                      <div className="text-xs text-gray-500">{approachText.length} / 500</div>
+                    </div>
 
-                      <div className="space-y-2 mt-3">
-                        <Label htmlFor="notes">Notizen (nur intern)</Label>
+                    <details className="mt-2 rounded-md border bg-gray-50 open:bg-white">
+                      <summary className="cursor-pointer px-3 py-2 text-sm font-medium">Notizen (nur intern)</summary>
+                      <div className="p-3 pt-1">
+                        <Label htmlFor="notes" className="sr-only">Notizen (nur intern)</Label>
                         <textarea
                           id="notes"
                           rows={3}
@@ -570,8 +584,10 @@ export default function AdminTherapistsPage() {
                           onChange={(e) => setNotes(e.target.value)}
                         />
                       </div>
-                    </div>
+                    </details>
+                  </div>
 
+                  <div className="space-y-4">
                     <div>
                       <div className="mb-2">
                         <div className="font-medium">Unterlagen</div>
@@ -583,7 +599,7 @@ export default function AdminTherapistsPage() {
                           <iframe
                             title="Lizenz"
                             src={`/admin/api/therapists/${detail.id}/documents/license`}
-                            className="w-full h-[320px]"
+                            className="w-full h-[360px]"
                           />
                         </div>
                         <div className="mt-1">
@@ -597,60 +613,63 @@ export default function AdminTherapistsPage() {
                           </a>
                         </div>
                         {/* Admin upload controls for documents */}
-                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <Label htmlFor="licenseFile">Lizenz hochladen (PDF/JPG/PNG)</Label>
-                            <input
-                              id="licenseFile"
-                              type="file"
-                              accept="application/pdf,image/jpeg,image/png"
-                              onChange={(e) => setLicenseFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label htmlFor="specFiles">Spezialisierung (optional, mehrere)</Label>
-                            <input
-                              id="specFiles"
-                              type="file"
-                              accept="application/pdf,image/jpeg,image/png"
-                              multiple
-                              onChange={(e) => setSpecFiles(e.target.files)}
-                            />
-                          </div>
-                          <div className="md:col-span-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={updating || (!licenseFile && (!specFiles || specFiles.length === 0))}
-                              onClick={async () => {
-                                if (!detail?.id) return;
-                                try {
-                                  setUpdating(true);
-                                  setMessage(null);
-                                  const fd = new FormData();
-                                  if (licenseFile) fd.append('psychotherapy_license', licenseFile);
-                                  if (specFiles) {
-                                    Array.from(specFiles).forEach((f) => fd.append('specialization_cert', f));
+                        <details className="mt-3 rounded-md border bg-gray-50 open:bg-white">
+                          <summary className="cursor-pointer px-3 py-2 text-sm font-medium">Dateien hochladen (optional)</summary>
+                          <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label htmlFor="licenseFile">Lizenz hochladen (PDF/JPG/PNG)</Label>
+                              <input
+                                id="licenseFile"
+                                type="file"
+                                accept="application/pdf,image/jpeg,image/png"
+                                onChange={(e) => setLicenseFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor="specFiles">Spezialisierung (optional, mehrere)</Label>
+                              <input
+                                id="specFiles"
+                                type="file"
+                                accept="application/pdf,image/jpeg,image/png"
+                                multiple
+                                onChange={(e) => setSpecFiles(e.target.files)}
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={updating || (!licenseFile && (!specFiles || specFiles.length === 0))}
+                                onClick={async () => {
+                                  if (!detail?.id) return;
+                                  try {
+                                    setUpdating(true);
+                                    setMessage(null);
+                                    const fd = new FormData();
+                                    if (licenseFile) fd.append('psychotherapy_license', licenseFile);
+                                    if (specFiles) {
+                                      Array.from(specFiles).forEach((f) => fd.append('specialization_cert', f));
+                                    }
+                                    const res = await fetch(`/api/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
+                                    const json = await res.json();
+                                    if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
+                                    setMessage('Dokumente hochgeladen');
+                                    setLicenseFile(null);
+                                    setSpecFiles(null);
+                                    await openDetail(detail.id);
+                                  } catch (e) {
+                                    const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
+                                    setMessage(msg);
+                                  } finally {
+                                    setUpdating(false);
                                   }
-                                  const res = await fetch(`/api/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
-                                  const json = await res.json();
-                                  if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
-                                  setMessage('Dokumente hochgeladen');
-                                  setLicenseFile(null);
-                                  setSpecFiles(null);
-                                  await openDetail(detail.id);
-                                } catch (e) {
-                                  const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
-                                  setMessage(msg);
-                                } finally {
-                                  setUpdating(false);
-                                }
-                              }}
-                            >
-                              Dokumente hochladen
-                            </Button>
+                                }}
+                              >
+                                Dokumente hochladen
+                              </Button>
+                            </div>
                           </div>
-                        </div>
+                        </details>
                       </div>
 
                       {/* Profile Photo (pending/public) */}
@@ -661,59 +680,62 @@ export default function AdminTherapistsPage() {
                             <Button size="sm" variant="secondary" disabled={updating} onClick={approveProfilePhoto}>Profil-Foto freigeben</Button>
                           )}
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="border rounded-md p-2">
                             <div className="text-xs text-gray-600 mb-1">Pending</div>
                             {detail.profile.photo_pending_url ? (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img src={detail.profile.photo_pending_url} alt="Pending profile" className="max-h-60 w-auto" />
+                              <img src={detail.profile.photo_pending_url} alt="Pending profile" className="max-h-60 w-auto rounded" />
                             ) : (
                               <div className="text-xs text-gray-500">Kein ausstehendes Foto</div>
                             )}
-                            <div className="mt-2">
-                              <Label htmlFor="profilePhoto">Profilfoto hochladen (JPG/PNG)</Label>
-                              <input
-                                id="profilePhoto"
-                                type="file"
-                                accept="image/jpeg,image/png"
-                                onChange={(e) => setProfilePhotoFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
-                              />
-                              <div className="mt-1">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={updating || !profilePhotoFile}
-                                  onClick={async () => {
-                                    if (!detail?.id || !profilePhotoFile) return;
-                                    try {
-                                      setUpdating(true);
-                                      setMessage(null);
-                                      const fd = new FormData();
-                                      fd.append('profile_photo', profilePhotoFile);
-                                      const res = await fetch(`/api/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
-                                      const json = await res.json();
-                                      if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
-                                      setMessage('Profilfoto hochgeladen');
-                                      setProfilePhotoFile(null);
-                                      await openDetail(detail.id);
-                                    } catch (e) {
-                                      const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
-                                      setMessage(msg);
-                                    } finally {
-                                      setUpdating(false);
-                                    }
-                                  }}
-                                >
-                                  Foto hochladen
-                                </Button>
+                            <details className="mt-2 rounded-md border bg-gray-50 open:bg-white">
+                              <summary className="cursor-pointer px-2 py-1 text-sm font-medium">Foto hochladen</summary>
+                              <div className="p-2">
+                                <Label htmlFor="profilePhoto">Profilfoto hochladen (JPG/PNG)</Label>
+                                <input
+                                  id="profilePhoto"
+                                  type="file"
+                                  accept="image/jpeg,image/png"
+                                  onChange={(e) => setProfilePhotoFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
+                                />
+                                <div className="mt-1">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={updating || !profilePhotoFile}
+                                    onClick={async () => {
+                                      if (!detail?.id || !profilePhotoFile) return;
+                                      try {
+                                        setUpdating(true);
+                                        setMessage(null);
+                                        const fd = new FormData();
+                                        fd.append('profile_photo', profilePhotoFile);
+                                        const res = await fetch(`/api/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
+                                        const json = await res.json();
+                                        if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
+                                        setMessage('Profilfoto hochgeladen');
+                                        setProfilePhotoFile(null);
+                                        await openDetail(detail.id);
+                                      } catch (e) {
+                                        const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
+                                        setMessage(msg);
+                                      } finally {
+                                        setUpdating(false);
+                                      }
+                                    }}
+                                  >
+                                    Foto hochladen
+                                  </Button>
+                                </div>
                               </div>
-                            </div>
+                            </details>
                           </div>
                           <div className="border rounded-md p-2">
                             <div className="text-xs text-gray-600 mb-1">Veröffentlicht</div>
                             {detail.profile.photo_url ? (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img src={String(detail.profile.photo_url)} alt="Public profile" className="max-h-60 w-auto" />
+                              <img src={String(detail.profile.photo_url)} alt="Public profile" className="max-h-60 w-auto rounded" />
                             ) : (
                               <div className="text-xs text-gray-500">Noch nicht veröffentlicht</div>
                             )}
@@ -722,8 +744,19 @@ export default function AdminTherapistsPage() {
                       </div>
                     </div>
                   </div>
-                </>
+                </div>
               )}
+            </div>
+
+            <div className="sticky bottom-0 bg-white border-t px-4 py-3">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="text-xs text-gray-500">Drücke Esc oder klicke außerhalb zum Schließen</div>
+                <div className="flex gap-2 justify-end">
+                  <Button size="sm" variant="secondary" disabled={updating} onClick={() => updateStatus('verified')}>Freigeben</Button>
+                  <Button size="sm" variant="destructive" disabled={updating} onClick={() => updateStatus('rejected')}>Ablehnen</Button>
+                  <Button size="sm" variant="outline" disabled={updating} onClick={sendReminder}>Erinnerung senden</Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -160,6 +160,7 @@ export async function GET(req: Request) {
         gender: r.gender || null,
         accepting_new: typeof (r as Row).accepting_new === 'boolean' ? (r as Row).accepting_new : undefined,
         status: r.status || 'pending_verification',
+        photo_url: (r as Row).photo_url || null,
         metadata,
         created_at: r.created_at || null,
         profile: {

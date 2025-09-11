@@ -39,6 +39,7 @@ type Person = {
   created_at: string;
   accepting_new?: boolean;
   gender?: string | null;
+  photo_url?: string | null; // public profile photo (if approved)
 };
 
 function formatDate(iso?: string) {
@@ -718,7 +719,7 @@ export default function AdminLeadsPage() {
                 id: t.id,
                 first_name: first || (t.name || ''),
                 last_name: rest.join(' '),
-                photo_url: undefined,
+                photo_url: t.photo_url || undefined,
                 modalities: specs,
                 approach_text: '',
                 accepting_new: Boolean(t.accepting_new),
