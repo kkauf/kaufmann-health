@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Per-test mutable state for supabase mock
 let matchByUUID: Record<string, { id: string; status?: string | null; created_at?: string | null; patient_id: string }> = {};
 let updateCalls: Array<{ id: string; payload: Record<string, unknown> }> = [];
+let peopleUpdateCalls: Array<{ id: string; payload: Record<string, unknown> }> = [];
 let updateMode: 'ok' | 'missing_responded_at' | 'error' = 'ok';
 
 vi.mock('@/lib/supabase-server', () => {
@@ -34,6 +35,21 @@ vi.mock('@/lib/supabase-server', () => {
           }),
         } as any;
       }
+      if (table === 'people') {
+        return {
+          update: (payload: Record<string, unknown>) => ({
+            eq: async (_col: string, id: string) => {
+              peopleUpdateCalls.push({ id, payload });
+              return { error: null } as const;
+            },
+          }),
+          select: (_cols?: string) => ({
+            eq: (_col: string, _value: string) => ({
+              single: async () => ({ data: null, error: { message: 'not found' } }),
+            }),
+          }),
+        } as any;
+      }
       throw new Error(`Unexpected table ${table}`);
     },
   } as any;
@@ -51,6 +67,7 @@ function makePost(url: string, body?: any) {
 beforeEach(() => {
   matchByUUID = {};
   updateCalls = [];
+  peopleUpdateCalls = [];
   updateMode = 'ok';
 });
 
@@ -66,6 +83,8 @@ describe('/api/match/[uuid]/respond POST', () => {
     expect(json).toEqual({ data: { status: 'accepted' }, error: null });
     expect(updateCalls.length).toBeGreaterThanOrEqual(1);
     expect(updateCalls[0]).toEqual({ id: 'm-1', payload: expect.objectContaining({ status: 'accepted' }) });
+    // EARTH-131: patient lead marked as matched
+    expect(peopleUpdateCalls).toContainEqual({ id: 'p-1', payload: expect.objectContaining({ status: 'matched' }) });
   });
 
   it('returns 410 when link expired (>72h) and does not update', async () => {
@@ -90,6 +109,8 @@ describe('/api/match/[uuid]/respond POST', () => {
     const json = await res.json();
     expect(json).toEqual({ data: { status: 'accepted' }, error: null });
     expect(updateCalls.length).toBe(0);
+    // EARTH-131: even on idempotent accept, ensure patient marked matched
+    expect(peopleUpdateCalls).toContainEqual({ id: 'p-3', payload: expect.objectContaining({ status: 'matched' }) });
   });
 
   it('falls back when responded_at column missing (retry without it)', async () => {

@@ -62,6 +62,7 @@ export async function POST(req: Request) {
     }
 
     const current = String(m.status || '').toLowerCase();
+    const wasPatientSelected = current === 'patient_selected';
     const nextStatus = action === 'accept' ? 'accepted' : 'declined';
 
     async function maybeGetContact() {
@@ -89,6 +90,17 @@ export async function POST(req: Request) {
         source: 'api.match.respond',
         props: { match_id: m.id, action: current },
       });
+      // EARTH-131: ensure patient lead is marked as matched when already accepted (best-effort)
+      if (current === 'accepted') {
+        try {
+          await supabaseServer
+            .from('people')
+            .update({ status: 'matched' })
+            .eq('id', m.patient_id);
+        } catch (e) {
+          void logError('api.match.respond', e, { stage: 'update_patient_status_idempotent', match_id: m.id });
+        }
+      }
       if (reveal && current === 'accepted') {
         const contact = await maybeGetContact();
         return NextResponse.json({ data: { status: current, ...(contact ? { contact } : {}) }, error: null });
@@ -133,6 +145,18 @@ export async function POST(req: Request) {
       props: { match_id: m.id, action: nextStatus },
     });
 
+    // EARTH-131: when a therapist accepts, mark patient lead as 'matched' (best-effort)
+    if (nextStatus === 'accepted') {
+      try {
+        await supabaseServer
+          .from('people')
+          .update({ status: 'matched' })
+          .eq('id', m.patient_id);
+      } catch (e) {
+        void logError('api.match.respond', e, { stage: 'update_patient_status', match_id: m.id });
+      }
+    }
+
     // Fire-and-forget: notify patient about the update (best-effort)
     try {
       type PatientRow = { id: string; name?: string | null; email?: string | null };
@@ -146,17 +170,26 @@ export async function POST(req: Request) {
         const patientName = (patient?.name || '') || null;
         if (patientEmail) {
           if (nextStatus === 'accepted') {
-            const therapistName = therapistRow
-              ? ([therapistRow.first_name || '', therapistRow.last_name || ''].join(' ').trim() || null)
-              : null;
-            const content = renderPatientMatchFound({ patientName, therapistName, specializations: [] });
-            void sendEmail({
-              to: patientEmail,
-              subject: content.subject,
-              html: content.html,
-              text: content.text,
-              context: { kind: 'patient_update_auto', template: 'match_found', match_id: m.id, patient_id: m.patient_id, therapist_id: m.therapist_id },
-            });
+            if (!wasPatientSelected) {
+              const therapistName = therapistRow
+                ? ([therapistRow.first_name || '', therapistRow.last_name || ''].join(' ').trim() || null)
+                : null;
+              const content = renderPatientMatchFound({ patientName, therapistName, specializations: [] });
+              void sendEmail({
+                to: patientEmail,
+                subject: content.subject,
+                html: content.html,
+                text: content.text,
+                context: { kind: 'patient_update_auto', template: 'match_found', match_id: m.id, patient_id: m.patient_id, therapist_id: m.therapist_id },
+              });
+            } else {
+              // Avoid duplicate "match found" email when the patient already selected the therapist and received confirmation.
+              void ServerAnalytics.trackEventFromRequest(req, {
+                type: 'patient_notify_skipped',
+                source: 'api.match.respond',
+                props: { match_id: m.id, reason: 'already_selected' },
+              });
+            }
           } else if (nextStatus === 'declined') {
             const message =
               'kurzes Update: Der vorgeschlagene Therapeut kann Ihren Fall leider nicht übernehmen. Wir suchen weiterhin nach einer passenden Option und melden uns schnellstmöglich.';

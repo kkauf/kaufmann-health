@@ -70,6 +70,8 @@ export default function AdminLeadsPage() {
   const [loadingLeads, setLoadingLeads] = useState(false);
   const [leads, setLeads] = useState<Person[]>([]);
   const [leadError, setLeadError] = useState<string | null>(null);
+  // EARTH-131: filter to focus on actionable leads by default
+  const [viewFilter, setViewFilter] = useState<'action' | 'all'>('action');
 
   const [selectedPatient, setSelectedPatient] = useState<Person | null>(null);
 
@@ -82,7 +84,7 @@ export default function AdminLeadsPage() {
   const [onlyPerfect, setOnlyPerfect] = useState<boolean>(false);
 
   // Simple flow mode to prevent triggering both flows at once
-  const [flowMode, setFlowMode] = useState<'therapist' | 'patient'>('therapist');
+  const [flowMode, setFlowMode] = useState<'therapist' | 'patient'>('patient');
 
   const [message, setMessage] = useState<string | null>(null);
   const [updatingLeadId, setUpdatingLeadId] = useState<string | null>(null);
@@ -187,7 +189,8 @@ export default function AdminLeadsPage() {
       const url = new URL('/admin/api/leads', window.location.origin);
       if (leadCity) url.searchParams.set('city', leadCity);
       if (leadSessionPref) url.searchParams.set('session_preference', leadSessionPref);
-      url.searchParams.set('status', 'all');
+      // Default is 'new' server-side; only override to 'all' when viewing all
+      if (viewFilter === 'all') url.searchParams.set('status', 'all');
       url.searchParams.set('limit', '200');
       const res = await fetch(url.toString(), { credentials: 'include' });
       const json = await res.json();
@@ -203,7 +206,7 @@ export default function AdminLeadsPage() {
     } finally {
       setLoadingLeads(false);
     }
-  }, [leadCity, leadSessionPref, loadPatientMatchFlags]);
+  }, [leadCity, leadSessionPref, viewFilter, loadPatientMatchFlags]);
 
   async function fetchTherapistsForPatient(p: Person) {
     try {
@@ -428,7 +431,7 @@ export default function AdminLeadsPage() {
     if (ids.length === 0) return;
     try {
       // Confirm to avoid accidental triggering
-      if (!confirm('Ausgewählte Therapeut/innen kontaktieren? Patient/in erhält KEINE Auswahl.')) {
+      if (!confirm('Ausgewählte Therapeut/innen kontaktieren? Klient/in erhält KEINE Auswahl.')) {
         return;
       }
       setMessage(null);
@@ -457,7 +460,7 @@ export default function AdminLeadsPage() {
       setMessage(null);
       const patientId = selectedPatient.id;
       // Confirm to avoid accidental triggering
-      if (!confirm('Auswahl-E-Mail an Patient/in senden? Therapeuten werden NICHT kontaktiert.')) {
+      if (!confirm('Auswahl-E-Mail an Klient/in senden? Therapeuten werden NICHT kontaktiert.')) {
         return;
       }
       const alreadyProposed = proposedCounts[patientId] || 0;
@@ -587,7 +590,7 @@ export default function AdminLeadsPage() {
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Leads */}
         <div className="border rounded-md p-4">
-          <h2 className="text-lg font-semibold mb-3">Patienten-Leads</h2>
+          <h2 className="text-lg font-semibold mb-3">Klienten-Leads</h2>
           <div className="flex flex-wrap gap-3 mb-3 items-end">
             <div className="space-y-1">
               <Label htmlFor="lead-city">Stadt</Label>
@@ -603,6 +606,19 @@ export default function AdminLeadsPage() {
                   <SelectItem value="any">Beliebig</SelectItem>
                   <SelectItem value="online">Online</SelectItem>
                   <SelectItem value="in_person">Vor Ort</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {/* EARTH-131: View filter */}
+            <div className="space-y-1">
+              <Label>Ansicht</Label>
+              <Select value={viewFilter} onValueChange={(v) => setViewFilter(v as 'action' | 'all')}>
+                <SelectTrigger className="min-w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="action">Handlungsbedarf</SelectItem>
+                  <SelectItem value="all">Alle</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -662,6 +678,18 @@ export default function AdminLeadsPage() {
                           </span>
                         </div>
                       )}
+                      {/* EARTH-131: Matched status badge */}
+                      {p.status === 'matched' && (
+                        <div className="mt-1">
+                          <Badge
+                            variant="outline"
+                            className="border-blue-200 bg-blue-50 text-blue-700"
+                            title="Lead vermittelt"
+                          >
+                            Vermittelt
+                          </Badge>
+                        </div>
+                      )}
                       {p.status === 'rejected' && (
                         <div className="mt-1">
                           <Badge
@@ -678,7 +706,7 @@ export default function AdminLeadsPage() {
                       <div className="flex items-center gap-2">
                         <Label className="text-xs text-gray-600">Status</Label>
                         <Select
-                          value={p.status === 'rejected' ? 'rejected' : 'new'}
+                          value={p.status === 'rejected' ? 'rejected' : (p.status === 'matched' ? 'matched' : 'new')}
                           onValueChange={(v) => updateLeadStatus(p.id, v as 'new' | 'rejected')}
                           disabled={updatingLeadId === p.id}
                         >
@@ -686,7 +714,13 @@ export default function AdminLeadsPage() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="new">Neu</SelectItem>
+                            {/* Display-only option for matched */}
+                            {p.status === 'matched' && (
+                              <SelectItem value="matched" disabled>
+                                Vermittelt
+                              </SelectItem>
+                            )}
+                            <SelectItem value="new" disabled={p.status === 'matched'}>Neu</SelectItem>
                             <SelectItem value="rejected">Verloren</SelectItem>
                           </SelectContent>
                         </Select>
@@ -822,12 +856,12 @@ export default function AdminLeadsPage() {
           <div className="mb-2 flex items-center gap-2">
             <span className="text-xs text-gray-600">Flow</span>
             <Button size="sm" variant={flowMode === 'therapist' ? 'default' : 'outline'} onClick={() => setFlowMode('therapist')}>Therapeuten kontaktieren</Button>
-            <Button size="sm" variant={flowMode === 'patient' ? 'default' : 'outline'} onClick={() => setFlowMode('patient')}>Patienten-Auswahl</Button>
+            <Button size="sm" variant={flowMode === 'patient' ? 'default' : 'outline'} onClick={() => setFlowMode('patient')}>Klienten-Auswahl</Button>
           </div>
           <div className="mb-2 text-xs text-gray-600">
             {flowMode === 'therapist'
-              ? 'E-Mails gehen an Therapeut/innen; Patient/in wird später informiert.'
-              : 'E-Mail geht an Patient/in; Therapeut/innen werden erst nach Auswahl kontaktiert.'}
+              ? 'E-Mails gehen an Therapeut/innen; Klient/in wird später informiert.'
+              : 'E-Mail geht an Klient/in; Therapeut/innen werden erst nach Auswahl kontaktiert.'}
           </div>
 
           {/* Selection state banner */}
@@ -843,11 +877,11 @@ export default function AdminLeadsPage() {
               <div className="text-sm text-gray-700">Ausgewählt: {selectedTherapists.size} / 3</div>
               <div className="flex gap-2">
                 {flowMode === 'patient' ? (
-                  <Button size="sm" onClick={sendSelectionEmail} disabled={!selectedPatient || (selectedTherapists.size < 2 && (proposedCounts[selectedPatient!.id] || 0) < 2)} title="Sendet E-Mail an Patient/in – Therapeuten werden NICHT kontaktiert">
+                  <Button size="sm" onClick={sendSelectionEmail} disabled={!selectedPatient || (selectedTherapists.size < 2 && (proposedCounts[selectedPatient!.id] || 0) < 2)} title="Sendet E-Mail an Klient/in – Therapeuten werden NICHT kontaktiert">
                     Auswahl-E-Mail senden
                   </Button>
                 ) : (
-                  <Button size="sm" onClick={contactSelectedTherapists} disabled={!selectedPatient} title="Sendet E-Mail an ausgewählte Therapeut/innen – Patient erhält KEINE Auswahl">
+                  <Button size="sm" onClick={contactSelectedTherapists} disabled={!selectedPatient} title="Sendet E-Mail an ausgewählte Therapeut/innen – Klient erhält KEINE Auswahl">
                     Ausgewählte kontaktieren
                   </Button>
                 )}
@@ -902,7 +936,7 @@ export default function AdminLeadsPage() {
                                 const map: Record<string, string> = { gender: 'Geschlecht', location: 'Ort/Sitzung', modality: 'Methode' };
                                 const label = map[r] || r;
                                 return (
-                                  <Badge key={r} variant="secondary" className="px-1.5 py-0 text-[10px]" title="Nicht passend zur Patientenpräferenz">{label}</Badge>
+                                  <Badge key={r} variant="secondary" className="px-1.5 py-0 text-[10px]" title="Nicht passend zur Klientenpräferenz">{label}</Badge>
                                 );
                               })}
                             </>

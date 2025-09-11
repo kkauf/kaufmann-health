@@ -51,7 +51,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     // Ensure the person exists and is a patient lead
     const { data: person, error: pErr } = await supabaseServer
       .from('people')
-      .select('id, type, metadata')
+      .select('id, type, status, metadata')
       .eq('id', id)
       .single();
     if (pErr || !person) {
@@ -61,6 +61,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     const type = (person as { type?: string | null })?.type || null;
     if (type !== 'patient') {
       return NextResponse.json({ data: null, error: 'Only patient leads can be updated' }, { status: 400 });
+    }
+
+    // EARTH-131: Prevent reverting a matched lead back to new via admin UI/API
+    const currentStatus = (person as { status?: string | null })?.status || null;
+    if (currentStatus === 'matched' && status === 'new') {
+      return NextResponse.json({ data: null, error: 'Cannot change matched lead back to new' }, { status: 400 });
     }
 
     // Merge metadata with optional lost_reason when rejecting
