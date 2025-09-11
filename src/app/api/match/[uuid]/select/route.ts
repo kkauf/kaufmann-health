@@ -11,6 +11,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 async function handle(req: Request) {
+  const isGet = req.method === 'GET';
   const { pathname, searchParams } = (() => {
     try {
       const u = new URL(req.url);
@@ -23,13 +24,18 @@ async function handle(req: Request) {
   // Expecting /api/match/{uuid}/select
   const matchIdx = parts.indexOf('match');
   const uuid = matchIdx >= 0 && parts.length > matchIdx + 1 ? decodeURIComponent(parts[matchIdx + 1]) : '';
-  if (!uuid) return NextResponse.json({ data: null, error: 'Missing uuid' }, { status: 400 });
+  if (!uuid) {
+    // For GET requests from email, redirect to a friendly page instead of showing raw JSON
+    if (isGet) return NextResponse.redirect(`${BASE_URL}/auswahl-bestaetigt?error=missing`);
+    return NextResponse.json({ data: null, error: 'Missing uuid' }, { status: 400 });
+  }
 
   try {
     const body = await req.json().catch(() => ({}));
     const therapistFromQuery = searchParams.get('therapist');
     const therapist_id = String((therapistFromQuery || body?.therapist_id || '')).trim();
     if (!therapist_id) {
+      if (isGet) return NextResponse.redirect(`${BASE_URL}/auswahl-bestaetigt?error=missing_therapist`);
       return NextResponse.json({ data: null, error: 'therapist is required' }, { status: 400 });
     }
 
@@ -41,6 +47,7 @@ async function handle(req: Request) {
       .single();
     if (refErr || !refMatch) {
       await logError('api.match.select', refErr || 'not_found', { stage: 'load_ref_match', uuid });
+      if (isGet) return NextResponse.redirect(`${BASE_URL}/auswahl-bestaetigt?error=not_found`);
       return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
     }
     const patient_id = (refMatch as { patient_id: string }).patient_id;
@@ -56,6 +63,7 @@ async function handle(req: Request) {
 
     if (tmErr || !targetMatch) {
       await logError('api.match.select', tmErr || 'not_found', { stage: 'load_target_match', uuid, patient_id, therapist_id });
+      if (isGet) return NextResponse.redirect(`${BASE_URL}/auswahl-bestaetigt?error=unavailable`);
       return NextResponse.json({ data: null, error: 'Match not available' }, { status: 404 });
     }
 
@@ -69,6 +77,7 @@ async function handle(req: Request) {
 
     if (updErr) {
       await logError('api.match.select', updErr, { stage: 'update_status', match_id });
+      if (isGet) return NextResponse.redirect(`${BASE_URL}/auswahl-bestaetigt?error=update_failed`);
       return NextResponse.json({ data: null, error: 'Failed to update' }, { status: 500 });
     }
 
@@ -135,7 +144,8 @@ async function handle(req: Request) {
           patientSessionPreference: patientMeta.session_preference ?? null,
           ctaUrl,
         });
-        void sendEmail({
+        // Await therapist notification to ensure acceptance by provider before returning response
+        await sendEmail({
           to: therapistEmail,
           subject: notif.subject,
           html: notif.html,
@@ -159,9 +169,14 @@ async function handle(req: Request) {
       void logError('api.match.select', e, { stage: 'notify' });
     }
 
+    // For email clicks (GET), redirect to a friendly confirmation page to avoid exposing raw JSON
+    if (isGet) {
+      return NextResponse.redirect(`${BASE_URL}/auswahl-bestaetigt?ok=1`);
+    }
     return NextResponse.json({ data: { ok: true }, error: null }, { status: 200 });
   } catch (e) {
     await logError('api.match.select', e, { stage: 'exception', uuid });
+    if (isGet) return NextResponse.redirect(`${BASE_URL}/auswahl-bestaetigt?error=invalid`);
     return NextResponse.json({ data: null, error: 'Invalid JSON' }, { status: 400 });
   }
 }

@@ -231,6 +231,7 @@ export async function POST(req: Request) {
     const therapist_id_single = typeof body?.therapist_id === 'string' ? String(body.therapist_id).trim() : '';
     const therapist_ids_array: string[] = Array.isArray(body?.therapist_ids) ? (body.therapist_ids as unknown[]).map((v) => String(v).trim()).filter(Boolean) : [];
     const notes = typeof body?.notes === 'string' ? body.notes.slice(0, 2000) : undefined;
+    const suppress_outreach: boolean = Boolean((body as Record<string, unknown> | null | undefined)?.['suppress_outreach']);
 
     if (!patient_id) {
       return NextResponse.json({ data: null, error: 'patient_id is required' }, { status: 400 });
@@ -334,36 +335,38 @@ export async function POST(req: Request) {
       const matchId = (data as { id: string }).id;
       created.push(matchId);
 
-      // Outreach with magic link (best-effort)
-      try {
-        // secure_uuid lookup
-        let secure_uuid: string | undefined;
+      // Outreach with magic link (best-effort) unless suppressed (used by selection flow)
+      if (!suppress_outreach) {
         try {
-          const { data: matchRow } = await supabaseServer
-            .from('matches')
-            .select('secure_uuid, created_at')
-            .eq('id', matchId)
-            .single();
-          const mr = matchRow as { secure_uuid?: string | null } | null;
-          if (mr && typeof mr.secure_uuid === 'string') secure_uuid = mr.secure_uuid;
-        } catch {}
-        const magicUrl = secure_uuid ? `${BASE_URL}/match/${secure_uuid}` : undefined;
-        const t = therapistsById.get(tid) as { email?: string | null; first_name?: string | null; last_name?: string | null } | undefined;
-        const p = patient as { metadata?: { city?: string; issue?: string } | null };
-        const therapistEmail = (t?.email || '').trim();
-        const therapistName = [t?.first_name || '', t?.last_name || ''].join(' ').trim() || undefined;
-        const city = typeof p?.metadata?.city === 'string' ? p.metadata!.city : undefined;
-        const issue = typeof p?.metadata?.issue === 'string' ? p.metadata!.issue : undefined;
+          // secure_uuid lookup
+          let secure_uuid: string | undefined;
+          try {
+            const { data: matchRow } = await supabaseServer
+              .from('matches')
+              .select('secure_uuid, created_at')
+              .eq('id', matchId)
+              .single();
+            const mr = matchRow as { secure_uuid?: string | null } | null;
+            if (mr && typeof mr.secure_uuid === 'string') secure_uuid = mr.secure_uuid;
+          } catch {}
+          const magicUrl = secure_uuid ? `${BASE_URL}/match/${secure_uuid}` : undefined;
+          const t = therapistsById.get(tid) as { email?: string | null; first_name?: string | null; last_name?: string | null } | undefined;
+          const p = patient as { metadata?: { city?: string; issue?: string } | null };
+          const therapistEmail = (t?.email || '').trim();
+          const therapistName = [t?.first_name || '', t?.last_name || ''].join(' ').trim() || undefined;
+          const city = typeof p?.metadata?.city === 'string' ? p.metadata!.city : undefined;
+          const issue = typeof p?.metadata?.issue === 'string' ? p.metadata!.issue : undefined;
 
-        if (magicUrl && therapistEmail) {
-          const content = renderTherapistOutreach({ therapistName, city, issueCategory: issue, magicUrl, expiresHours: 72 });
-          void sendEmail({ to: therapistEmail, subject: content.subject, html: content.html, context: { kind: 'therapist_outreach', match_id: matchId, patient_id, therapist_id: tid } });
-          void ServerAnalytics.trackEventFromRequest(req, { type: 'match_outreach_enqueued', source: 'admin.api.matches', props: { match_id: matchId, patient_id, therapist_id: tid } });
-        } else {
-          void ServerAnalytics.trackEventFromRequest(req, { type: 'match_outreach_skipped_no_secure_uuid', source: 'admin.api.matches', props: { match_id: matchId, patient_id, therapist_id: tid } });
+          if (magicUrl && therapistEmail) {
+            const content = renderTherapistOutreach({ therapistName, city, issueCategory: issue, magicUrl, expiresHours: 72 });
+            void sendEmail({ to: therapistEmail, subject: content.subject, html: content.html, context: { kind: 'therapist_outreach', match_id: matchId, patient_id, therapist_id: tid } });
+            void ServerAnalytics.trackEventFromRequest(req, { type: 'match_outreach_enqueued', source: 'admin.api.matches', props: { match_id: matchId, patient_id, therapist_id: tid } });
+          } else {
+            void ServerAnalytics.trackEventFromRequest(req, { type: 'match_outreach_skipped_no_secure_uuid', source: 'admin.api.matches', props: { match_id: matchId, patient_id, therapist_id: tid } });
+          }
+        } catch (e) {
+          void logError('admin.api.matches', e, { stage: 'email_outreach_enqueue', patient_id, therapist_id: tid });
         }
-      } catch (e) {
-        void logError('admin.api.matches', e, { stage: 'email_outreach_enqueue', patient_id, therapist_id: tid });
       }
 
       // Business opportunity logging (best-effort)

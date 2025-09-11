@@ -32,17 +32,41 @@ export function renderPatientSelectionEmail(params: {
 }): EmailContent {
   const name = (params.patientName || '').trim();
   const items = Array.isArray(params.items) ? params.items : [];
-
-  const introBox = params.bannerOverrideHtml ?? `
-    <div style="background: #FEF3C7; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+ 
+  // Urgency notice (shown after cards by default, can be overridden by admin)
+  const urgencyBox = params.bannerOverrideHtml ?? `
+    <div style="background:#FEF3C7; padding:12px; border-radius:8px; margin-top:20px;">
       ⏰ <strong>Diese Therapeuten haben begrenzte Kapazitäten.</strong><br/>
-      Bitte wählen Sie innerhalb von 48 Stunden, sonst vergeben wir Ihren Platz an andere Klienten.
+      Bitte wählen Sie innerhalb von 48 Stunden, damit wir die Kapazitäten für Sie sichern können.
     </div>
   `;
-
+ 
+  // Header and greeting/thanks
   const header = `
-    <h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Ihre persönlichen Therapievorschläge</h1>
-    ${name ? `<p style="margin:0 0 12px;">Hallo ${escapeHtml(name)}, bitte wählen Sie Ihre bevorzugte Option aus.</p>` : ''}
+    <h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Ihre persönlich kuratierte Auswahl</h1>
+  `;
+  const greetingHtml = `
+    ${name ? `<p style="margin:0 0 12px;">Hallo ${escapeHtml(name)},</p>` : ''}
+    <p style="margin:0 0 12px;">Vielen Dank für Ihre Anfrage bei Kaufmann Health.</p>
+  `;
+ 
+  // Trust and quality box
+  const trustBox = `
+    <div style="background:#F3F4F6; padding:12px; border-radius:8px; margin:0 0 16px;">
+      <strong style="display:block; margin-bottom:6px; color:#111827;">Warum diese Auswahl?</strong>
+      <ul style="margin:8px 0 0 18px; padding:0; color:#374151;">
+        <li style="margin:4px 0;">Wir haben uns Ihrer Anfrage persönlich angenommen.</li>
+        <li style="margin:4px 0;">Auf Basis Ihrer Präferenzen (z.&nbsp;B. online oder vor Ort) ausgewählt.</li>
+        <li style="margin:4px 0;">Wir prüfen die Qualifikationen der Therapeuten gründlich (Ausbildung, zertifizierte Fortbildungen, Erfahrung, aktuelle Verfügbarkeit).</li>
+        <li style="margin:4px 0;">Spezielle Ausbildungen für Körpertherapie sind in den farbigen Abzeichen sichtbar (z.&nbsp;B. NARM, Somatic Experiencing, Hakomi, Core Energetics).</li>
+      </ul>
+      <p style="margin:12px 0 0; color:#111827;">Sie können dieser Auswahl guten Gewissens vertrauen.</p>
+    </div>
+  `;
+ 
+  // Availability framing (7 days)
+  const availabilityLine = `
+    <p style="margin:0 0 12px;">Folgende Therapeuten haben freie Kapazitäten innerhalb der kommenden 7 Tage.</p>
   `;
 
   const cardsHtml = items
@@ -70,11 +94,34 @@ export function renderPatientSelectionEmail(params: {
       `;
     })
     .join('');
-
-  const contentHtml = [introBox, header, cardsHtml].join('\n');
+ 
+  // Action guidance
+  const actionGuidance = `
+    <p style="margin:8px 0 0;">Mit einem Klick auf „Auswählen“ reservieren Sie unverbindlich den nächsten Schritt. Wir stellen den Kontakt direkt her.</p>
+  `;
+ 
+  // Modalities explanation (concise, email-friendly)
+  const modalitiesHtml = `
+    <div style="margin-top:20px;">
+      <h2 style="color:#1A365D; font-size:18px; margin:0 0 8px;">Körperorientierte Therapieverfahren – kurz erklärt</h2>
+      <div style="font-size:14px; color:#374151;">
+        <p style="margin:8px 0;"><strong>NARM (Neuroaffektives Beziehungsmodell):</strong> Fokussiert auf Entwicklungs- und Bindungstrauma sowie Selbstregulation. Achtsame Körperwahrnehmung ohne re-traumatisierende Details. <a href="https://narmtraining.com/" target="_blank" style="color:#4A9B8E; text-decoration:underline;">Mehr erfahren</a></p>
+        <p style="margin:8px 0;"><strong>Somatic Experiencing (SE):</strong> Arbeitet mit der natürlichen Stressreaktion des Körpers. Durch dosierte Annäherung wird das Nervensystem behutsam entlastet. <a href="https://traumahealing.org/" target="_blank" style="color:#4A9B8E; text-decoration:underline;">Mehr erfahren</a></p>
+        <p style="margin:8px 0;"><strong>Hakomi:</strong> Achtsamkeitsbasierte Methode, die unbewusste Muster über den Körper erfahrbar macht. Neue korrigierende Erfahrungen entstehen sanft. <a href="https://hakomi.de/" target="_blank" style="color:#4A9B8E; text-decoration:underline;">Mehr erfahren</a></p>
+        <p style="margin:8px 0;"><strong>Core Energetics:</strong> Verbindet körperlichen Ausdruck mit emotionaler Integration. Über Haltung, Atmung und Bewegung werden Spannungen gelöst. <a href="https://coreenergetics.nl/en/core-energetics/" target="_blank" style="color:#4A9B8E; text-decoration:underline;">Mehr erfahren</a></p>
+        <small style="display:block; margin-top:6px; color:#6B7280;">Kurzbeschreibungen dienen der Orientierung und ersetzen keine individuelle therapeutische Beratung.</small>
+      </div>
+    </div>
+  `;
+ 
+  const closingHtml = `
+    <p style="margin:16px 0 0;">Herzliche Grüße<br/>Ihr Team von Kaufmann Health</p>
+  `;
+ 
+  const contentHtml = [header, greetingHtml, trustBox, availabilityLine, cardsHtml, actionGuidance, urgencyBox, modalitiesHtml, closingHtml].join('\n');
 
   return {
-    subject: params.subjectOverride || '3 Therapeuten haben diese Woche noch Termine frei (Auswahl innerhalb 48 Stunden)',
+    subject: params.subjectOverride || 'Ihre persönlich kuratierte Auswahl – Termine in den nächsten 7 Tagen (bitte innerhalb von 48 Std. wählen)',
     html: renderLayout({ title: 'Therapie-Auswahl', contentHtml }),
   };
 }

@@ -26,6 +26,9 @@ type PersonMeta = {
   consent_share_with_therapists?: boolean;
   consent_privacy_version?: string;
   consent_share_with_therapists_at?: string; // ISO timestamp
+  // Selection email signals (patient-driven selection, Option B)
+  selection_email_sent_at?: string; // ISO timestamp of last selection email sent
+  selection_email_count?: number;   // optional: how many therapists were in that email
 };
 
 type Person = {
@@ -77,6 +80,9 @@ export default function AdminLeadsPage() {
   const [therapists, setTherapists] = useState<Person[]>([]);
   const [therError, setTherError] = useState<string | null>(null);
   const [onlyPerfect, setOnlyPerfect] = useState<boolean>(false);
+
+  // Simple flow mode to prevent triggering both flows at once
+  const [flowMode, setFlowMode] = useState<'therapist' | 'patient'>('therapist');
 
   const [message, setMessage] = useState<string | null>(null);
   const [updatingLeadId, setUpdatingLeadId] = useState<string | null>(null);
@@ -134,6 +140,18 @@ export default function AdminLeadsPage() {
   useEffect(() => {
     setSelectedTherapists(new Set());
   }, [selectedPatient]);
+
+  // Default flow based on patient state: if proposals exist or a selection email was sent, prefer patient-selection mode
+  useEffect(() => {
+    if (!selectedPatient) {
+      setFlowMode('therapist');
+      return;
+    }
+    const pid = selectedPatient.id;
+    const hasSelectionEmail = Boolean((selectedPatient.metadata || {}).selection_email_sent_at);
+    const hasProposed = (proposedCounts[pid] || 0) > 0;
+    setFlowMode(hasSelectionEmail || hasProposed ? 'patient' : 'therapist');
+  }, [selectedPatient, proposedCounts]);
 
   const loadPatientMatchFlags = useCallback(async (leadList: Person[]) => {
     try {
@@ -283,19 +301,37 @@ export default function AdminLeadsPage() {
     if (!selectedPatient || !selectedTherapistId) return;
     try {
       setModalLoading(true);
-      const res = await fetch('/admin/api/matches', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ patient_id: selectedPatient.id, therapist_id: selectedTherapistId }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Match fehlgeschlagen');
-      setMessage('Match erstellt');
-      try { track('Match Created'); } catch {}
-      closeMatchModal();
-      // Refresh proposed counts so Selection CTA appears without manual reload
-      void loadPatientMatchFlags(leads);
+      if (flowMode === 'patient') {
+        const res = await fetch('/admin/api/matches', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ patient_id: selectedPatient.id, therapist_id: selectedTherapistId, suppress_outreach: true }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Vorschlag fehlgeschlagen');
+        setMessage('Vorschlag erstellt (ohne E-Mail)');
+        try { track('Match Proposed'); } catch {}
+        closeMatchModal();
+        // Refresh proposed counts so Selection CTA appears without manual reload
+        void loadPatientMatchFlags(leads);
+      } else {
+        // therapist-driven: confirm before emailing
+        if (!confirm('Diesen Therapeuten jetzt kontaktieren?')) { setModalLoading(false); return; }
+        const res = await fetch('/admin/api/matches', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ patient_id: selectedPatient.id, therapist_id: selectedTherapistId }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Match fehlgeschlagen');
+        setMessage('Match erstellt');
+        try { track('Match Created'); } catch {}
+        closeMatchModal();
+        // Refresh proposed counts so Selection CTA appears without manual reload
+        void loadPatientMatchFlags(leads);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Match fehlgeschlagen';
       setModalError(msg);
@@ -345,6 +381,7 @@ export default function AdminLeadsPage() {
     if (!selectedPatient) return;
     setMessage(null);
     try {
+      if (!confirm('Diesen Therapeuten jetzt kontaktieren?')) return;
       const res = await fetch('/admin/api/matches', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -363,11 +400,37 @@ export default function AdminLeadsPage() {
     }
   }
 
+  async function proposeTherapist(therapistId: string) {
+    if (!selectedPatient) return;
+    setMessage(null);
+    try {
+      const res = await fetch('/admin/api/matches', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ patient_id: selectedPatient.id, therapist_id: therapistId, suppress_outreach: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Vorschlag fehlgeschlagen');
+      setMessage('Vorschlag erstellt (ohne E-Mail)');
+      try { track('Match Proposed'); } catch {}
+      // Refresh proposed counts
+      void loadPatientMatchFlags(leads);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Vorschlag fehlgeschlagen';
+      setMessage(message);
+    }
+  }
+
   async function contactSelectedTherapists() {
     if (!selectedPatient) return;
     const ids = Array.from(selectedTherapists);
     if (ids.length === 0) return;
     try {
+      // Confirm to avoid accidental triggering
+      if (!confirm('Ausgewählte Therapeut/innen kontaktieren? Patient/in erhält KEINE Auswahl.')) {
+        return;
+      }
       setMessage(null);
       const res = await fetch('/admin/api/matches', {
         method: 'POST',
@@ -393,6 +456,10 @@ export default function AdminLeadsPage() {
     try {
       setMessage(null);
       const patientId = selectedPatient.id;
+      // Confirm to avoid accidental triggering
+      if (!confirm('Auswahl-E-Mail an Patient/in senden? Therapeuten werden NICHT kontaktiert.')) {
+        return;
+      }
       const alreadyProposed = proposedCounts[patientId] || 0;
       const selectedIds = Array.from(selectedTherapists);
       const totalCandidates = alreadyProposed + selectedIds.length;
@@ -409,7 +476,7 @@ export default function AdminLeadsPage() {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ patient_id: patientId, therapist_ids: selectedIds }),
+          body: JSON.stringify({ patient_id: patientId, therapist_ids: selectedIds, suppress_outreach: true }),
         });
         const jCreate = await resCreate.json();
         if (!resCreate.ok) {
@@ -578,6 +645,16 @@ export default function AdminLeadsPage() {
                           </span>
                         </div>
                       )}
+                      {meta.selection_email_sent_at && (
+                        <div className="mt-1">
+                          <span
+                            className="inline-flex items-center rounded border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-800"
+                            title={`Auswahl gesendet: ${formatDate(meta.selection_email_sent_at)}`}
+                          >
+                            Auswahl gesendet{typeof meta.selection_email_count === 'number' ? ` · ${meta.selection_email_count}` : ''}
+                          </span>
+                        </div>
+                      )}
                       {(proposedCounts[p.id] || 0) > 0 && (
                         <div className="mt-1">
                           <span className="inline-flex items-center rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800">
@@ -730,7 +807,7 @@ export default function AdminLeadsPage() {
           )}
 
           {/* Selection email CTA when patient already has 2–3 proposed matches */}
-          {selectedPatient && (proposedCounts[selectedPatient.id] || 0) >= 2 && (proposedCounts[selectedPatient.id] || 0) <= 3 && (
+          {flowMode === 'patient' && selectedPatient && (proposedCounts[selectedPatient.id] || 0) >= 2 && (proposedCounts[selectedPatient.id] || 0) <= 3 && (
             <div className="mb-2 flex items-center justify-between sticky top-0 z-10 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b px-2 py-1 rounded">
               <div className="text-sm text-gray-700">Bereits vorgeschlagen: {proposedCounts[selectedPatient.id]} / 3</div>
               <div className="flex gap-2">
@@ -741,17 +818,39 @@ export default function AdminLeadsPage() {
             </div>
           )}
 
-          {/* Batch actions */}
+          {/* Flow Mode Toggle */}
+          <div className="mb-2 flex items-center gap-2">
+            <span className="text-xs text-gray-600">Flow</span>
+            <Button size="sm" variant={flowMode === 'therapist' ? 'default' : 'outline'} onClick={() => setFlowMode('therapist')}>Therapeuten kontaktieren</Button>
+            <Button size="sm" variant={flowMode === 'patient' ? 'default' : 'outline'} onClick={() => setFlowMode('patient')}>Patienten-Auswahl</Button>
+          </div>
+          <div className="mb-2 text-xs text-gray-600">
+            {flowMode === 'therapist'
+              ? 'E-Mails gehen an Therapeut/innen; Patient/in wird später informiert.'
+              : 'E-Mail geht an Patient/in; Therapeut/innen werden erst nach Auswahl kontaktiert.'}
+          </div>
+
+          {/* Selection state banner */}
+          {selectedPatient?.metadata?.selection_email_sent_at && (
+            <div className="mb-2 text-xs text-violet-800 bg-violet-50 border border-violet-200 rounded px-2 py-1">
+              Auswahl-E-Mail gesendet am {formatDate(String(selectedPatient.metadata.selection_email_sent_at))} – warte auf Rückmeldung
+            </div>
+          )}
+
+          {/* Batch actions (mode-specific) */}
           {selectedTherapists.size > 0 && (
             <div className="mb-2 flex items-center justify-between sticky top-0 z-10 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b px-2 py-1 rounded">
               <div className="text-sm text-gray-700">Ausgewählt: {selectedTherapists.size} / 3</div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={sendSelectionEmail} disabled={!selectedPatient || selectedTherapists.size < 2}>
-                  Auswahl-E-Mail senden
-                </Button>
-                <Button size="sm" onClick={contactSelectedTherapists} disabled={!selectedPatient}>
-                  Ausgewählte kontaktieren
-                </Button>
+                {flowMode === 'patient' ? (
+                  <Button size="sm" onClick={sendSelectionEmail} disabled={!selectedPatient || (selectedTherapists.size < 2 && (proposedCounts[selectedPatient!.id] || 0) < 2)} title="Sendet E-Mail an Patient/in – Therapeuten werden NICHT kontaktiert">
+                    Auswahl-E-Mail senden
+                  </Button>
+                ) : (
+                  <Button size="sm" onClick={contactSelectedTherapists} disabled={!selectedPatient} title="Sendet E-Mail an ausgewählte Therapeut/innen – Patient erhält KEINE Auswahl">
+                    Ausgewählte kontaktieren
+                  </Button>
+                )}
                 <Button size="sm" variant="secondary" onClick={() => setSelectedTherapists(new Set())}>Auswahl leeren</Button>
               </div>
             </div>
@@ -808,8 +907,16 @@ export default function AdminLeadsPage() {
                               })}
                             </>
                           )}
-                          <Button size="sm" disabled={!selectedPatient} onClick={(e) => { e.stopPropagation(); void createMatch(t.id); }}>
-                            Therapeut kontaktieren
+                          <Button
+                            size="sm"
+                            disabled={!selectedPatient}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (flowMode === 'patient') void proposeTherapist(t.id); else void createMatch(t.id);
+                            }}
+                            title={flowMode === 'patient' ? 'Als Vorschlag vormerken (ohne E-Mail an Therapeut/in)' : 'Therapeut/in jetzt kontaktieren'}
+                          >
+                            {flowMode === 'patient' ? 'Als Vorschlag vormerken' : 'Therapeut kontaktieren'}
                           </Button>
                         </div>
                       )}

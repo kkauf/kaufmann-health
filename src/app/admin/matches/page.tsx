@@ -27,6 +27,7 @@ type MatchRow = {
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'proposed', label: 'Vorgeschlagen' },
+  { value: 'patient_selected', label: 'Klient gewählt' },
   { value: 'accepted', label: 'Akzeptiert' },
   { value: 'declined', label: 'Abgelehnt' },
   { value: 'therapist_contacted', label: 'Therapeut kontaktiert' },
@@ -41,6 +42,8 @@ function StatusBadge({ status }: { status: string }) {
     switch (status) {
       case 'accepted':
         return 'bg-green-100 text-green-800 border-green-200';
+      case 'patient_selected':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
       case 'declined':
         return 'bg-red-100 text-red-800 border-red-200';
       case 'therapist_contacted':
@@ -131,6 +134,7 @@ export default function AdminMatchesPage() {
     if (list.length === 0) return list;
     const weight: Record<string, number> = {
       proposed: 0,
+      patient_selected: 1,
       declined: 1,
       failed: 1,
       accepted: 2,
