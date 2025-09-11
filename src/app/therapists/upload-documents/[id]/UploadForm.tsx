@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +10,7 @@ type Props = { therapistId: string; mode?: 'license' | 'certs' };
 
 export default function UploadForm({ therapistId, mode = 'license' }: Props) {
   const MAX_FILE_BYTES = 4 * 1024 * 1024; // 4MB
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -69,6 +71,11 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
       }
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || "Upload fehlgeschlagen");
+      if (mode === 'license') {
+        // After license upload, advance to certificates step by refreshing the server component page
+        router.refresh();
+        return;
+      }
       setSubmitted(true);
       (e.target as HTMLFormElement).reset();
       requestAnimationFrame(() => {
