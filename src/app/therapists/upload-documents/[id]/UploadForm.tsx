@@ -72,8 +72,11 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || "Upload fehlgeschlagen");
       if (mode === 'license') {
-        // After license upload, advance to certificates step by refreshing the server component page
-        router.refresh();
+        // After license upload, advance to certificates step by reloading the page with a step hint
+        const url = `/therapists/upload-documents/${therapistId}?step=certs&ts=${Date.now()}`;
+        router.replace(url);
+        // Hard fallback to bypass any caching issues
+        setTimeout(() => { try { window.location.replace(url); } catch { /* noop */ } }, 0);
         return;
       }
       setSubmitted(true);

@@ -163,8 +163,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     let approach_text: string | undefined;
     if (typeof approachRaw === 'string') {
       const trimmed = approachRaw.trim();
-      if (trimmed.length > 2000) {
-        return NextResponse.json({ data: null, error: 'approach_text too long (max 2000 chars)' }, { status: 400 });
+      if (trimmed.length > 500) {
+        return NextResponse.json({ data: null, error: 'approach_text too long (max 500 chars)' }, { status: 400 });
       }
       if (trimmed.length > 0) approach_text = trimmed;
     }

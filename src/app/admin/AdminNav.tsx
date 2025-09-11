@@ -29,6 +29,9 @@ export default function AdminNav() {
           <Link href="/admin/matches" className={linkCls('/admin/matches')} aria-current={isActive('/admin/matches') ? 'page' : undefined}>
             Matches
           </Link>
+          <Link href="/admin/therapists" className={linkCls('/admin/therapists')} aria-current={isActive('/admin/therapists') ? 'page' : undefined}>
+            Therapeuten
+          </Link>
           <Link href="/admin/errors" className={linkCls('/admin/errors')} aria-current={isActive('/admin/errors') ? 'page' : undefined}>
             Fehler
           </Link>

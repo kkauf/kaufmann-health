@@ -73,8 +73,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (typeof a === 'string') acceptingNew = a === 'true' || a === '1' || a.toLowerCase() === 'yes';
       if (typeof at === 'string') {
         const trimmed = at.trim();
-        if (trimmed.length > 2000) {
-          return NextResponse.json({ data: null, error: 'approach_text too long (max 2000 chars)' }, { status: 400 });
+        if (trimmed.length > 500) {
+          return NextResponse.json({ data: null, error: 'approach_text too long (max 500 chars)' }, { status: 400 });
         }
         if (trimmed) approachText = trimmed;
       }
@@ -91,8 +91,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (typeof a === 'boolean') acceptingNew = a;
       if (typeof at === 'string') {
         const trimmed = at.trim();
-        if (trimmed.length > 2000) {
-          return NextResponse.json({ data: null, error: 'approach_text too long (max 2000 chars)' }, { status: 400 });
+        if (trimmed.length > 500) {
+          return NextResponse.json({ data: null, error: 'approach_text too long (max 500 chars)' }, { status: 400 });
         }
         if (trimmed) approachText = trimmed;
       }

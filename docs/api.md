@@ -38,7 +38,7 @@
   - API behavior: If a license is already on file, the endpoint accepts certificate-only uploads. If no license exists and only certificates are provided, the endpoint returns 400 (`License must be uploaded first`).
 - __Optional fields__:
   - `profile_photo`: JPEG or PNG, max 4MB. Stored pending review.
-  - `approach_text`: string, max 2000 chars.
+  - `approach_text`: string, max 500 chars.
 - __Storage__:
   - Documents are stored in private bucket `therapist-documents` under `therapists/<id>/...` and merged into `therapists.metadata.documents` as:
     ```json
@@ -61,7 +61,7 @@
   - Buckets per EARTH-116: private `therapist-applications` (pending photos) and public `therapist-profiles` (approved photos via admin flow).
 - __Responses__:
   - 200: `{ data: { ok: true }, error: null }`
-  - 400: `{ data: null, error: 'Missing psychotherapy_license' | 'license: <reason>' | 'profile_photo: <reason>' | 'approach_text too long (max 2000 chars)' }`
+  - 400: `{ data: null, error: 'Missing psychotherapy_license' | 'license: <reason>' | 'profile_photo: <reason>' | 'approach_text too long (max 500 chars)' }`
   - 404: `{ data: null, error: 'Not found' }`
   - 500: `{ data: null, error: 'Failed to upload document' | 'Failed to update' | 'Unexpected error' }`
 
@@ -84,14 +84,14 @@
   - `gender?`: `male | female | diverse`
   - `city?`: string
   - `accepting_new?`: boolean (JSON) or `'true'|'false'` (form)
-  - `approach_text?`: string (max 2000)
+  - `approach_text?`: string (max 500)
   - `profile_photo?`: JPEG/PNG (max 4MB). Stored pending approval.
 - __Storage__:
   - `profile_photo` is stored in private bucket `therapist-applications` under `applications/<id>/profile-photo-<ts>.(jpg|png)`
   - `approach_text` and `photo_pending_path` are merged into `therapists.metadata.profile`
 - __Response__:
   - 200: `{ data: { ok: true, nextStep: '/therapists/upload-documents/<id>' }, error: null }`
-  - 400: `{ data: null, error: 'invalid gender' | 'approach_text too long (max 2000 chars)' | 'profile_photo: <reason>' }`
+  - 400: `{ data: null, error: 'invalid gender' | 'approach_text too long (max 500 chars)' | 'profile_photo: <reason>' }`
   - 404: `{ data: null, error: 'Not found' }`
   - 500: `{ data: null, error: 'Failed to update' | 'Failed to upload profile photo' | 'Unexpected error' }`
 
@@ -104,7 +104,7 @@
     - Multiple files allowed per slug (send multiple fields of the same name)
 - __Optional profile fields__ (EARTH-116):
   - `profile_photo`: JPEG or PNG, max 4MB. Stored in private `therapist-applications` bucket under `applications/<therapist-id>/profile-photo-<ts>.(jpg|png)` pending admin review.
-  - `approach_text`: string, max 2000 chars. Stored in `therapists.metadata.profile.approach_text`.
+  - `approach_text`: string, max 500 chars. Stored in `therapists.metadata.profile.approach_text`.
 - __Behavior__: Files are stored in the private Supabase Storage bucket `therapist-documents`. The API stores storage paths under `therapists.metadata.documents`:
   ```json
   {
@@ -209,10 +209,10 @@ __Notes__:
   - `status?`: `pending_verification` | `verified` | `rejected`
   - `verification_notes?`: string
   - `approve_profile?`: boolean — when true, moves pending photo from `therapist-applications` to public `therapist-profiles` and sets `photo_url`. Also clears `metadata.profile.photo_pending_path`.
-  - `approach_text?`: string (max 2000) — updates `metadata.profile.approach_text`.
+  - `approach_text?`: string (max 500) — updates `metadata.profile.approach_text`.
 - __Response__:
   - 200: `{ data: { ok: true }, error: null }`
-  - 400: `{ data: null, error: 'Missing fields' | 'Invalid status' | 'approach_text too long (max 2000 chars)' | 'No pending profile photo to approve' }`
+  - 400: `{ data: null, error: 'Missing fields' | 'Invalid status' | 'approach_text too long (max 500 chars)' | 'No pending profile photo to approve' }`
   - 401/404/500 on failure.
 
 ## GET /admin/api/therapists/:id/documents/[...type]
