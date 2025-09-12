@@ -142,6 +142,7 @@ export default function TherapieFinderForm() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Request failed');
+      const leadId = (json?.data?.id as string | undefined) || undefined;
       setSubmitted(true);
       setSubmittedEmail(email);
       // High-level conversion tracking (cookieless)
@@ -153,18 +154,21 @@ export default function TherapieFinderForm() {
           process.env.NEXT_PUBLIC_GOOGLE_ADS_ID &&
           process.env.NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL
         ) {
-          const sendTo = `${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}/${process.env.NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL}`;
+          const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID.trim();
+          const label = process.env.NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL.trim();
+          const sendTo = `${adsId}/${label}`;
           const fire = () => {
             try {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const g = (window as any).gtag as ((...args: any[]) => void) | undefined;
               if (typeof g === 'function') {
-                g('event', 'conversion', {
+                const params: Record<string, unknown> = {
                   send_to: sendTo,
                   value: 10.0,
                   currency: 'EUR',
-                  transaction_id: ''
-                });
+                };
+                if (leadId) params.transaction_id = leadId;
+                g('event', 'conversion', params);
                 return true;
               }
             } catch {}
