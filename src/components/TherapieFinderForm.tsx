@@ -153,25 +153,30 @@ export default function TherapieFinderForm() {
           process.env.NEXT_PUBLIC_GOOGLE_ADS_ID &&
           process.env.NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL
         ) {
-          type GtagEventParams = {
-            send_to: string;
-            value: number;
-            currency: 'EUR';
-            transaction_id: string;
+          const sendTo = `${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}/${process.env.NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL}`;
+          const fire = () => {
+            try {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const g = (window as any).gtag as ((...args: any[]) => void) | undefined;
+              if (typeof g === 'function') {
+                g('event', 'conversion', {
+                  send_to: sendTo,
+                  value: 10.0,
+                  currency: 'EUR',
+                  transaction_id: ''
+                });
+                return true;
+              }
+            } catch {}
+            return false;
           };
-          type Gtag = (
-            command: 'event',
-            action: 'conversion',
-            params: GtagEventParams
-          ) => void;
-          const g = (window as Window & { gtag?: Gtag }).gtag;
-          if (g) {
-            g('event', 'conversion', {
-              send_to: `${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}/${process.env.NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL}`,
-              value: 10.0,
-              currency: 'EUR',
-              transaction_id: ''
-            });
+          if (!fire()) {
+            const start = Date.now();
+            const tryAgain = () => {
+              if (fire()) return;
+              if (Date.now() - start < 2000) setTimeout(tryAgain, 100);
+            };
+            setTimeout(tryAgain, 100);
           }
         }
       } catch {}
