@@ -37,5 +37,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin', '/admin/:path*', '/therapie-finden'],
+  matcher: ['/admin', '/admin/:path*'],
 };
+

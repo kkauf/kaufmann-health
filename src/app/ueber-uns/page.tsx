@@ -1,7 +1,7 @@
 import Image from "next/image";
 import RevealContainer from "@/components/RevealContainer";
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 export default function UeberUnsPage() {
   return (

@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Activity, Euro, Clock, MessageCircle, UserCheck, PhoneCall, ShieldCheck, Lock, Check } from 'lucide-react';
 import { COOKIES_ENABLED } from '@/lib/config';
 
+export const revalidate = 3600;
+
 export default function TherapieFindenPage() {
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">

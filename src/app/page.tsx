@@ -5,7 +5,7 @@ import TherapyModalityExplanations from "@/components/TherapyModalityExplanation
 import { ShieldCheck, Lock, UserCheck } from "lucide-react";
 import { COOKIES_ENABLED } from "@/lib/config";
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 export default function Home() {
   const variant = process.env.NEXT_PUBLIC_EXPERIMENT_HOME_VARIANT || "dual";

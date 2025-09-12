@@ -9,6 +9,8 @@ import WhatToExpectSection from "@/components/WhatToExpectSection";
 import RevealContainer from "@/components/RevealContainer";
 import FaqAccordion from "@/components/FaqAccordion";
 
+export const revalidate = 3600;
+
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.kaufmann-health.de";
 const bookingUrl = process.env.NEXT_PUBLIC_BOOKING_URL || 

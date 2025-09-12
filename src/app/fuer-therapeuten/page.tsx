@@ -7,6 +7,8 @@ import { CheckCircle2, Target, Users, Clock, Shield, TrendingUp, ShieldCheck, Lo
 import CtaLink from "@/components/CtaLink";
 import { COOKIES_ENABLED } from "@/lib/config";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "Neue Klienten für Ihre Praxis | Für Therapeuten | Kaufmann Health",
   description:
