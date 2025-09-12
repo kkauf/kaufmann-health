@@ -14,6 +14,11 @@ type StatsData = {
     days: number;
     series: Array<{ date: string; count: number }>;
   };
+  funnelByDay?: Array<{ day: string; leads: number; viewed_profiles: number; selections: number }>;
+  leadQuality?: Array<{ key: 'self_pay_confirmed' | 'self_pay_declined' | string; count: number }>;
+  responseTimes?: { buckets: Array<{ bucket: string; count: number }>; avgHours: number };
+  topCities?: Array<{ city: string; count: number }>;
+  therapistAcceptance?: { lastNDays: { accepted: number; declined: number; rate: number } };
 };
 
 export default function AdminStats() {
@@ -46,6 +51,10 @@ export default function AdminStats() {
     return Math.max(0, ...((data?.matchesLastNDays.series || []).map((d) => d.count)));
   }, [data]);
 
+  // Helpers
+  const pct = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 1000) / 10 : 0);
+  const maxOf = (arr: number[]) => (arr.length ? Math.max(...arr) : 0);
+
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between">
@@ -60,6 +69,7 @@ export default function AdminStats() {
 
       {error && <div className="text-sm text-red-600">{error}</div>}
 
+      {/* Totals (keep for quick context) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardHeader>
@@ -103,13 +113,13 @@ export default function AdminStats() {
               </div>
             ) : (
               (data?.matchesLastNDays.series || []).map((d) => {
-                const pct = maxCount > 0 ? Math.round((d.count / maxCount) * 100) : 0;
+                const pctH = maxCount > 0 ? Math.round((d.count / maxCount) * 100) : 0;
                 return (
                   <div key={d.date} className="flex flex-col items-center justify-end gap-1">
                     <div
                       className="w-6 rounded bg-accent"
                       title={`${d.date}: ${d.count}`}
-                      style={{ height: `${Math.max(6, pct)}%` }}
+                      style={{ height: `${Math.max(6, pctH)}%` }}
                     />
                     <div className="text-[10px] leading-none text-muted-foreground">
                       {d.date.slice(5)}
@@ -119,6 +129,177 @@ export default function AdminStats() {
               })
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* 1) Funnel Conversion by Day */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Funnel (letzte 7 Tage)</CardTitle>
+          <CardDescription>Leads → Profilansicht → Auswahl pro Tag</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!(data?.funnelByDay && data.funnelByDay.length) ? (
+            <div className="text-sm text-muted-foreground">Keine Funnel-Daten</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-muted-foreground">
+                    <th className="py-1 pr-3">Tag</th>
+                    <th className="py-1 pr-3">Leads</th>
+                    <th className="py-1 pr-3">Profilansichten</th>
+                    <th className="py-1 pr-3">Auswahlen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.funnelByDay.map((r) => (
+                    <tr key={r.day} className="border-t">
+                      <td className="py-1 pr-3 whitespace-nowrap">{r.day}</td>
+                      <td className="py-1 pr-3">{r.leads}</td>
+                      <td className="py-1 pr-3">{r.viewed_profiles}</td>
+                      <td className="py-1 pr-3">{r.selections}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 2) Lead Quality Breakdown */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Lead-Qualität</CardTitle>
+          <CardDescription>Selbstzahler-Bestätigung (Events der letzten 7 Tage)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!(data?.leadQuality && data.leadQuality.length) ? (
+            <div className="text-sm text-muted-foreground">Keine Daten</div>
+          ) : (
+            (() => {
+              const confirmed = data.leadQuality.find((x) => x.key === 'self_pay_confirmed')?.count || 0;
+              const declined = data.leadQuality.find((x) => x.key === 'self_pay_declined')?.count || 0;
+              const total = confirmed + declined;
+              const maxVal = Math.max(confirmed, declined, 1);
+              return (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Selbstzahler bestätigt</span>
+                    <span className="tabular-nums">{confirmed} ({pct(confirmed, total)}%)</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded">
+                    <div className="h-2 bg-emerald-500 rounded" style={{ width: `${(confirmed / maxVal) * 100}%` }} />
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Selbstzahler abgelehnt</span>
+                    <span className="tabular-nums">{declined} ({pct(declined, total)}%)</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded">
+                    <div className="h-2 bg-rose-500 rounded" style={{ width: `${(declined / maxVal) * 100}%` }} />
+                  </div>
+                </div>
+              );
+            })()
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 3) Response Times */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Reaktionszeiten</CardTitle>
+          <CardDescription>Vom Lead bis zum ersten Match</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!data?.responseTimes ? (
+            <div className="text-sm text-muted-foreground">Keine Daten</div>
+          ) : (
+            <div className="space-y-3">
+              <div className="text-sm">Durchschnitt: <span className="font-medium">{data.responseTimes.avgHours} Std.</span></div>
+              {(() => {
+                const maxBucket = maxOf(data.responseTimes.buckets.map((b) => b.count));
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {data.responseTimes.buckets.map((b) => (
+                      <div key={b.bucket} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span>{b.bucket}</span>
+                          <span className="tabular-nums">{b.count}</span>
+                        </div>
+                        <div className="h-2 bg-muted rounded">
+                          <div className="h-2 bg-blue-500 rounded" style={{ width: `${maxBucket > 0 ? (b.count / maxBucket) * 100 : 0}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 4) City / Demographic Patterns */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Städte-Muster</CardTitle>
+          <CardDescription>Top 8 Städte (Klient:innen-Leads)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!(data?.topCities && data.topCities.length) ? (
+            <div className="text-sm text-muted-foreground">Keine Daten</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {(() => {
+                const maxVal = maxOf(data.topCities.map((c) => c.count));
+                return data.topCities.map((c) => (
+                  <div key={c.city} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>{c.city}</span>
+                      <span className="tabular-nums">{c.count}</span>
+                    </div>
+                    <div className="h-2 bg-muted rounded">
+                      <div className="h-2 bg-indigo-500 rounded" style={{ width: `${maxVal > 0 ? (c.count / maxVal) * 100 : 0}%` }} />
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 5) Therapist Acceptance Rates */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Akzeptanzrate Therapeut:innen</CardTitle>
+          <CardDescription>Innerhalb der letzten 7 Tage</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!data?.therapistAcceptance ? (
+            <div className="text-sm text-muted-foreground">Keine Daten</div>
+          ) : (
+            (() => {
+              const a = data.therapistAcceptance.lastNDays.accepted || 0;
+              const d = data.therapistAcceptance.lastNDays.declined || 0;
+              const rate = data.therapistAcceptance.lastNDays.rate || 0;
+              const total = a + d;
+              const maxVal = Math.max(a, d, 1);
+              return (
+                <div className="space-y-3">
+                  <div className="text-sm">Rate: <span className="font-medium">{rate}%</span> ({a} akzeptiert / {d} abgelehnt)</div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-sm"><span>Akzeptiert</span><span className="tabular-nums">{a} ({pct(a, total)}%)</span></div>
+                    <div className="h-2 bg-muted rounded"><div className="h-2 bg-emerald-500 rounded" style={{ width: `${(a / maxVal) * 100}%` }} /></div>
+                    <div className="flex items-center justify-between text-sm"><span>Abgelehnt</span><span className="tabular-nums">{d} ({pct(d, total)}%)</span></div>
+                    <div className="h-2 bg-muted rounded"><div className="h-2 bg-rose-500 rounded" style={{ width: `${(d / maxVal) * 100}%` }} /></div>
+                  </div>
+                </div>
+              );
+            })()
+          )}
         </CardContent>
       </Card>
     </section>

@@ -89,6 +89,203 @@ export async function GET(req: Request) {
     }
     const series = buckets.map((date) => ({ date, count: countsMap.get(date) || 0 }));
 
+    // --- Additional datasets ---
+    // 1) Funnel conversion by day (events)
+    const [leadsEventsRes, selectionsEventsRes, viewedEventsRes] = await Promise.all([
+      supabaseServer
+        .from('events')
+        .select('created_at, properties')
+        .eq('type', 'lead_submitted')
+        .gte('created_at', sinceIso)
+        .order('created_at', { ascending: true })
+        .limit(10000),
+      supabaseServer
+        .from('events')
+        .select('created_at, properties')
+        .eq('type', 'patient_selected')
+        .gte('created_at', sinceIso)
+        .order('created_at', { ascending: true })
+        .limit(10000),
+      supabaseServer
+        .from('events')
+        .select('created_at, properties')
+        .eq('type', 'profile_viewed')
+        .gte('created_at', sinceIso)
+        .order('created_at', { ascending: true })
+        .limit(10000),
+    ]);
+
+    const toDayKey = (iso: string) => startOfDayUTC(new Date(iso)).toISOString().slice(0, 10);
+    const funnelMap = new Map<string, { leads: Set<string>; viewed: Set<string>; selected: Set<string> }>();
+    for (const b of buckets) funnelMap.set(b, { leads: new Set(), viewed: new Set(), selected: new Set() });
+
+    for (const row of (leadsEventsRes.data || [])) {
+      try {
+        const day = toDayKey(row.created_at as string);
+        const props = (row.properties || {}) as Record<string, unknown>;
+        const leadId = String((props['id'] as string | undefined) || '');
+        if (funnelMap.has(day) && leadId) funnelMap.get(day)!.leads.add(leadId);
+      } catch {}
+    }
+    for (const row of (selectionsEventsRes.data || [])) {
+      try {
+        const day = toDayKey(row.created_at as string);
+        const props = (row.properties || {}) as Record<string, unknown>;
+        const patientId = String((props['patient_id'] as string | undefined) || '');
+        if (funnelMap.has(day) && patientId) funnelMap.get(day)!.selected.add(patientId);
+      } catch {}
+    }
+    for (const row of (viewedEventsRes.data || [])) {
+      try {
+        const day = toDayKey(row.created_at as string);
+        const props = (row.properties || {}) as Record<string, unknown>;
+        const leadId = String((props['id'] as string | undefined) || (props['lead_id'] as string | undefined) || '');
+        if (funnelMap.has(day) && leadId) funnelMap.get(day)!.viewed.add(leadId);
+      } catch {}
+    }
+    const funnelByDay = buckets.map((day) => {
+      const e = funnelMap.get(day)!;
+      return { day, leads: e.leads.size, viewed_profiles: e.viewed.size, selections: e.selected.size };
+    });
+
+    // 2) Lead quality breakdown (self-pay signal). We fall back to self_pay_confirmed/declined events.
+    const [spcRes, spdRes] = await Promise.all([
+      supabaseServer
+        .from('events')
+        .select('properties')
+        .eq('type', 'self_pay_confirmed')
+        .gte('created_at', sinceIso)
+        .limit(10000),
+      supabaseServer
+        .from('events')
+        .select('properties')
+        .eq('type', 'self_pay_declined')
+        .gte('created_at', sinceIso)
+        .limit(10000),
+    ]);
+    const spConfirmedSessions = new Set<string>();
+    const spDeclinedSessions = new Set<string>();
+    for (const row of (spcRes.data || [])) {
+      const props = (row.properties || {}) as Record<string, unknown>;
+      const sid = String((props['session_id'] as string | undefined) || '') || String((props['id'] as string | undefined) || '');
+      if (sid) spConfirmedSessions.add(sid);
+    }
+    for (const row of (spdRes.data || [])) {
+      const props = (row.properties || {}) as Record<string, unknown>;
+      const sid = String((props['session_id'] as string | undefined) || '') || String((props['id'] as string | undefined) || '');
+      if (sid) spDeclinedSessions.add(sid);
+    }
+    const leadQuality = [
+      { key: 'self_pay_confirmed', count: spConfirmedSessions.size },
+      { key: 'self_pay_declined', count: spDeclinedSessions.size },
+    ];
+
+    // 3) Response times: time from patient lead_submitted -> first match
+    const patientLeads = (leadsEventsRes.data || []).filter((r) => {
+      const props = (r.properties || {}) as Record<string, unknown>;
+      return String((props['lead_type'] as string | undefined) || '').toLowerCase() === 'patient';
+    });
+    const leadByPatientId = new Map<string, { created_at: string }>();
+    for (const row of patientLeads) {
+      const props = (row.properties || {}) as Record<string, unknown>;
+      const pid = String((props['id'] as string | undefined) || '');
+      if (pid) {
+        const t = row.created_at as string;
+        // keep earliest for that patient within window
+        if (!leadByPatientId.has(pid) || new Date(t) < new Date(leadByPatientId.get(pid)!.created_at)) {
+          leadByPatientId.set(pid, { created_at: t });
+        }
+      }
+    }
+    const patientIds = Array.from(leadByPatientId.keys());
+    let matchesByPatient: Array<{ patient_id: string; created_at: string }> = [];
+    if (patientIds.length > 0) {
+      // Supabase 'in' has limits; split batches of 300
+      const batchSize = 300;
+      for (let i = 0; i < patientIds.length; i += batchSize) {
+        const batch = patientIds.slice(i, i + batchSize);
+        const { data: mBatch, error: mErr } = await supabaseServer
+          .from('matches')
+          .select('patient_id, created_at')
+          .in('patient_id', batch)
+          .order('created_at', { ascending: true })
+          .limit(10000);
+        if (!mErr && Array.isArray(mBatch)) {
+          matchesByPatient = matchesByPatient.concat(
+            mBatch as Array<{ patient_id: string; created_at: string }>
+          );
+        }
+      }
+    }
+    const firstMatchMap = new Map<string, string>();
+    for (const m of matchesByPatient) {
+      const pid = String(m.patient_id);
+      const t = String(m.created_at);
+      if (!firstMatchMap.has(pid)) firstMatchMap.set(pid, t);
+    }
+    const bucketsCfg = [
+      { key: '0-2h', maxH: 2 },
+      { key: '2-8h', maxH: 8 },
+      { key: '8-24h', maxH: 24 },
+      { key: '1-3d', maxH: 72 },
+      { key: '>3d', maxH: Infinity },
+    ] as const;
+    const responseBuckets = new Map<string, number>();
+    for (const b of bucketsCfg) responseBuckets.set(b.key, 0);
+    responseBuckets.set('no_match', 0);
+    let sumHours = 0;
+    let matchedCount = 0;
+    for (const [pid, lead] of leadByPatientId.entries()) {
+      const leadTs = new Date(lead.created_at).getTime();
+      const matchTsStr = firstMatchMap.get(pid);
+      if (!matchTsStr) {
+        responseBuckets.set('no_match', (responseBuckets.get('no_match') || 0) + 1);
+        continue;
+      }
+      const deltaH = (new Date(matchTsStr).getTime() - leadTs) / (1000 * 60 * 60);
+      sumHours += deltaH;
+      matchedCount += 1;
+      const bucket = bucketsCfg.find((b) => deltaH <= b.maxH)?.key || '>3d';
+      responseBuckets.set(bucket, (responseBuckets.get(bucket) || 0) + 1);
+    }
+    const responseTimes = {
+      buckets: Array.from(responseBuckets.entries()).map(([bucket, count]) => ({ bucket, count })),
+      avgHours: matchedCount > 0 ? Math.round((sumHours / matchedCount) * 10) / 10 : 0,
+    };
+
+    // 4) City patterns (top cities by patient leads)
+    const cityCounts = new Map<string, number>();
+    for (const row of patientLeads) {
+      const props = (row.properties || {}) as Record<string, unknown>;
+      const city = String((props['city'] as string | undefined) || '').trim();
+      const key = city || 'Unbekannt';
+      cityCounts.set(key, (cityCounts.get(key) || 0) + 1);
+    }
+    const topCities = Array.from(cityCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([city, count]) => ({ city, count }));
+
+    // 5) Therapist acceptance rates (last N days)
+    const { data: matchesWindow, error: matchesWindowErr } = await supabaseServer
+      .from('matches')
+      .select('status, created_at')
+      .gte('created_at', sinceIso)
+      .limit(10000);
+    if (matchesWindowErr) {
+      await logError('admin.api.stats', matchesWindowErr, { stage: 'matches_window', sinceIso, days });
+    }
+    let acc = 0;
+    let dec = 0;
+    for (const m of ((matchesWindow || []) as Array<{ status?: string | null }>)) {
+      const s = String(m.status || '').toLowerCase();
+      if (s === 'accepted') acc += 1;
+      else if (s === 'declined') dec += 1;
+    }
+    const therapistAcceptance = {
+      lastNDays: { accepted: acc, declined: dec, rate: acc + dec > 0 ? Math.round((acc / (acc + dec)) * 1000) / 10 : 0 },
+    };
+
     const data = {
       totals: {
         therapists: therapistsRes.count || 0,
@@ -99,6 +296,11 @@ export async function GET(req: Request) {
         days,
         series,
       },
+      funnelByDay,
+      leadQuality,
+      responseTimes,
+      topCities,
+      therapistAcceptance,
     };
 
     return NextResponse.json({ data, error: null }, { status: 200 });
