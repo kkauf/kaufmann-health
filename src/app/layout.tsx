@@ -7,6 +7,7 @@ import NoCookieToast from "@/components/NoCookieToast";
 import AnalyticsProvider from "@/components/AnalyticsProvider";
 import Script from "next/script";
 import { COOKIES_ENABLED } from "@/lib/config";
+import CookieBanner from "@/components/CookieBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -82,7 +83,7 @@ export default function RootLayout({
                 window.dataLayer = window.dataLayer || [];
                 function gtag(){dataLayer.push(arguments);}
                 gtag('consent', 'default', {
-                  'ad_storage': '${COOKIES_ENABLED ? "granted" : "denied"}',
+                  'ad_storage': 'denied',
                   'analytics_storage': 'denied',
                   'ad_user_data': 'denied',
                   'ad_personalization': 'denied'
@@ -108,6 +109,7 @@ export default function RootLayout({
         <Footer />
         <AnalyticsProvider />
         {!COOKIES_ENABLED && <NoCookieToast />}
+        {COOKIES_ENABLED && <CookieBanner />}
       </body>
     </html>
   );
