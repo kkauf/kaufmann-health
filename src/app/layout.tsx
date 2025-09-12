@@ -91,7 +91,7 @@ export default function RootLayout({
                 gtag('js', new Date());
                 gtag('config', '${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}', {
                   'allow_ad_personalization_signals': false,
-                  ${COOKIES_ENABLED ? "'conversion_linker': true" : "'url_passthrough': true"}
+                  ${COOKIES_ENABLED ? "'conversion_linker': true, 'url_passthrough': true" : "'url_passthrough': true"}
                 });
               `}
             </Script>

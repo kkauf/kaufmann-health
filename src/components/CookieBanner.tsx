@@ -36,6 +36,7 @@ function applyAdConsentGranted() {
         g('config', process.env.NEXT_PUBLIC_GOOGLE_ADS_ID, {
           allow_ad_personalization_signals: false,
           conversion_linker: true,
+          url_passthrough: true,
         });
       }
     }
@@ -43,14 +44,14 @@ function applyAdConsentGranted() {
 }
 
 export default function CookieBanner() {
-  // Hide banner entirely if GA ID is not configured
-  if (!process.env.NEXT_PUBLIC_GOOGLE_ADS_ID) {
-    return null;
-  }
-
   const [show, setShow] = useState(false);
 
   useEffect(() => {
+    // If GA ID is not configured, never show the banner
+    if (!process.env.NEXT_PUBLIC_GOOGLE_ADS_ID) {
+      setShow(false);
+      return;
+    }
     try {
       const val = localStorage.getItem('ga-consent');
       if (val === null) {
@@ -84,7 +85,7 @@ export default function CookieBanner() {
     setShow(false);
   }, []);
 
-  if (!show) return null;
+  if (!process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || !show) return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/70">

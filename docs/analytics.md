@@ -276,7 +276,7 @@ __Behavior__:
   - Public UI shows “Keine Cookies” badges.
 - When `true`:
   - Consent Mode grants only `ad_storage`; `ad_user_data`, `analytics_storage`, and `ad_personalization` remain denied.
-  - gtag configured with `conversion_linker: true` to set first‑party linking cookies for better attribution.
+  - gtag configured with both `conversion_linker: true` and `url_passthrough: true` to maximize baseline linking before consent and smoothly upgrade to cookies after acceptance. Cookies (conversion linker) are only set after explicit consent updates `ad_storage` to `granted`.
   - Public UI updates badges to privacy‑friendly messaging (no analytics cookies).
 
 __Notes__:
