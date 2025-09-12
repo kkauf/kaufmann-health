@@ -147,7 +147,21 @@ export default function TherapieFinderForm() {
       setSubmittedEmail(email);
       // High-level conversion tracking (cookieless)
       try { track('Lead Submitted'); } catch {}
-      // Minimal Google Ads conversion signal (no PII, consent denied by default)
+      // If cookies mode is enabled, grant Ads consent on submit before firing conversion
+      try {
+        if (typeof window !== 'undefined' && COOKIES_ENABLED) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const g = (window as any).gtag as ((...args: any[]) => void) | undefined;
+          if (typeof g === 'function') {
+            g('consent', 'update', {
+              ad_storage: 'granted',
+              ad_user_data: 'granted',
+              ad_personalization: 'granted',
+            });
+          }
+        }
+      } catch {}
+      // Minimal Google Ads conversion signal (no PII)
       try {
         if (
           typeof window !== 'undefined' &&
