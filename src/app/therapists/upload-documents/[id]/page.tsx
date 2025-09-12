@@ -14,7 +14,7 @@ export default async function Page(props: { params: Promise<{ id: string }>; sea
   // Basic validation: therapist must exist and be in pending state
   const { data: row } = await supabaseServer
     .from('therapists')
-    .select('id, status, first_name, last_name, metadata')
+    .select('id, status, first_name, last_name, photo_url, metadata')
     .eq('id', id)
     .single();
 
@@ -36,6 +36,15 @@ export default async function Page(props: { params: Promise<{ id: string }>; sea
   const certCount = Object.values(specialization).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
   const hasCert = certCount > 0;
 
+  // Profile completeness signals to help redirect users who landed on the wrong step
+  const profileUnknown = (metadata as { profile?: unknown }).profile;
+  const profile = isObject(profileUnknown) ? (profileUnknown as Record<string, unknown>) : {};
+  const approachText = (profile as { approach_text?: string | null }).approach_text ?? null;
+  const photoPendingPath = (profile as { photo_pending_path?: string | null }).photo_pending_path ?? null;
+  const approvedPhoto = (row as { photo_url?: string | null }).photo_url ?? null;
+  const missingPhoto = !(approvedPhoto || photoPendingPath);
+  const missingApproach = !approachText || String(approachText).trim().length === 0;
+
   const name = [
     (row as { first_name?: string }).first_name || '',
     (row as { last_name?: string }).last_name || '',
@@ -48,6 +57,17 @@ export default async function Page(props: { params: Promise<{ id: string }>; sea
       <h1 className="text-2xl font-semibold">Dokumente hochladen</h1>
       {name ? (
         <p className="mt-2 text-sm text-gray-700">Therapeut/in: {name}</p>
+      ) : null}
+      {(missingPhoto || missingApproach) ? (
+        <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <p>
+            Fehlen noch Profilangaben (Foto oder Beschreibung)? Hier entlang:
+            {' '}
+            <a className="underline font-medium" href={`/therapists/complete-profile/${id}`}>
+              Profil vervollständigen
+            </a>
+          </p>
+        </div>
       ) : null}
       {!hasLicense && !forceCertsStep ? (
         <>

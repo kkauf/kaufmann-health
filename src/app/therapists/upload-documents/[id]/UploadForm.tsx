@@ -10,6 +10,7 @@ type Props = { therapistId: string; mode?: 'license' | 'certs' };
 
 export default function UploadForm({ therapistId, mode = 'license' }: Props) {
   const MAX_FILE_BYTES = 4 * 1024 * 1024; // 4MB
+  const PHOTO_MAX_BYTES = 5 * 1024 * 1024; // 5MB (profile photo)
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -26,6 +27,8 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
     const specInput = formEl.querySelector<HTMLInputElement>("#specialization_cert");
     const licenseFile = licenseInput?.files?.[0];
     const specFiles = Array.from(specInput?.files || []);
+    const profilePhotoInput = formEl.querySelector<HTMLInputElement>("#profile_photo");
+    const profilePhoto = profilePhotoInput?.files?.[0];
 
     if (mode === 'license') {
       if (!licenseFile) {
@@ -42,21 +45,25 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
         return;
       }
     } else {
-      // certs mode: require at least one certificate
-      if (specFiles.length === 0) {
-        setMessage("Bitte laden Sie mindestens ein Abschlusszertifikat hoch.");
-        return;
+      // certs mode: optional uploads; validate only if provided
+      if (specFiles.length > 0) {
+        const tooLarge = specFiles.find((f) => f.size > MAX_FILE_BYTES);
+        if (tooLarge) {
+          setMessage("Ein Zertifikat überschreitet 4MB. Bitte reduzieren Sie die Dateigröße.");
+          return;
+        }
+        const totalBytes = specFiles.reduce((sum, f) => sum + f.size, 0);
+        if (totalBytes > MAX_FILE_BYTES) {
+          setMessage("Gesamtgröße der Zertifikate überschreitet 4MB. Bitte laden Sie eine Datei nach der anderen hoch.");
+          return;
+        }
       }
-      const tooLarge = specFiles.find((f) => f.size > MAX_FILE_BYTES);
-      if (tooLarge) {
-        setMessage("Ein Zertifikat überschreitet 4MB. Bitte reduzieren Sie die Dateigröße.");
-        return;
-      }
-      const totalBytes = specFiles.reduce((sum, f) => sum + f.size, 0);
-      if (totalBytes > MAX_FILE_BYTES) {
-        setMessage("Gesamtgröße der Zertifikate überschreitet 4MB. Bitte laden Sie eine Datei nach der anderen hoch.");
-        return;
-      }
+    }
+
+    // Optional profile photo validation (applies in both modes)
+    if (profilePhoto && profilePhoto.size > PHOTO_MAX_BYTES) {
+      setMessage("Profilfoto zu groß (max. 5MB). Bitte reduzieren Sie die Dateigröße.");
+      return;
     }
 
     const formData = new FormData(e.currentTarget);
@@ -127,13 +134,30 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
         ) : (
           <div className="space-y-2">
             <Label htmlFor="specialization_cert">
-              Abschlusszertifikat(e) Ihrer Therapieverfahren <span className="text-red-600">*</span>
-              <span className="text-xs text-gray-500"> (je Datei max. 4MB)</span>
+              Abschlusszertifikat(e) Ihrer Therapieverfahren <span className="text-xs text-gray-500">(optional, je Datei max. 4MB)</span>
             </Label>
-            <Input id="specialization_cert" name="specialization_cert" type="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" multiple required />
-            <p className="text-xs text-gray-500">Mindestens ein Zertifikat ist erforderlich.</p>
+            <Input id="specialization_cert" name="specialization_cert" type="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" multiple />
+            <p className="text-xs text-gray-500">Sie können Zertifikate auch später nachreichen.</p>
           </div>
         )}
+
+        {/* Optional profile completion on documents page */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium mt-4">Optionales Profil</h3>
+          <Label htmlFor="profile_photo">Profilfoto (JPG/PNG, max. 5MB)</Label>
+          <Input id="profile_photo" name="profile_photo" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="approach_text">Ihr therapeutischer Ansatz (optional)</Label>
+          <textarea
+            id="approach_text"
+            name="approach_text"
+            rows={4}
+            maxLength={500}
+            className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg/input/30 w-full rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+            placeholder="Kurzbeschreibung Ihres Ansatzes (max. 500 Zeichen)"
+          />
+        </div>
 
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={loading}>
@@ -146,6 +170,22 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
               onClick={() => {
                 setSubmitted(true);
                 setMessage("Sie können die Zertifikate später hochladen. Die Profilprüfung startet erst nach Eingang der Zulassung als Psychotherapeut.");
+                requestAnimationFrame(() => {
+                  statusRef.current?.focus();
+                  statusRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+              }}
+            >
+              Später hochladen
+            </Button>
+          )}
+          {mode === 'certs' && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setSubmitted(true);
+                setMessage("Sie können Zertifikate später hochladen. Dieser Schritt ist optional.");
                 requestAnimationFrame(() => {
                   statusRef.current?.focus();
                   statusRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });

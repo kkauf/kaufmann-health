@@ -135,10 +135,13 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
           <div className="mt-3">
             <a className="underline" href={`/therapists/upload-documents/${therapistId}`}>Weiter: Dokumente hochladen</a>
           </div>
+          {showProfilePhoto && (
+            <p className="text-xs text-gray-600 mt-3">Tipp: Sie können jetzt unten auch Ihr Profilfoto hinzufügen.</p>
+          )}
         </div>
       ) : null}
 
-      <form onSubmit={onSubmit} encType="multipart/form-data" className="space-y-6" hidden={submitted}>
+      <form onSubmit={onSubmit} encType="multipart/form-data" className="space-y-6">
         <div className="rounded-md border p-3 bg-amber-50 text-amber-900 text-sm">
           Fast geschafft! Ergänzen Sie die fehlenden Profilangaben. Das dauert nur 2–3 Minuten.
         </div>

@@ -40,7 +40,8 @@ export function renderTherapistReminder(params: {
   }
   const targetIsProfile = Boolean(params.missingPhoto || params.missingApproach || params.missingBasic);
   const targetUrl = targetIsProfile ? params.profileUrl : params.uploadUrl;
-  lines.push(`<div style=\"text-align:center; margin: 12px 0 16px;\">${renderButton(targetUrl, 'Profil vervollständigen')}</div>`);
+  const ctaLabel = targetIsProfile ? 'Profil vervollständigen' : 'Dokumente hochladen';
+  lines.push(`<div style=\"text-align:center; margin: 12px 0 16px;\">${renderButton(targetUrl, ctaLabel)}</div>`);
   lines.push('<p style="margin:0 0 12px;">Dauert nur 5–10 Minuten. Danach können Sie sofort Klienten‑Anfragen erhalten.</p>');
 
   const subjectStage = params.stageLabel ? ` – ${params.stageLabel}` : '';
