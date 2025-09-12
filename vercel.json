@@ -7,5 +7,21 @@
     { "path": "/admin/api/matches/selection-reminders?stage=48h", "schedule": "0 16 * * *" },
     { "path": "/admin/api/matches/selection-reminders?stage=72h", "schedule": "0 18 * * *" },
     { "path": "/admin/api/matches/therapist-action-reminders?stage=20h", "schedule": "0 * * * *" }
+  ],
+  "functions": {
+    "app/therapie-finden/page.tsx": {
+      "maxDuration": 10
+    }
+  },
+  "headers": [
+    {
+      "source": "/therapie-finden",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, s-maxage=3600, stale-while-revalidate=86400"
+        }
+      ]
+    }
   ]
 }

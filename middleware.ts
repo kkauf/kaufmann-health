@@ -4,6 +4,13 @@ import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSessio
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Edge cache for the therapie-finden page
+  if (pathname === '/therapie-finden') {
+    const res = NextResponse.next();
+    res.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+    return res;
+  }
+
   // Only guard /admin routes; allow the login page itself
   if (!pathname.startsWith('/admin')) {
     return NextResponse.next();
@@ -30,5 +37,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin', '/admin/:path*'],
+  matcher: ['/admin', '/admin/:path*', '/therapie-finden'],
 };
