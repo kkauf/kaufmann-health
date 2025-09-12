@@ -78,7 +78,7 @@ export default function RootLayout({
       >
         {process.env.NEXT_PUBLIC_GOOGLE_ADS_ID ? (
           <>
-            <Script id="gtag-init" strategy="afterInteractive">
+            <Script id="gtag-stub" strategy="beforeInteractive">
               {`
                 window.dataLayer = window.dataLayer || [];
                 function gtag(){dataLayer.push(arguments);}
@@ -88,6 +88,7 @@ export default function RootLayout({
                   'ad_user_data': 'denied',
                   'ad_personalization': 'denied'
                 });
+                // Queue init and config so any early events are ordered correctly
                 gtag('js', new Date());
                 gtag('config', '${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}', {
                   'allow_ad_personalization_signals': false,
@@ -96,7 +97,8 @@ export default function RootLayout({
               `}
             </Script>
             <Script
-              strategy="afterInteractive"
+              id="gtag-lib"
+              strategy="lazyOnload"
               src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}`}
             />
           </>
