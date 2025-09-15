@@ -51,6 +51,47 @@ function hoursAgo(h: number) {
   return new Date(Date.now() - h * 60 * 60 * 1000).toISOString();
 }
 
+// Email events table rows (properties is the canonical column; props kept for test mocks)
+type EmailEventRow = {
+  id: string;
+  created_at?: string | null;
+  properties?: Record<string, unknown> | null;
+  props?: Record<string, unknown> | null;
+};
+
+async function alreadySentForStage(patient_id: string, stage: string): Promise<boolean> {
+  try {
+    // Only relevant for 24h/48h stages (72h stage does not send email)
+    if (stage !== '24h' && stage !== '48h') return false;
+    // Look back to the start of the stage window to avoid stale historical matches influencing new ones
+    const sinceIso = stage === '24h' ? hoursAgo(48) : hoursAgo(72);
+    const { data, error } = await supabaseServer
+      .from('events')
+      .select('id, created_at, properties')
+      .eq('type', 'email_sent')
+      .gte('created_at', sinceIso)
+      .order('created_at', { ascending: false })
+      .limit(1000);
+    if (error) return false;
+    const arr = (data as EmailEventRow[] | null) || [];
+    for (const e of arr) {
+      const p = (e.properties && typeof e.properties === 'object'
+        ? e.properties
+        : e.props && typeof e.props === 'object'
+        ? e.props
+        : null) as Record<string, unknown> | null;
+      if (!p) continue;
+      const kind = typeof p['kind'] === 'string' ? (p['kind'] as string) : '';
+      const s = typeof p['stage'] === 'string' ? (p['stage'] as string) : '';
+      const pid = typeof p['patient_id'] === 'string' ? (p['patient_id'] as string) : '';
+      if (kind === 'patient_selection_reminder' && s === stage && pid === patient_id) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(req: Request) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   const ua = req.headers.get('user-agent') || undefined;
@@ -63,6 +104,13 @@ export async function GET(req: Request) {
     const authHeader = req.headers.get('authorization') || '';
     const isAuthBearer = Boolean(cronSecret && authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret);
     let isCron = Boolean(cronSecret && cronSecretHeader && cronSecretHeader === cronSecret) || isAuthBearer;
+    if (!isCron && cronSecret) {
+      try {
+        const u = new URL(req.url);
+        const token = u.searchParams.get('token');
+        if (token && token === cronSecret) isCron = true;
+      } catch {}
+    }
     if (!isCron && req.headers.get('x-vercel-cron')) isCron = true;
 
     const isAdmin = await assertAdmin(req);
@@ -117,6 +165,10 @@ export async function GET(req: Request) {
     let processed = 0;
     let sent = 0;
     let marked = 0;
+    let skippedAlreadySelected = 0;
+    let skippedMissingEmail = 0;
+    let skippedNoSecureUuid = 0;
+    let skippedDuplicateStage = 0;
 
     for (const [patient_id, therapistIdsSet] of byPatient) {
       processed++;
@@ -130,7 +182,10 @@ export async function GET(req: Request) {
           .eq('patient_id', patient_id);
         const arr = (existing as Array<{ status?: string | null }> | null) || [];
         const hasSelection = arr.some((r) => (r.status || '').toLowerCase() === 'patient_selected');
-        if (hasSelection) continue;
+        if (hasSelection) {
+          skippedAlreadySelected++;
+          continue;
+        }
       } catch {}
 
       if (stage === '72h') {
@@ -149,7 +204,10 @@ export async function GET(req: Request) {
         .single();
       const patient = (patientRow || null) as { id: string; name?: string | null; email?: string | null; metadata?: PatientMetaServer | null } | null;
       const to = (patient?.email || '').trim();
-      if (!to) continue;
+      if (!to) {
+        skippedMissingEmail++;
+        continue;
+      }
 
       // Therapist details
       const { data: therapistRows } = await supabaseServer
@@ -183,7 +241,17 @@ export async function GET(req: Request) {
         const rec = (oneMatch as { secure_uuid?: string } | null);
         if (rec && typeof rec.secure_uuid === 'string') secure_uuid = rec.secure_uuid;
       } catch {}
-      if (!secure_uuid) continue;
+      if (!secure_uuid) {
+        skippedNoSecureUuid++;
+        continue;
+      }
+
+      // Throttle: ensure we only send once per stage per patient within the window
+      const dup = await alreadySentForStage(patient_id, stage);
+      if (dup) {
+        skippedDuplicateStage++;
+        continue;
+      }
 
       const pMeta: PatientMetaServer = ((): PatientMetaServer => {
         const raw = (patient?.metadata || null) as PatientMetaServer | null;
@@ -258,9 +326,9 @@ export async function GET(req: Request) {
       }
     }
 
-    void track({ type: 'cron_completed', level: 'info', source: 'admin.api.matches.selection_reminders', props: { stage, processed, sent, marked, duration_ms: Date.now() - startedAt }, ip, ua });
+    void track({ type: 'cron_completed', level: 'info', source: 'admin.api.matches.selection_reminders', props: { stage, processed, sent, marked, skipped_already_selected: skippedAlreadySelected, skipped_missing_email: skippedMissingEmail, skipped_no_secure_uuid: skippedNoSecureUuid, skipped_duplicate_stage: skippedDuplicateStage, duration_ms: Date.now() - startedAt }, ip, ua });
 
-    return NextResponse.json({ data: { processed, sent, marked }, error: null }, { status: 200 });
+    return NextResponse.json({ data: { processed, sent, marked, skipped_already_selected: skippedAlreadySelected, skipped_missing_email: skippedMissingEmail, skipped_no_secure_uuid: skippedNoSecureUuid, skipped_duplicate_stage: skippedDuplicateStage }, error: null }, { status: 200 });
   } catch (e) {
     await logError('admin.api.matches.selection_reminders', e, { stage: 'exception' }, ip, ua);
     void track({ type: 'cron_failed', level: 'error', source: 'admin.api.matches.selection_reminders' });

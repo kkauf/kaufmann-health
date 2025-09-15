@@ -285,8 +285,6 @@ __Notes__:
   - 404: `{ data: null, error: 'Match not found' }`
   - 500: `{ data: null, error: 'Failed to load entities' | 'Unexpected error' }`
 
----
-
 ## POST /admin/api/therapists/:id/reminder
 
 - __Purpose__: Send a profile completion reminder email to a specific therapist, based on missing items derived from `therapists.metadata`.
@@ -385,7 +383,7 @@ __UI Consistency__: Email templates reuse a small, inline-styled therapist previ
 ### GET /admin/api/matches/selection-reminders
 
 - Purpose: Vercel Cron-driven follow-up sequence if no selection was made yet.
-- Auth: Admin cookie or Cron secret (`x-cron-secret` / `Authorization: Bearer`), or Vercel platform header `x-vercel-cron`.
+- Auth: Admin cookie or Cron secret (`x-cron-secret` / `Authorization: Bearer`), or Vercel platform header `x-vercel-cron`, or `?token=<CRON_SECRET>`.
 - Query Params:
   - `stage`: `24h` | `48h` | `72h`
 - Behavior:
@@ -393,8 +391,9 @@ __UI Consistency__: Email templates reuse a small, inline-styled therapist previ
   - Skips patients who already have any `status='patient_selected'` match.
   - For `24h` and `48h`, sends the selection email again (48h version uses a stronger urgency banner).
   - For `72h`, marks analytics event `patient_unresponsive` (no status change) and skips emailing.
+  - De-duplicates per stage: before sending, checks `public.events` for an `email_sent` with `kind='patient_selection_reminder'` and matching `stage` and `patient_id` within the stage window. Prevents accidental double-sends on manual/cron re-runs.
 - Responses:
-  - 200: `{ data: { processed, sent, marked }, error: null }`
+  - 200: `{ data: { processed, sent, marked, skipped_already_selected, skipped_missing_email, skipped_no_secure_uuid, skipped_duplicate_stage }, error: null }`
   - 401/500 on failure.
 
 ### Cron Configuration
@@ -433,7 +432,7 @@ Notes:
 
 ### GET /admin/api/matches/therapist-action-reminders
 
-- Purpose: Send a 20-hour reminder to therapists who were selected by a patient but haven't clicked the email CTA yet.
+- Purpose: Send a 20-hour reminder to therapists who were selected by a patient but haven’t clicked the email CTA yet.
 - Auth: Admin cookie or Cron secret (`x-cron-secret` / `Authorization: Bearer`), or Vercel platform header `x-vercel-cron`.
 - Query Params:
   - `stage`: currently `20h` (window is between 20 and 21 hours after the initial selection event).

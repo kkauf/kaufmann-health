@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
-import { logError } from '@/lib/logger';
+import { logError, track } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { renderPatientCustomUpdate, renderPatientMatchFound } from '@/lib/email/templates/patientUpdates';
 import { renderPatientSelectionEmail } from '@/lib/email/templates/patientSelection';
@@ -284,6 +284,25 @@ export async function POST(req: Request) {
       context['patient_id'] = m.patient_id;
       context['therapist_id'] = m.therapist_id;
     }
+    // Analytics: attempted (guarded for test mocks that may not provide track)
+    try {
+      if (typeof track === 'function') {
+        void track({
+          type: 'email_attempted',
+          level: 'info',
+          source: 'admin.api.matches.email',
+          props: {
+            template,
+            ...(template === 'selection'
+              ? { patient_id }
+              : m
+              ? { match_id: m.id, patient_id: m.patient_id, therapist_id: m.therapist_id }
+              : {}),
+          },
+        });
+      }
+    } catch {}
+
     await sendEmail({
       to: patientEmail,
       subject: content.subject,
