@@ -1,3 +1,5 @@
+import { BASE_URL } from '@/lib/constants';
+
 function escapeHtml(s: string) {
   return (s || "")
     .replaceAll("&", "&amp;")
@@ -32,6 +34,26 @@ function truncateSentences(text: string, maxSentences: number) {
   return out || text || "";
 }
 
+// Convert Supabase public bucket URLs to our domain proxy for deliverability in emails
+function toProxiedPhotoUrl(url?: string | null): string | null {
+  const raw = (url || '').trim();
+  if (!raw) return null;
+  // Already proxied or already our domain
+  if (raw.startsWith(`${BASE_URL}/api/images/therapist-profiles/`) || raw.startsWith(BASE_URL)) return raw;
+  try {
+    const u = new URL(raw);
+    const path = u.pathname;
+    // Match: /storage/v1/object/public/therapist-profiles/<path>
+    const m = path.match(/\/storage\/v1\/object\/public\/therapist-profiles\/(.+)$/);
+    if (m && m[1]) {
+      // Preserve any query string from the original URL? Public URLs shouldn't need it; drop to maximize cacheability.
+      const proxiedPath = m[1];
+      return `${BASE_URL}/api/images/therapist-profiles/${proxiedPath}`;
+    }
+  } catch {}
+  return raw; // Fallback: leave as-is if not a Supabase public URL
+}
+
 export function renderTherapistPreviewEmail(params: {
   id: string;
   first_name: string;
@@ -47,8 +69,9 @@ export function renderTherapistPreviewEmail(params: {
   const avatarColor = `hsl(${hashCode(params.id) % 360}, 70%, 50%)`;
   const approach = truncateSentences(params.approach_text || "", 3);
 
-  const photo = params.photo_url
-    ? `<img src="${escapeHtml(params.photo_url)}" alt="${escapeHtml(params.first_name)} ${escapeHtml(params.last_name)}" width="56" height="56" style="width:56px;height:56px;object-fit:cover;display:block;border-radius:999px;" />`
+  const photoSrc = toProxiedPhotoUrl(params.photo_url);
+  const photo = photoSrc
+    ? `<img src="${escapeHtml(photoSrc)}" alt="${escapeHtml(params.first_name)} ${escapeHtml(params.last_name)}" width="56" height="56" style="width:56px;height:56px;object-fit:cover;display:block;border-radius:999px;" />`
     : `<div style="width:56px;height:56px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;border-radius:999px;">${escapeHtml(initials)}</div>`;
   // Build multiple modality badges
   const badgeItems = buildBadgeItems(params.modalities || []);

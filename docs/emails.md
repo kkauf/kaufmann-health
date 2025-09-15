@@ -48,6 +48,14 @@ Notes:
 - Always use absolute links (derive from `BASE_URL`) when linking to your site.
 - Keep business logic in the route/hook, not inside templates.
 
+## Deliverability (why)
+
+- To avoid spam filters, patient-facing emails must not include external links. Multiple external domains in a single email are a known spam signal and reduce inbox placement.
+- Flagged domains we explicitly avoid in emails: `narmtraining.com`, `traumahealing.org`, `hakomi.de`, `coreenergetics.nl`.
+- Use only internal links derived from `BASE_URL` (e.g., booking pages, match selection URLs). If education is needed, link on the website, not in the email.
+- Enforcement: a unit test (`tests/email.patientSelection.links.test.ts`) asserts these domains are not present in the patient selection email.
+ - Images in patient-facing emails are served from our own domain via the proxy endpoint `/api/images/therapist-profiles/...` to avoid external image-domain warnings in providers like Resend and Gmail. See `src/app/api/images/therapist-profiles/[...path]/route.ts`.
+
 ## Internal notifications (PII-free)
 
 Use `buildInternalLeadNotification()` to construct subject/text with type and city, excluding PII:

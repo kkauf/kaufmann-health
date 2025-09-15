@@ -344,6 +344,18 @@ __Why__: Keeping email rendering/sending on the server preserves the cookie-free
 
 __UI Consistency__: Email templates reuse a small, inline-styled therapist preview snippet to ensure consistent presentation with the public directory cards while remaining email-client safe.
 
+## GET /api/images/therapist-profiles/[...path]
+
+- __Purpose__: Serve therapist profile images via our own domain to improve email deliverability and avoid external-image warnings (EARTH-138).
+- __Auth__: None. Images are public profile photos that are already stored in a public Supabase bucket.
+- __Path Params__: `[...]` — the storage path inside the `therapist-profiles` bucket (e.g. `abc123.jpg`).
+- __Behavior__:
+  - Proxies the request to `${NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/therapist-profiles/[...path]`.
+  - Sets `Content-Type` from upstream and strong cache headers: `Cache-Control: public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800`.
+  - Intended for use in email HTML so all images load from `BASE_URL`.
+- __Response__: Binary image content.
+
+
 ## EARTH-125: Patient Selection Flow
 
 ### POST/GET /api/match/:uuid/select
