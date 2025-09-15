@@ -5,6 +5,7 @@ import { logError, track } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { renderTherapistReminder } from '@/lib/email/templates/therapistReminder';
 import { BASE_URL } from '@/lib/constants';
+import { createTherapistOptOutToken } from '@/lib/signed-links';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,6 +36,48 @@ function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
 }
 
+// --- Cooldown & cap helpers ---
+const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const MAX_REMINDERS = 3; // after this, stop
+
+function deriveStageLabel(priorSends: number): string | undefined {
+  const stages = ['Erinnerung', 'Zweite Erinnerung', 'Abschließende Erinnerung'] as const;
+  return stages[Math.min(priorSends, stages.length - 1)];
+}
+
+type EmailEventRow = { id: string; created_at?: string | null; properties?: Record<string, unknown> | null; props?: Record<string, unknown> | null };
+
+async function getReminderHistory(therapistId: string): Promise<{ count: number; lastSentAt: Date | null }> {
+  try {
+    const sinceIso = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await supabaseServer
+      .from('events')
+      .select('id, created_at, properties')
+      .eq('type', 'email_sent')
+      .gte('created_at', sinceIso)
+      .order('created_at', { ascending: false })
+      .limit(1000);
+    if (error) return { count: 0, lastSentAt: null };
+    const arr = (data as EmailEventRow[] | null) || [];
+    const filtered = arr.filter((e) => {
+      const p = (e.properties && typeof e.properties === 'object'
+        ? e.properties
+        : e.props && typeof e.props === 'object'
+        ? e.props
+        : null) as Record<string, unknown> | null;
+      if (!p) return false;
+      const stage = typeof p['stage'] === 'string' ? (p['stage'] as string) : '';
+      const tid = typeof p['therapist_id'] === 'string' ? (p['therapist_id'] as string) : '';
+      return stage === 'therapist_profile_reminder' && tid === therapistId;
+    });
+    const count = filtered.length;
+    const last = filtered[0]?.created_at ? new Date(filtered[0].created_at as string) : null;
+    return { count, lastSentAt: last };
+  } catch {
+    return { count: 0, lastSentAt: null };
+  }
+}
+
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const isAdmin = await assertAdmin(req);
   if (!isAdmin) return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
@@ -44,9 +87,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const ua = req.headers.get('user-agent') || undefined;
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const stageLabel = typeof body.stage === 'string' ? body.stage : undefined; // e.g., "Erinnerung", "Zweite Erinnerung", "Letzte Erinnerung"
-
     const { data: t, error } = await supabaseServer
       .from('therapists')
       .select('id, status, first_name, last_name, email, gender, city, accepting_new, photo_url, metadata')
@@ -86,6 +126,23 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return NextResponse.json({ data: { skipped: true, reason: 'no_missing' }, error: null });
     }
 
+    // Respect opt-out flag
+    const notificationsUnknown = (metadata as { notifications?: unknown }).notifications;
+    const notifications = isObject(notificationsUnknown) ? (notificationsUnknown as Record<string, unknown>) : {};
+    const optedOut = Boolean((notifications as { reminders_opt_out?: unknown }).reminders_opt_out === true);
+    if (optedOut) {
+      return NextResponse.json({ data: { skipped: true, reason: 'opt_out' }, error: null });
+    }
+
+    // Cooldown + cap
+    const history = await getReminderHistory(id);
+    if (history.count >= MAX_REMINDERS) {
+      return NextResponse.json({ data: { skipped: true, reason: 'capped' }, error: null });
+    }
+    if (history.lastSentAt && Date.now() - history.lastSentAt.getTime() < COOLDOWN_MS) {
+      return NextResponse.json({ data: { skipped: true, reason: 'cooldown' }, error: null });
+    }
+
     const to = (t as { email?: string | null }).email || undefined;
     const name = [
       (t as { first_name?: string | null }).first_name || '',
@@ -105,6 +162,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const acceptingOk = typeof acceptingVal === 'boolean';
     const missingBasic = !(genderOk && cityOk && acceptingOk);
 
+    const token = await createTherapistOptOutToken(id);
+    const optOutUrl = `${BASE_URL}/api/therapists/opt-out?token=${encodeURIComponent(token)}`;
     const reminder = renderTherapistReminder({
       name,
       profileUrl,
@@ -113,7 +172,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       missingPhoto,
       missingApproach,
       missingBasic,
-      stageLabel,
+      stageLabel: deriveStageLabel(history.count),
+      optOutUrl,
     });
 
     void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.reminder', props: { stage: 'therapist_profile_reminder', therapist_id: id, subject: reminder.subject } });

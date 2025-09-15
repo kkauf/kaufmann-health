@@ -6,8 +6,8 @@ This document describes how to schedule server-side reminders for therapists who
 
 - `POST /admin/api/therapists/reminders`
   - Auth: Admin cookie OR Cron secret (`x-cron-secret` header or `?token=...` query string) matching `CRON_SECRET`.
-  - Body: `{ limit?: number, stage?: string }`
-  - Returns: `{ data: { processed, sent, skipped_no_missing, examples }, error }`
+  - Body: `{ limit?: number }` (stage is ignored; stage is derived automatically server‑side)
+  - Returns: `{ data: { processed, sent, skipped_no_missing, skipped_cooldown, skipped_capped, examples }, error }`
 
 - `POST /admin/api/therapists/:id/reminder`
   - Manual reminder for one therapist (admin cookie required).
@@ -34,21 +34,30 @@ Recommended: configure schedules in `vercel.json`.
 ```json
 {
   "crons": [
-    { "path": "/admin/api/therapists/reminders", "schedule": "0 9 * * *" },      
-    { "path": "/admin/api/therapists/reminders", "schedule": "30 9 */3 * *" },   
-    { "path": "/admin/api/therapists/reminders", "schedule": "0 10 * * 1" }     
+    { "path": "/admin/api/therapists/reminders?limit=200", "schedule": "15 9 * * *" }
   ]
 }
 ```
 
 Notes:
-- Method is GET by default. Our endpoint supports GET and requires no body.
+- Method is GET by default; our endpoint supports GET and requires no body.
 - If `CRON_SECRET` is set, Vercel includes `Authorization: Bearer <CRON_SECRET>` in requests. Our endpoint authorizes using that header.
-- Query params (`?stage=...&limit=...`) are optional; not required for basic operation. You can add them to `path` if desired, but most setups keep it simple and derive defaults server-side.
+- Stage is derived dynamically from prior sends (see Throttling). You do not need to pass `stage`.
 
 You can also trigger jobs from the Cron Jobs UI using a Path (no domain). Headers are not configurable in the UI; rely on the `Authorization` header Vercel adds automatically when `CRON_SECRET` is present.
 
-Observe stats in the JSON response or via events (`email_attempted`, `therapist_documents_uploaded`).
+Observe stats in the JSON response or via events (`email_attempted`, `email_sent`, `therapist_documents_uploaded`).
+
+## Throttling & Caps (Why)
+
+- To avoid email fatigue, batch reminders enforce:
+  - 7‑day cooldown per therapist between sends.
+  - Max 3 reminders total per therapist; after that we stop (reactivation campaign can handle long‑tail).
+- Stage labels are derived from prior sends:
+  - 0: `Erinnerung`
+  - 1: `Zweite Erinnerung`
+  - 2: `Abschließende Erinnerung`
+- Derivation is based on `public.events` rows of type `email_sent` where `properties.stage = 'therapist_profile_reminder'` and `properties.therapist_id = <id>`.
 
 ## Local Helper
 

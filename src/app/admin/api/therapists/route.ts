@@ -142,6 +142,9 @@ export async function GET(req: Request) {
           if (Array.isArray(v) && v.length > 0) { has_specialization_docs = true; break; }
         }
       }
+      const notificationsVal = (md as Record<string, unknown>)['notifications'];
+      const notificationsObj = isObject(notificationsVal) ? (notificationsVal as Record<string, unknown>) : {};
+      const opted_out = Boolean((notificationsObj as { reminders_opt_out?: unknown }).reminders_opt_out === true);
       const requires_action = Boolean(has_license_doc || has_specialization_docs || has_photo_pending || has_approach_text);
       const metadata = {
         city: r.city || undefined,
@@ -163,6 +166,7 @@ export async function GET(req: Request) {
         photo_url: (r as Row).photo_url || null,
         metadata,
         created_at: r.created_at || null,
+        opted_out,
         profile: {
           has_photo_pending,
           has_photo_public,

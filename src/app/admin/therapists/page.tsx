@@ -27,6 +27,7 @@ type Therapist = {
   status: "pending_verification" | "verified" | "rejected" | string | null;
   metadata: TherapistMeta;
   created_at: string | null;
+  opted_out?: boolean;
   profile?: {
     has_photo_pending?: boolean;
     has_photo_public?: boolean;
@@ -69,6 +70,7 @@ export default function AdminTherapistsPage() {
   const [specialization, setSpecialization] = useState<string>("");
   const [profileFilter, setProfileFilter] = useState<"all" | "complete" | "photo_only" | "approach_only" | "incomplete">("all");
   const [requireActionOnly, setRequireActionOnly] = useState<boolean>(true);
+  const [optedOutOnly, setOptedOutOnly] = useState<boolean>(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,6 +112,7 @@ export default function AdminTherapistsPage() {
       const matchesText = ql ? hay.includes(ql) : true;
       if (!matchesText) return false;
       if (requireActionOnly && !t.requires_action) return false;
+      if (optedOutOnly && !t.opted_out) return false;
       if (profileFilter === "all") return true;
       const p = t.profile || {};
       const hasPhoto = Boolean(p.has_photo_pending || p.has_photo_public);
@@ -127,7 +130,7 @@ export default function AdminTherapistsPage() {
           return true;
       }
     });
-  }, [q, list, profileFilter, requireActionOnly]);
+  }, [q, list, profileFilter, requireActionOnly, optedOutOnly]);
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -138,7 +141,7 @@ export default function AdminTherapistsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [status, city, q, specialization, profileFilter, requireActionOnly, list.length]);
+  }, [status, city, q, specialization, profileFilter, requireActionOnly, optedOutOnly, list.length]);
 
   const fetchTherapists = useCallback(async () => {
     setLoading(true);
@@ -408,6 +411,15 @@ export default function AdminTherapistsPage() {
             />
             Nur mit Aktion
           </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-black"
+              checked={optedOutOnly}
+              onChange={(e) => setOptedOutOnly(e.target.checked)}
+            />
+            Nur Opt-out
+          </label>
         </div>
         {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
 
@@ -502,6 +514,10 @@ export default function AdminTherapistsPage() {
                           <Badge variant="secondary">Unvollständig</Badge>
                         ) : null}
                       </div>
+                    </div>
+                    <div className="col-span-2 flex items-center gap-2">
+                      <span className="text-gray-500">E‑Mail‑Status:</span>
+                      {t.opted_out ? <Badge variant="outline">Opt-out</Badge> : <span>Aktiv</span>}
                     </div>
                     <div className="col-span-2 text-xs text-gray-500">Eingang: {formatDate(t.created_at)}</div>
                   </div>

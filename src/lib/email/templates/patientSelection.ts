@@ -105,10 +105,10 @@ export function renderPatientSelectionEmail(params: {
     <div style="margin-top:20px;">
       <h2 style="color:#1A365D; font-size:18px; margin:0 0 8px;">Körperorientierte Therapieverfahren – kurz erklärt</h2>
       <div style="font-size:14px; color:#374151;">
-        <p style="margin:8px 0;"><strong>NARM (Neuroaffektives Beziehungsmodell):</strong> Fokussiert auf Entwicklungs- und Bindungstrauma sowie Selbstregulation. Achtsame Körperwahrnehmung ohne re-traumatisierende Details. <a href="https://narmtraining.com/" target="_blank" style="color:#4A9B8E; text-decoration:underline;">Mehr erfahren</a></p>
-        <p style="margin:8px 0;"><strong>Somatic Experiencing (SE):</strong> Arbeitet mit der natürlichen Stressreaktion des Körpers. Durch dosierte Annäherung wird das Nervensystem behutsam entlastet. <a href="https://traumahealing.org/" target="_blank" style="color:#4A9B8E; text-decoration:underline;">Mehr erfahren</a></p>
-        <p style="margin:8px 0;"><strong>Hakomi:</strong> Achtsamkeitsbasierte Methode, die unbewusste Muster über den Körper erfahrbar macht. Neue korrigierende Erfahrungen entstehen sanft. <a href="https://hakomi.de/" target="_blank" style="color:#4A9B8E; text-decoration:underline;">Mehr erfahren</a></p>
-        <p style="margin:8px 0;"><strong>Core Energetics:</strong> Verbindet körperlichen Ausdruck mit emotionaler Integration. Über Haltung, Atmung und Bewegung werden Spannungen gelöst. <a href="https://coreenergetics.nl/en/core-energetics/" target="_blank" style="color:#4A9B8E; text-decoration:underline;">Mehr erfahren</a></p>
+        <p style="margin:8px 0;"><strong>NARM (Neuroaffektives Beziehungsmodell):</strong> Fokussiert auf Entwicklungs- und Bindungstrauma sowie Selbstregulation. Achtsame Körperwahrnehmung ohne re-traumatisierende Details.</p>
+        <p style="margin:8px 0;"><strong>Somatic Experiencing (SE):</strong> Arbeitet mit der natürlichen Stressreaktion des Körpers. Durch dosierte Annäherung wird das Nervensystem behutsam entlastet.</p>
+        <p style="margin:8px 0;"><strong>Hakomi:</strong> Achtsamkeitsbasierte Methode, die unbewusste Muster über den Körper erfahrbar macht. Neue korrigierende Erfahrungen entstehen sanft.</p>
+        <p style="margin:8px 0;"><strong>Core Energetics:</strong> Verbindet körperlichen Ausdruck mit emotionaler Integration. Über Haltung, Atmung und Bewegung werden Spannungen gelöst.</p>
         <small style="display:block; margin-top:6px; color:#6B7280;">Kurzbeschreibungen dienen der Orientierung und ersetzen keine individuelle therapeutische Beratung.</small>
       </div>
     </div>

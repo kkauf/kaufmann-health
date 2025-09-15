@@ -20,6 +20,7 @@ export function renderTherapistReminder(params: {
   missingBasic?: boolean; // gender/city/accepting_new missing
   completionPercentage?: number; // 0..100
   stageLabel?: string; // e.g., "Erinnerung", "Zweite Erinnerung", "Letzte Erinnerung"
+  optOutUrl?: string;
 }): EmailContent {
   const name = (params.name || '').trim();
   const pct = typeof params.completionPercentage === 'number' ? Math.max(0, Math.min(100, Math.round(params.completionPercentage))) : undefined;
@@ -33,7 +34,7 @@ export function renderTherapistReminder(params: {
 
   const lines: string[] = [];
   lines.push(`<p style=\"margin:0 0 12px;\">Hi${name ? ` ${escapeHtml(name)}` : ''},</p>`);
-  lines.push('<p style="margin:0 0 12px;">Sie haben sich erfolgreich angemeldet, aber Ihr Profil ist noch nicht vollständig.</p>');
+  lines.push('<p style="margin:0 0 12px;">Ihr Profil ist fast startklar – es fehlen nur noch wenige Angaben.</p>');
   lines.push(`<p style=\"margin:0 0 12px;\"><strong>Fehlende Angaben:</strong> ${escapeHtml(missingList)}</p>`);
   if (typeof pct === 'number') {
     lines.push(`<p style=\"margin:0 0 12px; color:#374151;\">Ihr Profil ist zu ${pct}% vollständig.</p>`);
@@ -43,11 +44,16 @@ export function renderTherapistReminder(params: {
   const ctaLabel = targetIsProfile ? 'Profil vervollständigen' : 'Dokumente hochladen';
   lines.push(`<div style=\"text-align:center; margin: 12px 0 16px;\">${renderButton(targetUrl, ctaLabel)}</div>`);
   lines.push('<p style="margin:0 0 12px;">Dauert nur 5–10 Minuten. Danach können Sie sofort Klienten‑Anfragen erhalten.</p>');
+  if (params.optOutUrl) {
+    lines.push(
+      `<p style=\"margin:8px 0 0; color:#6b7280; font-size:12px;\">Sie möchten diese Erinnerungen pausieren? <a href=\"${escapeHtml(params.optOutUrl)}\" style=\"color:#6b7280; text-decoration:underline;\">Hier klicken</a>.</p>`
+    );
+  }
 
   const subjectStage = params.stageLabel ? ` – ${params.stageLabel}` : '';
   let subjectBase = 'Profil vervollständigen';
   if (params.missingDocuments && !targetIsProfile) subjectBase = 'Lizenz‑Nachweis ausstehend';
-  else if (params.missingPhoto) subjectBase = 'Profilbild fehlt noch';
+  else if (params.missingPhoto) subjectBase = 'Ihr Profil ist fast startklar – Foto fehlt noch';
   return {
     subject: `${subjectBase}${subjectStage}`,
     html: renderLayout({ title: subjectBase, contentHtml: lines.join('') }),
