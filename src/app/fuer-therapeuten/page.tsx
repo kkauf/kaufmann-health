@@ -142,10 +142,10 @@ export default function TherapistsPage() {
         <h2 id="logos" className="sr-only">Fokus auf körperorientierte Verfahren</h2>
         <div className="rounded-2xl border bg-white/60 p-4 backdrop-blur-sm">
           <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
-            <Image src="/logos/Modalities/NARM.png" alt="NARM" width={120} height={40} className="h-8 w-auto opacity-70 grayscale" />
-            <Image src="/logos/Modalities/Hakomi.png" alt="Hakomi" width={120} height={40} className="h-8 w-auto opacity-70 grayscale" />
-            <Image src="/logos/Modalities/Somatic-Experiencing.png" alt="Somatic Experiencing" width={160} height={40} className="h-8 w-auto opacity-70 grayscale" />
-            <Image src="/logos/Modalities/Core-Energetics.png" alt="Core Energetics" width={160} height={40} className="h-8 w-auto opacity-70 grayscale" />
+            <Image src="/logos/Modalities/NARM.png" alt="NARM" width={120} height={40} loading="lazy" placeholder="blur" blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=" sizes="(max-width: 640px) 33vw, 120px" className="h-8 w-auto opacity-70 grayscale" />
+            <Image src="/logos/Modalities/Hakomi.png" alt="Hakomi" width={120} height={40} loading="lazy" placeholder="blur" blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=" sizes="(max-width: 640px) 33vw, 120px" className="h-8 w-auto opacity-70 grayscale" />
+            <Image src="/logos/Modalities/Somatic-Experiencing.png" alt="Somatic Experiencing" width={160} height={40} loading="lazy" placeholder="blur" blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=" sizes="(max-width: 640px) 33vw, 160px" className="h-8 w-auto opacity-70 grayscale" />
+            <Image src="/logos/Modalities/Core-Energetics.png" alt="Core Energetics" width={160} height={40} loading="lazy" placeholder="blur" blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=" sizes="(max-width: 640px) 33vw, 160px" className="h-8 w-auto opacity-70 grayscale" />
           </div>
         </div>
       </section>

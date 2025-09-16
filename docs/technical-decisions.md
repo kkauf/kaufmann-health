@@ -15,6 +15,10 @@
 - __CORS__: Not added; funnel submits same-origin. If cross-origin is needed, add `OPTIONS` handler and CORS headers on `/api/leads`.
 - __Service role writes__: Writes handled only on the server via `supabaseServer` (service role). Never expose service role keys to the browser.
 
+## Images & Performance
+- __Why__: 70% mobile traffic; large PNGs were inflating LCP and bounce. We favor perceived performance and low transfer over raw pixels.
+- __How__: Use Next.js `Image` with AVIF/WebP and responsive `sizes`; below-the-fold images use `loading="lazy"` and a tiny base64 `blurDataURL` to avoid jank while saving bytes. No manual WebP pipeline needed—Vercel handles modern formats + edge caching.
+
 ## Privacy & Cookies
 - __Cookie policy__: No tracking/marketing cookies on the public site. Reason: privacy-first UX and legal clarity. Functional cookies allowed only under `/admin`.
 - __Admin protection__: Edge Middleware guards `/admin/*`. Login sets HTTP-only `kh_admin` cookie scoped to `/admin` with 24h expiry (HMAC via Web Crypto). Reason: confines cookies to the restricted area while keeping public site cookie-free. See also: [security](./security.md), [architecture](./architecture.md).

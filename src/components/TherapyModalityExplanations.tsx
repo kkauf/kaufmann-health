@@ -14,7 +14,10 @@ export default function TherapyModalityExplanations() {
             alt={alt}
             width={96}
             height={32}
-            unoptimized
+            loading="lazy"
+            sizes="(max-width: 640px) 25vw, 96px"
+            placeholder="blur"
+            blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII="
             className="h-6 w-auto object-contain opacity-80"
             onError={() => setFailed(true)}
           />

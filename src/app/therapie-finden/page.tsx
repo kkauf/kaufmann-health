@@ -45,7 +45,7 @@ export default function TherapieFindenPage() {
               alt="NARM"
               width={240}
               height={80}
-              unoptimized
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 240px"
               className="h-20 w-auto object-contain opacity-80"
             />
             <Image
@@ -53,7 +53,7 @@ export default function TherapieFindenPage() {
               alt="Hakomi"
               width={240}
               height={80}
-              unoptimized
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 240px"
               className="h-20 w-auto object-contain opacity-80"
             />
             <Image
@@ -61,7 +61,7 @@ export default function TherapieFindenPage() {
               alt="Somatic Experiencing"
               width={240}
               height={80}
-              unoptimized
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 240px"
               className="h-20 w-auto object-contain opacity-80"
             />
             <Image
@@ -69,7 +69,7 @@ export default function TherapieFindenPage() {
               alt="Core Energetics"
               width={240}
               height={80}
-              unoptimized
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 240px"
               className="h-20 w-auto object-contain opacity-80"
             />
           </div>

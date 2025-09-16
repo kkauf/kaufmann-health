@@ -89,7 +89,10 @@ export default function Home() {
               alt="NARM"
               width={240}
               height={80}
-              unoptimized
+              loading="lazy"
+              placeholder="blur"
+              blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII="
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 240px"
               className="h-20 w-auto object-contain opacity-80"
             />
             <Image
@@ -97,7 +100,10 @@ export default function Home() {
               alt="Hakomi"
               width={240}
               height={80}
-              unoptimized
+              loading="lazy"
+              placeholder="blur"
+              blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII="
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 240px"
               className="h-20 w-auto object-contain opacity-80"
             />
             <Image
@@ -105,7 +111,10 @@ export default function Home() {
               alt="Somatic Experiencing"
               width={240}
               height={80}
-              unoptimized
+              loading="lazy"
+              placeholder="blur"
+              blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII="
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 240px"
               className="h-20 w-auto object-contain opacity-80"
             />
             <Image
@@ -113,7 +122,10 @@ export default function Home() {
               alt="Core Energetics"
               width={240}
               height={80}
-              unoptimized
+              loading="lazy"
+              placeholder="blur"
+              blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII="
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 240px"
               className="h-20 w-auto object-contain opacity-80"
             />
           </div>
