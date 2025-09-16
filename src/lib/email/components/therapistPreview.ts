@@ -43,8 +43,10 @@ function toProxiedPhotoUrl(url?: string | null): string | null {
   try {
     const u = new URL(raw);
     const path = u.pathname;
-    // Match: /storage/v1/object/public/therapist-profiles/<path>
-    const m = path.match(/\/storage\/v1\/object\/public\/therapist-profiles\/(.+)$/);
+    // Match both variants:
+    //  - /storage/v1/object/public/therapist-profiles/<path>
+    //  - /storage/v1/render/image/public/therapist-profiles/<path>
+    const m = path.match(/\/storage\/v1\/(?:object|render\/image)\/public\/therapist-profiles\/(.+)$/);
     if (m && m[1]) {
       // Preserve any query string from the original URL? Public URLs shouldn't need it; drop to maximize cacheability.
       const proxiedPath = m[1];

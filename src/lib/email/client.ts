@@ -1,7 +1,22 @@
-import { EMAIL_FROM_DEFAULT } from '@/lib/constants';
+import { EMAIL_FROM_DEFAULT, BASE_URL } from '@/lib/constants';
 import type { SendEmailParams } from './types';
 import { logError, track } from '@/lib/logger';
 import { createHash } from 'crypto';
+
+// Safety net: ensure any therapist profile images embedded in emails are served
+// from our sending domain via the proxy endpoint (EARTH-138). This rewrites
+// Supabase public bucket URLs found in the HTML to our proxy path.
+export function rewriteTherapistProfileImagesInHtml(html?: string): string | undefined {
+  if (!html) return html;
+  try {
+    const proxyPrefix = `${BASE_URL.replace(/\/+$/, '')}/api/images/therapist-profiles/`;
+    // Match both object and render/image variants, drop any query string for cacheability.
+    const re = /https?:\/\/[^"'\s<>()]+\/storage\/v1\/(?:object|render\/image)\/public\/therapist-profiles\/([^"'\?\s<>()]+)/g;
+    return html.replace(re, (_m, p1) => `${proxyPrefix}${p1}`);
+  } catch {
+    return html;
+  }
+}
 
 /**
  * Thin wrapper around Resend HTTP API.
@@ -70,6 +85,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
+      const htmlToSend = params.html ? rewriteTherapistProfileImagesInHtml(params.html) : undefined;
       const resp = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -81,7 +97,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
           from: `Kaufmann Health <${fromAddress}>`,
           to: toList,
           subject: params.subject,
-          ...(params.html ? { html: params.html } : {}),
+          ...(htmlToSend ? { html: htmlToSend } : {}),
           ...(params.text ? { text: params.text } : {}),
           ...(params.replyTo ? { reply_to: params.replyTo } : {}),
         }),
