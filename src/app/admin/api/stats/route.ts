@@ -286,6 +286,28 @@ export async function GET(req: Request) {
       lastNDays: { accepted: acc, declined: dec, rate: acc + dec > 0 ? Math.round((acc / (acc + dec)) * 1000) / 10 : 0 },
     };
 
+    // 6) Session blockers breakdown (last 30 days)
+    const since30Iso = new Date(today.getTime() - 29 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: blockersRows, error: blockersErr } = await supabaseServer
+      .from('session_blockers')
+      .select('reason, created_at')
+      .gte('created_at', since30Iso)
+      .limit(10000);
+    if (blockersErr) {
+      await logError('admin.api.stats', blockersErr, { stage: 'blockers', since30Iso });
+    }
+    const reasonCounts = new Map<string, number>();
+    let totalBlockers = 0;
+    for (const row of (blockersRows || []) as Array<{ reason?: string | null }>) {
+      const r = String(row.reason || '').toLowerCase();
+      if (!r) continue;
+      reasonCounts.set(r, (reasonCounts.get(r) || 0) + 1);
+      totalBlockers += 1;
+    }
+    const breakdown = Array.from(reasonCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([reason, count]) => ({ reason, count, percentage: totalBlockers > 0 ? Math.round((count * 1000) / totalBlockers) / 10 : 0 }));
+
     const data = {
       totals: {
         therapists: therapistsRes.count || 0,
@@ -301,6 +323,12 @@ export async function GET(req: Request) {
       responseTimes,
       topCities,
       therapistAcceptance,
+      blockers: {
+        last30Days: {
+          total: totalBlockers,
+          breakdown,
+        },
+      },
     };
 
     return NextResponse.json({ data, error: null }, { status: 200 });

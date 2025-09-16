@@ -180,3 +180,33 @@ create index if not exists bo_city_idx on public.business_opportunities(city);
 
 RLS:
 - Enabled. Only the service role inserts/queries via server-side admin APIs. No public access.
+
+## public.session_blockers
+
+- `id uuid pk default gen_random_uuid()`
+- `match_id uuid not null references public.matches(id) on delete cascade`
+- `reason text not null check in ('scheduling','cost','changed_mind','no_contact','other')`
+- `created_at timestamptz not null default now()`
+
+Purpose:
+- Capture one-click client feedback 7 days after selection about why a session has not been scheduled yet. Enables actionable insights and operations alerts.
+
+Create table:
+```sql
+create table if not exists public.session_blockers (
+  id uuid primary key default gen_random_uuid(),
+  match_id uuid not null references public.matches(id) on delete cascade,
+  reason text not null check (reason in ('scheduling','cost','changed_mind','no_contact','other')),
+  created_at timestamptz not null default now()
+);
+```
+
+Indexes:
+```sql
+create index if not exists session_blockers_created_at_idx on public.session_blockers(created_at desc);
+create index if not exists session_blockers_reason_idx on public.session_blockers(reason);
+create index if not exists session_blockers_match_id_idx on public.session_blockers(match_id);
+```
+
+RLS:
+- Enabled. Only the service role writes/reads via server endpoints.

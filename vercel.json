@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/admin/api/therapists/reminders?limit=200", "schedule": "15 9 * * *" },
+    { "path": "/admin/api/matches/blocker-survey", "schedule": "0 10 * * *" },
     { "path": "/admin/api/matches/selection-reminders?stage=24h", "schedule": "0 12 * * *" },
     { "path": "/admin/api/matches/selection-reminders?stage=48h", "schedule": "0 16 * * *" },
     { "path": "/admin/api/matches/selection-reminders?stage=72h", "schedule": "0 18 * * *" },

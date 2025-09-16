@@ -19,6 +19,7 @@ type StatsData = {
   responseTimes?: { buckets: Array<{ bucket: string; count: number }>; avgHours: number };
   topCities?: Array<{ city: string; count: number }>;
   therapistAcceptance?: { lastNDays: { accepted: number; declined: number; rate: number } };
+  blockers?: { last30Days: { total: number; breakdown: Array<{ reason: string; count: number; percentage: number }> } };
 };
 
 export default function AdminStats() {
@@ -299,6 +300,61 @@ export default function AdminStats() {
                 </div>
               );
             })()
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 6) Warum kommen Sitzungen nicht zustande? (letzte 30 Tage) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Warum kommen Sitzungen nicht zustande?</CardTitle>
+          <CardDescription>Blocker‑Gründe der letzten 30 Tage (1‑Klick‑Feedback)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!data?.blockers?.last30Days || (data.blockers.last30Days.breakdown.length === 0) ? (
+            <div className="text-sm text-muted-foreground">Noch keine Rückmeldungen</div>
+          ) : (
+            <div className="space-y-2">
+              <div className="text-sm">Gesamt: <span className="font-medium">{data.blockers.last30Days.total}</span></div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-muted-foreground">
+                      <th className="py-1 pr-3">Grund</th>
+                      <th className="py-1 pr-3">Anteil</th>
+                      <th className="py-1 pr-3">Anzahl</th>
+                      <th className="py-1 pr-3">Hinweis</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.blockers.last30Days.breakdown.map((b) => {
+                      const tips: Record<string, string> = {
+                        scheduling: 'Terminvorschläge erleichtern (Abende/Wochenende testen)'.trim(),
+                        cost: 'Preistransparenz/Sliding‑Scale prüfen',
+                        changed_mind: 'Follow‑up Copy testen',
+                        no_contact: 'Sofortige Erinnerung an Therapeut:in auslösen',
+                        other: 'Antworten manuell sichten',
+                      };
+                      const reasonLabel: Record<string, string> = {
+                        scheduling: 'Terminfindung schwierig',
+                        cost: 'Kosten doch zu hoch',
+                        changed_mind: 'Anders entschieden',
+                        no_contact: 'Therapeut:in hat sich nicht gemeldet',
+                        other: 'Anderer Grund',
+                      };
+                      return (
+                        <tr key={b.reason} className="border-t">
+                          <td className="py-1 pr-3">{reasonLabel[b.reason] || b.reason}</td>
+                          <td className="py-1 pr-3">{b.percentage}%</td>
+                          <td className="py-1 pr-3">{b.count}</td>
+                          <td className="py-1 pr-3 text-muted-foreground">{tips[b.reason] || ''}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

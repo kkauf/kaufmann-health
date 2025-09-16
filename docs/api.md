@@ -456,3 +456,55 @@ Notes:
 - Responses:
   - 200: `{ data: { processed, sent }, error: null }`
   - 401/500 on failure.
+
+## EARTH-127: Session Blocker Tracking – Warum werden keine Termine gebucht?
+
+### GET /api/feedback
+
+- Purpose: One‑click client feedback links embedded in the 7‑Tage Follow‑up E‑Mail. Records why a Termin nicht zustande kam.
+- Auth: None (links from email). Redirects to a friendly thank‑you page regardless of payload to avoid exposing internals.
+- Query Params:
+  - `match` (uuid, required): `matches.id`
+  - `reason` (required): one of `scheduling | cost | changed_mind | no_contact | other`
+- Behavior:
+  - Inserts a row into `public.session_blockers` with `{ match_id, reason }`.
+  - Emits `session_blocker_received` event via unified logger.
+  - When `reason='no_contact'`, sends a high‑priority internal alert email to `LEADS_NOTIFY_EMAIL`.
+  - Redirects to `/feedback-received`.
+- Responses:
+  - 302: Redirect to `/feedback-received` (on success and also on invalid/missing params)
+
+### GET /admin/api/matches/blocker-survey
+
+- Purpose: Daily cron that sends a short "Kurze Frage" email 7 Tage nach Auswahl, wenn noch keine Sitzung bestätigt ist.
+- Auth: Admin cookie or Cron secret (`x-cron-secret` / `Authorization: Bearer`), or Vercel platform header `x-vercel-cron`.
+- Behavior:
+  - Scans `public.events` for `patient_selected` events in the [T‑8d, T‑7d) window.
+  - For each `match_id`, loads the match and skips unless `status='patient_selected'` and `patient_confirmed_at` is null.
+  - De‑duplicates per match by checking recent `email_sent` with `kind='patient_blocker_survey'`.
+  - Sends the survey email with 1‑Klick Optionen (Terminfindung, Kosten, anders entschieden, Therapeut:in hat sich nicht gemeldet, anderer Grund).
+  - Emits `cron_executed` / `cron_completed` / `cron_failed` for observability.
+- Responses:
+  - 200: `{ data: { processed, sent, skipped_status, skipped_missing_email, skipped_duplicate }, error: null }`
+  - 401/500 on failure.
+
+### Cron Configuration
+
+Added in `vercel.json`:
+
+```
+{ "path": "/admin/api/matches/blocker-survey", "schedule": "0 10 * * *" }
+```
+
+### Admin Stats
+
+`GET /admin/api/stats` now returns a new dataset:
+
+```
+blockers: {
+  last30Days: {
+    total: number,
+    breakdown: Array<{ reason: string; count: number; percentage: number }>
+  }
+}
+```
