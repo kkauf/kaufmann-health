@@ -97,6 +97,7 @@ export async function GET(req: Request) {
       await logError('api.leads.confirm', e, { stage: 'google_ads_conversion' });
     }
 
+    // Success: redirect to public confirmation page (EARTH-159)
     return NextResponse.redirect(`${BASE_URL}/confirm?state=success`, 302);
   } catch (e) {
     await logError('api.leads.confirm', e, { stage: 'unhandled' });

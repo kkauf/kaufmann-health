@@ -49,6 +49,28 @@
 - __Redirects__:
   - 302 → `/confirm?state=success | invalid | expired | error`
 
+### Public Confirmation Page (`/confirm`)
+
+- Purpose: Friendly, index‑excluded page that displays the outcome of the confirmation flow.
+- States (via `?state=`): `success | invalid | expired | error`.
+- UX: Uses a simple card with CTAs back to `/` and `/therapie-finden`. On `expired`, the page offers an email input to request a new confirmation email (see endpoint below).
+- SEO: `noindex, nofollow`.
+
+## POST /api/leads/resend-confirmation
+
+- __Purpose__: Re-send the email confirmation link for patient leads that are still in `status='pre_confirmation'`.
+- __Auth__: None (public). Designed to avoid user enumeration.
+- __Request Body__ (JSON):
+  - `email` (string, required)
+- __Behavior__:
+  - Always returns 200 with `{ data: { ok: true }, error: null }` regardless of whether the email exists.
+  - When a `people(type='patient')` row exists with `status='pre_confirmation'`, the server generates a new token, updates `metadata.confirm_sent_at`, and re-sends the email (best-effort).
+  - Throttled: ignores requests if `confirm_sent_at` is newer than 10 minutes.
+  - Logs `email_attempted` and errors via the unified logger.
+- __Rate limiting__: IP-based best-effort (reuses standard helpers). Recommended to keep platform protections in front.
+- __Response__:
+  - 200: `{ data: { ok: true }, error: null }`
+
 
 ## POST /api/therapists/:id/documents
 
