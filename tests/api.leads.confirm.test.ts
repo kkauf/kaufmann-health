@@ -74,7 +74,7 @@ describe('EARTH-146 GET /api/leads/confirm', () => {
     const { GET } = await import('@/app/api/leads/confirm/route');
     const res = await GET(new Request(makeUrl('p1', 't1')));
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('http://localhost/confirm?state=success');
+    expect(res.headers.get('location')).toBe('http://localhost/preferences?confirm=1&id=p1');
     // status update
     expect(updateArgs).toBeTruthy();
     expect(updateArgs.status).toBe('new');

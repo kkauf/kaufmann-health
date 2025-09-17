@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertCircle } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { getOrCreateSessionId } from '@/lib/attribution';
 
@@ -77,7 +78,12 @@ export function EmailEntryForm() {
           </CardDescription>
         </CardHeader>
         <CardFooter>
-          <p className="text-xs text-gray-600">Hinweis: Der Link ist 24 Stunden gültig. Prüfe ggf. deinen SPAM‑Ordner.</p>
+          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <AlertCircle className="mt-0.5 h-4 w-4 text-amber-600" aria-hidden="true" />
+            <p className="text-xs text-amber-800">
+              Hinweis: Der Link ist 24 Stunden gültig. Prüfe ggf. deinen SPAM‑Ordner.
+            </p>
+          </div>
         </CardFooter>
       </Card>
     );
