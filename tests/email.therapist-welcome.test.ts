@@ -26,4 +26,18 @@ describe('therapist welcome email', () => {
     });
     expect(html).toContain('Kaufmann Health startet bald in Hamburg');
   });
+
+  it('includes Gmail JSON-LD schema when uploadUrl is provided', () => {
+    const uploadUrl = 'https://kaufmann-health.de/therapists/upload-documents/123';
+    const { html } = renderTherapistWelcome({
+      name: 'Test',
+      city: 'Berlin',
+      isActiveCity: true,
+      termsVersion: 'v1',
+      uploadUrl,
+    });
+    expect(html).toContain('<script type="application/ld+json">');
+    expect(html).toContain('ViewAction');
+    expect(html).toContain(uploadUrl);
+  });
 });

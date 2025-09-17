@@ -6,8 +6,10 @@ export function renderButton(href: string, label: string) {
   `;
 }
 
-export function renderLayout(params: { title?: string; contentHtml: string }) {
+export function renderLayout(params: { title?: string; contentHtml: string; preheader?: string; schema?: object }) {
   const title = params.title || 'Kaufmann Health';
+  const preheader = (params.preheader || '').trim();
+  const schema = params.schema;
   // Use PNG for broad email client compatibility (SVG is not supported everywhere like Gmail)
   const logoSrc = `${BASE_URL}/logos/Health%20Logos%20-%20black/Kaufmann_health_logo_small.png`;
   return `<!DOCTYPE html>
@@ -16,8 +18,10 @@ export function renderLayout(params: { title?: string; contentHtml: string }) {
     <meta charset="utf-8" />
     <title>${escapeHtml(title)}</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    ${schema ? `\n    <script type="application/ld+json">\n${JSON.stringify(schema, null, 2)}\n    </script>\n    ` : ''}
   </head>
   <body style="margin:0; padding:0; background-color:#F9FAFB;">
+    ${preheader ? `<div style="display:none; font-size:1px; color:#F9FAFB; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">${escapeHtml(preheader)}</div>` : ''}
     <div style="max-width:640px; margin:0 auto; padding:24px;">
       <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #E5E7EB;">
         <tr>

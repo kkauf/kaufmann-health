@@ -76,7 +76,24 @@ export function renderTherapistWelcome(params: {
 
   return {
     subject: 'Willkommen! Vervollständigen Sie Ihr Profil',
-    html: renderLayout({ title: 'Willkommen bei Kaufmann Health', contentHtml }),
+    html: renderLayout({
+      title: 'Willkommen bei Kaufmann Health',
+      contentHtml,
+      preheader: 'Willkommen! Vervollständigen Sie Ihr Profil in 5–10 Minuten.',
+      schema: params.uploadUrl
+        ? {
+            '@context': 'http://schema.org',
+            '@type': 'EmailMessage',
+            potentialAction: {
+              '@type': 'ViewAction',
+              target: params.uploadUrl,
+              url: params.uploadUrl,
+              name: 'Profil vervollständigen',
+            },
+            description: 'Willkommen bei Kaufmann Health - Vervollständigen Sie Ihr Profil',
+          }
+        : undefined,
+    }),
   };
 }
 

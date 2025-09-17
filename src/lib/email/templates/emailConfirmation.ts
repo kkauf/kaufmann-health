@@ -10,8 +10,22 @@ export function renderEmailConfirmation(params: { confirmUrl: string }): EmailCo
     </div>
     <p style="color:#6B7280; font-size:12px;">Der Link ist 24 Stunden gültig. Fügen Sie bitte <strong>kontakt@kaufmann-health.de</strong> zu Ihren Kontakten hinzu.</p>
   `;
+  const confirmSchema = {
+    '@context': 'http://schema.org',
+    '@type': 'EmailMessage',
+    potentialAction: {
+      '@type': 'ConfirmAction',
+      name: 'E-Mail bestätigen',
+      handler: {
+        '@type': 'HttpActionHandler',
+        url: params.confirmUrl,
+        method: 'HttpRequestMethod.GET',
+      },
+    },
+    description: 'Bestätigen Sie Ihre E-Mail-Adresse für Therapeuten-Empfehlungen',
+  } as const;
   return {
     subject: 'Bestätigen Sie Ihre E‑Mail-Adresse',
-    html: renderLayout({ title: 'E-Mail-Bestätigung', contentHtml }),
+    html: renderLayout({ title: 'E-Mail-Bestätigung', contentHtml, preheader: 'Bitte bestätigen Sie Ihre E‑Mail-Adresse.', schema: confirmSchema }),
   };
 }

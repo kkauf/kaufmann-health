@@ -120,8 +120,23 @@ export function renderPatientSelectionEmail(params: {
  
   const contentHtml = [header, greetingHtml, trustBox, availabilityLine, cardsHtml, actionGuidance, urgencyBox, modalitiesHtml, closingHtml].join('\n');
 
+  const actionTarget = items[0]?.selectUrl;
+  const schema = actionTarget
+    ? {
+        '@context': 'http://schema.org',
+        '@type': 'EmailMessage',
+        potentialAction: {
+          '@type': 'ViewAction',
+          target: actionTarget,
+          url: actionTarget,
+          name: 'Therapeuten ansehen',
+        },
+        description: 'Ihre personalisierten Therapeuten-Empfehlungen',
+      }
+    : undefined;
+
   return {
     subject: params.subjectOverride || 'Ihre persönlich kuratierte Auswahl – Termine in den nächsten 7 Tagen (bitte innerhalb von 48 Std. wählen)',
-    html: renderLayout({ title: 'Therapie-Auswahl', contentHtml }),
+    html: renderLayout({ title: 'Therapie-Auswahl', contentHtml, preheader: 'Ihre persönlich kuratierte Auswahl ist da – bitte innerhalb von 48 Std. wählen.', schema }),
   };
 }

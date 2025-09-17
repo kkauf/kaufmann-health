@@ -56,6 +56,23 @@ Notes:
 - Enforcement: a unit test (`tests/email.patientSelection.links.test.ts`) asserts these domains are not present in the patient selection email.
  - Images in patient-facing emails are served from our own domain via the proxy endpoint `/api/images/therapist-profiles/...` to avoid external image-domain warnings in providers like Resend and Gmail. See `src/app/api/images/therapist-profiles/[...path]/route.ts`.
 
+### Gmail JSON-LD Schema (inbox actions)
+
+- We inject optional Gmail schema (JSON-LD) into the `<head>` of emails to improve deliverability signals and enable inbox actions in Gmail.
+- Implementation: `renderLayout({ title, contentHtml, preheader?, schema? })` accepts an optional `schema` object, serialized into a `<script type="application/ld+json">` block.
+- Templates that currently include schema:
+  - `emailConfirmation` (ConfirmAction → confirm email)
+  - `patientSelection` (ViewAction → open therapist recommendations)
+  - `therapistWelcome` (ViewAction → complete profile)
+- Best practices:
+  - One primary action per email; keep `name` short.
+  - Only use HTTPS URLs from our domain (`BASE_URL`).
+  - Test with Gmail Email Markup Tester.
+
+### Preheader text
+
+- `renderLayout` supports an optional `preheader` string rendered as a hidden preheader snippet to improve open rates.
+
 ## Internal notifications (PII-free)
 
 Use `buildInternalLeadNotification()` to construct subject/text with type and city, excluding PII:
@@ -75,4 +92,6 @@ Use `buildInternalLeadNotification()` to construct subject/text with type and ci
   - `tests/email.therapist-welcome.test.ts`
   - `tests/email.notification.test.ts`
   - `tests/email.layout.test.ts`
+  - `tests/email.emailConfirmation.test.ts`
+  - `tests/email.patientSelection.schema.test.ts`
 - In tests, `sendEmail()` is a no-op when `RESEND_API_KEY` is empty, so accidental sends are avoided.

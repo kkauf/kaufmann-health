@@ -11,5 +11,9 @@ describe('emailConfirmation template', () => {
     for (const domain of forbidden) {
       expect(html.html).not.toContain(domain);
     }
+    // Includes Gmail JSON-LD schema
+    expect(html.html).toContain('<script type="application/ld+json">');
+    expect(html.html).toContain('ConfirmAction');
+    expect(html.html).toContain('http://localhost/api/leads/confirm?token=t&id=1');
   });
 });
