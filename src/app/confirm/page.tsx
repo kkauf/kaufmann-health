@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ResendConfirmationForm } from '@/components/ResendConfirmationForm';
+import ConfirmSuccessFallback from '@/components/ConfirmSuccessFallback';
 
 export const metadata = {
   title: 'Bestätigung | Kaufmann Health',
@@ -13,9 +14,9 @@ function getStateContent(state?: string) {
   switch (state) {
     case 'success':
       return {
-        title: 'Deine Email-Adresse ist bestätigt',
+        title: 'E‑Mail bestätigt – weiter zu Präferenzen',
         description:
-          'Vielen Dank! Deine E‑Mail‑Adresse wurde bestätigt. Wir melden uns, sobald wir passende Empfehlungen für dich gefunden haben.',
+          'Falls du nicht automatisch weitergeleitet wirst, klicke auf „Weiter zu Präferenzen“.',
         showResend: false,
       } as const;
     case 'invalid':
@@ -51,6 +52,7 @@ export default async function Page({
   const sp = await searchParams;
   const state = typeof sp?.state === 'string' ? sp.state : undefined;
   const { title, description, showResend } = getStateContent(state);
+  const isSuccess = state === 'success';
 
   return (
     <div className="mx-auto max-w-xl px-4 py-10">
@@ -60,15 +62,21 @@ export default async function Page({
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
-          {showResend ? <ResendConfirmationForm /> : null}
-          <div className="mt-4 flex gap-3">
-            <Button asChild>
-              <Link href="/">Zur Startseite</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/therapie-finden">Therapie empfehlen lassen</Link>
-            </Button>
-          </div>
+          {isSuccess ? (
+            <ConfirmSuccessFallback />
+          ) : (
+            <>
+              {showResend ? <ResendConfirmationForm /> : null}
+              <div className="mt-4 flex gap-3">
+                <Button asChild>
+                  <Link href="/">Zur Startseite</Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/therapie-finden">Therapie empfehlen lassen</Link>
+                </Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

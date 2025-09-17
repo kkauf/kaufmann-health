@@ -70,19 +70,20 @@ beforeEach(() => {
 });
 
 describe('EARTH-146 GET /api/leads/confirm', () => {
-  it('confirms valid token, updates status and redirects to success', async () => {
+  it('confirms valid token, updates status and redirects to preferences', async () => {
     const { GET } = await import('@/app/api/leads/confirm/route');
     const res = await GET(new Request(makeUrl('p1', 't1')));
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('http://localhost/preferences?confirm=1&id=p1');
     // status update
     expect(updateArgs).toBeTruthy();
-    expect(updateArgs.status).toBe('new');
+    expect(updateArgs.status).toBe('email_confirmed');
     expect(updateArgs.metadata.confirm_token).toBeUndefined();
     expect(typeof updateArgs.metadata.confirmed_at).toBe('string');
-    // analytics and GA fired
+    // analytics fired
     expect(trackCalled).toBe(true);
-    expect(gaCalledWith).toMatchObject({ email: 'user@example.com', conversionAction: 'patient_registration' });
+    // no GA conversion at confirmation anymore (moved to preferences submission)
+    expect(gaCalledWith).toBeNull();
   });
 
   it('rejects invalid token', async () => {

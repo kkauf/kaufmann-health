@@ -3,7 +3,6 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { BASE_URL } from '@/lib/constants';
 import { logError } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
-import { googleAdsTracker } from '@/lib/google-ads';
 
 export const runtime = 'nodejs';
 
@@ -79,7 +78,7 @@ export async function GET(req: Request) {
       return NextResponse.redirect(`${BASE_URL}/confirm?state=expired`, 302);
     }
 
-    // Update status -> 'new' and clear token
+    // Update status -> 'email_confirmed' and clear token
     const newMetadata: Record<string, unknown> = { ...metadata };
     delete newMetadata['confirm_token'];
     delete newMetadata['confirm_sent_at'];
@@ -87,7 +86,7 @@ export async function GET(req: Request) {
 
     const { error: upErr } = await supabaseServer
       .from('people')
-      .update({ status: 'new', metadata: newMetadata })
+      .update({ status: 'email_confirmed', metadata: newMetadata })
       .eq('id', id);
 
     if (upErr) {
@@ -110,21 +109,7 @@ export async function GET(req: Request) {
       });
     } catch {}
 
-    // Fire Enhanced Conversions for patient registration AFTER confirmation
-    try {
-      const email = person.email;
-      const orderId = person.id;
-      const conversionActionAlias = 'patient_registration';
-      const value = 10;
-      await googleAdsTracker.trackConversion({
-        email,
-        conversionAction: conversionActionAlias,
-        conversionValue: value,
-        orderId,
-      });
-    } catch (e) {
-      await logError('api.leads.confirm', e, { stage: 'google_ads_conversion' });
-    }
+    // Enhanced Conversions moved to preferences submission when status becomes 'new'
 
     // Success: go straight to preferences to keep the flow seamless (EARTH-149)
     return NextResponse.redirect(`${BASE_URL}/preferences?confirm=1&id=${id}`, 302);

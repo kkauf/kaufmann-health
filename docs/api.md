@@ -24,7 +24,7 @@
     - Email-only flow persists these on `people` at insert. Legacy patient flow persists on `people` in the normal insert path. Events include these as props where applicable.
   - Enhanced Conversions:
     - Legacy flow: after successful patient insert (status `new`) the server may upload a hashed email to Google Ads.
-    - Email-only flow (EARTH-146): Enhanced Conversions are deferred to the confirmation endpoint and fire only after status becomes `new`.
+    - Email-only flow (EARTH-146): Enhanced Conversions fire only after the lead becomes `new` (post-confirmation preferences submission).
 - __Rate limiting__: IP-based, 60s window (best effort via `x-forwarded-for`). Patients: checks recent inserts in `people` by `metadata.ip`. Therapists: additionally checks recent `therapist_contracts` rows by hashed IP (`sha256(IP_HASH_SALT + ip)`). On exceed, returns 429.
 - __Notifications (optional)__: If `RESEND_API_KEY` and `LEADS_NOTIFY_EMAIL` are set, the API will send a non-blocking email via Resend on new lead. Use `LEADS_FROM_EMAIL` to control the sender address (defaults to `no-reply@kaufmann-health.de`).
 - __Notes__: No alias `/api/directory-requests`; use `/api/leads`.
@@ -48,7 +48,7 @@
   - `token` (string, required) — one-time token from the confirmation email; valid for 24 hours
 - __Behavior__:
   - Loads the `people` row by `id`, verifies `metadata.confirm_token` and TTL using `metadata.confirm_sent_at` (24h).
-  - On success: sets `status='new'`, clears `confirm_token` and `confirm_sent_at`, sets `confirmed_at` timestamp; fires server-side Enhanced Conversions (`patient_registration`) and emits analytics event `email_confirmed` with campaign properties (`campaign_source`, `campaign_variant`, `landing_page`) and `elapsed_seconds`.
+  - On success: sets `status='email_confirmed'`, clears `confirm_token` and `confirm_sent_at`, sets `confirmed_at` timestamp; emits analytics event `email_confirmed` with campaign properties (`campaign_source`, `campaign_variant`, `landing_page`) and `elapsed_seconds`. The lead is redirected to `/preferences` to complete profile details before becoming active.
   - On invalid/expired tokens: no changes are made.
 - __Redirects__:
   - 302 → on success: `/preferences?confirm=1&id=<leadId>`
@@ -92,11 +92,12 @@
   - `privacy_version?` (string, optional; version stamp for consent proof)
 - __Behavior__:
   - Verifies `people(id).type === 'patient'` and returns 404 for unknown leads.
-  - Updates `people.name` and merges into `people.metadata`:
+  - Updates `people.status` to `'new'` (lead becomes active), sets `people.name`, and merges into `people.metadata`:
     - `city`, `issue?`, `session_preference?`
     - `consent_share_with_therapists = true`, `consent_share_with_therapists_at = now()`
     - `consent_privacy_version?` when provided
   - Emits Supabase event `preferences_submitted` via server analytics.
+  - Fires Google Ads Enhanced Conversions for `patient_registration` at this point (post-confirmation, on activation).
 - __Response__:
   - 200: `{ data: { ok: true }, error: null }`
   - 400: `{ data: null, error: 'Missing id' | 'Missing fields' | 'Einwilligung zur Datenübertragung erforderlich' | 'Invalid JSON' }`

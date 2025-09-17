@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
+import { googleAdsTracker } from '@/lib/google-ads';
 
 export const runtime = 'nodejs';
 
@@ -36,10 +37,10 @@ export async function POST(req: Request) {
   if (!id) return NextResponse.json({ data: null, error: 'Missing id' }, { status: 400 });
 
   try {
-    type Person = { id: string; type?: string | null; metadata?: Record<string, unknown> | null };
+    type Person = { id: string; email?: string | null; type?: string | null; metadata?: Record<string, unknown> | null };
     const { data: person, error } = await supabaseServer
       .from('people')
-      .select('id,type,metadata')
+      .select('id,email,type,metadata')
       .eq('id', id)
       .single<Person>();
 
@@ -81,10 +82,10 @@ export async function POST(req: Request) {
     metadata.consent_share_with_therapists_at = new Date().toISOString();
     if (privacyVersion) metadata.consent_privacy_version = privacyVersion;
 
-    const updatePayload: Record<string, unknown> = { metadata };
+    const updatePayload: Record<string, unknown> = { status: 'new', metadata };
     if (name) updatePayload.name = name;
 
-    const { error: upErr } = await supabaseServer
+    const { data, error: upErr } = await supabaseServer
       .from('people')
       .update(updatePayload)
       .eq('id', id);
@@ -101,6 +102,21 @@ export async function POST(req: Request) {
         props: {},
       });
     } catch {}
+
+    // Fire Enhanced Conversions now that the lead is active (status='new')
+    try {
+      const email = person.email || '';
+      if (email) {
+        await googleAdsTracker.trackConversion({
+          email,
+          conversionAction: 'patient_registration',
+          conversionValue: 10,
+          orderId: id,
+        });
+      }
+    } catch (e) {
+      await logError('api.leads.preferences', e, { stage: 'google_ads_conversion', id });
+    }
 
     return NextResponse.json({ data: { ok: true }, error: null });
   } catch (e) {
