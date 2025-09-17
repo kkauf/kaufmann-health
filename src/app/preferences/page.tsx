@@ -26,7 +26,7 @@ export default async function Page({
           <CardHeader>
             <CardTitle>E‑Mail bestätigt</CardTitle>
             <CardDescription>
-              Danke! Ihre E‑Mail‑Adresse ist bestätigt. Damit wir die besten Therapeut:in‑Empfehlungen für Sie finden, füllen Sie bitte kurz Ihre Präferenzen aus.
+              Danke! Ihre E‑Mail‑Adresse ist bestätigt. Damit wir die besten Therapeut:innen für dich finden können, benötigen wir noch ein paar wenige Informationen von dir. Deine Präferenzen werden vertraulich behandelt und werden und nur an Therapeut:innen weitergegeben, mit denen du zusammenarbeiten möchtest. 
             </CardDescription>
           </CardHeader>
         </Card>

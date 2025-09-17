@@ -28,16 +28,12 @@ export function PreferencesForm({ leadId }: Props) {
     const form = formRef.current;
     if (!form) return;
     const data = new FormData(form);
-    const name = String(data.get('name') || '').trim();
     const city = String(data.get('city') || '').trim();
     const issue = String(data.get('issue') || '').trim();
     const sessionPref = String(data.get('session_preference') || '').trim();
-    const consent = data.get('consent') === 'on';
 
     const nextErrors: Record<string, string> = {};
-    if (!name) nextErrors.name = 'Bitte geben Sie Ihren Namen an.';
     if (!city) nextErrors.city = 'Bitte geben Sie Ihre Stadt an.';
-    if (!consent) nextErrors.consent = 'Bitte stimmen Sie der Weitergabe Ihrer Daten zu.';
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
@@ -47,7 +43,6 @@ export function PreferencesForm({ leadId }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name,
           city,
           issue: issue || undefined,
           session_preference: sessionPref || undefined,
@@ -91,24 +86,18 @@ export function PreferencesForm({ leadId }: Props) {
   return (
     <form ref={formRef} onSubmit={onSubmit} className="grid gap-5">
       <div className="grid gap-2">
-        <Label htmlFor="name">Wie dürfen wir Sie ansprechen?</Label>
-        <Input id="name" name="name" placeholder="Vorname oder Spitzname" aria-invalid={Boolean(errors.name)} className={errors.name ? 'border-red-500 focus-visible:ring-red-500' : undefined} />
-        {errors.name && <p className="text-xs text-red-600">{errors.name}</p>}
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="city">Ihre Stadt</Label>
+        <Label htmlFor="city">Wo wohnst du?</Label>
         <Input id="city" name="city" placeholder="z.B. Berlin" aria-invalid={Boolean(errors.city)} className={errors.city ? 'border-red-500 focus-visible:ring-red-500' : undefined} />
         {errors.city && <p className="text-xs text-red-600">{errors.city}</p>}
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="issue">Was belastet dich? (optional)</Label>
+        <Label htmlFor="issue">Was ist dir besonders wichtig bei der Auswahl deiner Therapeut:innen?</Label>
         <textarea id="issue" name="issue" rows={3} className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg/input/30 w-full rounded-md border bg-white px-3 py-2 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm" placeholder="Optional, aber hilft uns bei der Einordnung." />
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="session_preference">Bevorzugte Sitzungsform</Label>
+        <Label htmlFor="session_preference">Online oder in der Praxis?</Label>
         <select id="session_preference" name="session_preference" className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg/input/30 flex h-9 w-full min-w-0 rounded-md border bg-white px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm">
           <option value="">Keine Präferenz</option>
           <option value="online">Online</option>
@@ -116,11 +105,6 @@ export function PreferencesForm({ leadId }: Props) {
         </select>
       </div>
 
-      <div className="flex items-center gap-2">
-        <input id="consent" name="consent" type="checkbox" />
-        <Label htmlFor="consent" className="text-sm">Ich bin einverstanden, dass meine Angaben an passende Therapeut:innen weitergegeben werden.</Label>
-      </div>
-      {errors.consent && <p className="text-xs text-red-600">{errors.consent}</p>}
       {ConsentHint}
 
       {message && <p className="text-sm text-red-600">{message}</p>}
