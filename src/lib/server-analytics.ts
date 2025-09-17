@@ -30,6 +30,46 @@ export function parseAttributionFromRequest(req: Request): ServerAttribution {
   }
 }
 
+export function parseCampaignFromRequest(req: Request): {
+  campaign_source?: string;
+  campaign_variant?: 'A' | 'B';
+  landing_page?: string;
+} {
+  const ref = req.headers.get('referer') || '';
+  let pathname: string | undefined;
+  let vFromRef: string | undefined;
+  try {
+    const u = new URL(ref);
+    pathname = u.pathname || undefined;
+    vFromRef = u.searchParams.get('v') || undefined;
+  } catch {
+    pathname = undefined;
+  }
+
+  // Fallback: look at API URL for variant when not present on referer
+  let v: string | undefined = vFromRef;
+  if (!v) {
+    try {
+      const apiUrl = new URL(req.url);
+      v = apiUrl.searchParams.get('v') || undefined;
+    } catch {}
+  }
+  const vv = (v || 'A').toUpperCase() === 'B' ? 'B' : 'A';
+
+  // Source mapping (EARTH-146)
+  const src = pathname?.includes('/ankommen-in-dir')
+    ? '/ankommen-in-dir'
+    : pathname?.includes('/wieder-lebendig')
+    ? '/wieder-lebendig'
+    : '/therapie-finden';
+
+  return {
+    campaign_source: src,
+    campaign_variant: vv,
+    landing_page: pathname,
+  };
+}
+
 export async function trackEventFromRequest(
   req: Request,
   input: {
@@ -57,4 +97,4 @@ export async function trackEventFromRequest(
   await track({ type: input.type, level: 'info', source: input.source, ip, ua, props });
 }
 
-export const ServerAnalytics = { parseAttributionFromRequest, trackEventFromRequest };
+export const ServerAnalytics = { parseAttributionFromRequest, parseCampaignFromRequest, trackEventFromRequest };

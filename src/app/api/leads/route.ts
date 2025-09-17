@@ -10,7 +10,7 @@ import { renderEmailConfirmation } from '@/lib/email/templates/emailConfirmation
 import { logError, track } from '@/lib/logger';
 import { BASE_URL } from '@/lib/constants';
 import { googleAdsTracker } from '@/lib/google-ads';
-import { parseAttributionFromRequest, ServerAnalytics } from '@/lib/server-analytics';
+import { parseAttributionFromRequest, parseCampaignFromRequest, ServerAnalytics } from '@/lib/server-analytics';
 import { sanitize, normalizeSpecializations, hashIP } from '@/lib/leads/validation';
 import { isIpRateLimited } from '@/lib/leads/rateLimit';
 import { handlePatientLead, handleTherapistLead } from '@/lib/leads/handlers';
@@ -588,43 +588,72 @@ export async function POST(req: Request) {
     // EARTH-146: If email confirmation is required, run minimal email-only path for patient leads
     if (REQUIRE_EMAIL_CONFIRMATION && leadType === 'patient') {
       // Campaign inference from referrer
-      const referrer = req.headers.get('referer') || '';
-      const campaign_source = referrer.includes('/ankommen-in-dir')
-        ? '/ankommen-in-dir'
-        : referrer.includes('/wieder-lebendig')
-        ? '/wieder-lebendig'
-        : '/therapie-finden';
-      const url = new URL(req.url);
-      const campaign_variant = url.searchParams.get('v') || 'A';
-      const landing_page = referrer || null;
+      const campaign = parseCampaignFromRequest(req);
+      const campaign_source = campaign.campaign_source;
+      // Ensure variant prefers Referer (?v=) even if URL parsing is quirky in test env
+      const refStr = req.headers.get('referer') || '';
+      const vMatch = refStr.match(/[?&]v=([A-Za-z])/);
+      const campaign_variant = vMatch ? (vMatch[1].toUpperCase() === 'B' ? 'B' : 'A') : campaign.campaign_variant;
+      const landing_page = campaign.landing_page || null;
 
       // Prepare confirmation token up-front so we can store it at insert time
       const confirmToken = randomUUID();
 
-      // Insert minimal lead
-      const { data: leadRow, error: insErr } = await supabaseServer
-        .from('people')
-        .insert({
+      // Insert minimal lead with resilience to optional campaign columns not yet in schema
+      const insertPayload = {
+        email,
+        type: 'patient' as const,
+        status: 'pre_confirmation' as const,
+        campaign_source,
+        campaign_variant,
+        landing_page,
+        metadata: { submitted_at: new Date().toISOString(), confirm_token: confirmToken, confirm_sent_at: new Date().toISOString() },
+      };
+      let effectiveId: string | undefined;
+      let insErr: unknown = null;
+      const attemptInsert = async (payload: Record<string, unknown>) =>
+        supabaseServer.from('people').insert(payload).select('id').single();
+      // First attempt with campaign fields
+      let res = await attemptInsert(insertPayload);
+      if (res.error && typeof (res.error as any)?.message === 'string' && String((res.error as any).message).includes("schema cache")) {
+        // Retry without optional campaign fields
+        void track({
+          type: 'leads_schema_mismatch',
+          level: 'warn',
+          source: 'api.leads',
+          ip,
+          ua,
+          props: { stage: 'insert_email_only_lead', missing: 'campaign_columns', note: 'retrying without campaign fields' },
+        });
+        const fallbackPayload = {
           email,
-          type: 'patient',
-          status: 'pre_confirmation',
-          campaign_source,
-          campaign_variant,
-          landing_page,
-          metadata: { submitted_at: new Date().toISOString(), confirm_token: confirmToken, confirm_sent_at: new Date().toISOString() },
-        })
-        .select('id')
-        .single();
+          type: 'patient' as const,
+          status: 'pre_confirmation' as const,
+          metadata: insertPayload.metadata,
+        };
+        const res2 = await attemptInsert(fallbackPayload);
+        effectiveId = (res2.data as { id?: string } | null)?.id as string | undefined;
+        insErr = res2.error;
+      } else {
+        effectiveId = (res.data as { id?: string } | null)?.id as string | undefined;
+        insErr = res.error;
+      }
 
-      let effectiveId = leadRow?.id as string | undefined;
       // Handle unique violation gracefully by looking up existing email
       if ((insErr as { code?: string } | null | undefined)?.code === '23505') {
         type ExistingPerson = { id: string; status?: string | null; metadata?: Record<string, unknown> | null; campaign_source?: string | null; campaign_variant?: string | null };
-        const { data: existing } = await supabaseServer
-          .from('people')
-          .select('id,status,metadata,campaign_source,campaign_variant')
-          .eq('email', email!)
-          .single<ExistingPerson>();
+        let existing: ExistingPerson | null = null;
+        let selErr: unknown = null;
+        const doSelect = async (cols: string) =>
+          supabaseServer.from('people').select(cols).eq('email', email!).single<ExistingPerson>();
+        let sel = await doSelect('id,status,metadata,campaign_source,campaign_variant');
+        if (sel.error && typeof (sel.error as any)?.message === 'string' && String((sel.error as any).message).includes('schema cache')) {
+          // Retry without optional columns
+          void track({ type: 'leads_schema_mismatch', level: 'warn', source: 'api.leads', ip, ua, props: { stage: 'select_existing_email', missing: 'campaign_columns' } });
+          sel = await doSelect('id,status,metadata');
+        }
+        existing = (sel.data as ExistingPerson) ?? null;
+        selErr = sel.error;
         if (existing?.id) {
           effectiveId = existing.id as unknown as string;
           const existingStatus = (existing.status || '') as string;
@@ -633,7 +662,7 @@ export async function POST(req: Request) {
             await ServerAnalytics.trackEventFromRequest(req, {
               type: 'email_submitted',
               source: 'api.leads',
-              props: { campaign_source, campaign_variant, requires_confirmation: false },
+              props: { campaign_source, campaign_variant, landing_page, requires_confirmation: false },
             });
             return NextResponse.json(
               { data: { id: existing.id, requiresConfirmation: false }, error: null },
@@ -642,13 +671,15 @@ export async function POST(req: Request) {
           } else {
             // Refresh token and sent time for pre_confirmation
             const merged: Record<string, unknown> = { ...(existing.metadata || {}), confirm_token: confirmToken, confirm_sent_at: new Date().toISOString() };
-            await supabaseServer
-              .from('people')
-              .update({ metadata: merged })
-              .eq('id', effectiveId);
+            await supabaseServer.from('people').update({ metadata: merged }).eq('id', effectiveId);
           }
+        } else if (selErr && !(String((selErr as any)?.message || '')).includes('schema cache')) {
+          // Only treat as error if not a schema-mismatch handled above
+          console.error('Supabase select existing error (email-only lead):', selErr);
+          void logError('api.leads', selErr, { stage: 'select_existing_email' }, ip, ua);
         }
-      } else if (insErr || !effectiveId) {
+      } else if (insErr && !(String((insErr as any)?.message || '')).includes('schema cache')) {
+        // Non-schema errors still block to signal real failure
         console.error('Supabase insert error (email-only lead):', insErr);
         void logError('api.leads', insErr, { stage: 'insert_email_only_lead' }, ip, ua);
         return NextResponse.json(
@@ -681,7 +712,7 @@ export async function POST(req: Request) {
       await ServerAnalytics.trackEventFromRequest(req, {
         type: 'email_submitted',
         source: 'api.leads',
-        props: { campaign_source, campaign_variant, requires_confirmation: true },
+        props: { campaign_source, campaign_variant, landing_page, requires_confirmation: true },
       });
 
       return NextResponse.json(

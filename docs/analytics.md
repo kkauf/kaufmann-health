@@ -67,6 +67,8 @@ trackEvent('cta_click', {
 - `lead_submitted` - Form submissions (patient/therapist)
 - `email_submitted` - Email-only capture started (EARTH-146)
 - `email_confirmed` - Email confirmed via token (EARTH-146)
+- `preferences_viewed` - Preferences page viewed after email confirmation (client-side ping via /api/events)
+- `preferences_submitted` - Preferences saved via POST /api/leads/:id/preferences (server-side)
 - `therapist_responded` - Match responses
 - `match_created` - Manual matches by admin
 - `cta_click` - Call-to-action interactions
@@ -90,6 +92,23 @@ Examples:
 - All IPs hashed with `IP_HASH_SALT`
 - No PII in event properties
 - GDPR-compliant by design
+
+## Campaign Attribution (EARTH-145)
+
+First‑party campaign fields are captured server‑side and stored on `public.people` for patient leads. They are also included in relevant events.
+
+- `campaign_source`: inferred from Referer pathname
+  - `/ankommen-in-dir` | `/wieder-lebendig` | default `/therapie-finden`
+- `campaign_variant`: A/B variant from `?v=`
+  - Precedence: Referer query param `?v=A|B` wins; fallback to the API URL’s `?v=`; default `A`.
+  - Sanitized to `A | B` only.
+- `landing_page`: Referer pathname only (e.g. `/wieder-lebendig`), not the full URL.
+
+Persistence & events
+- Email‑only flow (EARTH‑146): persisted on `people` at insert (`status='pre_confirmation'`) and included in `email_submitted`.
+- Legacy patient flow (flag off): persisted on `people` at insert (`status='new'`) and included in `lead_submitted`.
+- Therapist flow: not persisted (no columns) but included in `lead_submitted` event props.
+- We continue to include UTM/referrer via `ServerAnalytics.parseAttributionFromRequest` for broader marketing reporting—do not duplicate into Vercel Analytics.
 
 ## Vercel Analytics System
 
@@ -267,8 +286,8 @@ __Notes__:
 **Why:** Improve deliverability and list quality by requiring email confirmation before treating a patient lead as active.
 
 **Server Events:**
-- `email_submitted` — emitted by `POST /api/leads` in the email-only path with props `{ campaign_source, campaign_variant, requires_confirmation: true }`.
-- `email_confirmed` — emitted by `GET /api/leads/confirm` with props `{ campaign_source, campaign_variant, elapsed_seconds }`.
+- `email_submitted` — emitted by `POST /api/leads` in the email‑only path with props `{ campaign_source, campaign_variant, landing_page, requires_confirmation: true }`.
+- `email_confirmed` — emitted by `GET /api/leads/confirm` with props `{ campaign_source, campaign_variant, landing_page, elapsed_seconds }`.
 
 **Enhanced Conversions timing:**
 - In email-only mode, server-side Google Ads Enhanced Conversions (`patient_registration`) are sent only after confirmation (on `GET /api/leads/confirm`).

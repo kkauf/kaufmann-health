@@ -9,7 +9,7 @@ import { BASE_URL } from '@/lib/constants';
 import { renderPatientConfirmation } from '@/lib/email/templates/patientConfirmation';
 import { logError, track } from '@/lib/logger';
 import { googleAdsTracker } from '@/lib/google-ads';
-import { parseAttributionFromRequest } from '@/lib/server-analytics';
+import { parseAttributionFromRequest, parseCampaignFromRequest } from '@/lib/server-analytics';
 import { hashIP } from './validation';
 import type { HandlerContext } from './types';
 
@@ -53,6 +53,9 @@ export async function handlePatientLead(ctx: HandlerContext, input: PatientHandl
     session_id,
   } = input;
 
+  // Campaign parsing (first-party)
+  const campaign = parseCampaignFromRequest(req);
+
   const res = await supabaseServer
     .from('people')
     .insert({
@@ -61,6 +64,9 @@ export async function handlePatientLead(ctx: HandlerContext, input: PatientHandl
       phone: data.phone,
       type: 'patient',
       status: 'new',
+      campaign_source: campaign.campaign_source,
+      campaign_variant: campaign.campaign_variant,
+      landing_page: campaign.landing_page,
       metadata: {
         ...(data.notes ? { notes: data.notes } : {}),
         ...(city ? { city } : {}),
@@ -214,6 +220,9 @@ export async function handlePatientLead(ctx: HandlerContext, input: PatientHandl
         lead_type: 'patient',
         city: city || null,
         has_specializations: specializations.length > 0,
+        campaign_source: campaign.campaign_source || null,
+        campaign_variant: campaign.campaign_variant || null,
+        landing_page: campaign.landing_page || null,
         ...(session_id ? { session_id } : {}),
         ...(attr.referrer ? { referrer: attr.referrer } : {}),
         ...(attr.utm_source ? { utm_source: attr.utm_source } : {}),
@@ -327,6 +336,7 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
 
   // Track successful submission
   const attr = parseAttributionFromRequest(req);
+  const campaign = parseCampaignFromRequest(req);
   void track({
     type: 'lead_submitted',
     level: 'info',
@@ -338,6 +348,9 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
       lead_type: 'therapist',
       city: city || null,
       has_specializations: specializations.length > 0,
+      campaign_source: campaign.campaign_source || null,
+      campaign_variant: campaign.campaign_variant || null,
+      landing_page: campaign.landing_page || null,
       ...(session_id ? { session_id } : {}),
       ...(attr.referrer ? { referrer: attr.referrer } : {}),
       ...(attr.utm_source ? { utm_source: attr.utm_source } : {}),

@@ -23,13 +23,32 @@ export async function GET(req: Request) {
       metadata?: Record<string, unknown> | null;
       campaign_source?: string | null;
       campaign_variant?: string | null;
+      landing_page?: string | null;
     };
 
-    const { data: person, error } = await supabaseServer
-      .from('people')
-      .select('id,email,status,metadata,campaign_source,campaign_variant')
-      .eq('id', id)
-      .single<PersonRow>();
+    let person: PersonRow | null = null;
+    let error: unknown = null;
+    try {
+      const res = await supabaseServer
+        .from('people')
+        .select('id,email,status,metadata,campaign_source,campaign_variant')
+        .eq('id', id)
+        .single<PersonRow>();
+      person = (res.data as PersonRow) ?? null;
+      error = res.error;
+      if (res.error && typeof (res.error as any)?.message === 'string' && String((res.error as any).message).includes('schema cache')) {
+        // Retry without optional columns (campaign_source/variant)
+        const res2 = await supabaseServer
+          .from('people')
+          .select('id,email,status,metadata')
+          .eq('id', id)
+          .single<Pick<PersonRow, 'id' | 'email' | 'status' | 'metadata'>>();
+        person = (res2.data as PersonRow) ?? null;
+        error = res2.error;
+      }
+    } catch (e) {
+      error = e;
+    }
 
     if (error || !person) {
       return NextResponse.redirect(`${BASE_URL}/confirm?state=invalid`, 302);
@@ -76,6 +95,7 @@ export async function GET(req: Request) {
         props: {
           campaign_source: person.campaign_source || null,
           campaign_variant: person.campaign_variant || null,
+          landing_page: person.landing_page || null,
           elapsed_seconds: elapsed,
         },
       });

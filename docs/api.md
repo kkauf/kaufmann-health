@@ -17,7 +17,11 @@
     - Email-only flow (EARTH-146; feature flag enabled via `REQUIRE_EMAIL_CONFIRMATION`): collects only `email` and attribution, inserts patient with `status='pre_confirmation'` and sends a confirmation email. See confirmation endpoint below.
   - Packs extras in `metadata` and sets `funnel_type` (`koerperpsychotherapie` for patients; `therapist_acquisition` for therapists), `submitted_at`, plus `ip` and `user_agent` when available.
   - Recognized `specializations` slugs: `narm`, `core-energetics`, `hakomi`, `somatic-experiencing` (others ignored).
-  - Campaign attribution (EARTH-146): when email-only flow is enabled, the API stores `campaign_source` (derived from referer: `/ankommen-in-dir` | `/wieder-lebendig` | default `/therapie-finden`), `campaign_variant` (query param `?v=`; default `A`), and `landing_page` (full referer) on the `people` row.
+  - Campaign attribution (EARTH-145):
+    - `campaign_source`: derived from Referer pathname → `/ankommen-in-dir` | `/wieder-lebendig` | default `/therapie-finden`.
+    - `campaign_variant`: A/B from `?v=` with precedence `Referer` → fallback to API URL; sanitized to `A|B` (default `A`).
+    - `landing_page`: Referer pathname only (e.g. `/wieder-lebendig`), not the full URL.
+    - Email-only flow persists these on `people` at insert. Legacy patient flow persists on `people` in the normal insert path. Events include these as props where applicable.
   - Enhanced Conversions:
     - Legacy flow: after successful patient insert (status `new`) the server may upload a hashed email to Google Ads.
     - Email-only flow (EARTH-146): Enhanced Conversions are deferred to the confirmation endpoint and fire only after status becomes `new`.
@@ -44,7 +48,7 @@
   - `token` (string, required) — one-time token from the confirmation email; valid for 24 hours
 - __Behavior__:
   - Loads the `people` row by `id`, verifies `metadata.confirm_token` and TTL using `metadata.confirm_sent_at` (24h).
-  - On success: sets `status='new'`, clears `confirm_token` and `confirm_sent_at`, sets `confirmed_at` timestamp; fires server-side Enhanced Conversions (`patient_registration`) and emits analytics event `email_confirmed` with campaign properties and `elapsed_seconds`.
+  - On success: sets `status='new'`, clears `confirm_token` and `confirm_sent_at`, sets `confirmed_at` timestamp; fires server-side Enhanced Conversions (`patient_registration`) and emits analytics event `email_confirmed` with campaign properties (`campaign_source`, `campaign_variant`, `landing_page`) and `elapsed_seconds`.
   - On invalid/expired tokens: no changes are made.
 - __Redirects__:
   - 302 → on success: `/preferences?confirm=1&id=<leadId>`
