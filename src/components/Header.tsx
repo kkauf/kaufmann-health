@@ -40,7 +40,7 @@ export default function Header() {
         Für Therapeut:innen
       </Link>
       <Link onClick={onClick} className="hover:opacity-80" href="/therapie-finden">
-        Therapie finden
+        Für Klient:innen
       </Link>
       <Link onClick={onClick} className="hover:opacity-80" href="/ueber-uns">
         Über uns
