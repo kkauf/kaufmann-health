@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import PageAnalytics from "@/components/PageAnalytics";
 import CtaLink from "@/components/CtaLink";
 import { Button } from "@/components/ui/button";
 import CheckList from "@/components/CheckList";
@@ -8,13 +7,14 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import WhatToExpectSection from "@/components/WhatToExpectSection";
 import RevealContainer from "@/components/RevealContainer";
 import FaqAccordion from "@/components/FaqAccordion";
+import WiederLebendigHero from "./Hero";
+import TherapistPreview from "@/components/TherapistPreview";
+import { supabaseServer } from "@/lib/supabase-server";
 
 export const revalidate = 3600;
 
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.kaufmann-health.de";
-const bookingUrl = process.env.NEXT_PUBLIC_BOOKING_URL || 
-  `${baseUrl}/therapie-finden?v=B`;
 
 export const metadata: Metadata = {
   title: "Körpertherapie Berlin | Wenn Erfolg nicht reicht | Kaufmann Health",
@@ -46,7 +46,57 @@ export const metadata: Metadata = {
   },
 };
 
-export default function WiederLebendigPage() {
+type TherapistRow = {
+  id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  city?: string | null;
+  modalities?: unknown;
+  accepting_new?: boolean | null;
+  photo_url?: string | null;
+  metadata?: unknown;
+};
+
+export default async function WiederLebendigPage() {
+  // Fetch real therapists for trust section (random 3 from provided 5 ids)
+  const TRUST_IDS = [
+    '7402bb04-c8d8-403e-a8d7-6bc32289c87b',
+    '58d98a45-21ab-40ea-99b3-f65ba27f6715',
+    'e81b560c-7489-4563-be53-1b6cd858f152',
+    '25ae2093-6d85-4d34-84bd-08411f713164',
+    '84c187fb-a981-442b-8a42-422093a3196b',
+  ];
+  const selected = [...TRUST_IDS].sort(() => 0.5 - Math.random()).slice(0, 3);
+  const { data: trustRows } = await supabaseServer
+    .from('therapists')
+    .select('id, first_name, last_name, city, modalities, accepting_new, photo_url, metadata')
+    .in('id', selected);
+  type TrustRow = {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    city: string | null;
+    modalities: string[] | null;
+    accepting_new: boolean | null;
+    photo_url: string | null;
+    metadata?: Record<string, unknown> | null;
+  };
+  const trustTherapists = ((trustRows as TrustRow[] | null) || []).map((r) => {
+    const mdObj: Record<string, unknown> = r?.metadata && typeof r.metadata === 'object' ? (r.metadata as Record<string, unknown>) : {};
+    const profileUnknown = mdObj['profile'];
+    const profile: Record<string, unknown> = profileUnknown && typeof profileUnknown === 'object' ? (profileUnknown as Record<string, unknown>) : {};
+    const approach_text = typeof profile['approach_text'] === 'string' ? (profile['approach_text'] as string) : '';
+    return {
+      id: r.id as string,
+      first_name: String(r.first_name || ''),
+      last_name: String(r.last_name || ''),
+      city: String(r.city || ''),
+      modalities: Array.isArray(r.modalities) ? (r.modalities as string[]) : [],
+      accepting_new: Boolean(r.accepting_new),
+      photo_url: r.photo_url || undefined,
+      approach_text,
+    };
+  });
   const schema = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
@@ -84,7 +134,7 @@ export default function WiederLebendigPage() {
       id: "sessions",
       question: "Wie viele Sitzungen brauche ich?",
       answer:
-        "Das ist sehr individuell. Die meisten unserer Klienten kommen für 10 oder 20 Sitzungen, viele verwenden die Begleitung danach ad-hoc, wenn sie sie brauchen. Es geht nicht um schnelle Lösungen, sondern nachhaltige Veränderung. Du bestimmst Tempo und Tiefe.",
+        "Das ist sehr individuell. Die meisten unserer Klient:innen kommen für 10 oder 20 Sitzungen, viele verwenden die Begleitung danach ad-hoc, wenn sie sie brauchen. Es geht nicht um schnelle Lösungen, sondern nachhaltige Veränderung. Du bestimmst Tempo und Tiefe.",
     },
     {
       id: "kassenabrechnung",
@@ -115,57 +165,18 @@ export default function WiederLebendigPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Analytics (page_view + scroll depth) */}
-      <PageAnalytics />
-
       <main className="mx-auto max-w-5xl px-4 py-10 sm:py-14">
-        {/* Hero Section */}
-        <section
-          aria-labelledby="hero-heading"
-          className="relative overflow-hidden rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-6 sm:p-10"
-        >
-          <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(36rem_16rem_at_110%_10%,rgba(99,102,241,0.08),transparent_60%),radial-gradient(28rem_14rem_at_-10%_90%,rgba(14,165,233,0.08),transparent_60%)]" />
+        {/* Hero Section with A/B and embedded form */}
+        <WiederLebendigHero />
 
-          <h1
-            id="hero-heading"
-            className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl"
-          >
-            Du hast alles erreicht. Warum fühlt es sich so leer an?
-          </h1>
-          <p className="mt-4 max-w-2xl text-base text-gray-700 sm:text-lg">
-            Körperorientierte Therapie für Menschen, die wieder lebendig sein wollen – nicht noch erfolgreicher.
-          </p>
-
-          {/* Qualifier */}
-          <div
-            className="mt-6 rounded-xl border bg-amber-50/70 p-4 text-sm text-amber-900 sm:text-base"
-            role="note"
-            aria-label="Wichtiger Hinweis"
-          >
-            Dies ist kein Executive Coaching. Es ist tiefe therapeutische Arbeit für Menschen, die bereit sind, langsamer zu werden und wieder zu fühlen. Keine Kassenleistung – eine bewusste Investition in deine Lebendigkeit.
-          </div>
-
-          {/* CTAs */}
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Button size="lg" asChild data-cta="hero-primary">
-              <CtaLink
-                href={bookingUrl}
-                eventType="cta_click"
-                aria-label="Kostenloses Erstgespräch vereinbaren"
-              >
-                Kostenloses Erstgespräch vereinbaren
-              </CtaLink>
-            </Button>
-
-            <Button size="lg" variant="outline" asChild data-cta="hero-secondary">
-              <CtaLink
-                href="/therapie-finden"
-                eventType="cta_click"
-                aria-label="Unsere Therapeuten kennenlernen"
-              >
-                Unsere Therapeuten kennenlernen
-              </CtaLink>
-            </Button>
+        {/* Trust section: real therapist previews */}
+        <section aria-labelledby="trust-previews" className="mt-10 sm:mt-14">
+          <h2 id="trust-previews" className="text-2xl font-semibold tracking-tight">Deine Expert:innen</h2>
+          <p className="mt-2 max-w-2xl text-gray-700">Durchschnittlich 7+ Jahre Erfahrung</p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {trustTherapists.map((t) => (
+              <TherapistPreview key={t.id} therapist={t} />
+            ))}
           </div>
         </section>
 
@@ -251,8 +262,8 @@ export default function WiederLebendigPage() {
                     </ul>
                     <div className="mt-5">
                       <Button asChild size="lg" data-cta="pricing-single">
-                        <CtaLink href={`${bookingUrl}?plan=single`} eventType="cta_click">
-                          Jetzt buchen
+                        <CtaLink href="#top-form" eventType="cta_click">
+                          Passende Therapeut:innen finden
                         </CtaLink>
                       </Button>
                     </div>
@@ -282,8 +293,8 @@ export default function WiederLebendigPage() {
                     </ul>
                     <div className="mt-5">
                       <Button asChild size="lg" data-cta="pricing-10">
-                        <CtaLink href={`${bookingUrl}?plan=10`} eventType="cta_click">
-                          Jetzt buchen
+                        <CtaLink href="#top-form" eventType="cta_click">
+                          Passende Therapeut:innen finden
                         </CtaLink>
                       </Button>
                     </div>
@@ -308,8 +319,8 @@ export default function WiederLebendigPage() {
                     </ul>
                     <div className="mt-5">
                       <Button asChild size="lg" data-cta="pricing-20">
-                        <CtaLink href={`${bookingUrl}?plan=20`} eventType="cta_click">
-                          Jetzt buchen
+                        <CtaLink href="#top-form" eventType="cta_click">
+                          Passende Therapeut:innen finden
                         </CtaLink>
                       </Button>
                     </div>
@@ -356,8 +367,8 @@ export default function WiederLebendigPage() {
 
             <div className="mt-6">
               <Button asChild size="lg" data-cta="final-primary">
-                <CtaLink href={bookingUrl} eventType="cta_click" aria-label="Kostenloses Erstgespräch vereinbaren">
-                  Kostenloses Erstgespräch vereinbaren
+                <CtaLink href="#top-form" eventType="cta_click" aria-label="Passende Therapeut:innen finden">
+                  Passende Therapeut:innen finden
                 </CtaLink>
               </Button>
               <p className="mt-3 text-sm text-gray-600">

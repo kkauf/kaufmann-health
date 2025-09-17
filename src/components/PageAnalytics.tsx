@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { buildEventId } from "@/lib/analytics";
 import { getAttribution } from "@/lib/attribution";
 
-export default function PageAnalytics() {
+export default function PageAnalytics({ qualifier }: { qualifier?: string } = {}) {
   const sent = useRef<{ view?: boolean; depths: Record<number, boolean> }>({
     view: false,
     depths: {},
@@ -17,7 +17,8 @@ export default function PageAnalytics() {
       const id = buildEventId(
         typeof window !== "undefined" ? window.location.pathname : "",
         "page",
-        "view"
+        "view",
+        qualifier
       );
       const payload = { type: "page_view", id, title: id, ...attrs };
       fetch("/api/events", {
@@ -96,7 +97,7 @@ export default function PageAnalytics() {
       window.removeEventListener("scroll", onScroll);
       document.removeEventListener('click', onClick, true);
     };
-  }, []);
+  }, [qualifier]);
 
   return null;
 }

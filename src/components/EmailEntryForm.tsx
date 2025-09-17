@@ -28,8 +28,8 @@ export function EmailEntryForm() {
     const name = String(data.get('name') || '').trim();
     const email = String(data.get('email') || '').trim().toLowerCase();
     const nextErrors: Record<string, string> = {};
-    if (!name) nextErrors.name = 'Bitte geben Sie Ihren Namen an.';
-    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) nextErrors.email = 'Bitte geben Sie eine gültige E‑Mail-Adresse ein.';
+    if (!name) nextErrors.name = 'Bitte gib deinen Namen an.';
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) nextErrors.email = 'Bitte gib eine gültige E‑Mail-Adresse ein.';
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
@@ -73,11 +73,11 @@ export function EmailEntryForm() {
         <CardHeader>
           <CardTitle>Fast geschafft</CardTitle>
           <CardDescription>
-            Wir haben Ihnen eine Bestätigungs‑E‑Mail{submittedEmail ? ` an ${submittedEmail}` : ''} gesendet. Bitte bestätigen Sie Ihre E‑Mail‑Adresse, damit wir passende Therapeut:in‑Empfehlungen für Sie finden können.
+            Wir haben dir eine Bestätigungs‑E‑Mail{submittedEmail ? ` an ${submittedEmail}` : ''} gesendet. Bitte bestätige deine E‑Mail‑Adresse, damit wir passende Therapeut:innen‑Empfehlungen für dich finden können.
           </CardDescription>
         </CardHeader>
         <CardFooter>
-          <p className="text-xs text-gray-600">Hinweis: Der Link ist 24 Stunden gültig. Prüfen Sie ggf. Ihren SPAM‑Ordner.</p>
+          <p className="text-xs text-gray-600">Hinweis: Der Link ist 24 Stunden gültig. Prüfe ggf. deinen SPAM‑Ordner.</p>
         </CardFooter>
       </Card>
     );
@@ -86,7 +86,7 @@ export function EmailEntryForm() {
   return (
     <form ref={formRef} onSubmit={onSubmit} className="space-y-4 max-w-xl">
       <div className="space-y-2">
-        <Label htmlFor="name">Wie dürfen wir Sie ansprechen?</Label>
+        <Label htmlFor="name">Wie dürfen wir dich ansprechen?</Label>
         <Input id="name" name="name" placeholder="Vorname oder Spitzname" aria-invalid={Boolean(errors.name)} className={errors.name ? 'border-red-500 focus-visible:ring-red-500' : undefined} />
         {errors.name && <p className="text-xs text-red-600">{errors.name}</p>}
       </div>
@@ -100,11 +100,11 @@ export function EmailEntryForm() {
       {message && <p className="text-sm text-red-600">{message}</p>}
 
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={submitting}>{submitting ? 'Senden…' : 'Kostenlose Empfehlung erhalten →'}</Button>
+        <Button type="submit" disabled={submitting}>{submitting ? 'Senden…' : 'Passende Therapeut:innen finden'}</Button>
       </div>
 
       <p className="mt-1 text-xs text-gray-600">
-        100% kostenlos & unverbindlich. Ihre Daten werden ausschließlich zur Erstellung der Empfehlungen verwendet.
+        100% kostenlos & unverbindlich. Deine Daten werden ausschließlich zur Erstellung der Empfehlungen verwendet.
       </p>
     </form>
   );

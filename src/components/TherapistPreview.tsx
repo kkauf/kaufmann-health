@@ -121,7 +121,7 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
           <div style={{ color: "#475569", fontSize: 14, marginBottom: 4 }}>{therapist.city}</div>
           <div style={{ fontSize: 14, color: "#334155", marginBottom: 8 }}>{truncateSentences(therapist.approach_text, 3)}</div>
           <div style={{ fontSize: 14 }}>
-            Neue Klienten: {therapist.accepting_new ? (
+            Neue Klient:innen: {therapist.accepting_new ? (
               <span style={{ color: "#16a34a", fontWeight: 500 }}>✓ Verfügbar</span>
             ) : (
               <span style={{ color: "#ef4444", fontWeight: 500 }}>✕ Derzeit keine Kapazität</span>
@@ -214,9 +214,9 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
 
             {!isAdmin && (
               <div className={cn("mt-2", isAdmin ? "text-xs" : "text-sm")}
-                   aria-label={therapist.accepting_new ? "Neue Klienten: Verfügbar" : "Neue Klienten: Keine Kapazität"}
+                   aria-label={therapist.accepting_new ? "Neue Klient:innen: Verfügbar" : "Neue Klient:innen: Keine Kapazität"}
               >
-                Neue Klienten: {therapist.accepting_new ? (
+                Neue Klient:innen: {therapist.accepting_new ? (
                   <span className="text-emerald-600 font-medium">✓ Verfügbar</span>
                 ) : (
                   <span className="text-red-500 font-medium">✕ Derzeit keine Kapazität</span>
