@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import TherapieFinderForm from '@/components/TherapieFinderForm';
+import { EmailEntryForm } from '@/components/EmailEntryForm';
 import FaqAccordion from '@/components/FaqAccordion';
 import TherapyModalityExplanations from '@/components/TherapyModalityExplanations';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -76,7 +76,7 @@ export default function TherapieFindenPage() {
         </div>
 
         <div className="lg:pl-6" id="top-form">
-          <TherapieFinderForm />
+          <EmailEntryForm />
         </div>
         </div>
       </section>

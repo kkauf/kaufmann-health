@@ -14,7 +14,7 @@ export const revalidate = 3600;
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.kaufmann-health.de";
 const bookingUrl = process.env.NEXT_PUBLIC_BOOKING_URL || 
-  `${baseUrl}/therapie-finden`;
+  `${baseUrl}/therapie-finden?v=B`;
 
 export const metadata: Metadata = {
   title: "Körpertherapie Berlin | Wenn Erfolg nicht reicht | Kaufmann Health",

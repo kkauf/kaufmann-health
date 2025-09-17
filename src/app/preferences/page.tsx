@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PreferencesForm } from '@/components/PreferencesForm';
+import { PreferencesViewTracker } from '@/components/PreferencesViewTracker';
 
 export const metadata = {
   title: 'Präferenzen | Kaufmann Health',
@@ -19,6 +20,7 @@ export default async function Page({
 
   return (
     <div className="mx-auto max-w-xl px-4 py-10">
+      <PreferencesViewTracker leadId={id} />
       {confirm === '1' && (
         <Card className="mb-6">
           <CardHeader>

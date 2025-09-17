@@ -47,13 +47,14 @@
   - On success: sets `status='new'`, clears `confirm_token` and `confirm_sent_at`, sets `confirmed_at` timestamp; fires server-side Enhanced Conversions (`patient_registration`) and emits analytics event `email_confirmed` with campaign properties and `elapsed_seconds`.
   - On invalid/expired tokens: no changes are made.
 - __Redirects__:
-  - 302 → `/confirm?state=success | invalid | expired | error`
+  - 302 → on success: `/preferences?confirm=1&id=<leadId>`
+  - 302 → on invalid/expired/error: `/confirm?state=invalid | expired | error`
 
 ### Public Confirmation Page (`/confirm`)
 
 - Purpose: Friendly, index‑excluded page that displays the outcome of the confirmation flow.
-- States (via `?state=`): `success | invalid | expired | error`.
-- UX: Uses a simple card with CTAs back to `/` and `/therapie-finden`. On `expired`, the page offers an email input to request a new confirmation email (see endpoint below).
+- States (via `?state=`): `invalid | expired | error`.
+- UX: Uses a simple card with CTAs back to `/` and `/therapie-finden`. On `expired`, the page offers an email input to request a new confirmation email (see endpoint below). On success, users are redirected directly to `/preferences` to continue without an extra click.
 - SEO: `noindex, nofollow`.
 
 ## POST /api/leads/resend-confirmation
@@ -70,6 +71,33 @@
 - __Rate limiting__: IP-based best-effort (reuses standard helpers). Recommended to keep platform protections in front.
 - __Response__:
   - 200: `{ data: { ok: true }, error: null }`
+
+
+## POST /api/leads/:id/preferences
+
+- __Purpose__: Capture Klient:in Präferenzen after email confirmation to enrich the lead for better matching.
+- __Auth__: None (public flow via emailed link redirect). Best-effort validation; does not expose internal states.
+- __Path Param__:
+  - `:id` — the patient lead UUID (from confirmation redirect).
+- __Request Body__ (JSON):
+  - `name` (string, required)
+  - `city` (string, required)
+  - `issue?` (string, optional)
+  - `session_preference?` (string, optional: `online` | `in_person`)
+  - `consent_share_with_therapists` (boolean, required)
+  - `privacy_version?` (string, optional; version stamp for consent proof)
+- __Behavior__:
+  - Verifies `people(id).type === 'patient'` and returns 404 for unknown leads.
+  - Updates `people.name` and merges into `people.metadata`:
+    - `city`, `issue?`, `session_preference?`
+    - `consent_share_with_therapists = true`, `consent_share_with_therapists_at = now()`
+    - `consent_privacy_version?` when provided
+  - Emits Supabase event `preferences_submitted` via server analytics.
+- __Response__:
+  - 200: `{ data: { ok: true }, error: null }`
+  - 400: `{ data: null, error: 'Missing id' | 'Missing fields' | 'Einwilligung zur Datenübertragung erforderlich' | 'Invalid JSON' }`
+  - 404: `{ data: null, error: 'Not found' }`
+  - 500: `{ data: null, error: 'Failed to update' | 'Unexpected error' }`
 
 
 ## POST /api/therapists/:id/documents
