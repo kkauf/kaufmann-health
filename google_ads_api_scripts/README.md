@@ -86,6 +86,29 @@ Flags
 - `--batch=<n>` batch size (default 100, max 500)
 - `--dry-run` preview only
 
+### Test API Access
+
+Before running campaign automation, validate API credentials and permissions with:
+
+```bash
+npm run ads:test-access
+```
+
+This performs:
+
+- List up to 5 campaigns
+- Search for conversion actions containing "lead"
+- Create and delete a temporary campaign budget (`TEST_DELETE_ME_<timestamp>`) to verify write permissions
+
+Requirements:
+
+- Environment variables in `.env.local` (see Requirements above)
+- Google Ads API access for the specified `GOOGLE_ADS_CUSTOMER_ID` (and `GOOGLE_ADS_LOGIN_CUSTOMER_ID` if using a manager)
+
+Safety:
+
+- The script creates a budget and immediately deletes it. No campaigns are created.
+
 ## Observability and Logs
 The upload pipeline logs structured events to Supabase `events` via `src/lib/logger.ts`:
 

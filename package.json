@@ -12,7 +12,8 @@
     "test:critical": "vitest run --exclude tests/storage.health.test.ts",
     "test:watch": "vitest",
     "reupload:leads": "tsx google_ads_api_scripts/reupload-leads.ts",
-    "reminders:run": "tsx scripts/send-therapist-reminders.ts"
+    "reminders:run": "tsx scripts/send-therapist-reminders.ts",
+    "ads:test-access": "tsx google_ads_api_scripts/test-access.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
@@ -44,6 +45,7 @@
     "dotenv": "^17.2.1",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
+    "google-ads-api": "^21.0.1",
     "jsdom": "^26.1.0",
     "tailwindcss": "^4",
     "tsx": "^4.19.2",
