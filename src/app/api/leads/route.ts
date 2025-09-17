@@ -18,6 +18,14 @@ import type { LeadPayload } from '@/lib/leads/types';
 
 export const runtime = 'nodejs';
 
+function getErrorMessage(err: unknown): string {
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const msg = (err as { message?: unknown }).message;
+    return typeof msg === 'string' ? msg : '';
+  }
+  return '';
+}
+
 /**
  * @endpoint POST /api/leads
  * @description Form handler for incoming lead submissions. Returns { data, error }.
@@ -609,13 +617,14 @@ export async function POST(req: Request) {
         landing_page,
         metadata: { submitted_at: new Date().toISOString(), confirm_token: confirmToken, confirm_sent_at: new Date().toISOString() },
       };
-      let effectiveId: string | undefined;
-      let insErr: unknown = null;
       const attemptInsert = async (payload: Record<string, unknown>) =>
         supabaseServer.from('people').insert(payload).select('id').single();
       // First attempt with campaign fields
-      let res = await attemptInsert(insertPayload);
-      if (res.error && typeof (res.error as any)?.message === 'string' && String((res.error as any).message).includes("schema cache")) {
+      let effectiveId: string | undefined;
+      let insErr: unknown = null;
+      const res = await attemptInsert(insertPayload);
+      const resMsg = getErrorMessage(res.error);
+      if (resMsg.includes('schema cache')) {
         // Retry without optional campaign fields
         void track({
           type: 'leads_schema_mismatch',
@@ -642,20 +651,21 @@ export async function POST(req: Request) {
       // Handle unique violation gracefully by looking up existing email
       if ((insErr as { code?: string } | null | undefined)?.code === '23505') {
         type ExistingPerson = { id: string; status?: string | null; metadata?: Record<string, unknown> | null; campaign_source?: string | null; campaign_variant?: string | null };
-        let existing: ExistingPerson | null = null;
-        let selErr: unknown = null;
         const doSelect = async (cols: string) =>
           supabaseServer.from('people').select(cols).eq('email', email!).single<ExistingPerson>();
-        let sel = await doSelect('id,status,metadata,campaign_source,campaign_variant');
-        if (sel.error && typeof (sel.error as any)?.message === 'string' && String((sel.error as any).message).includes('schema cache')) {
+        const sel = await doSelect('id,status,metadata,campaign_source,campaign_variant');
+        let existing: ExistingPerson | null = (sel.data as ExistingPerson) ?? null;
+        let selErr: unknown = sel.error;
+        const selMsg = getErrorMessage(sel.error);
+        if (selMsg.includes('schema cache')) {
           // Retry without optional columns
           void track({ type: 'leads_schema_mismatch', level: 'warn', source: 'api.leads', ip, ua, props: { stage: 'select_existing_email', missing: 'campaign_columns' } });
-          sel = await doSelect('id,status,metadata');
+          const sel2 = await doSelect('id,status,metadata');
+          existing = (sel2.data as ExistingPerson) ?? null;
+          selErr = sel2.error;
         }
-        existing = (sel.data as ExistingPerson) ?? null;
-        selErr = sel.error;
         if (existing?.id) {
-          effectiveId = existing.id as unknown as string;
+          effectiveId = existing.id as string;
           const existingStatus = (existing.status || '') as string;
           if (existingStatus && existingStatus !== 'pre_confirmation') {
             // Already confirmed or other terminal state — don't downgrade or resend; treat as success
@@ -673,12 +683,12 @@ export async function POST(req: Request) {
             const merged: Record<string, unknown> = { ...(existing.metadata || {}), confirm_token: confirmToken, confirm_sent_at: new Date().toISOString() };
             await supabaseServer.from('people').update({ metadata: merged }).eq('id', effectiveId);
           }
-        } else if (selErr && !(String((selErr as any)?.message || '')).includes('schema cache')) {
+        } else if (selErr && !getErrorMessage(selErr).includes('schema cache')) {
           // Only treat as error if not a schema-mismatch handled above
           console.error('Supabase select existing error (email-only lead):', selErr);
           void logError('api.leads', selErr, { stage: 'select_existing_email' }, ip, ua);
         }
-      } else if (insErr && !(String((insErr as any)?.message || '')).includes('schema cache')) {
+      } else if (insErr && !getErrorMessage(insErr).includes('schema cache')) {
         // Non-schema errors still block to signal real failure
         console.error('Supabase insert error (email-only lead):', insErr);
         void logError('api.leads', insErr, { stage: 'insert_email_only_lead' }, ip, ua);

@@ -7,6 +7,14 @@ import { googleAdsTracker } from '@/lib/google-ads';
 
 export const runtime = 'nodejs';
 
+function getErrorMessage(err: unknown): string | undefined {
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const msg = (err as { message?: unknown }).message;
+    return typeof msg === 'string' ? msg : undefined;
+  }
+  return undefined;
+}
+
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
@@ -31,13 +39,14 @@ export async function GET(req: Request) {
     try {
       const res = await supabaseServer
         .from('people')
-        .select('id,email,status,metadata,campaign_source,campaign_variant')
+        .select('id,email,status,metadata,campaign_source,campaign_variant,landing_page')
         .eq('id', id)
         .single<PersonRow>();
       person = (res.data as PersonRow) ?? null;
       error = res.error;
-      if (res.error && typeof (res.error as any)?.message === 'string' && String((res.error as any).message).includes('schema cache')) {
-        // Retry without optional columns (campaign_source/variant)
+      const msg = getErrorMessage(res.error);
+      if (msg && msg.includes('schema cache')) {
+        // Retry without optional columns (campaign_source/variant/landing_page)
         const res2 = await supabaseServer
           .from('people')
           .select('id,email,status,metadata')
