@@ -13,7 +13,9 @@
     "test:watch": "vitest",
     "reupload:leads": "tsx google_ads_api_scripts/reupload-leads.ts",
     "reminders:run": "tsx scripts/send-therapist-reminders.ts",
-    "ads:test-access": "tsx google_ads_api_scripts/test-access.ts"
+    "ads:test-access": "tsx google_ads_api_scripts/test-access.ts",
+    "ads:create": "tsx google_ads_api_scripts/create-week38-campaigns.ts",
+    "ads:create:dry": "DRY_RUN=true tsx google_ads_api_scripts/create-week38-campaigns.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
