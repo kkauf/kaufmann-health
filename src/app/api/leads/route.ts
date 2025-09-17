@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { supabaseServer } from '@/lib/supabase-server';
 import { TERMS_VERSION } from '@/content/therapist-terms';
 import { ACTIVE_CITIES } from '@/lib/constants';
 import { sendEmail } from '@/lib/email/client';
 import { buildInternalLeadNotification } from '@/lib/email/internalNotification';
 import { renderTherapistWelcome } from '@/lib/email/templates/therapistWelcome';
+import { renderEmailConfirmation } from '@/lib/email/templates/emailConfirmation';
 import { logError, track } from '@/lib/logger';
 import { BASE_URL } from '@/lib/constants';
 import { googleAdsTracker } from '@/lib/google-ads';
-import { parseAttributionFromRequest } from '@/lib/server-analytics';
+import { parseAttributionFromRequest, ServerAnalytics } from '@/lib/server-analytics';
 import { sanitize, normalizeSpecializations, hashIP } from '@/lib/leads/validation';
 import { isIpRateLimited } from '@/lib/leads/rateLimit';
 import { handlePatientLead, handleTherapistLead } from '@/lib/leads/handlers';
@@ -549,6 +551,8 @@ export async function POST(req: Request) {
     const genderPreference: 'male' | 'female' | 'no_preference' | undefined =
       genderPrefRaw === 'male' || genderPrefRaw === 'female' || genderPrefRaw === 'no_preference' ? genderPrefRaw : undefined;
 
+    // Feature flag: double opt-in email-only flow for patients (EARTH-146)
+    const REQUIRE_EMAIL_CONFIRMATION = process.env.REQUIRE_EMAIL_CONFIRMATION !== 'false';
     // Consent validation handled later with comprehensive tracking
 
     // Basic IP-based rate limiting (60s window). Note: best-effort and
@@ -581,7 +585,112 @@ export async function POST(req: Request) {
       }
     }
 
-    // Enforce explicit consent for patient leads (GDPR Art. 6(1)(a), 9(2)(a))
+    // EARTH-146: If email confirmation is required, run minimal email-only path for patient leads
+    if (REQUIRE_EMAIL_CONFIRMATION && leadType === 'patient') {
+      // Campaign inference from referrer
+      const referrer = req.headers.get('referer') || '';
+      const campaign_source = referrer.includes('/ankommen-in-dir')
+        ? '/ankommen-in-dir'
+        : referrer.includes('/wieder-lebendig')
+        ? '/wieder-lebendig'
+        : '/therapie-finden';
+      const url = new URL(req.url);
+      const campaign_variant = url.searchParams.get('v') || 'A';
+      const landing_page = referrer || null;
+
+      // Prepare confirmation token up-front so we can store it at insert time
+      const confirmToken = randomUUID();
+
+      // Insert minimal lead
+      const { data: leadRow, error: insErr } = await supabaseServer
+        .from('people')
+        .insert({
+          email,
+          type: 'patient',
+          status: 'pre_confirmation',
+          campaign_source,
+          campaign_variant,
+          landing_page,
+          metadata: { submitted_at: new Date().toISOString(), confirm_token: confirmToken, confirm_sent_at: new Date().toISOString() },
+        })
+        .select('id')
+        .single();
+
+      let effectiveId = leadRow?.id as string | undefined;
+      // Handle unique violation gracefully by looking up existing email
+      if ((insErr as { code?: string } | null | undefined)?.code === '23505') {
+        type ExistingPerson = { id: string; status?: string | null; metadata?: Record<string, unknown> | null; campaign_source?: string | null; campaign_variant?: string | null };
+        const { data: existing } = await supabaseServer
+          .from('people')
+          .select('id,status,metadata,campaign_source,campaign_variant')
+          .eq('email', email!)
+          .single<ExistingPerson>();
+        if (existing?.id) {
+          effectiveId = existing.id as unknown as string;
+          const existingStatus = (existing.status || '') as string;
+          if (existingStatus && existingStatus !== 'pre_confirmation') {
+            // Already confirmed or other terminal state — don't downgrade or resend; treat as success
+            await ServerAnalytics.trackEventFromRequest(req, {
+              type: 'email_submitted',
+              source: 'api.leads',
+              props: { campaign_source, campaign_variant, requires_confirmation: false },
+            });
+            return NextResponse.json(
+              { data: { id: existing.id, requiresConfirmation: false }, error: null },
+              { headers: { 'Cache-Control': 'no-store' } },
+            );
+          } else {
+            // Refresh token and sent time for pre_confirmation
+            const merged: Record<string, unknown> = { ...(existing.metadata || {}), confirm_token: confirmToken, confirm_sent_at: new Date().toISOString() };
+            await supabaseServer
+              .from('people')
+              .update({ metadata: merged })
+              .eq('id', effectiveId);
+          }
+        }
+      } else if (insErr || !effectiveId) {
+        console.error('Supabase insert error (email-only lead):', insErr);
+        void logError('api.leads', insErr, { stage: 'insert_email_only_lead' }, ip, ua);
+        return NextResponse.json(
+          { data: null, error: 'Failed to save lead' },
+          { status: 500, headers: { 'Cache-Control': 'no-store' } },
+        );
+      }
+
+      // Send confirmation email (token already stored)
+      try {
+        const confirmUrl = `${BASE_URL}/api/leads/confirm?token=${encodeURIComponent(confirmToken)}&id=${encodeURIComponent(
+          effectiveId!,
+        )}`;
+        const emailContent = renderEmailConfirmation({ confirmUrl });
+        void track({
+          type: 'email_attempted',
+          level: 'info',
+          source: 'api.leads',
+          ip,
+          ua,
+          props: { stage: 'email_confirmation', lead_id: effectiveId!, lead_type: 'patient', subject: emailContent.subject },
+        });
+        await sendEmail({ to: email, subject: emailContent.subject, html: emailContent.html, context: { stage: 'email_confirmation', lead_id: effectiveId!, lead_type: 'patient' } });
+      } catch (e) {
+        console.error('[email-confirmation] Failed to render/send', e);
+        void logError('api.leads', e, { stage: 'email_confirmation_email' }, ip, ua);
+      }
+
+      // Analytics (server-side)
+      await ServerAnalytics.trackEventFromRequest(req, {
+        type: 'email_submitted',
+        source: 'api.leads',
+        props: { campaign_source, campaign_variant, requires_confirmation: true },
+      });
+
+      return NextResponse.json(
+        { data: { id: effectiveId!, requiresConfirmation: true }, error: null },
+        { headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
+
+    // Enforce explicit consent for patient leads (GDPR Art. 6(1)(a), 9(2)(a)) in legacy path
     if (leadType === 'patient' && !consentShare) {
       return NextResponse.json(
         { data: null, error: 'Einwilligung zur Datenübertragung erforderlich' },

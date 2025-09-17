@@ -65,6 +65,8 @@ trackEvent('cta_click', {
 
 **Business Events:**
 - `lead_submitted` - Form submissions (patient/therapist)
+- `email_submitted` - Email-only capture started (EARTH-146)
+- `email_confirmed` - Email confirmed via token (EARTH-146)
 - `therapist_responded` - Match responses
 - `match_created` - Manual matches by admin
 - `cta_click` - Call-to-action interactions
@@ -259,6 +261,21 @@ NEXT_PUBLIC_COOKIES=false | true
 __Notes__:
 - This does not replace server-side tracking; it complements it for Ads optimization only.
 - Keep disabled in non-production environments by leaving env vars unset.
+
+## Email Double Opt-in (EARTH-146)
+
+**Why:** Improve deliverability and list quality by requiring email confirmation before treating a patient lead as active.
+
+**Server Events:**
+- `email_submitted` — emitted by `POST /api/leads` in the email-only path with props `{ campaign_source, campaign_variant, requires_confirmation: true }`.
+- `email_confirmed` — emitted by `GET /api/leads/confirm` with props `{ campaign_source, campaign_variant, elapsed_seconds }`.
+
+**Enhanced Conversions timing:**
+- In email-only mode, server-side Google Ads Enhanced Conversions (`patient_registration`) are sent only after confirmation (on `GET /api/leads/confirm`).
+- In legacy mode (flag off), they continue to fire after the initial patient insert.
+
+**Vercel Analytics:**
+- Do not duplicate `email_submitted`/`email_confirmed` in Vercel Analytics. Keep Vercel for high-level milestones only.
 
 ## Cookie Toggle for Google Ads Linking (EARTH-133)
 

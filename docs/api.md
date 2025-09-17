@@ -12,18 +12,43 @@
 - __Validation__: email regex; strings sanitized (control chars removed; ~1000 chars max). Server requires `email`. For patient leads, explicit consent is required via `consent_share_with_therapists`.
 - __Behavior__:
   - `type` set from payload (default `patient`).
-  - `status` defaults to `new` for patients; `pending_verification` for therapists.
+  - `status` defaults to `pending_verification` for therapists. For patients:
+    - Legacy flow (feature flag disabled): defaults to `new` and collects full payload (consent required).
+    - Email-only flow (EARTH-146; feature flag enabled via `REQUIRE_EMAIL_CONFIRMATION`): collects only `email` and attribution, inserts patient with `status='pre_confirmation'` and sends a confirmation email. See confirmation endpoint below.
   - Packs extras in `metadata` and sets `funnel_type` (`koerperpsychotherapie` for patients; `therapist_acquisition` for therapists), `submitted_at`, plus `ip` and `user_agent` when available.
   - Recognized `specializations` slugs: `narm`, `core-energetics`, `hakomi`, `somatic-experiencing` (others ignored).
-  - Enhanced Conversions: after a successful insert, the server may upload a hashed email (SHA-256) to Google Ads using configured env variables. Failures are logged and do not block the request.
+  - Campaign attribution (EARTH-146): when email-only flow is enabled, the API stores `campaign_source` (derived from referer: `/ankommen-in-dir` | `/wieder-lebendig` | default `/therapie-finden`), `campaign_variant` (query param `?v=`; default `A`), and `landing_page` (full referer) on the `people` row.
+  - Enhanced Conversions:
+    - Legacy flow: after successful patient insert (status `new`) the server may upload a hashed email to Google Ads.
+    - Email-only flow (EARTH-146): Enhanced Conversions are deferred to the confirmation endpoint and fire only after status becomes `new`.
 - __Rate limiting__: IP-based, 60s window (best effort via `x-forwarded-for`). Patients: checks recent inserts in `people` by `metadata.ip`. Therapists: additionally checks recent `therapist_contracts` rows by hashed IP (`sha256(IP_HASH_SALT + ip)`). On exceed, returns 429.
 - __Notifications (optional)__: If `RESEND_API_KEY` and `LEADS_NOTIFY_EMAIL` are set, the API will send a non-blocking email via Resend on new lead. Use `LEADS_FROM_EMAIL` to control the sender address (defaults to `no-reply@kaufmann-health.de`).
 - __Notes__: No alias `/api/directory-requests`; use `/api/leads`.
 - __Response__:
-  - 200: `{ data: { id: uuid }, error: null }`
+  - 200 (legacy): `{ data: { id: uuid }, error: null }`
+  - 200 (email-only; EARTH-146): `{ data: { id: uuid, requiresConfirmation: true|false }, error: null }`
   - 400: `{ data: null, error: 'Invalid email' | 'Invalid JSON' | 'Einwilligung zur Datenübertragung erforderlich' }`
   - 429: `{ data: null, error: 'Rate limited' }`
   - 500: `{ data: null, error: 'Failed to save lead' }`
+
+### Feature Flag (EARTH-146)
+
+- `REQUIRE_EMAIL_CONFIRMATION` (default: `true` in production). When not equal to `'false'`, patient leads follow the email-only path (`pre_confirmation` status and confirmation email). When set to `'false'` (e.g., in tests/local legacy mode), patient leads use the prior full-payload flow and immediately have `status='new'` (consent required).
+
+## GET /api/leads/confirm
+
+- __Purpose__: Confirm email addresses for email-only patient leads and activate them by transitioning to `status='new'`.
+- __Auth__: None (accessed via emailed link). Redirects to a friendly page regardless of outcome; does not expose internal states.
+- __Query Params__:
+  - `id` (uuid, required)
+  - `token` (string, required) — one-time token from the confirmation email; valid for 24 hours
+- __Behavior__:
+  - Loads the `people` row by `id`, verifies `metadata.confirm_token` and TTL using `metadata.confirm_sent_at` (24h).
+  - On success: sets `status='new'`, clears `confirm_token` and `confirm_sent_at`, sets `confirmed_at` timestamp; fires server-side Enhanced Conversions (`patient_registration`) and emits analytics event `email_confirmed` with campaign properties and `elapsed_seconds`.
+  - On invalid/expired tokens: no changes are made.
+- __Redirects__:
+  - 302 → `/confirm?state=success | invalid | expired | error`
+
 
 ## POST /api/therapists/:id/documents
 
