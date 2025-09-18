@@ -244,6 +244,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ data: null, error: 'Maximum of 3 therapists allowed' }, { status: 400 });
     }
 
+    // Safety guard: Disallow bulk outreach (multiple therapists) unless suppress_outreach is explicitly true.
+    // This ensures batch operations only create proposals (for Klienten-Auswahl) and never send multiple outreach emails.
+    if (therapist_ids.length > 1 && !suppress_outreach) {
+      return NextResponse.json({ data: null, error: 'Bulk outreach disabled. Use suppress_outreach=true to create proposals, or contact a single therapist.' }, { status: 400 });
+    }
+
     // Validate entities exist with expected types
     const [{ data: patient, error: patientErr }] = await Promise.all([
       supabaseServer.from('people').select('id, type, metadata').eq('id', patient_id).single(),

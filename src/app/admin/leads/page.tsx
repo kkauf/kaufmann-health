@@ -144,16 +144,8 @@ export default function AdminLeadsPage() {
   }, [selectedPatient]);
 
   // Default flow based on patient state: if proposals exist or a selection email was sent, prefer patient-selection mode
-  useEffect(() => {
-    if (!selectedPatient) {
-      setFlowMode('therapist');
-      return;
-    }
-    const pid = selectedPatient.id;
-    const hasSelectionEmail = Boolean((selectedPatient.metadata || {}).selection_email_sent_at);
-    const hasProposed = (proposedCounts[pid] || 0) > 0;
-    setFlowMode(hasSelectionEmail || hasProposed ? 'patient' : 'therapist');
-  }, [selectedPatient, proposedCounts]);
+  // Note: Keep the explicit flowMode chosen by the admin. Default is 'patient'.
+  // Removed auto-switching to 'therapist' to avoid unintended bulk outreach.
 
   const loadPatientMatchFlags = useCallback(async (leadList: Person[]) => {
     try {
@@ -425,34 +417,7 @@ export default function AdminLeadsPage() {
     }
   }
 
-  async function contactSelectedTherapists() {
-    if (!selectedPatient) return;
-    const ids = Array.from(selectedTherapists);
-    if (ids.length === 0) return;
-    try {
-      // Confirm to avoid accidental triggering
-      if (!confirm('Ausgewählte Therapeut/innen kontaktieren? Klient/in erhält KEINE Auswahl.')) {
-        return;
-      }
-      setMessage(null);
-      const res = await fetch('/admin/api/matches', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ patient_id: selectedPatient.id, therapist_ids: ids }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Kontaktierung fehlgeschlagen');
-      setMessage(`${ids.length} Kontakt${ids.length > 1 ? 'e' : ''} gestartet`);
-      setSelectedTherapists(new Set());
-      try { track('Match Created'); } catch {}
-      // Refresh proposed counts so Selection CTA appears without manual reload
-      void loadPatientMatchFlags(leads);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Kontaktierung fehlgeschlagen';
-      setMessage(msg);
-    }
-  }
+  // Removed bulk therapist contacting to avoid multi-outreach mistakes.
 
   async function sendSelectionEmail() {
     if (!selectedPatient) return;
@@ -791,7 +756,7 @@ export default function AdminLeadsPage() {
         <div className="border rounded-md p-4">
           <h2 className="text-lg font-semibold mb-3">Therapeut:innen</h2>
           {selectedPatient && (
-            <div className="mb-2 text-xs text-gray-600">Bis zu 3 Therapeut:innen auswählen und auf einmal kontaktieren.</div>
+            <div className="mb-2 text-xs text-gray-600">Bis zu 3 Therapeut:innen auswählen, um eine Klienten-Auswahl zu erstellen.</div>
           )}
           <div className="flex flex-wrap gap-3 mb-3 items-end">
             <div className="space-y-1">
@@ -855,12 +820,12 @@ export default function AdminLeadsPage() {
           {/* Flow Mode Toggle */}
           <div className="mb-2 flex items-center gap-2">
             <span className="text-xs text-gray-600">Flow</span>
-            <Button size="sm" variant={flowMode === 'therapist' ? 'default' : 'outline'} onClick={() => setFlowMode('therapist')}>Therapeut:innen kontaktieren</Button>
             <Button size="sm" variant={flowMode === 'patient' ? 'default' : 'outline'} onClick={() => setFlowMode('patient')}>Klienten-Auswahl</Button>
+            <Button size="sm" variant={flowMode === 'therapist' ? 'default' : 'outline'} onClick={() => setFlowMode('therapist')}>Therapeut:innen kontaktieren</Button>
           </div>
           <div className="mb-2 text-xs text-gray-600">
             {flowMode === 'therapist'
-              ? 'E-Mails gehen an Therapeut/innen; Klient/in wird später informiert.'
+              ? 'E-Mails gehen an Therapeut/innen (nur einzeln); Klient/in wird später informiert.'
               : 'E-Mail geht an Klient/in; Therapeut/innen werden erst nach Auswahl kontaktiert.'}
           </div>
 
@@ -871,20 +836,14 @@ export default function AdminLeadsPage() {
             </div>
           )}
 
-          {/* Batch actions (mode-specific) */}
-          {selectedTherapists.size > 0 && (
+          {/* Batch actions (patient mode only) */}
+          {flowMode === 'patient' && selectedTherapists.size > 0 && (
             <div className="mb-2 flex items-center justify-between sticky top-0 z-10 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b px-2 py-1 rounded">
               <div className="text-sm text-gray-700">Ausgewählt: {selectedTherapists.size} / 3</div>
               <div className="flex gap-2">
-                {flowMode === 'patient' ? (
-                  <Button size="sm" onClick={sendSelectionEmail} disabled={!selectedPatient || (selectedTherapists.size < 2 && (proposedCounts[selectedPatient!.id] || 0) < 2)} title="Sendet E-Mail an Klient/in – Therapeuten werden NICHT kontaktiert">
-                    Auswahl-E-Mail senden
-                  </Button>
-                ) : (
-                  <Button size="sm" onClick={contactSelectedTherapists} disabled={!selectedPatient} title="Sendet E-Mail an ausgewählte Therapeut/innen – Klient erhält KEINE Auswahl">
-                    Ausgewählte kontaktieren
-                  </Button>
-                )}
+                <Button size="sm" onClick={sendSelectionEmail} disabled={!selectedPatient || (selectedTherapists.size < 2 && (proposedCounts[selectedPatient!.id] || 0) < 2)} title="Sendet E-Mail an Klient/in – Therapeuten werden NICHT kontaktiert">
+                  Auswahl-E-Mail senden
+                </Button>
                 <Button size="sm" variant="secondary" onClick={() => setSelectedTherapists(new Set())}>Auswahl leeren</Button>
               </div>
             </div>
