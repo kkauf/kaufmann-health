@@ -32,6 +32,54 @@ function eurosToMicros(euros: number) {
   return Math.round(euros * 1_000_000);
 }
 
+function clampUnicode(str: string, max: number): string {
+  if (!str) return '';
+  const s = String(str);
+  return s.length <= max ? s : s.slice(0, max);
+}
+
+function sanitizeHeadlines(headlines: string[]): string[] {
+  // RSA headline max length: 30
+  const MAX = 30;
+  const unique = new Set<string>();
+  const out: string[] = [];
+  for (const h of headlines) {
+    const t = clampUnicode(h || '', MAX).trim();
+    if (t && !unique.has(t)) {
+      unique.add(t);
+      out.push(t);
+    }
+    if (out.length >= 15) break;
+  }
+  // Ensure at least 3 headlines by adding safe fallbacks
+  while (out.length < 3) {
+    const fallback = clampUnicode('Therapie Online', MAX);
+    if (!unique.has(fallback)) {
+      unique.add(fallback);
+      out.push(fallback);
+    } else break;
+  }
+  return out.slice(0, 15);
+}
+
+function sanitizeDescriptions(descs: string[]): string[] {
+  // RSA description max length: 90
+  const MAX = 90;
+  const unique = new Set<string>();
+  const out: string[] = [];
+  for (const d of descs) {
+    const t = clampUnicode(d || '', MAX).trim();
+    if (t && !unique.has(t)) {
+      unique.add(t);
+      out.push(t);
+    }
+    if (out.length >= 4) break;
+  }
+  // Ensure at least 1 description
+  if (out.length === 0) out.push('Jetzt passende Therapie online finden.');
+  return out.slice(0, 4);
+}
+
 async function querySingle(customer: any, q: string): Promise<any | null> {
   const r = await customer.query(q);
   return Array.isArray(r) && r.length > 0 ? r[0] : null;
@@ -259,42 +307,98 @@ async function createAdGroupsKeywordsAndAds(customer: any, campaignResourceName:
   const tiers = Object.entries(cfg.keywords) as Array<[string, KeywordTier]>;
 
   for (const [tierName, data] of tiers) {
+    const adGroupName = `${cfg.name} - ${tierName}`;
     if (DRY_RUN) {
-      console.log(`  ↪ DRY RUN: would create AdGroup '${tierName}' with ${data.terms.length} keywords (maxCpc €${data.maxCpc})`);
+      console.log(`  ↪ DRY RUN: would ensure AdGroup '${adGroupName}' with ${data.terms.length} keywords (maxCpc €${data.maxCpc})`);
       continue;
     }
 
-    // Create ad group
-    const adGroupCreate: any = await customer.adGroups.create([
-      {
-        campaign: campaignResourceName,
-        name: `${cfg.name} - ${tierName}`,
-        status: 'ENABLED',
-        type: 'SEARCH_STANDARD',
-        cpc_bid_micros: eurosToMicros(data.maxCpc),
-      },
-    ]);
-    const adGroupResource =
-      adGroupCreate?.results?.[0]?.resource_name || adGroupCreate?.[0]?.resource_name || adGroupCreate?.resource_name;
-    if (!adGroupResource) throw new Error('Ad group creation failed: no resource_name');
-    console.log('  ✓ AdGroup created:', adGroupResource);
-
-    // Add keywords (phrase match)
-    if (data.terms.length > 0) {
-      const criteriaPayloads = data.terms.map((term) => ({
-        ad_group: adGroupResource,
-        keyword: {
-          text: term,
-          match_type: 'PHRASE',
+    // Ensure ad group by name
+    const existingAdGroup = await querySingle(
+      customer,
+      `SELECT ad_group.resource_name, ad_group.name FROM ad_group WHERE ad_group.campaign = '${campaignResourceName}' AND ad_group.name = '${adGroupName.replace(/'/g, "''")}' LIMIT 1`
+    );
+    let adGroupResource: string | null = existingAdGroup?.ad_group?.resource_name || null;
+    if (adGroupResource) {
+      console.log('  ↪ Using existing AdGroup:', adGroupResource);
+    } else {
+      const adGroupCreate: any = await customer.adGroups.create([
+        {
+          campaign: campaignResourceName,
+          name: adGroupName,
+          status: 'ENABLED',
+          type: 'SEARCH_STANDARD',
+          cpc_bid_micros: eurosToMicros(data.maxCpc),
         },
-      }));
-      const agCriteriaCreate: any = await customer.adGroupCriteria.create(criteriaPayloads);
-      console.log('    ✓ Keywords added:', agCriteriaCreate?.results?.length ?? criteriaPayloads.length);
+      ]);
+      adGroupResource =
+        adGroupCreate?.results?.[0]?.resource_name || adGroupCreate?.[0]?.resource_name || adGroupCreate?.resource_name;
+      if (!adGroupResource) throw new Error('Ad group creation failed: no resource_name');
+      console.log('  ✓ AdGroup created:', adGroupResource);
     }
 
-    // Create two RSA variants (A/B)
-    await createResponsiveSearchAd(customer, adGroupResource, cfg, 'A');
-    await createResponsiveSearchAd(customer, adGroupResource, cfg, 'B');
+    // Add only missing keywords (phrase match)
+    if (data.terms.length > 0 && adGroupResource) {
+      const existingKeywordsRows = (await customer.query(`
+        SELECT ad_group_criterion.keyword.text
+        FROM ad_group_criterion
+        WHERE ad_group_criterion.type = KEYWORD AND ad_group_criterion.ad_group = '${adGroupResource}'
+      `)) as any[];
+      const existingKeywordSet = new Set<string>(
+        existingKeywordsRows.map((r: any) => r.ad_group_criterion?.keyword?.text).filter(Boolean)
+      );
+      const toCreate = data.terms.filter((t) => !existingKeywordSet.has(t));
+      if (toCreate.length > 0) {
+        const tryCreate = async (terms: string[]) => {
+          const payloads = terms.map((term) => ({
+            ad_group: adGroupResource!,
+            keyword: { text: term, match_type: 'PHRASE' },
+          }));
+          return customer.adGroupCriteria.create(payloads);
+        };
+
+        try {
+          const res: any = await tryCreate(toCreate);
+          console.log('    ✓ Keywords added:', res?.results?.length ?? toCreate.length);
+        } catch (err: any) {
+          // Attempt to parse violating terms and retry without them
+          let violating: string[] = [];
+          try {
+            const e = typeof err === 'string' ? JSON.parse(err) : err;
+            const errors = e?.errors || [];
+            for (const item of errors) {
+              const vt = item?.details?.policy_violation_details?.key?.violating_text;
+              if (vt) violating.push(vt);
+            }
+          } catch {}
+          violating = Array.from(new Set(violating));
+          if (violating.length > 0) {
+            const filtered = toCreate.filter((t) => !violating.includes(t));
+            console.warn('    ⚠️ Skipping policy-flagged keywords:', violating);
+            if (filtered.length > 0) {
+              const res2: any = await tryCreate(filtered);
+              console.log('    ✓ Keywords added after filtering:', res2?.results?.length ?? filtered.length);
+            }
+          } else {
+            // Re-throw if not a policy violation parseable error
+            throw err;
+          }
+        }
+      } else {
+        console.log('    ↪ All keywords already present');
+      }
+    }
+
+    // Create two RSA variants (A/B) only if no ads exist yet
+    const existingAds = (await customer.query(`
+      SELECT ad_group_ad.resource_name FROM ad_group_ad WHERE ad_group_ad.ad_group = '${adGroupResource}' LIMIT 1
+    `)) as any[];
+    if (!existingAds || existingAds.length === 0) {
+      await createResponsiveSearchAd(customer, adGroupResource!, cfg, 'A');
+      await createResponsiveSearchAd(customer, adGroupResource!, cfg, 'B');
+    } else {
+      console.log('    ↪ Skipping RSA creation (ads already exist)');
+    }
   }
 }
 
@@ -310,20 +414,23 @@ async function createResponsiveSearchAd(
   }
 
   const variantHeadlines = [...cfg.headlines];
-  // Light variant tweak per EARTH-156
+  // Light variant tweak per EARTH-156 (will be clamped)
   if (variant === 'A') variantHeadlines[5] = 'Der nächste Schritt deiner Heilungsreise';
-  else variantHeadlines[5] = 'Finde deinen Therapeuten - diese Woche noch';
+  else variantHeadlines[5] = 'Schnell starten – keine Warteliste';
+
+  const headlines = sanitizeHeadlines(variantHeadlines);
+  const descriptions = sanitizeDescriptions(cfg.descriptions);
 
   const adCreate: any = await customer.adGroupAds.create([
     {
       ad_group: adGroupResourceName,
       status: 'ENABLED',
       ad: {
+        final_urls: [`${cfg.landing_page}?v=${variant}`],
+        tracking_url_template: `${cfg.landing_page}?v=${variant}&gclid={gclid}&keyword={keyword}`,
         responsive_search_ad: {
-          headlines: variantHeadlines.slice(0, 15).map((text) => ({ text })),
-          descriptions: cfg.descriptions.slice(0, 4).map((text) => ({ text })),
-          final_urls: [`${cfg.landing_page}?v=${variant}`],
-          tracking_url_template: `${cfg.landing_page}?v=${variant}&gclid={gclid}&keyword={keyword}`,
+          headlines: headlines.map((text) => ({ text })),
+          descriptions: descriptions.map((text) => ({ text })),
         },
       },
     },
