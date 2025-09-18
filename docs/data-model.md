@@ -6,14 +6,16 @@
 - `phone text`
 - `name text`
 - `type text check in ('patient','therapist')`
-- `status text default 'new'` — values: `new`, `pending_verification` (therapists default), `verified`, `rejected`
+- `status text default 'new'` — allowed values: `new`, `pre_confirmation`, `email_confirmed`, `pending_verification` (therapists default), `verified`, `rejected`, `matched`
 - `metadata jsonb default '{}'::jsonb`
 - `created_at timestamptz default now()`
 
 Business notes:
 - `metadata` is a flexible bag for form/funnel details (`city`, `issue`, `availability`, `budget`, etc.).
 - Common keys used by the therapy finder funnel: `specializations` (string[] of slugs), `funnel_type='koerperpsychotherapie'`, `submitted_at` (ISO string), `ip`, `user_agent`.
-- Therapist verification documents are stored on the `public.therapists` table (see below). Patient leads remain in `public.people`.
+- Patient email-only flow (EARTH-146): inserts with `status='pre_confirmation'`; on successful link click the system sets `status='email_confirmed'` and redirects the user to submit preferences. After preferences, the API updates to `status='new'` (active lead).
+- Therapist verification: therapists default to `pending_verification` and move to `verified`/`rejected` via admin review.
+- Matching: when a therapist accepts a match, the corresponding patient lead transitions to `matched` (EARTH-131/24748e84).
 - Storage RLS: `therapist-documents` is private; authenticated users can insert; only `service_role` has read/manage. Reason: keep sensitive verification docs off the public surface.
 
 Indexes:
