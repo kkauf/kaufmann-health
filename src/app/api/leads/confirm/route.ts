@@ -65,7 +65,7 @@ export async function GET(req: Request) {
     // If the email has already been confirmed previously, but preferences may not be set yet,
     // send the user directly to the preferences screen instead of showing an invalid link.
     if ((person.status || '').toLowerCase() === 'email_confirmed') {
-      return NextResponse.redirect(`${BASE_URL}/preferences?confirm=1&id=${id}`, 302);
+      return NextResponse.redirect(`${BASE_URL}/preferences?id=${id}`, 302);
     }
 
     const metadata: Record<string, unknown> = person.metadata ?? {};
