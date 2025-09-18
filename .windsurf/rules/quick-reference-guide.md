@@ -20,22 +20,19 @@ npx supabase db reset         # Reset database
 npx shadcn@latest add button  # Add ShadCN component
 ```
 
-## File Locations
+## File Placement Rules
+- New API route? → `/api/public` or `/api/admin` (never under /app)
+- New component? → `/features/[domain]/components` or `/shared/components`
+- Business logic? → `/features/[domain]/lib`
+- Page? → `/app` with route groups: `/(public)`, `/(admin)`, `/(auth)`
 
-```
-src/
-├── app/api/                  # API routes
-│   ├── leads/route.ts        # Patient/therapist signup
-│   └── admin/auth/route.ts   # Admin authentication
-├── app/admin/                # Admin dashboard
-├── components/ui/            # ShadCN components
-├── lib/
-│   ├── analytics.ts          # Event tracking
-│   ├── logger.ts            # Error logging
-│   ├── supabase.ts          # Database client
-│   └── email/               # Email templates
-└── tests/                   # Test files
-```
+## Active Features
+/features/leads → Lead forms, verification
+/features/therapists → Applications, profiles
+/features/matching → Match workflow
+/features/analytics → Tracking, attribution
+
+If a file takes >3 clicks to find, move it.
 
 ## Common Patterns
 
