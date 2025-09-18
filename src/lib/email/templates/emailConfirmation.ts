@@ -8,7 +8,7 @@ export function renderEmailConfirmation(params: { confirmUrl: string }): EmailCo
     <div style="text-align:center; margin: 24px 0;">
       ${renderButton(params.confirmUrl, 'E‑Mail bestätigen')}
     </div>
-    <p style="color:#6B7280; font-size:12px;">Der Link ist 24 Stunden gültig. Fügen Sie bitte <strong>kontakt@kaufmann-health.de</strong> zu Ihren Kontakten hinzu.</p>
+    <p style="color:#6B7280; font-size:12px;">Der Link ist 24 Stunden gültig. Füge bitte <strong>kontakt@kaufmann-health.de</strong> zu deinen Kontakten hinzu, um sicherzustellen, dass deine Therapeuten‑Empfehlung dich erreichen.</p>
   `;
   const confirmSchema = {
     '@context': 'http://schema.org',

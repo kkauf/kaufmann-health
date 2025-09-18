@@ -62,6 +62,12 @@ export async function GET(req: Request) {
       return NextResponse.redirect(`${BASE_URL}/confirm?state=invalid`, 302);
     }
 
+    // If the email has already been confirmed previously, but preferences may not be set yet,
+    // send the user directly to the preferences screen instead of showing an invalid link.
+    if ((person.status || '').toLowerCase() === 'email_confirmed') {
+      return NextResponse.redirect(`${BASE_URL}/preferences?confirm=1&id=${id}`, 302);
+    }
+
     const metadata: Record<string, unknown> = person.metadata ?? {};
     const stored = typeof metadata['confirm_token'] === 'string' ? (metadata['confirm_token'] as string) : '';
     if (!stored || stored !== token) {

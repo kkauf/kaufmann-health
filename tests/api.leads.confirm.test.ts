@@ -105,4 +105,16 @@ describe('EARTH-146 GET /api/leads/confirm', () => {
     expect(res.headers.get('location')).toBe('http://localhost/confirm?state=expired');
     expect(updateArgs).toBeNull();
   });
+
+  it('redirects to preferences if already email_confirmed (idempotent link)', async () => {
+    person.status = 'email_confirmed';
+    // even if token mismatches, we should send to preferences rather than invalid
+    person.metadata.confirm_token = 'different';
+    const { GET } = await import('@/app/api/leads/confirm/route');
+    const res = await GET(new Request(makeUrl('p1', 't1')));
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('http://localhost/preferences?id=p1');
+    // no update since it's already confirmed
+    expect(updateArgs).toBeNull();
+  });
 });
