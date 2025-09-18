@@ -104,6 +104,16 @@ export default async function AnkommenInDirPage() {
       question: 'Kann ich Methoden wählen (Narm/Hakomi/Somatic Experiencing/Core Energetics)?',
       answer: 'Absolut!. Wir empfehlen passend zu deinem Fokus. Du entscheidest, was dich am meisten anspricht.',
     },
+    {
+      id: 'kk-eintrag',
+      question: 'Wird die Therapie bei meiner Krankenkasse dokumentiert?',
+      answer: 'Nein. Unsere Therapeut:innen rechnen nicht über die gesetzliche Krankenkasse ab (keine S‑Nummer). Es erfolgt kein Eintrag in deiner Krankenakte und keine ICD‑10‑Diagnose bei der Kasse.',
+    },
+    {
+      id: 'warum-diskret',
+      question: 'Warum ist Selbstzahler‑Therapie diskreter?',
+      answer: 'Ohne Kassenabrechnung bleibt deine Therapie privat. Das ist besonders relevant für Verbeamtung sowie Lebens‑/Berufsunfähigkeitsversicherung. Viele Menschen in sensiblen Berufen (Pilot:innen, Polizei, Führungskräfte) wählen deshalb bewusst die Selbstzahler‑Option.',
+    },
   ];
 
   const faqSchema = {
@@ -187,6 +197,21 @@ export default async function AnkommenInDirPage() {
             </div>
           </section>
         </SectionViewTracker>
+
+        {/* EARTH-143: Privacy benefit section */}
+        <section aria-labelledby="privacy-benefit" className="mt-10 sm:mt-14 rounded-2xl border bg-white p-5 sm:p-6">
+          <h2 id="privacy-benefit" className="text-2xl font-semibold tracking-tight">Therapie ohne Krankenkasseneintrag</h2>
+          <p className="mt-2 max-w-2xl text-gray-700">Deine mentale Gesundheit, deine Privatsphäre.</p>
+          <div className="mt-4">
+            <CheckList
+              items={[
+                "Keine S‑Nummer: kein Eintrag bei der Krankenkasse, keine ICD‑10‑Diagnose in der Kassenakte",
+                "Karrierefreundlich: relevant für Verbeamtung sowie Lebens‑/Berufsunfähigkeitsversicherung",
+                "Sofort starten: keine 3–9 Monate Wartezeit, kein Gutachterverfahren",
+              ]}
+            />
+          </div>
+        </section>
 
         {/* Process flow */}
         <SectionViewTracker location="process">

@@ -60,11 +60,10 @@ export async function GET(req: Request) {
       supabaseServer.from('people').select('id', { count: 'exact', head: true }).eq('type', 'patient'),
       supabaseServer.from('matches').select('id', { count: 'exact', head: true }),
     ]);
-
+    // Be resilient: log but continue with defaults
     if (therapistsRes.error || clientsRes.error || matchesTotalRes.error) {
       const err = therapistsRes.error || clientsRes.error || matchesTotalRes.error;
       await logError('admin.api.stats', err, { stage: 'totals' });
-      return NextResponse.json({ data: null, error: 'Failed to load totals' }, { status: 500 });
     }
 
     // Matches per day (last N days)
@@ -77,12 +76,12 @@ export async function GET(req: Request) {
 
     if (matchesRecentError) {
       await logError('admin.api.stats', matchesRecentError, { stage: 'matches_recent', sinceIso, days });
-      return NextResponse.json({ data: null, error: 'Failed to load recent matches' }, { status: 500 });
     }
 
     const countsMap = new Map<string, number>();
     for (const b of buckets) countsMap.set(b, 0);
-    for (const row of matchesRecent || []) {
+    const recentRows = matchesRecentError ? [] : (matchesRecent || []);
+    for (const row of recentRows) {
       const d = new Date(row.created_at as string);
       const key = startOfDayUTC(d).toISOString().slice(0, 10);
       if (countsMap.has(key)) countsMap.set(key, (countsMap.get(key) || 0) + 1);
@@ -286,7 +285,58 @@ export async function GET(req: Request) {
       lastNDays: { accepted: acc, declined: dec, rate: acc + dec > 0 ? Math.round((acc / (acc + dec)) * 1000) / 10 : 0 },
     };
 
-    // 6) Session blockers breakdown (last 30 days)
+    // 6) Campaign performance (patient leads with campaign attribution)
+    type PeopleRow = { status?: string | null; campaign_source?: string | null; campaign_variant?: string | null };
+    const { data: peopleRows, error: peopleErr } = await supabaseServer
+      .from('people')
+      .select('status, campaign_source, campaign_variant, type, created_at')
+      .eq('type', 'patient')
+      .not('campaign_source', 'is', null)
+      .gte('created_at', sinceIso)
+      .limit(50000);
+    if (peopleErr) {
+      await logError('admin.api.stats', peopleErr, { stage: 'campaign_stats', sinceIso, days });
+    }
+    const cmap = new Map<string, { campaign_source: string; campaign_variant: string; leads: number; confirmed: number }>();
+    for (const row of ((peopleRows || []) as Array<PeopleRow>)) {
+      const src = String(row.campaign_source || '').trim();
+      const v = (String(row.campaign_variant || '').toUpperCase() === 'B') ? 'B' : 'A';
+      if (!src) continue;
+      const key = `${src}__${v}`;
+      if (!cmap.has(key)) cmap.set(key, { campaign_source: src, campaign_variant: v, leads: 0, confirmed: 0 });
+      const agg = cmap.get(key)!;
+      agg.leads += 1;
+      if (String(row.status || '') !== 'pre_confirmation') agg.confirmed += 1;
+    }
+    const campaignStats = Array.from(cmap.values())
+      .sort((a, b) => b.leads - a.leads)
+      .map((r) => ({
+        ...r,
+        confirmation_rate: r.leads > 0 ? Math.round((r.confirmed / r.leads) * 1000) / 10 : 0,
+      }));
+
+    // 6b) Daily campaign breakdown
+    const dailyMap = new Map<string, { day: string; campaign_source: string; campaign_variant: string; leads: number; confirmed: number }>();
+    for (const row of ((peopleRows || []) as Array<PeopleRow & { created_at?: string }>)) {
+      const src = String(row.campaign_source || '').trim();
+      const v = (String(row.campaign_variant || '').toUpperCase() === 'B') ? 'B' : 'A';
+      if (!src) continue;
+      const createdAtIso = (row as { created_at?: string }).created_at ?? new Date().toISOString();
+      const day = toDayKey(createdAtIso);
+      const key = `${day}__${src}__${v}`;
+      if (!dailyMap.has(key)) dailyMap.set(key, { day, campaign_source: src, campaign_variant: v, leads: 0, confirmed: 0 });
+      const agg = dailyMap.get(key)!;
+      agg.leads += 1;
+      if (String(row.status || '') !== 'pre_confirmation') agg.confirmed += 1;
+    }
+    const campaignByDay = Array.from(dailyMap.values())
+      .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : a.campaign_source.localeCompare(b.campaign_source) || a.campaign_variant.localeCompare(b.campaign_variant)))
+      .map((r) => ({
+        ...r,
+        confirmation_rate: r.leads > 0 ? Math.round((r.confirmed / r.leads) * 1000) / 10 : 0,
+      }));
+
+    // 7) Session blockers breakdown (last 30 days)
     const since30Iso = new Date(today.getTime() - 29 * 24 * 60 * 60 * 1000).toISOString();
     const { data: blockersRows, error: blockersErr } = await supabaseServer
       .from('session_blockers')
@@ -310,9 +360,9 @@ export async function GET(req: Request) {
 
     const data = {
       totals: {
-        therapists: therapistsRes.count || 0,
-        clients: clientsRes.count || 0,
-        matches: matchesTotalRes.count || 0,
+        therapists: therapistsRes.error ? 0 : (therapistsRes.count || 0),
+        clients: clientsRes.error ? 0 : (clientsRes.count || 0),
+        matches: matchesTotalRes.error ? 0 : (matchesTotalRes.count || 0),
       },
       matchesLastNDays: {
         days,
@@ -323,6 +373,9 @@ export async function GET(req: Request) {
       responseTimes,
       topCities,
       therapistAcceptance,
+      // Campaign performance (patient leads with campaign attribution)
+      campaignStats: campaignStats,
+      campaignByDay,
       blockers: {
         last30Days: {
           total: totalBlockers,
@@ -333,7 +386,81 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ data, error: null }, { status: 200 });
   } catch (e) {
-    await logError('admin.api.stats', e, { stage: 'exception' });
-    return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });
+    // Best-effort fallback: try to at least return campaign aggregates so the dashboard remains usable
+    try {
+      await logError('admin.api.stats', e, { stage: 'exception' });
+      const url = new URL(req.url);
+      const daysRaw = url.searchParams.get('days') || '7';
+      let days = Number.parseInt(daysRaw, 10);
+      if (!Number.isFinite(days) || days <= 0) days = 7;
+      if (days > 30) days = 30;
+      const today = startOfDayUTC(new Date());
+      const sinceIso = new Date(today.getTime() - (days - 1) * 24 * 60 * 60 * 1000).toISOString();
+
+      type PeopleRow = { status?: string | null; campaign_source?: string | null; campaign_variant?: string | null };
+      const { data: peopleRows } = await supabaseServer
+        .from('people')
+        .select('status, campaign_source, campaign_variant, type, created_at')
+        .eq('type', 'patient')
+        .not('campaign_source', 'is', null)
+        .gte('created_at', sinceIso)
+        .limit(50000);
+
+      const cmap = new Map<string, { campaign_source: string; campaign_variant: string; leads: number; confirmed: number }>();
+      for (const row of ((peopleRows || []) as Array<PeopleRow>)) {
+        const src = String(row.campaign_source || '').trim();
+        const v = (String(row.campaign_variant || '').toUpperCase() === 'B') ? 'B' : 'A';
+        if (!src) continue;
+        const key = `${src}__${v}`;
+        if (!cmap.has(key)) cmap.set(key, { campaign_source: src, campaign_variant: v, leads: 0, confirmed: 0 });
+        const agg = cmap.get(key)!;
+        agg.leads += 1;
+        if (String(row.status || '') !== 'pre_confirmation') agg.confirmed += 1;
+      }
+      const campaignStats = Array.from(cmap.values())
+        .sort((a, b) => b.leads - a.leads)
+        .map((r) => ({
+          ...r,
+          confirmation_rate: r.leads > 0 ? Math.round((r.confirmed / r.leads) * 1000) / 10 : 0,
+        }));
+
+      const toDayKey = (iso: string) => startOfDayUTC(new Date(iso)).toISOString().slice(0, 10);
+      const dailyMap = new Map<string, { day: string; campaign_source: string; campaign_variant: string; leads: number; confirmed: number }>();
+      for (const row of ((peopleRows || []) as Array<PeopleRow & { created_at?: string }>)) {
+        const src = String(row.campaign_source || '').trim();
+        const v = (String(row.campaign_variant || '').toUpperCase() === 'B') ? 'B' : 'A';
+        if (!src) continue;
+        const createdAtIso = (row as { created_at?: string }).created_at ?? new Date().toISOString();
+        const day = toDayKey(createdAtIso);
+        const key = `${day}__${src}__${v}`;
+        if (!dailyMap.has(key)) dailyMap.set(key, { day, campaign_source: src, campaign_variant: v, leads: 0, confirmed: 0 });
+        const agg = dailyMap.get(key)!;
+        agg.leads += 1;
+        if (String(row.status || '') !== 'pre_confirmation') agg.confirmed += 1;
+      }
+      const campaignByDay = Array.from(dailyMap.values())
+        .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : a.campaign_source.localeCompare(b.campaign_source) || a.campaign_variant.localeCompare(b.campaign_variant)))
+        .map((r) => ({
+          ...r,
+          confirmation_rate: r.leads > 0 ? Math.round((r.confirmed / r.leads) * 1000) / 10 : 0,
+        }));
+
+      const data = {
+        totals: { therapists: 0, clients: 0, matches: 0 },
+        matchesLastNDays: { days, series: [] as Array<{ date: string; count: number }> },
+        funnelByDay: [] as Array<{ day: string; leads: number; viewed_profiles: number; selections: number }>,
+        leadQuality: [] as Array<{ key: string; count: number }>,
+        responseTimes: { buckets: [] as Array<{ bucket: string; count: number }>, avgHours: 0 },
+        topCities: [] as Array<{ city: string; count: number }>,
+        therapistAcceptance: { lastNDays: { accepted: 0, declined: 0, rate: 0 } },
+        campaignStats,
+        campaignByDay,
+        blockers: { last30Days: { total: 0, breakdown: [] as Array<{ reason: string; count: number; percentage: number }> } },
+      };
+      return NextResponse.json({ data, error: null }, { status: 200 });
+    } catch (secondary) {
+      await logError('admin.api.stats', secondary, { stage: 'exception_fallback' });
+      return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });
+    }
   }
 }

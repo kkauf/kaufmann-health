@@ -81,6 +81,49 @@ export default function TherapieFindenPage() {
         </div>
       </section>
 
+      {/* EARTH-143: Discreet self-pay therapy (no insurance record) */}
+      <section aria-labelledby="no-insurance" className="mt-12 sm:mt-16">
+        <div className="rounded-2xl border bg-white p-6 sm:p-8">
+          <h2 id="no-insurance" className="text-2xl font-semibold">Diskrete Therapie ohne Krankenkasseneintrag</h2>
+          <p className="mt-2 max-w-3xl text-gray-700">Ihre mentale Gesundheit, Ihre Privatsphäre.</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <Card className="transition-all duration-200">
+              <CardHeader className="flex items-center gap-3">
+                <div className="rounded-xl bg-slate-100 p-2 text-slate-700">
+                  <Lock className="h-5 w-5" />
+                </div>
+                <CardTitle className="font-medium">Komplette Privatsphäre</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>Keine S‑Nummer, kein Eintrag bei der Krankenkasse, keine ICD‑10‑Diagnose in Ihrer Kassenakte.</CardDescription>
+              </CardContent>
+            </Card>
+            <Card className="transition-all duration-200">
+              <CardHeader className="flex items-center gap-3">
+                <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <CardTitle className="font-medium">Karrierefreundlich</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>Relevanz für Verbeamtung sowie Lebens‑/Berufsunfähigkeitsversicherung. Beliebt bei Pilot:innen, Polizei, Führungskräften.</CardDescription>
+              </CardContent>
+            </Card>
+            <Card className="transition-all duration-200">
+              <CardHeader className="flex items-center gap-3">
+                <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
+                  <Clock className="h-5 w-5" />
+                </div>
+                <CardTitle className="font-medium">Sofort starten</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>Keine 3–9 Monate Wartezeit, kein Gutachterverfahren – direkte Terminvereinbarung.</CardDescription>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
       {/* Trust Indicators */}
       <section aria-labelledby="trust" className="mt-12 sm:mt-16">
         <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-6 sm:p-8">
@@ -272,6 +315,16 @@ export default function TherapieFindenPage() {
                 id: 'selbstzahler',
                 question: 'Warum Selbstzahler?',
                 answer: 'Als Selbstzahler erhalten Sie sofort einen Termin, bestimmen selbst über Ihre Therapie und vermeiden Diagnosen in Ihrer Krankenakte. Viele Zusatzversicherungen erstatten Heilpraktiker-Leistungen.',
+              },
+              {
+                id: 'kk-eintrag',
+                question: 'Wird die Therapie bei meiner Krankenkasse dokumentiert?',
+                answer: 'Nein. Unsere Therapeut:innen rechnen nicht über die gesetzliche Krankenkasse ab (keine S‑Nummer). Es erfolgt kein Eintrag in Ihrer Krankenakte und keine ICD‑10‑Diagnose bei der Kasse.',
+              },
+              {
+                id: 'warum-diskret',
+                question: 'Warum ist Selbstzahler‑Therapie diskreter?',
+                answer: 'Ohne Kassenabrechnung bleibt Ihre Therapie privat. Das ist besonders relevant für Verbeamtung sowie Lebens‑/Berufsunfähigkeitsversicherung. Viele Menschen in sensiblen Berufen (Pilot:innen, Polizei, Führungskräfte) wählen deshalb bewusst die Selbstzahler‑Option.',
               },
               {
                 id: 'koerperorientiert',
