@@ -7,9 +7,14 @@ import TherapistPreview from "@/components/TherapistPreview";
 import { supabaseServer } from "@/lib/supabase-server";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import ExitIntentModal from "@/components/ExitIntentModal";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageCircle, UserCheck, PhoneCall } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import CtaLink from "@/components/CtaLink";
+import TherapyModalityExplanations from "@/components/TherapyModalityExplanations";
+import CheckList from "@/components/CheckList";
+import { MessageCircle, UserCheck, PhoneCall, ShieldCheck, Lock } from "lucide-react";
 import VariantGate from "@/components/VariantGate";
+import { COOKIES_ENABLED } from "@/lib/config";
 
 export const revalidate = 3600;
 
@@ -101,21 +106,84 @@ export default async function AnkommenInDirPage() {
     },
   ];
 
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((f) => ({
+      "@type": "Question",
+      name: f.question,
+      acceptedAnswer: { "@type": "Answer", text: f.answer },
+    })),
+  } as const;
+
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: "Kaufmann Health",
+    url: `${baseUrl}/ankommen-in-dir`,
+    image: `${baseUrl}/images/color-patterns.png`,
+    description:
+      "Körperorientierte Therapie online – persönlich kuratiert. NARM, Somatic Experiencing, Hakomi, Core Energetics.",
+    areaServed: {
+      "@type": "Country",
+      name: "Deutschland",
+      address: { "@type": "PostalAddress", addressCountry: "DE" },
+    },
+    sameAs: ["https://www.kaufmann-health.de"],
+  } as const;
+
   return (
     <div className="min-h-screen bg-white">
       <main className="mx-auto max-w-7xl px-4 py-10 sm:py-14">
-        <AnkommenHero />
+        <SectionViewTracker location="hero">
+          <AnkommenHero />
+        </SectionViewTracker>
 
         {/* Therapist previews (online focus) */}
+        <SectionViewTracker location="therapist-previews">
         <section aria-labelledby="trust-previews" className="mt-10 sm:mt-14">
           <h2 id="trust-previews" className="text-2xl font-semibold tracking-tight">Deine Begleiter:innen</h2>
-          <p className="mt-2 max-w-2xl text-gray-700">Persönlich ausgewählt. Online verfügbar.</p>
+          <p className="mt-2 max-w-2xl text-gray-700">Persönlich ausgewählt. Online verfügbar. Durchschnittlich 7+ Jahre Erfahrung.</p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {therapists.map((t) => (
               <TherapistPreview key={t.id} therapist={t} />
             ))}
           </div>
         </section>
+        </SectionViewTracker>
+
+        {/* Recognition tailored to wellness seekers */}
+        <section aria-labelledby="recognition-heading" className="mt-10 sm:mt-14">
+          <h2 id="recognition-heading" className="text-2xl font-semibold tracking-tight">Woran du dich wiedererkennst</h2>
+          <div className="mt-5">
+            <CheckList
+              items={[
+                "Nervensystem‑Regulation lernen",
+                "Embodiment statt nur Gespräch",
+                "Traumasensitive Begleitung (NARM, Somatic Experiencing)",
+                "Achtsame Psychotherapie – keine Optimierung",
+                "Für Hochsensible geeignet",
+              ]}
+            />
+          </div>
+        </section>
+
+        {/* Negative qualifier */}
+        <SectionViewTracker location="negative-qualifier">
+          <section aria-labelledby="negative-heading" className="mt-10 sm:mt-14 rounded-2xl border border-rose-100 bg-rose-50/60 p-5 sm:p-6">
+            <h2 id="negative-heading" className="text-2xl font-semibold tracking-tight">Was wir NICHT anbieten</h2>
+            <div className="mt-4">
+              <CheckList
+                variant="negative"
+                items={[
+                  "Kassenabrechnung oder Diagnosen",
+                  "Schnelle Erfolgs‑Hacks",
+                  "Leadership/Performance‑Optimierung",
+                ]}
+              />
+            </div>
+          </section>
+        </SectionViewTracker>
 
         {/* Process flow */}
         <section aria-labelledby="process-heading" className="mt-10 sm:mt-14">
@@ -160,8 +228,58 @@ export default async function AnkommenInDirPage() {
           </div>
         </section>
 
+        {/* Datenschutz & Vertrauen */}
+        <section aria-labelledby="privacy-trust" className="mt-12 sm:mt-16">
+          <div className="rounded-2xl border bg-white p-6 sm:p-8">
+            <h2 id="privacy-trust" className="text-2xl font-semibold">Datenschutz & Vertrauen</h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              <Card className="transition-all duration-200">
+                <CardHeader className="flex items-center gap-3">
+                  <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <CardTitle className="font-medium">Geprüfte Therapeut:innen</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>Wir verifizieren Qualifikationen und Spezialisierungen manuell.</CardDescription>
+                </CardContent>
+              </Card>
+              <Card className="transition-all duration-200">
+                <CardHeader className="flex items-center gap-3">
+                  <div className="rounded-xl bg-slate-100 p-2 text-slate-700">
+                    <Lock className="h-5 w-5" />
+                  </div>
+                  <CardTitle className="font-medium">{COOKIES_ENABLED ? 'Datenschutzfreundlich' : 'Keine Tracking‑Cookies'}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>{COOKIES_ENABLED ? 'Minimales Conversion‑Signal; keine Analytics‑Cookies.' : 'Keine Tracking‑Cookies. Verwendung deiner Angaben nur zur Kontaktaufnahme.'} Details in unserer <a className="underline" href="/datenschutz#cookies">Datenschutzerklärung</a>.</CardDescription>
+                </CardContent>
+              </Card>
+              <Card className="transition-all duration-200">
+                <CardHeader className="flex items-center gap-3">
+                  <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600">
+                    <UserCheck className="h-5 w-5" />
+                  </div>
+                  <CardTitle className="font-medium">Transparente Prozesse</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>DSGVO‑konforme Verarbeitung. Sichere therapeutische Räume.</CardDescription>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
         {/* What to expect */}
         <WhatToExpectSection />
+
+        {/* Modalities explanation */}
+        <section aria-labelledby="modalities-heading" className="mt-10 sm:mt-14">
+          <h2 id="modalities-heading" className="text-2xl font-semibold tracking-tight">Modalitäten erklärt (NARM, Somatic Experiencing, Hakomi, Core Energetics)</h2>
+          <div className="mt-4">
+            <TherapyModalityExplanations />
+          </div>
+        </section>
 
         {/* Pricing note (no tiers) */}
         <SectionViewTracker location="pricing-note">
@@ -178,7 +296,7 @@ export default async function AnkommenInDirPage() {
 
         {/* FAQ */}
         <SectionViewTracker location="faq">
-          <section aria-labelledby="faq-heading" className="mt-10 sm:mt-14">
+          <section aria-labelledby="faq-heading" id="faq" className="mt-10 sm:mt-14">
             <h2 id="faq-heading" className="text-2xl font-semibold tracking-tight">Häufige Fragen</h2>
             <div className="mt-4">
               <FaqAccordion items={faqs} />
@@ -192,12 +310,20 @@ export default async function AnkommenInDirPage() {
             <h2 className="text-2xl font-semibold tracking-tight">Bereit anzukommen?</h2>
             <p className="mt-3 max-w-2xl text-gray-700">Beginne mit einer Empfehlung – persönlich kuratiert und online verfügbar.</p>
             <div className="mt-6">
-              <a href="#top-form" className="inline-flex items-center rounded-md bg-black px-4 py-2 text-white">Passende Therapeut:innen finden</a>
+              <Button asChild size="lg" data-cta="final-primary">
+                <CtaLink href="#top-form" eventType="cta_click" aria-label="Passende Therapeut:innen finden">
+                  Passende Therapeut:innen finden
+                </CtaLink>
+              </Button>
             </div>
             <p className="mt-4 text-sm text-gray-700">Kostenlos & unverbindlich.</p>
           </section>
         </SectionViewTracker>
       </main>
+
+      {/* JSON-LD Schema */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
       <FloatingWhatsApp />
       <ExitIntentModal />

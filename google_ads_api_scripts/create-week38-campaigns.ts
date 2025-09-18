@@ -12,6 +12,92 @@ if (fs.existsSync(envLocalPath)) {
   dotenv.config();
 }
 
+async function ensureSitelinks(customer: any, campaignResource: string, cfg: CampaignConfig) {
+  // Skip in dry run/validate-only
+  if (DRY_RUN || VALIDATE_ONLY) {
+    console.log('  ↪ DRY RUN: would add sitelinks (Preise, FAQ)');
+    return false;
+  }
+  // Check if sitelinks already attached
+  const existing = (await customer.query(
+    `SELECT campaign_asset.resource_name
+     FROM campaign_asset
+     WHERE campaign_asset.campaign = '${campaignResource}'
+       AND campaign_asset.field_type = 'SITELINK'
+     LIMIT 1`
+  )) as any[];
+  if (existing && existing.length > 0) {
+    console.log('  ↪ Skipping sitelinks (already present)');
+    return false;
+  }
+
+  try {
+    // Create sitelink assets
+    const sep = cfg.landing_page.includes('?') ? '&' : '?';
+    const pricingUrl = `${cfg.landing_page}${sep}sl=pricing`;
+    const faqUrl = `${cfg.landing_page}${sep}sl=faq`;
+    const assetsCreate: any = await customer.assets.create([
+      { sitelink_asset: { link_text: 'Preise', final_urls: [pricingUrl] } },
+      { sitelink_asset: { link_text: 'FAQ', final_urls: [faqUrl] } },
+    ]);
+    const createdAssets: string[] = [];
+    const arr = assetsCreate?.results || assetsCreate || [];
+    for (const r of arr) {
+      const rn = r?.resource_name;
+      if (rn) createdAssets.push(rn);
+    }
+    if (createdAssets.length === 0) throw new Error('Sitelink asset creation returned no resource names');
+
+    // Link assets to campaign
+    const payloads = createdAssets.map((asset) => ({
+      asset,
+      campaign: campaignResource,
+      field_type: enums.AssetFieldType.SITELINK,
+    }));
+    const linkRes: any = await customer.campaignAssets.create(payloads);
+    console.log('  ✓ Sitelinks attached to campaign:', linkRes?.results?.length ?? createdAssets.length);
+    return true;
+  } catch (e) {
+    try {
+      console.warn('  ⚠️ Sitelinks skipped due to error:', JSON.stringify(e, null, 2));
+    } catch {
+      console.warn('  ⚠️ Sitelinks skipped due to error:', e);
+    }
+    return false;
+  }
+}
+
+async function ensureSelectiveOptimization(
+  customer: any,
+  campaignResource: string,
+  actionName: string
+) {
+  if (!actionName) return false;
+  // Fetch exact match conversion action
+  const ca = await querySingle(
+    customer,
+    `SELECT conversion_action.resource_name, conversion_action.name
+     FROM conversion_action
+     WHERE conversion_action.status = 'ENABLED' AND conversion_action.name = '${actionName.replace(/'/g, "''")}'
+     LIMIT 1`
+  );
+  const caRes = ca?.conversion_action?.resource_name;
+  if (!caRes) {
+    console.warn(`⚠️  Conversion action not found: ${actionName}`);
+    return false;
+  }
+
+  // Set campaign selective optimization to this action (idempotent update)
+  await customer.campaigns.update([
+    {
+      resource_name: campaignResource,
+      selective_optimization: { conversion_actions: [caRes] },
+    },
+  ]);
+  console.log('  ✓ Linked conversion action (selective optimization):', actionName);
+  return true;
+}
+
 import { GoogleAdsApi, enums, ResourceNames, toMicros, type MutateOperation } from 'google-ads-api';
 import { WEEK38_CONFIG, type CampaignConfig, type KeywordTier } from './campaign-config';
 
@@ -100,6 +186,58 @@ function printPlan(cfg: CampaignConfig) {
   console.log('  Headlines:', cfg.headlines.length, '— Descriptions:', cfg.descriptions.length);
 }
 
+async function preflightCheck(customer: any) {
+  console.log('\nPreflight checks...');
+  // Billing setup
+  const billing = (await customer.query(
+    'SELECT billing_setup.status FROM billing_setup LIMIT 1'
+  )) as any[];
+  if (!billing || billing.length === 0) {
+    throw new Error('❌ No billing setup found!');
+  }
+
+  // Enabled conversion actions (warn if none)
+  const conversions = (await customer.query(
+    "SELECT conversion_action.name FROM conversion_action WHERE conversion_action.status = 'ENABLED'"
+  )) as any[];
+  if (!conversions || conversions.length === 0) {
+    console.warn('⚠️  No active conversion actions found!');
+  }
+
+  // Language constant 'de'
+  const lang = (await customer.query(
+    "SELECT language_constant.resource_name, language_constant.code FROM language_constant WHERE language_constant.code = 'de' LIMIT 1"
+  )) as any[];
+  if (!lang || lang.length === 0) {
+    throw new Error('❌ German language constant not found');
+  }
+  console.log('✅ Preflight checks passed');
+}
+
+async function ensureGermanLanguage(customer: any, campaignResource: string) {
+  const existingLang = await querySingle(
+    customer,
+    `SELECT campaign_criterion.resource_name, campaign_criterion.language.language_constant
+     FROM campaign_criterion
+     WHERE campaign_criterion.campaign = '${campaignResource}'
+       AND campaign_criterion.type = LANGUAGE`
+  );
+  if (existingLang?.campaign_criterion?.language?.language_constant) {
+    return false; // already has a language criterion
+  }
+  const lang = await querySingle(
+    customer,
+    "SELECT language_constant.resource_name FROM language_constant WHERE language_constant.code = 'de' LIMIT 1"
+  );
+  const langRes = lang?.language_constant?.resource_name;
+  if (!langRes) throw new Error('German language constant not found');
+  const res: any = await customer.campaignCriteria.create([
+    { campaign: campaignResource, language: { language_constant: langRes } },
+  ]);
+  console.log('  ✓ Language targeting added (de):', res?.results?.length ?? 1);
+  return true;
+}
+
 async function main() {
   console.log('Week 38 Campaign Creation');
   console.log('Mode:', DRY_RUN ? 'DRY RUN (no changes will be made)' : 'APPLY (will create resources)');
@@ -152,6 +290,23 @@ async function main() {
     const existingCampaignResource: string | null = existing?.campaign?.resource_name || null;
 
     if (VALIDATE_ONLY) {
+      if (existingCampaignResource) {
+        console.log('  ↪ VALIDATE ONLY: campaign exists, validating updates (dates/network)');
+        await customer.campaigns.update([
+          {
+            resource_name: existingCampaignResource,
+            network_settings: {
+              target_google_search: true,
+              target_search_network: false,
+              target_content_network: false,
+              target_partner_search_network: false,
+            },
+            end_date: toYyyymmdd(cfg.schedule.end),
+          },
+        ]);
+        console.log('  ✓ Validation passed for campaign updates');
+        return null;
+      }
       // Build atomic operations with existing budget reuse to avoid duplicate-name validation failures
       const customerId = requireEnv('GOOGLE_ADS_CUSTOMER_ID');
       const budgetName = `${cfg.name} Budget`;
@@ -189,8 +344,12 @@ async function main() {
           campaign_budget: budgetResourceForCampaign,
           network_settings: {
             target_google_search: true,
-            target_search_network: true,
+            target_search_network: false,
+            target_content_network: false,
+            target_partner_search_network: false,
           },
+          start_date: toYyyymmdd(cfg.schedule.start),
+          end_date: toYyyymmdd(cfg.schedule.end),
         },
       });
 
@@ -213,6 +372,20 @@ async function main() {
     let campaignResource = existingCampaignResource;
     if (campaignResource) {
       console.log('  ↪ Using existing campaign:', campaignResource);
+      // Update existing campaign with dates and network settings
+      await customer.campaigns.update([
+        {
+          resource_name: campaignResource,
+          network_settings: {
+            target_google_search: true,
+            target_search_network: false,
+            target_content_network: false,
+            target_partner_search_network: false,
+          },
+          end_date: toYyyymmdd(cfg.schedule.end),
+        },
+      ]);
+      console.log('  ✓ Campaign updated (dates/network)');
     } else {
       const budgetResourceForCampaign = existingBudget?.campaignBudget?.resourceName || existingBudget?.campaign_budget?.resource_name || budgetTemp;
       if (existingBudget) {
@@ -242,8 +415,12 @@ async function main() {
           campaign_budget: budgetResourceForCampaign,
           network_settings: {
             target_google_search: true,
-            target_search_network: true,
+            target_search_network: false,
+            target_content_network: false,
+            target_partner_search_network: false,
           },
+          start_date: toYyyymmdd(cfg.schedule.start),
+          end_date: toYyyymmdd(cfg.schedule.end),
         },
       });
 
@@ -291,14 +468,39 @@ async function main() {
       console.log('  ↪ Skipping campaign criteria (geo/negatives) for existing campaign');
     }
 
+    // 4) Ensure German language targeting for both new and existing campaigns
+    await ensureGermanLanguage(customer, campaignResource);
+
+    // 4b) Ensure sitelinks (Preise, FAQ)
+    await ensureSitelinks(customer, campaignResource, cfg);
+
     // 5) Create ad groups + keywords + ads
     await createAdGroupsKeywordsAndAds(customer, campaignResource, cfg);
+
+    // 6) Optionally link conversion action if env is set
+    const selOptName = process.env.ADS_SELECTIVE_OPTIMIZATION_NAME?.trim();
+    if (selOptName) {
+      await ensureSelectiveOptimization(customer, campaignResource, selOptName);
+    }
 
     return { resource_name: campaignResource, name: cfg.name };
   }
 
+  // Preflight (queries only)
+  await preflightCheck(customer);
+
   await ensureCampaign(WEEK38_CONFIG.wellness);
   await ensureCampaign(WEEK38_CONFIG.depth);
+
+  console.log('\n📊 Campaign Summary:');
+  console.log('━━━━━━━━━━━━━━━━━━━━');
+  console.log('✅ Wellness Campaign: PAUSED - €' + WEEK38_CONFIG.wellness.budget_euros + '/day budget');
+  console.log('✅ Depth Campaign:    PAUSED - €' + WEEK38_CONFIG.depth.budget_euros + '/day budget');
+  console.log('\n⚠️  NEXT STEPS:');
+  console.log('1. Review in Google Ads UI');
+  console.log('2. Check ad previews');
+  console.log('3. Enable campaigns manually');
+  console.log('4. Optionally link conversion action (selective optimization)');
 
   console.log('\nDone.', DRY_RUN ? '(dry run)' : '');
 }
@@ -319,6 +521,7 @@ async function createAdGroupsKeywordsAndAds(customer: any, campaignResourceName:
       `SELECT ad_group.resource_name, ad_group.name FROM ad_group WHERE ad_group.campaign = '${campaignResourceName}' AND ad_group.name = '${adGroupName.replace(/'/g, "''")}' LIMIT 1`
     );
     let adGroupResource: string | null = existingAdGroup?.ad_group?.resource_name || null;
+    let justCreated = false;
     if (adGroupResource) {
       console.log('  ↪ Using existing AdGroup:', adGroupResource);
     } else {
@@ -335,6 +538,7 @@ async function createAdGroupsKeywordsAndAds(customer: any, campaignResourceName:
         adGroupCreate?.results?.[0]?.resource_name || adGroupCreate?.[0]?.resource_name || adGroupCreate?.resource_name;
       if (!adGroupResource) throw new Error('Ad group creation failed: no resource_name');
       console.log('  ✓ AdGroup created:', adGroupResource);
+      justCreated = true;
     }
 
     // Add only missing keywords (phrase match)
@@ -389,15 +593,12 @@ async function createAdGroupsKeywordsAndAds(customer: any, campaignResourceName:
       }
     }
 
-    // Create two RSA variants (A/B) only if no ads exist yet
-    const existingAds = (await customer.query(`
-      SELECT ad_group_ad.resource_name FROM ad_group_ad WHERE ad_group_ad.ad_group = '${adGroupResource}' LIMIT 1
-    `)) as any[];
-    if (!existingAds || existingAds.length === 0) {
+    // Create two RSA variants (A/B) only when we just created the ad group (idempotent)
+    if (justCreated) {
       await createResponsiveSearchAd(customer, adGroupResource!, cfg, 'A');
       await createResponsiveSearchAd(customer, adGroupResource!, cfg, 'B');
     } else {
-      console.log('    ↪ Skipping RSA creation (ads already exist)');
+      console.log('    ↪ Skipping RSA creation (ad group pre-exists)');
     }
   }
 }
@@ -416,10 +617,17 @@ async function createResponsiveSearchAd(
   const variantHeadlines = [...cfg.headlines];
   // Light variant tweak per EARTH-156 (will be clamped)
   if (variant === 'A') variantHeadlines[5] = 'Der nächste Schritt deiner Heilungsreise';
-  else variantHeadlines[5] = 'Schnell starten – keine Warteliste';
+  else variantHeadlines[5] = 'Keine Warteliste – Start heute';
 
   const headlines = sanitizeHeadlines(variantHeadlines);
-  const descriptions = sanitizeDescriptions(cfg.descriptions);
+  // Guard strong-claim descriptions behind variant B
+  const strongPhrases = [/diese\s*woche/i, /heute/i, /sofort/i, /keine\s*warteliste/i];
+  const variantDescriptions = cfg.descriptions.filter((d) => {
+    if (variant === 'B') return true;
+    // For A: exclude strong claims
+    return !strongPhrases.some((re) => re.test(d));
+  });
+  const descriptions = sanitizeDescriptions(variantDescriptions);
 
   const adCreate: any = await customer.adGroupAds.create([
     {

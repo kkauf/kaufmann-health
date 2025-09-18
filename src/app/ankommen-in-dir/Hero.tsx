@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EmailEntryForm } from "@/components/EmailEntryForm";
 import { ShieldCheck, Lock, UserCheck } from "lucide-react";
 import { COOKIES_ENABLED } from "@/lib/config";
+import VariantGate from "@/components/VariantGate";
 
 export default function AnkommenHero() {
   return (
@@ -22,11 +23,18 @@ export default function AnkommenHero() {
             Deutschlandweit • Online
           </div>
 
-          <h1 id="hero-heading" className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
-            Ankommen in dir – auch online
-          </h1>
+          <VariantGate show="A">
+            <h1 id="hero-heading" className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
+              Der nächste Schritt deiner Heilungsreise
+            </h1>
+          </VariantGate>
+          <VariantGate show="B">
+            <h1 id="hero-heading" className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
+              Finde deinen Therapeuten – diese Woche noch
+            </h1>
+          </VariantGate>
           <p className="mt-4 max-w-2xl text-base text-gray-700 sm:text-lg">
-            Körperorientierte Therapie – sorgfältig kuratiert und persönlich empfohlen. Passend zu deinem Weg, ortsunabhängig.
+            Körperorientierte Therapie online – persönlich kuratiert. NARM, Somatic Experiencing, Hakomi, Core Energetics. 80–120€ pro Sitzung.
           </p>
 
           {/* Trust markers */}
@@ -45,7 +53,14 @@ export default function AnkommenHero() {
               <UserCheck className="h-4 w-4 text-indigo-600" />
               Transparente Datenverarbeitung
             </span>
+            <span className="inline-flex items-center gap-2">
+              Sichere therapeutische Räume
+            </span>
           </div>
+
+          <VariantGate show="B">
+            <p className="mt-2 text-xs text-emerald-700">Diese Woche noch Termine möglich</p>
+          </VariantGate>
 
           {/* Compact modality logos */}
           <div className="mt-6 grid grid-cols-2 items-center gap-6 sm:grid-cols-4">
