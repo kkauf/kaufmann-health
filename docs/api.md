@@ -448,7 +448,7 @@ __UI Consistency__: Email templates reuse a small, inline-styled therapist previ
   - Resolves `:uuid` to the patient via `matches.secure_uuid`.
   - Updates the specific match row for `(patient_id, therapist_id)` to `status='patient_selected'`.
   - Sends fire-and-forget emails:
-    - To therapist: selection notification with basic client contact info (name/email/phone if available).
+    - To therapist: privacy-first selection notification with a magic link to `/match/:uuid` (no PII in email). The acceptance page shows preview data only; contact details are revealed after acceptance.
     - To patient: confirmation that the selected therapist will reach out (German copy).
   - Emits event `patient_selected` via `ServerAnalytics`.
 - Responses:
@@ -503,39 +503,23 @@ Notes:
 - Email HTML uses inline styles and the existing `renderTherapistPreviewEmail()` to ensure client compatibility.
 - All email sending is best-effort and logged via the unified logger (`email_sent`, `email_retry`, `email_timeout_retry`).
 
-## EARTH-126: Therapist Action Template (One-Click Client Contact)
-
-### GET /api/track/therapist-action
-
-- Purpose: Tracking redirect used in therapist notification emails to capture one-click actions before opening the user's mail client.
-- Auth: None. Accepts only `mailto:` redirects to avoid open redirect abuse.
-- Query Params:
-  - `action` (string, required): currently `email_clicked`.
-  - `match_id` (uuid, required): `matches.id` for observability and side-effects.
-  - `redirect` (string, required): must start with `mailto:`. This is the actual mailto link with prefilled subject/body.
-- Behavior:
-  - When `action='email_clicked'`, sets `matches.therapist_contacted_at = now()` for the given `match_id` (best-effort).
-  - Emits event `therapist_action_email_clicked` via `ServerAnalytics`.
-  - Issues a 302 redirect to the given `mailto:` link (works universally on desktop/mobile mail clients).
-- Responses:
-  - 302: Redirect to `mailto:` URL (on success)
-  - 400: `{ data: null, error: 'Missing action' | 'Missing match_id' | 'Missing redirect' | 'Invalid redirect' }`
-  - 500: `{ data: null, error: 'Unexpected error' }`
+## Therapist Action Reminders (Privacy‑First)
 
 ### GET /admin/api/matches/therapist-action-reminders
 
-- Purpose: Send a 20-hour reminder to therapists who were selected by a patient but haven’t clicked the email CTA yet.
+- Purpose: Send a 20-hour reminder to therapists who were selected by a patient but haven’t responded yet.
 - Auth: Admin cookie or Cron secret (`x-cron-secret` / `Authorization: Bearer`), or Vercel platform header `x-vercel-cron`.
 - Query Params:
   - `stage`: currently `20h` (window is between 20 and 21 hours after the initial selection event).
 - Behavior:
   - Scans `public.events` for `patient_selected` in the [T-21h, T-20h) window and extracts `match_id`.
   - Skips matches not in `status='patient_selected'` or already having `therapist_contacted_at`.
-  - Sends an email to the therapist with a big CTA button that opens a prefilled `mailto:` message (wrapped via `/api/track/therapist-action`).
+  - Sends an email to the therapist with a magic link to `/match/:uuid` (no PII in email). The acceptance page shows preview only; contact details are revealed after acceptance.
   - Emits `cron_executed` / `cron_completed` / `cron_failed` for observability.
 - Responses:
   - 200: `{ data: { processed, sent }, error: null }`
   - 401/500 on failure.
+
 
 ## EARTH-127: Session Blocker Tracking – Warum werden keine Termine gebucht?
 

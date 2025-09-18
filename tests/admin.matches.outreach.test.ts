@@ -22,9 +22,9 @@ vi.mock('@/lib/email/client', () => {
   } as any;
 });
 
-vi.mock('@/lib/email/templates/therapistOutreach', () => {
+vi.mock('@/lib/email/templates/therapistNotification', () => {
   return {
-    renderTherapistOutreach: vi.fn(() => ({ subject: 'x', html: '<p>x</p>' })),
+    renderTherapistNotification: vi.fn(() => ({ subject: 'x', html: '<p>x</p>' })),
   } as any;
 });
 

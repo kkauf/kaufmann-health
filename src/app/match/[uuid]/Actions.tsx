@@ -115,7 +115,7 @@ export function Actions({
                 {contact.name ? <p>Name: {contact.name}</p> : null}
                 {contact.email ? (
                   <p>
-                    E-Mail:{' '}
+                    E-Mail{' '}
                     <a className="underline" href={`mailto:${contact.email}`}>
                       {contact.email}
                     </a>
@@ -123,7 +123,7 @@ export function Actions({
                 ) : null}
                 {contact.phone ? (
                   <p>
-                    Telefon:{' '}
+                    Telefon{' '}
                     <a className="underline" href={`tel:${contact.phone}`}>
                       {contact.phone}
                     </a>

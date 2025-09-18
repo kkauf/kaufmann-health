@@ -4,7 +4,7 @@ import { logError } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { sendEmail } from '@/lib/email/client';
 import { renderPatientMatchFound } from '@/lib/email/templates/patientUpdates';
-import { renderTherapistSelectionNotification } from '@/lib/email/templates/therapistSelectionNotification';
+import { renderTherapistNotification } from '@/lib/email/templates/therapistNotification';
 import { BASE_URL } from '@/lib/constants';
 
 export const runtime = 'nodejs';
@@ -116,48 +116,32 @@ async function handle(req: Request) {
       const tRow = (therapistRow || null) as TherapistRow | null;
 
       const patientEmail = (pRow?.email || '').trim();
-      const patientName = pRow?.name || null;
-      const patientPhone = pRow?.phone || null;
       const patientMeta: PatientMeta = (pRow?.metadata || {}) as PatientMeta;
       const therapistEmail = (tRow?.email || '').trim();
       const therapistName = [tRow?.first_name || '', tRow?.last_name || ''].join(' ').trim() || null;
 
-      // Notify therapist (if possible)
-      if (therapistEmail) {
-        // Build prefilled mailto link
-        const tFirst = (tRow?.first_name || '').trim();
-        const tLast = (tRow?.last_name || '').trim();
-        const subject = encodeURIComponent(`Terminvereinbarung für Ihre Therapie - ${tFirst} ${tLast}`.trim());
-        const greetName = (patientName || '').split(' ')[0] || (patientName || '');
-        const sessionFee = 80; // default if not in DB
-        const location = patientMeta.session_preference === 'in_person' ? (tRow?.city || 'Praxis (Adresse im Erstkontakt)') : 'Online via Zoom';
-        const bodyRaw = `Liebe/r ${greetName},\n\n` +
-          `vielen Dank, dass Sie mich als Ihre/n Therapeut/in ausgewählt haben. Ich freue mich darauf, Sie auf Ihrem Weg zu begleiten.\n\n` +
-          `Für unser Erstgespräch schlage ich Ihnen folgende Termine vor:\n\n` +
-          `Option 1: [Tag, Datum um Uhrzeit]\n` +
-          `Option 2: [Tag, Datum um Uhrzeit]\n` +
-          `Option 3: [Tag, Datum um Uhrzeit]\n\n` +
-          `Bitte teilen Sie mir mit, welcher Termin für Sie passt, oder schlagen Sie gerne eine Alternative vor.\n\n` +
-          `Das Erstgespräch dauert 50 Minuten und kostet ${sessionFee}€.\n` +
-          `Ort: ${location}\n\n` +
-          `Bei Fragen stehe ich Ihnen gerne zur Verfügung.\n\n` +
-          `Mit freundlichen Grüßen,\n` +
-          `${tFirst} ${tLast}`;
-        const body = encodeURIComponent(bodyRaw);
-        const mailto = `mailto:${encodeURIComponent(patientEmail)}?subject=${subject}&body=${body}`;
-        const ctaUrl = `${BASE_URL}/api/track/therapist-action?action=email_clicked&match_id=${encodeURIComponent(match_id)}&redirect=${encodeURIComponent(mailto)}`;
+      // Build magic link to acceptance page using match secure_uuid
+      let magicUrl: string | null = null;
+      try {
+        const { data: matchRow } = await supabaseServer
+          .from('matches')
+          .select('secure_uuid')
+          .eq('id', match_id)
+          .single();
+        const su = (matchRow as { secure_uuid?: string | null } | null)?.secure_uuid || null;
+        if (su) magicUrl = `${BASE_URL}/match/${su}`;
+      } catch {}
 
-        const notif = renderTherapistSelectionNotification({
+      // Notify therapist (privacy-first): no PII in email, link to acceptance page
+      if (therapistEmail && magicUrl) {
+        const notif = renderTherapistNotification({
+          type: 'selection',
           therapistName,
-          patientName,
-          patientEmail: patientEmail || null,
-          patientPhone,
           patientCity: patientMeta.city || null,
           patientIssue: patientMeta.issue || null,
           patientSessionPreference: patientMeta.session_preference ?? null,
-          ctaUrl,
+          magicUrl,
         });
-        // Await therapist notification to ensure acceptance by provider before returning response
         await sendEmail({
           to: therapistEmail,
           subject: notif.subject,
@@ -169,7 +153,7 @@ async function handle(req: Request) {
 
       // Confirm to patient
       if (patientEmail) {
-        const confirm = renderPatientMatchFound({ patientName, therapistName, specializations: [] });
+        const confirm = renderPatientMatchFound({ patientName: pRow?.name || null, therapistName, specializations: [] });
         void sendEmail({
           to: patientEmail,
           subject: confirm.subject,

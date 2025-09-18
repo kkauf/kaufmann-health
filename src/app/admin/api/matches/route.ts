@@ -3,7 +3,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 import { logError } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
-import { renderTherapistOutreach } from '@/lib/email/templates/therapistOutreach';
+import { renderTherapistNotification } from '@/lib/email/templates/therapistNotification';
 import { BASE_URL } from '@/lib/constants';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { computeMismatches } from '@/lib/leads/match';
@@ -358,7 +358,7 @@ export async function POST(req: Request) {
           const issue = typeof p?.metadata?.issue === 'string' ? p.metadata!.issue : undefined;
 
           if (magicUrl && therapistEmail) {
-            const content = renderTherapistOutreach({ therapistName, city, issueCategory: issue, magicUrl, expiresHours: 72 });
+            const content = renderTherapistNotification({ type: 'outreach', therapistName, patientCity: city, patientIssue: issue, magicUrl, expiresHours: 72 });
             void sendEmail({ to: therapistEmail, subject: content.subject, html: content.html, context: { kind: 'therapist_outreach', match_id: matchId, patient_id, therapist_id: tid } });
             void ServerAnalytics.trackEventFromRequest(req, { type: 'match_outreach_enqueued', source: 'admin.api.matches', props: { match_id: matchId, patient_id, therapist_id: tid } });
           } else {

@@ -5,7 +5,7 @@ const sentEmails: Array<{ to?: string | string[]; subject: string; html?: string
 
 // In-memory data for mocks
 let eventsRows: Array<{ id: string; created_at?: string | null; props?: Record<string, unknown> | null }> = [];
-let matchById: Record<string, { id: string; patient_id: string; therapist_id: string; status?: string | null; therapist_contacted_at?: string | null }> = {};
+let matchById: Record<string, { id: string; patient_id: string; therapist_id: string; status?: string | null; therapist_contacted_at?: string | null; secure_uuid?: string | null }> = {};
 let peopleById: Record<string, { id: string; name?: string | null; email?: string | null; phone?: string | null; metadata?: { city?: string; issue?: string; session_preference?: 'online' | 'in_person' } | null }> = {};
 let therapistsById: Record<string, { id: string; first_name?: string | null; last_name?: string | null; email?: string | null; city?: string | null }> = {};
 
@@ -84,7 +84,7 @@ describe('/admin/api/matches/therapist-action-reminders GET', () => {
     eventsRows = [
       { id: 'e1', created_at: new Date().toISOString(), props: { match_id: 'm1' } },
     ];
-    matchById['m1'] = { id: 'm1', patient_id: 'p1', therapist_id: 't1', status: 'patient_selected', therapist_contacted_at: null };
+    matchById['m1'] = { id: 'm1', patient_id: 'p1', therapist_id: 't1', status: 'patient_selected', therapist_contacted_at: null, secure_uuid: 'secure-abc' };
     peopleById['p1'] = { id: 'p1', name: 'Paula Patient', email: 'p@example.com', phone: '123', metadata: { city: 'Berlin', issue: 'Anxiety', session_preference: 'online' } };
     therapistsById['t1'] = { id: 't1', first_name: 'Thera', last_name: 'Pist', email: 't@example.com', city: 'Berlin' };
 
@@ -97,9 +97,9 @@ describe('/admin/api/matches/therapist-action-reminders GET', () => {
     expect(sentEmails.length).toBe(1);
     expect(sentEmails[0].to).toBe('t@example.com');
     expect(sentEmails[0].subject).toMatch(/Erinnerung/);
-    expect(sentEmails[0].html).toContain('/api/track/therapist-action');
-    // href contains encoded mailto in the redirect param
-    expect(sentEmails[0].html).toMatch(/mailto(%3A|:)/);
+    // Email should link to magic acceptance page, not mailto
+    expect(sentEmails[0].html).toContain('/match/');
+    expect(sentEmails[0].html).not.toMatch(/mailto(%3A|:)/);
   });
 
   it('skips email when therapist already contacted', async () => {

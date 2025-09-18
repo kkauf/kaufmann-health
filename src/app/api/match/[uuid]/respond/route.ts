@@ -108,12 +108,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ data: { status: current }, error: null });
     }
 
-    // Try to update including responded_at if column exists (safe if migration adds it later)
+    // Try to update including responded_at; additionally set therapist_contacted_at when accepted
     let updateError: unknown = null;
     try {
+      const payload: Record<string, unknown> = { status: nextStatus, responded_at: new Date().toISOString() };
+      if (nextStatus === 'accepted') payload.therapist_contacted_at = new Date().toISOString();
       const { error: updErr } = await supabaseServer
         .from('matches')
-        .update({ status: nextStatus, responded_at: new Date().toISOString() })
+        .update(payload)
         .eq('id', m.id);
       updateError = updErr;
     } catch (e) {
@@ -127,9 +129,11 @@ export async function POST(req: Request) {
     })();
     if (missingRespondedAt) {
       // Retry without the optional column
+      const payload2: Record<string, unknown> = { status: nextStatus };
+      if (nextStatus === 'accepted') payload2.therapist_contacted_at = new Date().toISOString();
       const { error: updErr2 } = await supabaseServer
         .from('matches')
-        .update({ status: nextStatus })
+        .update(payload2)
         .eq('id', m.id);
       if (updErr2) updateError = updErr2; else updateError = null;
     }

@@ -3,7 +3,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 import { logError, track } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
-import { renderTherapistSelectionNotification } from '@/lib/email/templates/therapistSelectionNotification';
+import { renderTherapistNotification } from '@/lib/email/templates/therapistNotification';
 import { BASE_URL } from '@/lib/constants';
 
 export const runtime = 'nodejs';
@@ -126,46 +126,35 @@ export async function GET(req: Request) {
       const pRow = (patientRow || null) as PatientRow | null;
       const tRow = (therapistRow || null) as TherapistRow | null;
 
-      const patientEmail = (pRow?.email || '').trim();
-      const patientName = pRow?.name || null;
-      const patientPhone = pRow?.phone || null;
       const patientMeta: PatientMeta = (pRow?.metadata || {}) as PatientMeta;
       const therapistEmail = (tRow?.email || '').trim();
       const therapistFirst = (tRow?.first_name || '').trim();
       const therapistLast = (tRow?.last_name || '').trim();
       const therapistName = [therapistFirst, therapistLast].join(' ').trim() || null;
 
-      if (!therapistEmail || !patientEmail) continue;
+      if (!therapistEmail) continue;
 
-      // Build prefilled mailto link
-      const subject = encodeURIComponent(`Terminvereinbarung für Ihre Therapie - ${therapistFirst} ${therapistLast}`.trim());
-      const greetName = (patientName || '').split(' ')[0] || (patientName || '');
-      const sessionFee = 80; // default if not in DB
-      const location = patientMeta.session_preference === 'in_person' ? (tRow?.city || 'Praxis (Adresse im Erstkontakt)') : 'Online via Zoom';
-      const bodyRaw = `Liebe/r ${greetName},\n\n` +
-        `Sie hatten mich als Ihre/n Therapeut/in ausgewählt. Ich möchte Ihnen zeitnah Termine vorschlagen.\n\n` +
-        `Für unser Erstgespräch schlage ich Ihnen folgende Termine vor:\n\n` +
-        `Option 1: [Tag, Datum um Uhrzeit]\n` +
-        `Option 2: [Tag, Datum um Uhrzeit]\n` +
-        `Option 3: [Tag, Datum um Uhrzeit]\n\n` +
-        `Bitte teilen Sie mir mit, welcher Termin für Sie passt, oder schlagen Sie gerne eine Alternative vor.\n\n` +
-        `Das Erstgespräch dauert 50 Minuten und kostet ${sessionFee}€.\n` +
-        `Ort: ${location}\n\n` +
-        `Mit freundlichen Grüßen,\n` +
-        `${therapistFirst} ${therapistLast}`;
-      const body = encodeURIComponent(bodyRaw);
-      const mailto = `mailto:${encodeURIComponent(patientEmail)}?subject=${subject}&body=${body}`;
-      const ctaUrl = `${BASE_URL}/api/track/therapist-action?action=email_clicked&match_id=${encodeURIComponent(match_id)}&redirect=${encodeURIComponent(mailto)}`;
+      // Build magic link to acceptance page using secure_uuid
+      let magicUrl: string | null = null;
+      try {
+        const { data: matchRow } = await supabaseServer
+          .from('matches')
+          .select('secure_uuid')
+          .eq('id', match_id)
+          .maybeSingle();
+        const su = (matchRow as { secure_uuid?: string | null } | null)?.secure_uuid || null;
+        if (su) magicUrl = `${BASE_URL}/match/${su}`;
+      } catch {}
 
-      const notif = renderTherapistSelectionNotification({
+      if (!magicUrl) continue;
+
+      const notif = renderTherapistNotification({
+        type: 'reminder',
         therapistName,
-        patientName,
-        patientEmail,
-        patientPhone,
         patientCity: patientMeta.city || null,
         patientIssue: patientMeta.issue || null,
         patientSessionPreference: patientMeta.session_preference ?? null,
-        ctaUrl,
+        magicUrl,
         subjectOverride: '⚠️ Erinnerung: Klient wartet auf Ihre Antwort',
       });
 
