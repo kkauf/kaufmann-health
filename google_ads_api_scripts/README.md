@@ -184,3 +184,36 @@ Notes:
 - The script only targets ENABLED SEARCH campaigns.
 - Pauses use the official API: `campaign.status = PAUSED`.
 - Start with dry-run and `--nameLike` to scope changes, then apply.
+
+## Campaign Creation (Week 38 template)
+
+`create-week38-campaigns.ts` — creates two Search campaigns from a typed config in `campaign-config.ts`.
+
+Commands
+
+```bash
+# Validate only (no writes)
+npm run ads:create:dry
+
+# Apply changes (creates resources)
+npm run ads:create
+```
+
+What it does
+- Idempotent by campaign name (reuses budget if present; updates dates/network on existing campaign)
+- Creates with status PAUSED and Search-only network (no partners/content)
+- Adds Germany location targeting and German language
+- Adds 2 sitelinks (Preise, FAQ) when not already present
+- Creates AdGroups per keyword tier and adds missing keywords (phrase match)
+- Creates 2 RSA variants (A/B); landing pages get `?v=A` or `?v=B`
+- Optional: links a conversion action for selective optimization if `ADS_SELECTIVE_OPTIMIZATION_NAME` is set
+
+Configuration
+- Edit `campaign-config.ts` to change names, budgets, schedules, keywords, negatives, headlines, and descriptions
+- Current template:
+  - CONSCIOUS WELLNESS SEEKERS – Week 38 (budget €200/day, landing `/ankommen-in-dir`)
+  - DEPTH SEEKERS – Week 38 (budget €100/day, landing `/wieder-lebendig`)
+
+Safety
+- `npm run ads:create:dry` enables validate-only mode (no writes)
+- `npm run ads:create` performs preflight checks (billing setup, language constant) and then applies changes
