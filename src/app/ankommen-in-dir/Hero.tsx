@@ -19,8 +19,13 @@ export default function AnkommenHero() {
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Left: copy */}
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
-            Deutschlandweit • Online
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+              Deutschlandweit • Online
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+              Keine Warteliste
+            </div>
           </div>
 
           <VariantGate show="A">
@@ -58,6 +63,9 @@ export default function AnkommenHero() {
             </span>
           </div>
 
+          <VariantGate show="A">
+            <p className="mt-2 text-xs text-emerald-700">Starte innerhalb von 7 Tagen</p>
+          </VariantGate>
           <VariantGate show="B">
             <p className="mt-2 text-xs text-emerald-700">Diese Woche noch Termine möglich</p>
           </VariantGate>

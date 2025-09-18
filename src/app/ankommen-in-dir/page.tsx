@@ -23,7 +23,7 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.kaufmann-health
 export const metadata: Metadata = {
   title: "Ankommen in dir – Körperorientierte Therapie online | Kaufmann Health",
   description:
-    "Körperorientierte Therapie – persönlich kuratiert und online verfügbar, deutschlandweit. Passend zu deinem Weg.",
+    "Körperorientierte Therapie – persönlich kuratiert und online verfügbar, deutschlandweit. Embodiment & Nervensystem‑Regulation.",
   alternates: { canonical: `${baseUrl}/ankommen-in-dir` },
   openGraph: {
     title: "Ankommen in dir – Körperorientierte Therapie online",
@@ -87,7 +87,7 @@ export default async function AnkommenInDirPage() {
     {
       id: 'online-works',
       question: 'Funktioniert körperorientierte Therapie online?',
-      answer: 'Ja. Wir arbeiten sicher mit Fokus auf Körperwahrnehmung, Regulation und Präsenz – auch online.',
+      answer: 'Absolut! Wir arbeiten sicher mit Fokus auf Körperwahrnehmung, Regulation und Präsenz – auch online.',
     },
     {
       id: 'coaching',
@@ -97,12 +97,12 @@ export default async function AnkommenInDirPage() {
     {
       id: 'frequency',
       question: 'Wie oft soll ich kommen?',
-      answer: 'Empfehlung: 1× pro Woche für 6–10 Sitzungen. Danach Integration im eigenen Rhythmus.',
+      answer: 'Du kommst ganz nach deinem Wunsch. Empfehlung: 1× pro Woche für 6–10 Sitzungen. Danach Integration im eigenen Rhythmus.',
     },
     {
       id: 'modalities',
-      question: 'Kann ich Methoden wählen (NARM/Hakomi/SE)?',
-      answer: 'Ja. Wir empfehlen passend zu deinem Fokus. Du entscheidest, was dich am meisten anspricht.',
+      question: 'Kann ich Methoden wählen (Narm/Hakomi/Somatic Experiencing/Core Energetics)?',
+      answer: 'Absolut!. Wir empfehlen passend zu deinem Fokus. Du entscheidest, was dich am meisten anspricht.',
     },
   ];
 
@@ -143,7 +143,7 @@ export default async function AnkommenInDirPage() {
         <SectionViewTracker location="therapist-previews">
         <section aria-labelledby="trust-previews" className="mt-10 sm:mt-14">
           <h2 id="trust-previews" className="text-2xl font-semibold tracking-tight">Deine Begleiter:innen</h2>
-          <p className="mt-2 max-w-2xl text-gray-700">Persönlich ausgewählt. Online verfügbar. Durchschnittlich 7+ Jahre Erfahrung.</p>
+          <p className="mt-2 max-w-2xl text-gray-700">Persönlich ausgewählt. Online verfügbar. Durchschnittlich 7+ Jahre Erfahrung. Termine innerhalb von 7 Tagen.</p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {therapists.map((t) => (
               <TherapistPreview key={t.id} therapist={t} />
@@ -153,6 +153,7 @@ export default async function AnkommenInDirPage() {
         </SectionViewTracker>
 
         {/* Recognition tailored to wellness seekers */}
+        <SectionViewTracker location="recognition">
         <section aria-labelledby="recognition-heading" className="mt-10 sm:mt-14">
           <h2 id="recognition-heading" className="text-2xl font-semibold tracking-tight">Woran du dich wiedererkennst</h2>
           <div className="mt-5">
@@ -160,6 +161,7 @@ export default async function AnkommenInDirPage() {
               items={[
                 "Nervensystem‑Regulation lernen",
                 "Embodiment statt nur Gespräch",
+                "Therapie für Körper und Seele",
                 "Traumasensitive Begleitung (NARM, Somatic Experiencing)",
                 "Achtsame Psychotherapie – keine Optimierung",
                 "Für Hochsensible geeignet",
@@ -167,6 +169,7 @@ export default async function AnkommenInDirPage() {
             />
           </div>
         </section>
+        </SectionViewTracker>
 
         {/* Negative qualifier */}
         <SectionViewTracker location="negative-qualifier">
@@ -186,7 +189,8 @@ export default async function AnkommenInDirPage() {
         </SectionViewTracker>
 
         {/* Process flow */}
-        <section aria-labelledby="process-heading" className="mt-10 sm:mt-14">
+        <SectionViewTracker location="process">
+        <section aria-labelledby="process-heading" id="process" className="mt-10 sm:mt-14">
           <h2 id="process-heading" className="text-2xl font-semibold tracking-tight">So funktioniert&#39;s</h2>
           <div className="mt-6 grid gap-6 sm:grid-cols-3">
             <Card className="group relative overflow-hidden transition-all duration-200">
@@ -227,6 +231,7 @@ export default async function AnkommenInDirPage() {
             </Card>
           </div>
         </section>
+        </SectionViewTracker>
 
         {/* Datenschutz & Vertrauen */}
         <section aria-labelledby="privacy-trust" className="mt-12 sm:mt-16">
@@ -275,7 +280,6 @@ export default async function AnkommenInDirPage() {
 
         {/* Modalities explanation */}
         <section aria-labelledby="modalities-heading" className="mt-10 sm:mt-14">
-          <h2 id="modalities-heading" className="text-2xl font-semibold tracking-tight">Modalitäten erklärt (NARM, Somatic Experiencing, Hakomi, Core Energetics)</h2>
           <div className="mt-4">
             <TherapyModalityExplanations />
           </div>
@@ -288,6 +292,10 @@ export default async function AnkommenInDirPage() {
             <p className="mt-3 max-w-2xl text-gray-700">
               Die Preise legen die Therapeut:innen selbst fest. In der Regel 80–120€ pro 60 Minuten. Du besprichst den genauen Satz direkt mit deiner Therapeut:in.
             </p>
+            <ul className="mt-3 list-disc pl-5 text-gray-700 space-y-1">
+              <li>Keine Kassenabrechnung, keine Diagnosen</li>
+              <li>Direkt starten – keine Warteliste</li>
+            </ul>
             <VariantGate show="B">
               <p className="mt-3 text-sm text-gray-600">Antwort in der Regel innerhalb von 24 Stunden.</p>
             </VariantGate>
@@ -316,6 +324,7 @@ export default async function AnkommenInDirPage() {
                 </CtaLink>
               </Button>
             </div>
+            <VariantGate show="B"><p className="mt-3 text-sm text-gray-600">Noch 3 Therapeut:innen mit freien Terminen diese Woche.</p></VariantGate>
             <p className="mt-4 text-sm text-gray-700">Kostenlos & unverbindlich.</p>
           </section>
         </SectionViewTracker>
