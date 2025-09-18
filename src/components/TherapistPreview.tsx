@@ -136,9 +136,9 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
   const isAdmin = variant === "admin";
 
   return (
-    <Card className={cn(isAdmin ? "p-3" : "p-4", className)}>
-      <CardContent className={cn("p-0", isAdmin ? "" : "")}>
-        <div className={cn("flex items-start gap-4", isAdmin ? "gap-3" : "")}>
+    <Card className={cn(isAdmin ? "p-3" : "p-4", "h-full", className)}>
+      <CardContent className={cn("p-0 h-full", isAdmin ? "" : "")}>
+        <div className={cn("flex items-start gap-4 h-full", isAdmin ? "gap-3" : "")}>
           <Avatar className={cn(isAdmin ? "h-12 w-12" : "h-16 w-16")}
             aria-label={`${therapist.first_name} ${therapist.last_name}`}
           >
@@ -155,9 +155,11 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
             )}
           </Avatar>
 
-          <div className="min-w-0 flex-1">
-            <div className={cn("flex items-center gap-2 flex-wrap", isAdmin ? "gap-2" : "gap-3")}> 
-              <div className={cn("truncate font-semibold", isAdmin ? "text-sm" : "text-base")}>{therapist.first_name} {therapist.last_name}</div>
+          <div className="min-w-0 flex-1 flex flex-col">
+            {/* Name */}
+            <div className={cn("truncate font-semibold", isAdmin ? "text-sm" : "text-base")}>{therapist.first_name} {therapist.last_name}</div>
+            {/* Badges on separate row for consistent vertical rhythm */}
+            <div className={cn("mt-1 flex items-center gap-2 flex-wrap", isAdmin ? "gap-2" : "gap-2")}> 
               {(() => {
                 const max = isAdmin ? 2 : 3;
                 const shown = badgeItems.slice(0, max);
@@ -165,15 +167,16 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
                 return (
                   <>
                     {shown.map((b) => (
-                      <Badge key={b.key} className={cn(isAdmin ? "text-[10px] px-1.5 py-0" : "px-2.5 py-0.5 text-[11px] tracking-wide", "border-transparent text-white")} style={{ backgroundColor: b.color }}>{b.label}</Badge>
+                      <Badge key={b.key} className={cn(isAdmin ? "text-[10px] px-1.5 py-0" : "px-2 py-0.5 text-[11px] tracking-wide", "border-transparent text-white")} style={{ backgroundColor: b.color }}>{b.label}</Badge>
                     ))}
                     {extra > 0 && (
-                      <Badge variant="secondary" className={cn(isAdmin ? "text-[10px] px-1.5 py-0" : "px-2.5 py-0.5 text-[11px]")}>+{extra}</Badge>
+                      <Badge variant="secondary" className={cn(isAdmin ? "text-[10px] px-1.5 py-0" : "px-2 py-0.5 text-[11px]")}>+{extra}</Badge>
                     )}
                   </>
                 );
               })()}
             </div>
+            {/* City */}
             <div className={cn("text-muted-foreground", isAdmin ? "text-xs" : "text-sm")}>{therapist.city}</div>
 
             {isAdmin && (
@@ -212,21 +215,23 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
               </p>
             ) : null}
 
-            {!isAdmin && (
-              <div className={cn("mt-2", isAdmin ? "text-xs" : "text-sm")}
-                   aria-label={therapist.accepting_new ? "Neue Klient:innen: Verfügbar" : "Neue Klient:innen: Keine Kapazität"}
-              >
-                Neue Klient:innen: {therapist.accepting_new ? (
-                  <span className="text-emerald-600 font-medium">✓ Verfügbar</span>
-                ) : (
-                  <span className="text-red-500 font-medium">✕ Derzeit keine Kapazität</span>
-                )}
-              </div>
-            )}
-
-            {actionButton ? (
-              <div className={cn("mt-3", isAdmin ? "mt-2" : "mt-3")}>{actionButton}</div>
-            ) : null}
+            {/* Bottom area pinned: availability + optional action */}
+            <div className="mt-auto pt-2">
+              {!isAdmin && (
+                <div className={cn("", isAdmin ? "text-xs" : "text-sm")}
+                     aria-label={therapist.accepting_new ? "Neue Klient:innen: Verfügbar" : "Neue Klient:innen: Keine Kapazität"}
+                >
+                  Neue Klient:innen: {therapist.accepting_new ? (
+                    <span className="text-emerald-600 font-medium">✓ Verfügbar</span>
+                  ) : (
+                    <span className="text-red-500 font-medium">✕ Derzeit keine Kapazität</span>
+                  )}
+                </div>
+              )}
+              {actionButton ? (
+                <div className={cn("mt-3", isAdmin ? "mt-2" : "mt-3")}>{actionButton}</div>
+              ) : null}
+            </div>
           </div>
         </div>
       </CardContent>

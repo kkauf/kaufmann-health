@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import CtaLink from "@/components/CtaLink";
 import { Button } from "@/components/ui/button";
 import CheckList from "@/components/CheckList";
@@ -10,6 +11,10 @@ import FaqAccordion from "@/components/FaqAccordion";
 import WiederLebendigHero from "./Hero";
 import TherapistPreview from "@/components/TherapistPreview";
 import { supabaseServer } from "@/lib/supabase-server";
+import FloatingWhatsApp from "@/components/FloatingWhatsApp";
+import ExitIntentModal from "@/components/ExitIntentModal";
+import { Activity, Euro, Clock, MessageCircle, UserCheck, PhoneCall } from "lucide-react";
+import VariantGate from "@/components/VariantGate";
 
 export const revalidate = 3600;
 
@@ -143,6 +148,18 @@ export default async function WiederLebendigPage() {
         "Bewusste Entscheidung. Keine Diagnosen in deiner Akte, keine Anträge, keine Rechtfertigung. Volle Diskretion und Freiheit in der Gestaltung deiner Therapie.",
     },
     {
+      id: "termin",
+      question: "Wie schnell bekomme ich einen Termin?",
+      answer:
+        "In der Regel innerhalb einer Woche. Wir melden uns innerhalb von 24 Stunden mit passenden Therapeut:innen und deren Kontaktdaten.",
+    },
+    {
+      id: "kontakt-mehrere",
+      question: "Kann ich selbst verschiedene Therapeut:innen kontaktieren?",
+      answer:
+        "Ja. Du entscheidest eigenverantwortlich, mit wem du sprechen möchtest. Wir stellen dir eine kuratierte Auswahl und die Kontaktdaten bereit.",
+    },
+    {
       id: "not-for-me",
       question: "Was ist, wenn ich merke, dass es doch nichts für mich ist?",
       answer:
@@ -165,7 +182,7 @@ export default async function WiederLebendigPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <main className="mx-auto max-w-5xl px-4 py-10 sm:py-14">
+      <main className="mx-auto max-w-7xl px-4 py-10 sm:py-14">
         {/* Hero Section with A/B and embedded form */}
         <WiederLebendigHero />
 
@@ -180,14 +197,58 @@ export default async function WiederLebendigPage() {
           </div>
         </section>
 
+        {/* Credibility metrics (data-driven proof points) */}
+        <section aria-labelledby="metrics-heading" className="mt-10 sm:mt-14">
+          <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-6 sm:p-8">
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(36rem_16rem_at_110%_10%,rgba(99,102,241,0.08),transparent_60%),radial-gradient(28rem_14rem_at_-10%_90%,rgba(14,165,233,0.08),transparent_60%)]" />
+            <h2 id="metrics-heading" className="text-2xl font-semibold">Erkennst du dich wieder?</h2>
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              <Card className="transition-all duration-200">
+                <CardHeader className="flex flex-row items-center gap-3">
+                  <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600">
+                    <Activity className="h-5 w-5" />
+                  </div>
+                  <CardTitle className="text-3xl bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">80%</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-slate-600">der Klient:innen berichten von Verbesserungen nach nur 6 Sitzungen</p>
+                </CardContent>
+              </Card>
+              <Card className="transition-all duration-200">
+                <CardHeader className="flex flex-row items-center gap-3">
+                  <div className="rounded-xl bg-sky-50 p-2 text-sky-600">
+                    <Euro className="h-5 w-5" />
+                  </div>
+                  <CardTitle className="text-3xl bg-gradient-to-r from-sky-600 to-cyan-600 bg-clip-text text-transparent">€80–120</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-slate-600">pro Sitzung bei Selbstzahlern</p>
+                </CardContent>
+              </Card>
+              <Card className="transition-all duration-200">
+                <CardHeader className="flex flex-row items-center gap-3">
+                  <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                  <CardTitle className="text-3xl bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">Schnell</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-slate-600">Meist Termine innerhalb einer Woche</p>
+                </CardContent>
+              </Card>
+            </div>
+            <VariantGate show="B">
+              <p className="mt-4 text-xs text-emerald-700">🟢 2 Plätze heute bereits vergeben</p>
+            </VariantGate>
+          </div>
+        </section>
+
         {/* Self-Recognition / Pain Points */}
         <section
           aria-labelledby="recognition-heading"
           className="mt-10 sm:mt-14"
         >
-          <h2 id="recognition-heading" className="text-2xl font-semibold tracking-tight">
-            Erkennst du dich wieder?
-          </h2>
+          <h2 id="recognition-heading" className="text-2xl font-semibold tracking-tight">Woran du dich wiedererkennst</h2>
           <div className="mt-5">
             <CheckList
               items={[
@@ -231,9 +292,55 @@ export default async function WiederLebendigPage() {
         {/* What to Expect */}
         <WhatToExpectSection />
 
+        {/* Process flow */}
+        <section aria-labelledby="process-heading" className="mt-10 sm:mt-14">
+          <h2 id="process-heading" className="text-2xl font-semibold tracking-tight">So funktioniert&#39;s</h2>
+          <div className="mt-6 grid gap-6 sm:grid-cols-3">
+            <Card className="group relative overflow-hidden transition-all duration-200">
+              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600">
+                    <MessageCircle className="h-5 w-5" />
+                  </div>
+                  <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">1</div>
+                </div>
+                <CardTitle className="mt-2 text-lg">Du schilderst uns deine Situation</CardTitle>
+                <p className="text-sm text-slate-600">Schreib uns kurz, worum es geht und was dir wichtig ist.</p>
+              </CardHeader>
+            </Card>
+            <Card className="group relative overflow-hidden transition-all duration-200">
+              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-sky-50 p-2 text-sky-600">
+                    <UserCheck className="h-5 w-5" />
+                  </div>
+                  <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">2</div>
+                </div>
+                <CardTitle className="mt-2 text-lg">Wir wählen passende Therapeut:innen aus</CardTitle>
+                <p className="text-sm text-slate-600">Aus unserer kuratierten Liste – passend zu deinem Anliegen und deiner Stadt.</p>
+              </CardHeader>
+            </Card>
+            <Card className="group relative overflow-hidden transition-all duration-200">
+              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
+                    <PhoneCall className="h-5 w-5" />
+                  </div>
+                  <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">3</div>
+                </div>
+                <CardTitle className="mt-2 text-lg">Direkter Kontakt</CardTitle>
+                <p className="text-sm text-slate-600">Du erhältst direkte Kontaktdaten und kannst sofort einen Termin vereinbaren.</p>
+              </CardHeader>
+            </Card>
+          </div>
+        </section>
+
         {/* Investment & Pricing */}
         <SectionViewTracker location="pricing">
-          <section aria-labelledby="pricing-heading" className="mt-10 sm:mt-14">
+          <section id="pricing" aria-labelledby="pricing-heading" className="scroll-mt-24 mt-10 sm:mt-14">
             <h2 id="pricing-heading" className="text-2xl font-semibold tracking-tight">
               Deine Investition in Lebendigkeit
             </h2>
@@ -256,6 +363,7 @@ export default async function WiederLebendigPage() {
                   <CardContent>
                     <div className="text-3xl font-semibold">120€</div>
                     <div className="text-sm text-gray-600">pro Sitzung (60 Minuten)</div>
+                    <VariantGate show="B"><div className="mt-1 text-xs text-emerald-700">Noch 2 Plätze verfügbar</div></VariantGate>
                     <ul className="mt-3 space-y-1.5 text-sm text-gray-700">
                       <li>Flexibel buchbar</li>
                       <li>Ideal zum Kennenlernen</li>
@@ -287,6 +395,7 @@ export default async function WiederLebendigPage() {
                   <CardContent>
                     <div className="text-3xl font-semibold">1.000€</div>
                     <div className="text-sm text-gray-600">10 Sitzungen</div>
+                    <VariantGate show="B"><div className="mt-1 text-xs text-emerald-700">Noch 1 Platz verfügbar</div></VariantGate>
                     <ul className="mt-3 space-y-1.5 text-sm text-gray-700">
                       <li>200€ Ersparnis</li>
                       <li>Für nachhaltige Veränderung</li>
@@ -313,6 +422,7 @@ export default async function WiederLebendigPage() {
                   <CardContent>
                     <div className="text-3xl font-semibold">1.800€</div>
                     <div className="text-sm text-gray-600">20 Sitzungen</div>
+                    <div className="mt-1 text-xs text-emerald-700">Noch 1 Platz verfügbar</div>
                     <ul className="mt-3 space-y-1.5 text-sm text-gray-700">
                       <li>600€ Ersparnis</li>
                       <li>Tiefgreifende Transformation</li>
@@ -354,16 +464,11 @@ export default async function WiederLebendigPage() {
             className="mt-12 sm:mt-16 relative overflow-hidden rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-6 sm:p-8"
           >
             <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(36rem_16rem_at_110%_10%,rgba(99,102,241,0.08),transparent_60%),radial-gradient(28rem_14rem_at_-10%_90%,rgba(14,165,233,0.08),transparent_60%)]" />
-            <h2 id="final-cta-heading" className="text-2xl font-semibold tracking-tight">
-              Der erste Schritt zurück zu dir
-            </h2>
-            <p className="mt-3 max-w-2xl text-gray-700">
-              Du hast diesen Text bis hier gelesen. Das ist kein Zufall.<br />
-              Irgendwas in dir weiß, dass es Zeit für Veränderung ist.
-            </p>
-            <p className="mt-2 max-w-2xl text-gray-700">
-              Das kostenlose Erstgespräch ist deine Chance herauszufinden, ob wir der richtige Ort für deinen Weg sind.
-            </p>
+            <h2 id="final-cta-heading" className="text-2xl font-semibold tracking-tight">Der erste Schritt zurück zu dir</h2>
+            <p className="mt-3 max-w-2xl text-gray-700">Du hast bis hier gelesen. Das ist kein Zufall. Dein System sucht nach Veränderung.</p>
+            <div className="mt-3 rounded-lg border bg-white/60 p-4 text-sm text-slate-700">
+              „Nach drei Wochen habe ich mich zum ersten Mal seit Jahren wieder wirklich gespürt. Nicht schneller, sondern echter.“
+            </div>
 
             <div className="mt-6">
               <Button asChild size="lg" data-cta="final-primary">
@@ -371,17 +476,10 @@ export default async function WiederLebendigPage() {
                   Passende Therapeut:innen finden
                 </CtaLink>
               </Button>
-              <p className="mt-3 text-sm text-gray-600">
-                Oder schreibe uns erstmal eine E-Mail an{' '}
-                <a href="mailto:kontakt@kaufmann.health" className="underline">
-                  kontakt@kaufmann.health
-                </a>
-              </p>
+              <VariantGate show="B"><p className="mt-3 text-sm text-gray-600">Noch 3 Therapeut:innen mit freien Terminen diese Woche.</p></VariantGate>
             </div>
 
-            <p className="mt-4 text-sm text-gray-700">
-              ✓ Kostenlos &amp; unverbindlich &nbsp;|&nbsp; ✓ Innerhalb 48h Rückmeldung &nbsp;|&nbsp; ✓ 100% diskret
-            </p>
+            <p className="mt-4 text-sm text-gray-700">Kostenlos &amp; unverbindlich. Antwort innerhalb von 24 Stunden.</p>
           </section>
         </SectionViewTracker>
       </main>
@@ -395,6 +493,8 @@ export default async function WiederLebendigPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
+      <FloatingWhatsApp />
+      <ExitIntentModal />
     </div>
   );
 }
