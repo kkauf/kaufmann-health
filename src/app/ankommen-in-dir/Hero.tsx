@@ -72,7 +72,7 @@ export default function AnkommenHero() {
 
         {/* Right: form */}
         <div className="lg:pl-6 scroll-mt-24" id="top-form">
-          <EmailEntryForm />
+          <EmailEntryForm defaultSessionPreference="online" />
         </div>
       </div>
     </section>

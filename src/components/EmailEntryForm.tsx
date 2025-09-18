@@ -9,7 +9,7 @@ import { AlertCircle } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { getOrCreateSessionId } from '@/lib/attribution';
 
-export function EmailEntryForm() {
+export function EmailEntryForm({ defaultSessionPreference }: { defaultSessionPreference?: 'online' | 'in_person' }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -44,7 +44,13 @@ export function EmailEntryForm() {
       const res = await fetch(fetchUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'patient', name, email, session_id: getOrCreateSessionId() }),
+        body: JSON.stringify({
+          type: 'patient',
+          name,
+          email,
+          session_id: getOrCreateSessionId(),
+          ...(defaultSessionPreference ? { session_preference: defaultSessionPreference } : {}),
+        }),
       });
       const json = await res.json();
       if (!res.ok || json?.error) throw new Error(json?.error || 'Fehlgeschlagen');
@@ -66,7 +72,7 @@ export function EmailEntryForm() {
     } finally {
       setSubmitting(false);
     }
-  }, [submitting]);
+  }, [submitting, defaultSessionPreference]);
 
   if (submitted) {
     return (

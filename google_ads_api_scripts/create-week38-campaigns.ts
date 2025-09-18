@@ -12,10 +12,11 @@ if (fs.existsSync(envLocalPath)) {
   dotenv.config();
 }
 
-import { GoogleAdsApi } from 'google-ads-api';
+import { GoogleAdsApi, enums, ResourceNames, toMicros, type MutateOperation } from 'google-ads-api';
 import { WEEK38_CONFIG, type CampaignConfig, type KeywordTier } from './campaign-config';
 
 const DRY_RUN = process.env.DRY_RUN === 'true';
+const VALIDATE_ONLY = process.env.VALIDATE_ONLY === 'true' || DRY_RUN;
 
 function requireEnv(key: string): string {
   const v = process.env[key];
@@ -60,11 +61,36 @@ async function main() {
     client_secret: requireEnv('GOOGLE_ADS_CLIENT_SECRET'),
     developer_token: requireEnv('GOOGLE_ADS_DEVELOPER_TOKEN'),
   });
-  const customer = client.Customer({
-    customer_id: requireEnv('GOOGLE_ADS_CUSTOMER_ID'),
-    login_customer_id: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID,
-    refresh_token: requireEnv('GOOGLE_ADS_REFRESH_TOKEN'),
-  });
+  const hooks: any = {
+    onMutationError: async ({ error }: any) => {
+      try {
+        console.error('Google Ads API mutation error:', JSON.stringify(error, null, 2));
+      } catch {
+        console.error('Google Ads API mutation error:', error);
+      }
+    },
+    onServiceError: async ({ error, method }: any) => {
+      try {
+        console.error('Google Ads API service error in', method, ':', JSON.stringify(error, null, 2));
+      } catch {
+        console.error('Google Ads API service error in', method, ':', error);
+      }
+    },
+  };
+  if (VALIDATE_ONLY) {
+    hooks.onMutationStart = async ({ editOptions }: any) => {
+      editOptions({ validate_only: true });
+    };
+  }
+
+  const customer = client.Customer(
+    {
+      customer_id: requireEnv('GOOGLE_ADS_CUSTOMER_ID'),
+      login_customer_id: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID,
+      refresh_token: requireEnv('GOOGLE_ADS_REFRESH_TOKEN'),
+    },
+    hooks
+  );
 
   // Idempotency: skip if campaign already exists by exact name
   async function ensureCampaign(cfg: CampaignConfig) {
@@ -75,78 +101,147 @@ async function main() {
       customer,
       `SELECT campaign.resource_name, campaign.name, campaign.status FROM campaign WHERE campaign.name = '${cfg.name.replace(/'/g, "''")}' LIMIT 1`
     );
-    if (existing) {
-      console.log(`  ↪ Found existing campaign, skipping create: ${existing.campaign?.name}`);
-      return existing.campaign;
-    }
+    const existingCampaignResource: string | null = existing?.campaign?.resource_name || null;
 
-    if (DRY_RUN) {
-      console.log('  ↪ DRY RUN: would create budget, campaign, criteria, ad groups, keywords, and ads');
+    if (VALIDATE_ONLY) {
+      // Build atomic operations with existing budget reuse to avoid duplicate-name validation failures
+      const customerId = requireEnv('GOOGLE_ADS_CUSTOMER_ID');
+      const budgetName = `${cfg.name} Budget`;
+      const existingBudget = await querySingle(
+        customer,
+        `SELECT campaign_budget.resource_name, campaign_budget.name FROM campaign_budget WHERE campaign_budget.name = '${budgetName.replace(/'/g, "''")}' LIMIT 1`
+      );
+      const budgetTemp = ResourceNames.campaignBudget(customerId, '-1');
+      const ops: MutateOperation<any>[] = [];
+
+      // Include budget create only when a budget with that name doesn't already exist
+      const budgetResourceForCampaign = existingBudget?.campaignBudget?.resourceName || existingBudget?.campaign_budget?.resource_name || budgetTemp;
+      if (!existingBudget) {
+        ops.push({
+          entity: 'campaign_budget',
+          operation: 'create',
+          resource: {
+            resource_name: budgetTemp,
+            name: budgetName,
+            delivery_method: enums.BudgetDeliveryMethod.STANDARD,
+            amount_micros: toMicros(cfg.budget_euros),
+          },
+        });
+      }
+
+      ops.push({
+        entity: 'campaign',
+        operation: 'create',
+        resource: {
+          name: cfg.name,
+          advertising_channel_type: enums.AdvertisingChannelType.SEARCH,
+          status: enums.CampaignStatus.PAUSED,
+          contains_eu_political_advertising: enums.EuPoliticalAdvertisingStatus.DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING,
+          manual_cpc: { enhanced_cpc_enabled: false },
+          campaign_budget: budgetResourceForCampaign,
+          network_settings: {
+            target_google_search: true,
+            target_search_network: true,
+          },
+        },
+      });
+
+      console.log('  ↪ VALIDATE ONLY: validating Budget + Campaign creation (no writes)…');
+      await customer.mutateResources(ops as any);
+      console.log('  ✓ Validation passed for Budget + Campaign');
       return null;
     }
 
-    // 1) Create budget
-    const budgetCreate: any = await customer.campaignBudgets.create([
-      {
-        name: `${cfg.name} Budget`,
-        amount_micros: eurosToMicros(cfg.budget_euros),
-        delivery_method: 'STANDARD',
-      },
-    ]);
-    const budgetResource =
-      budgetCreate?.results?.[0]?.resource_name || budgetCreate?.[0]?.resource_name || budgetCreate?.resource_name;
-    if (!budgetResource) throw new Error('Budget creation failed: no resource_name');
-    console.log('  ✓ Budget created:', budgetResource);
+    // APPLY: Atomic mutate with budget reuse (or use existing)
+    const customerId = requireEnv('GOOGLE_ADS_CUSTOMER_ID');
+    const budgetName = `${cfg.name} Budget`;
+    const existingBudget = await querySingle(
+      customer,
+      `SELECT campaign_budget.resource_name, campaign_budget.name FROM campaign_budget WHERE campaign_budget.name = '${budgetName.replace(/'/g, "''")}' LIMIT 1`
+    );
+    const budgetTemp = ResourceNames.campaignBudget(customerId, '-1');
+    const ops: MutateOperation<any>[] = [];
 
-    // 2) Create campaign (start paused for safety)
-    const campaignCreate: any = await customer.campaigns.create([
-      {
-        name: cfg.name,
-        status: 'PAUSED',
-        advertising_channel_type: 'SEARCH',
-        campaign_budget: budgetResource,
-        bidding_strategy_type: 'MANUAL_CPC',
-        network_settings: {
-          target_google_search: true,
-          target_search_network: false,
-          target_content_network: false,
-          target_partner_search_network: false,
+    let campaignResource = existingCampaignResource;
+    if (campaignResource) {
+      console.log('  ↪ Using existing campaign:', campaignResource);
+    } else {
+      const budgetResourceForCampaign = existingBudget?.campaignBudget?.resourceName || existingBudget?.campaign_budget?.resource_name || budgetTemp;
+      if (existingBudget) {
+        console.log('  ↪ Reusing existing budget:', budgetResourceForCampaign);
+      } else {
+        ops.push({
+          entity: 'campaign_budget',
+          operation: 'create',
+          resource: {
+            resource_name: budgetTemp,
+            name: budgetName,
+            delivery_method: enums.BudgetDeliveryMethod.STANDARD,
+            amount_micros: toMicros(cfg.budget_euros),
+          },
+        });
+      }
+
+      ops.push({
+        entity: 'campaign',
+        operation: 'create',
+        resource: {
+          name: cfg.name,
+          advertising_channel_type: enums.AdvertisingChannelType.SEARCH,
+          status: enums.CampaignStatus.PAUSED,
+          contains_eu_political_advertising: enums.EuPoliticalAdvertisingStatus.DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING,
+          manual_cpc: { enhanced_cpc_enabled: false },
+          campaign_budget: budgetResourceForCampaign,
+          network_settings: {
+            target_google_search: true,
+            target_search_network: true,
+          },
         },
-        start_date: toYyyymmdd(cfg.schedule.start),
-        end_date: toYyyymmdd(cfg.schedule.end),
-        geo_target_type_setting: {
-          positive_geo_target_type: 'PRESENCE',
-          negative_geo_target_type: 'PRESENCE',
-        },
-      },
-    ]);
-    const campaignResource =
-      campaignCreate?.results?.[0]?.resource_name ||
-      campaignCreate?.[0]?.resource_name ||
-      campaignCreate?.resource_name;
-    if (!campaignResource) throw new Error('Campaign creation failed: no resource_name');
-    console.log('  ✓ Campaign created:', campaignResource);
-
-    // 3) Add Germany location targeting (geoTargetConstants/2276)
-    const criteriaPayloads: any[] = [
-      {
-        campaign: campaignResource,
-        location: { geo_target_constant: 'geoTargetConstants/2276' },
-      },
-    ];
-
-    // 4) Add negative keywords if provided
-    for (const kw of cfg.negativeKeywords || []) {
-      criteriaPayloads.push({
-        campaign: campaignResource,
-        negative: true,
-        keyword: { text: kw, match_type: 'BROAD' },
       });
+
+      let mutateResult: any;
+      try {
+        mutateResult = await customer.mutateResources(ops as any);
+      } catch (err: any) {
+        try {
+          console.error('Mutate failure (apply):', JSON.stringify(err, null, 2));
+        } catch {
+          console.error('Mutate failure (apply):', err);
+        }
+        throw err;
+      }
+      const mutateResultsArray = mutateResult?.results || mutateResult || [];
+      const createdCampaignRes = Array.isArray(mutateResultsArray)
+        ? mutateResultsArray.find((r: any) => (r.resource_name || '').includes('/campaigns/'))
+        : null;
+      campaignResource = createdCampaignRes?.resource_name;
+      if (!campaignResource) throw new Error('Campaign creation failed: no campaign resource_name in mutate result');
+      console.log('  ✓ Campaign created:', campaignResource);
     }
 
-    const campaignCriteriaCreate: any = await customer.campaignCriteria.create(criteriaPayloads);
-    const createdCriteria = campaignCriteriaCreate?.results?.length ?? 0;
-    console.log('  ✓ Campaign criteria created:', createdCriteria);
+    // 3) Add Germany location targeting and negatives only for newly created campaigns to avoid duplicates
+    if (!existingCampaignResource) {
+      const criteriaPayloads: any[] = [
+        {
+          campaign: campaignResource,
+          location: { geo_target_constant: 'geoTargetConstants/2276' },
+        },
+      ];
+
+      for (const kw of cfg.negativeKeywords || []) {
+        criteriaPayloads.push({
+          campaign: campaignResource,
+          negative: true,
+          keyword: { text: kw, match_type: 'BROAD' },
+        });
+      }
+
+      const campaignCriteriaCreate: any = await customer.campaignCriteria.create(criteriaPayloads);
+      const createdCriteria = campaignCriteriaCreate?.results?.length ?? 0;
+      console.log('  ✓ Campaign criteria created:', createdCriteria);
+    } else {
+      console.log('  ↪ Skipping campaign criteria (geo/negatives) for existing campaign');
+    }
 
     // 5) Create ad groups + keywords + ads
     await createAdGroupsKeywordsAndAds(customer, campaignResource, cfg);
@@ -239,6 +334,10 @@ async function createResponsiveSearchAd(
 }
 
 main().catch((e) => {
-  console.error('Fatal:', e);
+  try {
+    console.error('Fatal:', JSON.stringify(e, null, 2));
+  } catch (_) {
+    console.error('Fatal:', e);
+  }
   process.exit(1);
 });

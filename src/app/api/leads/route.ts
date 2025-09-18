@@ -608,6 +608,14 @@ export async function POST(req: Request) {
       const confirmToken = randomUUID();
 
       // Insert minimal lead with resilience to optional campaign columns not yet in schema
+      // Also persist early session preference if provided (so we can prioritize online from signup)
+      const baseMetadata: Record<string, unknown> = {
+        submitted_at: new Date().toISOString(),
+        confirm_token: confirmToken,
+        confirm_sent_at: new Date().toISOString(),
+        ...(sessionPreference ? { session_preference: sessionPreference } : {}),
+        ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
+      };
       const insertPayload = {
         email,
         type: 'patient' as const,
@@ -615,7 +623,7 @@ export async function POST(req: Request) {
         campaign_source,
         campaign_variant,
         landing_page,
-        metadata: { submitted_at: new Date().toISOString(), confirm_token: confirmToken, confirm_sent_at: new Date().toISOString() },
+        metadata: baseMetadata,
       };
       const attemptInsert = async (payload: Record<string, unknown>) =>
         supabaseServer.from('people').insert(payload).select('id').single();
@@ -679,8 +687,14 @@ export async function POST(req: Request) {
               { headers: { 'Cache-Control': 'no-store' } },
             );
           } else {
-            // Refresh token and sent time for pre_confirmation
-            const merged: Record<string, unknown> = { ...(existing.metadata || {}), confirm_token: confirmToken, confirm_sent_at: new Date().toISOString() };
+            // Refresh token and sent time for pre_confirmation and persist early session preference if present
+            const merged: Record<string, unknown> = {
+              ...(existing.metadata || {}),
+              confirm_token: confirmToken,
+              confirm_sent_at: new Date().toISOString(),
+              ...(sessionPreference ? { session_preference: sessionPreference } : {}),
+              ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
+            };
             await supabaseServer.from('people').update({ metadata: merged }).eq('id', effectiveId);
           }
         } else if (selErr && !getErrorMessage(selErr).includes('schema cache')) {
