@@ -5,7 +5,10 @@
     { "path": "/admin/api/matches/selection-reminders?stage=24h", "schedule": "0 12 * * *" },
     { "path": "/admin/api/matches/selection-reminders?stage=48h", "schedule": "0 16 * * *" },
     { "path": "/admin/api/matches/selection-reminders?stage=72h", "schedule": "0 18 * * *" },
-    { "path": "/admin/api/matches/therapist-action-reminders?stage=20h", "schedule": "0 * * * *" }
+    { "path": "/admin/api/matches/therapist-action-reminders?stage=20h", "schedule": "0 * * * *" },
+    { "path": "/admin/api/ads/monitor?apply=true", "schedule": "0 8 * * *" },
+    { "path": "/admin/api/ads/monitor?apply=true", "schedule": "0 14 * * *" },
+    { "path": "/admin/api/ads/monitor?apply=true", "schedule": "0 20 * * *" }
   ],
   "functions": {
     "app/therapie-finden/page.tsx": {

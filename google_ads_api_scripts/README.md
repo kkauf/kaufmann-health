@@ -142,3 +142,45 @@ You can also verify in Google Ads UI: Goals → Conversions → action → uploa
 
 ## Alternatives
 - Google Ads Data Manager (CSV/Sheets) upload. Not used here to guarantee parity with our production hashing/formatting and to retain programmatic dedupe via `order_id`.
+
+## Campaign Monitoring & Auto-Pause (EARTH-157)
+
+`monitor-campaigns.ts` — queries Google Ads for spend/conversions over a window and identifies underperforming campaigns. By default it runs in DRY RUN and prints candidates. Use `--apply` to pause.
+
+Prerequisites:
+
+- Same environment setup as above (OAuth + account variables in `.env.local`).
+- Optional: validate access first with `npm run ads:test-access`.
+
+Usage:
+
+```bash
+# Dry-run (default)
+npm run ads:monitor
+
+# Limit to campaigns with name containing a term (e.g., Week 38)
+npm run ads:monitor -- --nameLike="Week 38"
+
+# Apply pauses (be careful)
+npm run ads:monitor:apply -- --nameLike="Week 38"
+
+# Customize window and thresholds
+npm run ads:monitor -- --lookback=3 --excludeToday=true \
+ --minSpendNoConv=30 --cpaThreshold=40 --budgetMultiple=2
+```
+
+Flags:
+
+- `--lookback=<days>` lookback window (default: `3`)
+- `--excludeToday=true|false` exclude today's partial data (default: `true`)
+- `--minSpendNoConv=<€>` pause if spend ≥ this and 0 conversions (default: `30`)
+- `--cpaThreshold=<€>` warn (report only) if CPA > threshold (default: `40`)
+- `--budgetMultiple=<n>` pause if spend > n × daily budget with 0 conversions (default: `2`)
+- `--nameLike=<substring>` only consider campaigns whose name contains this (optional)
+- `--apply` actually pause matching campaigns (omit for dry-run)
+
+Notes:
+
+- The script only targets ENABLED SEARCH campaigns.
+- Pauses use the official API: `campaign.status = PAUSED`.
+- Start with dry-run and `--nameLike` to scope changes, then apply.

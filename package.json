@@ -15,7 +15,9 @@
     "reminders:run": "tsx scripts/send-therapist-reminders.ts",
     "ads:test-access": "tsx google_ads_api_scripts/test-access.ts",
     "ads:create": "tsx google_ads_api_scripts/create-week38-campaigns.ts",
-    "ads:create:dry": "DRY_RUN=true tsx google_ads_api_scripts/create-week38-campaigns.ts"
+    "ads:create:dry": "DRY_RUN=true tsx google_ads_api_scripts/create-week38-campaigns.ts",
+    "ads:monitor": "tsx google_ads_api_scripts/monitor-campaigns.ts",
+    "ads:monitor:apply": "tsx google_ads_api_scripts/monitor-campaigns.ts --apply"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
