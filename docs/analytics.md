@@ -110,6 +110,21 @@ Persistence & events
 - Therapist flow: not persisted (no columns) but included in `lead_submitted` event props.
 - We continue to include UTM/referrer via `ServerAnalytics.parseAttributionFromRequest` for broader marketing reporting—do not duplicate into Vercel Analytics.
 
+### Admin Dashboard Campaign Reporting (EARTH-153)
+
+The Admin dashboard surfaces two campaign reporting cards based on first‑party attribution stored on `public.people` (patient leads only):
+
+- Summary per `(campaign_source, campaign_variant)` over the selected window (default last 7 days)
+- Daily breakdown by `YYYY-MM-DD` and `(campaign_source, campaign_variant)`
+
+Metrics:
+- `leads`: Count of `people(type='patient')` rows with a non‑null `campaign_source` in the window
+- `confirmed`: Leads with `status != 'pre_confirmation'` (aligned with email double opt‑in)
+- `confirmation_rate`: `confirmed / leads * 100` (1 decimal)
+
+Notes:
+- Self‑pay intent is tracked via events (`self_pay_confirmed` / `self_pay_declined`) and is presented separately in the "Lead‑Qualität" card. It is not mixed into the campaign aggregates.
+
 ## Vercel Analytics System
 
 ### Implementation

@@ -572,3 +572,30 @@ blockers: {
   }
 }
 ```
+
+### Campaign Reporting (EARTH-153)
+
+The endpoint also returns campaign performance based on first‑party attribution stored on `public.people` (patient leads only). The window is controlled by `?days=N` (default `7`, max `30`).
+
+```
+campaignStats: Array<{
+  campaign_source: string;      // e.g. '/wieder-lebendig' | '/ankommen-in-dir' | '/therapie-finden'
+  campaign_variant: string;     // 'A' | 'B'
+  leads: number;                // total patient leads with this source/variant in window
+  confirmed: number;            // leads with status != 'pre_confirmation' (email confirmed)
+  confirmation_rate: number;    // confirmed/leads * 100, rounded to 1 decimal
+}>
+
+campaignByDay: Array<{
+  day: string;                  // 'YYYY-MM-DD' (UTC buckets)
+  campaign_source: string;
+  campaign_variant: string;     // 'A' | 'B'
+  leads: number;
+  confirmed: number;
+  confirmation_rate: number;
+}>
+```
+
+Notes:
+- The mid‑funnel signal for “confirmed” aligns with email double opt-in (EARTH‑146): a lead is counted as confirmed when `people.status != 'pre_confirmation'`.
+- Self‑pay intent is tracked separately via events (`self_pay_confirmed` / `self_pay_declined`) and is surfaced in the existing “Lead‑Qualität” card; it is not mixed into the campaign aggregates above.

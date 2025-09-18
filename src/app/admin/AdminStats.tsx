@@ -19,6 +19,8 @@ type StatsData = {
   responseTimes?: { buckets: Array<{ bucket: string; count: number }>; avgHours: number };
   topCities?: Array<{ city: string; count: number }>;
   therapistAcceptance?: { lastNDays: { accepted: number; declined: number; rate: number } };
+  campaignStats?: Array<{ campaign_source: string; campaign_variant: string; leads: number; confirmed: number; confirmation_rate: number }>;
+  campaignByDay?: Array<{ day: string; campaign_source: string; campaign_variant: string; leads: number; confirmed: number; confirmation_rate: number }>;
   blockers?: { last30Days: { total: number; breakdown: Array<{ reason: string; count: number; percentage: number }> } };
 };
 
@@ -55,6 +57,28 @@ export default function AdminStats() {
   // Helpers
   const pct = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 1000) / 10 : 0);
   const maxOf = (arr: number[]) => (arr.length ? Math.max(...arr) : 0);
+
+  function exportCampaignCsv() {
+    if (!data?.campaignStats || data.campaignStats.length === 0) return;
+    const header = ['campaign_source', 'campaign_variant', 'leads', 'confirmed', 'confirmation_rate'];
+    const rows = data.campaignStats.map((r) => [
+      r.campaign_source,
+      r.campaign_variant,
+      String(r.leads),
+      String(r.confirmed),
+      String(r.confirmation_rate),
+    ]);
+    const csv = [header, ...rows].map((cols) => cols.map((c) => `"${(c || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'campaign-stats.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <section className="space-y-6">
@@ -130,6 +154,49 @@ export default function AdminStats() {
               })
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Campaign Performance */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Kampagnen‑Performance</CardTitle>
+            <CardDescription>Leads und Bestätigungsrate nach Quelle/Variante (Zeitraum wie oben)</CardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={exportCampaignCsv} disabled={!data?.campaignStats?.length}>
+            CSV exportieren
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {!data?.campaignStats || data.campaignStats.length === 0 ? (
+            <div className="text-sm text-muted-foreground">Keine Kampagnen‑Daten</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-muted-foreground">
+                    <th className="py-1 pr-3">Quelle</th>
+                    <th className="py-1 pr-3">Variante</th>
+                    <th className="py-1 pr-3">Leads</th>
+                    <th className="py-1 pr-3">Bestätigt</th>
+                    <th className="py-1 pr-3">Bestätigungsrate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.campaignStats.map((r) => (
+                    <tr key={`${r.campaign_source}-${r.campaign_variant}`} className="border-t">
+                      <td className="py-1 pr-3 whitespace-nowrap">{r.campaign_source}</td>
+                      <td className="py-1 pr-3">{r.campaign_variant}</td>
+                      <td className="py-1 pr-3 tabular-nums">{r.leads}</td>
+                      <td className="py-1 pr-3 tabular-nums">{r.confirmed}</td>
+                      <td className="py-1 pr-3 tabular-nums">{r.confirmation_rate}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
