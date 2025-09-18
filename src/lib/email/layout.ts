@@ -2,7 +2,7 @@ import { BASE_URL } from '@/lib/constants';
 
 export function renderButton(href: string, label: string) {
   return `
-    <a href="${href}" style="display:inline-block; background-color:#4A9B8E; color:#ffffff; padding:10px 16px; border-radius:8px; text-decoration:none; font-weight:600;">${label}</a>
+    <a href="${href}" role="button" style="display:block; width:100%; box-sizing:border-box; background-color:#4A9B8E; color:#ffffff; padding:14px 16px; border-radius:10px; text-decoration:none; font-weight:600; text-align:center; font-size:16px; line-height:1.2; border:1px solid #3f8d80;">${label}</a>
   `;
 }
 

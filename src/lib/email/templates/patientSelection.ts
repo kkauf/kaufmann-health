@@ -84,10 +84,11 @@ export function renderPatientSelectionEmail(params: {
         actionButtonHtml: button,
       });
       const bestBadge = it.isBest
-        ? `<span style="background: #10B981; color: white; padding: 4px 8px; position: absolute; top: -10px; left: 10px; border-radius:6px; font-size:12px;">⭐ Beste Übereinstimmung</span>`
+        ? `<div style="margin:0 0 8px 0;"><span style="background:#10B981; color:#ffffff; padding:4px 8px; border-radius:999px; font-size:12px; display:inline-block;">⭐ Beste Übereinstimmung</span></div>`
         : '';
+      const borderColor = it.isBest ? '#10B981' : '#E5E7EB';
       return `
-        <div style="position:relative; border:2px solid #10B981; padding: 16px; margin: 16px 0; border-radius:8px;">
+        <div style="border:1px solid ${borderColor}; background:#ffffff; padding:16px; margin:16px 0; border-radius:10px;">
           ${bestBadge}
           ${preview}
         </div>
