@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     const consent = getBoolean(body, 'consent_share_with_therapists');
     const privacyVersion = getString(body, 'privacy_version');
 
-    if (!name || !city) {
+    if (!city) {
       return NextResponse.json({ data: null, error: 'Missing fields' }, { status: 400 });
     }
     if (!consent) {
