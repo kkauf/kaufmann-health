@@ -1,4 +1,5 @@
 // Run this to get your conversion action resource names
+// npx tsx google_ads_api_scripts/get-conversion-actions.ts
 import { config as dotenvConfig } from 'dotenv';
 dotenvConfig({ path: '.env.local', override: true });
 dotenvConfig();
