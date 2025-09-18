@@ -111,20 +111,27 @@ export async function GET(req: Request) {
     let skippedStatus = 0;
     let skippedMissingEmail = 0;
     let skippedDuplicate = 0;
+    let skippedTherapistContacted = 0;
 
     for (const match_id of matchIds) {
       processed++;
       // Load match and ensure still in patient_selected and no patient_confirmed_at
       const { data: matchRow } = await supabaseServer
         .from('matches')
-        .select('id, patient_id, therapist_id, status, patient_confirmed_at')
+        .select('id, patient_id, therapist_id, status, patient_confirmed_at, therapist_contacted_at')
         .eq('id', match_id)
         .maybeSingle();
-      const m = (matchRow as { id: string; patient_id: string; therapist_id: string; status?: string | null; patient_confirmed_at?: string | null } | null);
+      const m = (matchRow as { id: string; patient_id: string; therapist_id: string; status?: string | null; patient_confirmed_at?: string | null; therapist_contacted_at?: string | null } | null);
       if (!m) continue;
       const status = String(m.status || '').toLowerCase();
       if (status !== 'patient_selected' || m.patient_confirmed_at) {
         skippedStatus++;
+        continue;
+      }
+
+      // If therapist has already initiated contact, skip this survey to avoid confusion
+      if (m.therapist_contacted_at) {
+        skippedTherapistContacted++;
         continue;
       }
 
@@ -162,9 +169,9 @@ export async function GET(req: Request) {
       }
     }
 
-    void track({ type: 'cron_completed', level: 'info', source: 'admin.api.matches.blocker_survey', props: { processed, sent, skipped_status: skippedStatus, skipped_missing_email: skippedMissingEmail, skipped_duplicate: skippedDuplicate, duration_ms: Date.now() - startedAt }, ip, ua });
+    void track({ type: 'cron_completed', level: 'info', source: 'admin.api.matches.blocker_survey', props: { processed, sent, skipped_status: skippedStatus, skipped_missing_email: skippedMissingEmail, skipped_duplicate: skippedDuplicate, skipped_therapist_contacted: skippedTherapistContacted, duration_ms: Date.now() - startedAt }, ip, ua });
 
-    return NextResponse.json({ data: { processed, sent, skipped_status: skippedStatus, skipped_missing_email: skippedMissingEmail, skipped_duplicate: skippedDuplicate }, error: null }, { status: 200 });
+    return NextResponse.json({ data: { processed, sent, skipped_status: skippedStatus, skipped_missing_email: skippedMissingEmail, skipped_duplicate: skippedDuplicate, skipped_therapist_contacted: skippedTherapistContacted }, error: null }, { status: 200 });
   } catch (e) {
     await logError('admin.api.matches.blocker_survey', e, { stage: 'exception' }, ip, ua);
     void track({ type: 'cron_failed', level: 'error', source: 'admin.api.matches.blocker_survey' });
