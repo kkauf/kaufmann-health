@@ -147,11 +147,25 @@ async function persistEvent(params: Required<Pick<TrackParams, 'type'>> &
       }
     } catch (e) {
       clearTimeout(timer);
-      console.warn('[logger] persistEvent failed', {
-        error: e instanceof Error ? e.message : String(e),
-        type: params.type,
-        source: params.source,
-      });
+      const msg = e instanceof Error ? e.message : String(e);
+      const name = e instanceof Error ? e.name : '';
+      const isAbort = name === 'AbortError' || /aborted/i.test(msg);
+      if (isAbort) {
+        // In serverless, background fetches may be aborted when the function freezes after response.
+        // These are expected for best-effort logging; suppress noise in production.
+        if (process.env.NODE_ENV !== 'production') {
+          console.debug('[logger] persistEvent aborted (timeout)', {
+            type: params.type,
+            source: params.source,
+          });
+        }
+      } else {
+        console.warn('[logger] persistEvent failed', {
+          error: msg,
+          type: params.type,
+          source: params.source,
+        });
+      }
     }
   } catch {
     // swallow
