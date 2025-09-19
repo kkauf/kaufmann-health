@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import CtaLink from "@/components/CtaLink";
-import { Button } from "@/components/ui/button";
 import CheckList from "@/components/CheckList";
 import SectionViewTracker from "@/components/SectionViewTracker";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -13,7 +11,8 @@ import TherapistPreview from "@/components/TherapistPreview";
 import { supabaseServer } from "@/lib/supabase-server";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import ExitIntentModal from "@/components/ExitIntentModal";
-import { Activity, Euro, Clock, MessageCircle, UserCheck, PhoneCall } from "lucide-react";
+import { Activity, Euro, Clock, UserCheck, MessageCircle, PhoneCall } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import VariantGate from "@/components/VariantGate";
 
 export const revalidate = 3600;

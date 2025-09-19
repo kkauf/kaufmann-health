@@ -94,7 +94,7 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
         const input = (e.currentTarget.querySelector('#profile_photo') as HTMLInputElement | null);
         const file = input?.files?.[0];
         if (file && file.size > MAX_PHOTO_BYTES) {
-          setMessage('Profilfoto zu groß (max. 4MB). Bitte reduzieren Sie die Dateigröße.');
+          setMessage('Profilfoto zu groß (max. 4MB). Bitte reduziere die Dateigröße.');
           setLoading(false);
           return;
         }
@@ -105,7 +105,7 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
         body: form,
       });
       if (res.status === 413) {
-        throw new Error('Profilfoto zu groß (max. 4MB). Bitte reduzieren Sie die Dateigröße.');
+        throw new Error('Profilfoto zu groß (max. 4MB). Bitte reduziere die Dateigröße.');
       }
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || 'Speichern fehlgeschlagen');
@@ -131,26 +131,28 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
       {submitted ? (
         <div ref={statusRef} tabIndex={-1} className="rounded-lg border bg-white p-4 mb-6" aria-live="polite">
           <h2 className="text-lg font-semibold">Profil aktualisiert</h2>
-          <p className="text-sm text-gray-700 mt-2">Ihr Profil ist jetzt fast fertig. Als nächstes laden Sie bitte Ihre Zulassung als Psychotherapeut hoch.</p>
+          <p className="text-sm text-gray-700 mt-2">Dein Profil ist jetzt fast fertig. Als nächstes lade bitte deine Zulassung als Psychotherapeut:in hoch.</p>
           <div className="mt-3">
             <a className="underline" href={`/therapists/upload-documents/${therapistId}`}>Weiter: Dokumente hochladen</a>
           </div>
           {showProfilePhoto && (
-            <p className="text-xs text-gray-600 mt-3">Tipp: Sie können jetzt unten auch Ihr Profilfoto hinzufügen.</p>
+            <p className="text-xs text-gray-600 mt-3">Tipp: Du kannst jetzt unten auch dein Profilfoto hinzufügen.</p>
           )}
         </div>
       ) : null}
 
       <form onSubmit={onSubmit} encType="multipart/form-data" className="space-y-6">
         <div className="rounded-md border p-3 bg-amber-50 text-amber-900 text-sm">
-          Fast geschafft! Ergänzen Sie die fehlenden Profilangaben. Das dauert nur 2–3 Minuten.
+          Fast geschafft! Ergänze die fehlenden Profilangaben. Das dauert nur 2–3 Minuten.
         </div>
 
         {showGender && (
           <div className="space-y-2">
-            <Label htmlFor="gender">Geschlecht</Label>
+            <Label htmlFor="gender">Wie möchtest du angeredet werden?</Label>
             <select id="gender" name="gender" className="border-input w-full rounded-md border bg-white px-3 py-2 text-sm" value={gender} onChange={(e) => setGender(e.target.value)}>
               <option value="">Bitte wählen</option>
+              <option value="female">Frau</option>
+              <option value="male">Herr</option>
               <option value="female">Weiblich</option>
               <option value="male">Männlich</option>
               <option value="diverse">Divers</option>
@@ -177,7 +179,7 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
 
         {showApproachText && (
           <div className="space-y-2">
-            <Label htmlFor="approach_text">Ihr therapeutischer Ansatz</Label>
+            <Label htmlFor="approach_text">Dein therapeutischer Ansatz</Label>
             <textarea
               id="approach_text"
               name="approach_text"
@@ -185,7 +187,7 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
               maxLength={500}
               value={approach}
               onChange={(e) => setApproach(e.target.value)}
-              placeholder="Beschreiben Sie Ihren therapeutischen Ansatz und wie Sie mit Klient:innen arbeiten..."
+              placeholder="Beschreibe deinen therapeutischen Ansatz und wie du mit Klient:innen arbeitest..."
               className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg/input/30 border-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
             />
             <div className="text-xs text-gray-500 flex items-center justify-between">

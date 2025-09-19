@@ -40,7 +40,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
     if (etag) headers.set('ETag', etag);
 
     return new NextResponse(buf, { status: 200, headers });
-  } catch (e) {
+  } catch (_e) {
     return NextResponse.json({ error: 'Upstream fetch failed' }, { status: 502 });
   }
 }

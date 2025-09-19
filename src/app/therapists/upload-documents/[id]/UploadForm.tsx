@@ -32,16 +32,16 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
 
     if (mode === 'license') {
       if (!licenseFile) {
-        setMessage("Bitte laden Sie Ihre staatliche Psychotherapie-Berechtigung hoch.");
+        setMessage("Bitte lade deine staatliche Psychotherapie-Berechtigung hoch.");
         return;
       }
       if (licenseFile.size > MAX_FILE_BYTES) {
-        setMessage("Datei zu groß (max. 4MB). Bitte reduzieren Sie die Dateigröße oder laden Sie ein kleineres PDF/Bild hoch.");
+        setMessage("Datei zu groß (max. 4MB). Bitte reduziere die Dateigröße oder lade ein kleineres PDF/Bild hoch.");
         return;
       }
       const totalBytes = licenseFile.size;
       if (totalBytes > MAX_FILE_BYTES) {
-        setMessage("Gesamtgröße der Dateien überschreitet 4MB. Bitte reduzieren Sie die Dateigröße.");
+        setMessage("Gesamtgröße der Dateien überschreitet 4MB. Bitte reduziere die Dateigröße.");
         return;
       }
     } else {
@@ -49,12 +49,12 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
       if (specFiles.length > 0) {
         const tooLarge = specFiles.find((f) => f.size > MAX_FILE_BYTES);
         if (tooLarge) {
-          setMessage("Ein Zertifikat überschreitet 4MB. Bitte reduzieren Sie die Dateigröße.");
+          setMessage("Ein Zertifikat überschreitet 4MB. Bitte reduziere die Dateigröße.");
           return;
         }
         const totalBytes = specFiles.reduce((sum, f) => sum + f.size, 0);
         if (totalBytes > MAX_FILE_BYTES) {
-          setMessage("Gesamtgröße der Zertifikate überschreitet 4MB. Bitte laden Sie eine Datei nach der anderen hoch.");
+          setMessage("Gesamtgröße der Zertifikate überschreitet 4MB. Bitte lade eine Datei nach der anderen hoch.");
           return;
         }
       }
@@ -62,7 +62,7 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
 
     // Optional profile photo validation (applies in both modes)
     if (profilePhoto && profilePhoto.size > PHOTO_MAX_BYTES) {
-      setMessage("Profilfoto zu groß (max. 5MB). Bitte reduzieren Sie die Dateigröße.");
+      setMessage("Profilfoto zu groß (max. 5MB). Bitte reduziere die Dateigröße.");
       return;
     }
 
@@ -74,7 +74,7 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
         body: formData,
       });
       if (res.status === 413) {
-        throw new Error("Datei zu groß (max. 4MB). Bitte reduzieren Sie die Dateigröße.");
+        throw new Error("Datei zu groß (max. 4MB). Bitte reduziere die Dateigröße.");
       }
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || "Upload fehlgeschlagen");
@@ -112,7 +112,7 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
         >
           <h2 className="text-lg font-semibold">Dokumente hochgeladen</h2>
           <p className="text-sm text-gray-700 mt-2">
-            Ihre Dokumente wurden übermittelt. Wir prüfen diese und melden uns in 24h.
+            Deine Dokumente wurden übermittelt. Wir prüfen diese und melden uns in Kürze.
           </p>
           {message && (
             <p className="text-xs text-gray-600 mt-2">{message}</p>
@@ -129,15 +129,15 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
               <span className="text-xs text-gray-500">(PDF/Bild, max. 4MB)</span>
             </Label>
             <Input id="psychotherapy_license" name="psychotherapy_license" type="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" required />
-            <p className="text-xs text-gray-500">Hinweis: Ein Abschlusszertifikat ist erforderlich. Wenn Ihre Dateien zusammen größer als 4MB sind, laden Sie zuerst nur Ihre Zulassung hoch.</p>
+            <p className="text-xs text-gray-500">Hinweis: Ein Abschlusszertifikat ist erforderlich. Wenn deine Dateien zusammen größer als 4MB sind, lade zuerst nur deine Zulassung hoch.</p>
           </div>
         ) : (
           <div className="space-y-2">
             <Label htmlFor="specialization_cert">
-              Abschlusszertifikat(e) Ihrer Therapieverfahren <span className="text-xs text-gray-500">(optional, je Datei max. 4MB)</span>
+              Abschlusszertifikat(e) deiner Therapieverfahren <span className="text-xs text-gray-500">(optional, je Datei max. 4MB)</span>
             </Label>
             <Input id="specialization_cert" name="specialization_cert" type="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" multiple />
-            <p className="text-xs text-gray-500">Sie können Zertifikate auch später nachreichen.</p>
+            <p className="text-xs text-gray-500">Du kannst Zertifikate auch später nachreichen.</p>
           </div>
         )}
 
@@ -148,14 +148,14 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
           <Input id="profile_photo" name="profile_photo" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="approach_text">Ihr therapeutischer Ansatz (optional)</Label>
+          <Label htmlFor="approach_text">Dein therapeutischer Ansatz (optional)</Label>
           <textarea
             id="approach_text"
             name="approach_text"
             rows={4}
             maxLength={500}
             className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg/input/30 w-full rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-            placeholder="Kurzbeschreibung Ihres Ansatzes (max. 500 Zeichen)"
+            placeholder="Kurzbeschreibung deines Ansatzes (max. 500 Zeichen)"
           />
         </div>
 
@@ -169,7 +169,7 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
               variant="secondary"
               onClick={() => {
                 setSubmitted(true);
-                setMessage("Sie können die Zertifikate später hochladen. Die Profilprüfung startet erst nach Eingang der Zulassung als Psychotherapeut.");
+                setMessage("Du kannst die Zertifikate später hochladen. Die Profilprüfung startet erst nach Eingang der Zulassung als Psychotherapeut:in.");
                 requestAnimationFrame(() => {
                   statusRef.current?.focus();
                   statusRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -185,7 +185,7 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
               variant="secondary"
               onClick={() => {
                 setSubmitted(true);
-                setMessage("Sie können Zertifikate später hochladen. Dieser Schritt ist optional.");
+                setMessage("Du kannst Zertifikate später hochladen. Dieser Schritt ist optional.");
                 requestAnimationFrame(() => {
                   statusRef.current?.focus();
                   statusRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });

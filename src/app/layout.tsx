@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://kaufmann-health.de"),
   title:
-    "Therapeut:innen-Empfehlung – Sorgfältig geprüfte Therapeut:innen in Ihrer Nähe | Kaufmann Health",
+    "Therapeut:innen-Empfehlung – Sorgfältig geprüfte Therapeut:innen in deiner Nähe | Kaufmann Health",
   description:
     "Persönlich kuratierte Therapeut:innen-Empfehlungen für körperorientierte Psychotherapie (NARM, Hakomi, Somatic Experiencing). Direkter Kontakt, transparente Auswahl, ohne Wartezeit.",
   keywords: [

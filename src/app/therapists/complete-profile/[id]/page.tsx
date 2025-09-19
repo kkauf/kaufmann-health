@@ -23,9 +23,9 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       <main className="mx-auto max-w-3xl px-4 py-8">
         <h1 className="text-2xl font-semibold">Profil vervollständigen</h1>
         <div className="mt-6 rounded-lg border bg-white p-4">
-          <p className="text-sm">Dieser Link ist nicht mehr aktiv oder Ihr Profil wurde bereits bearbeitet.</p>
+          <p className="text-sm">Dieser Link ist nicht mehr aktiv oder dein Profil wurde bereits bearbeitet.</p>
           <p className="text-sm mt-2">
-            Wenn Sie Unterstützung benötigen, schreiben Sie uns bitte an{' '}
+            Wenn du Unterstützung brauchst, schreib uns bitte an{' '}
             <a className="underline" href="mailto:hallo@kaufmann-health.de">hallo@kaufmann-health.de</a>.
           </p>
         </div>
@@ -66,7 +66,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
       {totalMissing === 0 ? (
         <div className="mt-6 rounded-lg border bg-white p-4">
-          <p className="text-sm">Ihr Profil ist vollständig. Als nächstes laden Sie bitte Ihre Dokumente hoch.</p>
+          <p className="text-sm">Dein Profil ist vollständig. Als Nächstes lade bitte deine Dokumente hoch.</p>
           <a className="underline mt-2 inline-block" href={`/therapists/upload-documents/${id}`}>Weiter: Dokumente hochladen</a>
         </div>
       ) : (

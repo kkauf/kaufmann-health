@@ -85,7 +85,7 @@ export async function POST(req: Request) {
     const updatePayload: Record<string, unknown> = { status: 'new', metadata };
     if (name) updatePayload.name = name;
 
-    const { data, error: upErr } = await supabaseServer
+    const { error: upErr } = await supabaseServer
       .from('people')
       .update(updatePayload)
       .eq('id', id);

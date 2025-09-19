@@ -41,7 +41,7 @@ export default function Footer() {
               Über Kaufmann Health
             </h2>
             <p className="max-w-prose text-sm leading-relaxed text-gray-600">
-              Kaufmann Health bringt Menschen mit qualifizierten körperorientierten Therapeut:innen zusammen. Wir schlagen passende Therapeut:innen vor und stellen Kontakte her, vermitteln aber keine therapeutischen Leistungen. Die Therapiewahl liegt allein bei Ihnen.
+              Kaufmann Health bringt Menschen mit qualifizierten körperorientierten Therapeut:innen zusammen. Wir schlagen passende Therapeut:innen vor und stellen Kontakte her, vermitteln aber keine therapeutischen Leistungen. Die Therapiewahl liegt allein bei dir.
             </p>
           </section>
         </div>

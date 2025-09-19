@@ -5,7 +5,7 @@ import { PreferencesViewTracker } from '@/components/PreferencesViewTracker';
 
 export const metadata = {
   title: 'Präferenzen | Kaufmann Health',
-  description: 'Sagen Sie uns kurz, was Ihnen wichtig ist – wir finden passende Empfehlungen.',
+  description: 'Sag uns kurz, was dir wichtig ist – wir finden passende Empfehlungen.',
   robots: { index: false, follow: false },
 };
 
@@ -26,7 +26,7 @@ export default async function Page({
           <CardHeader>
             <CardTitle>E‑Mail bestätigt</CardTitle>
             <CardDescription>
-              Danke! Ihre E‑Mail‑Adresse ist bestätigt. Damit wir die besten Therapeut:innen für dich finden können, benötigen wir noch ein paar wenige Informationen von dir. Deine Präferenzen werden vertraulich behandelt und nur an Therapeut:innen weitergegeben, mit denen du zusammenarbeiten möchtest. 
+              Danke! Deine E‑Mail‑Adresse ist bestätigt. Damit wir die besten Therapeut:innen für dich finden können, benötigen wir noch ein paar wenige Informationen von dir. Deine Präferenzen werden vertraulich behandelt und nur an Therapeut:innen weitergegeben, mit denen du zusammenarbeiten möchtest.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -39,7 +39,7 @@ export default async function Page({
           <CardHeader>
             <CardTitle>Link unvollständig</CardTitle>
             <CardDescription>
-              Uns fehlt eine Kennung, um fortzufahren. Bitte öffnen Sie den Link aus Ihrer E‑Mail erneut oder starten Sie den Vorgang neu.
+              Uns fehlt eine Kennung, um fortzufahren. Bitte öffne den Link aus deiner E‑Mail erneut oder starte den Vorgang neu.
             </CardDescription>
           </CardHeader>
           <CardContent>

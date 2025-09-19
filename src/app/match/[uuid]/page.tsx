@@ -136,7 +136,7 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
             <p className="text-sm text-muted-foreground">
               {data.expiresInHours != null && !data.expired
                 ? `Noch ${data.expiresInHours < 1 ? '<1' : data.expiresInHours} Stunden gültig`
-                : 'Sie können diese Anfrage innerhalb von 72 Stunden beantworten.'}
+                : 'Du kannst diese Anfrage innerhalb von 72 Stunden beantworten.'}
             </p>
             <div className="space-y-1 text-sm">
               {data.name ? (
@@ -162,7 +162,7 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
             </div>
             {!data.expired ? (
               <p className="text-xs text-muted-foreground">
-                Nach Annahme erhalten Sie die Kontaktdaten zur direkten Kontaktaufnahme.
+                Nach Annahme erhältst du die Kontaktdaten zur direkten Kontaktaufnahme.
               </p>
             ) : null}
             <Actions

@@ -98,7 +98,7 @@ export function Actions({
   if (expired) {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">Dieser Link ist abgelaufen. Bitte wenden Sie sich an Kaufmann Health, falls weiterhin Interesse besteht.</p>
+        <p className="text-sm text-muted-foreground">Dieser Link ist abgelaufen. Bitte wende dich an Kaufmann Health, falls weiterhin Interesse besteht.</p>
       </div>
     );
   }
@@ -108,7 +108,7 @@ export function Actions({
       <div className="space-y-3">
         {status === 'accepted' ? (
           <div className="space-y-2">
-            <p className="text-sm">Vielen Dank! Sie haben die Anfrage angenommen.</p>
+            <p className="text-sm">Vielen Dank! Du hast die Anfrage angenommen.</p>
             {contact ? (
               <div className="rounded-md border p-3 text-sm">
                 <p className="font-medium">Kontaktdaten</p>
@@ -134,11 +134,11 @@ export function Actions({
               <p className="text-sm text-muted-foreground">Kontaktdaten werden geladen …</p>
             )}
             <p className="text-xs text-muted-foreground">
-              Bitte behandeln Sie diese Kontaktdaten vertraulich. Kontaktieren Sie den/die Klient:in idealerweise innerhalb von 48&nbsp;Stunden.
+              Bitte behandle diese Kontaktdaten vertraulich. Kontaktiere den/die Klient:in idealerweise innerhalb von 48&nbsp;Stunden.
             </p>
           </div>
         ) : (
-          <p className="text-sm">Vielen Dank! Sie haben die Anfrage abgelehnt.</p>
+          <p className="text-sm">Vielen Dank! Du hast die Anfrage abgelehnt.</p>
         )}
       </div>
     );

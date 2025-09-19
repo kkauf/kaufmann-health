@@ -72,7 +72,7 @@ export default async function Page(props: { params: Promise<{ id: string }>; sea
       {!hasLicense && !forceCertsStep ? (
         <>
           <p className="mt-4 text-sm text-gray-700">
-            Bitte laden Sie zuerst Ihre staatliche Psychotherapie-Berechtigung hoch. PDF oder Bilddatei, maximal 4MB pro Datei.
+            Lade zuerst deine staatliche Psychotherapie-Berechtigung hoch. PDF oder Bilddatei, maximal 4MB pro Datei.
           </p>
           <div className="mt-6">
             <UploadForm therapistId={id} mode="license" />
@@ -81,7 +81,7 @@ export default async function Page(props: { params: Promise<{ id: string }>; sea
       ) : !hasCert ? (
         <>
           <p className="mt-4 text-sm text-gray-700">
-            Danke. Als nächstes laden Sie bitte mindestens ein Abschlusszertifikat Ihrer Therapieverfahren hoch (je Datei max. 4MB).
+            Danke! Als nächstes lade bitte mindestens ein Abschlusszertifikat deiner Therapieverfahren hoch (je Datei max. 4MB).
           </p>
           <div className="mt-6">
             <UploadForm therapistId={id} mode="certs" />
@@ -89,7 +89,7 @@ export default async function Page(props: { params: Promise<{ id: string }>; sea
         </>
       ) : (
         <div className="mt-6 rounded-lg border bg-white p-4">
-          <p className="text-sm text-gray-700">Ihre Zulassung und mindestens ein Zertifikat sind hinterlegt.</p>
+          <p className="text-sm text-gray-700">Deine Zulassung und mindestens ein Zertifikat sind hinterlegt.</p>
           <p className="text-sm text-gray-700 mt-2">
             Nächster Schritt: <a className="underline" href={`/therapists/complete-profile/${id}`}>Profil vervollständigen</a>
           </p>

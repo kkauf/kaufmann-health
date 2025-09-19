@@ -10,14 +10,14 @@ import { COOKIES_ENABLED } from "@/lib/config";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Neue Klienten für Ihre Praxis | Für Therapeuten | Kaufmann Health",
+  title: "Neue Klient:innen für deine Praxis | Für Therapeut:innen | Kaufmann Health",
   description:
-    "Werden Sie Teil unseres kuratierten Netzwerks. Zahlen Sie nur eine Erfolgsgebühr, wenn Klienten über unsere Plattform zu Ihnen finden.",
+    "Werde Teil unseres kuratierten Netzwerks. Du zahlst nur eine Erfolgsgebühr, wenn Klient:innen über unsere Plattform zu dir finden.",
   alternates: { canonical: "/fuer-therapeuten" },
   openGraph: {
-    title: "Neue Klienten für Ihre Praxis | Für Therapeuten",
+    title: "Neue Klient:innen für deine Praxis | Für Therapeut:innen",
     description:
-      "Spezialisiertes, kuratiertes Therapeuten-Netzwerk mit erfolgsbasierter Vergütung. Keine Vorabkosten.",
+      "Spezialisiertes, kuratiertes Therapeut:innen-Netzwerk mit erfolgsbasierter Vergütung. Keine Vorabkosten.",
   },
 };
 
@@ -26,43 +26,43 @@ const faqItems = [
     id: "fuer-therapeuten-faq-fee",
     question: "Wie hoch ist die Erfolgsgebühr?",
     answer:
-      "Für jeden vermittelten Klienten fallen für die ersten 10 Sitzungen jeweils 25% des Sitzungshonorars als Erfolgsgebühr an. Diese Gebühr fällt nur für Klienten an, die über unser Netzwerk zu Ihnen findet. Nach 10 Sitzungen gehören die Klienten Ihnen, d.h. es fallen keine weiteren Gebühren an. Kommt ein Klient nicht mehr, zahlen Sie nicht mehr.",
+      "Für jedes vermittelte Erstgespräch fallen für die ersten 10 Sitzungen jeweils 25% des Sitzungshonorars als Erfolgsgebühr an. Diese Gebühr fällt nur für Klient:innen an, die über unser Netzwerk zu dir finden. Nach 10 Sitzungen gehören die Klient:innen dir – es fallen keine weiteren Gebühren an. Kommt jemand nicht mehr, zahlst du nicht mehr.",
   },
   {
     id: "fuer-therapeuten-faq-who",
-    question: "Welche Therapeuten nehmen Sie in das Netzwerk auf?",
+    question: "Welche Therapeut:innen nehmt ihr in das Netzwerk auf?",
     answer:
-      "Heilpraktiker für Psychotherapie oder approbierte Psychotherapeuten mit Spezialisierung auf körperorientierte Verfahren (z. B. NARM, Hakomi, Somatic Experiencing, Core Energetics).",
+      "Heilpraktiker:innen für Psychotherapie oder approbierte Psychotherapeut:innen mit Spezialisierung auf körperorientierte Verfahren (z. B. NARM, Hakomi, Somatic Experiencing, Core Energetics).",
   },
   {
     id: "fuer-therapeuten-faq-volume",
     question: "Wie viele Anfragen erhalte ich?",
     answer:
-      "Das hängt von Ihrer Region und Verfügbarkeit ab. In Ballungsräumen erhalten Therapeuten meist 2–5 Kontakte pro Monat über unser Netzwerk.",
+      "Das hängt von deiner Region und Verfügbarkeit ab. In Ballungsräumen erhalten Therapeut:innen meist 2–5 Kontakte pro Monat über unser Netzwerk.",
   },
   {
     id: "fuer-therapeuten-faq-reject",
     question: "Kann ich Anfragen ablehnen?",
     answer:
-      "Ja, Sie entscheiden selbst, welche Klienten Sie übernehmen möchten. Es besteht keine Verpflichtung.",
+      "Ja, du entscheidest selbst, welche Klient:innen du übernehmen möchtest. Es besteht keine Verpflichtung.",
   },
   {
     id: "fuer-therapeuten-faq-diff",
-    question: "Wie unterscheiden Sie sich von anderen Plattformen?",
+    question: "Wie unterscheidet ihr euch von anderen Plattformen?",
     answer:
-      "Wir bieten zusätzlich eine persönliche Orientierungshilfe für Interessenten und fokussieren uns ausschließlich auf körperorientierte Therapieverfahren.",
+      "Wir bieten zusätzlich eine persönliche Orientierungshilfe für Interessent:innen und fokussieren uns ausschließlich auf körperorientierte Therapieverfahren.",
   },
   {
     id: 'auswahl-prozess',
-    question: 'Nach welchen Kriterien wählen Sie Therapeuten aus?',
-    answer: 'Wir berücksichtigen Ihre geografischen Präferenzen, die Art Ihrer Problematik, gewünschte Therapieform und persönliche Faktoren. Da wir jeden Therapeuten in unserem Netzwerk persönlich kennen und regelmäßig mit ihnen in Kontakt stehen, können wir gezielt den für Sie passenden vorschlagen.'
+    question: 'Nach welchen Kriterien wählt ihr Therapeut:innen aus?',
+    answer: 'Wir berücksichtigen deine geografischen Präferenzen, die Art deines Schwerpunkts, gewünschte Therapieform und persönliche Faktoren. Da wir jede:n Therapeut:in in unserem Netzwerk persönlich kennen und regelmäßig in Kontakt sind, können wir gezielt passende Vorschläge machen.'
   },
   {
     id: 'datenschutz-therapeuten',
-    question: 'Wie gehen Sie mit meinen Daten um?',
+    question: 'Wie geht ihr mit meinen Daten um?',
     answer: COOKIES_ENABLED
-      ? 'Wir verwenden Ihre Angaben ausschließlich zur Prüfung Ihrer Aufnahme und zur Vermittlung passender Klienten. Keine Analytics‑Cookies. Es wird lediglich ein minimales Conversion‑Signal an Google Ads gesendet. Details in unserer Datenschutzerklärung.'
-      : 'Wir verwenden Ihre Angaben ausschließlich zur Prüfung Ihrer Aufnahme und zur Vermittlung passender Klienten. Keine Cookies, kein Tracking. Details in unserer Datenschutzerklärung.'
+      ? 'Wir verwenden deine Angaben ausschließlich zur Prüfung deiner Aufnahme und zur Vermittlung passender Klient:innen. Keine Analytics‑Cookies. Es wird lediglich ein minimales Conversion‑Signal an Google Ads gesendet. Details in unserer Datenschutzerklärung.'
+      : 'Wir verwenden deine Angaben ausschließlich zur Prüfung deiner Aufnahme und zur Vermittlung passender Klient:innen. Keine Cookies, kein Tracking. Details in unserer Datenschutzerklärung.'
   },
 ];
 
@@ -76,9 +76,9 @@ export default function TherapistsPage() {
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "WebPage",
-            name: "Neue Klienten für Ihre Praxis | Für Therapeuten | Kaufmann Health",
+            name: "Neue Klient:innen für deine Praxis | Für Therapeut:innen | Kaufmann Health",
             description:
-              "Werden Sie Teil unseres kuratierten Netzwerks. Zahlen Sie nur eine Erfolgsgebühr, wenn Klienten über unsere Plattform zu Ihnen finden.",
+              "Werde Teil unseres kuratierten Netzwerks. Du zahlst nur eine Erfolgsgebühr, wenn Klient:innen über unsere Plattform zu dir finden.",
           }),
         }}
       />
@@ -107,10 +107,10 @@ export default function TherapistsPage() {
       >
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_120%_10%,rgba(99,102,241,0.08),transparent_60%),radial-gradient(30rem_16rem_at_-20%_80%,rgba(14,165,233,0.08),transparent_60%)]" />
         <h1 id="hero" className="text-3xl font-semibold tracking-tight sm:text-4xl">
-          Neue Klienten für Ihre Praxis
+          Neue Klient:innen für deine Praxis
         </h1>
         <p className="mt-4 max-w-2xl text-base text-gray-600 sm:text-lg">
-          Werden Sie Teil unseres kuratierten Netzwerks. Zahlen Sie nur eine Erfolgsgebühr, wenn Klienten über unsere Plattform zu Ihnen finden.
+          Werde Teil unseres kuratierten Netzwerks. Du zahlst nur eine Erfolgsgebühr, wenn Klient:innen über unsere Plattform zu dir finden.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-700" aria-label="Vertrauen">
           <span className="inline-flex items-center gap-2">
@@ -176,7 +176,7 @@ export default function TherapistsPage() {
           <div className="rounded-xl border bg-white p-5">
             <Shield className="h-5 w-5 text-indigo-600" />
             <h3 className="mt-2 font-medium">Faire Konditionen</h3>
-            <p className="mt-1 text-sm text-gray-600">Danach 0%, Klienten gehören Ihnen</p>
+            <p className="mt-1 text-sm text-gray-600">Danach 0% – Klient:innen gehören dir</p>
           </div>
           <div className="rounded-xl border bg-white p-5">
             <Users className="h-5 w-5 text-indigo-600" />
@@ -194,19 +194,19 @@ export default function TherapistsPage() {
           <ol className="space-y-6 text-gray-700">
             <li className="relative">
               <span className="absolute -left-8 top-0 grid size-6 place-items-center rounded-full bg-indigo-600 text-xs font-semibold text-white">1</span>
-              <p><strong>Kostenlose Aufnahme</strong> – Wir prüfen Ihre Qualifikationen und nehmen Sie in unser Netzwerk auf</p>
+              <p><strong>Kostenlose Aufnahme</strong> – Wir prüfen deine Qualifikationen und nehmen dich in unser Netzwerk auf</p>
             </li>
             <li className="relative">
               <span className="absolute -left-8 top-0 grid size-6 place-items-center rounded-full bg-indigo-600 text-xs font-semibold text-white">2</span>
-              <p><strong>Sichtbarkeit für Interessenten</strong> – Klienten finden Sie über unser Netzwerk und unsere Orientierungshilfe</p>
+              <p><strong>Sichtbarkeit für Interessent:innen</strong> – Klient:innen finden dich über unser Netzwerk und unsere Orientierungshilfe</p>
             </li>
             <li className="relative">
               <span className="absolute -left-8 top-0 grid size-6 place-items-center rounded-full bg-indigo-600 text-xs font-semibold text-white">3</span>
-              <p><strong>Direkter Kontakt</strong> – Interessenten kontaktieren Sie direkt und vereinbaren Termine</p>
+              <p><strong>Direkter Kontakt</strong> – Interessent:innen kontaktieren dich direkt und vereinbaren Termine</p>
             </li>
             <li className="relative">
               <span className="absolute -left-8 top-0 grid size-6 place-items-center rounded-full bg-indigo-600 text-xs font-semibold text-white">4</span>
-              <p><strong>Erfolgsbasierte Gebühr</strong> – Nur wenn Klienten über unser Netzwerk zu Ihnen finden, zahlen Sie 25% der ersten 10 Sitzungen</p>
+              <p><strong>Erfolgsbasierte Gebühr</strong> – Nur wenn Klient:innen über unser Netzwerk zu dir finden, zahlst du 25% der ersten 10 Sitzungen</p>
             </li>
           </ol>
         </div>
@@ -226,12 +226,12 @@ export default function TherapistsPage() {
 
       {/* Benefits */}
       <section aria-labelledby="benefits" className="mt-12 sm:mt-16">
-        <h2 id="benefits" className="text-2xl font-semibold">Ihre Vorteile</h2>
+        <h2 id="benefits" className="text-2xl font-semibold">Deine Vorteile</h2>
         <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-xl border bg-white p-5 transition-all duration-200 hover:shadow-md">
             <TrendingUp className="h-5 w-5 text-indigo-600" />
             <h3 className="mt-2 text-lg font-medium">Keine Vorabkosten</h3>
-            <p className="mt-1 text-sm text-gray-600">Zahlen Sie nur bei Erfolg</p>
+            <p className="mt-1 text-sm text-gray-600">Du zahlst nur bei Erfolg</p>
           </div>
           <div className="rounded-xl border bg-white p-5 transition-all duration-200 hover:shadow-md">
             <Target className="h-5 w-5 text-indigo-600" />
@@ -246,7 +246,7 @@ export default function TherapistsPage() {
           <div className="rounded-xl border bg-white p-5 transition-all duration-200 hover:shadow-md">
             <Shield className="h-5 w-5 text-indigo-600" />
             <h3 className="mt-2 text-lg font-medium">Faire Konditionen</h3>
-            <p className="mt-1 text-sm text-gray-600">Nach 10 Sitzungen gehören Klienten komplett Ihnen</p>
+            <p className="mt-1 text-sm text-gray-600">Nach 10 Sitzungen gehören Klient:innen komplett dir</p>
           </div>
           <div className="rounded-xl border bg-white p-5 transition-all duration-200 hover:shadow-md">
             <Users className="h-5 w-5 text-indigo-600" />
@@ -279,7 +279,7 @@ export default function TherapistsPage() {
               <UserCheck className="mt-0.5 h-5 w-5 text-indigo-600" />
               <div>
                 <p className="font-medium">Transparente Datenverarbeitung</p>
-                <p className="text-sm text-gray-600">Ihre Daten werden ausschließlich zur Vermittlung verwendet.</p>
+                <p className="text-sm text-gray-600">Deine Daten werden ausschließlich zur Vermittlung verwendet.</p>
               </div>
             </div>
           </div>
@@ -311,7 +311,7 @@ export default function TherapistsPage() {
         <div className="rounded-2xl border bg-gradient-to-b from-indigo-50 to-white p-6 sm:p-8">
           <h2 id="apply" className="text-2xl font-semibold">Bereit für mehr Sichtbarkeit?</h2>
           <p className="mt-2 text-gray-700">
-            Werden Sie jetzt Teil unseres kuratierten Netzwerks für körperorientierte Psychotherapie.
+            Werde jetzt Teil unseres kuratierten Netzwerks für körperorientierte Psychotherapie.
           </p>
           <div className="mt-8">
             <TherapistApplicationForm />

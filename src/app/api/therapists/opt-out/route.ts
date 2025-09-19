@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     const res = await verifyTherapistOptOutToken(token);
     if (!res.ok || !res.therapistId) {
       void track({ type: 'therapist_reminders_optout_failed', level: 'warn', source: 'api.therapists.optout', props: { reason: res.reason } });
-      return new NextResponse(html('<h1>Link abgelaufen oder ungültig</h1><p>Bitte öffnen Sie den neuesten Opt‑Out‑Link oder kontaktieren Sie uns.</p>'), { status: 400, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      return new NextResponse(html('<h1>Link abgelaufen oder ungültig</h1><p>Bitte öffne den neuesten Opt‑Out‑Link oder kontaktiere uns.</p>'), { status: 400, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
 
     const tid = res.therapistId;
@@ -34,7 +34,7 @@ export async function GET(req: Request) {
       .single();
     if (error || !t) {
       await logError('api.therapists.optout', error, { stage: 'fetch', therapist_id: tid }, ip, ua);
-      return new NextResponse(html('<h1>Fehler</h1><p>Wir konnten Ihre Anfrage nicht verarbeiten. Bitte versuchen Sie es später erneut.</p>'), { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      return new NextResponse(html('<h1>Fehler</h1><p>Wir konnten deine Anfrage nicht verarbeiten. Bitte versuche es später erneut.</p>'), { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
 
     const meta = (t as { metadata?: unknown }).metadata;
@@ -48,11 +48,11 @@ export async function GET(req: Request) {
       .eq('id', tid);
     if (upErr) {
       await logError('api.therapists.optout', upErr, { stage: 'update', therapist_id: tid }, ip, ua);
-      return new NextResponse(html('<h1>Fehler</h1><p>Wir konnten Ihre Einstellungen nicht speichern. Bitte versuchen Sie es später erneut.</p>'), { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      return new NextResponse(html('<h1>Fehler</h1><p>Wir konnten deine Einstellungen nicht speichern. Bitte versuche es später erneut.</p>'), { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
 
     void track({ type: 'therapist_reminders_opted_out', level: 'info', source: 'api.therapists.optout', props: { therapist_id: tid } });
-    return new NextResponse(html('<h1>Erinnerungen pausiert</h1><p>Sie erhalten keine weiteren Profil‑Erinnerungs‑E-Mails mehr. Sie können Ihr Profil jederzeit in Ruhe vervollständigen.</p>'), { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    return new NextResponse(html('<h1>Erinnerungen pausiert</h1><p>Du erhältst keine weiteren Profil‑Erinnerungs‑E-Mails mehr. Du kannst dein Profil jederzeit in Ruhe vervollständigen.</p>'), { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   } catch (e) {
     await logError('api.therapists.optout', e, { stage: 'exception' });
     return new NextResponse(html('<h1>Fehler</h1><p>Unerwarteter Fehler.</p>'), { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } });

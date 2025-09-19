@@ -1,10 +1,8 @@
 import Image from 'next/image';
 import { EmailEntryForm } from '@/components/EmailEntryForm';
 import FaqAccordion from '@/components/FaqAccordion';
-import TherapyModalityExplanations from '@/components/TherapyModalityExplanations';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Activity, Euro, Clock, MessageCircle, UserCheck, PhoneCall, ShieldCheck, Lock, Check } from 'lucide-react';
+import { Activity, Euro, Clock, MessageCircle, UserCheck, PhoneCall, ShieldCheck, Lock } from 'lucide-react';
 import { COOKIES_ENABLED } from '@/lib/config';
 
 export const revalidate = 3600;
