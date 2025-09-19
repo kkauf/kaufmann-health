@@ -639,7 +639,7 @@ async function main() {
             network_settings: {
               target_google_search: true,
               target_search_network: false,
-              target_content_network: false,
+              target_content_network: true,
               target_partner_search_network: false,
             },
             end_date: toYyyymmdd(cfg.schedule.end),
@@ -707,7 +707,7 @@ async function main() {
           network_settings: {
             target_google_search: true,
             target_search_network: false,
-            target_content_network: false,
+            target_content_network: true,
             target_partner_search_network: false,
           },
           ...(includeStart ? { start_date: toYyyymmdd(cfg.schedule.start) } : {}),
@@ -747,7 +747,7 @@ async function main() {
           network_settings: {
             target_google_search: true,
             target_search_network: false,
-            target_content_network: false,
+            target_content_network: true,
             target_partner_search_network: false,
           },
           end_date: toYyyymmdd(cfg.schedule.end),
@@ -808,7 +808,7 @@ async function main() {
           network_settings: {
             target_google_search: true,
             target_search_network: false,
-            target_content_network: false,
+            target_content_network: true,
             target_partner_search_network: false,
           },
           ...(includeStart ? { start_date: toYyyymmdd(cfg.schedule.start) } : {}),
