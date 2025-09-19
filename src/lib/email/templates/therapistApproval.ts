@@ -19,16 +19,16 @@ export function renderTherapistApproval(params: {
 
   const lines: string[] = [];
   lines.push(`<p style=\"margin:0 0 12px;\">Hi${name ? ` ${escapeHtml(name)}` : ''},</p>`);
-  lines.push('<p style="margin:0 0 12px;">Herzlichen Glückwunsch! Ihr Profil wurde genehmigt.</p>');
+  lines.push('<p style="margin:0 0 12px;">Herzlichen Glückwunsch! Dein Profil wurde genehmigt.</p>');
   if (visible) {
-    lines.push('<p style="margin:0 0 12px;">Ihr Profil ist nun im Verzeichnis sichtbar und Sie können Klienten‑Anfragen erhalten.</p>');
+    lines.push('<p style="margin:0 0 12px;">Dein Profil ist nun im Verzeichnis sichtbar und du kannst Klienten‑Anfragen erhalten.</p>');
   } else {
-    lines.push('<p style="margin:0 0 12px;">Ihre Qualifikationsnachweise wurden genehmigt. Ihr Profilfoto wird nach Freigabe durch das Team veröffentlicht.</p>');
+    lines.push('<p style="margin:0 0 12px;">Deine Qualifikationsnachweise wurden genehmigt. Dein Profilfoto wird nach Freigabe durch das Team veröffentlicht.</p>');
   }
-  lines.push('<p style="margin:16px 0 0; color:#6B7280; font-size:12px;">Antworten Sie gerne auf diese E‑Mail bei Fragen.</p>');
+  lines.push('<p style="margin:16px 0 0; color:#6B7280; font-size:12px;">Antworte gerne auf diese E‑Mail bei Fragen.</p>');
 
   return {
-    subject: 'Sie können ab sofort Klienten‑Anfragen erhalten',
+    subject: 'Du kannst ab sofort Klienten‑Anfragen erhalten',
     html: renderLayout({ title: 'Profil genehmigt', contentHtml: lines.join('') }),
   };
 }

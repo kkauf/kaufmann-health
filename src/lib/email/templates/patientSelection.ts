@@ -37,17 +37,17 @@ export function renderPatientSelectionEmail(params: {
   const urgencyBox = params.bannerOverrideHtml ?? `
     <div style="background:#FEF3C7; padding:12px; border-radius:8px; margin-top:20px;">
       ⏰ <strong>Diese Therapeut:innen haben begrenzte Kapazitäten.</strong><br/>
-      Bitte wählen Sie innerhalb von 48 Stunden, damit wir die Kapazitäten für Sie sichern können.
+      Bitte wähle innerhalb von 48 Stunden, damit wir die Kapazitäten für dich sichern können.
     </div>
   `;
  
   // Header and greeting/thanks
   const header = `
-    <h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Ihre persönlich kuratierte Auswahl</h1>
+    <h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Deine persönlich kuratierte Auswahl</h1>
   `;
   const greetingHtml = `
     ${name ? `<p style="margin:0 0 12px;">Hallo ${escapeHtml(name)},</p>` : ''}
-    <p style="margin:0 0 12px;">Vielen Dank für Ihre Anfrage bei Kaufmann Health.</p>
+    <p style="margin:0 0 12px;">Vielen Dank für deine Anfrage bei Kaufmann Health.</p>
   `;
  
   // Trust and quality box
@@ -55,12 +55,12 @@ export function renderPatientSelectionEmail(params: {
     <div style="background:#F3F4F6; padding:12px; border-radius:8px; margin:0 0 16px;">
       <strong style="display:block; margin-bottom:6px; color:#111827;">Warum diese Auswahl?</strong>
       <ul style="margin:8px 0 0 18px; padding:0; color:#374151;">
-        <li style="margin:4px 0;">Wir haben uns Ihrer Anfrage persönlich angenommen.</li>
-        <li style="margin:4px 0;">Auf Basis Ihrer Präferenzen (z.&nbsp;B. online oder vor Ort) ausgewählt.</li>
+        <li style="margin:4px 0;">Wir haben uns deiner Anfrage persönlich angenommen.</li>
+        <li style="margin:4px 0;">Auf Basis deiner Präferenzen (z.&nbsp;B. online oder vor Ort) ausgewählt.</li>
         <li style="margin:4px 0;">Wir prüfen die Qualifikationen der Therapeut:innen gründlich (Ausbildung, zertifizierte Fortbildungen, Erfahrung, aktuelle Verfügbarkeit).</li>
         <li style="margin:4px 0;">Spezielle Ausbildungen für Körpertherapie sind in den farbigen Abzeichen sichtbar (z.&nbsp;B. NARM, Somatic Experiencing, Hakomi, Core Energetics).</li>
       </ul>
-      <p style="margin:12px 0 0; color:#111827;">Sie können dieser Auswahl guten Gewissens vertrauen.</p>
+      <p style="margin:12px 0 0; color:#111827;">Du kannst dieser Auswahl guten Gewissens vertrauen.</p>
     </div>
   `;
  
@@ -98,7 +98,7 @@ export function renderPatientSelectionEmail(params: {
  
   // Action guidance
   const actionGuidance = `
-    <p style="margin:8px 0 0;">Mit einem Klick auf „Auswählen“ reservieren Sie unverbindlich den nächsten Schritt. Wir stellen den Kontakt direkt her.</p>
+    <p style="margin:8px 0 0;">Mit einem Klick auf „Auswählen“ reservierst du unverbindlich den nächsten Schritt. Wir stellen den Kontakt direkt her.</p>
   `;
  
   // Modalities explanation (concise, email-friendly)
@@ -116,7 +116,7 @@ export function renderPatientSelectionEmail(params: {
   `;
  
   const closingHtml = `
-    <p style="margin:16px 0 0;">Herzliche Grüße<br/>Ihr Team von Kaufmann Health</p>
+    <p style="margin:16px 0 0;">Herzliche Grüße<br/>Dein Team von Kaufmann Health</p>
   `;
  
   const contentHtml = [header, greetingHtml, trustBox, availabilityLine, cardsHtml, actionGuidance, urgencyBox, modalitiesHtml, closingHtml].join('\n');
@@ -132,12 +132,12 @@ export function renderPatientSelectionEmail(params: {
           url: actionTarget,
           name: 'Therapeuten ansehen',
         },
-        description: 'Ihre personalisierten Therapeuten-Empfehlungen',
+        description: 'Deine personalisierten Therapeuten-Empfehlungen',
       }
     : undefined;
 
   return {
-    subject: params.subjectOverride || 'Ihre persönlich kuratierte Auswahl – Termine in den nächsten 7 Tagen (bitte innerhalb von 48 Std. wählen)',
-    html: renderLayout({ title: 'Therapie-Auswahl', contentHtml, preheader: 'Ihre persönlich kuratierte Auswahl ist da – bitte innerhalb von 48 Std. wählen.', schema }),
+    subject: params.subjectOverride || 'Deine persönlich kuratierte Auswahl – Termine in den nächsten 7 Tagen (bitte innerhalb von 48 Std. wählen)',
+    html: renderLayout({ title: 'Therapie-Auswahl', contentHtml, preheader: 'Deine persönlich kuratierte Auswahl ist da – bitte innerhalb von 48 Std. wählen.', schema }),
   };
 }

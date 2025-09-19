@@ -34,26 +34,26 @@ export function renderTherapistReminder(params: {
 
   const lines: string[] = [];
   lines.push(`<p style=\"margin:0 0 12px;\">Hi${name ? ` ${escapeHtml(name)}` : ''},</p>`);
-  lines.push('<p style="margin:0 0 12px;">Ihr Profil ist fast startklar – es fehlen nur noch wenige Angaben.</p>');
+  lines.push('<p style="margin:0 0 12px;">Dein Profil ist fast startklar – es fehlen nur noch wenige Angaben.</p>');
   lines.push(`<p style=\"margin:0 0 12px;\"><strong>Fehlende Angaben:</strong> ${escapeHtml(missingList)}</p>`);
   if (typeof pct === 'number') {
-    lines.push(`<p style=\"margin:0 0 12px; color:#374151;\">Ihr Profil ist zu ${pct}% vollständig.</p>`);
+    lines.push(`<p style=\"margin:0 0 12px; color:#374151;\">Dein Profil ist zu ${pct}% vollständig.</p>`);
   }
   const targetIsProfile = Boolean(params.missingPhoto || params.missingApproach || params.missingBasic);
   const targetUrl = targetIsProfile ? params.profileUrl : params.uploadUrl;
   const ctaLabel = targetIsProfile ? 'Profil vervollständigen' : 'Dokumente hochladen';
   lines.push(`<div style=\"text-align:center; margin: 12px 0 16px;\">${renderButton(targetUrl, ctaLabel)}</div>`);
-  lines.push('<p style="margin:0 0 12px;">Dauert nur 5–10 Minuten. Danach können Sie sofort Klienten‑Anfragen erhalten.</p>');
+  lines.push('<p style="margin:0 0 12px;">Dauert nur 5–10 Minuten. Danach kannst du sofort Klienten‑Anfragen erhalten.</p>');
   if (params.optOutUrl) {
     lines.push(
-      `<p style=\"margin:8px 0 0; color:#6b7280; font-size:12px;\">Sie möchten diese Erinnerungen pausieren? <a href=\"${escapeHtml(params.optOutUrl)}\" style=\"color:#6b7280; text-decoration:underline;\">Hier klicken</a>.</p>`
+      `<p style=\"margin:8px 0 0; color:#6b7280; font-size:12px;\">Möchtest du diese Erinnerungen pausieren? <a href=\"${escapeHtml(params.optOutUrl)}\" style=\"color:#6b7280; text-decoration:underline;\">Hier klicken</a>.</p>`
     );
   }
 
   const subjectStage = params.stageLabel ? ` – ${params.stageLabel}` : '';
   let subjectBase = 'Profil vervollständigen';
   if (params.missingDocuments && !targetIsProfile) subjectBase = 'Lizenz‑Nachweis ausstehend';
-  else if (params.missingPhoto) subjectBase = 'Ihr Profil ist fast startklar – Foto fehlt noch';
+  else if (params.missingPhoto) subjectBase = 'Dein Profil ist fast startklar – Foto fehlt noch';
   return {
     subject: `${subjectBase}${subjectStage}`,
     html: renderLayout({ title: subjectBase, contentHtml: lines.join('') }),

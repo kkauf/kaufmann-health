@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 export const metadata = {
   title: 'Auswahl bestätigt | Kaufmann Health',
-  description: 'Bestätigung Ihrer Therapie-Auswahl.',
+  description: 'Bestätigung deiner Therapie‑Auswahl.',
 };
 
 export default async function Page({
@@ -17,21 +17,21 @@ export default async function Page({
   const error = typeof sp?.error === 'string' ? sp.error : undefined;
 
   let title = 'Auswahl bestätigt';
-  let description = 'Vielen Dank! Wir haben Ihre Auswahl erhalten und benachrichtigen jetzt den/die Therapeut:in. Sie erhalten in der Regel innerhalb von 24 Stunden eine Antwort.';
+  let description = 'Vielen Dank! Wir haben deine Auswahl erhalten und benachrichtigen jetzt den/die Therapeut:in. Du erhältst in der Regel innerhalb von 24 Stunden eine Antwort.';
 
   if (!ok && error) {
     title = 'Auswahl nicht möglich';
     description =
       error === 'missing'
-        ? 'Der Link ist unvollständig. Bitte öffnen Sie die E‑Mail erneut und klicken Sie auf den Button bei Ihrer/Ihrem bevorzugte:n Therapeut:in.'
+        ? 'Der Link ist unvollständig. Bitte öffne die E‑Mail erneut und klicke auf den Button bei deiner/deinem bevorzugte:n Therapeut:in.'
         : error === 'missing_therapist'
-        ? 'Es fehlt die Angabe des/der Therapeut:in. Bitte klicken Sie in der E‑Mail erneut direkt auf den Auswahl‑Button.'
+        ? 'Es fehlt die Angabe des/der Therapeut:in. Bitte klicke in der E‑Mail erneut direkt auf den Auswahl‑Button.'
         : error === 'not_found'
         ? 'Der Link ist ungültig oder abgelaufen.'
         : error === 'unavailable'
         ? 'Diese Auswahl ist nicht mehr verfügbar. Es kann sein, dass der Vorschlag zurückgezogen wurde.'
         : error === 'update_failed'
-        ? 'Ihre Auswahl konnte nicht gespeichert werden. Bitte versuchen Sie es später erneut.'
+        ? 'Deine Auswahl konnte nicht gespeichert werden. Bitte versuche es später erneut.'
         : 'Es ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.';
   }
 

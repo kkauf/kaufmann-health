@@ -13,17 +13,17 @@ export function renderTherapistWelcome(params: {
   const city = (params.city || '').trim();
 
   const leadStatusMessage = params.isActiveCity
-    ? 'Sie können schon bald Klienten‑Anfragen über unser Netzwerk erhalten.'
-    : `Kaufmann Health startet bald in ${city || 'Ihrer Stadt'}. Wir melden uns, sobald wir live sind.`;
+    ? 'Du kannst schon bald Klienten‑Anfragen über unser Netzwerk erhalten.'
+    : `Kaufmann Health startet bald in ${city || 'deiner Stadt'}. Wir melden uns, sobald wir live sind.`;
 
   const termsUrl = `${BASE_URL}/therapist-terms?version=${encodeURIComponent(params.termsVersion)}`;
 
   const founderImg = `${BASE_URL}/profile-pictures/konstantin-kaufmann.jpg`;
 
   const contentHtml = `
-    <h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Willkommen! Vervollständigen Sie Ihr Profil</h1>
+    <h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Willkommen! Vervollständige dein Profil</h1>
     <p style="margin:0 0 12px;">Hi${name ? ` ${escapeHtml(name)}` : ''},</p>
-    <p style="margin:0 0 12px;">vielen Dank für Ihre Anmeldung bei Kaufmann Health!</p>
+    <p style="margin:0 0 12px;">vielen Dank für deine Anmeldung bei Kaufmann Health!</p>
     <p style="margin:0 0 12px;"><strong>${escapeHtml(leadStatusMessage)}</strong></p>
 
     ${params.uploadUrl ? `
@@ -42,10 +42,10 @@ export function renderTherapistWelcome(params: {
           </ul>
         </div>
         <div style="margin:12px 0 0;">
-          <div style="font-weight:600; color:#111827;">👤 IHR THERAPEUTENPROFIL:</div>
+          <div style="font-weight:600; color:#111827;">👤 DEIN THERAPEUTENPROFIL:</div>
           <ul style="margin:6px 0 0 18px; color:#374151;">
-            <li> Professionelles Foto (für Ihr Verzeichnisprofil)</li>
-            <li> Beschreibung Ihres therapeutischen Ansatzes (2–3 Absätze)</li>
+            <li> Professionelles Foto (für dein Verzeichnisprofil)</li>
+            <li> Beschreibung deines therapeutischen Ansatzes (2–3 Absätze)</li>
           </ul>
         </div>
       </div>
@@ -54,7 +54,7 @@ export function renderTherapistWelcome(params: {
 
     <div style="margin: 8px 0 0; padding:12px; border:1px solid #E5E7EB; border-radius:8px; background:#FFFFFF;">
       <div style="font-weight:600; color:#111827; margin-bottom:4px;">Vertragsdokumente</div>
-      <div style="color:#374151; font-size:14px;">Sie haben Version <strong>${escapeHtml(params.termsVersion)}</strong> akzeptiert.</div>
+      <div style="color:#374151; font-size:14px;">Du hast Version <strong>${escapeHtml(params.termsVersion)}</strong> akzeptiert.</div>
       <div style="margin-top:6px;"><a href="${termsUrl}" style="color:#4A9B8E; text-decoration:none; font-weight:600;">Vertrag ansehen</a></div>
     </div>
 
@@ -71,15 +71,15 @@ export function renderTherapistWelcome(params: {
       </tr>
     </table>
 
-    <p style="color:#6B7280; font-size:12px; margin-top:16px;">Antworten Sie gerne direkt auf diese Nachricht, falls Sie Rückfragen haben.</p>
+    <p style="color:#6B7280; font-size:12px; margin-top:16px;">Antworte gerne direkt auf diese Nachricht, falls du Rückfragen hast.</p>
   `;
 
   return {
-    subject: 'Willkommen! Vervollständigen Sie Ihr Profil',
+    subject: 'Willkommen! Vervollständige dein Profil',
     html: renderLayout({
       title: 'Willkommen bei Kaufmann Health',
       contentHtml,
-      preheader: 'Willkommen! Vervollständigen Sie Ihr Profil in 5–10 Minuten.',
+      preheader: 'Willkommen! Vervollständige dein Profil in 5–10 Minuten.',
       schema: params.uploadUrl
         ? {
             '@context': 'http://schema.org',
@@ -90,7 +90,7 @@ export function renderTherapistWelcome(params: {
               url: params.uploadUrl,
               name: 'Profil vervollständigen',
             },
-            description: 'Willkommen bei Kaufmann Health - Vervollständigen Sie Ihr Profil',
+            description: 'Willkommen bei Kaufmann Health - Vervollständige dein Profil',
           }
         : undefined,
     }),

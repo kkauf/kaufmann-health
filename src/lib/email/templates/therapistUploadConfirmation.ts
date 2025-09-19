@@ -18,7 +18,7 @@ export function renderTherapistUploadConfirmation(params: {
   const contentHtml = `
     <h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Profil erhalten – wird geprüft</h1>
     <p style="margin:0 0 12px;">Hi${name ? ` ${escapeHtml(name)}` : ''},</p>
-    <p style="margin:0 0 12px;">Ihr Profil und Ihre Dokumente sind bei uns eingegangen und werden geprüft.</p>
+    <p style="margin:0 0 12px;">Dein Profil und deine Dokumente sind bei uns eingegangen und werden geprüft.</p>
 
     <div style="background-color:#F9FAFB; padding:16px; border-radius:8px; border:1px solid #E5E7EB; margin: 12px 0;">
       <p style="margin:0 0 4px;">Erhalten:</p>
@@ -29,7 +29,7 @@ export function renderTherapistUploadConfirmation(params: {
       </ul>
     </div>
 
-    <p style="margin:0 0 12px;">Sie hören binnen 2 Werktagen von uns!</p>
+    <p style="margin:0 0 12px;">Du hörst binnen 2 Werktagen von uns!</p>
   `;
 
   return {

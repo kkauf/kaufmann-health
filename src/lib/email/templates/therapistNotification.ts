@@ -33,20 +33,20 @@ export function renderTherapistNotification(params: TherapistNotificationParams)
   if (params.type === 'selection') {
     lines.push(`<p style=\"margin:0 0 12px;\">Hallo${tName ? ` ${esc(tName)}` : ''},</p>`);
     lines.push('<div style="background:#10B981; color:white; padding:16px; border-radius:8px; margin: 0 0 16px;">');
-    lines.push('<h2 style="margin:0 0 8px; font-size:20px;">Ein:e Klient:in hat Sie ausgewählt</h2>');
-    lines.push('<p style="margin:0;">Bitte sehen Sie sich die Anfrage kurz an und geben Sie Ihre Rückmeldung.</p>');
+    lines.push('<h2 style="margin:0 0 8px; font-size:20px;">Ein:e Klient:in hat dich ausgewählt</h2>');
+    lines.push('<p style="margin:0;">Bitte sieh dir die Anfrage kurz an und gib deine Rückmeldung.</p>');
     lines.push('</div>');
   } else if (params.type === 'reminder') {
     lines.push(`<p style=\"margin:0 0 12px;\">Hallo${tName ? ` ${esc(tName)}` : ''},</p>`);
     lines.push('<div style="background:#F59E0B; color:white; padding:16px; border-radius:8px; margin: 0 0 16px;">');
     lines.push('<h2 style="margin:0 0 8px; font-size:20px;">⚠️ Erinnerung: Bitte Rückmeldung geben</h2>');
-    lines.push('<p style="margin:0;">Eine von Klient:in getroffene Auswahl wartet noch auf Ihre Antwort.</p>');
+    lines.push('<p style="margin:0;">Eine von Klient:in getroffene Auswahl wartet noch auf deine Antwort.</p>');
     lines.push('</div>');
   } else {
     // outreach
     lines.push(`<p style=\"margin:0 0 12px;\">Hallo${tName ? ` ${esc(tName)}` : ''},</p>`);
     lines.push('<h2 style="margin:0 0 8px; font-size:20px;">Neue Klientenanfrage</h2>');
-    lines.push(`<p style=\"margin:0 0 12px;\">Bitte prüfen Sie die Details und geben Sie Ihre Rückmeldung. Der Link ist aus Sicherheitsgründen nur für ${expiresHours} Stunden gültig.</p>`);
+    lines.push(`<p style=\"margin:0 0 12px;\">Bitte prüfe die Details und gib deine Rückmeldung. Der Link ist aus Sicherheitsgründen nur für ${expiresHours} Stunden gültig.</p>`);
   }
 
   // Minimal, non-PII context
@@ -73,8 +73,8 @@ export function renderTherapistNotification(params: TherapistNotificationParams)
 
   let subject: string;
   if (params.subjectOverride && params.subjectOverride.trim()) subject = params.subjectOverride.trim();
-  else if (params.type === 'selection') subject = '🎉 Ein:e Klient:in hat Sie ausgewählt – bitte Rückmeldung geben';
-  else if (params.type === 'reminder') subject = '⚠️ Erinnerung: Klient:in wartet auf Ihre Antwort';
+  else if (params.type === 'selection') subject = '🎉 Ein:e Klient:in hat dich ausgewählt – bitte Rückmeldung geben';
+  else if (params.type === 'reminder') subject = '⚠️ Erinnerung: Klient:in wartet auf deine Antwort';
   else subject = `Neue Klientenanfrage – ${city || 'unbekannt'} – ${issue || 'Allgemein'}`;
 
   return { subject, html };

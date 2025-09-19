@@ -56,12 +56,12 @@ export default function TherapistApplicationForm() {
     const email = (emailRaw || '').trim();
     const qualification = form.get('qualification')?.toString() || '';
     if (!qualification) {
-      setErrors({ qualification: 'Bitte wählen Sie Ihre Qualifikation.' });
+      setErrors({ qualification: 'Bitte wähle deine Qualifikation.' });
       return;
     }
     const experience = form.get('experience')?.toString() || '';
     if (!experience) {
-      setErrors({ experience: 'Bitte wählen Sie Ihre Berufserfahrung.' });
+      setErrors({ experience: 'Bitte wähle deine Berufserfahrung.' });
       return;
     }
 
@@ -71,7 +71,7 @@ export default function TherapistApplicationForm() {
       .map((v) => v.toString())
       .filter((v) => v === 'online' || v === 'in_person') as ('online' | 'in_person')[];
     if (session_preferences.length === 0) {
-      setErrors({ session_preference: 'Bitte wählen Sie Ihre Sitzungsart.' });
+      setErrors({ session_preference: 'Bitte wähle deine Sitzungsart.' });
       return;
     }
 
@@ -89,7 +89,7 @@ export default function TherapistApplicationForm() {
     const specializations = form.getAll('specializations').map((v) => v.toString());
     // Require at least one modality (EARTH-71)
     if (specializations.length === 0) {
-      setErrors({ specialization: 'Bitte wählen Sie mindestens einen Schwerpunkt.' });
+      setErrors({ specialization: 'Bitte wähle mindestens einen Schwerpunkt.' });
       return;
     }
 
@@ -146,11 +146,11 @@ export default function TherapistApplicationForm() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Fehler beim Senden.';
       const map: Record<string, string> = {
-        'Invalid email': 'Bitte geben Sie eine gültige E‑Mail-Adresse ein.',
-        'Rate limited': 'Zu viele Anfragen. Bitte versuchen Sie es in einer Minute erneut.',
+        'Invalid email': 'Bitte gib eine gültige E‑Mail‑Adresse ein.',
+        'Rate limited': 'Zu viele Anfragen. Bitte versuche es in einer Minute erneut.',
         'Failed to save lead': 'Speichern fehlgeschlagen. Bitte später erneut versuchen.',
         'Invalid JSON': 'Ungültige Eingabe. Bitte Formular prüfen.',
-        'Missing required documents': 'Bitte laden Sie alle erforderlichen Dokumente hoch.',
+        'Missing required documents': 'Bitte lade alle erforderlichen Dokumente hoch.',
         'Unsupported file type': 'Dateityp nicht unterstützt. Erlaubt sind PDF, JPG oder PNG.',
         'File too large': 'Datei zu groß. Maximal 10MB erlaubt.',
       };
@@ -177,17 +177,17 @@ export default function TherapistApplicationForm() {
         <Card ref={statusRef} tabIndex={-1} className="max-w-2xl scroll-mt-28 mb-6">
           <CardHeader>
             <CardTitle>Registrierung erfolgreich</CardTitle>
-            <CardDescription>Wir haben Ihre Registrierung erhalten.</CardDescription>
+            <CardDescription>Wir haben deine Registrierung erhalten.</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm">
-              Wir haben Ihnen eine Bestätigungs-E‑Mail{submittedEmail ? ` an ${submittedEmail}` : ''} gesendet. Bitte prüfen Sie auch Ihren SPAM‑Ordner, sollten Sie die E‑Mail nicht erhalten haben.
+              Wir haben dir eine Bestätigungs‑E‑Mail{submittedEmail ? ` an ${submittedEmail}` : ''} gesendet. Bitte prüfe auch deinen SPAM‑Ordner, solltest du die E‑Mail nicht erhalten haben.
             </p>
             <p className="text-sm mt-3 font-medium">
-              Dokumente-Upload erforderlich für Aktivierung. Bitte öffnen Sie den Link in der E‑Mail, um Ihre Nachweise hochzuladen.
+              Dokumente‑Upload erforderlich für Aktivierung. Bitte öffne den Link in der E‑Mail, um deine Nachweise hochzuladen.
             </p>
             <p className="text-sm mt-3">
-              Falls Ihre E‑Mail-Adresse falsch ist, schreiben Sie uns direkt: <a className="underline" href="mailto:kontakt@kaufmann-health.de">kontakt@kaufmann-health.de</a>.
+              Falls deine E‑Mail‑Adresse falsch ist, schreib uns direkt: <a className="underline" href="mailto:kontakt@kaufmann-health.de">kontakt@kaufmann-health.de</a>.
             </p>
           </CardContent>
           <CardFooter>
@@ -246,11 +246,11 @@ export default function TherapistApplicationForm() {
       {/* Compact two‑column layout */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="name">Ihr Name</Label>
+          <Label htmlFor="name">Dein Name</Label>
           <Input id="name" name="name" placeholder="Vor- und Nachname" />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="city">Ihre Stadt</Label>
+          <Label htmlFor="city">Deine Stadt</Label>
           <Input id="city" name="city" placeholder="z. B. Berlin" />
         </div>
 
@@ -280,7 +280,7 @@ export default function TherapistApplicationForm() {
               Vor Ort (Praxis)
             </label>
           </div>
-          <p className="text-xs text-gray-500">Wählen Sie eine oder beide Optionen.</p>
+          <p className="text-xs text-gray-500">Wähle eine oder beide Optionen.</p>
           {errors.session_preference && <p className="text-xs text-red-600">{errors.session_preference}</p>}
         </fieldset>
 
@@ -340,7 +340,7 @@ export default function TherapistApplicationForm() {
               Core Energetics
             </label>
           </div>
-          <p className="text-xs text-gray-500">Bitte wählen Sie mindestens einen Schwerpunkt aus.</p>
+          <p className="text-xs text-gray-500">Bitte wähle mindestens einen Schwerpunkt aus.</p>
           {errors.specialization && <p className="text-xs text-red-600">{errors.specialization}</p>}
         </fieldset>
 
@@ -358,7 +358,7 @@ export default function TherapistApplicationForm() {
 
       <div className="rounded-lg border bg-amber-50 p-4 text-sm">
         <p className="text-gray-800">
-          Mit dem Klick auf „Jetzt registrieren“ akzeptieren Sie unsere{' '}
+          Mit dem Klick auf „Jetzt registrieren“ akzeptierst du unsere{' '}
           <a href="/therapist-terms" target="_blank" className="underline font-medium">
             25%-Provisionsvereinbarung
           </a>{' '}

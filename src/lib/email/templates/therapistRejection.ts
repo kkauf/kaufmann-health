@@ -24,12 +24,12 @@ export function renderTherapistRejection(params: {
   const approach = (params.approachIssue || '').trim();
   const lines: string[] = [];
   lines.push(`<p style=\"margin:0 0 12px;\">Hi${name ? ` ${escapeHtml(name)}` : ''},</p>`);
-  lines.push('<p style="margin:0 0 12px;">Vielen Dank für Ihr Interesse. Wir benötigen noch Anpassungen an Ihrem Profil:</p>');
+  lines.push('<p style="margin:0 0 12px;">Vielen Dank für dein Interesse. Wir benötigen noch Anpassungen an deinem Profil:</p>');
 
   lines.push('<div style="background-color:#F9FAFB; padding:16px; border-radius:8px; border:1px solid #E5E7EB; margin: 8px 0 12px;">');
   lines.push('<ul style="margin:0 0 0 18px; color:#374151;">');
   if (params.missingDocuments) {
-    lines.push('<li>DOKUMENTE: Bitte laden Sie Ihre Qualifikationsnachweise hoch.</li>');
+    lines.push('<li>DOKUMENTE: Bitte lade deine Qualifikationsnachweise hoch.</li>');
   }
   if (photo) {
     lines.push(`<li>PROFILFOTO: ${escapeHtml(photo)}</li>`);
@@ -44,12 +44,12 @@ export function renderTherapistRejection(params: {
   lines.push('</div>');
 
   if (params.uploadUrl) {
-    lines.push(`<p style=\"margin:0 0 12px;\">Bitte aktualisieren Sie Ihr Profil: <a href=\"${params.uploadUrl}\" style=\"color:#4A9B8E; text-decoration:none; font-weight:600;\">Profil vervollständigen</a></p>`);
+    lines.push(`<p style=\"margin:0 0 12px;\">Bitte aktualisiere dein Profil: <a href=\"${params.uploadUrl}\" style=\"color:#4A9B8E; text-decoration:none; font-weight:600;\">Profil vervollständigen</a></p>`);
   }
-  lines.push('<p style="margin:16px 0 0; color:#6B7280; font-size:12px;">Bei Fragen antworten Sie gerne auf diese E‑Mail.</p>');
+  lines.push('<p style="margin:16px 0 0; color:#6B7280; font-size:12px;">Bei Fragen antworte gerne auf diese E‑Mail.</p>');
 
   return {
-    subject: 'Rückfrage zu Ihrem Profil',
-    html: renderLayout({ title: 'Rückfrage zu Ihrem Profil', contentHtml: lines.join('') }),
+    subject: 'Rückfrage zu deinem Profil',
+    html: renderLayout({ title: 'Rückfrage zu deinem Profil', contentHtml: lines.join('') }),
   };
 }

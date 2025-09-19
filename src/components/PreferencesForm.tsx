@@ -33,7 +33,7 @@ export function PreferencesForm({ leadId }: Props) {
     const sessionPref = String(data.get('session_preference') || '').trim();
 
     const nextErrors: Record<string, string> = {};
-    if (!city) nextErrors.city = 'Bitte geben Sie Ihre Stadt an.';
+    if (!city) nextErrors.city = 'Bitte gib deine Stadt an.';
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
@@ -62,7 +62,7 @@ export function PreferencesForm({ leadId }: Props) {
 
   const ConsentHint = useMemo(() => (
     <p className="mt-2 text-xs text-gray-600">
-      Durch Absenden stimmen Sie der Weitergabe Ihrer Daten an passende Therapeut:innen zu. Details: {' '}
+      Durch Absenden stimmst du der Weitergabe deiner Daten an passende Therapeut:innen zu. Details: {' '}
       <Link href="/datenschutz" className="underline">Datenschutzerklärung</Link>
     </p>
   ), []);
@@ -73,7 +73,7 @@ export function PreferencesForm({ leadId }: Props) {
         <CardHeader>
           <CardTitle>Danke! Wir machen uns an die Arbeit</CardTitle>
           <CardDescription>
-            Wir prüfen Ihre Angaben und senden Ihnen innerhalb von 24–48 Stunden eine persönliche Auswahl an passenden Therapeut:innen.
+            Wir prüfen deine Angaben und senden dir innerhalb von 24–48 Stunden eine persönliche Auswahl an passenden Therapeut:innen.
           </CardDescription>
         </CardHeader>
         <CardFooter>

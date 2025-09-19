@@ -25,11 +25,11 @@ export function renderPatientBlockerSurvey(params: {
   const choice = (href: string, label: string, style?: string) =>
     `<a href="${href}" style="display:block; padding:12px; margin:8px 0; background:${style || '#F3F4F6'}; text-decoration:none; color:#111827; border-radius:6px;">${label}</a>`;
 
-  const header = `<h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Kurze Frage zu Ihrer Therapie‑Anfrage</h1>`;
+  const header = `<h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Kurze Frage zu deiner Therapie‑Anfrage</h1>`;
   const greeting = `<p style="margin:0 0 12px;">Hallo${patient ? ` ${escapeHtml(patient)}` : ''},</p>`;
   const intro = `
-    <p style="margin:0 0 12px;">Sie haben vor einer Woche${therapist ? ` ${escapeHtml(therapist)}` : ''} als Therapeut:in ausgewählt, aber wir sehen, dass noch kein Ersttermin stattgefunden hat.</p>
-    <p style="margin:0 0 8px;"><strong>Was hält Sie aktuell davon ab?</strong> (1 Klick genügt)</p>
+    <p style="margin:0 0 12px;">Du hast vor einer Woche${therapist ? ` ${escapeHtml(therapist)}` : ''} als Therapeut:in ausgewählt, aber wir sehen, dass noch kein Ersttermin stattgefunden hat.</p>
+    <p style="margin:0 0 8px;"><strong>Was hält dich aktuell davon ab?</strong> (1 Klick genügt)</p>
   `;
 
   const choices = [
@@ -37,15 +37,15 @@ export function renderPatientBlockerSurvey(params: {
     choice(link('cost'), '💰 Kosten doch zu hoch'),
     choice(link('changed_mind'), '🤔 Habe es mir anders überlegt'),
     choice(link('no_contact'), '⚠️ Therapeut:in hat sich nicht gemeldet', '#FEE2E2'),
-    choice(link('other'), '✏️ Anderer Grund (bitte antworten Sie auf diese E‑Mail)')
+    choice(link('other'), '✏️ Anderer Grund (bitte antworte auf diese E‑Mail)')
   ].join('');
 
-  const footer = `<p style="margin:12px 0 0; color:#6B7280; font-size:12px;">Ihre Rückmeldung hilft uns, den Service für Sie zu verbessern.</p>`;
+  const footer = `<p style=\"margin:12px 0 0; color:#6B7280; font-size:12px;\">Deine Rückmeldung hilft uns, den Service für dich zu verbessern.</p>`;
 
   const contentHtml = [header, greeting, intro, choices, footer].join('');
 
   return {
-    subject: 'Kurze Frage zu Ihrer Therapie‑Anfrage',
+    subject: 'Kurze Frage zu deiner Therapie‑Anfrage',
     html: renderLayout({ title: 'Kurze Frage', contentHtml }),
   };
 }
