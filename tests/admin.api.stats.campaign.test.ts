@@ -38,6 +38,14 @@ const PEOPLE_FIXTURES = [
     campaign_variant: 'A',
     created_at: '2025-09-18T10:00:00.000Z',
   },
+  // Additional C variant to verify A/B/C support
+  {
+    status: 'new',
+    type: 'patient',
+    campaign_source: '/wieder-lebendig',
+    campaign_variant: 'C',
+    created_at: '2025-09-18T11:00:00.000Z',
+  },
 ];
 
 // Minimal chainable supabase mock that returns empty data by default
@@ -110,6 +118,7 @@ describe('Admin Stats: campaign aggregation', () => {
         expect.objectContaining({ campaign_source: '/wieder-lebendig', campaign_variant: 'A', leads: 2, confirmed: 1, confirmation_rate: 50 }),
         expect.objectContaining({ campaign_source: '/ankommen-in-dir', campaign_variant: 'B', leads: 1, confirmed: 1, confirmation_rate: 100 }),
         expect.objectContaining({ campaign_source: '/therapie-finden', campaign_variant: 'A', leads: 1, confirmed: 1, confirmation_rate: 100 }),
+        expect.objectContaining({ campaign_source: '/wieder-lebendig', campaign_variant: 'C', leads: 1, confirmed: 1, confirmation_rate: 100 }),
       ])
     );
 
@@ -119,6 +128,7 @@ describe('Admin Stats: campaign aggregation', () => {
         expect.objectContaining({ day: '2025-09-17', campaign_source: '/wieder-lebendig', campaign_variant: 'A', leads: 2, confirmed: 1, confirmation_rate: 50 }),
         expect.objectContaining({ day: '2025-09-18', campaign_source: '/ankommen-in-dir', campaign_variant: 'B', leads: 1, confirmed: 1, confirmation_rate: 100 }),
         expect.objectContaining({ day: '2025-09-18', campaign_source: '/therapie-finden', campaign_variant: 'A', leads: 1, confirmed: 1, confirmation_rate: 100 }),
+        expect.objectContaining({ day: '2025-09-18', campaign_source: '/wieder-lebendig', campaign_variant: 'C', leads: 1, confirmed: 1, confirmation_rate: 100 }),
       ])
     );
   });

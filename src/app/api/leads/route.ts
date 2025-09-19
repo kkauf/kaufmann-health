@@ -601,7 +601,9 @@ export async function POST(req: Request) {
       // Ensure variant prefers Referer (?v=) even if URL parsing is quirky in test env
       const refStr = req.headers.get('referer') || '';
       const vMatch = refStr.match(/[?&]v=([A-Za-z])/);
-      const campaign_variant = vMatch ? (vMatch[1].toUpperCase() === 'B' ? 'B' : 'A') : campaign.campaign_variant;
+      const campaign_variant = vMatch
+        ? ((vMatch[1].toUpperCase() === 'B') ? 'B' : (vMatch[1].toUpperCase() === 'C' ? 'C' : 'A'))
+        : campaign.campaign_variant;
       const landing_page = campaign.landing_page || null;
 
       // Prepare confirmation token up-front so we can store it at insert time

@@ -38,9 +38,26 @@ export default function AnkommenHero() {
               Finde deinen Therapeuten – diese Woche noch
             </h1>
           </VariantGate>
-          <p className="mt-4 max-w-2xl text-base text-gray-700 sm:text-lg">
-            Körperorientierte Therapie online – persönlich kuratiert. NARM, Somatic Experiencing, Hakomi, Core Energetics. 80–120€ pro Sitzung.
-          </p>
+          <VariantGate show="C">
+            <h1 id="hero-heading" className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
+              Ankommen in dir – Coaching & Begleitung online
+            </h1>
+          </VariantGate>
+          <VariantGate show="C">
+            <p className="mt-4 max-w-2xl text-base text-gray-700 sm:text-lg">
+              Körperorientiertes Coaching & Begleitung – persönlich kuratiert und online verfügbar. 80–120€ pro Sitzung.
+            </p>
+          </VariantGate>
+          <VariantGate show="A">
+            <p className="mt-4 max-w-2xl text-base text-gray-700 sm:text-lg">
+              Körperorientierte Therapie online – persönlich kuratiert. NARM, Somatic Experiencing, Hakomi, Core Energetics. 80–120€ pro Sitzung.
+            </p>
+          </VariantGate>
+          <VariantGate show="B">
+            <p className="mt-4 max-w-2xl text-base text-gray-700 sm:text-lg">
+              Körperorientierte Therapie online – persönlich kuratiert. NARM, Somatic Experiencing, Hakomi, Core Energetics. 80–120€ pro Sitzung.
+            </p>
+          </VariantGate>
 
           {/* Trust markers */}
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-700" aria-label="Vertrauen">

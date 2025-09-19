@@ -200,7 +200,15 @@ export default async function AnkommenInDirPage() {
 
         {/* EARTH-143: Privacy benefit section */}
         <section aria-labelledby="privacy-benefit" className="mt-10 sm:mt-14 rounded-2xl border bg-white p-5 sm:p-6">
-          <h2 id="privacy-benefit" className="text-2xl font-semibold tracking-tight">Therapie ohne Krankenkasseneintrag</h2>
+          <VariantGate show="C">
+            <h2 id="privacy-benefit" className="text-2xl font-semibold tracking-tight">Coaching & Begleitung – ohne Krankenkasseneintrag</h2>
+          </VariantGate>
+          <VariantGate show="A">
+            <h2 id="privacy-benefit" className="text-2xl font-semibold tracking-tight">Therapie ohne Krankenkasseneintrag</h2>
+          </VariantGate>
+          <VariantGate show="B">
+            <h2 id="privacy-benefit" className="text-2xl font-semibold tracking-tight">Therapie ohne Krankenkasseneintrag</h2>
+          </VariantGate>
           <p className="mt-2 max-w-2xl text-gray-700">Deine mentale Gesundheit, deine Privatsphäre.</p>
           <div className="mt-4">
             <CheckList

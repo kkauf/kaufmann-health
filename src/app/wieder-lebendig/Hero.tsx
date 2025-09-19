@@ -8,14 +8,20 @@ import PageAnalytics from "@/components/PageAnalytics";
 import CtaLink from "@/components/CtaLink";
 import { Button } from "@/components/ui/button";
 import { EmailEntryForm } from "@/components/EmailEntryForm";
+import VariantGate from "@/components/VariantGate";
 
 export default function WiederLebendigHero() {
-  const [variant] = useState<"A" | "B">(() => {
+  const [variant] = useState<"A" | "B" | "C">(() => {
     try {
       if (typeof window === 'undefined') return 'A';
       const url = new URL(window.location.href);
       const v = url.searchParams.get('v');
-      if (v) return v.toUpperCase() === 'B' ? 'B' : 'A';
+      if (v) {
+        const up = v.toUpperCase();
+        if (up === 'B') return 'B';
+        if (up === 'C') return 'C';
+        return 'A';
+      }
       const assigned: "A" | "B" = Math.random() < 0.5 ? "A" : "B";
       // Persist variant in URL without navigation to enable server attribution and API forwarding
       try {
@@ -52,9 +58,21 @@ export default function WiederLebendigHero() {
           <h1 id="hero-heading" className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
             {heroText}
           </h1>
-          <p className="mt-4 max-w-2xl text-base text-gray-700 sm:text-lg">
-            Körperorientierte Therapie mit handverlesenen Therapeut:innen – diese Woche noch verfügbar
-          </p>
+          <VariantGate show="C">
+            <p className="mt-4 max-w-2xl text-base text-gray-700 sm:text-lg">
+              Körperorientiertes Coaching & Begleitung – 80–120€ pro Sitzung. Diese Woche noch verfügbar.
+            </p>
+          </VariantGate>
+          <VariantGate show="A">
+            <p className="mt-4 max-w-2xl text-base text-gray-700 sm:text-lg">
+              Körperorientierte Therapie mit handverlesenen Therapeut:innen – diese Woche noch verfügbar
+            </p>
+          </VariantGate>
+          <VariantGate show="B">
+            <p className="mt-4 max-w-2xl text-base text-gray-700 sm:text-lg">
+              Körperorientierte Therapie mit handverlesenen Therapeut:innen – diese Woche noch verfügbar
+            </p>
+          </VariantGate>
 
           {/* Trust markers to match /therapie-finden */}
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-700" aria-label="Vertrauen">

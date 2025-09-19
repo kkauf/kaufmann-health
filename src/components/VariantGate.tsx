@@ -2,12 +2,14 @@
 
 import { useMemo } from "react";
 
-export default function VariantGate({ show, children }: { show: "A" | "B"; children: React.ReactNode }) {
-  const variant = useMemo<"A" | "B">(() => {
+export default function VariantGate({ show, children }: { show: "A" | "B" | "C"; children: React.ReactNode }) {
+  const variant = useMemo<"A" | "B" | "C">(() => {
     try {
       const url = new URL(window.location.href);
       const v = (url.searchParams.get("v") || "A").toUpperCase();
-      return v === "B" ? "B" : "A";
+      if (v === "B") return "B";
+      if (v === "C") return "C";
+      return "A";
     } catch {
       return "A";
     }

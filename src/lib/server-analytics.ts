@@ -32,7 +32,7 @@ export function parseAttributionFromRequest(req: Request): ServerAttribution {
 
 export function parseCampaignFromRequest(req: Request): {
   campaign_source?: string;
-  campaign_variant?: 'A' | 'B';
+  campaign_variant?: 'A' | 'B' | 'C';
   landing_page?: string;
 } {
   const ref = req.headers.get('referer') || '';
@@ -54,7 +54,8 @@ export function parseCampaignFromRequest(req: Request): {
       v = apiUrl.searchParams.get('v') || undefined;
     } catch {}
   }
-  const vv = (v || 'A').toUpperCase() === 'B' ? 'B' : 'A';
+  const vt = (v || 'A').toUpperCase();
+  const vv: 'A' | 'B' | 'C' = vt === 'B' ? 'B' : vt === 'C' ? 'C' : 'A';
 
   // Source mapping (EARTH-146)
   const src = pathname?.includes('/ankommen-in-dir')

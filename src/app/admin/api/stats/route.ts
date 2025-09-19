@@ -316,7 +316,8 @@ export async function GET(req: Request) {
     const cmap = new Map<string, { campaign_source: string; campaign_variant: string; leads: number; confirmed: number }>();
     for (const row of ((peopleRows || []) as Array<PeopleRow>)) {
       const src = String(row.campaign_source || '').trim();
-      const v = (String(row.campaign_variant || '').toUpperCase() === 'B') ? 'B' : 'A';
+      const vRaw = String(row.campaign_variant || '').toUpperCase();
+      const v = vRaw === 'B' ? 'B' : vRaw === 'C' ? 'C' : 'A';
       if (!src) continue;
       const key = `${src}__${v}`;
       if (!cmap.has(key)) cmap.set(key, { campaign_source: src, campaign_variant: v, leads: 0, confirmed: 0 });
@@ -335,7 +336,8 @@ export async function GET(req: Request) {
     const dailyMap = new Map<string, { day: string; campaign_source: string; campaign_variant: string; leads: number; confirmed: number }>();
     for (const row of ((peopleRows || []) as Array<PeopleRow & { created_at?: string }>)) {
       const src = String(row.campaign_source || '').trim();
-      const v = (String(row.campaign_variant || '').toUpperCase() === 'B') ? 'B' : 'A';
+      const vRaw = String(row.campaign_variant || '').toUpperCase();
+      const v = vRaw === 'B' ? 'B' : vRaw === 'C' ? 'C' : 'A';
       if (!src) continue;
       const createdAtIso = (row as { created_at?: string }).created_at ?? new Date().toISOString();
       const day = toDayKey(createdAtIso);
@@ -433,7 +435,8 @@ export async function GET(req: Request) {
       const cmap = new Map<string, { campaign_source: string; campaign_variant: string; leads: number; confirmed: number }>();
       for (const row of ((peopleRows || []) as Array<PeopleRow>)) {
         const src = String(row.campaign_source || '').trim();
-        const v = (String(row.campaign_variant || '').toUpperCase() === 'B') ? 'B' : 'A';
+        const vRaw = String(row.campaign_variant || '').toUpperCase();
+        const v = vRaw === 'B' ? 'B' : vRaw === 'C' ? 'C' : 'A';
         if (!src) continue;
         const key = `${src}__${v}`;
         if (!cmap.has(key)) cmap.set(key, { campaign_source: src, campaign_variant: v, leads: 0, confirmed: 0 });
@@ -452,7 +455,8 @@ export async function GET(req: Request) {
       const dailyMap = new Map<string, { day: string; campaign_source: string; campaign_variant: string; leads: number; confirmed: number }>();
       for (const row of ((peopleRows || []) as Array<PeopleRow & { created_at?: string }>)) {
         const src = String(row.campaign_source || '').trim();
-        const v = (String(row.campaign_variant || '').toUpperCase() === 'B') ? 'B' : 'A';
+        const vRaw = String(row.campaign_variant || '').toUpperCase();
+        const v = vRaw === 'B' ? 'B' : vRaw === 'C' ? 'C' : 'A';
         if (!src) continue;
         const createdAtIso = (row as { created_at?: string }).created_at ?? new Date().toISOString();
         const day = toDayKey(createdAtIso);

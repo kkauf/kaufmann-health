@@ -217,3 +217,34 @@ Configuration
 Safety
 - `npm run ads:create:dry` enables validate-only mode (no writes)
 - `npm run ads:create` performs preflight checks (billing setup, language constant) and then applies changes
+
+## Campaign Creation (EARTH-170)
+
+`create-earth170-campaigns.ts` — creates three Search campaigns aligned to the "Coaching Frame, Therapy Depth" plan. Final URLs include `?v=C` to ensure landing pages render Variant C.
+
+Commands
+
+```bash
+# Validate only (no writes)
+npm run ads:create:earth170:dry
+
+# Apply changes (creates resources; campaigns start PAUSED)
+CONFIRM_APPLY=true npm run ads:create:earth170
+```
+
+What it does
+- Idempotent by campaign name (reuses dedicated budgets; updates dates/network/geo on existing campaign)
+- Creates with status PAUSED and Search-only network (no partners)
+- Adds German language targeting
+- Adds geo targeting per landing page:
+  - `/ankommen-in-dir` → Germany (national online)
+  - `/wieder-lebendig` → Berlin proximity (S-Bahn ring radius)
+  - `/therapie-finden` → Berlin proximity (S-Bahn ring radius)
+- Adds campaign-level negative keywords from config
+- Creates AdGroups per keyword tier and adds missing keywords (phrase match)
+- Creates 2 RSAs per AdGroup with final URLs suffixed `?v=C`
+
+Safety
+- Start with dry-run to validate access and planned changes
+- Apply only with `CONFIRM_APPLY=true`
+- Proximity targeting for Berlin uses the ring radius for consistency across campaigns
