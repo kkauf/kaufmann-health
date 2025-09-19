@@ -12,6 +12,14 @@ if (fs.existsSync(envLocalPath)) {
   dotenv.config();
 }
 
+// === Local Configuration (no .env required) ===
+// Target CPA in EUR for Maximize Conversions; set to 0 to disable tCPA
+const TARGET_CPA_EUR = 20;
+// Berlin ring proximity radius (km) for Depth campaign
+const LOCAL_BERLIN_RING_RADIUS_KM = 20;
+// Preferred conversion action name to optimize to (exact match if available)
+const PREFERRED_CONVERSION_ACTION_NAME = 'Submit self-paid lead form';
+
 async function ensureSitelinks(customer: any, campaignResource: string, cfg: CampaignConfig) {
   // Skip in dry run/validate-only
   if (DRY_RUN || VALIDATE_ONLY) {
@@ -37,8 +45,8 @@ async function ensureSitelinks(customer: any, campaignResource: string, cfg: Cam
     const pricingUrl = `${cfg.landing_page}${sep}sl=pricing`;
     const faqUrl = `${cfg.landing_page}${sep}sl=faq`;
     const assetsCreate: any = await customer.assets.create([
-      { sitelink_asset: { link_text: 'Preise', final_urls: [pricingUrl] } },
-      { sitelink_asset: { link_text: 'FAQ', final_urls: [faqUrl] } },
+      { final_urls: [pricingUrl], sitelink_asset: { link_text: 'Preise' } },
+      { final_urls: [faqUrl],   sitelink_asset: { link_text: 'FAQ' } },
     ]);
     const createdAssets: string[] = [];
     const arr = assetsCreate?.results || assetsCreate || [];
@@ -81,21 +89,30 @@ async function ensureSelectiveOptimization(
      WHERE conversion_action.status = 'ENABLED' AND conversion_action.name = '${actionName.replace(/'/g, "''")}'
      LIMIT 1`
   );
-  const caRes = ca?.conversion_action?.resource_name;
+  const caRes = ca?.conversion_action?.resource_name || (ca as any)?.conversionAction?.resourceName;
   if (!caRes) {
     console.warn(`⚠️  Conversion action not found: ${actionName}`);
     return false;
   }
 
   // Set campaign selective optimization to this action (idempotent update)
-  await customer.campaigns.update([
-    {
-      resource_name: campaignResource,
-      selective_optimization: { conversion_actions: [caRes] },
-    },
-  ]);
-  console.log('  ✓ Linked conversion action (selective optimization):', actionName);
-  return true;
+  try {
+    await customer.campaigns.update([
+      {
+        resource_name: campaignResource,
+        selective_optimization: { conversion_actions: [caRes] },
+      },
+    ]);
+    console.log('  ✓ Linked conversion action (selective optimization):', actionName);
+    return true;
+  } catch (err: any) {
+    try {
+      console.warn('  ⚠️ Failed to link conversion action (continuing):', JSON.stringify(err, null, 2));
+    } catch {
+      console.warn('  ⚠️ Failed to link conversion action (continuing):', err);
+    }
+    return false;
+  }
 }
 
 import { GoogleAdsApi, enums, ResourceNames, toMicros, type MutateOperation } from 'google-ads-api';
@@ -161,14 +178,52 @@ function sanitizeDescriptions(descs: string[]): string[] {
     }
     if (out.length >= 4) break;
   }
-  // Ensure at least 1 description
-  if (out.length === 0) out.push('Jetzt passende Therapie online finden.');
+  // Ensure at least 2 descriptions (Google requires 2-4)
+  const fallbacks = [
+    'Jetzt passende Therapie online finden.',
+    'Vertraulich. Persönlich. Online.',
+  ];
+  let i = 0;
+  while (out.length < 2 && i < fallbacks.length) {
+    const f = clampUnicode(fallbacks[i++], MAX);
+    if (!unique.has(f)) {
+      unique.add(f);
+      out.push(f);
+    }
+  }
   return out.slice(0, 4);
 }
+
+// Geo: Berlin ring approximation (S-Bahn ring) via proximity target
+const BERLIN_CENTER = {
+  latMicro: 52_520_008, // 52.520008 in micro degrees
+  lonMicro: 13_404_954, // 13.404954 in micro degrees
+};
+const BERLIN_RING_RADIUS_KM = Math.max(1, Number(LOCAL_BERLIN_RING_RADIUS_KM) || 20);
 
 async function querySingle(customer: any, q: string): Promise<any | null> {
   const r = await customer.query(q);
   return Array.isArray(r) && r.length > 0 ? r[0] : null;
+}
+
+// Return today's date in the customer's account time zone (YYYY-MM-DD)
+async function getAccountTodayYyyyMmDd(customer: any): Promise<string> {
+  try {
+    const rows = (await customer.query(
+      'SELECT customer.time_zone FROM customer LIMIT 1'
+    )) as any[];
+    const tz = rows?.[0]?.customer?.time_zone || (rows as any)?.[0]?.customer?.timeZone || 'UTC';
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return fmt.format(new Date());
+  } catch {
+    const fmt = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    return fmt.format(new Date());
+  }
 }
 
 function printPlan(cfg: CampaignConfig) {
@@ -214,6 +269,117 @@ async function preflightCheck(customer: any) {
   console.log('✅ Preflight checks passed');
 }
 
+// Resolve a conversion action suitable for optimization. Prefer explicit env name; otherwise pick first enabled LEAD.
+async function resolveSelectiveOptimizationName(customer: any): Promise<string> {
+  // Prefer explicit preferred conversion action by exact name
+  if (PREFERRED_CONVERSION_ACTION_NAME) {
+    const exact = await querySingle(
+      customer,
+      `SELECT conversion_action.name FROM conversion_action WHERE conversion_action.status = 'ENABLED' AND conversion_action.name = '${PREFERRED_CONVERSION_ACTION_NAME.replace(/'/g, "''")}' LIMIT 1`
+    );
+    const name = exact?.conversion_action?.name || (exact as any)?.conversionAction?.name;
+    if (name) return String(name);
+  }
+  // Query enabled conversions (limited) and pick a suitable "lead" category or name
+  const rows = (await customer.query(
+    "SELECT conversion_action.name, conversion_action.category FROM conversion_action WHERE conversion_action.status = 'ENABLED' LIMIT 50"
+  )) as any[];
+  const catOrder = new Set([
+    'LEAD',
+    'SUBMIT_LEAD_FORM',
+    'QUALIFIED_LEAD',
+    'IMPORTED_LEAD',
+    'PHONE_CALL_LEAD',
+  ]);
+  // Try by category preference
+  for (const r of rows) {
+    const ca = (r as any)?.conversion_action || (r as any)?.conversionAction || {};
+    const name = ca.name as string | undefined;
+    const category = String(ca.category || '');
+    if (catOrder.has(category) && name) return name;
+  }
+  // Fallback by name containing 'lead'
+  for (const r of rows) {
+    const ca = (r as any)?.conversion_action || (r as any)?.conversionAction || {};
+    const name = String(ca.name || '');
+    if (name.toLowerCase().includes('lead')) return name;
+  }
+  throw new Error('❌ No enabled Lead-like conversion action found. Set ADS_SELECTIVE_OPTIMIZATION_NAME or ensure a Lead conversion exists and is enabled.');
+}
+
+// Ensure campaign uses a dedicated (non-shared) budget compatible with Maximize Conversions
+async function ensureDedicatedBudget(customer: any, campaignResource: string, cfg: CampaignConfig) {
+  const row = await querySingle(
+    customer,
+    `SELECT 
+       campaign.resource_name,
+       campaign.campaign_budget,
+       campaign_budget.resource_name,
+       campaign_budget.name,
+       campaign_budget.amount_micros,
+       campaign_budget.explicitly_shared
+     FROM campaign
+     WHERE campaign.resource_name = '${campaignResource}'
+     LIMIT 1`
+  );
+  const currentBudgetRes =
+    row?.campaign?.campaign_budget || (row as any)?.campaign?.campaignBudget || row?.campaign_budget?.resource_name;
+  const budgetName = row?.campaign_budget?.name || (row as any)?.campaignBudget?.name || '';
+  const explicitlyShared =
+    row?.campaign_budget?.explicitly_shared ?? (row as any)?.campaignBudget?.explicitlyShared ?? false;
+  const desiredName = `${cfg.name} Budget`;
+
+  const needsDedicated = explicitlyShared === true || String(budgetName) !== desiredName;
+  if (!needsDedicated) {
+    console.log('  ↪ Budget already dedicated:', budgetName || '(unnamed)');
+    return;
+  }
+
+  if (DRY_RUN || VALIDATE_ONLY) {
+    console.log('  ↪ DRY RUN: would create dedicated budget and switch campaign budget');
+    return;
+  }
+
+  // Try to find an existing budget with the desired name and ensure it's not shared
+  const existing = await querySingle(
+    customer,
+    `SELECT campaign_budget.resource_name, campaign_budget.name, campaign_budget.explicitly_shared
+     FROM campaign_budget 
+     WHERE campaign_budget.name = '${desiredName.replace(/'/g, "''")}'
+     LIMIT 1`
+  );
+  const existingRes = existing?.campaign_budget?.resource_name || (existing as any)?.campaignBudget?.resourceName || '';
+  const existingShared =
+    existing?.campaign_budget?.explicitly_shared ?? (existing as any)?.campaignBudget?.explicitlyShared ?? false;
+
+  let newBudgetRes = '';
+  if (existingRes && existingShared === false) {
+    newBudgetRes = existingRes;
+    console.log('  ↪ Reusing existing dedicated budget:', newBudgetRes);
+  } else {
+    // Create a unique, non-shared budget
+    const createName = existingShared ? `${desiredName} (Dedicated ${Date.now()})` : desiredName;
+    const createRes: any = await customer.campaignBudgets.create([
+      {
+        name: createName,
+        delivery_method: 'STANDARD',
+        explicitly_shared: false,
+        amount_micros: toMicros(cfg.budget_euros),
+      },
+    ]);
+    newBudgetRes =
+      createRes?.results?.[0]?.resource_name || createRes?.[0]?.resource_name || createRes?.resource_name || '';
+    if (!newBudgetRes) throw new Error('Failed to create dedicated budget');
+    console.log('  ✓ Created dedicated budget:', newBudgetRes);
+  }
+
+  // Switch campaign to the dedicated budget
+  await customer.campaigns.update([
+    { resource_name: campaignResource, campaign_budget: newBudgetRes },
+  ]);
+  console.log('  ✓ Switched campaign to dedicated budget');
+}
+
 async function ensureGermanLanguage(customer: any, campaignResource: string) {
   const existingLang = await querySingle(
     customer,
@@ -236,6 +402,174 @@ async function ensureGermanLanguage(customer: any, campaignResource: string) {
   ]);
   console.log('  ✓ Language targeting added (de):', res?.results?.length ?? 1);
   return true;
+}
+
+// Ensure presence-only geo setting and correct geo criteria per campaign
+async function ensureGeoTargetingForConfig(
+  customer: any,
+  campaignResource: string,
+  cfg: CampaignConfig,
+  existingCampaignResource: string | null
+) {
+  const isDepth = cfg.name.toUpperCase().includes('DEPTH SEEKERS');
+  // Skip criteria ops on temp resource during validate-only
+  if (campaignResource.endsWith('/-1')) {
+    console.log('  ↪ Skipping geo criteria (validate-only on temporary resource)');
+    return;
+  }
+
+  // Inspect existing location/proximity criteria
+  const rows = (await customer.query(`
+    SELECT 
+      campaign_criterion.resource_name,
+      campaign_criterion.type,
+      campaign_criterion.negative,
+      campaign_criterion.location.geo_target_constant,
+      campaign_criterion.proximity.radius,
+      campaign_criterion.proximity.radius_units,
+      campaign_criterion.proximity.geo_point.latitude_in_micro_degrees,
+      campaign_criterion.proximity.geo_point.longitude_in_micro_degrees
+    FROM campaign_criterion
+    WHERE campaign_criterion.campaign = '${campaignResource}'
+  `)) as any[];
+
+  if (isDepth) {
+    // Desired: single proximity around Berlin center with configured radius
+    const hasDesiredProximity = rows.some((r: any) => {
+      const cc = (r as any)?.campaign_criterion || (r as any)?.campaignCriterion || {};
+      if ((cc.type || '').toString() !== 'PROXIMITY') return false;
+      const prox = cc.proximity || {};
+      const lat = Number(
+        prox?.geo_point?.latitude_in_micro_degrees || prox?.geoPoint?.latitudeInMicroDegrees || 0
+      );
+      const lon = Number(
+        prox?.geo_point?.longitude_in_micro_degrees || prox?.geoPoint?.longitudeInMicroDegrees || 0
+      );
+      const radius = Number(prox?.radius || 0);
+      const units = String(prox?.radius_units || prox?.radiusUnits || '');
+      return (
+        lat === BERLIN_CENTER.latMicro &&
+        lon === BERLIN_CENTER.lonMicro &&
+        radius === BERLIN_RING_RADIUS_KM &&
+        (units === 'KILOMETERS' || units === String(enums.ProximityRadiusUnits.KILOMETERS))
+      );
+    });
+
+    // Determine mismatching criteria to remove
+    const toRemove: string[] = rows
+      .filter((r: any) => {
+        const cc = (r as any)?.campaign_criterion || (r as any)?.campaignCriterion || {};
+        const rn = cc.resource_name || cc.resourceName;
+        if (!rn) return false;
+        if ((cc.type || '').toString() === 'LOCATION') return true;
+        if ((cc.type || '').toString() === 'PROXIMITY') {
+          // remove any non-desired proximity
+          const prox = cc.proximity || {};
+          const lat = Number(
+            prox?.geo_point?.latitude_in_micro_degrees || prox?.geoPoint?.latitudeInMicroDegrees || 0
+          );
+          const lon = Number(
+            prox?.geo_point?.longitude_in_micro_degrees || prox?.geoPoint?.longitudeInMicroDegrees || 0
+          );
+          const radius = Number(prox?.radius || 0);
+          const units = String(prox?.radius_units || prox?.radiusUnits || '');
+          const match =
+            lat === BERLIN_CENTER.latMicro &&
+            lon === BERLIN_CENTER.lonMicro &&
+            radius === BERLIN_RING_RADIUS_KM &&
+            (units === 'KILOMETERS' || units === String(enums.ProximityRadiusUnits.KILOMETERS));
+          return !match;
+        }
+        return false;
+      })
+      .map((r: any) => (r.campaign_criterion?.resource_name || (r as any)?.campaignCriterion?.resourceName) as string)
+      .filter(Boolean);
+
+    if (!hasDesiredProximity) {
+      if (DRY_RUN || VALIDATE_ONLY) {
+        console.log('  ↪ DRY RUN: would add Berlin proximity targeting');
+      } else {
+        const res: any = await customer.campaignCriteria.create([
+          {
+            campaign: campaignResource,
+            proximity: {
+              radius: BERLIN_RING_RADIUS_KM,
+              radius_units: enums.ProximityRadiusUnits.KILOMETERS,
+              geo_point: {
+                latitude_in_micro_degrees: BERLIN_CENTER.latMicro,
+                longitude_in_micro_degrees: BERLIN_CENTER.lonMicro,
+              },
+            },
+          },
+        ]);
+        console.log('  ✓ Proximity targeting ensured (Berlin):', res?.results?.length ?? 1);
+      }
+    } else {
+      console.log('  ↪ Berlin proximity targeting already present');
+    }
+
+    if (toRemove.length > 0) {
+      if (DRY_RUN || VALIDATE_ONLY) {
+        console.log(`  ↪ DRY RUN: would remove ${toRemove.length} existing location criteria`);
+      } else {
+        await customer.campaignCriteria.remove(toRemove);
+        console.log('  ✓ Removed conflicting location criteria:', toRemove.length);
+      }
+    }
+  } else {
+    // Wellness: ensure Germany targeting exists
+    const hasGermany = rows.some((r: any) => {
+      const cc = (r as any)?.campaign_criterion || (r as any)?.campaignCriterion || {};
+      const geo = cc.location?.geo_target_constant || cc.location?.geoTargetConstant || '';
+      return String(geo).endsWith('/2276');
+    });
+    if (!hasGermany) {
+      if (DRY_RUN || VALIDATE_ONLY) {
+        console.log('  ↪ DRY RUN: would add Germany location targeting');
+      } else {
+        const res: any = await customer.campaignCriteria.create([
+          { campaign: campaignResource, location: { geo_target_constant: 'geoTargetConstants/2276' } },
+        ]);
+        console.log('  ✓ Germany location targeting ensured:', res?.results?.length ?? 1);
+      }
+    } else {
+      console.log('  ↪ Germany location targeting already present');
+    }
+  }
+
+  // Ensure campaign-level negative keywords from config
+  if (Array.isArray(cfg.negativeKeywords) && cfg.negativeKeywords.length > 0) {
+    const negRows = (await customer.query(`
+      SELECT 
+        campaign_criterion.resource_name,
+        campaign_criterion.keyword.text,
+        campaign_criterion.negative
+      FROM campaign_criterion
+      WHERE campaign_criterion.campaign = '${campaignResource}' AND campaign_criterion.type = KEYWORD
+    `)) as any[];
+    const existingNeg = new Set<string>(
+      negRows
+        .filter((r: any) => (r.campaign_criterion?.negative ?? (r as any)?.campaignCriterion?.negative) === true)
+        .map((r: any) => String(r.campaign_criterion?.keyword?.text || (r as any)?.campaignCriterion?.keyword?.text || ''))
+        .filter(Boolean)
+    );
+    const toAdd = cfg.negativeKeywords.filter((k) => !existingNeg.has(k));
+    if (toAdd.length > 0) {
+      if (DRY_RUN || VALIDATE_ONLY) {
+        console.log(`  ↪ DRY RUN: would add ${toAdd.length} negative keywords`);
+      } else {
+        const payloads = toAdd.map((kw) => ({
+          campaign: campaignResource,
+          negative: true,
+          keyword: { text: kw, match_type: 'BROAD' },
+        }));
+        const res: any = await customer.campaignCriteria.create(payloads);
+        console.log('  ✓ Negative keywords ensured:', res?.results?.length ?? toAdd.length);
+      }
+    } else {
+      console.log('  ↪ All negative keywords already present');
+    }
+  }
 }
 
 async function main() {
@@ -278,20 +612,27 @@ async function main() {
     hooks
   );
 
+  if (!DRY_RUN && process.env.CONFIRM_APPLY !== 'true') {
+    console.error('❌ Safety guard: Set CONFIRM_APPLY=true to apply changes. Re-run in DRY_RUN=true to validate first.');
+    process.exit(1);
+  }
+
   // Idempotency: skip if campaign already exists by exact name
-  async function ensureCampaign(cfg: CampaignConfig) {
+  async function ensureCampaign(cfg: CampaignConfig, selOptName: string) {
     // plan output
     printPlan(cfg);
 
     const existing = await querySingle(
       customer,
-      `SELECT campaign.resource_name, campaign.name, campaign.status FROM campaign WHERE campaign.name = '${cfg.name.replace(/'/g, "''")}' LIMIT 1`
+      `SELECT campaign.resource_name, campaign.name, campaign.status FROM campaign WHERE campaign.name = '${cfg.name.replace(/'/g, "''")}' AND campaign.status != 'REMOVED' LIMIT 1`
     );
     const existingCampaignResource: string | null = existing?.campaign?.resource_name || null;
 
     if (VALIDATE_ONLY) {
       if (existingCampaignResource) {
-        console.log('  ↪ VALIDATE ONLY: campaign exists, validating updates (dates/network)');
+        console.log('  ↪ VALIDATE ONLY: campaign exists, validating updates (dates/network/geo/bidding)');
+        // Validate dedicated budget migration (no writes)
+        await ensureDedicatedBudget(customer, existingCampaignResource, cfg);
         await customer.campaigns.update([
           {
             resource_name: existingCampaignResource,
@@ -302,9 +643,17 @@ async function main() {
               target_partner_search_network: false,
             },
             end_date: toYyyymmdd(cfg.schedule.end),
+            // Presence-only + switch to Maximize Conversions
+            geo_target_type_setting: {
+              positive_geo_target_type: enums.PositiveGeoTargetType.PRESENCE,
+              negative_geo_target_type: enums.NegativeGeoTargetType.PRESENCE,
+            },
+            maximize_conversions: {},
           },
         ]);
         console.log('  ✓ Validation passed for campaign updates');
+        // Validate geo criteria changes as well
+        await ensureGeoTargetingForConfig(customer, existingCampaignResource, cfg, existingCampaignResource);
         return null;
       }
       // Build atomic operations with existing budget reuse to avoid duplicate-name validation failures
@@ -316,6 +665,8 @@ async function main() {
       );
       const budgetTemp = ResourceNames.campaignBudget(customerId, '-1');
       const ops: MutateOperation<any>[] = [];
+      const todayAccTz = await getAccountTodayYyyyMmDd(customer);
+      const includeStart = String(cfg.schedule.start) >= todayAccTz;
 
       // Include budget create only when a budget with that name doesn't already exist
       const budgetResourceForCampaign = existingBudget?.campaignBudget?.resourceName || existingBudget?.campaign_budget?.resource_name || budgetTemp;
@@ -327,6 +678,7 @@ async function main() {
             resource_name: budgetTemp,
             name: budgetName,
             delivery_method: enums.BudgetDeliveryMethod.STANDARD,
+            explicitly_shared: false,
             amount_micros: toMicros(cfg.budget_euros),
           },
         });
@@ -340,7 +692,17 @@ async function main() {
           advertising_channel_type: enums.AdvertisingChannelType.SEARCH,
           status: enums.CampaignStatus.PAUSED,
           contains_eu_political_advertising: enums.EuPoliticalAdvertisingStatus.DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING,
-          manual_cpc: { enhanced_cpc_enabled: false },
+          // Bidding: Maximize Conversions (optional tCPA via local constant)
+          maximize_conversions: ((): any => {
+            const t = Number(TARGET_CPA_EUR || 0);
+            if (t && !Number.isNaN(t)) return { target_cpa_micros: eurosToMicros(t) };
+            return {};
+          })(),
+          // Geo targeting behavior: presence-only
+          geo_target_type_setting: {
+            positive_geo_target_type: enums.PositiveGeoTargetType.PRESENCE,
+            negative_geo_target_type: enums.NegativeGeoTargetType.PRESENCE,
+          },
           campaign_budget: budgetResourceForCampaign,
           network_settings: {
             target_google_search: true,
@@ -348,7 +710,7 @@ async function main() {
             target_content_network: false,
             target_partner_search_network: false,
           },
-          start_date: toYyyymmdd(cfg.schedule.start),
+          ...(includeStart ? { start_date: toYyyymmdd(cfg.schedule.start) } : {}),
           end_date: toYyyymmdd(cfg.schedule.end),
         },
       });
@@ -356,6 +718,8 @@ async function main() {
       console.log('  ↪ VALIDATE ONLY: validating Budget + Campaign creation (no writes)…');
       await customer.mutateResources(ops as any);
       console.log('  ✓ Validation passed for Budget + Campaign');
+      // Validate criteria operations to be applied post-create
+      await ensureGeoTargetingForConfig(customer, ResourceNames.campaign(customerId, '-1'), cfg, null);
       return null;
     }
 
@@ -364,14 +728,18 @@ async function main() {
     const budgetName = `${cfg.name} Budget`;
     const existingBudget = await querySingle(
       customer,
-      `SELECT campaign_budget.resource_name, campaign_budget.name FROM campaign_budget WHERE campaign_budget.name = '${budgetName.replace(/'/g, "''")}' LIMIT 1`
+      `SELECT campaign_budget.resource_name, campaign_budget.name, campaign_budget.explicitly_shared FROM campaign_budget WHERE campaign_budget.name = '${budgetName.replace(/'/g, "''")}' LIMIT 1`
     );
     const budgetTemp = ResourceNames.campaignBudget(customerId, '-1');
     const ops: MutateOperation<any>[] = [];
+    const todayAccTz = await getAccountTodayYyyyMmDd(customer);
+    const includeStart = String(cfg.schedule.start) >= todayAccTz;
 
     let campaignResource = existingCampaignResource;
     if (campaignResource) {
       console.log('  ↪ Using existing campaign:', campaignResource);
+      // Ensure campaign uses a dedicated (non-shared) budget compatible with Maximize Conversions
+      await ensureDedicatedBudget(customer, campaignResource, cfg);
       // Update existing campaign with dates and network settings
       await customer.campaigns.update([
         {
@@ -383,35 +751,59 @@ async function main() {
             target_partner_search_network: false,
           },
           end_date: toYyyymmdd(cfg.schedule.end),
+          // Presence-only + switch to Maximize Conversions
+          geo_target_type_setting: {
+            positive_geo_target_type: enums.PositiveGeoTargetType.PRESENCE,
+            negative_geo_target_type: enums.NegativeGeoTargetType.PRESENCE,
+          },
+          maximize_conversions: ((): any => {
+            const t = Number(TARGET_CPA_EUR || 0);
+            if (t && !Number.isNaN(t)) return { target_cpa_micros: eurosToMicros(t) };
+            return {};
+          })(),
         },
       ]);
       console.log('  ✓ Campaign updated (dates/network)');
     } else {
-      const budgetResourceForCampaign = existingBudget?.campaignBudget?.resourceName || existingBudget?.campaign_budget?.resource_name || budgetTemp;
-      if (existingBudget) {
-        console.log('  ↪ Reusing existing budget:', budgetResourceForCampaign);
+      // Create or reuse a dedicated budget, then create the campaign in separate calls
+      const existingIsShared =
+        existingBudget?.campaign_budget?.explicitly_shared ?? (existingBudget as any)?.campaignBudget?.explicitlyShared ?? false;
+      let budgetResourceForCampaign: string = '';
+      if (existingBudget && existingIsShared === false) {
+        budgetResourceForCampaign = existingBudget?.campaignBudget?.resourceName || existingBudget?.campaign_budget?.resource_name || '';
+        console.log('  ↪ Reusing existing dedicated budget:', budgetResourceForCampaign);
       } else {
-        ops.push({
-          entity: 'campaign_budget',
-          operation: 'create',
-          resource: {
-            resource_name: budgetTemp,
-            name: budgetName,
+        console.log('  ↪ Creating dedicated budget for campaign');
+        const budgetCreate: any = await customer.campaignBudgets.create([
+          {
+            name: `${budgetName} (Dedicated ${Date.now()})`,
             delivery_method: enums.BudgetDeliveryMethod.STANDARD,
+            explicitly_shared: false,
             amount_micros: toMicros(cfg.budget_euros),
           },
-        });
+        ]);
+        budgetResourceForCampaign =
+          budgetCreate?.results?.[0]?.resource_name || budgetCreate?.[0]?.resource_name || budgetCreate?.resource_name || '';
+        if (!budgetResourceForCampaign) throw new Error('Budget creation failed: no resource_name');
+        console.log('  ✓ Dedicated budget created:', budgetResourceForCampaign);
       }
 
-      ops.push({
-        entity: 'campaign',
-        operation: 'create',
-        resource: {
+      // Create campaign
+      const createCampRes: any = await customer.campaigns.create([
+        {
           name: cfg.name,
           advertising_channel_type: enums.AdvertisingChannelType.SEARCH,
           status: enums.CampaignStatus.PAUSED,
           contains_eu_political_advertising: enums.EuPoliticalAdvertisingStatus.DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING,
-          manual_cpc: { enhanced_cpc_enabled: false },
+          maximize_conversions: ((): any => {
+            const t = Number(TARGET_CPA_EUR || 0);
+            if (t && !Number.isNaN(t)) return { target_cpa_micros: eurosToMicros(t) };
+            return {};
+          })(),
+          geo_target_type_setting: {
+            positive_geo_target_type: enums.PositiveGeoTargetType.PRESENCE,
+            negative_geo_target_type: enums.NegativeGeoTargetType.PRESENCE,
+          },
           campaign_budget: budgetResourceForCampaign,
           network_settings: {
             target_google_search: true,
@@ -419,54 +811,18 @@ async function main() {
             target_content_network: false,
             target_partner_search_network: false,
           },
-          start_date: toYyyymmdd(cfg.schedule.start),
+          ...(includeStart ? { start_date: toYyyymmdd(cfg.schedule.start) } : {}),
           end_date: toYyyymmdd(cfg.schedule.end),
         },
-      });
-
-      let mutateResult: any;
-      try {
-        mutateResult = await customer.mutateResources(ops as any);
-      } catch (err: any) {
-        try {
-          console.error('Mutate failure (apply):', JSON.stringify(err, null, 2));
-        } catch {
-          console.error('Mutate failure (apply):', err);
-        }
-        throw err;
-      }
-      const mutateResultsArray = mutateResult?.results || mutateResult || [];
-      const createdCampaignRes = Array.isArray(mutateResultsArray)
-        ? mutateResultsArray.find((r: any) => (r.resource_name || '').includes('/campaigns/'))
-        : null;
-      campaignResource = createdCampaignRes?.resource_name;
-      if (!campaignResource) throw new Error('Campaign creation failed: no campaign resource_name in mutate result');
+      ]);
+      campaignResource =
+        createCampRes?.results?.[0]?.resource_name || createCampRes?.[0]?.resource_name || createCampRes?.resource_name || '';
+      if (!campaignResource) throw new Error('Campaign creation failed: no campaign resource_name in create response');
       console.log('  ✓ Campaign created:', campaignResource);
     }
 
-    // 3) Add Germany location targeting and negatives only for newly created campaigns to avoid duplicates
-    if (!existingCampaignResource) {
-      const criteriaPayloads: any[] = [
-        {
-          campaign: campaignResource,
-          location: { geo_target_constant: 'geoTargetConstants/2276' },
-        },
-      ];
-
-      for (const kw of cfg.negativeKeywords || []) {
-        criteriaPayloads.push({
-          campaign: campaignResource,
-          negative: true,
-          keyword: { text: kw, match_type: 'BROAD' },
-        });
-      }
-
-      const campaignCriteriaCreate: any = await customer.campaignCriteria.create(criteriaPayloads);
-      const createdCriteria = campaignCriteriaCreate?.results?.length ?? 0;
-      console.log('  ✓ Campaign criteria created:', createdCriteria);
-    } else {
-      console.log('  ↪ Skipping campaign criteria (geo/negatives) for existing campaign');
-    }
+    // 3) Ensure correct geo targeting (Germany for Wellness, Berlin proximity for Depth)
+    await ensureGeoTargetingForConfig(customer, campaignResource, cfg, existingCampaignResource);
 
     // 4) Ensure German language targeting for both new and existing campaigns
     await ensureGermanLanguage(customer, campaignResource);
@@ -477,8 +833,7 @@ async function main() {
     // 5) Create ad groups + keywords + ads
     await createAdGroupsKeywordsAndAds(customer, campaignResource, cfg);
 
-    // 6) Optionally link conversion action if env is set
-    const selOptName = process.env.ADS_SELECTIVE_OPTIMIZATION_NAME?.trim();
+    // 6) Link conversion action for optimization
     if (selOptName) {
       await ensureSelectiveOptimization(customer, campaignResource, selOptName);
     }
@@ -489,8 +844,14 @@ async function main() {
   // Preflight (queries only)
   await preflightCheck(customer);
 
-  await ensureCampaign(WEEK38_CONFIG.wellness);
-  await ensureCampaign(WEEK38_CONFIG.depth);
+  // Resolve conversion action name (fail-fast if missing)
+  const resolvedSelOptName = await resolveSelectiveOptimizationName(customer);
+  if (DRY_RUN) {
+    console.log('ℹ️ Selected conversion action for optimization:', resolvedSelOptName);
+  }
+
+  await ensureCampaign(WEEK38_CONFIG.wellness, resolvedSelOptName);
+  await ensureCampaign(WEEK38_CONFIG.depth, resolvedSelOptName);
 
   console.log('\n📊 Campaign Summary:');
   console.log('━━━━━━━━━━━━━━━━━━━━');
@@ -615,9 +976,15 @@ async function createResponsiveSearchAd(
   }
 
   const variantHeadlines = [...cfg.headlines];
-  // Light variant tweak per EARTH-156 (will be clamped)
-  if (variant === 'A') variantHeadlines[5] = 'Der nächste Schritt deiner Heilungsreise';
-  else variantHeadlines[5] = 'Keine Warteliste – Start heute';
+  // EARTH-168: Campaign-specific A/B overrides
+  const upperName = cfg.name.toUpperCase();
+  if (upperName.includes('CONSCIOUS WELLNESS SEEKERS')) {
+    if (variant === 'A') variantHeadlines[5] = 'Der nächste Schritt deiner Heilungsreise';
+    else variantHeadlines[5] = 'Finde deinen Therapeuten - diese Woche noch';
+  } else if (upperName.includes('DEPTH SEEKERS')) {
+    if (variant === 'A') variantHeadlines[5] = 'Wieder spüren statt nur schaffen';
+    else variantHeadlines[5] = 'Wage einen ehrlichen Blick in deine Innenwelt';
+  }
 
   const headlines = sanitizeHeadlines(variantHeadlines);
   // Guard strong-claim descriptions behind variant B
