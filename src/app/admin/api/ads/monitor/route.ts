@@ -91,6 +91,8 @@ export async function GET(req: Request) {
     const minSpendNoConvEUR = Math.max(1, parseNum(url.searchParams.get('minSpendNoConv'), 30));
     const cpaThresholdEUR = Math.max(1, parseNum(url.searchParams.get('cpaThreshold'), 40)); // report-only
     const budgetMultiple = Math.max(1, parseNum(url.searchParams.get('budgetMultiple'), 2));
+    const nameLikeRaw = url.searchParams.get('nameLike');
+    const nameLike = typeof nameLikeRaw === 'string' && nameLikeRaw.trim() ? nameLikeRaw.trim().toLowerCase() : undefined;
     const apply = parseBool(url.searchParams.get('apply'), false);
 
     const { startStr, endStr } = buildWindow({ lookbackDays, excludeToday });
@@ -99,7 +101,7 @@ export async function GET(req: Request) {
       type: 'cron_executed',
       level: 'info',
       source: 'admin.api.ads.monitor',
-      props: { lookbackDays, excludeToday, minSpendNoConvEUR, cpaThresholdEUR, budgetMultiple, apply, window: `${startStr} → ${endStr}` },
+      props: { lookbackDays, excludeToday, minSpendNoConvEUR, cpaThresholdEUR, budgetMultiple, nameLike, apply, window: `${startStr} → ${endStr}` },
       ip,
       ua,
     });
@@ -164,9 +166,12 @@ export async function GET(req: Request) {
       campaignBudget?: { amountMicros?: string | number };
       metrics?: { costMicros?: string | number; conversions?: number; conversionsValue?: number };
     };
-    const results: ResultRow[] = Array.isArray(searchData.results)
+    let results: ResultRow[] = Array.isArray(searchData.results)
       ? (searchData.results as ResultRow[])
       : [];
+    if (nameLike) {
+      results = results.filter((r) => String(r.campaign?.name || '').toLowerCase().includes(nameLike));
+    }
 
     const analyses = results.map((r) => {
       const campaign = r.campaign || {};
