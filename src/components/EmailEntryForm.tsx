@@ -9,6 +9,43 @@ import { AlertCircle } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { getOrCreateSessionId } from '@/lib/attribution';
 
+// Minimal client-side Google Ads conversion for legacy flow (no email confirmation):
+// Fire only when the API indicates requiresConfirmation === false, meaning the lead became active ('new') on initial submit.
+function fireGoogleAdsClientConversion(leadId?: string) {
+  try {
+    const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
+    const label = process.env.NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL;
+    if (!adsId || !label) return;
+    if (typeof window === 'undefined') return;
+
+    const dedupeKey = leadId ? `ga_conv_patient_registration_${leadId}` : 'ga_conv_patient_registration';
+    try {
+      if (window.sessionStorage.getItem(dedupeKey) === '1') return;
+      if (window.localStorage.getItem(dedupeKey) === '1') return;
+    } catch {}
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = (window as any).gtag as ((...args: any[]) => void) | undefined;
+    const sendTo = `${adsId}/${label}`;
+    const payload: Record<string, unknown> = { send_to: sendTo, value: 10, currency: 'EUR' };
+    if (leadId) payload.transaction_id = leadId;
+
+    if (typeof g === 'function') {
+      g('event', 'conversion', payload);
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const w = window as any;
+      w.dataLayer = w.dataLayer || [];
+      w.dataLayer.push(['event', 'conversion', payload]);
+    }
+
+    try {
+      window.sessionStorage.setItem(dedupeKey, '1');
+      window.localStorage.setItem(dedupeKey, '1');
+    } catch {}
+  } catch {}
+}
+
 export function EmailEntryForm({ defaultSessionPreference }: { defaultSessionPreference?: 'online' | 'in_person' }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -60,6 +97,13 @@ export function EmailEntryForm({ defaultSessionPreference }: { defaultSessionPre
         if (leadId && typeof window !== 'undefined') {
           window.localStorage.setItem('leadId', leadId);
           window.localStorage.setItem('leadEmail', email);
+        }
+      } catch {}
+
+      // Fire client-side Google Ads conversion immediately only in legacy flow (no confirmation required)
+      try {
+        if (json?.data && (json.data as { requiresConfirmation?: boolean }).requiresConfirmation === false) {
+          fireGoogleAdsClientConversion(leadId);
         }
       } catch {}
 
