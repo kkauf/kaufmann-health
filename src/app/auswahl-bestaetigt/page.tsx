@@ -32,7 +32,7 @@ export default async function Page({
         ? 'Diese Auswahl ist nicht mehr verfügbar. Es kann sein, dass der Vorschlag zurückgezogen wurde.'
         : error === 'update_failed'
         ? 'Deine Auswahl konnte nicht gespeichert werden. Bitte versuche es später erneut.'
-        : 'Es ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.';
+        : 'Es ist ein Fehler aufgetreten. Bitte versuche es später erneut.';
   }
 
   return (

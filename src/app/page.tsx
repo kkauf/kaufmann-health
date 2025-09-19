@@ -31,11 +31,11 @@ export default function Home() {
             id="hero-heading"
             className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl"
           >
-            Finden Sie geprüfte körperorientierte Trauma-Therapeut:innen
+            Finde geprüfte körperorientierte Trauma‑Therapeut:innen
           </h1>
           <p className="mt-4 max-w-2xl text-base text-gray-600 sm:text-lg">
           Persönlich kuratierte Therapeut:innen-Empfehlungen.
-          Handverlesen und persönlich geprüft, für eine Empfehlung, der Sie vertrauen können.
+          Handverlesen und persönlich geprüft – für eine Empfehlung, der du vertrauen kannst.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Button
@@ -146,16 +146,16 @@ export default function Home() {
               </p>
             </div>
             <div className="rounded-lg border bg-white p-5 transition-all duration-200 hover:shadow-md">
-              <h3 className="text-lg font-medium">Persönlich ausgewählte Therapeut:innen-Empfehlungen</h3>
+              <h3 className="text-lg font-medium">Persönlich ausgewählte Therapeut:innen‑Empfehlungen</h3>
               <p className="mt-2 text-sm text-gray-600">
                 Wir kennen jede:n Therapeut:in persönlich und wählen basierend auf 
-                Ihren Bedürfnissen und deren Spezialisierung passende Kandidat:innen aus.
+                deinen Bedürfnissen und deren Spezialisierung passende Kandidat:innen aus.
               </p>
             </div>
             <div className="rounded-lg border bg-white p-5 transition-all duration-200 hover:shadow-md">
               <h3 className="text-lg font-medium">Gezielte Auswahl</h3>
               <p className="mt-2 text-sm text-gray-600">
-                Sie erhalten Kontaktdaten zu 2–3 passenden Therapeut:innen und wählen selbst aus, wen Sie kontaktieren möchten. Direkter Kontakt, keine Umwege.
+                Du erhältst Kontaktdaten zu 2–3 passenden Therapeut:innen und wählst selbst aus, wen du kontaktieren möchtest. Direkter Kontakt, keine Umwege.
               </p>
             </div>
           </div>
@@ -183,8 +183,8 @@ export default function Home() {
               <div className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4">
                 <UserCheck className="mt-0.5 h-5 w-5 text-indigo-600" />
                 <div>
-                  <p className="font-medium">Kontrolle über Ihre Daten</p>
-                  <p className="text-sm text-gray-600">Nutzung Ihrer Angaben ausschließlich zur Kontaktaufnahme mit ausgewählten Therapeut:innen.</p>
+                  <p className="font-medium">Kontrolle über deine Daten</p>
+                  <p className="text-sm text-gray-600">Nutzung deiner Angaben ausschließlich zur Kontaktaufnahme mit ausgewählten Therapeut:innen.</p>
                 </div>
               </div>
             </div>
@@ -203,12 +203,12 @@ export default function Home() {
             <div className="grid gap-4 lg:grid-cols-[2fr_1fr] lg:items-center">
               <div>
                 <h2 id="therapists" className="text-2xl font-semibold">
-                  Neue Klienten für Ihre Praxis
+                  Neue Klienten für deine Praxis
                 </h2>
                 <p className="mt-2 text-gray-600">
-                  Werden Sie Teil unseres kuratierten Netzwerks. Zahlen Sie
-                  nur eine Erfolgsgebühr, wenn Klienten über unsere Plattform zu
-                  Ihnen finden.
+                  Werde Teil unseres kuratierten Netzwerks. Du zahlst
+                  nur eine Erfolgsgebühr, wenn Klient:innen über unsere Plattform zu
+                  dir finden.
                 </p>
               </div>
               <div className="justify-self-start lg:justify-self-end">

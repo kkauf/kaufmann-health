@@ -21,7 +21,7 @@ describe('patient selection email schema', () => {
         },
       ],
     });
-    expect(subject).toContain('Ihre persönlich kuratierte Auswahl');
+    expect(subject).toContain('Deine persönlich kuratierte Auswahl');
     expect(html).toContain('<script type="application/ld+json">');
     expect(html).toContain('ViewAction');
     expect(html).toContain(selectUrl);

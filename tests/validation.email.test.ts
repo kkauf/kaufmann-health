@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { getEmailError } from '@/lib/validation';
 
-// German messages must match exactly to keep UI consistent
-const REQUIRED = 'Bitte geben Sie Ihre E‑Mail-Adresse ein.';
-const INVALID = 'Bitte geben Sie eine gültige E‑Mail-Adresse ein.';
+// German messages must match exactly to keep UI consistent (informal "du")
+const REQUIRED = 'Bitte gib deine E‑Mail‑Adresse ein.';
+const INVALID = 'Bitte gib eine gültige E‑Mail‑Adresse ein.';
 
 describe('getEmailError', () => {
   it('returns required message for empty, null, undefined, or whitespace-only', () => {

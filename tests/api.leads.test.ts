@@ -195,9 +195,9 @@ describe('/api/leads POST', () => {
     expect(sentEmails.length).toBe(1);
     const email = sentEmails[0];
     expect(email.to).toBe('patient@example.com');
-    expect(email.subject).toBe('Ihre Anfrage bei Kaufmann Health erhalten');
+    expect(email.subject).toBe('Deine Anfrage bei Kaufmann Health ist eingegangen');
     expect(email.html).toBeTruthy();
-    expect(email.html).toContain('Ihre Angaben');
+    expect(email.html).toContain('Deine Angaben');
     expect(email.html).toContain('Berlin');
     expect(email.html).toContain('Trauma-Begleitung');
     expect(email.html).toContain('Vor Ort');
@@ -229,9 +229,9 @@ describe('/api/leads POST', () => {
     expect(sentEmails.length).toBe(1);
     const email = sentEmails[0];
     expect(email.to).toBe('patient2@example.com');
-    expect(email.subject).toBe('Ihre Anfrage bei Kaufmann Health erhalten');
+    expect(email.subject).toBe('Deine Anfrage bei Kaufmann Health ist eingegangen');
     expect(email.html).toBeTruthy();
-    expect(email.html).toContain('Ihre Angaben');
+    expect(email.html).toContain('Deine Angaben');
     expect(email.html).toContain('Sitzungsart');
   });
 

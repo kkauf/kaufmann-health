@@ -130,7 +130,7 @@ describe('/admin/api/matches/email POST', () => {
     expect(sentEmails.length).toBe(1);
     const email = sentEmails[0];
     expect(email.to).toBe('patient@example.com');
-    expect(email.subject).toContain('Ihr:e Therapeut:in');
+    expect(email.subject).toContain('Dein:e Therapeut:in');
     expect(email.context).toMatchObject({ kind: 'patient_update', template: 'match_found', match_id: 'm-1' });
   });
 
@@ -144,7 +144,7 @@ describe('/admin/api/matches/email POST', () => {
     expect(sentEmails.length).toBe(1);
     const email = sentEmails[0];
     expect(email.to).toBe('patient@example.com');
-    expect(email.subject).toBe('Update zu Ihrer Therapeut:innensuche');
+    expect(email.subject).toBe('Update zu deiner Therapeut:innensuche');
     expect(email.context).toMatchObject({ template: 'custom' });
   });
 });
