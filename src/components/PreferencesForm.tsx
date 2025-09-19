@@ -10,6 +10,47 @@ import Link from 'next/link';
 // Keep in sync with Datenschutz version
 const PRIVACY_VERSION = '2025-09-01.v1';
 
+// Minimal client-side Google Ads conversion: fire when preferences are successfully submitted
+// (i.e., when the patient status transitions to 'new'). This aligns the browser signal with our
+// server-side Enhanced Conversions for 1:1 accuracy and avoids premature signals in the email-only step.
+function fireGoogleAdsClientConversion(leadId?: string) {
+  try {
+    const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
+    const label = process.env.NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL;
+    if (!adsId || !label) return; // not configured
+    if (typeof window === 'undefined') return;
+
+    const dedupeKey = leadId ? `ga_conv_patient_registration_${leadId}` : 'ga_conv_patient_registration';
+    try {
+      if (window.sessionStorage.getItem(dedupeKey) === '1') return;
+      if (window.localStorage.getItem(dedupeKey) === '1') return;
+    } catch {}
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = (window as any).gtag as ((...args: any[]) => void) | undefined;
+    const sendTo = `${adsId}/${label}`;
+    const payload: Record<string, unknown> = { send_to: sendTo, value: 10, currency: 'EUR' };
+    if (leadId) payload.transaction_id = leadId; // enables Google Ads deduplication across tags/sessions
+
+    if (typeof g === 'function') {
+      g('event', 'conversion', payload);
+    } else {
+      // Fallback: push directly to dataLayer if stub is unavailable for any reason
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const w = window as any;
+      w.dataLayer = w.dataLayer || [];
+      w.dataLayer.push(['event', 'conversion', payload]);
+    }
+
+    try {
+      window.sessionStorage.setItem(dedupeKey, '1');
+      window.localStorage.setItem(dedupeKey, '1');
+    } catch {}
+  } catch {
+    // swallow – client conversion is best-effort and must never block UX
+  }
+}
+
 type Props = { leadId: string };
 
 export function PreferencesForm({ leadId }: Props) {
@@ -52,6 +93,8 @@ export function PreferencesForm({ leadId }: Props) {
       });
       const json = await res.json();
       if (!res.ok || json?.error) throw new Error(json?.error || 'Fehlgeschlagen');
+      // Fire client-side Google Ads conversion now that the lead became active (status='new')
+      fireGoogleAdsClientConversion(leadId);
       setSubmitted(true);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Fehlgeschlagen. Bitte später erneut versuchen.');

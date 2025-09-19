@@ -276,14 +276,14 @@ __Queries__: Use the `events` table to derive:
 
 __Why__: Google Ads' optimization algorithms require a client-side conversion signal to learn which clicks lead to conversions. Our server-side Enhanced Conversions remain the source of truth, but without a browser-side ping Google cannot attribute conversions to ad clicks, hurting optimization and budget scaling.
 
-__What__: A single, minimal client-side `gtag` conversion event fired only after a successful Klient:in lead submission on `TherapieFinderForm`.
+__What__: A single, minimal client-side `gtag` conversion event fired only after successful preferences submission on `PreferencesForm` (the moment a patient lead becomes active: status transitions to `new`). This aligns exactly with server-side Enhanced Conversions for 1:1 accuracy.
 
 __Privacy__: Consent Mode defaults to `denied` for all storages. No cookies/tracking, no PII, and no cross-site profiling. This yields a cookieless conversion signal suitable for model-based attribution.
 
 __Implementation__:
 - `app/layout.tsx`: inject Google Ads tag with Consent Mode defaults (all denied). Load only when `NEXT_PUBLIC_GOOGLE_ADS_ID` is set.
-- `components/TherapieFinderForm.tsx`: after successful submit, call
-  `gtag('event', 'conversion', { send_to: "AW-XXXX/YYYY", value: 1.0, currency: 'EUR' })` guarded by environment checks.
+- `components/PreferencesForm.tsx`: after successful submit (HTTP 200 from `POST /api/leads/:id/preferences`), call
+  `gtag('event', 'conversion', { send_to: "AW-XXXX/YYYY", value: 10, currency: 'EUR', transaction_id: <leadId> })` guarded by environment checks, with per‑lead dedupe via `sessionStorage` and `localStorage`.
 
 __Environment__:
 ```
@@ -293,7 +293,7 @@ NEXT_PUBLIC_COOKIES=false | true
 ```
 
 __Notes__:
-- This does not replace server-side tracking; it complements it for Ads optimization only.
+- This complements server-side Enhanced Conversions; both use the same value (10 EUR) and the same identifier (`transaction_id` == `orderId` == lead id) for deduplication.
 - Keep disabled in non-production environments by leaving env vars unset.
 
 ## Email Double Opt-in (EARTH-146)
@@ -305,7 +305,7 @@ __Notes__:
 - `email_confirmed` — emitted by `GET /api/leads/confirm` with props `{ campaign_source, campaign_variant, landing_page, elapsed_seconds }`.
 
 **Enhanced Conversions timing:**
-- In email-only mode, server-side Google Ads Enhanced Conversions (`patient_registration`) are sent only after confirmation (on `GET /api/leads/confirm`).
+- In email-only mode, server-side Google Ads Enhanced Conversions (`patient_registration`) are sent when preferences are submitted (status becomes `new`) via `POST /api/leads/:id/preferences`. The confirmation endpoint (`GET /api/leads/confirm`) only sets status to `email_confirmed` and redirects to preferences.
 - In legacy mode (flag off), they continue to fire after the initial patient insert.
 
 **Vercel Analytics:**
