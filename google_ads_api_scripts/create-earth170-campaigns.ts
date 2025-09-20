@@ -19,6 +19,47 @@ import type { CampaignConfig, KeywordTier } from './campaign-config';
 const DRY_RUN = process.env.DRY_RUN === 'true';
 const VALIDATE_ONLY = process.env.VALIDATE_ONLY === 'true' || DRY_RUN;
 
+// Rejected keyword logging
+const logsDir = path.join(rootDir, 'logs');
+const rejectedLogPath = path.join(logsDir, 'rejected-keywords.jsonl');
+const rejectedThisRun = new Set<string>();
+function logRejectedKeyword(ctx: { campaignName: string; adGroupName: string }, term: string, error: unknown, replacedWith?: string) {
+  try {
+    if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+    const key = `${ctx.campaignName}::${ctx.adGroupName}::${term}`;
+    if (rejectedThisRun.has(key)) return; // avoid duplicates in same run
+    rejectedThisRun.add(key);
+    const rec = {
+      ts: new Date().toISOString(),
+      campaign: ctx.campaignName,
+      adGroup: ctx.adGroupName,
+      term,
+      replacedWith: replacedWith || null,
+      error: (() => {
+        try {
+          return typeof error === 'string' ? error : JSON.parse(JSON.stringify(error));
+        } catch {
+          return String(error);
+        }
+      })(),
+    };
+    fs.appendFileSync(rejectedLogPath, `${JSON.stringify(rec)}\n`);
+  } catch (e) {
+    // best-effort logging; ignore errors
+  }
+}
+
+const REPLACEMENTS: Record<string, string> = {
+  'panikattacken': 'panikgefühle',
+  'depression hilfe': 'tiefe traurigkeit hilfe',
+  'angstzustände': 'starke angst',
+  'ptbs hilfe': 'trauma folgen bewältigen',
+  'essstörung hilfe': 'essverhalten regulieren hilfe',
+  'zwang gedanken': 'aufdringliche gedanken hilfe',
+  'trauma verarbeiten hilfe': 'trauma bewältigen hilfe',
+  'burnout anzeichen': 'ausgebrannt fühlen',
+};
+
 function requireEnv(key: string): string {
   const v = process.env[key];
   if (!v) throw new Error(`Missing required env: ${key}`);
@@ -479,7 +520,12 @@ async function ensureCampaign(customer: any, cfg: CampaignConfig) {
   }
 }
 
-async function addKeywords(customer: any, adGroupRes: string, data: KeywordTier) {
+async function addKeywords(
+  customer: any,
+  adGroupRes: string,
+  data: KeywordTier,
+  ctx: { campaignName: string; adGroupName: string }
+) {
   if (!data.terms.length) return;
   const rows = (await customer.query(
     `SELECT ad_group_criterion.keyword.text FROM ad_group_criterion WHERE ad_group_criterion.type = KEYWORD AND ad_group_criterion.ad_group = '${adGroupRes}'`
@@ -487,12 +533,40 @@ async function addKeywords(customer: any, adGroupRes: string, data: KeywordTier)
   const existing = new Set<string>(rows.map((r: any) => r?.ad_group_criterion?.keyword?.text).filter(Boolean));
   const toCreate = data.terms.filter((t) => !existing.has(t));
   if (toCreate.length === 0) return console.log('    ↪ All keywords already present');
-  if (DRY_RUN || VALIDATE_ONLY) console.log(`    ↪ DRY RUN: would add ${toCreate.length} keywords`);
-  else {
-    const payloads = toCreate.map((term) => ({ ad_group: adGroupRes, keyword: { text: term, match_type: 'PHRASE' } }));
-    await customer.adGroupCriteria.create(payloads);
-    console.log('    ✓ Keywords added:', toCreate.length);
+  if (DRY_RUN || VALIDATE_ONLY) {
+    console.log(`    ↪ DRY RUN: would add ${toCreate.length} keywords`);
+    return;
   }
+  let ok = 0;
+  let failed = 0;
+  for (const term of toCreate) {
+    try {
+      await customer.adGroupCriteria.create([
+        { ad_group: adGroupRes, keyword: { text: term, match_type: 'PHRASE' } },
+      ]);
+      ok++;
+    } catch (e) {
+      failed++;
+      logRejectedKeyword(ctx, term, e);
+      try { console.warn('    ⚠️  Keyword rejected:', term, JSON.stringify(e, null, 2)); } catch { console.warn('    ⚠️  Keyword rejected:', term, e); }
+      const repl = REPLACEMENTS[term.toLowerCase() as keyof typeof REPLACEMENTS];
+      if (repl && !existing.has(repl)) {
+        try {
+          await customer.adGroupCriteria.create([
+            { ad_group: adGroupRes, keyword: { text: repl, match_type: 'PHRASE' } },
+          ]);
+          ok++;
+          logRejectedKeyword(ctx, term, e, repl);
+          console.log(`    ↪ Substituted rejected term with: ${repl}`);
+        } catch (e2) {
+          logRejectedKeyword(ctx, term, e2, repl);
+          try { console.warn('    ⚠️  Replacement also rejected:', repl, JSON.stringify(e2, null, 2)); } catch { console.warn('    ⚠️  Replacement also rejected:', repl, e2); }
+        }
+      }
+    }
+  }
+  if (ok > 0) console.log(`    ✓ Keywords added: ${ok}${failed > 0 ? ` (failed: ${failed})` : ''}`);
+  else console.log(`    ⚠️ No keywords added (failed: ${failed})`);
 }
 
 async function createRSA(customer: any, adGroupRes: string, cfg: CampaignConfig) {
@@ -558,7 +632,7 @@ async function ensureAdGroupsKeywordsAndAds(customer: any, campaignRes: string, 
       console.log('  ↪ Using existing AdGroup:', adGroupRes);
     }
 
-    await addKeywords(customer, adGroupRes!, data);
+    await addKeywords(customer, adGroupRes!, data, { campaignName: cfg.name, adGroupName });
 
     // Ensure at least 2 RSAs exist (idempotent on retries)
     const adsRows = (await customer.query(
@@ -618,7 +692,56 @@ async function main() {
 
   await preflight(customer);
 
-  for (const cfg of EARTH170_CONFIG) {
+  // Load config from private JSON if present (prefer ADS_CONFIG_JSON env over file path)
+  const defaultConfigPath = path.join(rootDir, 'google_ads_api_scripts', 'private', 'earth170.json');
+  const configPath = process.env.ADS_CONFIG_PATH || defaultConfigPath;
+  let configs: CampaignConfig[] = EARTH170_CONFIG;
+  let usedEmbedded = true;
+  try {
+    if (process.env.ADS_CONFIG_JSON) {
+      const jsonStr = process.env.ADS_CONFIG_JSON as string;
+      const json = JSON.parse(jsonStr);
+      if (Array.isArray(json)) {
+        configs = json as CampaignConfig[];
+        console.log('Config source: ADS_CONFIG_JSON environment variable');
+        usedEmbedded = false;
+      } else {
+        console.warn('⚠️ ADS_CONFIG_JSON is not an array, falling back to file/embedded');
+      }
+    } else if (fs.existsSync(configPath)) {
+      const raw = fs.readFileSync(configPath, 'utf8');
+      const json = JSON.parse(raw);
+      if (Array.isArray(json)) {
+        configs = json as CampaignConfig[];
+        console.log('Config source:', configPath);
+        usedEmbedded = false;
+      } else {
+        console.warn('⚠️ Config JSON is not an array, falling back to TypeScript config');
+        console.log('Config source: embedded TypeScript (EARTH170_CONFIG)');
+      }
+    } else {
+      console.log('Config source: embedded TypeScript (EARTH170_CONFIG)');
+    }
+  } catch (e) {
+    try { console.warn('⚠️ Failed to read private config, falling back:', JSON.stringify(e, null, 2)); } catch { console.warn('⚠️ Failed to read private config, falling back:', e); }
+    console.log('Config source: embedded TypeScript (EARTH170_CONFIG)');
+  }
+
+  if (usedEmbedded && process.env.ALLOW_EMBEDDED_ADS_CONFIG !== 'true') {
+    console.error('❌ Private ads config required. Create a JSON file at', configPath, 'or set ADS_CONFIG_PATH to a private file.');
+    console.error('   To intentionally use the embedded sample (not recommended), set ALLOW_EMBEDDED_ADS_CONFIG=true');
+    process.exit(1);
+  }
+
+  // Sanity: ensure each campaign has at least one keyword tier
+  for (const c of configs) {
+    if (!c.keywords || Object.keys(c.keywords).length === 0) {
+      console.error('❌ Invalid ads config: campaign has no keyword tiers:', c.name);
+      process.exit(1);
+    }
+  }
+
+  for (const cfg of configs) {
     try {
       const campaignRes = await ensureCampaign(customer, cfg);
       if (campaignRes) {

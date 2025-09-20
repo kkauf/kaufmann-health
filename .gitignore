@@ -42,3 +42,8 @@ env.local
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ads configs and logs (sensitive)
+/google_ads_api_scripts/private/
+/logs/
+*.jsonl
