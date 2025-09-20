@@ -121,6 +121,41 @@ import { WEEK38_CONFIG, type CampaignConfig, type KeywordTier } from './campaign
 const DRY_RUN = process.env.DRY_RUN === 'true';
 const VALIDATE_ONLY = process.env.VALIDATE_ONLY === 'true' || DRY_RUN;
 
+// Rejected keyword logging (Week38)
+const logsDir = path.join(rootDir, 'logs');
+const rejectedLogPath = path.join(logsDir, 'rejected-keywords-week38.jsonl');
+const rejectedThisRun = new Set<string>();
+function logRejectedKeyword(ctx: { campaignName: string; adGroupName: string }, term: string, error: unknown, replacedWith?: string) {
+  try {
+    if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+    const key = `${ctx.campaignName}::${ctx.adGroupName}::${term}`;
+    if (rejectedThisRun.has(key)) return;
+    rejectedThisRun.add(key);
+    const rec = {
+      ts: new Date().toISOString(),
+      campaign: ctx.campaignName,
+      adGroup: ctx.adGroupName,
+      term,
+      replacedWith: replacedWith || null,
+      error: (() => {
+        try { return typeof error === 'string' ? error : JSON.parse(JSON.stringify(error)); } catch { return String(error); }
+      })(),
+    };
+    fs.appendFileSync(rejectedLogPath, `${JSON.stringify(rec)}\n`);
+  } catch {}
+}
+
+const REPLACEMENTS: Record<string, string> = {
+  'panikattacken': 'panikgefühle',
+  'depression hilfe': 'tiefe traurigkeit hilfe',
+  'angstzustände': 'starke angst',
+  'ptbs hilfe': 'trauma folgen bewältigen',
+  'essstörung hilfe': 'essverhalten regulieren hilfe',
+  'zwang gedanken': 'aufdringliche gedanken hilfe',
+  'trauma verarbeiten hilfe': 'trauma bewältigen hilfe',
+  'burnout anzeichen': 'ausgebrannt fühlen',
+};
+
 function requireEnv(key: string): string {
   const v = process.env[key];
   if (!v) throw new Error(`Missing required env: ${key}`);
@@ -617,6 +652,54 @@ async function main() {
     process.exit(1);
   }
 
+  // Load config from private JSON if present (prefer ADS_CONFIG_JSON env over file path)
+  const defaultConfigPath = path.join(rootDir, 'google_ads_api_scripts', 'private', 'week38.json');
+  const configPath = process.env.ADS_CONFIG_PATH || defaultConfigPath;
+  let configs: CampaignConfig[] = [WEEK38_CONFIG.wellness, WEEK38_CONFIG.depth];
+  let usedEmbedded = true;
+  try {
+    if (process.env.ADS_CONFIG_JSON) {
+      const jsonStr = process.env.ADS_CONFIG_JSON as string;
+      const json = JSON.parse(jsonStr);
+      if (Array.isArray(json)) {
+        configs = json as CampaignConfig[];
+        console.log('Config source: ADS_CONFIG_JSON environment variable');
+        usedEmbedded = false;
+      } else {
+        console.warn('⚠️ ADS_CONFIG_JSON is not an array, falling back to file/embedded');
+      }
+    } else if (fs.existsSync(configPath)) {
+      const raw = fs.readFileSync(configPath, 'utf8');
+      const json = JSON.parse(raw);
+      if (Array.isArray(json)) {
+        configs = json as CampaignConfig[];
+        console.log('Config source:', configPath);
+        usedEmbedded = false;
+      } else {
+        console.warn('⚠️ Config JSON is not an array, falling back to embedded');
+      }
+    } else {
+      console.log('Config source: embedded TypeScript (WEEK38_CONFIG)');
+    }
+  } catch (e) {
+    try { console.warn('⚠️ Failed to read private config, falling back:', JSON.stringify(e, null, 2)); } catch { console.warn('⚠️ Failed to read private config, falling back:', e); }
+    console.log('Config source: embedded TypeScript (WEEK38_CONFIG)');
+  }
+
+  if (usedEmbedded && process.env.ALLOW_EMBEDDED_ADS_CONFIG !== 'true') {
+    console.error('❌ Private ads config required. Create a JSON file at', configPath, 'or set ADS_CONFIG_PATH to a private file.');
+    console.error('   To intentionally use the embedded sample (not recommended), set ALLOW_EMBEDDED_ADS_CONFIG=true');
+    process.exit(1);
+  }
+
+  // Validate configs
+  for (const c of configs) {
+    if (!c.keywords || Object.keys(c.keywords).length === 0) {
+      console.error('❌ Invalid ads config: campaign has no keyword tiers:', c.name);
+      process.exit(1);
+    }
+  }
+
   // Idempotency: skip if campaign already exists by exact name
   async function ensureCampaign(cfg: CampaignConfig, selOptName: string) {
     // plan output
@@ -850,13 +933,15 @@ async function main() {
     console.log('ℹ️ Selected conversion action for optimization:', resolvedSelOptName);
   }
 
-  await ensureCampaign(WEEK38_CONFIG.wellness, resolvedSelOptName);
-  await ensureCampaign(WEEK38_CONFIG.depth, resolvedSelOptName);
+  for (const cfg of configs) {
+    await ensureCampaign(cfg, resolvedSelOptName);
+  }
 
   console.log('\n📊 Campaign Summary:');
   console.log('━━━━━━━━━━━━━━━━━━━━');
-  console.log('✅ Wellness Campaign: PAUSED - €' + WEEK38_CONFIG.wellness.budget_euros + '/day budget');
-  console.log('✅ Depth Campaign:    PAUSED - €' + WEEK38_CONFIG.depth.budget_euros + '/day budget');
+  for (const cfg of configs) {
+    console.log(`✅ ${cfg.name}: PAUSED - €${cfg.budget_euros}/day budget`);
+  }
   console.log('\n⚠️  NEXT STEPS:');
   console.log('1. Review in Google Ads UI');
   console.log('2. Check ad previews');
@@ -913,44 +998,41 @@ async function createAdGroupsKeywordsAndAds(customer: any, campaignResourceName:
         existingKeywordsRows.map((r: any) => r.ad_group_criterion?.keyword?.text).filter(Boolean)
       );
       const toCreate = data.terms.filter((t) => !existingKeywordSet.has(t));
-      if (toCreate.length > 0) {
-        const tryCreate = async (terms: string[]) => {
-          const payloads = terms.map((term) => ({
-            ad_group: adGroupResource!,
-            keyword: { text: term, match_type: 'PHRASE' },
-          }));
-          return customer.adGroupCriteria.create(payloads);
-        };
-
-        try {
-          const res: any = await tryCreate(toCreate);
-          console.log('    ✓ Keywords added:', res?.results?.length ?? toCreate.length);
-        } catch (err: any) {
-          // Attempt to parse violating terms and retry without them
-          let violating: string[] = [];
+      if (toCreate.length === 0) {
+        console.log('    ↪ All keywords already present');
+      } else if (DRY_RUN || VALIDATE_ONLY) {
+        console.log(`    ↪ DRY RUN: would add ${toCreate.length} keywords`);
+      } else {
+        let ok = 0;
+        let failed = 0;
+        for (const term of toCreate) {
           try {
-            const e = typeof err === 'string' ? JSON.parse(err) : err;
-            const errors = e?.errors || [];
-            for (const item of errors) {
-              const vt = item?.details?.policy_violation_details?.key?.violating_text;
-              if (vt) violating.push(vt);
+            await customer.adGroupCriteria.create([
+              { ad_group: adGroupResource!, keyword: { text: term, match_type: 'PHRASE' } },
+            ]);
+            ok++;
+          } catch (e) {
+            failed++;
+            logRejectedKeyword({ campaignName: cfg.name, adGroupName }, term, e);
+            try { console.warn('    ⚠️  Keyword rejected:', term, JSON.stringify(e, null, 2)); } catch { console.warn('    ⚠️  Keyword rejected:', term, e); }
+            const repl = REPLACEMENTS[term.toLowerCase() as keyof typeof REPLACEMENTS];
+            if (repl && !existingKeywordSet.has(repl)) {
+              try {
+                await customer.adGroupCriteria.create([
+                  { ad_group: adGroupResource!, keyword: { text: repl, match_type: 'PHRASE' } },
+                ]);
+                ok++;
+                logRejectedKeyword({ campaignName: cfg.name, adGroupName }, term, e, repl);
+                console.log(`    ↪ Substituted rejected term with: ${repl}`);
+              } catch (e2) {
+                logRejectedKeyword({ campaignName: cfg.name, adGroupName }, term, e2, repl);
+                try { console.warn('    ⚠️  Replacement also rejected:', repl, JSON.stringify(e2, null, 2)); } catch { console.warn('    ⚠️  Replacement also rejected:', repl, e2); }
+              }
             }
-          } catch {}
-          violating = Array.from(new Set(violating));
-          if (violating.length > 0) {
-            const filtered = toCreate.filter((t) => !violating.includes(t));
-            console.warn('    ⚠️ Skipping policy-flagged keywords:', violating);
-            if (filtered.length > 0) {
-              const res2: any = await tryCreate(filtered);
-              console.log('    ✓ Keywords added after filtering:', res2?.results?.length ?? filtered.length);
-            }
-          } else {
-            // Re-throw if not a policy violation parseable error
-            throw err;
           }
         }
-      } else {
-        console.log('    ↪ All keywords already present');
+        if (ok > 0) console.log(`    ✓ Keywords added: ${ok}${failed > 0 ? ` (failed: ${failed})` : ''}`);
+        else console.log(`    ⚠️ No keywords added (failed: ${failed})`);
       }
     }
 
