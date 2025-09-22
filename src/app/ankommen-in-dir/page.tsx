@@ -20,24 +20,30 @@ export const revalidate = 3600;
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.kaufmann-health.de";
 
-export const metadata: Metadata = {
-  title: "Ankommen in dir – Körperorientierte Therapie online | Kaufmann Health",
-  description:
-    "Körperorientierte Therapie – persönlich kuratiert und online verfügbar, deutschlandweit. Embodiment & Nervensystem‑Regulation.",
-  alternates: { canonical: `${baseUrl}/ankommen-in-dir` },
-  openGraph: {
-    title: "Ankommen in dir – Körperorientierte Therapie online",
-    description: "Persönlich kuratierte Empfehlungen für Online-Sitzungen, deutschlandweit.",
-    url: `${baseUrl}/ankommen-in-dir`,
-    type: "website",
-    images: [{ url: `${baseUrl}/images/color-patterns.png`, width: 1200, height: 630 }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Ankommen in dir – Körperorientierte Therapie online",
-    description: "Persönlich kuratierte Empfehlungen für Online-Sitzungen, deutschlandweit.",
-    images: [`${baseUrl}/images/color-patterns.png`],
-  },
+export const metadata = async ({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }): Promise<Metadata> => {
+  const variant = (searchParams?.v as string)?.toUpperCase() || 'A';
+  const isTestVariant = variant === 'B' || variant === 'C';
+
+  return {
+    title: "Ankommen in dir – Körperorientierte Therapie online | Kaufmann Health",
+    description:
+      "Körperorientierte Therapie – persönlich kuratiert und online verfügbar, deutschlandweit. Embodiment & Nervensystem‑Regulation.",
+    alternates: { canonical: `${baseUrl}/ankommen-in-dir` },
+    robots: isTestVariant ? { index: false, follow: false } : { index: true, follow: true },
+    openGraph: {
+      title: "Ankommen in dir – Körperorientierte Therapie online",
+      description: "Persönlich kuratierte Empfehlungen für Online-Sitzungen, deutschlandweit.",
+      url: `${baseUrl}/ankommen-in-dir`,
+      type: "website",
+      images: [{ url: `${baseUrl}/images/color-patterns.png`, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Ankommen in dir – Körperorientierte Therapie online",
+      description: "Persönlich kuratierte Empfehlungen für Online-Sitzungen, deutschlandweit.",
+      images: [`${baseUrl}/images/color-patterns.png`],
+    },
+  };
 };
 
 export default async function AnkommenInDirPage() {
