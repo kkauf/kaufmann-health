@@ -248,3 +248,55 @@ Safety
 - Start with dry-run to validate access and planned changes
 - Apply only with `CONFIRM_APPLY=true`
 - Proximity targeting for Berlin uses the ring radius for consistency across campaigns
+
+## Keyword & Asset Performance Export (Clicks)
+
+`export-keyword-asset-performance.ts` — exports keyword performance and RSA asset-combination shares, segmented by whether a price headline (e.g., "80–120€ pro Sitzung") actually served, and whether it was pinned.
+
+What it does
+
+- Aggregates clicks from `ad_group_ad_asset_combination_view` per ad to compute the share of clicks where the price headline served, split into pinned vs unpinned (pinning is read from `ad_group_ad_asset_view`).
+- Aggregates per ad group (weighted by ad clicks) to produce ad-group-level price-serving shares.
+- Pulls keyword performance from `ad_group_criterion` and estimates, per keyword, how many clicks occurred with price pinned, price unpinned, or without price (using the ad-group shares).
+- Exports HEADLINE asset performance for context with an `is_price` flag.
+
+Assumptions
+
+- Channel: `SEARCH` campaigns, includes both Google Search and Search Partners.
+- Status: includes all statuses (enabled/paused/removed) for historical completeness.
+- Time: aggregated over a date window (default since 2025-09-01 until yesterday).
+- Price detection: matches asset text by regex (default matches dash variants of "80–120€ pro Sitzung").
+
+Usage
+
+```bash
+npm run ads:export:perf -- --since=2025-09-01 \
+  --outDir=google_ads_api_scripts/private/exports \
+  --priceRegex="80\s*[–-]\s*120€\s*pro\s*Sitzung"
+```
+
+Optional flags
+
+- `--until=YYYY-MM-DD` — end date (default: yesterday; controlled by `--excludeToday`)
+- `--excludeToday=true|false` — default `true`
+- `--nameLike="substring"` — only include campaigns whose name contains this substring
+- `--outDir=path` — default `google_ads_api_scripts/private/exports`
+- `--priceRegex="regex"` — override the price headline detection pattern
+
+Outputs
+
+- `keyword_raw.csv` — Raw keyword metrics
+  - Columns: `campaign_id,campaign_name,ad_group_id,ad_group_name,keyword_id,keyword_text,match_type,status,clicks,impressions,cost_eur,date_range`
+- `ad_price_share.csv` — Per-ad price-serving shares
+  - Columns: `campaign_id,ad_group_id,ad_id,clicks_total,clicks_price_present,clicks_price_pinned,clicks_price_unpinned,share_price_present,share_price_pinned,share_price_unpinned,share_no_price,date_range`
+- `adgroup_price_share.csv` — Ad-group aggregated shares (weighted by ad clicks)
+  - Columns: `campaign_id,ad_group_id,clicks_total,clicks_price_present,clicks_price_pinned,clicks_price_unpinned,share_price_present,share_price_pinned,share_price_unpinned,share_no_price,date_range`
+- `keyword_adjusted.csv` — Keyword clicks split by estimated buckets
+  - Columns: `campaign_id,campaign_name,ad_group_id,ad_group_name,keyword_id,keyword_text,match_type,status,clicks_total,est_clicks_price_pinned,est_clicks_price_unpinned,est_clicks_no_price,share_price_pinned,share_price_unpinned,share_no_price,date_range`
+- `asset_headline_perf.csv` — HEADLINE asset performance
+  - Columns: `asset_resource_name,field_type,text,is_price,clicks,impressions,cost_eur,date_range`
+
+Notes
+
+- Shares are computed from actual served combinations, avoiding double counting across multiple assets.
+- If no price assets are found by regex, price-serving shares will be zero; adjust `--priceRegex` as needed.
