@@ -19,6 +19,29 @@ function sendEvent(type: string) {
   } catch {}
 }
 
+function applyAdConsentDenied() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = (window as any).gtag as ((...args: any[]) => void) | undefined;
+    if (typeof g === 'function') {
+      g('consent', 'update', {
+        ad_storage: 'denied',
+        analytics_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+      });
+      // Optionally re-configure to ensure linker does not operate post-withdrawal
+      if (process.env.NEXT_PUBLIC_GOOGLE_ADS_ID) {
+        g('config', process.env.NEXT_PUBLIC_GOOGLE_ADS_ID, {
+          allow_ad_personalization_signals: false,
+          conversion_linker: false,
+          url_passthrough: true,
+        });
+      }
+    }
+  } catch {}
+}
+
 function applyAdConsentGranted() {
   try {
     // gtag placeholder should exist via layout's inline init script
@@ -68,6 +91,18 @@ export default function CookieBanner() {
     }
   }, []);
 
+  useEffect(() => {
+    const handler = () => setShow(true);
+    try {
+      window.addEventListener('open-cookie-settings', handler);
+    } catch {}
+    return () => {
+      try {
+        window.removeEventListener('open-cookie-settings', handler);
+      } catch {}
+    };
+  }, []);
+
   const onAccept = useCallback(() => {
     try {
       localStorage.setItem('ga-consent', 'accepted');
@@ -85,6 +120,7 @@ export default function CookieBanner() {
     try {
       localStorage.setItem('ga-consent', 'rejected');
     } catch {}
+    applyAdConsentDenied();
     sendEvent('cookie_consent_rejected');
     setShow(false);
   }, []);

@@ -1,7 +1,16 @@
+"use client";
+
 import { ShieldCheck, Lock } from "lucide-react";
 import { COOKIES_ENABLED } from "@/lib/config";
+import { useCallback } from "react";
 
 export default function Footer() {
+  const openCookieSettings = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    try {
+      window.dispatchEvent(new Event('open-cookie-settings'));
+    } catch {}
+  }, []);
   return (
     <footer className="border-t bg-white">
       <div className="mx-auto max-w-7xl px-4 py-8">
@@ -34,6 +43,11 @@ export default function Footer() {
               <li>
                 <a className="hover:text-gray-900" href="/datenschutz">Datenschutz</a>
               </li>
+              {COOKIES_ENABLED && (
+                <li>
+                  <a href="#" onClick={openCookieSettings} className="hover:text-gray-900">Cookie-Einstellungen</a>
+                </li>
+              )}
             </ul>
           </nav>
           <section aria-labelledby="footer-about" className="sm:col-span-2 lg:col-span-2">
