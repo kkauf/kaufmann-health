@@ -139,50 +139,52 @@ export async function handlePatientLead(ctx: HandlerContext, input: PatientHandl
       void logError('api.leads', e, { stage: 'patient_confirmation_email' }, ip, ua);
     }
 
-    // Google Ads conversion
-    try {
-      const conversionActionAlias = 'client_registration';
-      const value = 10;
-      void track({
-        type: 'google_ads_attempted',
-        level: 'info',
-        source: 'api.leads',
-        ip,
-        ua,
-        props: { action: conversionActionAlias, order_id: inserted.id, lead_type: 'patient', value, ...(session_id ? { session_id } : {}) },
-      });
-      const gaPromise = googleAdsTracker.trackConversion({
-        email: data.email,
-        conversionAction: conversionActionAlias,
-        conversionValue: value,
-        orderId: inserted.id,
-      });
-      let gaDone = false;
-      gaPromise.then(
-        () => {
-          gaDone = true;
-        },
-        async (err) => {
-          gaDone = true;
-          void logError('api.leads', err, { stage: 'google_ads_conversion' }, ip, ua);
-        },
-      );
-      const waitMs = Number(process.env.GOOGLE_ADS_WAIT_MS ?? (process.env.NODE_ENV === 'development' ? 500 : 0));
-      if (waitMs > 0) {
-        await new Promise((r) => setTimeout(r, waitMs));
-        if (!gaDone) {
-          void track({
-            type: 'google_ads_deferred',
-            level: 'info',
-            source: 'api.leads',
-            ip,
-            ua,
-            props: { action: conversionActionAlias, order_id: inserted.id, lead_type: 'patient', value, timeout_ms: waitMs, ...(session_id ? { session_id } : {}) },
-          });
+    // Google Ads conversion (legacy flow only). In email-only mode (EARTH-146), this fires later at POST /api/leads/:id/preferences.
+    if (process.env.REQUIRE_EMAIL_CONFIRMATION === 'false') {
+      try {
+        const conversionActionAlias = 'client_registration';
+        const value = 10;
+        void track({
+          type: 'google_ads_attempted',
+          level: 'info',
+          source: 'api.leads',
+          ip,
+          ua,
+          props: { action: conversionActionAlias, order_id: inserted.id, lead_type: 'patient', value, ...(session_id ? { session_id } : {}) },
+        });
+        const gaPromise = googleAdsTracker.trackConversion({
+          email: data.email,
+          conversionAction: conversionActionAlias,
+          conversionValue: value,
+          orderId: inserted.id,
+        });
+        let gaDone = false;
+        gaPromise.then(
+          () => {
+            gaDone = true;
+          },
+          async (err) => {
+            gaDone = true;
+            void logError('api.leads', err, { stage: 'google_ads_conversion' }, ip, ua);
+          },
+        );
+        const waitMs = Number(process.env.GOOGLE_ADS_WAIT_MS ?? (process.env.NODE_ENV === 'development' ? 500 : 0));
+        if (waitMs > 0) {
+          await new Promise((r) => setTimeout(r, waitMs));
+          if (!gaDone) {
+            void track({
+              type: 'google_ads_deferred',
+              level: 'info',
+              source: 'api.leads',
+              ip,
+              ua,
+              props: { action: conversionActionAlias, order_id: inserted.id, lead_type: 'patient', value, timeout_ms: waitMs, ...(session_id ? { session_id } : {}) },
+            });
+          }
         }
+      } catch (e) {
+        void logError('api.leads', e, { stage: 'google_ads_conversion', lead_type: 'patient' }, ip, ua);
       }
-    } catch (e) {
-      void logError('api.leads', e, { stage: 'google_ads_conversion', lead_type: 'patient' }, ip, ua);
     }
 
     // Internal notification (PII-free)
@@ -292,32 +294,7 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
     void logError('api.leads', e, { stage: 'welcome_email' }, ip, ua);
   }
 
-  // Google Ads conversion
-  try {
-    const conversionActionAlias = 'therapist_registration';
-    const value = 25;
-    void track({ type: 'google_ads_attempted', level: 'info', source: 'api.leads', ip, ua, props: { action: conversionActionAlias, order_id: therapistId, lead_type: 'therapist', value, ...(session_id ? { session_id } : {}) } });
-    const gaPromise = googleAdsTracker.trackConversion({ email: data.email, conversionAction: conversionActionAlias, conversionValue: value, orderId: therapistId });
-    let gaDone = false;
-    gaPromise.then(
-      () => {
-        gaDone = true;
-      },
-      async (err) => {
-        gaDone = true;
-        void logError('api.leads', err, { stage: 'google_ads_conversion' }, ip, ua);
-      },
-    );
-    const waitMs = Number(process.env.GOOGLE_ADS_WAIT_MS ?? (process.env.NODE_ENV === 'development' ? 500 : 0));
-    if (waitMs > 0) {
-      await new Promise((r) => setTimeout(r, waitMs));
-      if (!gaDone) {
-        void track({ type: 'google_ads_deferred', level: 'info', source: 'api.leads', ip, ua, props: { action: conversionActionAlias, order_id: therapistId, lead_type: 'therapist', value, timeout_ms: waitMs, ...(session_id ? { session_id } : {}) } });
-      }
-    }
-  } catch (e) {
-    void logError('api.leads', e, { stage: 'google_ads_conversion', lead_type: 'therapist' }, ip, ua);
-  }
+  // Google Ads conversion moved to documents submission endpoint (see /api/therapists/:id/documents)
 
   // Internal notification (PII-free)
   try {

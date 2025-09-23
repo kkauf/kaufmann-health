@@ -417,51 +417,7 @@ async function handleTherapistMultipart(req: Request) {
     void logError('api.leads', e, { stage: 'welcome_email' }, ip, ua);
   }
 
-  // Google Ads conversion (Enhanced Conversions)
-  try {
-    const conversionActionAlias = 'therapist_registration';
-    const value = 25;
-    void track({
-      type: 'google_ads_attempted',
-      level: 'info',
-      source: 'api.leads',
-      ip,
-      ua,
-      props: { action: conversionActionAlias, order_id: therapistId, lead_type: 'therapist', value },
-    });
-    const gaPromise = googleAdsTracker.trackConversion({
-      email: data.email,
-      conversionAction: conversionActionAlias,
-      conversionValue: value,
-      orderId: therapistId,
-    });
-    let gaDone = false;
-    gaPromise.then(
-      () => {
-        gaDone = true;
-      },
-      async (err) => {
-        gaDone = true;
-        void logError('api.leads', err, { stage: 'google_ads_conversion' }, ip, ua);
-      },
-    );
-    const waitMs = Number(process.env.GOOGLE_ADS_WAIT_MS ?? (process.env.NODE_ENV === 'development' ? 500 : 0));
-    if (waitMs > 0) {
-      await new Promise((r) => setTimeout(r, waitMs));
-      if (!gaDone) {
-        void track({
-          type: 'google_ads_deferred',
-          level: 'info',
-          source: 'api.leads',
-          ip,
-          ua,
-          props: { action: conversionActionAlias, order_id: therapistId, lead_type: 'therapist', value, timeout_ms: waitMs },
-        });
-      }
-    }
-  } catch (e) {
-    void logError('api.leads', e, { stage: 'google_ads_conversion', lead_type: 'therapist' }, ip, ua);
-  }
+  // Google Ads conversion moved to documents submission endpoint (see /api/therapists/:id/documents)
 
   // Internal notification (PII-free)
   try {

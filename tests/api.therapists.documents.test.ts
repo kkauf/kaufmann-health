@@ -37,6 +37,12 @@ vi.mock('@/lib/supabase-server', () => {
 
 vi.mock('@/lib/logger', () => ({ logError: vi.fn(async () => {}), track: vi.fn(async () => {}) }));
 
+// Spy on google ads tracker
+const trackConversion = vi.fn(async (_d: any) => {});
+vi.mock('@/lib/google-ads', () => ({
+  googleAdsTracker: { trackConversion },
+}));
+
 function makeReq(form: FormData, headers?: Record<string, string>) {
   return new Request('http://localhost/api/therapists/tid-1/documents', {
     method: 'POST',
@@ -136,5 +142,22 @@ describe('/api/therapists/:id/documents POST', () => {
     const profile = meta.profile || {};
     expect(typeof profile.photo_pending_path).toBe('string');
     expect(profile.approach_text).toBe('Kurzbeschreibung');
+  });
+
+  it('fires therapist_registration conversion on successful upload', async () => {
+    const { POST } = await import('@/app/api/therapists/[id]/documents/route');
+    therapistRow = { id: 'tid-1', status: 'pending_verification', metadata: {}, email: 'therapist@example.com' } as any;
+    const form = new FormData();
+    form.set('psychotherapy_license', new File([new Uint8Array([0,1,2])], 'license.pdf', { type: 'application/pdf' }));
+    const res = await POST(makeReq(form), { params: Promise.resolve({ id: 'tid-1' }) });
+    expect(res.status).toBe(200);
+
+    await Promise.resolve();
+    expect(trackConversion).toHaveBeenCalledTimes(1);
+    const call = trackConversion.mock.calls[0][0];
+    expect(call.conversionAction).toBe('therapist_registration');
+    expect(call.conversionValue).toBe(25);
+    expect(call.orderId).toBe('tid-1');
+    expect(call.email).toBe('therapist@example.com');
   });
 });

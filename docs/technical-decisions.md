@@ -29,10 +29,10 @@
   - Safety: No-op unless env is configured; errors go through unified logger. Secrets live in server env only.
   - Mapping: Conversion action aliases (e.g., `client_registration`) map to resource names via env `GOOGLE_ADS_CA_*` (see `.env.example`). This lets us add/rename actions without code changes.
   - Trigger points:
-    - `therapist_registration` (25 EUR): fired by `POST /api/leads` when `type='therapist'` (unchanged).
+    - `therapist_registration` (25 EUR): fired by `POST /api/therapists/:id/documents` after successful document submission (qualified lead moment).
     - `client_registration` (10 EUR):
       - Legacy mode (feature flag off): fired by `POST /api/leads` after successful patient insert.
-      - Email-only mode (EARTH-146; `REQUIRE_EMAIL_CONFIRMATION` enabled): deferred to `GET /api/leads/confirm` and sent only after the email is confirmed (status transitions to `new`).
+      - Email-only mode (EARTH-146; `REQUIRE_EMAIL_CONFIRMATION` enabled): fired by `POST /api/leads/:id/preferences` when status becomes `new` (post-confirmation activation).
     - Future events (match, payment, etc.) can call the tracker via their alias.
   - Observability: staged logs for OAuth (`get_access_token`) and upload, logs missing config keys, parses `receivedOperationsCount` and partial failures for actionable diagnostics. See also: [architecture](./architecture.md).
 

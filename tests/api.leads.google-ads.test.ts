@@ -116,17 +116,12 @@ describe('/api/leads Google Ads conversions', () => {
     expect(call.email).toBe('patient@example.com');
   });
 
-  it('fires therapist_registration conversion with value 25 on therapist lead', async () => {
+  it('does NOT fire therapist_registration conversion on therapist lead (fires on documents upload)', async () => {
     const { POST } = await import('@/app/api/leads/route');
     const res = await POST(makeReq({ email: 'therapist@example.com', type: 'therapist', specializations: ['narm'] }));
     expect(res.status).toBe(200);
 
     await Promise.resolve();
-    expect(trackConversion).toHaveBeenCalledTimes(1);
-    const call = trackConversion.mock.calls[0][0];
-    expect(call.conversionAction).toBe('therapist_registration');
-    expect(call.conversionValue).toBe(25);
-    expect(call.orderId).toBe('lead-xyz');
-    expect(call.email).toBe('therapist@example.com');
+    expect(trackConversion).not.toHaveBeenCalled();
   });
 });
