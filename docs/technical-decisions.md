@@ -27,10 +27,10 @@
   - Why: Accurate attribution without cookies; complies with our cookie policy (no tracking cookies on public site).
   - How: Server-side only (`src/lib/google-ads.ts`) uploads hashed email (SHA-256) + conversion attributes. API routes run on Node runtime.
   - Safety: No-op unless env is configured; errors go through unified logger. Secrets live in server env only.
-  - Mapping: Conversion action aliases (e.g., `patient_registration`) map to resource names via env `GOOGLE_ADS_CA_*` (see `.env.example`). This lets us add/rename actions without code changes.
+  - Mapping: Conversion action aliases (e.g., `client_registration`) map to resource names via env `GOOGLE_ADS_CA_*` (see `.env.example`). This lets us add/rename actions without code changes.
   - Trigger points:
     - `therapist_registration` (25 EUR): fired by `POST /api/leads` when `type='therapist'` (unchanged).
-    - `patient_registration` (10 EUR):
+    - `client_registration` (10 EUR):
       - Legacy mode (feature flag off): fired by `POST /api/leads` after successful patient insert.
       - Email-only mode (EARTH-146; `REQUIRE_EMAIL_CONFIRMATION` enabled): deferred to `GET /api/leads/confirm` and sent only after the email is confirmed (status transitions to `new`).
     - Future events (match, payment, etc.) can call the tracker via their alias.

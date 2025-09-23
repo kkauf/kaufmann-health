@@ -141,7 +141,7 @@ export async function handlePatientLead(ctx: HandlerContext, input: PatientHandl
 
     // Google Ads conversion
     try {
-      const conversionActionAlias = 'patient_registration';
+      const conversionActionAlias = 'client_registration';
       const value = 10;
       void track({
         type: 'google_ads_attempted',

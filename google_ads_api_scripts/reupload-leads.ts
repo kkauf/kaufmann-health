@@ -80,7 +80,7 @@ function parseArgs(argv: string[]) {
 
 function mapActionAndValue(t: 'patient' | 'therapist') {
   if (t === 'therapist') return { action: 'therapist_registration', value: 25 } as const;
-  return { action: 'patient_registration', value: 10 } as const;
+  return { action: 'client_registration', value: 10 } as const;
 }
 
 function chunk<T>(arr: T[], size: number): T[][] {

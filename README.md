@@ -48,7 +48,7 @@
 - **Focus** — Prioritize tests for money flows and complex logic. Keep them fast and targeted.
 - **Quick run** — `npm run test:critical` before deploy. Ensure `npm run build` succeeds.
 - **Principles** — Test observable outcomes, not internals; mock fire-and-forget operations.
-- **Representative flows** — Patient registration, therapist registration (contract + status), manual matching (outreach + response timestamps).
+- **Representative flows** — Client registration, therapist registration (contract + status), manual matching (outreach + response timestamps).
 
 ## Environment and Deployment
 

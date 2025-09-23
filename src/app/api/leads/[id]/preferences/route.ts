@@ -109,7 +109,7 @@ export async function POST(req: Request) {
       if (email) {
         await googleAdsTracker.trackConversion({
           email,
-          conversionAction: 'patient_registration',
+          conversionAction: 'client_registration',
           conversionValue: 10,
           orderId: id,
         });

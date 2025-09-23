@@ -18,7 +18,7 @@ function fireGoogleAdsClientConversion(leadId?: string) {
     if (!adsId || !label) return;
     if (typeof window === 'undefined') return;
 
-    const dedupeKey = leadId ? `ga_conv_patient_registration_${leadId}` : 'ga_conv_patient_registration';
+    const dedupeKey = leadId ? `ga_conv_client_registration${leadId}` : 'ga_conv_client_registration';
     try {
       if (window.sessionStorage.getItem(dedupeKey) === '1') return;
       if (window.localStorage.getItem(dedupeKey) === '1') return;

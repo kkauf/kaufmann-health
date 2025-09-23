@@ -26,7 +26,7 @@ GOOGLE_ADS_LOGIN_CUSTOMER_ID="0987654321"
 
 # Optional: for campaign creation (link a specific conversion action to campaign selective optimization)
 # When set, the creation script will link this exact conversion action by name.
-ADS_SELECTIVE_OPTIMIZATION_NAME="patient_registration"
+ADS_SELECTIVE_OPTIMIZATION_NAME="client_registration"
 ```
 
 Notes

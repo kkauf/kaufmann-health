@@ -30,7 +30,7 @@ describe('GoogleAdsTracker', () => {
   });
 
   it('builds alias env keys', () => {
-    expect(__internals.aliasToEnvKey('patient_registration')).toBe('GOOGLE_ADS_CA_PATIENT_REGISTRATION');
+    expect(__internals.aliasToEnvKey('client_registration')).toBe('GOOGLE_ADS_CA_CLIENT_REGISTRATION');
     expect(__internals.aliasToEnvKey('First Contact')).toBe('GOOGLE_ADS_CA_FIRST_CONTACT');
   });
 
@@ -43,7 +43,7 @@ describe('GoogleAdsTracker', () => {
     const t = new GoogleAdsTracker();
     await t.trackConversion({
       email: 'user@example.com',
-      conversionAction: 'patient_registration',
+      conversionAction: 'client_registration',
       conversionValue: 10,
       orderId: 'abc-123',
     });

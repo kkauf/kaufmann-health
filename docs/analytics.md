@@ -305,7 +305,7 @@ __Notes__:
 - `email_confirmed` — emitted by `GET /api/leads/confirm` with props `{ campaign_source, campaign_variant, landing_page, elapsed_seconds }`.
 
 **Enhanced Conversions timing:**
-- In email-only mode, server-side Google Ads Enhanced Conversions (`patient_registration`) are sent when preferences are submitted (status becomes `new`) via `POST /api/leads/:id/preferences`. The confirmation endpoint (`GET /api/leads/confirm`) only sets status to `email_confirmed` and redirects to preferences.
+- In email-only mode, server-side Google Ads Enhanced Conversions (`client_registration`) are sent when preferences are submitted (status becomes `new`) via `POST /api/leads/:id/preferences`. The confirmation endpoint (`GET /api/leads/confirm`) only sets status to `email_confirmed` and redirects to preferences.
 - In legacy mode (flag off), they continue to fire after the initial patient insert.
 
 **Vercel Analytics:**

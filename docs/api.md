@@ -97,7 +97,7 @@
     - `consent_share_with_therapists = true`, `consent_share_with_therapists_at = now()`
     - `consent_privacy_version?` when provided
   - Emits Supabase event `preferences_submitted` via server analytics.
-  - Fires Google Ads Enhanced Conversions for `patient_registration` at this point (post-confirmation, on activation).
+  - Fires Google Ads Enhanced Conversions for `client_registration` at this point (post-confirmation, on activation).
 - __Response__:
   - 200: `{ data: { ok: true }, error: null }`
   - 400: `{ data: null, error: 'Missing id' | 'Missing fields' | 'Einwilligung zur Datenübertragung erforderlich' | 'Invalid JSON' }`

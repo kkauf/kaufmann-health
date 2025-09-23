@@ -77,7 +77,7 @@ beforeEach(() => {
 });
 
 describe('/api/leads Google Ads conversions', () => {
-  it('fires patient_registration conversion with value 10 on patient lead', async () => {
+  it('fires client_registration conversion with value 10 on patient lead', async () => {
     const { POST } = await import('@/app/api/leads/route');
     const res = await POST(
       makeReq(
@@ -91,13 +91,13 @@ describe('/api/leads Google Ads conversions', () => {
     await Promise.resolve();
     expect(trackConversion).toHaveBeenCalledTimes(1);
     const call = trackConversion.mock.calls[0][0];
-    expect(call.conversionAction).toBe('patient_registration');
+    expect(call.conversionAction).toBe('client_registration');
     expect(call.conversionValue).toBe(10);
     expect(call.orderId).toBe('lead-xyz');
     expect(call.email).toBe('patient@example.com');
   });
 
-  it('fires patient_registration conversion with value 10 on patient lead', async () => {
+  it('fires client_registration conversion with value 10 on patient lead', async () => {
     const { POST } = await import('@/app/api/leads/route');
     const res = await POST(
       makeReq(
@@ -110,7 +110,7 @@ describe('/api/leads Google Ads conversions', () => {
     await Promise.resolve();
     expect(trackConversion).toHaveBeenCalledTimes(1);
     const call = trackConversion.mock.calls[0][0];
-    expect(call.conversionAction).toBe('patient_registration');
+    expect(call.conversionAction).toBe('client_registration');
     expect(call.conversionValue).toBe(10);
     expect(call.orderId).toBe('lead-xyz');
     expect(call.email).toBe('patient@example.com');

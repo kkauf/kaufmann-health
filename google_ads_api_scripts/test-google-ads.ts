@@ -36,12 +36,12 @@ async function testGoogleAdsSetup() {
   }
 
   // Test 3: Validate conversion action mapping
-  const testAction = 'patient_registration';
+  const testAction = 'client_registration';
   const resolved = (googleAdsTracker as any).resolveConversionAction(testAction);
   console.log(`✓ Conversion action "${testAction}":`, resolved ? 'PASS' : 'FAIL - missing env var');
   
   if (!resolved) {
-    console.log('Missing GOOGLE_ADS_CA_PATIENT_REGISTRATION env var');
+    console.log('Missing GOOGLE_ADS_CA_CLIENT_REGISTRATION env var');
     console.log('Go to Google Ads UI > Tools > Conversions to get the resource name');
     return;
   }
@@ -51,7 +51,7 @@ async function testGoogleAdsSetup() {
     console.log('Testing conversion upload...');
     await googleAdsTracker.trackConversion({
       email: 'test@example.com',
-      conversionAction: 'patient_registration',
+      conversionAction: 'client_registration',
       conversionValue: 10,
       orderId: `test-${Date.now()}`,
     });

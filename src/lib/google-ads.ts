@@ -61,7 +61,7 @@ function toGoogleDateTime(iso?: string): string {
 }
 
 function aliasToEnvKey(alias: string): string {
-  // patient_registration -> GOOGLE_ADS_CA_PATIENT_REGISTRATION
+  // client_registration -> GOOGLE_ADS_CA_CLIENT_REGISTRATION
   const key = alias
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, '_')

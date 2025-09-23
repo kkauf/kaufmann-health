@@ -15,7 +15,7 @@ Key properties
 ## Script
 `reupload-leads.ts` — replays conversions from the `people` table in Supabase.
 
-- Patient leads → `patient_registration` (EUR 10)
+- Patient leads → `client_registration` (EUR 10)
 - Therapist leads → `therapist_registration` (EUR 25)
 
 It derives:
@@ -40,7 +40,7 @@ GOOGLE_ADS_CUSTOMER_ID="1234567890"
 GOOGLE_ADS_LOGIN_CUSTOMER_ID="0987654321"
 
 # Conversion action resource names (aliases → resources)
-GOOGLE_ADS_CA_PATIENT_REGISTRATION="customers/XXX/conversionActions/AAA"
+GOOGLE_ADS_CA_CLIENT_REGISTRATION="customers/XXX/conversionActions/AAA"
 GOOGLE_ADS_CA_THERAPIST_REGISTRATION="customers/XXX/conversionActions/BBB"
 ```
 
@@ -127,7 +127,7 @@ You can also verify in Google Ads UI: Goals → Conversions → action → uploa
 
 ## Troubleshooting
 - __Missing conversion action mapping__:
-  - Ensure `GOOGLE_ADS_CA_PATIENT_REGISTRATION` / `GOOGLE_ADS_CA_THERAPIST_REGISTRATION` are set to resource names.
+  - Ensure `GOOGLE_ADS_CA_CLIENT_REGISTRATION` / `GOOGLE_ADS_CA_THERAPIST_REGISTRATION` are set to resource names.
 - __Token/Network errors__:
   - Check OAuth credentials and network. The client retries transient timeouts.
 - __Partial failures (code/message)__:
