@@ -1,4 +1,11 @@
 #!/usr/bin/env tsx
+/**
+ * DEPRECATED: This script is superseded by `google_ads_api_scripts/create-campaigns.ts`.
+ * Please use the unified CLI:
+ *   - Dry run:   npm run ads:create:dry -- --config=google_ads_api_scripts/private/your-campaigns.json
+ *   - Apply:     CONFIRM_APPLY=true npm run ads:create -- --config=google_ads_api_scripts/private/your-campaigns.json
+ * It remains for reference during migration and will be archived in a future cleanup.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import dotenv from 'dotenv';

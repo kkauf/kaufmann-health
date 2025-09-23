@@ -185,69 +185,63 @@ Notes:
 - Pauses use the official API: `campaign.status = PAUSED`.
 - Start with dry-run and `--nameLike` to scope changes, then apply.
 
-## Campaign Creation (Week 38 template)
+## Unified Campaign Creation
 
-`create-week38-campaigns.ts` — creates two Search campaigns from a typed config in `campaign-config.ts`.
-
-Commands
-
-```bash
-# Validate only (no writes)
-npm run ads:create:dry
-
-# Apply changes (creates resources)
-npm run ads:create
-```
-
-What it does
-- Idempotent by campaign name (reuses budget if present; updates dates/network on existing campaign)
-- Creates with status PAUSED and Search-only network (no partners/content)
-- Adds Germany location targeting and German language
-- Adds 2 sitelinks (Preise, FAQ) when not already present
-- Creates AdGroups per keyword tier and adds missing keywords (phrase match)
-- Creates 2 RSA variants (A/B); landing pages get `?v=A` or `?v=B`
-- Optional: links a conversion action for selective optimization if `ADS_SELECTIVE_OPTIMIZATION_NAME` is set
-
-Configuration
-- Edit `campaign-config.ts` to change names, budgets, schedules, keywords, negatives, headlines, and descriptions
-- Current template:
-  - CONSCIOUS WELLNESS SEEKERS – Week 38 (budget €200/day, landing `/ankommen-in-dir`)
-  - DEPTH SEEKERS – Week 38 (budget €100/day, landing `/wieder-lebendig`)
-
-Safety
-- `npm run ads:create:dry` enables validate-only mode (no writes)
-- `npm run ads:create` performs preflight checks (billing setup, language constant) and then applies changes
-
-## Campaign Creation (EARTH-170)
-
-`create-earth170-campaigns.ts` — creates three Search campaigns aligned to the "Coaching Frame, Therapy Depth" plan. Final URLs include `?v=C` to ensure landing pages render Variant C.
+`create-campaigns.ts` — unified CLI that creates Search campaigns from a JSON array config. It forwards configuration to the battle‑tested engine under the hood and will fully replace the legacy scripts.
 
 Commands
 
 ```bash
 # Validate only (no writes)
-npm run ads:create:earth170:dry
+npm run ads:create:dry -- --config=google_ads_api_scripts/private/your-campaigns.json
 
-# Apply changes (creates resources; campaigns start PAUSED)
-CONFIRM_APPLY=true npm run ads:create:earth170
+# Apply changes (creates/updates resources; campaigns start PAUSED)
+CONFIRM_APPLY=true npm run ads:create -- --config=google_ads_api_scripts/private/your-campaigns.json
 ```
 
+Config sources
+- `--config=/abs/path/to/file.json` or `ADS_CONFIG_PATH`
+- `ADS_CONFIG_JSON='[ ... ]'` (highest priority)
+- Embedded samples are disabled by default; enable only with `ALLOW_EMBEDDED_ADS_CONFIG=true`
+
+Optional filters
+- `--nameLike="Berlin"` to subset by campaign name
+- `--adgroups="core,expansion"` to limit which tiers to apply
+
 What it does
-- Idempotent by campaign name (reuses dedicated budgets; updates dates/network/geo on existing campaign)
-- Creates with status PAUSED and Search-only network (no partners)
-- Adds German language targeting
-- Adds geo targeting per landing page:
-  - `/ankommen-in-dir` → Germany (national online)
-  - `/wieder-lebendig` → Berlin proximity (S-Bahn ring radius)
-  - `/therapie-finden` → Berlin proximity (S-Bahn ring radius)
-- Adds campaign-level negative keywords from config
-- Creates AdGroups per keyword tier and adds missing keywords (phrase match)
-- Creates 2 RSAs per AdGroup with final URLs suffixed `?v=C`
+- Idempotent by campaign name; ensures dedicated budgets and updates existing campaigns
+- Search‑only network, presence‑only geo targeting, German language
+- Optional sitelinks, selective optimization, and geo modes (national Germany vs. Berlin proximity)
+- AdGroups per keyword tier; adds missing keywords with policy‑aware replacements
+- Creates up to 2 RSAs per AdGroup; supports URL params (e.g., `?v=C`)
+
+Minimal JSON example
+
+```json
+[
+  {
+    "name": "CONSCIOUS WELLNESS – DE",
+    "budget_euros": 150,
+    "landing_page": "https://www.kaufmann-health.de/ankommen-in-dir",
+    "schedule": { "start": "2025-10-01", "end": "2025-10-15" },
+    "keywords": {
+      "core": { "maxCpc": 2.5, "terms": ["körpertherapie online", "somatic experiencing"] }
+    },
+    "negativeKeywords": ["krankenkasse", "jobs", "ausbildung"],
+    "ads": {
+      "final_url_params": { "v": "C" },
+      "headlines": ["80–120€ pro Sitzung", "Therapie ohne Krankenkasseneintrag", "Körperorientierte Begleitung"],
+      "descriptions": ["Jetzt passende Begleitung finden.", "Vertraulich. Persönlich. Online."],
+      "rsas_per_adgroup": 2
+    }
+  }
+]
+```
 
 Safety
-- Start with dry-run to validate access and planned changes
+- Start with dry‑run and `VALIDATE_ONLY=true` if desired
 - Apply only with `CONFIRM_APPLY=true`
-- Proximity targeting for Berlin uses the ring radius for consistency across campaigns
+- Private JSON configs should live in `google_ads_api_scripts/private/` (git‑ignored)
 
 ## Keyword & Asset Performance Export (Clicks)
 

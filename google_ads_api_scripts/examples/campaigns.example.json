@@ -1,0 +1,81 @@
+[
+  {
+    "name": "CONSCIOUS WELLNESS – DE",
+    "budget_euros": 150,
+    "landing_page": "https://www.kaufmann-health.de/ankommen-in-dir",
+    "schedule": { "start": "2025-10-01", "end": "2025-10-15" },
+    "keywords": {
+      "core": {
+        "maxCpc": 2.5,
+        "terms": [
+          "körpertherapie online",
+          "somatic experiencing",
+          "trauma bewältigen hilfe",
+          "panikgefühle",
+          "tiefe traurigkeit hilfe"
+        ]
+      },
+      "expansion": {
+        "maxCpc": 2.0,
+        "terms": [
+          "achtsamkeitsbasierte begleitung",
+          "ganzheitliche therapiebegleitung"
+        ]
+      }
+    },
+    "negativeKeywords": [
+      "krankenkasse",
+      "kassenleistung",
+      "psychotherapie ausbildung",
+      "studium",
+      "jobs",
+      "wiki"
+    ],
+    "ads": {
+      "final_url_params": { "v": "C" },
+      "headlines": [
+        "80–120€ pro Sitzung",
+        "Therapie ohne Krankenkasseneintrag",
+        "Körperorientierte Begleitung",
+        "Trauma achtsam bewältigen"
+      ],
+      "descriptions": [
+        "Jetzt passende Begleitung finden.",
+        "Vertraulich. Persönlich. Online.",
+        "Sicherer Rahmen. Erfahrene Begleitung."
+      ],
+      "rsas_per_adgroup": 2
+    }
+  },
+  {
+    "name": "DEPTH SEEKERS – Berlin",
+    "budget_euros": 100,
+    "landing_page": "https://www.kaufmann-health.de/wieder-lebendig",
+    "schedule": { "start": "2025-10-01", "end": "2025-10-15" },
+    "keywords": {
+      "core": {
+        "maxCpc": 3.0,
+        "terms": [
+          "körperpsychotherapie berlin",
+          "körperorientierte therapie",
+          "somatic experiencing berlin",
+          "angstzustände hilfe"
+        ]
+      }
+    },
+    "negativeKeywords": ["krankenkasse", "kassenleistung", "jobs", "ausbildung"],
+    "ads": {
+      "final_url_params": { "v": "C" },
+      "headlines": [
+        "80–120€ pro Sitzung",
+        "Therapie ohne Krankenkasseneintrag",
+        "Wieder Lebendig Werden"
+      ],
+      "descriptions": [
+        "Tiefe Begleitung für anspruchsvolle Themen.",
+        "Persönlich. Vertraulich. Online oder in Berlin."
+      ],
+      "rsas_per_adgroup": 2
+    }
+  }
+]
