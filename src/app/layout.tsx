@@ -8,6 +8,7 @@ import AnalyticsProvider from "@/components/AnalyticsProvider";
 import Script from "next/script";
 import { COOKIES_ENABLED } from "@/lib/config";
 import CookieBanner from "@/components/CookieBanner";
+import GtagLoader from "@/components/GtagLoader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -96,11 +97,7 @@ export default function RootLayout({
                 });
               `}
             </Script>
-            <Script
-              id="gtag-lib"
-              strategy="lazyOnload"
-              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}`}
-            />
+            <GtagLoader />
           </>
         ) : null}
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-gray-900 focus:px-3 focus:py-2 focus:text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-900">
