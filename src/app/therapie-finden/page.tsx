@@ -4,8 +4,33 @@ import FaqAccordion from '@/components/FaqAccordion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, Euro, Clock, MessageCircle, UserCheck, PhoneCall, ShieldCheck, Lock } from 'lucide-react';
 import { COOKIES_ENABLED } from '@/lib/config';
+import type { Metadata } from 'next';
 
 export const revalidate = 3600;
+
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health.de';
+
+export const metadata: Metadata = {
+  title: 'Therapeut:innen finden – Körperorientierte Trauma-Therapie | Kaufmann Health',
+  description: 'Finde geprüfte körperorientierte Therapeut:innen in deiner Nähe. Persönlich kuratierte Empfehlungen für Selbstzahler. Termine innerhalb einer Woche.',
+  alternates: {
+    canonical: `${baseUrl}/therapie-finden`,
+  },
+  openGraph: {
+    title: 'Therapeut:innen finden – Körperorientierte Trauma-Therapie',
+    description: 'Persönlich kuratierte Therapeut:innen-Empfehlungen für körperorientierte Psychotherapie (NARM, Hakomi, Somatic Experiencing).',
+    url: `${baseUrl}/therapie-finden`,
+    type: 'website',
+    images: [
+      {
+        url: `${baseUrl}/logos/Health Logos - black/Kaufmann_health_logo_large.png`,
+        width: 1200,
+        height: 630,
+        alt: 'Kaufmann Health – Therapeut:innen finden',
+      },
+    ],
+  },
+};
 
 export default function TherapieFindenPage() {
   return (

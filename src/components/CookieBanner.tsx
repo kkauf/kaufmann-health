@@ -74,6 +74,10 @@ export default function CookieBanner() {
     } catch {}
     applyAdConsentGranted();
     sendEvent('cookie_consent_accepted');
+    try {
+      // Notify listeners (e.g., GtagLoader) that consent was granted
+      window.dispatchEvent(new Event('ga-consent-accepted'));
+    } catch {}
     setShow(false);
   }, []);
 

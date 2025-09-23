@@ -20,34 +20,40 @@ export const revalidate = 3600;
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.kaufmann-health.de";
 
-export const metadata: Metadata = {
-  title: "Körpertherapie Berlin | Wenn Erfolg nicht reicht | Kaufmann Health",
-  description:
-    "Erfolgreich aber leer? Körperorientierte Therapie für Menschen, die mehr wollen als nur funktionieren. Keine Kasse, keine Optimierung – echte Tiefe.",
-  alternates: {
-    canonical: `${baseUrl}/wieder-lebendig`,
-  },
-  openGraph: {
-    title: "Du hast alles erreicht. Warum fühlt es sich so leer an?",
+export const metadata = async ({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }): Promise<Metadata> => {
+  const variant = (searchParams?.v as string)?.toUpperCase() || 'A';
+  const isTestVariant = variant === 'B' || variant === 'C';
+
+  return {
+    title: "Körpertherapie Berlin | Wenn Erfolg nicht reicht | Kaufmann Health",
     description:
-      "Körperorientierte Therapie für Menschen, die wieder lebendig sein wollen.",
-    url: `${baseUrl}/wieder-lebendig`,
-    type: "website",
-    images: [
-      {
-        url: `${baseUrl}/images/color-patterns.png`,
-        width: 1200,
-        height: 630,
-        alt: "Kaufmann Health – Körpertherapie Berlin",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Du hast alles erreicht. Warum fühlt es sich so leer an?",
-    description: "Körperorientierte Therapie für Menschen, die wieder lebendig sein wollen.",
-    images: [`${baseUrl}/images/color-patterns.png`],
-  },
+      "Erfolgreich aber leer? Körperorientierte Therapie für Menschen, die mehr wollen als nur funktionieren. Keine Kasse, keine Optimierung – echte Tiefe.",
+    alternates: {
+      canonical: `${baseUrl}/wieder-lebendig`,
+    },
+    robots: isTestVariant ? { index: false, follow: false } : { index: true, follow: true },
+    openGraph: {
+      title: "Du hast alles erreicht. Warum fühlt es sich so leer an?",
+      description:
+        "Körperorientierte Therapie für Menschen, die wieder lebendig sein wollen.",
+      url: `${baseUrl}/wieder-lebendig`,
+      type: "website",
+      images: [
+        {
+          url: `${baseUrl}/images/color-patterns.png`,
+          width: 1200,
+          height: 630,
+          alt: "Kaufmann Health – Körpertherapie Berlin",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Du hast alles erreicht. Warum fühlt es sich so leer an?",
+      description: "Körperorientierte Therapie für Menschen, die wieder lebendig sein wollen.",
+      images: [`${baseUrl}/images/color-patterns.png`],
+    },
+  };
 };
 
 type TherapistRow = {

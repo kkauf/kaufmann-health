@@ -1,192 +1,51 @@
+/**
+ * IMPORTANT: PUBLIC SAMPLE ONLY
+ * --------------------------------
+ * This file intentionally contains only NON-SENSITIVE placeholder content.
+ * Production runs must provide a private config via:
+ *  - ADS_CONFIG_JSON (env var containing JSON array of CampaignConfig)
+ *  - or ADS_CONFIG_PATH (filesystem path to a private JSON file)
+ *
+ * The create script enforces this by default and will exit unless
+ * ALLOW_EMBEDDED_ADS_CONFIG=true is explicitly set.
+ */
 import { type CampaignConfig } from './campaign-config';
 
 export const EARTH170_CONFIG: CampaignConfig[] = [
   {
-    name: 'THERAPIE-FINDEN Berlin — EARTH-170',
-    budget_euros: 150,
-    landing_page: 'https://www.kaufmann-health.de/therapie-finden',
-    schedule: {
-      start: '2025-09-19',
-      end: '2025-09-22',
-    },
-    keywords: {
-      highIntent: {
-        maxCpc: 3.5,
-        terms: [
-          'privattherapie berlin',
-          'therapie berlin privat',
-          'körpertherapie berlin',
-          'körperpsychotherapie berlin',
-          'selbstzahler therapie berlin',
-          'therapie ohne krankenkasse berlin',
-          // Safer alternative to avoid HEALTH_IN_PERSONALIZED_ADS
-          'ganzheitliche therapiebegleitung berlin',
-        ],
-      },
-      mediumIntent: {
-        maxCpc: 2.5,
-        terms: [
-          'coaching begleitung berlin',
-          'ganzheitliche therapiebegleitung berlin',
-          'achtsamkeitsbasierte begleitung berlin',
-        ],
-      },
-    },
-    negativeKeywords: [
-      'krankenkasse',
-      'kostenlos',
-      'gratis',
-      'kassentherapie',
-      'kostenübernahme',
-      'rezept',
-      'verschreibung',
-      'diagnose',
-      'psychiatrie',
-      'notfall',
-      'störung',
-      'erkrankung',
-      'heilung',
-      'behandlung',
-      'erstattung',
-      'kassenzulassung',
-    ],
-    headlines: [
-      'Körperorientierte Therapie Berlin',
-      'Privattherapie – diskret',
-      'Therapie ohne Krankenkasseneintrag',
-      '80–120€ pro Sitzung',
-      'Diese Woche verfügbar',
-      'Für dich handverlesen',
-      'NARM, SE, Hakomi',
-      'Sichere therapeutische Räume',
-      'Wieder spüren lernen',
-      'Kein Warten – Start schnell',
-    ],
-    descriptions: [
-      'Passende Therapeut:innen in Berlin – diskret ohne Kassenabrechnung. 80–120€ pro Sitzung.',
-      'Körperorientierte Therapie. Persönlich kuratiert. Termine meist innerhalb 7 Tage.',
-      'NARM & Somatic Experiencing. Für dich handverlesen. Jetzt starten.',
-    ],
-  },
-  {
-    name: 'WIEDER-LEBENDIG Berlin Ring — EARTH-170',
+    name: 'SAMPLE Campaign A — EARTH-170',
     budget_euros: 100,
-    landing_page: 'https://www.kaufmann-health.de/wieder-lebendig',
-    schedule: {
-      start: '2025-09-19',
-      end: '2025-09-22',
-    },
+    landing_page: 'https://www.kaufmann-health.de/sample-a',
+    schedule: { start: '2025-09-19', end: '2025-09-22' },
     keywords: {
-      executive: {
-        maxCpc: 3.0,
-        terms: [
-          'executive coaching berlin',
-          'leadership coaching berlin',
-          'coaching sinnsuche berlin',
-          'coaching burnout berlin',
-        ],
-      },
-      depth: {
-        maxCpc: 2.5,
-        terms: [
-          'körperorientiertes coaching berlin',
-          'embodiment coaching berlin',
-          'nervensystem regulation coaching berlin',
-          'coaching begleitung tiefe berlin',
-        ],
-      },
+      sample: { maxCpc: 2.0, terms: ['sample keyword 1', 'sample keyword 2'] },
     },
-    negativeKeywords: [
-      'krankenkasse',
-      'kostenlos',
-      'gratis',
-      'kassentherapie',
-      'kostenübernahme',
-      'rezept',
-      'diagnose',
-      'psychiatrie',
-      'notfall',
-      'störung',
-      'erkrankung',
-      'heilung',
-      'behandlung',
-      'erstattung',
-      'kassenzulassung',
-    ],
-    headlines: [
-      'Mehr als nur funktionieren',
-      'Deine Tiefe wartet',
-      'Coaching & Begleitung',
-      '80–120€ pro Sitzung',
-      'Diese Woche verfügbar',
-      'Wieder spüren lernen',
-      'Ohne Krankenkasseneintrag',
-      'Für Führungskräfte geeignet',
-      'Embodiment statt nur Gespräch',
-      'NARM & Somatic Experiencing',
-    ],
-    descriptions: [
-      'Vom getriebenen Machen zum verkörperten Sein. Coaching & Begleitung mit Tiefe.',
-      'Embodiment, Nervensystem-Regulation, echte Veränderung. Diskret & persönlich.',
-    ],
+    negativeKeywords: ['sample negative 1', 'sample negative 2'],
+    headlines: ['Sample Headline 1', 'Sample Headline 2', 'Sample Headline 3'],
+    descriptions: ['Sample description A', 'Sample description B'],
   },
   {
-    name: 'ANKOMMEN-IN-DIR Online DE — EARTH-170',
-    budget_euros: 250,
-    landing_page: 'https://www.kaufmann-health.de/ankommen-in-dir',
-    schedule: {
-      start: '2025-09-19',
-      end: '2025-09-22',
-    },
+    name: 'SAMPLE Campaign B — EARTH-170',
+    budget_euros: 100,
+    landing_page: 'https://www.kaufmann-health.de/sample-b',
+    schedule: { start: '2025-09-19', end: '2025-09-22' },
     keywords: {
-      highIntent: {
-        maxCpc: 3.0,
-        terms: [
-          'körpertherapie online',
-          'körperorientiertes coaching online',
-          'somatische begleitung online',
-          'embodiment coaching online',
-        ],
-      },
-      mediumIntent: {
-        maxCpc: 2.2,
-        terms: [
-          'achtsamkeitsbasierte begleitung',
-          'ganzheitliche therapiebegleitung',
-          'therapie für hochsensible',
-        ],
-      },
+      sample: { maxCpc: 2.0, terms: ['sample keyword 3', 'sample keyword 4'] },
     },
-    negativeKeywords: [
-      'krankenkasse',
-      'kostenlos',
-      'gratis',
-      'kassentherapie',
-      'kostenübernahme',
-      'rezept',
-      'diagnose',
-      'psychiatrie',
-      'notfall',
-      'störung',
-      'erkrankung',
-      'heilung',
-      'behandlung',
-      'erstattung',
-      'kassenzulassung',
-    ],
-    headlines: [
-      'Körperorientiertes Coaching Online',
-      'Therapie‑Tiefe, Coaching‑Rahmen',
-      '80–120€ pro Sitzung',
-      'Sichere therapeutische Räume',
-      'NARM & Somatic Experiencing',
-      'Embodiment statt nur Gespräch',
-      'Für dich handverlesen',
-      'Deutschlandweit • Online',
-    ],
-    descriptions: [
-      'Persönlich kuratierte Begleitung online. 80–120€ pro Sitzung. Start innerhalb 7 Tagen.',
-      'NARM, Somatic Experiencing, Hakomi, Core Energetics. Diskret ohne Krankenkasseneintrag.',
-    ],
+    negativeKeywords: ['sample negative 3', 'sample negative 4'],
+    headlines: ['Sample Headline 1', 'Sample Headline 2', 'Sample Headline 3'],
+    descriptions: ['Sample description A', 'Sample description B'],
+  },
+  {
+    name: 'SAMPLE Campaign C — EARTH-170',
+    budget_euros: 100,
+    landing_page: 'https://www.kaufmann-health.de/sample-c',
+    schedule: { start: '2025-09-19', end: '2025-09-22' },
+    keywords: {
+      sample: { maxCpc: 2.0, terms: ['sample keyword 5', 'sample keyword 6'] },
+    },
+    negativeKeywords: ['sample negative 5', 'sample negative 6'],
+    headlines: ['Sample Headline 1', 'Sample Headline 2', 'Sample Headline 3'],
+    descriptions: ['Sample description A', 'Sample description B'],
   },
 ];
