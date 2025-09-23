@@ -9,9 +9,9 @@
 
 ## Admin Authentication & Cookies
 
-- __Admin session__: `POST /api/admin/login` sets an HTTP-only `kh_admin` cookie (HMAC-signed via Web Crypto) with 24h expiry and `Path=/admin`. Edge Middleware protects `/admin/*`. Public site remains cookie-free; functional cookies are allowed only within `/admin`.
+- __Admin session__: `POST /api/admin/login` sets an HTTP-only `kh_admin` cookie (HMAC-signed via Web Crypto) with 24h expiry and `Path=/admin`. Edge Middleware protects `/admin/*`. Public site is cookie-free by default; functional cookies are allowed only within `/admin`. When `NEXT_PUBLIC_COOKIES=true`, marketing cookies (Google Ads conversion linker) are set only after explicit consent via the cookie banner; users can revisit consent via the footer “Cookie‑Einstellungen”.
 - __Login rate limiting__: 10 requests/minute per IP; returns 429 with `Retry-After` seconds when exceeded.
-- __Server-side measurement__: No tracking/marketing cookies; attribution uses server-side Google Ads Enhanced Conversions (hashed email).
+- __Server-side measurement (default)__: We rely on server-side Google Ads Enhanced Conversions (hashed email) without requiring browser cookies. In consented mode, the Google Ads conversion linker cookie may be enabled post-consent to improve attribution; Enhanced Conversions remain server-side in all cases.
 
 ## Storage: Therapist Documents
 - __Bucket__: `therapist-documents` (private)
