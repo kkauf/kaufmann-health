@@ -41,7 +41,7 @@
 
 ## GET /api/leads/confirm
 
-- __Purpose__: Confirm email addresses for email-only patient leads and activate them by transitioning to `status='new'`.
+- __Purpose__: Confirm email addresses for email-only patient leads and mark them as `status='email_confirmed'` (not yet active). The lead becomes active after preferences submission.
 - __Auth__: None (accessed via emailed link). Redirects to a friendly page regardless of outcome; does not expose internal states.
 - __Query Params__:
   - `id` (uuid, required)
@@ -52,6 +52,7 @@
   - On invalid/expired tokens: no changes are made.
 - __Redirects__:
   - 302 → on success: `/preferences?confirm=1&id=<leadId>`
+  - 302 → if already confirmed: `/preferences?id=<leadId>`
   - 302 → on invalid/expired/error: `/confirm?state=invalid | expired | error`
 
 ### Public Confirmation Page (`/confirm`)
@@ -84,7 +85,7 @@
 - __Path Param__:
   - `:id` — the patient lead UUID (from confirmation redirect).
 - __Request Body__ (JSON):
-  - `name` (string, required)
+  - `name` (string, optional)
   - `city` (string, required)
   - `issue?` (string, optional)
   - `session_preference?` (string, optional: `online` | `in_person`)
@@ -92,7 +93,7 @@
   - `privacy_version?` (string, optional; version stamp for consent proof)
 - __Behavior__:
   - Verifies `people(id).type === 'patient'` and returns 404 for unknown leads.
-  - Updates `people.status` to `'new'` (lead becomes active), sets `people.name`, and merges into `people.metadata`:
+  - Updates `people.status` to `'new'` (lead becomes active), sets `people.name` when provided, and merges into `people.metadata`:
     - `city`, `issue?`, `session_preference?`
     - `consent_share_with_therapists = true`, `consent_share_with_therapists_at = now()`
     - `consent_privacy_version?` when provided
@@ -139,6 +140,8 @@
     }
     ```
   - Buckets per EARTH-116: private `therapist-applications` (pending photos) and public `therapist-profiles` (approved photos via admin flow).
+- __Enhanced Conversions__:
+  - After successful submission (license and/or certificates persisted), the server uploads a hashed email conversion to Google Ads for `therapist_registration` (value €25). This marks a therapist as a qualified lead for acquisition reporting and optimization.
 - __Responses__:
   - 200: `{ data: { ok: true }, error: null }`
   - 400: `{ data: null, error: 'Missing psychotherapy_license' | 'license: <reason>' | 'profile_photo: <reason>' | 'approach_text too long (max 500 chars)' }`
@@ -575,7 +578,7 @@ blockers: {
 
 ### Campaign Reporting (EARTH-153)
 
-The endpoint also returns campaign performance based on first‑party attribution stored on `public.people` (patient leads only). The window is controlled by `?days=N` (default `7`, max `30`).
+The endpoint also returns campaign performance based on first‑party attribution stored on `public.people` (client leads only). The window is controlled by `?days=N` (default `7`, max `30`).
 
 ```
 campaignStats: Array<{
