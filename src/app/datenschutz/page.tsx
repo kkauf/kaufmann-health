@@ -163,19 +163,46 @@ export default function DatenschutzPage() {
             <h2 id="erfassung" className="text-xl font-semibold">4. Datenerfassung auf dieser Website</h2>
             <div className="mt-3 space-y-4">
               <div>
-                <h3 id="cookies" className="font-medium">Tracking und Cookies</h3>
+                <h3 id="cookies" className="font-medium">Cookies und Tracking-Technologien</h3>
                 <div className="mt-2 space-y-2">
                   <p>
+                    <strong>Cookie-Verwendung:</strong>{' '}
                     {COOKIES_ENABLED
-                      ? 'Wir setzen keine Analytics‑Cookies. Für eine bessere Zuordnung von Werbeklicks zu erfolgreichen Formularsendungen kann ein First‑Party‑Cookie (Google Ads Conversion Linker) gesetzt werden.'
-                      : 'Wir setzen auf dieser Website keine Tracking‑Cookies. Zur Erfolgsmessung unserer Werbung verwenden wir server‑seitige Technologien ohne Cookies auf Ihrem Gerät.'}
+                      ? 'Wir verwenden Cookies nur nach Ihrer ausdrücklichen Einwilligung gemäß Art. 6 Abs. 1 lit. a DSGVO und § 25 Abs. 1 TDDDG.'
+                      : 'Wir setzen auf dieser Website keine Marketing‑ oder Tracking‑Cookies. Technisch notwendige Cookies können im Admin‑Bereich zum Einsatz kommen (§ 25 Abs. 2 TDDDG).'}
                   </p>
+                  <p><strong>Arten von Cookies:</strong></p>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li>
+                      <strong>Notwendige Cookies:</strong> Technisch erforderlich für Grundfunktionen (z. B. Sitzungsverwaltung im Admin‑Bereich). Rechtsgrundlage: § 25 Abs. 2 TDDDG.
+                    </li>
+                    {COOKIES_ENABLED && (
+                      <li>
+                        <strong>Marketing‑Cookies:</strong> Google Ads Conversion‑Tracking zur Messung der Werbewirksamkeit. Nur mit Ihrer Einwilligung.
+                      </li>
+                    )}
+                  </ul>
                   {COOKIES_ENABLED && (
-                    <p>
-                      Der Conversion‑Linker dient ausschließlich der werblichen Erfolgsmessung auf unserer eigenen Website. Es findet kein Cross‑Site‑Tracking statt und es werden keine personenbezogenen Nutzungsprofile erstellt. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse). Widerspruch per E‑Mail an{' '}
-                      <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="mailto:kontakt@kaufmann-health.de">kontakt@kaufmann-health.de</a>.
-                    </p>
+                    <>
+                      <p>
+                        <strong>Google Ads Conversion‑Tracking:</strong> Bei Einwilligung setzen wir Google Ads Conversion‑Tracking ein. Dabei können folgende Cookies gesetzt werden:
+                      </p>
+                      <ul className="list-disc pl-6 space-y-1">
+                        <li>_gcl_au: Speicherdauer 3 Monate</li>
+                        <li>_gcl_aw: Speicherdauer 90 Tage</li>
+                        <li>_gac_[property-id]: Speicherdauer 90 Tage</li>
+                      </ul>
+                      <p>
+                        <strong>Consent Mode v2:</strong> Wir nutzen Google Consent Mode v2. Ohne Ihre Einwilligung werden keine Marketing‑Cookies gesetzt; Google erhält lediglich anonymisierte Signale zur groben Schätzung von Conversions.
+                      </p>
+                    </>
                   )}
+                  <p>
+                    <strong>Zusätzlich:</strong> Zur weiteren Optimierung übermitteln wir verschlüsselte (gehashte) E‑Mail‑Adressen server‑seitig an Google Ads (Enhanced Conversions). Dies erfolgt ohne Cookies auf Ihrem Gerät.
+                  </p>
+                  <p>
+                    <strong>Widerruf:</strong> Sie können Ihre Einwilligung jederzeit widerrufen. Klicken Sie dazu auf „Cookie‑Einstellungen“ im Footer unserer Website.
+                  </p>
                   <p>
                     Für kleine Komfortfunktionen (z. B. damit ein Hinweis pro Sitzung nur einmal erscheint) nutzen wir ggf. den lokalen Speicher
                     Ihres Browsers (<span className="font-mono">sessionStorage</span>/<span className="font-mono">localStorage</span>). Dabei werden keine personenbezogenen Profile erstellt,
@@ -185,6 +212,12 @@ export default function DatenschutzPage() {
                     Technische Server-Logs können aus Sicherheitsgründen Informationen wie IP-Adresse und User-Agent enthalten. Es findet kein Tracking
                     und kein Profiling statt.
                   </p>
+                  {COOKIES_ENABLED && (
+                    <p>
+                      Weiterführende Informationen finden Sie in der{' '}
+                      <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="https://policies.google.com/privacy?hl=de" target="_blank" rel="noopener noreferrer">Datenschutzerklärung von Google</a>.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -216,6 +249,18 @@ export default function DatenschutzPage() {
                 <p className="mt-2">
                   Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse). Widerspruchsrecht: kontakt@kaufmann-health.de
                 </p>
+              </div>
+
+              <div>
+                <h3 className="font-medium">Datenübermittlung in die USA</h3>
+                <div className="mt-2 space-y-2">
+                  <p>
+                    Bei Nutzung von Google-Diensten können Daten in die USA übertragen werden. Google LLC ist unter dem EU-US Data Privacy Framework zertifiziert. Dennoch besteht ein Restrisiko, da US-Behörden unter bestimmten Umständen Zugriff auf personenbezogene Daten nehmen können.
+                  </p>
+                  <p>
+                    Rechtsgrundlage: Bei Einwilligung Art. 49 Abs. 1 lit. a DSGVO. Wir informieren Sie transparent über dieses Risiko, sodass Sie eine informierte Entscheidung treffen können.
+                  </p>
+                </div>
               </div>
 
               <div>
@@ -329,7 +374,10 @@ export default function DatenschutzPage() {
             </div>
           </section>
 
-          <p className="text-sm text-gray-600">Stand: September 2025 | Version 1.0</p>
+          <div className="mt-8 pt-4 border-t text-sm text-gray-500">
+            <p>Stand: {new Date().toLocaleDateString('de-DE', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p>Version: 2.0 – Ergänzung Google Ads Tracking mit Consent Mode</p>
+          </div>
         </div>
       </section>
     </main>

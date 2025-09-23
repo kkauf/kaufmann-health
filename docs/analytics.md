@@ -272,6 +272,15 @@ __Queries__: Use the `events` table to derive:
 - Signup → Profile completion rate (photo + approach)
 - Completion → Activation rate (approval with `photo_url`)
 
+### Google Ads Configuration Notes (EARTH-174)
+
+- Create two website conversion actions in Google Ads UI:
+  - `Client Registration` (alias: `client_registration`) — category “Submit lead form”; Primary; Count = One; Data-driven attribution if eligible; include in “Conversions”. Enable Enhanced Conversions for web (first-party data). Use the same action for both client-side gtag and server-side enhanced conversions. Deduplication: `transaction_id` (gtag) == `orderId` (server) == lead id.
+  - `Therapist Registration` (alias: `therapist_registration`) — category “Sign-up” or “Submit lead form”; Secondary by default (exclude from “Conversions” if it shouldn’t drive bidding in patient campaigns); Count = One; Data-driven attribution if eligible; Enhanced Conversions enabled (server-side only).
+- Values: default to €10 (client) and €25 (therapist) to match server. The server also sends values.
+- Windows: Click-through 30 days; View-through 1 day; Cross-device enabled; adjust to your preference.
+- Consent Mode: already implemented; gtag loads post-consent when `NEXT_PUBLIC_COOKIES=true`, else cookieless mode.
+
 ## Minimal Google Ads Conversion (EARTH-132)
 
 __Why__: Google Ads' optimization algorithms require a client-side conversion signal to learn which clicks lead to conversions. Our server-side Enhanced Conversions remain the source of truth, but without a browser-side ping Google cannot attribute conversions to ad clicks, hurting optimization and budget scaling.
@@ -308,6 +317,11 @@ __Notes__:
 - In email-only mode, server-side Google Ads Enhanced Conversions (`client_registration`) are sent when preferences are submitted (status becomes `new`) via `POST /api/leads/:id/preferences`. The confirmation endpoint (`GET /api/leads/confirm`) only sets status to `email_confirmed` and redirects to preferences.
 - In legacy mode (flag off), they continue to fire after the initial patient insert.
 
+__Therapists (EARTH-174)__:
+- We only consider therapists “qualified” after documents are submitted.
+- Server-side Enhanced Conversion `therapist_registration` is fired by `POST /api/therapists/:id/documents` after successful upload/merge of required docs.
+- There is no client-side gtag for therapist signup; only server-side Enhanced Conversion is used.
+
 **Vercel Analytics:**
 - Do not duplicate `email_submitted`/`email_confirmed` in Vercel Analytics. Keep Vercel for high-level milestones only.
 
@@ -333,3 +347,34 @@ __Behavior__:
 __Notes__:
 - Vercel Analytics remains cookieless in both modes.
 - We do not enable analytics cookies in either mode.
+
+## Consent Mode v2 & Cookie Settings (EARTH-175)
+
+__Why__: Transparent cookie handling and GDPR/TDDDG compliance when introducing client-side Google Ads tracking. Maintain cookieless defaults while allowing explicit opt-in to conversion linking.
+
+__What changed__:
+- Cookie banner is shown when `NEXT_PUBLIC_COOKIES=true` and `NEXT_PUBLIC_GOOGLE_ADS_ID` is configured. `gtag` library loads only after explicit consent.
+- After acceptance, we (re)apply `gtag('config', <AW-ID>, { conversion_linker: true, url_passthrough: true })` and keep all personalization storages denied.
+- Footer now includes a “Cookie-Einstellungen” control that re-opens the banner:
+
+```ts
+// Footer → re-open banner on demand
+window.dispatchEvent(new Event('open-cookie-settings'));
+```
+
+- The banner listens for `open-cookie-settings` and shows again for consent changes. On rejection or withdrawal, Consent Mode is updated to `denied` for all storages and `conversion_linker` is disabled to prevent cookie operation.
+- Datenschutzerklärung updated: cookie types and legal bases, Google Ads cookie retention, Consent Mode v2 behavior, Enhanced Conversions (server-side), and “Datenübermittlung in die USA”. Version bumped to 2.0 (dynamic date displayed).
+- Forms: `privacy_version` updated to `2025-09-01.v2`. Keep any future forms in sync with the Datenschutz version.
+
+__Environment__:
+```
+NEXT_PUBLIC_COOKIES=false | true
+NEXT_PUBLIC_GOOGLE_ADS_ID=AW-XXXXXXXXX
+NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL=XXXXXXXXXXXXX
+```
+
+__Code pointers__:
+- `src/app/layout.tsx` — inline `gtag` stub with Consent Mode defaults (all denied).
+- `src/components/GtagLoader.tsx` — loads `gtag` post-consent when cookies are enabled; always loads in cookieless mode.
+- `src/components/CookieBanner.tsx` — re-open support via `open-cookie-settings`; applies consent grant/deny updates (including disabling `conversion_linker` on deny) and dispatches `ga-consent-accepted`.
+- `src/components/Footer.tsx` — “Cookie-Einstellungen” link triggers the re-open event when cookies are enabled.

@@ -8,7 +8,7 @@ import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/comp
 import Link from 'next/link';
 
 // Keep in sync with Datenschutz version
-const PRIVACY_VERSION = '2025-09-01.v1';
+const PRIVACY_VERSION = '2025-09-01.v2';
 
 // Minimal client-side Google Ads conversion: fire when preferences are successfully submitted
 // (i.e., when the patient status transitions to 'new'). This aligns the browser signal with our

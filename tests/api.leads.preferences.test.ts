@@ -89,7 +89,7 @@ describe('POST /api/leads/[id]/preferences', () => {
       issue: 'Stress',
       session_preference: 'online',
       consent_share_with_therapists: true,
-      privacy_version: '2025-09-01.v1',
+      privacy_version: '2025-09-01.v2',
     }));
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -100,6 +100,6 @@ describe('POST /api/leads/[id]/preferences', () => {
     expect(updatePayload.metadata.city).toBe('Berlin');
     expect(updatePayload.metadata.session_preference).toBe('online');
     expect(updatePayload.metadata.consent_share_with_therapists).toBe(true);
-    expect(updatePayload.metadata.consent_privacy_version).toBe('2025-09-01.v1');
+    expect(updatePayload.metadata.consent_privacy_version).toBe('2025-09-01.v2');
   });
 });
