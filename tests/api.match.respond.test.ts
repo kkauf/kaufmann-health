@@ -75,7 +75,7 @@ describe('/api/match/[uuid]/respond POST', () => {
   it('accepts successfully when within 72h', async () => {
     const nowIso = new Date().toISOString();
     matchByUUID['u-1'] = { id: 'm-1', status: 'proposed', created_at: nowIso, patient_id: 'p-1' };
-    const { POST } = await import('@/app/api/match/[uuid]/respond/route');
+    const { POST } = await import('@/app/api/public/match/[uuid]/respond/route');
 
     const res = await POST(makePost('http://localhost/api/match/u-1/respond', { action: 'accept' }));
     expect(res.status).toBe(200);
@@ -90,7 +90,7 @@ describe('/api/match/[uuid]/respond POST', () => {
   it('returns 410 when link expired (>72h) and does not update', async () => {
     const past = new Date(Date.now() - 73 * 60 * 60 * 1000).toISOString();
     matchByUUID['u-2'] = { id: 'm-2', status: 'proposed', created_at: past, patient_id: 'p-2' };
-    const { POST } = await import('@/app/api/match/[uuid]/respond/route');
+    const { POST } = await import('@/app/api/public/match/[uuid]/respond/route');
 
     const res = await POST(makePost('http://localhost/api/match/u-2/respond', { action: 'decline' }));
     expect(res.status).toBe(410);
@@ -102,7 +102,7 @@ describe('/api/match/[uuid]/respond POST', () => {
   it('is idempotent when already accepted/declined', async () => {
     const nowIso = new Date().toISOString();
     matchByUUID['u-3'] = { id: 'm-3', status: 'accepted', created_at: nowIso, patient_id: 'p-3' };
-    const { POST } = await import('@/app/api/match/[uuid]/respond/route');
+    const { POST } = await import('@/app/api/public/match/[uuid]/respond/route');
 
     const res = await POST(makePost('http://localhost/api/match/u-3/respond', { action: 'accept' }));
     expect(res.status).toBe(200);
@@ -117,7 +117,7 @@ describe('/api/match/[uuid]/respond POST', () => {
     const nowIso = new Date().toISOString();
     matchByUUID['u-4'] = { id: 'm-4', status: 'proposed', created_at: nowIso, patient_id: 'p-4' };
     updateMode = 'missing_responded_at';
-    const { POST } = await import('@/app/api/match/[uuid]/respond/route');
+    const { POST } = await import('@/app/api/public/match/[uuid]/respond/route');
 
     const res = await POST(makePost('http://localhost/api/match/u-4/respond', { action: 'decline' }));
     expect(res.status).toBe(200);

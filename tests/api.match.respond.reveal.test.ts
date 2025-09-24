@@ -90,7 +90,7 @@ describe('/api/match/[uuid]/respond contact reveal', () => {
     peopleById['p-1'] = { id: 'p-1', name: 'Maria Schmidt', email: 'maria@example.com', phone: '+49 30 123456' };
     peopleById['t-1'] = { id: 't-1', name: 'Thera T', email: 'thera@example.com' };
 
-    const { POST } = await import('@/app/api/match/[uuid]/respond/route');
+    const { POST } = await import('@/app/api/public/match/[uuid]/respond/route');
 
     const res = await POST(makePost('http://localhost/api/match/u-r1/respond?reveal=1', { action: 'accept' }));
     expect(res.status).toBe(200);
@@ -109,7 +109,7 @@ describe('/api/match/[uuid]/respond contact reveal', () => {
     matchByUUID['u-r2'] = { id: 'm-r2', status: 'accepted', created_at: nowIso, patient_id: 'p-2', therapist_id: 't-2' };
     peopleById['p-2'] = { id: 'p-2', name: 'Alex M', email: 'alex@example.com', phone: '+49 40 555' };
 
-    const { POST } = await import('@/app/api/match/[uuid]/respond/route');
+    const { POST } = await import('@/app/api/public/match/[uuid]/respond/route');
 
     const res = await POST(makePost('http://localhost/api/match/u-r2/respond?reveal=1', { action: 'accept' }));
     expect(res.status).toBe(200);
@@ -130,7 +130,7 @@ describe('/api/match/[uuid]/respond contact reveal', () => {
     matchByUUID['u-r3'] = { id: 'm-r3', status: 'proposed', created_at: nowIso, patient_id: 'p-3', therapist_id: 't-3' };
     peopleById['p-3'] = { id: 'p-3', name: 'No Show', email: 'noshow@example.com', phone: '+49 89 777' };
 
-    const { POST } = await import('@/app/api/match/[uuid]/respond/route');
+    const { POST } = await import('@/app/api/public/match/[uuid]/respond/route');
 
     const res = await POST(makePost('http://localhost/api/match/u-r3/respond', { action: 'accept' }));
     expect(res.status).toBe(200);
