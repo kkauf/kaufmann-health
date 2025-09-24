@@ -19,7 +19,7 @@ describe('/api/leads GET (wrong method)', () => {
   });
 
   it('returns 405 with no-store and tracks a diagnostic event', async () => {
-    const { GET } = await import('@/app/api/leads/route');
+    const { GET } = await import('@/app/api/public/leads/route');
     const { track } = await import('@/lib/logger');
 
     const req = new Request('http://localhost/api/leads', { method: 'GET' });

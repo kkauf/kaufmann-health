@@ -98,7 +98,7 @@ describe('/api/leads Google Ads conversions', () => {
   });
 
   it('fires client_registration conversion with value 10 on patient lead', async () => {
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const res = await POST(
       makeReq(
         { email: 'patient@example.com', type: 'patient', consent_share_with_therapists: true },
@@ -117,7 +117,7 @@ describe('/api/leads Google Ads conversions', () => {
   });
 
   it('does NOT fire therapist_registration conversion on therapist lead (fires on documents upload)', async () => {
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const res = await POST(makeReq({ email: 'therapist@example.com', type: 'therapist', specializations: ['narm'] }));
     expect(res.status).toBe(200);
 

@@ -58,7 +58,7 @@ beforeEach(() => {
 
 describe('EARTH-146 /api/leads POST (email-only)', () => {
   it('creates pre_confirmation lead and sends confirmation email', async () => {
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const res = await POST(makeReq({ email: 'user@example.com', type: 'patient' }));
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -75,7 +75,7 @@ describe('EARTH-146 /api/leads POST (email-only)', () => {
   it('treats existing confirmed email as success without resending', async () => {
     simulateUniqueViolation = true;
     existingStatus = 'new';
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const res = await POST(makeReq({ email: 'user@example.com', type: 'patient' }));
     expect(res.status).toBe(200);
     const json = await res.json();

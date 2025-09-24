@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { POST as eventsPOST } from '@/app/api/events/route';
+import { POST as eventsPOST } from '@/app/api/public/events/route';
 
 function makeReq(body: any) {
   return new Request('http://localhost/api/events', {

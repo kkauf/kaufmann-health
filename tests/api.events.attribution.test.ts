@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { POST as eventsPOST } from '@/app/api/events/route';
+import { POST as eventsPOST } from '@/app/api/public/events/route';
 import * as logger from '@/lib/logger';
 
 afterEach(() => {

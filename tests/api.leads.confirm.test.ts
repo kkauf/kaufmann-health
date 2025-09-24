@@ -71,7 +71,7 @@ beforeEach(() => {
 
 describe('EARTH-146 GET /api/leads/confirm', () => {
   it('confirms valid token, updates status and redirects to preferences', async () => {
-    const { GET } = await import('@/app/api/leads/confirm/route');
+    const { GET } = await import('@/app/api/public/leads/confirm/route');
     const res = await GET(new Request(makeUrl('p1', 't1')));
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('http://localhost/preferences?confirm=1&id=p1');
@@ -88,7 +88,7 @@ describe('EARTH-146 GET /api/leads/confirm', () => {
 
   it('rejects invalid token', async () => {
     person.metadata.confirm_token = 'different';
-    const { GET } = await import('@/app/api/leads/confirm/route');
+    const { GET } = await import('@/app/api/public/leads/confirm/route');
     const res = await GET(new Request(makeUrl('p1', 't1')));
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('http://localhost/confirm?state=invalid');
@@ -99,7 +99,7 @@ describe('EARTH-146 GET /api/leads/confirm', () => {
     // sent 25 hours ago
     const past = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
     person.metadata.confirm_sent_at = past;
-    const { GET } = await import('@/app/api/leads/confirm/route');
+    const { GET } = await import('@/app/api/public/leads/confirm/route');
     const res = await GET(new Request(makeUrl('p1', 't1')));
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('http://localhost/confirm?state=expired');
@@ -110,7 +110,7 @@ describe('EARTH-146 GET /api/leads/confirm', () => {
     person.status = 'email_confirmed';
     // even if token mismatches, we should send to preferences rather than invalid
     person.metadata.confirm_token = 'different';
-    const { GET } = await import('@/app/api/leads/confirm/route');
+    const { GET } = await import('@/app/api/public/leads/confirm/route');
     const res = await GET(new Request(makeUrl('p1', 't1')));
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('http://localhost/preferences?id=p1');

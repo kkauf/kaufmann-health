@@ -48,7 +48,7 @@ afterEach(() => {
 
 describe('/api/feedback GET', () => {
   it('records blocker and redirects to thank-you', async () => {
-    const { GET } = await import('@/app/api/feedback/route');
+    const { GET } = await import('@/app/api/public/feedback/route');
     const res = await GET(makeGet('http://localhost/api/feedback?match=m-1&reason=scheduling'));
     expect(res.status).toBeGreaterThanOrEqual(300);
     expect(res.status).toBeLessThan(400);
@@ -59,7 +59,7 @@ describe('/api/feedback GET', () => {
 
   it('sends internal alert when reason=no_contact', async () => {
     (process.env as any).LEADS_NOTIFY_EMAIL = 'ops@example.com';
-    const { GET } = await import('@/app/api/feedback/route');
+    const { GET } = await import('@/app/api/public/feedback/route');
     const res = await GET(makeGet('http://localhost/api/feedback?match=m-2&reason=no_contact'));
     expect(res.status).toBeGreaterThanOrEqual(300);
     expect(inserted).toContainEqual({ match_id: 'm-2', reason: 'no_contact' });

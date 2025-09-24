@@ -72,7 +72,7 @@ beforeEach(() => {
 
 describe('Campaign attribution', () => {
   it('email-only: prefers variant from referer, landing_page is pathname, persists campaign_* and tracks event', async () => {
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const referer = 'http://localhost/wieder-lebendig?v=B&utm_source=x';
     const apiUrl = 'http://localhost/api/leads?v=A';
     const res = await POST(makeReqEmailOnly({ email: 'user@example.com', type: 'patient' }, referer, apiUrl));
@@ -97,7 +97,7 @@ describe('Campaign attribution', () => {
 
   it('legacy patient: persists campaign_* from referer and fallback variant from API URL', async () => {
     process.env.REQUIRE_EMAIL_CONFIRMATION = 'false';
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const referer = 'http://localhost/ankommen-in-dir'; // no v param
     const res = await POST(makeReqLegacy({ email: 'user@example.com', type: 'patient', consent_share_with_therapists: true }, referer));
     expect(res.status).toBe(200);

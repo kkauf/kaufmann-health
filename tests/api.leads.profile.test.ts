@@ -59,7 +59,7 @@ beforeEach(() => {
 
 describe('/api/leads POST (multipart therapist profile fields)', () => {
   it('400 when approach_text exceeds 2000 chars', async () => {
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const form = new FormData();
     form.set('type', 'therapist');
     form.set('email', 't@example.com');
@@ -76,7 +76,7 @@ describe('/api/leads POST (multipart therapist profile fields)', () => {
   });
 
   it('valid profile_photo and approach_text stored (pending path), upload to applications bucket', async () => {
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const form = new FormData();
     form.set('type', 'therapist');
     form.set('email', 't2@example.com');
@@ -105,7 +105,7 @@ describe('/api/leads POST (multipart therapist profile fields)', () => {
   });
 
   it('rejects invalid profile_photo type', async () => {
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const form = new FormData();
     form.set('type', 'therapist');
     form.set('email', 't3@example.com');
