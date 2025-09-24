@@ -5,6 +5,19 @@ dotenvConfig({ path: '.env.local', override: true });
 dotenvConfig();
 // dotenv loaded; will dynamically import google-ads after env is ready
 
+const NAME_TO_ALIAS: Record<string, string> = {
+  'KH – Client Registration (preferences)': 'client_registration',
+  'KH – Therapist Registration (application)': 'therapist_registration',
+};
+
+function toAlias(name: string): string | null {
+  if (NAME_TO_ALIAS[name]) return NAME_TO_ALIAS[name];
+  const normalized = name.trim().toLowerCase();
+  if (normalized.includes('client registration')) return 'client_registration';
+  if (normalized.includes('therapist registration')) return 'therapist_registration';
+  return null;
+}
+
 async function getConversionActions() {
   // Import after env is loaded; use relative path to avoid tsconfig paths at runtime
   const { googleAdsTracker } = await import('../src/lib/google-ads');
@@ -77,8 +90,15 @@ async function getConversionActions() {
       console.log('\n=== Add these to your .env ===');
       data.results.forEach((result: any) => {
         const action = result.conversionAction;
-        const envKey = action.name.toUpperCase().replace(/[^A-Z0-9]+/g, '_');
-        console.log(`GOOGLE_ADS_CA_${envKey}=${action.resourceName}`);
+        const alias = toAlias(action.name);
+        if (alias) {
+          const aliasKey = alias.toUpperCase();
+          console.log(`GOOGLE_ADS_CA_${aliasKey}=${action.resourceName}`);
+        } else {
+          const fallbackKey = action.name.toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+          console.log(`# Unknown alias for ${action.name}; adjust as needed`);
+          console.log(`GOOGLE_ADS_CA_${fallbackKey}=${action.resourceName}`);
+        }
       });
     } else {
       console.log('No conversion actions found. Create them in Google Ads UI first.');
