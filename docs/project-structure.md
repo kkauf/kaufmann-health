@@ -15,7 +15,6 @@
       Hero.tsx
     /ankommen-in-dir
       page.tsx
-      Hero.tsx
     /fuer-therapeuten
       page.tsx               # Therapist application (posts to /api/leads)
     /ueber-uns
@@ -28,8 +27,6 @@
       page.tsx
     /preferences
       page.tsx
-    /heilpraktiker-psychotherapie-berlin
-      page.tsx             # Example landing built with the Landing Kit
     /therapists
       /complete-profile
         /[id]
