@@ -76,9 +76,9 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('/admin/api/matches/therapist-action-reminders GET', () => {
+describe('/api/admin/matches/therapist-action-reminders GET', () => {
   it('sends reminder email with CTA for patient_selected match without therapist_contacted_at', async () => {
-    const { GET } = await import('@/app/admin/api/matches/therapist-action-reminders/route');
+    const { GET } = await import('@/app/api/admin/matches/therapist-action-reminders/route');
 
     // Setup data
     eventsRows = [
@@ -88,7 +88,7 @@ describe('/admin/api/matches/therapist-action-reminders GET', () => {
     peopleById['p1'] = { id: 'p1', name: 'Paula Patient', email: 'p@example.com', phone: '123', metadata: { city: 'Berlin', issue: 'Anxiety', session_preference: 'online' } };
     therapistsById['t1'] = { id: 't1', first_name: 'Thera', last_name: 'Pist', email: 't@example.com', city: 'Berlin' };
 
-    const res = await GET(makeGet('http://localhost/admin/api/matches/therapist-action-reminders?stage=20h', { 'x-vercel-cron': '1' }));
+    const res = await GET(makeGet('http://localhost/api/admin/matches/therapist-action-reminders?stage=20h', { 'x-vercel-cron': '1' }));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json?.data?.processed).toBeGreaterThanOrEqual(1);
@@ -103,14 +103,14 @@ describe('/admin/api/matches/therapist-action-reminders GET', () => {
   });
 
   it('skips email when therapist already contacted', async () => {
-    const { GET } = await import('@/app/admin/api/matches/therapist-action-reminders/route');
+    const { GET } = await import('@/app/api/admin/matches/therapist-action-reminders/route');
 
     eventsRows = [{ id: 'e1', props: { match_id: 'm1' } }];
     matchById['m1'] = { id: 'm1', patient_id: 'p1', therapist_id: 't1', status: 'patient_selected', therapist_contacted_at: new Date().toISOString() };
     peopleById['p1'] = { id: 'p1', email: 'p@example.com' };
     therapistsById['t1'] = { id: 't1', email: 't@example.com' };
 
-    const res = await GET(makeGet('http://localhost/admin/api/matches/therapist-action-reminders?stage=20h', { 'x-vercel-cron': '1' }));
+    const res = await GET(makeGet('http://localhost/api/admin/matches/therapist-action-reminders?stage=20h', { 'x-vercel-cron': '1' }));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json?.data?.sent).toBe(0);

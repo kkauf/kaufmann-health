@@ -259,7 +259,7 @@ __Server Events__ (Supabase):
 
 ### Business Opportunities (EARTH-124)
 
-- `business_opportunity_logged` — emitted by `POST /admin/api/matches` when selected therapists don't perfectly match a patient's preferences.
+- `business_opportunity_logged` — emitted by `POST /api/admin/matches` when selected therapists don't perfectly match a patient's preferences.
   - props: `{ patient_id: string, reasons: ('gender'|'location'|'modality')[] }`
   - Also persisted in `public.business_opportunities` for monthly summaries.
 
@@ -297,7 +297,7 @@ __Implementation__:
 __Environment__:
 ```
 NEXT_PUBLIC_GOOGLE_ADS_ID=AW-XXXXXXXXX
-NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL=XXXXXXXXXXXXX
+NEXT_PUBLIC_GAD_CONV_CLIENT=XXXXXXXXXXXXX
 NEXT_PUBLIC_COOKIES=false | true
 ```
 
@@ -370,7 +370,8 @@ __Environment__:
 ```
 NEXT_PUBLIC_COOKIES=false | true
 NEXT_PUBLIC_GOOGLE_ADS_ID=AW-XXXXXXXXX
-NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL=XXXXXXXXXXXXX
+NEXT_PUBLIC_GAD_CONV_CLIENT=XXXXXXXXXXXXX
+NEXT_PUBLIC_GAD_CONV_THERAPIST=YYYYYYYYYYYYY
 ```
 
 __Code pointers__:

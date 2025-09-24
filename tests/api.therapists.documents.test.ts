@@ -59,7 +59,7 @@ beforeEach(() => {
 
 describe('/api/therapists/:id/documents POST', () => {
   it('400 when psychotherapy_license missing and certificate provided (license must be uploaded first)', async () => {
-    const { POST } = await import('@/app/api/therapists/[id]/documents/route');
+    const { POST } = await import('@/app/api/public/therapists/[id]/documents/route');
     const form = new FormData();
     form.set('specialization_cert', new File([new Uint8Array([0])], 'cert.pdf', { type: 'application/pdf' }));
     const res = await POST(makeReq(form), { params: Promise.resolve({ id: 'tid-1' }) });
@@ -69,7 +69,7 @@ describe('/api/therapists/:id/documents POST', () => {
   });
 
   it('200 when specialization_cert omitted (optional)', async () => {
-    const { POST } = await import('@/app/api/therapists/[id]/documents/route');
+    const { POST } = await import('@/app/api/public/therapists/[id]/documents/route');
     const form = new FormData();
     form.set('psychotherapy_license', new File([new Uint8Array([0])], 'license.pdf', { type: 'application/pdf' }));
     const res = await POST(makeReq(form), { params: Promise.resolve({ id: 'tid-1' }) });
@@ -79,7 +79,7 @@ describe('/api/therapists/:id/documents POST', () => {
   });
 
   it('404 when therapist not found or not pending', async () => {
-    const { POST } = await import('@/app/api/therapists/[id]/documents/route');
+    const { POST } = await import('@/app/api/public/therapists/[id]/documents/route');
     therapistRow = null;
     let res = await POST(makeReq(new FormData()), { params: Promise.resolve({ id: 'missing' }) });
     expect(res.status).toBe(404);
@@ -93,7 +93,7 @@ describe('/api/therapists/:id/documents POST', () => {
   });
 
   it('400 on invalid file type or size for license', async () => {
-    const { POST } = await import('@/app/api/therapists/[id]/documents/route');
+    const { POST } = await import('@/app/api/public/therapists/[id]/documents/route');
     // invalid type
     let form = new FormData();
     form.set('psychotherapy_license', new File([new Uint8Array([0])], 'license.gif', { type: 'image/gif' }));
@@ -111,7 +111,7 @@ describe('/api/therapists/:id/documents POST', () => {
   });
 
   it('200 on success: uploads docs to correct buckets and updates metadata', async () => {
-    const { POST } = await import('@/app/api/therapists/[id]/documents/route');
+    const { POST } = await import('@/app/api/public/therapists/[id]/documents/route');
     const form = new FormData();
     form.set('psychotherapy_license', new File([new Uint8Array([0,1,2])], 'license.pdf', { type: 'application/pdf' }));
     form.set('specialization_cert', new File([new Uint8Array([3,4,5])], 'cert1.jpg', { type: 'image/jpeg' }));
@@ -145,7 +145,7 @@ describe('/api/therapists/:id/documents POST', () => {
   });
 
   it('fires therapist_registration conversion on successful upload', async () => {
-    const { POST } = await import('@/app/api/therapists/[id]/documents/route');
+    const { POST } = await import('@/app/api/public/therapists/[id]/documents/route');
     therapistRow = { id: 'tid-1', status: 'pending_verification', metadata: {}, email: 'therapist@example.com' } as any;
     const form = new FormData();
     form.set('psychotherapy_license', new File([new Uint8Array([0,1,2])], 'license.pdf', { type: 'application/pdf' }));

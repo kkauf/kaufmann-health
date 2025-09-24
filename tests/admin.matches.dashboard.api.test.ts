@@ -64,7 +64,7 @@ vi.mock('@/lib/supabase-server', () => {
 });
 
 function makeReq(method: string, body?: any) {
-  return new Request('http://localhost/admin/api/matches', {
+  return new Request('http://localhost/api/admin/matches', {
     method,
     headers: { 'content-type': 'application/json', cookie: 'kh_admin=token' },
     body: body ? JSON.stringify(body) : undefined,
@@ -79,9 +79,9 @@ beforeEach(() => {
   updateMode = 'ok';
 });
 
-describe('/admin/api/matches GET', () => {
+describe('/api/admin/matches GET', () => {
   it('returns empty data when no matches', async () => {
-    const { GET } = await import('@/app/admin/api/matches/route');
+    const { GET } = await import('@/app/api/admin/matches/route');
     const res = await GET(makeReq('GET'));
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -98,7 +98,7 @@ describe('/admin/api/matches GET', () => {
     therapistRows = [
       { id: 't1', first_name: 'Dr.', last_name: 'Bob', email: 'bob@example.com', phone: '' },
     ];
-    const { GET } = await import('@/app/admin/api/matches/route');
+    const { GET } = await import('@/app/api/admin/matches/route');
     const res = await GET(makeReq('GET'));
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -113,10 +113,10 @@ describe('/admin/api/matches GET', () => {
   });
 });
 
-describe('/admin/api/matches PATCH', () => {
+describe('/api/admin/matches PATCH', () => {
   it('updates status and falls back if timestamp columns missing', async () => {
     updateMode = 'missing_column';
-    const { PATCH } = await import('@/app/admin/api/matches/route');
+    const { PATCH } = await import('@/app/api/admin/matches/route');
     const res = await PATCH(makeReq('PATCH', { id: 'm1', status: 'therapist_contacted', notes: 'hello' }));
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -128,7 +128,7 @@ describe('/admin/api/matches PATCH', () => {
   });
 
   it('rejects invalid status', async () => {
-    const { PATCH } = await import('@/app/admin/api/matches/route');
+    const { PATCH } = await import('@/app/api/admin/matches/route');
     const res = await PATCH(makeReq('PATCH', { id: 'm1', status: 'bogus' }));
     expect(res.status).toBe(400);
   });

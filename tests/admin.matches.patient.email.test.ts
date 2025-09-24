@@ -74,7 +74,7 @@ vi.mock('@/lib/supabase-server', () => {
 });
 
 function makePost(body: any, headers?: Record<string, string>) {
-  return new Request('http://localhost/admin/api/matches/email', {
+  return new Request('http://localhost/api/admin/matches/email', {
     method: 'POST',
     headers: { 'content-type': 'application/json', cookie: 'kh_admin=token', ...(headers || {}) },
     body: JSON.stringify(body),
@@ -88,15 +88,15 @@ beforeEach(() => {
   therapistsById = {};
 });
 
-describe('/admin/api/matches/email POST', () => {
+describe('/api/admin/matches/email POST', () => {
   it('returns 401 without admin cookie', async () => {
-    const { POST } = await import('@/app/admin/api/matches/email/route');
-    const res = await POST(new Request('http://localhost/admin/api/matches/email', { method: 'POST' }));
+    const { POST } = await import('@/app/api/admin/matches/email/route');
+    const res = await POST(new Request('http://localhost/api/admin/matches/email', { method: 'POST' }));
     expect(res.status).toBe(401);
   });
 
   it('returns 404 when match not found', async () => {
-    const { POST } = await import('@/app/admin/api/matches/email/route');
+    const { POST } = await import('@/app/api/admin/matches/email/route');
     const res = await POST(makePost({ id: 'm-1', template: 'match_found' }));
     expect(res.status).toBe(404);
     const json = await res.json();
@@ -109,7 +109,7 @@ describe('/admin/api/matches/email POST', () => {
     peopleById['p-1'] = { id: 'p-1', name: 'P X' } as any;
     therapistsById['t-1'] = { id: 't-1', first_name: 'T', last_name: 'Y' } as any;
 
-    const { POST } = await import('@/app/admin/api/matches/email/route');
+    const { POST } = await import('@/app/api/admin/matches/email/route');
     const res = await POST(makePost({ id: 'm-1', template: 'match_found' }));
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -121,7 +121,7 @@ describe('/admin/api/matches/email POST', () => {
     peopleById['p-1'] = { id: 'p-1', name: 'Patient X', email: 'patient@example.com' } as any;
     therapistsById['t-1'] = { id: 't-1', first_name: 'Thera', last_name: 'Y' } as any;
 
-    const { POST } = await import('@/app/admin/api/matches/email/route');
+    const { POST } = await import('@/app/api/admin/matches/email/route');
     const res = await POST(makePost({ id: 'm-1', template: 'match_found' }));
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -138,7 +138,7 @@ describe('/admin/api/matches/email POST', () => {
     matchById['m-1'] = { id: 'm-1', patient_id: 'p-1', therapist_id: 't-1' };
     peopleById['p-1'] = { id: 'p-1', name: 'Patient X', email: 'patient@example.com' } as any;
 
-    const { POST } = await import('@/app/admin/api/matches/email/route');
+    const { POST } = await import('@/app/api/admin/matches/email/route');
     const res = await POST(makePost({ id: 'm-1', template: 'custom', message: 'Hallo! Kurzes Update.' }));
     expect(res.status).toBe(200);
     expect(sentEmails.length).toBe(1);

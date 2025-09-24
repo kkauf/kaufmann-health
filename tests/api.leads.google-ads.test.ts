@@ -78,7 +78,7 @@ beforeEach(() => {
 
 describe('/api/leads Google Ads conversions', () => {
   it('fires client_registration conversion with value 10 on patient lead', async () => {
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const res = await POST(
       makeReq(
         { email: 'patient@example.com', type: 'patient', consent_share_with_therapists: true, privacy_version: 'test-v1' },

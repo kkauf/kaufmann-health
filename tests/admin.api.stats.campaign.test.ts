@@ -103,8 +103,8 @@ describe('Admin Stats: campaign aggregation', () => {
   });
 
   it('returns campaignStats and campaignByDay with correct aggregation', async () => {
-    const { GET } = await import('@/app/admin/api/stats/route');
-    const res = await GET(makeGet('http://localhost/admin/api/stats?days=7'));
+    const { GET } = await import('@/app/api/admin/stats/route');
+    const res = await GET(makeGet('http://localhost/api/admin/stats?days=7'));
     expect(res.status).toBe(200);
     const json = await res.json();
     const data = json.data as any;

@@ -233,7 +233,7 @@ curl -X POST /api/leads \
   -d '{"email":"max@example.com","city":"Berlin"}'
 ```
 
-## GET /admin/api/leads
+## GET /api/admin/leads
 - __Purpose__: List patient leads for manual matching.
 - __Auth__: Admin session cookie (`kh_admin`, Path=/admin). Returns 401 without it.
 - __Query Params__:
@@ -246,7 +246,7 @@ curl -X POST /api/leads \
   - 401: `{ data: null, error: 'Unauthorized' }`
   - 500: `{ data: null, error: 'Failed to fetch leads' }`
 
-## GET /admin/api/therapists
+## GET /api/admin/therapists
 - __Purpose__: List therapist profiles filtered by city/modality/specialization.
 - __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
 - __Query Params__:
@@ -263,7 +263,7 @@ curl -X POST /api/leads \
 __Notes__:
 - When `status` is `verified` (or omitted), only therapists with `accepting_new=true` are returned by default. This keeps admin matching focused on currently available therapists.
 
-## GET /admin/api/therapists/:id
+## GET /api/admin/therapists/:id
 - __Purpose__: Retrieve single therapist details including profile data for review.
 - __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
 - __Response__:
@@ -272,7 +272,7 @@ __Notes__:
   - 404: `{ data: null, error: 'Not found' }`
   - 500: `{ data: null, error: 'Unexpected error' }`
 
-## PATCH /admin/api/leads/:id
+## PATCH /api/admin/leads/:id
 
 - __Purpose__: Update a patient lead’s status during admin triage.
 - __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
@@ -285,7 +285,7 @@ __Notes__:
   - 200: `{ data: { ok: true }, error: null }`
   - 400/401/404/500 on failure.
 
-## PATCH /admin/api/therapists/:id
+## PATCH /api/admin/therapists/:id
 - __Purpose__: Update therapist verification status, notes, and profile approval.
 - __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
 - __Body__:
@@ -298,7 +298,7 @@ __Notes__:
   - 400: `{ data: null, error: 'Missing fields' | 'Invalid status' | 'approach_text too long (max 500 chars)' | 'No pending profile photo to approve' }`
   - 401/404/500 on failure.
 
-## GET /admin/api/therapists/:id/documents/[...type]
+## GET /api/admin/therapists/:id/documents/[...type]
 - __Purpose__: Securely serve stored documents for admin review.
 - __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
 - __Path params__:
@@ -325,7 +325,7 @@ __Notes__:
   - 429: `{ data: null, error: 'Too many attempts, try again later' }` (includes `Retry-After` header)
   - 500: `{ data: null, error: 'Server misconfiguration' | 'Unexpected error' }`
 
-## POST /admin/api/matches
+## POST /api/admin/matches
 - __Purpose__: Create one or more proposed matches between a patient and selected therapists.
 - __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
 - __Request Body__ (JSON):
@@ -349,7 +349,7 @@ __Notes__:
   - 401: `{ data: null, error: 'Unauthorized' }`
   - 500: `{ data: null, error: 'Failed to verify therapists' | 'No matches created' }`
 
-### POST /admin/api/matches/email
+### POST /api/admin/matches/email
 
 - __Purpose__: Send a patient-facing email related to a specific match (either a templated “match found” message or a custom update). Intended as part of the admin outreach workflow.
 - __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
@@ -368,7 +368,7 @@ __Notes__:
   - 404: `{ data: null, error: 'Match not found' }`
   - 500: `{ data: null, error: 'Failed to load entities' | 'Unexpected error' }`
 
-## POST /admin/api/therapists/:id/reminder
+## POST /api/admin/therapists/:id/reminder
 
 - __Purpose__: Send a profile completion reminder email to a specific therapist, based on missing items derived from `therapists.metadata`.
 - __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
@@ -386,7 +386,7 @@ __Notes__:
 
 __Why__: Server-side reminders keep logic and security in the backend (no public cookies), and let us batch-trigger via Cron without exposing internal states to the client.
 
-## POST/GET /admin/api/therapists/reminders
+## POST/GET /api/admin/therapists/reminders
 
 - __Purpose__: Batch-send profile completion reminders to therapists in `pending_verification`.
 - __Auth__: One of:
@@ -421,7 +421,7 @@ __Why__: Enables Vercel Cron scheduling for reminder cadence (24h/72h/7d) with a
 Some endpoints send non-blocking emails (best-effort):
 - `/api/leads` (therapist): Welcome email prompts profile completion.
 - `/api/therapists/:id/documents` (POST): Upload confirmation after successful submission.
-- `/admin/api/therapists/:id` (PATCH): Sends approval/rejection emails when status changes.
+- `/api/admin/therapists/:id` (PATCH): Sends approval/rejection emails when status changes.
 
 __Why__: Keeping email rendering/sending on the server preserves the cookie-free public site and centralizes logging/observability.
 
@@ -460,7 +460,7 @@ __UI Consistency__: Email templates reuse a small, inline-styled therapist previ
   - 404: `{ data: null, error: 'Not found' | 'Match not available' }`
   - 500: `{ data: null, error: 'Failed to update' }`
 
-### POST /admin/api/matches/email (extended)
+### POST /api/admin/matches/email (extended)
 
 - New template `selection` for patient-facing "active selection" email with urgency and up to 3 proposals.
 - Request Body (JSON):
@@ -475,7 +475,7 @@ __UI Consistency__: Email templates reuse a small, inline-styled therapist previ
   - 200: `{ data: { ok: true }, error: null }`
   - 400/401/404/500 on failure with descriptive messages.
 
-### GET /admin/api/matches/selection-reminders
+### GET /api/admin/matches/selection-reminders
 
 - Purpose: Vercel Cron-driven follow-up sequence if no selection was made yet.
 - Auth: Admin cookie or Cron secret (`x-cron-secret` / `Authorization: Bearer`), or Vercel platform header `x-vercel-cron`, or `?token=<CRON_SECRET>`.
@@ -496,10 +496,10 @@ __UI Consistency__: Email templates reuse a small, inline-styled therapist previ
 Vercel Cron is configured in `vercel.json`:
 
 ```
-{ "path": "/admin/api/matches/selection-reminders?stage=24h", "schedule": "0 12 * * *" }
-{ "path": "/admin/api/matches/selection-reminders?stage=48h", "schedule": "0 16 * * *" }
-{ "path": "/admin/api/matches/selection-reminders?stage=72h", "schedule": "0 18 * * *" }
-{ "path": "/admin/api/matches/therapist-action-reminders?stage=20h", "schedule": "0 * * * *" }
+{ "path": "/api/admin/matches/selection-reminders?stage=24h", "schedule": "0 12 * * *" }
+{ "path": "/api/admin/matches/selection-reminders?stage=48h", "schedule": "0 16 * * *" }
+{ "path": "/api/admin/matches/selection-reminders?stage=72h", "schedule": "0 18 * * *" }
+{ "path": "/api/admin/matches/therapist-action-reminders?stage=20h", "schedule": "0 * * * *" }
 ```
 
 Notes:
@@ -508,7 +508,7 @@ Notes:
 
 ## Therapist Action Reminders (Privacy‑First)
 
-### GET /admin/api/matches/therapist-action-reminders
+### GET /api/admin/matches/therapist-action-reminders
 
 - Purpose: Send a 20-hour reminder to therapists who were selected by a patient but haven’t responded yet.
 - Auth: Admin cookie or Cron secret (`x-cron-secret` / `Authorization: Bearer`), or Vercel platform header `x-vercel-cron`.
@@ -541,7 +541,7 @@ Notes:
 - Responses:
   - 302: Redirect to `/feedback-received` (on success and also on invalid/missing params)
 
-### GET /admin/api/matches/blocker-survey
+### GET /api/admin/matches/blocker-survey
 
 - Purpose: Daily cron that sends a short "Kurze Frage" email 7 Tage nach Auswahl, wenn noch keine Sitzung bestätigt ist.
 - Auth: Admin cookie or Cron secret (`x-cron-secret` / `Authorization: Bearer`), or Vercel platform header `x-vercel-cron`.
@@ -560,12 +560,12 @@ Notes:
 Added in `vercel.json`:
 
 ```
-{ "path": "/admin/api/matches/blocker-survey", "schedule": "0 10 * * *" }
+{ "path": "/api/admin/matches/blocker-survey", "schedule": "0 10 * * *" }
 ```
 
 ### Admin Stats
 
-`GET /admin/api/stats` now returns a new dataset:
+`GET /api/admin/stats` now returns a new dataset:
 
 ```
 blockers: {

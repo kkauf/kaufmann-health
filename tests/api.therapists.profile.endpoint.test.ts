@@ -68,7 +68,7 @@ beforeEach(() => {
 
 describe('/api/therapists/:id/profile POST', () => {
   it('404 when therapist not found or not pending', async () => {
-    const { POST } = await import('@/app/api/therapists/[id]/profile/route');
+    const { POST } = await import('@/app/api/public/therapists/[id]/profile/route');
     fetchedTherapist = null;
     let res = await POST(makeJsonReq({}), { params: Promise.resolve({ id: 'missing' }) });
     expect(res.status).toBe(404);
@@ -79,7 +79,7 @@ describe('/api/therapists/:id/profile POST', () => {
   });
 
   it('400 for invalid gender', async () => {
-    const { POST } = await import('@/app/api/therapists/[id]/profile/route');
+    const { POST } = await import('@/app/api/public/therapists/[id]/profile/route');
     const res = await POST(makeJsonReq({ gender: 'other' }), { params: Promise.resolve({ id: 'tid-1' }) });
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -87,7 +87,7 @@ describe('/api/therapists/:id/profile POST', () => {
   });
 
   it('400 when approach_text too long', async () => {
-    const { POST } = await import('@/app/api/therapists/[id]/profile/route');
+    const { POST } = await import('@/app/api/public/therapists/[id]/profile/route');
     const big = 'x'.repeat(2001);
     const res = await POST(makeJsonReq({ approach_text: big }), { params: Promise.resolve({ id: 'tid-1' }) });
     expect(res.status).toBe(400);
@@ -96,7 +96,7 @@ describe('/api/therapists/:id/profile POST', () => {
   });
 
   it('JSON: updates basic fields and profile approach_text', async () => {
-    const { POST } = await import('@/app/api/therapists/[id]/profile/route');
+    const { POST } = await import('@/app/api/public/therapists/[id]/profile/route');
     const res = await POST(makeJsonReq({ gender: 'female', city: 'Berlin', accepting_new: true, approach_text: 'Hello' }), { params: Promise.resolve({ id: 'tid-1' }) });
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -111,7 +111,7 @@ describe('/api/therapists/:id/profile POST', () => {
   });
 
   it('Multipart: uploads photo to applications bucket and sets metadata.profile.photo_pending_path', async () => {
-    const { POST } = await import('@/app/api/therapists/[id]/profile/route');
+    const { POST } = await import('@/app/api/public/therapists/[id]/profile/route');
     const form = new FormData();
     form.set('profile_photo', new File([new Uint8Array([1,2,3])], 'photo.jpg', { type: 'image/jpeg' }));
     form.set('approach_text', 'Desc');

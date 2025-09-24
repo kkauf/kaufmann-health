@@ -96,7 +96,7 @@ beforeEach(() => {
 
 describe('/api/leads POST', () => {
   it('400 on invalid email', async () => {
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const res = await POST(makeReq({ email: 'not-an-email' }));
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -105,7 +105,7 @@ describe('/api/leads POST', () => {
 
   it('429 when rate limited by IP within 60s', async () => {
     rateLimited = true;
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const res = await POST(
       makeReq({ email: 'user@example.com' }, { 'x-forwarded-for': '1.2.3.4' }),
     );
@@ -115,7 +115,7 @@ describe('/api/leads POST', () => {
   });
 
   it('400 when patient consent missing', async () => {
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const res = await POST(
       makeReq({ email: 'patient@example.com', type: 'patient' }),
     );
@@ -125,7 +125,7 @@ describe('/api/leads POST', () => {
   });
 
   it('200 on success and filters specializations to allowed set', async () => {
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const res = await POST(
       makeReq({
         email: 'ok@example.com',
@@ -145,7 +145,7 @@ describe('/api/leads POST', () => {
   });
 
   it("therapist leads default to status 'pending_verification'", async () => {
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const res = await POST(
       makeReq({
         email: 'therapist@example.com',
@@ -159,7 +159,7 @@ describe('/api/leads POST', () => {
   });
 
   it("patient leads default to status 'new'", async () => {
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const res = await POST(
       makeReq({
         email: 'patient-status@example.com',
@@ -174,7 +174,7 @@ describe('/api/leads POST', () => {
   });
 
   it('sends patient confirmation email on patient lead success', async () => {
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const res = await POST(
       makeReq({
         email: 'patient@example.com',
@@ -212,7 +212,7 @@ describe('/api/leads POST', () => {
   });
 
   it('handles missing optional fields gracefully and still sends confirmation', async () => {
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const res = await POST(
       makeReq({
         email: 'patient2@example.com',
@@ -243,7 +243,7 @@ describe('/api/leads POST', () => {
       throw new Error('send failed');
     });
 
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const res = await POST(
       makeReq({
         email: 'patient3@example.com',
@@ -258,7 +258,7 @@ describe('/api/leads POST', () => {
   });
 
   it('stores consent metadata for patient leads', async () => {
-    const { POST } = await import('@/app/api/leads/route');
+    const { POST } = await import('@/app/api/public/leads/route');
     const res = await POST(
       makeReq(
         {

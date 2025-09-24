@@ -80,10 +80,10 @@ beforeEach(() => {
   storageCalls = [];
 });
 
-describe('/admin/api/therapists/:id profile admin endpoints', () => {
+describe('/api/admin/therapists/:id profile admin endpoints', () => {
   it('GET returns profile with signed photo URL and approach text', async () => {
-    const { GET } = await import('@/app/admin/api/therapists/[id]/route');
-    const res = await GET(makeReq('http://localhost/admin/api/therapists/tid-1', 'GET'), { params: Promise.resolve({ id: 'tid-1' }) });
+    const { GET } = await import('@/app/api/admin/therapists/[id]/route');
+    const res = await GET(makeReq('http://localhost/api/admin/therapists/tid-1', 'GET'), { params: Promise.resolve({ id: 'tid-1' }) });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data.profile.photo_pending_url).toContain('https://signed.example/applications/tid-1/profile-photo-123.jpg');
@@ -91,9 +91,9 @@ describe('/admin/api/therapists/:id profile admin endpoints', () => {
   });
 
   it('PATCH approve_profile moves photo, sets public URL and clears pending path', async () => {
-    const { PATCH } = await import('@/app/admin/api/therapists/[id]/route');
+    const { PATCH } = await import('@/app/api/admin/therapists/[id]/route');
     const res = await PATCH(
-      makeReq('http://localhost/admin/api/therapists/tid-1', 'PATCH', { approve_profile: true }),
+      makeReq('http://localhost/api/admin/therapists/tid-1', 'PATCH', { approve_profile: true }),
       { params: Promise.resolve({ id: 'tid-1' }) },
     );
     expect(res.status).toBe(200);

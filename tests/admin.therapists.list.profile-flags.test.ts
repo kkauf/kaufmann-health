@@ -76,10 +76,10 @@ beforeEach(() => {
   ];
 });
 
-describe('GET /admin/api/therapists list includes profile flags', () => {
+describe('GET /api/admin/therapists list includes profile flags', () => {
   it('returns derived profile booleans for each therapist', async () => {
-    const { GET } = await import('@/app/admin/api/therapists/route');
-    const res = await GET(makeReq('http://localhost/admin/api/therapists?status=pending_verification'));
+    const { GET } = await import('@/app/api/admin/therapists/route');
+    const res = await GET(makeReq('http://localhost/api/admin/therapists?status=pending_verification'));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(Array.isArray(json.data)).toBe(true);

@@ -4,12 +4,12 @@ This document describes how to schedule server-side reminders for therapists who
 
 ## Endpoints
 
-- `POST /admin/api/therapists/reminders`
+- `POST /api/admin/therapists/reminders`
   - Auth: Admin cookie OR Cron secret (`x-cron-secret` header or `?token=...` query string) matching `CRON_SECRET`.
   - Body: `{ limit?: number }` (stage is ignored; stage is derived automatically server‑side)
   - Returns: `{ data: { processed, sent, skipped_no_missing, skipped_cooldown, skipped_capped, examples }, error }`
 
-- `POST /admin/api/therapists/:id/reminder`
+- `POST /api/admin/therapists/:id/reminder`
   - Manual reminder for one therapist (admin cookie required).
 
 ## Why
@@ -34,7 +34,7 @@ Recommended: configure schedules in `vercel.json`.
 ```json
 {
   "crons": [
-    { "path": "/admin/api/therapists/reminders?limit=200", "schedule": "15 9 * * *" }
+    { "path": "/api/admin/therapists/reminders?limit=200", "schedule": "15 9 * * *" }
   ]
 }
 ```
@@ -68,7 +68,7 @@ You can trigger a batch locally (useful for testing):
 npm run reminders:run -- --stage="Erinnerung" --limit=50
 ```
 
-This calls `POST /admin/api/therapists/reminders` with the secret header and prints the server response.
+This calls `POST /api/admin/therapists/reminders` with the secret header and prints the server response.
 
 ## Observability
 

@@ -101,7 +101,7 @@ vi.mock('@/lib/supabase-server', () => {
 });
 
 function makePost(body: any, headers?: Record<string, string>) {
-  return new Request('http://localhost/admin/api/matches', {
+  return new Request('http://localhost/api/admin/matches', {
     method: 'POST',
     headers: { 'content-type': 'application/json', cookie: 'kh_admin=token', ...(headers || {}) },
     body: JSON.stringify(body),
@@ -117,9 +117,9 @@ beforeEach(() => {
   sentEmails = [];
 });
 
-describe('/admin/api/matches POST outreach', () => {
+describe('/api/admin/matches POST outreach', () => {
   it('enqueues outreach email when secure_uuid and therapist email exist', async () => {
-    const { POST } = await import('@/app/admin/api/matches/route');
+    const { POST } = await import('@/app/api/admin/matches/route');
     const res = await POST(
       makePost({ patient_id: 'p-1', therapist_id: 't-1', notes: 'hi' })
     );
@@ -139,7 +139,7 @@ describe('/admin/api/matches POST outreach', () => {
 
   it('skips outreach when secure_uuid is missing', async () => {
     secureUUID = null; // simulate pre-migration or missing
-    const { POST } = await import('@/app/admin/api/matches/route');
+    const { POST } = await import('@/app/api/admin/matches/route');
     const res = await POST(
       makePost({ patient_id: 'p-1', therapist_id: 't-1' })
     );

@@ -32,7 +32,7 @@ async function main() {
   const stage = args['stage'];
   const limit = Number(args['limit'] || 100);
 
-  const url = `${BASE_URL.replace(/\/$/, '')}/admin/api/therapists/reminders`;
+  const url = `${BASE_URL.replace(/\/$/, '')}/api/admin/therapists/reminders`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {

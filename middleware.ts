@@ -15,10 +15,10 @@ export async function middleware(req: NextRequest) {
   if (!pathname.startsWith('/admin')) {
     return NextResponse.next();
   }
-  // Bypass middleware for API routes under /admin. These endpoints enforce their own auth
+  // Bypass middleware for API routes under /api/admin. These endpoints enforce their own auth
   // (admin session cookie OR cron secret headers). This allows Vercel Cron to hit
-  // endpoints like /admin/api/therapists/reminders without being redirected.
-  if (pathname.startsWith('/admin/api')) {
+  // endpoints like /api/admin/therapists/reminders without being redirected.
+  if (pathname.startsWith('/api/admin')) {
     return NextResponse.next();
   }
   if (pathname === '/admin/login' || pathname.startsWith('/admin/login/')) {
