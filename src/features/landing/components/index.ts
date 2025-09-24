@@ -1,0 +1,9 @@
+export { LandingHero } from './LandingHero';
+export { ModalityLogoStrip } from './ModalityLogoStrip';
+export { TherapistTeaserSection } from './TherapistTeaserSection';
+export { PrivacySelfPaySection } from './PrivacySelfPaySection';
+export { ProcessSteps } from './ProcessSteps';
+export { RecognitionSection } from './RecognitionSection';
+export { MethodComparison } from './MethodComparison';
+export { InvestmentSection } from './InvestmentSection';
+export { FinalCtaSection } from './FinalCtaSection';

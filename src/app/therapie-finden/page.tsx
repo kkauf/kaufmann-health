@@ -1,10 +1,11 @@
-import Image from 'next/image';
-import { EmailEntryForm } from '@/components/EmailEntryForm';
-import FaqAccordion from '@/components/FaqAccordion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity, Euro, Clock, MessageCircle, UserCheck, PhoneCall, ShieldCheck, Lock } from 'lucide-react';
+import { Activity, Euro, Clock, UserCheck, ShieldCheck, Lock } from 'lucide-react';
 import { COOKIES_ENABLED } from '@/lib/config';
+import { LandingHero } from '@/features/landing/components/LandingHero';
+import { PrivacySelfPaySection } from '@/features/landing/components/PrivacySelfPaySection';
 import type { Metadata } from 'next';
+import { Button } from '@/components/ui/button';
+import CtaLink from '@/components/CtaLink';
 
 export const revalidate = 3600;
 
@@ -35,117 +36,22 @@ export const metadata: Metadata = {
 export default function TherapieFindenPage() {
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
-      <section aria-labelledby="hero" className="relative overflow-hidden rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-6 sm:p-8">
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_120%_10%,rgba(99,102,241,0.08),transparent_60%),radial-gradient(30rem_16rem_at_-20%_80%,rgba(14,165,233,0.08),transparent_60%)]" />
-        <div className="grid gap-8 lg:grid-cols-2">
-          <div>
-            <h1 id="hero" className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              Traumata lösen sich nicht durch Reden allein
-            </h1>
-            <p className="mt-4 max-w-xl text-gray-700">
-              Finde körperorientierte Therapeut:innen in deiner Nähe. Persönlich kuratierte Empfehlungen für Selbstzahler. Termine innerhalb einer Woche.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-700" aria-label="Vertrauen">
-              <span className="inline-flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                Geprüfte Profile
-              </span>
-              {!COOKIES_ENABLED && (
-                <span className="inline-flex items-center gap-2">
-                  <Lock className="h-4 w-4 text-slate-700" />
-                  Keine Tracking‑Cookies
-                </span>
-              )}
-              <span className="inline-flex items-center gap-2">
-                <UserCheck className="h-4 w-4 text-indigo-600" />
-                Transparente Datenverarbeitung
-              </span>
-            </div>
-
-          <div className="mt-6 grid grid-cols-2 items-center gap-6 sm:grid-cols-4">
-            <Image
-              src="/logos/Modalities/NARM.png"
-              alt="NARM"
-              width={240}
-              height={80}
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 240px"
-              className="h-20 w-auto object-contain opacity-80"
-            />
-            <Image
-              src="/logos/Modalities/Hakomi.png"
-              alt="Hakomi"
-              width={240}
-              height={80}
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 240px"
-              className="h-20 w-auto object-contain opacity-80"
-            />
-            <Image
-              src="/logos/Modalities/Somatic-Experiencing.png"
-              alt="Somatic Experiencing"
-              width={240}
-              height={80}
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 240px"
-              className="h-20 w-auto object-contain opacity-80"
-            />
-            <Image
-              src="/logos/Modalities/Core-Energetics.png"
-              alt="Core Energetics"
-              width={240}
-              height={80}
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 240px"
-              className="h-20 w-auto object-contain opacity-80"
-            />
-          </div>
-        </div>
-
-        <div className="lg:pl-6" id="top-form">
-          <EmailEntryForm />
-        </div>
-        </div>
-      </section>
+      <LandingHero
+        title="Traumata lösen sich nicht durch Reden allein"
+        subtitle={
+          <>Finde körperorientierte Therapeut:innen in deiner Nähe. Persönlich kuratierte Empfehlungen für Selbstzahler. Termine innerhalb einer Woche.</>
+        }
+        showModalityLogos
+        ctaPill={
+          <Button size="lg" variant="outline" asChild data-cta="hero-secondary">
+            <CtaLink href="#top-form" eventType="cta_click">80–120€ pro Sitzung</CtaLink>
+          </Button>
+        }
+        analyticsQualifier="LP-Therapie-Finden"
+      />
 
       {/* EARTH-143: Discreet self-pay therapy (no insurance record) */}
-      <section aria-labelledby="no-insurance" className="mt-12 sm:mt-16">
-        <div className="rounded-2xl border bg-white p-6 sm:p-8">
-          <h2 id="no-insurance" className="text-2xl font-semibold">Diskrete Therapie ohne Krankenkasseneintrag</h2>
-          <p className="mt-2 max-w-3xl text-gray-700">Deine mentale Gesundheit, deine Privatsphäre.</p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            <Card className="transition-all duration-200">
-              <CardHeader className="flex items-center gap-3">
-                <div className="rounded-xl bg-slate-100 p-2 text-slate-700">
-                  <Lock className="h-5 w-5" />
-                </div>
-                <CardTitle className="font-medium">Komplette Privatsphäre</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>Keine S‑Nummer, kein Eintrag bei der Krankenkasse, keine ICD‑10‑Diagnose in deiner Kassenakte.</CardDescription>
-              </CardContent>
-            </Card>
-            <Card className="transition-all duration-200">
-              <CardHeader className="flex items-center gap-3">
-                <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <CardTitle className="font-medium">Karrierefreundlich</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>Relevanz für Verbeamtung sowie Lebens‑/Berufsunfähigkeitsversicherung. Beliebt bei Pilot:innen, Polizei, Führungskräften.</CardDescription>
-              </CardContent>
-            </Card>
-            <Card className="transition-all duration-200">
-              <CardHeader className="flex items-center gap-3">
-                <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
-                  <Clock className="h-5 w-5" />
-                </div>
-                <CardTitle className="font-medium">Sofort starten</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>Keine 3–9 Monate Wartezeit, kein Gutachterverfahren – direkte Terminvereinbarung.</CardDescription>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
+      <PrivacySelfPaySection />
 
       {/* Trust Indicators */}
       <section aria-labelledby="trust" className="mt-12 sm:mt-16">

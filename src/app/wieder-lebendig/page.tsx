@@ -7,13 +7,14 @@ import WhatToExpectSection from "@/components/WhatToExpectSection";
 import RevealContainer from "@/components/RevealContainer";
 import FaqAccordion from "@/components/FaqAccordion";
 import WiederLebendigHero from "./Hero";
-import TherapistPreview from "@/components/TherapistPreview";
-import { supabaseServer } from "@/lib/supabase-server";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import ExitIntentModal from "@/components/ExitIntentModal";
 import { Activity, Euro, Clock, UserCheck, MessageCircle, PhoneCall } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import VariantGate from "@/components/VariantGate";
+import { TherapistTeaserSection } from "@/features/landing/components/TherapistTeaserSection";
+import { PrivacySelfPaySection } from "@/features/landing/components/PrivacySelfPaySection";
+import { ProcessSteps } from "@/features/landing/components/ProcessSteps";
 
 export const revalidate = 3600;
 
@@ -56,17 +57,6 @@ export const metadata = async ({ searchParams }: { searchParams?: { [key: string
   };
 };
 
-type TherapistRow = {
-  id: string;
-  first_name?: string | null;
-  last_name?: string | null;
-  city?: string | null;
-  modalities?: unknown;
-  accepting_new?: boolean | null;
-  photo_url?: string | null;
-  metadata?: unknown;
-};
-
 export default async function WiederLebendigPage() {
   // Fetch real therapists for trust section (random 3 from provided 5 ids)
   const TRUST_IDS = [
@@ -77,36 +67,6 @@ export default async function WiederLebendigPage() {
     '84c187fb-a981-442b-8a42-422093a3196b',
   ];
   const selected = [...TRUST_IDS].sort(() => 0.5 - Math.random()).slice(0, 3);
-  const { data: trustRows } = await supabaseServer
-    .from('therapists')
-    .select('id, first_name, last_name, city, modalities, accepting_new, photo_url, metadata')
-    .in('id', selected);
-  type TrustRow = {
-    id: string;
-    first_name: string | null;
-    last_name: string | null;
-    city: string | null;
-    modalities: string[] | null;
-    accepting_new: boolean | null;
-    photo_url: string | null;
-    metadata?: Record<string, unknown> | null;
-  };
-  const trustTherapists = ((trustRows as TrustRow[] | null) || []).map((r) => {
-    const mdObj: Record<string, unknown> = r?.metadata && typeof r.metadata === 'object' ? (r.metadata as Record<string, unknown>) : {};
-    const profileUnknown = mdObj['profile'];
-    const profile: Record<string, unknown> = profileUnknown && typeof profileUnknown === 'object' ? (profileUnknown as Record<string, unknown>) : {};
-    const approach_text = typeof profile['approach_text'] === 'string' ? (profile['approach_text'] as string) : '';
-    return {
-      id: r.id as string,
-      first_name: String(r.first_name || ''),
-      last_name: String(r.last_name || ''),
-      city: String(r.city || ''),
-      modalities: Array.isArray(r.modalities) ? (r.modalities as string[]) : [],
-      accepting_new: Boolean(r.accepting_new),
-      photo_url: r.photo_url || undefined,
-      approach_text,
-    };
-  });
   const schema = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
@@ -204,15 +164,7 @@ export default async function WiederLebendigPage() {
         <WiederLebendigHero />
 
         {/* Trust section: real therapist previews */}
-        <section aria-labelledby="trust-previews" className="mt-10 sm:mt-14">
-          <h2 id="trust-previews" className="text-2xl font-semibold tracking-tight">Deine Expert:innen</h2>
-          <p className="mt-2 max-w-2xl text-gray-700">Durchschnittlich 7+ Jahre Erfahrung</p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {trustTherapists.map((t) => (
-              <TherapistPreview key={t.id} therapist={t} />
-            ))}
-          </div>
-        </section>
+        <TherapistTeaserSection ids={selected} title="Deine Expert:innen" subtitle="Durchschnittlich 7+ Jahre Erfahrung" />
 
         {/* Credibility metrics (data-driven proof points) */}
         <section aria-labelledby="metrics-heading" className="mt-10 sm:mt-14">
@@ -307,76 +259,19 @@ export default async function WiederLebendigPage() {
         </SectionViewTracker>
 
         {/* EARTH-143: Privacy benefit section */}
-        <section aria-labelledby="privacy-benefit" className="mt-10 sm:mt-14 rounded-2xl border bg-white p-5 sm:p-6">
-          <VariantGate show="C">
-            <h2 id="privacy-benefit" className="text-2xl font-semibold tracking-tight">Coaching & Begleitung – ohne Krankenkasseneintrag</h2>
-          </VariantGate>
-          <VariantGate show="A">
-            <h2 id="privacy-benefit" className="text-2xl font-semibold tracking-tight">Therapie ohne Krankenkasseneintrag</h2>
-          </VariantGate>
-          <VariantGate show="B">
-            <h2 id="privacy-benefit" className="text-2xl font-semibold tracking-tight">Therapie ohne Krankenkasseneintrag</h2>
-          </VariantGate>
-          <p className="mt-2 max-w-2xl text-gray-700">Deine mentale Gesundheit, deine Privatsphäre.</p>
-          <div className="mt-4">
-            <CheckList
-              items={[
-                "Keine S‑Nummer: kein Eintrag bei der Krankenkasse, keine ICD‑10‑Diagnose in der Kassenakte",
-                "Karrierefreundlich: relevant für Verbeamtung sowie Lebens‑/Berufsunfähigkeitsversicherung",
-                "Sofort starten: keine 3–9 Monate Wartezeit, kein Gutachterverfahren",
-              ]}
-            />
-          </div>
-        </section>
+        <PrivacySelfPaySection />
 
         {/* What to Expect */}
         <WhatToExpectSection />
 
         {/* Process flow */}
-        <section aria-labelledby="process-heading" className="mt-10 sm:mt-14">
-          <h2 id="process-heading" className="text-2xl font-semibold tracking-tight">So funktioniert&#39;s</h2>
-          <div className="mt-6 grid gap-6 sm:grid-cols-3">
-            <Card className="group relative overflow-hidden transition-all duration-200">
-              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600">
-                    <MessageCircle className="h-5 w-5" />
-                  </div>
-                  <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">1</div>
-                </div>
-                <CardTitle className="mt-2 text-lg">Du schilderst uns deine Situation</CardTitle>
-                <p className="text-sm text-slate-600">Schreib uns kurz, worum es geht und was dir wichtig ist.</p>
-              </CardHeader>
-            </Card>
-            <Card className="group relative overflow-hidden transition-all duration-200">
-              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-sky-50 p-2 text-sky-600">
-                    <UserCheck className="h-5 w-5" />
-                  </div>
-                  <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">2</div>
-                </div>
-                <CardTitle className="mt-2 text-lg">Wir wählen passende Therapeut:innen aus</CardTitle>
-                <p className="text-sm text-slate-600">Aus unserer kuratierten Liste – passend zu deinem Anliegen und deiner Stadt.</p>
-              </CardHeader>
-            </Card>
-            <Card className="group relative overflow-hidden transition-all duration-200">
-              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
-                    <PhoneCall className="h-5 w-5" />
-                  </div>
-                  <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">3</div>
-                </div>
-                <CardTitle className="mt-2 text-lg">Direkter Kontakt</CardTitle>
-                <p className="text-sm text-slate-600">Du erhältst direkte Kontaktdaten und kannst sofort einen Termin vereinbaren.</p>
-              </CardHeader>
-            </Card>
-          </div>
-        </section>
+        <ProcessSteps
+          items={[
+            { icon: <MessageCircle className="h-5 w-5" />, step: 1, title: "Du schilderst uns deine Situation", description: "Schreib uns kurz, worum es geht und was dir wichtig ist." },
+            { icon: <UserCheck className="h-5 w-5" />, step: 2, title: "Wir wählen passende Therapeut:innen aus", description: "Aus unserer kuratierten Liste – passend zu deinem Anliegen und deiner Stadt." },
+            { icon: <PhoneCall className="h-5 w-5" />, step: 3, title: "Direkter Kontakt", description: "Du erhältst direkte Kontaktdaten und kannst sofort einen Termin vereinbaren." },
+          ]}
+        />
 
         {/* Investment & Pricing */}
         <SectionViewTracker location="pricing">

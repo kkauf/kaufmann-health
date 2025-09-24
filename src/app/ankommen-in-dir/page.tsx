@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import SectionViewTracker from "@/components/SectionViewTracker";
 import WhatToExpectSection from "@/components/WhatToExpectSection";
 import FaqAccordion from "@/components/FaqAccordion";
-import AnkommenHero from "./Hero";
-import TherapistPreview from "@/components/TherapistPreview";
-import { supabaseServer } from "@/lib/supabase-server";
+import { LandingHero } from "@/features/landing/components/LandingHero";
+import { TherapistTeaserSection } from "@/features/landing/components/TherapistTeaserSection";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import ExitIntentModal from "@/components/ExitIntentModal";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
@@ -15,6 +14,8 @@ import CheckList from "@/components/CheckList";
 import { MessageCircle, UserCheck, PhoneCall, ShieldCheck, Lock } from "lucide-react";
 import VariantGate from "@/components/VariantGate";
 import { COOKIES_ENABLED } from "@/lib/config";
+import { PrivacySelfPaySection } from "@/features/landing/components/PrivacySelfPaySection";
+import { ProcessSteps } from "@/features/landing/components/ProcessSteps";
 
 export const revalidate = 3600;
 
@@ -47,7 +48,7 @@ export const metadata = async ({ searchParams }: { searchParams?: { [key: string
 };
 
 export default async function AnkommenInDirPage() {
-  // Fetch therapists (placeholder: sample list; later filter by online capability)
+  // Curated therapist IDs for trust section (online focus)
   const TRUST_IDS = [
     '7402bb04-c8d8-403e-a8d7-6bc32289c87b',
     '58d98a45-21ab-40ea-99b3-f65ba27f6715',
@@ -56,38 +57,6 @@ export default async function AnkommenInDirPage() {
     '84c187fb-a981-442b-8a42-422093a3196b',
   ];
   const selected = [...TRUST_IDS].sort(() => 0.5 - Math.random()).slice(0, 3);
-  const { data: rows } = await supabaseServer
-    .from('therapists')
-    .select('id, first_name, last_name, city, modalities, accepting_new, photo_url, metadata')
-    .in('id', selected);
-
-  type Row = {
-    id: string;
-    first_name: string | null;
-    last_name: string | null;
-    city: string | null;
-    modalities: string[] | null;
-    accepting_new: boolean | null;
-    photo_url: string | null;
-    metadata?: Record<string, unknown> | null;
-  };
-
-  const therapists = ((rows as Row[] | null) || []).map((r) => {
-    const mdObj: Record<string, unknown> = r?.metadata && typeof r.metadata === 'object' ? (r.metadata as Record<string, unknown>) : {};
-    const profileUnknown = mdObj['profile'];
-    const profile: Record<string, unknown> = profileUnknown && typeof profileUnknown === 'object' ? (profileUnknown as Record<string, unknown>) : {};
-    const approach_text = typeof profile['approach_text'] === 'string' ? (profile['approach_text'] as string) : '';
-    return {
-      id: r.id as string,
-      first_name: String(r.first_name || ''),
-      last_name: String(r.last_name || ''),
-      city: String(r.city || ''),
-      modalities: Array.isArray(r.modalities) ? (r.modalities as string[]) : [],
-      accepting_new: Boolean(r.accepting_new),
-      photo_url: r.photo_url || undefined,
-      approach_text,
-    };
-  });
 
   const faqs = [
     {
@@ -152,20 +121,44 @@ export default async function AnkommenInDirPage() {
     <div className="min-h-screen bg-white">
       <main className="mx-auto max-w-7xl px-4 py-10 sm:py-14">
         <SectionViewTracker location="hero">
-          <AnkommenHero />
+          <LandingHero
+            title="Ankommen in dir – Online"
+            subtitle={
+              <>
+                <VariantGate show="C">
+                  <span>Körperorientiertes Coaching & Begleitung – persönlich kuratiert und online verfügbar. 80–120€ pro Sitzung.</span>
+                </VariantGate>
+                <VariantGate show="A">
+                  <span>Körperorientierte Therapie online – persönlich kuratiert. NARM, Somatic Experiencing, Hakomi, Core Energetics. 80–120€ pro Sitzung.</span>
+                </VariantGate>
+                <VariantGate show="B">
+                  <span>Körperorientierte Therapie online – persönlich kuratiert. NARM, Somatic Experiencing, Hakomi, Core Energetics. 80–120€ pro Sitzung.</span>
+                </VariantGate>
+              </>
+            }
+            showModalityLogos
+            defaultSessionPreference="online"
+            ctaPill={
+              <>
+                <Button size="lg" asChild data-cta="hero-primary" className="bg-black text-white hover:bg-black/90">
+                  <CtaLink href="#top-form" eventType="cta_click" aria-label="Passende Therapeut:innen finden">
+                    Passende Therapeut:innen finden
+                  </CtaLink>
+                </Button>
+                <Button size="lg" variant="outline" asChild data-cta="hero-secondary">
+                  <CtaLink href="#pricing" eventType="cta_click" aria-label="Preise anzeigen">
+                    80–120€ pro Sitzung
+                  </CtaLink>
+                </Button>
+              </>
+            }
+            analyticsQualifier="LP-Ankommen"
+          />
         </SectionViewTracker>
 
         {/* Therapist previews (online focus) */}
         <SectionViewTracker location="therapist-previews">
-        <section aria-labelledby="trust-previews" className="mt-10 sm:mt-14">
-          <h2 id="trust-previews" className="text-2xl font-semibold tracking-tight">Deine Begleiter:innen</h2>
-          <p className="mt-2 max-w-2xl text-gray-700">Persönlich ausgewählt. Online verfügbar. Durchschnittlich 7+ Jahre Erfahrung. Termine innerhalb von 7 Tagen.</p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {therapists.map((t) => (
-              <TherapistPreview key={t.id} therapist={t} />
-            ))}
-          </div>
-        </section>
+          <TherapistTeaserSection ids={selected} title="Deine Begleiter:innen" subtitle="Persönlich ausgewählt. Online verfügbar. Durchschnittlich 7+ Jahre Erfahrung." />
         </SectionViewTracker>
 
         {/* Recognition tailored to wellness seekers */}
@@ -205,71 +198,17 @@ export default async function AnkommenInDirPage() {
         </SectionViewTracker>
 
         {/* EARTH-143: Privacy benefit section */}
-        <section aria-labelledby="privacy-benefit" className="mt-10 sm:mt-14 rounded-2xl border bg-white p-5 sm:p-6">
-          <VariantGate show="C">
-            <h2 id="privacy-benefit" className="text-2xl font-semibold tracking-tight">Coaching & Begleitung – ohne Krankenkasseneintrag</h2>
-          </VariantGate>
-          <VariantGate show="A">
-            <h2 id="privacy-benefit" className="text-2xl font-semibold tracking-tight">Therapie ohne Krankenkasseneintrag</h2>
-          </VariantGate>
-          <VariantGate show="B">
-            <h2 id="privacy-benefit" className="text-2xl font-semibold tracking-tight">Therapie ohne Krankenkasseneintrag</h2>
-          </VariantGate>
-          <p className="mt-2 max-w-2xl text-gray-700">Deine mentale Gesundheit, deine Privatsphäre.</p>
-          <div className="mt-4">
-            <CheckList
-              items={[
-                "Keine S‑Nummer: kein Eintrag bei der Krankenkasse, keine ICD‑10‑Diagnose in der Kassenakte",
-                "Karrierefreundlich: relevant für Verbeamtung sowie Lebens‑/Berufsunfähigkeitsversicherung",
-                "Sofort starten: keine 3–9 Monate Wartezeit, kein Gutachterverfahren",
-              ]}
-            />
-          </div>
-        </section>
+        <PrivacySelfPaySection />
 
         {/* Process flow */}
         <SectionViewTracker location="process">
-        <section aria-labelledby="process-heading" id="process" className="mt-10 sm:mt-14">
-          <h2 id="process-heading" className="text-2xl font-semibold tracking-tight">So funktioniert&#39;s</h2>
-          <div className="mt-6 grid gap-6 sm:grid-cols-3">
-            <Card className="group relative overflow-hidden transition-all duration-200">
-              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600">
-                    <MessageCircle className="h-5 w-5" />
-                  </div>
-                  <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">1</div>
-                </div>
-                <CardTitle className="mt-2 text-lg">Du schilderst deinen Weg</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card className="group relative overflow-hidden transition-all duration-200">
-              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-sky-50 p-2 text-sky-600">
-                    <UserCheck className="h-5 w-5" />
-                  </div>
-                  <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">2</div>
-                </div>
-                <CardTitle className="mt-2 text-lg">Wir kuratieren passend zu deinem Fokus</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card className="group relative overflow-hidden transition-all duration-200">
-              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
-                    <PhoneCall className="h-5 w-5" />
-                  </div>
-                  <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">3</div>
-                </div>
-                <CardTitle className="mt-2 text-lg">Direkter Kontakt & erste Online-Session</CardTitle>
-              </CardHeader>
-            </Card>
-          </div>
-        </section>
+          <ProcessSteps
+            items={[
+              { icon: <MessageCircle className="h-5 w-5" />, step: 1, title: "Du schilderst deinen Weg" },
+              { icon: <UserCheck className="h-5 w-5" />, step: 2, title: "Wir kuratieren passend zu deinem Fokus" },
+              { icon: <PhoneCall className="h-5 w-5" />, step: 3, title: "Direkter Kontakt & erste Online-Session" },
+            ]}
+          />
         </SectionViewTracker>
 
         {/* Datenschutz & Vertrauen */}
