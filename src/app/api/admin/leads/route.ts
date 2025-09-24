@@ -38,7 +38,7 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const city = url.searchParams.get('city')?.trim() || undefined;
     const sessionPref = url.searchParams.get('session_preference') as 'online' | 'in_person' | null;
-    const status = url.searchParams.get('status') || 'new';
+    const statusParam = (url.searchParams.get('status') || 'new').trim();
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 200);
 
     let query = supabaseServer
@@ -48,13 +48,17 @@ export async function GET(req: Request) {
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (status) query = query.eq('status', status);
-    if (city) query = query.ilike('metadata->>city', `%${city}%`);
+    if (statusParam && statusParam !== 'all') query = query.eq('status', statusParam);
+    if (city) {
+      // Case-insensitive partial match on city from JSON metadata
+      query = query.ilike('metadata->>city', `%${city}%`);
+    }
     // Session preference filter: support legacy single field and new array field.
+    // We fetch first (bounded by limit) and filter in code to support OR logic across fields.
 
     const { data, error } = await query;
     if (error) {
-      await logError('api.admin.leads', error, { stage: 'fetch' });
+      await logError('admin.api.leads', error, { stage: 'fetch' });
       return NextResponse.json({ data: null, error: 'Failed to fetch leads' }, { status: 500 });
     }
     let result = (data || []) as Array<{ metadata?: unknown }>;
@@ -67,7 +71,7 @@ export async function GET(req: Request) {
     }
     return NextResponse.json({ data: result, error: null });
   } catch (e) {
-    await logError('api.admin.leads', e, { stage: 'exception' });
+    await logError('admin.api.leads', e, { stage: 'exception' });
     return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });
   }
 }

@@ -25,26 +25,26 @@ function makePost(url: string, body?: any, headers?: Record<string, string>) {
 }
 
 describe('Admin API unauthorized', () => {
-  it('GET /admin/api/leads returns 401 without admin cookie', async () => {
-    const { GET } = await import('@/app/admin/api/leads/route');
-    const res = await GET(makeGet('http://localhost/admin/api/leads'));
+  it('GET /api/admin/leads returns 401 without admin cookie', async () => {
+    const { GET } = await import('@/app/api/admin/leads/route');
+    const res = await GET(makeGet('http://localhost/api/admin/leads'));
     expect(res.status).toBe(401);
     const json = await res.json();
     expect(json).toEqual({ data: null, error: 'Unauthorized' });
   });
 
-  it('GET /admin/api/therapists returns 401 without admin cookie', async () => {
-    const { GET } = await import('@/app/admin/api/therapists/route');
-    const res = await GET(makeGet('http://localhost/admin/api/therapists'));
+  it('GET /api/admin/therapists returns 401 without admin cookie', async () => {
+    const { GET } = await import('@/app/api/admin/therapists/route');
+    const res = await GET(makeGet('http://localhost/api/admin/therapists'));
     expect(res.status).toBe(401);
     const json = await res.json();
     expect(json).toEqual({ data: null, error: 'Unauthorized' });
   });
 
-  it('POST /admin/api/matches returns 401 without admin cookie', async () => {
-    const { POST } = await import('@/app/admin/api/matches/route');
+  it('POST /api/admin/matches returns 401 without admin cookie', async () => {
+    const { POST } = await import('@/app/api/admin/matches/route');
     const res = await POST(
-      makePost('http://localhost/admin/api/matches', {
+      makePost('http://localhost/api/admin/matches', {
         patient_id: '00000000-0000-0000-0000-000000000000',
         therapist_id: '11111111-1111-1111-1111-111111111111',
       }),
@@ -54,17 +54,17 @@ describe('Admin API unauthorized', () => {
     expect(json).toEqual({ data: null, error: 'Unauthorized' });
   });
 
-  it('GET /admin/api/errors returns 401 without admin cookie', async () => {
-    const { GET } = await import('@/app/admin/api/errors/route');
-    const res = await GET(makeGet('http://localhost/admin/api/errors'));
+  it('GET /api/admin/errors returns 401 without admin cookie', async () => {
+    const { GET } = await import('@/app/api/admin/errors/route');
+    const res = await GET(makeGet('http://localhost/api/admin/errors'));
     expect(res.status).toBe(401);
     const json = await res.json();
     expect(json).toEqual({ data: null, error: 'Unauthorized' });
   });
 
-  it('GET /admin/api/stats returns 401 without admin cookie', async () => {
-    const { GET } = await import('@/app/admin/api/stats/route');
-    const res = await GET(makeGet('http://localhost/admin/api/stats'));
+  it('GET /api/admin/stats returns 401 without admin cookie', async () => {
+    const { GET } = await import('@/app/api/admin/stats/route');
+    const res = await GET(makeGet('http://localhost/api/admin/stats'));
     expect(res.status).toBe(401);
     const json = await res.json();
     expect(json).toEqual({ data: null, error: 'Unauthorized' });

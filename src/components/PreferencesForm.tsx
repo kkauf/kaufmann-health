@@ -16,7 +16,7 @@ const PRIVACY_VERSION = '2025-09-01.v2';
 function fireGoogleAdsClientConversion(leadId?: string) {
   try {
     const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
-    const label = process.env.NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL || process.env.NEXT_PUBLIC_GAD_CONV_CLIENT;
+    const label = process.env.NEXT_PUBLIC_GAD_CONV_CLIENT;
     if (!adsId || !label) return; // not configured
     if (typeof window === 'undefined') return;
 

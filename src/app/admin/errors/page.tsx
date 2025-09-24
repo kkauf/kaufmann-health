@@ -65,7 +65,7 @@ export default function AdminErrorsPage() {
     setLoading(true);
     setError(null);
     try {
-      const url = new URL('/admin/api/errors', window.location.origin);
+      const url = new URL('/api/admin/errors', window.location.origin);
       url.searchParams.set('since_hours', String(sinceHours));
       if (source) url.searchParams.set('source', source);
       if (etype) url.searchParams.set('type', etype);

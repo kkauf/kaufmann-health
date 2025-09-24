@@ -18,6 +18,41 @@ import { COOKIES_ENABLED } from '@/lib/config';
 // Re-export for tests to assert version consistency
 export const THERAPIST_TERMS_VERSION = TERMS_VERSION;
 
+function fireGoogleAdsTherapistConversion(leadId?: string) {
+  try {
+    const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
+    const label = process.env.NEXT_PUBLIC_GAD_CONV_THERAPIST;
+    if (!adsId || !label) return;
+    if (typeof window === 'undefined') return;
+
+    const dedupeKey = leadId ? `ga_conv_therapist_registration${leadId}` : 'ga_conv_therapist_registration';
+    try {
+      if (window.sessionStorage.getItem(dedupeKey) === '1') return;
+      if (window.localStorage.getItem(dedupeKey) === '1') return;
+    } catch {}
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = (window as any).gtag as ((...args: any[]) => void) | undefined;
+    const sendTo = `${adsId}/${label}`;
+    const payload: Record<string, unknown> = { send_to: sendTo, value: 25, currency: 'EUR' };
+    if (leadId) payload.transaction_id = leadId;
+
+    if (typeof g === 'function') {
+      g('event', 'conversion', payload);
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const w = window as any;
+      w.dataLayer = w.dataLayer || [];
+      w.dataLayer.push(['event', 'conversion', payload]);
+    }
+
+    try {
+      window.sessionStorage.setItem(dedupeKey, '1');
+      window.localStorage.setItem(dedupeKey, '1');
+    } catch {}
+  } catch {}
+}
+
 export default function TherapistApplicationForm() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -117,6 +152,8 @@ export default function TherapistApplicationForm() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Request failed');
 
+      const leadId = (json?.data?.id as string | undefined) || undefined;
+
       // Lightweight conversion tracking
       try {
         const builtId = buildEventId(
@@ -133,6 +170,9 @@ export default function TherapistApplicationForm() {
           keepalive: true,
         });
       } catch {}
+
+      // Fire Google Ads conversion for therapist registration (client-side)
+      fireGoogleAdsTherapistConversion(leadId);
 
       setSubmitted(true);
       // High-level cookieless analytics

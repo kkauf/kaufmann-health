@@ -1,15 +1,15 @@
 {
   "crons": [
-    { "path": "/admin/api/therapists/reminders?limit=200", "schedule": "15 9 * * *" },
-    { "path": "/admin/api/matches/blocker-survey", "schedule": "0 10 * * *" },
-    { "path": "/admin/api/matches/selection-reminders?stage=24h", "schedule": "0 12 * * *" },
-    { "path": "/admin/api/matches/selection-reminders?stage=48h", "schedule": "0 16 * * *" },
-    { "path": "/admin/api/matches/selection-reminders?stage=72h", "schedule": "0 18 * * *" },
-    { "path": "/admin/api/matches/therapist-action-reminders?stage=20h", "schedule": "0 * * * *" },
-    { "path": "/admin/api/ads/monitor?apply=true&lookback=3&excludeToday=true&minSpendNoConv=30&budgetMultiple=2", "schedule": "0 8 * * *" },
-    { "path": "/admin/api/ads/monitor?apply=true&lookback=3&excludeToday=true&minSpendNoConv=30&budgetMultiple=2", "schedule": "0 14 * * *" },
-    { "path": "/admin/api/ads/monitor?apply=true&lookback=1&excludeToday=false&minSpendNoConv=30&budgetMultiple=2", "schedule": "0 20 * * *" },
-    { "path": "/admin/api/ads/monitor?apply=true&lookback=1&excludeToday=false&minSpendNoConv=30&budgetMultiple=1.5", "schedule": "0 2 * * *" }
+    { "path": "/api/admin/therapists/reminders?limit=200", "schedule": "15 9 * * *" },
+    { "path": "/api/admin/matches/blocker-survey", "schedule": "0 10 * * *" },
+    { "path": "/api/admin/matches/selection-reminders?stage=24h", "schedule": "0 12 * * *" },
+    { "path": "/api/admin/matches/selection-reminders?stage=48h", "schedule": "0 16 * * *" },
+    { "path": "/api/admin/matches/selection-reminders?stage=72h", "schedule": "0 18 * * *" },
+    { "path": "/api/admin/matches/therapist-action-reminders?stage=20h", "schedule": "0 * * * *" },
+    { "path": "/api/admin/ads/monitor?apply=true&lookback=3&excludeToday=true&minSpendNoConv=30&budgetMultiple=2", "schedule": "0 8 * * *" },
+    { "path": "/api/admin/ads/monitor?apply=true&lookback=3&excludeToday=true&minSpendNoConv=30&budgetMultiple=2", "schedule": "0 14 * * *" },
+    { "path": "/api/admin/ads/monitor?apply=true&lookback=1&excludeToday=false&minSpendNoConv=30&budgetMultiple=2", "schedule": "0 20 * * *" },
+    { "path": "/api/admin/ads/monitor?apply=true&lookback=1&excludeToday=false&minSpendNoConv=30&budgetMultiple=1.5", "schedule": "0 2 * * *" }
   ],
   "functions": {
     "app/therapie-finden/page.tsx": {

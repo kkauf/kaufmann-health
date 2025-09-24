@@ -33,7 +33,7 @@ export default function AdminStats() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/admin/api/stats?days=7', { credentials: 'include' });
+      const res = await fetch('/api/admin/stats?days=7', { credentials: 'include' });
       if (!res.ok) throw new Error(`Load failed (${res.status})`);
       const json = await res.json();
       setData((json?.data || null) as StatsData | null);

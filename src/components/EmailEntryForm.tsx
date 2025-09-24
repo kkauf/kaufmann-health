@@ -14,7 +14,7 @@ import { getOrCreateSessionId } from '@/lib/attribution';
 function fireGoogleAdsClientConversion(leadId?: string) {
   try {
     const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
-    const label = process.env.NEXT_PUBLIC_GOOGLE_CONVERSION_LABEL || process.env.NEXT_PUBLIC_GAD_CONV_CLIENT;
+    const label = process.env.NEXT_PUBLIC_GAD_CONV_CLIENT;
     if (!adsId || !label) return;
     if (typeof window === 'undefined') return;
 

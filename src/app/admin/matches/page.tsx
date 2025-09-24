@@ -77,7 +77,7 @@ export default function AdminMatchesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/admin/api/matches', { method: 'GET', cache: 'no-store' });
+      const res = await fetch('/api/admin/matches', { method: 'GET', cache: 'no-store' });
       if (!res.ok) throw new Error(`Load failed (${res.status})`);
       const json = await res.json();
       setRows(json.data as MatchRow[]);
@@ -105,7 +105,7 @@ export default function AdminMatchesPage() {
     if (!emailTarget) return;
     setEmailSending(true);
     try {
-      const res = await fetch('/admin/api/matches/email', {
+      const res = await fetch('/api/admin/matches/email', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ id: emailTarget.id, template: emailTemplate, message: emailMessage }),
@@ -167,7 +167,7 @@ export default function AdminMatchesPage() {
 
   const updateStatus = useCallback(async (id: string, status: string) => {
     try {
-      const res = await fetch('/admin/api/matches', {
+      const res = await fetch('/api/admin/matches', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ id, status }),
@@ -184,7 +184,7 @@ export default function AdminMatchesPage() {
 
   const updateNotes = useCallback(async (id: string, notes: string) => {
     try {
-      const res = await fetch('/admin/api/matches', {
+      const res = await fetch('/api/admin/matches', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ id, notes }),

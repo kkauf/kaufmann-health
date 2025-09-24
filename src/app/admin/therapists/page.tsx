@@ -147,7 +147,7 @@ export default function AdminTherapistsPage() {
     setLoading(true);
     setError(null);
     try {
-      const url = new URL("/admin/api/therapists", window.location.origin);
+      const url = new URL("/api/admin/therapists", window.location.origin);
       if (status) url.searchParams.set("status", status);
       if (city.trim()) url.searchParams.set("city", city.trim());
       if (specialization.trim()) url.searchParams.set("specialization", specialization.trim());
@@ -177,7 +177,7 @@ export default function AdminTherapistsPage() {
     setNotes("");
     setApproachText("");
     try {
-      const res = await fetch(`/admin/api/therapists/${id}`, { credentials: "include", cache: "no-store" });
+      const res = await fetch(`/api/admin/therapists/${id}`, { credentials: "include", cache: "no-store" });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Laden fehlgeschlagen");
       const d = json.data as TherapistDetail;
@@ -229,7 +229,7 @@ export default function AdminTherapistsPage() {
       const body: UpdatePayload = { status: newStatus };
       if (notes.trim()) body.verification_notes = notes.trim();
       if (approachText.trim()) body.approach_text = approachText.trim();
-      const res = await fetch(`/admin/api/therapists/${openId}`, {
+      const res = await fetch(`/api/admin/therapists/${openId}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         credentials: "include",
@@ -257,7 +257,7 @@ export default function AdminTherapistsPage() {
         const t = list.find((x: Therapist) => x.id === id);
         const hasPending = Boolean(t?.profile?.has_photo_pending);
         if (!hasPending) continue;
-        await fetch(`/admin/api/therapists/${id}`, {
+        await fetch(`/api/admin/therapists/${id}`, {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           credentials: "include",
@@ -288,7 +288,7 @@ export default function AdminTherapistsPage() {
       };
       const body: UpdatePayload = { approve_profile: true };
       if (approachText.trim()) body.approach_text = approachText.trim();
-      const res = await fetch(`/admin/api/therapists/${openId}`, {
+      const res = await fetch(`/api/admin/therapists/${openId}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         credentials: "include",
@@ -312,7 +312,7 @@ export default function AdminTherapistsPage() {
     try {
       setUpdating(true);
       setMessage(null);
-      const res = await fetch(`/admin/api/therapists/${openId}/reminder`, {
+      const res = await fetch(`/api/admin/therapists/${openId}/reminder`, {
         method: "POST",
         credentials: "include",
       });
@@ -614,14 +614,14 @@ export default function AdminTherapistsPage() {
                         <div className="border rounded-md overflow-hidden">
                           <iframe
                             title="Lizenz"
-                            src={`/admin/api/therapists/${detail.id}/documents/license`}
+                            src={`/api/admin/therapists/${detail.id}/documents/license`}
                             className="w-full h-[360px]"
                           />
                         </div>
                         <div className="mt-1">
                           <a
                             className="text-xs underline text-blue-700"
-                            href={`/admin/api/therapists/${detail.id}/documents/license`}
+                            href={`/api/admin/therapists/${detail.id}/documents/license`}
                             target="_blank"
                             rel="noreferrer"
                           >
@@ -742,7 +742,7 @@ export default function AdminTherapistsPage() {
                                           res = await fetch(`/api/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
                                         } else {
                                           // Admin-only endpoint publishes directly
-                                          res = await fetch(`/admin/api/therapists/${detail.id}/photo`, { method: 'POST', body: fd, credentials: 'include' });
+                                          res = await fetch(`/api/admin/therapists/${detail.id}/photo`, { method: 'POST', body: fd, credentials: 'include' });
                                         }
                                         const json = await res.json();
                                         if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');

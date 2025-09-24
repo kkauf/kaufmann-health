@@ -149,7 +149,7 @@ export default function AdminLeadsPage() {
 
   const loadPatientMatchFlags = useCallback(async (leadList: Person[]) => {
     try {
-      const res = await fetch('/admin/api/matches', { credentials: 'include', cache: 'no-store' });
+      const res = await fetch('/api/admin/matches', { credentials: 'include', cache: 'no-store' });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Fehler beim Laden der Matches');
       const active = new Set(['accepted', 'therapist_contacted', 'therapist_responded', 'session_booked', 'completed']);
@@ -178,7 +178,7 @@ export default function AdminLeadsPage() {
     setLeadError(null);
     setMessage(null);
     try {
-      const url = new URL('/admin/api/leads', window.location.origin);
+      const url = new URL('/api/admin/leads', window.location.origin);
       if (leadCity) url.searchParams.set('city', leadCity);
       if (leadSessionPref) url.searchParams.set('session_preference', leadSessionPref);
       // Default is 'new' server-side; only override to 'all' when viewing all
@@ -204,7 +204,7 @@ export default function AdminLeadsPage() {
     try {
       setModalLoading(true);
       setModalError(null);
-      const url = new URL('/admin/api/therapists', window.location.origin);
+      const url = new URL('/api/admin/therapists', window.location.origin);
       const meta: PersonMeta = p.metadata || {};
       // Determine session preference first to decide city filter
       const pref = (Array.isArray(meta.session_preferences) && meta.session_preferences.length > 0)
@@ -237,7 +237,7 @@ export default function AdminLeadsPage() {
     try {
       setUpdatingLeadId(id);
       setMessage(null);
-      const res = await fetch(`/admin/api/leads/${id}`, {
+      const res = await fetch(`/api/admin/leads/${id}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         credentials: 'include',
@@ -297,7 +297,7 @@ export default function AdminLeadsPage() {
     try {
       setModalLoading(true);
       if (flowMode === 'patient') {
-        const res = await fetch('/admin/api/matches', {
+        const res = await fetch('/api/admin/matches', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           credentials: 'include',
@@ -313,7 +313,7 @@ export default function AdminLeadsPage() {
       } else {
         // therapist-driven: confirm before emailing
         if (!confirm('Diesen Therapeuten jetzt kontaktieren?')) { setModalLoading(false); return; }
-        const res = await fetch('/admin/api/matches', {
+        const res = await fetch('/api/admin/matches', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           credentials: 'include',
@@ -340,7 +340,7 @@ export default function AdminLeadsPage() {
     setTherError(null);
     setMessage(null);
     try {
-      const url = new URL('/admin/api/therapists', window.location.origin);
+      const url = new URL('/api/admin/therapists', window.location.origin);
       const fallbackMeta: PersonMeta = (selectedPatient?.metadata ?? {}) as PersonMeta;
       const city = therCity || (fallbackMeta.city ? String(fallbackMeta.city) : '');
       const sessionPref = therSessionPref || (
@@ -377,7 +377,7 @@ export default function AdminLeadsPage() {
     setMessage(null);
     try {
       if (!confirm('Diese:n Therapeut:in jetzt kontaktieren?')) return;
-      const res = await fetch('/admin/api/matches', {
+      const res = await fetch('/api/admin/matches', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         credentials: 'include',
@@ -399,7 +399,7 @@ export default function AdminLeadsPage() {
     if (!selectedPatient) return;
     setMessage(null);
     try {
-      const res = await fetch('/admin/api/matches', {
+      const res = await fetch('/api/admin/matches', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         credentials: 'include',
@@ -440,7 +440,7 @@ export default function AdminLeadsPage() {
 
       // If admin currently selected 2–3 therapists, ensure proposals exist for them first
       if (selectedIds.length >= 2) {
-        const resCreate = await fetch('/admin/api/matches', {
+        const resCreate = await fetch('/api/admin/matches', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           credentials: 'include',
@@ -455,7 +455,7 @@ export default function AdminLeadsPage() {
       // Send selection email; pass therapist_ids when we have a current selection to control the list
       const payload: Record<string, unknown> = { template: 'selection', patient_id: patientId };
       if (selectedIds.length >= 2) payload['therapist_ids'] = selectedIds;
-      const res = await fetch('/admin/api/matches/email', {
+      const res = await fetch('/api/admin/matches/email', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         credentials: 'include',
