@@ -15,12 +15,22 @@ function getErrorMessage(err: unknown): string | undefined {
 }
 
 export async function GET(req: Request) {
+  const origin = (() => {
+    try {
+      return new URL(req.url).origin || BASE_URL;
+    } catch {
+      return BASE_URL;
+    }
+  })();
   try {
     const url = new URL(req.url);
     const token = url.searchParams.get('token') || '';
     const id = url.searchParams.get('id') || '';
+    const fs = url.searchParams.get('fs') || '';
+    const redirectPath = url.searchParams.get('redirect');
+    const isSafeRedirect = !!(redirectPath && redirectPath.startsWith('/') && !redirectPath.startsWith('/api') && !redirectPath.startsWith('//'));
     if (!token || !id) {
-      return NextResponse.redirect(`${BASE_URL}/confirm?state=invalid`, 302);
+      return NextResponse.redirect(`${origin}/confirm?state=invalid`, 302);
     }
 
     type PersonRow = {
@@ -59,29 +69,33 @@ export async function GET(req: Request) {
     }
 
     if (error || !person) {
-      return NextResponse.redirect(`${BASE_URL}/confirm?state=invalid`, 302);
+      return NextResponse.redirect(`${origin}/confirm?state=invalid`, 302);
     }
 
     // If the email has already been confirmed previously, but preferences may not be set yet,
     // send the user directly to the preferences screen instead of showing an invalid link.
     if ((person.status || '').toLowerCase() === 'email_confirmed') {
-      return NextResponse.redirect(`${BASE_URL}/preferences?id=${id}`, 302);
+      if (isSafeRedirect) {
+        const suffix = `?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
+        return NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
+      }
+      return NextResponse.redirect(`${origin}/preferences?id=${id}`, 302);
     }
 
     const metadata: Record<string, unknown> = person.metadata ?? {};
     const stored = typeof metadata['confirm_token'] === 'string' ? (metadata['confirm_token'] as string) : '';
     if (!stored || stored !== token) {
-      return NextResponse.redirect(`${BASE_URL}/confirm?state=invalid`, 302);
+      return NextResponse.redirect(`${origin}/confirm?state=invalid`, 302);
     }
 
     // TTL: 24h
     const sentAtIso = typeof metadata['confirm_sent_at'] === 'string' ? (metadata['confirm_sent_at'] as string) : undefined;
     if (!sentAtIso) {
-      return NextResponse.redirect(`${BASE_URL}/confirm?state=invalid`, 302);
+      return NextResponse.redirect(`${origin}/confirm?state=invalid`, 302);
     }
     const sentAt = Date.parse(sentAtIso);
     if (Number.isNaN(sentAt) || Date.now() - sentAt > 24 * 60 * 60 * 1000) {
-      return NextResponse.redirect(`${BASE_URL}/confirm?state=expired`, 302);
+      return NextResponse.redirect(`${origin}/confirm?state=expired`, 302);
     }
 
     // Update status -> 'email_confirmed' and clear token
@@ -97,7 +111,7 @@ export async function GET(req: Request) {
 
     if (upErr) {
       await logError('api.leads.confirm', upErr, { stage: 'update_status' });
-      return NextResponse.redirect(`${BASE_URL}/confirm?state=error`, 302);
+      return NextResponse.redirect(`${origin}/confirm?state=error`, 302);
     }
 
     // Analytics: email_confirmed
@@ -117,10 +131,14 @@ export async function GET(req: Request) {
 
     // Enhanced Conversions moved to preferences submission when status becomes 'new'
 
-    // Success: go straight to preferences to keep the flow seamless (EARTH-149)
-    return NextResponse.redirect(`${BASE_URL}/preferences?confirm=1&id=${id}`, 302);
+    // Success
+    if (isSafeRedirect) {
+      const suffix = `?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
+      return NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
+    }
+    return NextResponse.redirect(`${origin}/preferences?confirm=1&id=${id}`, 302);
   } catch (e) {
     await logError('api.leads.confirm', e, { stage: 'unhandled' });
-    return NextResponse.redirect(`${BASE_URL}/confirm?state=error`, 302);
+    return NextResponse.redirect(`${origin}/confirm?state=error`, 302);
   }
 }

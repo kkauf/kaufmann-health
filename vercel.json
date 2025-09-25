@@ -9,7 +9,8 @@
     { "path": "/api/admin/ads/monitor?apply=true&lookback=3&excludeToday=true&minSpendNoConv=30&budgetMultiple=2", "schedule": "0 8 * * *" },
     { "path": "/api/admin/ads/monitor?apply=true&lookback=3&excludeToday=true&minSpendNoConv=30&budgetMultiple=2", "schedule": "0 14 * * *" },
     { "path": "/api/admin/ads/monitor?apply=true&lookback=1&excludeToday=false&minSpendNoConv=30&budgetMultiple=2", "schedule": "0 20 * * *" },
-    { "path": "/api/admin/ads/monitor?apply=true&lookback=1&excludeToday=false&minSpendNoConv=30&budgetMultiple=1.5", "schedule": "0 2 * * *" }
+    { "path": "/api/admin/ads/monitor?apply=true&lookback=1&excludeToday=false&minSpendNoConv=30&budgetMultiple=1.5", "schedule": "0 2 * * *" },
+    { "path": "/api/admin/leads/confirmation-reminders?limit=200", "schedule": "0 * * * *" }
   ],
   "functions": {
     "app/therapie-finden/page.tsx": {
