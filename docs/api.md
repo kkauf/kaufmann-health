@@ -1,45 +1,27 @@
 # API
 
-## POST /api/leads
-- __Purpose__: Create a `people` row for a new lead (patient or therapist).
-- __Auth__: None (public funnel). Route uses service role on the server; add rate limiting/bot protection as needed.
-- __Request Body__ (JSON):
-  - `email` (required)
-  - Optional common: `name`, `phone`, `notes`, `city`, `issue`, `availability`, `budget`, `specializations` (array of slugs)
-  - Lead type: `type` (optional: `patient` | `therapist`, default `patient`)
-  - Patient-only: `session_preference`, `session_preferences`, `consent_share_with_therapists` (required), `privacy_version`
-  - Therapist JSON: requires at least one `specializations` entry (modality)
-- __Validation__: email regex; strings sanitized (control chars removed; ~1000 chars max). Server requires `email`. For patient leads, explicit consent is required via `consent_share_with_therapists`.
+## POST /api/public/leads
+- __Purpose__: Create a `people` row for a new lead (patient email-first intake or therapist application).
+- __Auth__: None (public funnel). Route uses the Supabase service role; keep upstream rate limiting/bot protection in place.
+- __Request Body__ (JSON unless noted):
+  - Common: `email` (required), optional `name`, `phone`, `notes`.
+  - Lead type selector: `type` (`patient` | `therapist`, defaults to `patient`).
+  - Patient flow (email-first, EARTH-146/167/190): accepts minimal metadata only — `session_preference`, `session_preferences`, `form_session_id?`, `confirm_redirect_path?`, plus consent stamps `consent_share_with_therapists` and `privacy_version` (both required). Additional contextual fields (`city`, `issue`, etc.) are collected later via preferences.
+  - Therapist flow (JSON path): optional `city`, `session_preferences`, `specializations` (array of modality slugs). For multipart uploads (profile photo, documents) see therapist section below.
+- __Validation__: emails validated server-side; all strings sanitized (control chars stripped, ~1 KB max). Missing patient consent or privacy version -> 400.
 - __Behavior__:
-  - `type` set from payload (default `patient`).
-  - `status` defaults to `pending_verification` for therapists. For patients:
-    - Legacy flow (feature flag disabled): defaults to `new` and collects full payload (consent required).
-    - Email-only flow (EARTH-146; feature flag enabled via `REQUIRE_EMAIL_CONFIRMATION`): collects only `email` and attribution, inserts patient with `status='pre_confirmation'` and sends a confirmation email. See confirmation endpoint below.
-  - Packs extras in `metadata` and sets `funnel_type` (`koerperpsychotherapie` for patients; `therapist_acquisition` for therapists), `submitted_at`, plus `ip` and `user_agent` when available.
-  - Recognized `specializations` slugs: `narm`, `core-energetics`, `hakomi`, `somatic-experiencing` (others ignored).
-  - Campaign attribution (EARTH-145):
-    - `campaign_source`: derived from Referer pathname → `/ankommen-in-dir` | `/wieder-lebendig` | default `/therapie-finden`.
-    - `campaign_variant`: A/B from `?v=` with precedence `Referer` → fallback to API URL; sanitized to `A|B` (default `A`).
-    - `landing_page`: Referer pathname only (e.g. `/wieder-lebendig`), not the full URL.
-    - Email-only flow persists these on `people` at insert. Legacy patient flow persists on `people` in the normal insert path. Events include these as props where applicable.
-  - Enhanced Conversions:
-    - Legacy flow: after successful patient insert (status `new`) the server may upload a hashed email to Google Ads.
-    - Email-only flow (EARTH-146): Enhanced Conversions fire only after the lead becomes `new` (post-confirmation preferences submission).
-- __Rate limiting__: IP-based, 60s window (best effort via `x-forwarded-for`). Patients: checks recent inserts in `people` by `metadata.ip`. Therapists: additionally checks recent `therapist_contracts` rows by hashed IP (`sha256(IP_HASH_SALT + ip)`). On exceed, returns 429.
-- __Notifications (optional)__: If `RESEND_API_KEY` and `LEADS_NOTIFY_EMAIL` are set, the API will send a non-blocking email via Resend on new lead. Use `LEADS_FROM_EMAIL` to control the sender address (defaults to `no-reply@kaufmann-health.de`).
-- __Notes__: No alias `/api/directory-requests`; use `/api/leads`.
+  - Patients: insert minimal row with `status='pre_confirmation'`, attribution metadata (`campaign_source`, `campaign_variant`, `landing_page`), confirmation token + timestamp, and consent footprint. Confirmation email is sent fire-and-forget.
+  - Therapists (JSON): insert `people` row in `therapists` table with `status='pending_verification'`, optional metadata, and enqueue welcome email + internal notification.
+  - Multipart therapist submissions are handled inside this route (documents & profile photo go to private storage; metadata merged as pending — see POST `/api/public/therapists/:id/documents`).
+  - Google Ads Enhanced Conversions are deferred until activation steps (`/api/public/leads/:id/preferences` for patients, `/api/public/therapists/:id/documents` for therapists).
+- __Rate limiting__: IP-based best effort (60 s window) using `x-forwarded-for`; both patient and therapist paths share helpers.
+- __Notifications__: if `RESEND_API_KEY` & `LEADS_NOTIFY_EMAIL` set, therapist submissions trigger a fire-and-forget internal email (PII-free) via Resend. Sender defaults to `LEADS_FROM_EMAIL` (`kontakt@kaufmann-health.de`).
 - __Response__:
-  - 200 (legacy): `{ data: { id: uuid }, error: null }`
-  - 200 (email-only; EARTH-146): `{ data: { id: uuid, requiresConfirmation: true|false }, error: null }`
-  - 400: `{ data: null, error: 'Invalid email' | 'Invalid JSON' | 'Einwilligung zur Datenübertragung erforderlich' }`
-  - 429: `{ data: null, error: 'Rate limited' }`
-  - 500: `{ data: null, error: 'Failed to save lead' }`
+  - Patients: `{ data: { id: uuid, requiresConfirmation: true }, error: null }`
+  - Therapists: `{ data: { id: uuid }, error: null }`
+  - Errors: standard `{ data: null, error: ... }` for 400/429/500.
 
-### Feature Flag (EARTH-146)
-
-- `REQUIRE_EMAIL_CONFIRMATION` (default: `true` in production). When not equal to `'false'`, patient leads follow the email-only path (`pre_confirmation` status and confirmation email). When set to `'false'` (e.g., in tests/local legacy mode), patient leads use the prior full-payload flow and immediately have `status='new'` (consent required).
-
-## GET /api/leads/confirm
+## GET /api/public/leads/confirm
 
 - __Purpose__: Confirm email addresses for email-only patient leads and mark them as `status='email_confirmed'` (not yet active). The lead becomes active after preferences submission.
 - __Auth__: None (accessed via emailed link). Redirects to a friendly page regardless of outcome; does not expose internal states.
@@ -64,7 +46,7 @@
 - UX: Uses a simple card with CTAs back to `/` and `/therapie-finden`. On `expired`, the page offers an email input to request a new confirmation email (see endpoint below). On success, users are redirected directly to `/preferences` to continue without an extra click.
 - SEO: `noindex, nofollow`.
 
-## POST /api/leads/resend-confirmation
+## POST /api/public/leads/resend-confirmation
 
 - __Purpose__: Re-send the email confirmation link for patient leads that are still in `status='pre_confirmation'`.
 - __Auth__: None (public). Designed to avoid user enumeration.
@@ -80,7 +62,7 @@
   - 200: `{ data: { ok: true }, error: null }`
 
 
-## POST /api/leads/:id/preferences
+## POST /api/public/leads/:id/preferences
 
 - __Purpose__: Capture Klient:in Präferenzen after email confirmation to enrich the lead for better matching.
 - __Auth__: None (public flow via emailed link redirect). Best-effort validation; does not expose internal states.
@@ -101,6 +83,7 @@
     - `consent_privacy_version?` when provided
   - Emits Supabase event `preferences_submitted` via server analytics.
   - Fires Google Ads Enhanced Conversions for `client_registration` at this point (post-confirmation, on activation).
+  - Note: This endpoint provides a secondary confirmation of consent (defense‑in‑depth). If consent was already captured during the email‑only submission, this write is idempotent and simply re‑affirms consent with the latest `privacy_version` if provided.
 - __Response__:
   - 200: `{ data: { ok: true }, error: null }`
   - 400: `{ data: null, error: 'Missing id' | 'Missing fields' | 'Einwilligung zur Datenübertragung erforderlich' | 'Invalid JSON' }`
@@ -142,7 +125,7 @@
 - __Auth__: None (access via emailed link). The endpoint validates that the therapist exists and is in `pending_verification`; otherwise returns 404 to avoid information leaks.
 - __Content-Type__: `multipart/form-data`
 - __Path Param__:
-  - `:id` — therapist UUID returned from `/api/leads` (therapist JSON or multipart path)
+  - `:id` — therapist UUID returned from `/api/public/leads` (therapist JSON or multipart path)
 - __Two-step requirement__:
   - Step 2a (license): `psychotherapy_license` is required first (PDF/JPG/PNG, max 4MB).
   - Step 2b (certificates): At least one `specialization_cert` is required next (PDF/JPG/PNG, each max 4MB). Upload one file at a time if needed.
@@ -481,8 +464,8 @@ __Why__: Enables Vercel Cron scheduling for reminder cadence (24h/72h/7d) with a
 ## Email side-effects (EARTH-73)
 
 Some endpoints send non-blocking emails (best-effort):
-- `/api/leads` (therapist): Welcome email prompts profile completion.
-- `/api/therapists/:id/documents` (POST): Upload confirmation after successful submission.
+- `/api/public/leads` (therapist path): Welcome email prompts profile completion.
+- `/api/public/therapists/:id/documents` (POST): Upload confirmation after successful submission.
 - `/api/admin/therapists/:id` (PATCH): Sends approval/rejection emails when status changes.
 
 __Why__: Keeping email rendering/sending on the server preserves the cookie-free public site and centralizes logging/observability.

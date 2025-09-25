@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { AutoRedirect } from './AutoRedirect';
 
 export const metadata: Metadata = {
   title: 'E-Mail bestätigt – Kaufmann Health',
@@ -29,7 +30,8 @@ export default async function ConfirmedPage({ searchParams }: { searchParams?: P
         </ul>
       </div>
       {!!fs && (
-        <div>
+        <div className="space-y-2">
+          <AutoRedirect href={`/fragebogen?fs=${encodeURIComponent(fs)}`} />
           <Button asChild className="h-11">
             <Link href={`/fragebogen?fs=${encodeURIComponent(fs)}`}>Formular fortsetzen</Link>
           </Button>

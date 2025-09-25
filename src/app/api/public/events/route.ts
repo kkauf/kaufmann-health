@@ -1,13 +1,12 @@
-import { NextResponse } from 'next/server';
+import { parseAttributionFromRequest, ServerAnalytics } from '@/lib/server-analytics';
 import { track } from '@/lib/logger';
-import { parseAttributionFromRequest } from '@/lib/server-analytics';
+import { safeJson } from '@/lib/http';
 import { isLocalhostRequest } from '@/lib/test-mode';
 
 export const runtime = 'nodejs';
 
 /**
  * @endpoint POST /api/events
- * @description Minimal tracking endpoint. Returns { data, error }.
  */
 export async function POST(req: Request) {
   try {
@@ -34,7 +33,7 @@ export async function POST(req: Request) {
     };
 
     if (!type || typeof type !== 'string') {
-      return NextResponse.json({ data: null, error: 'Missing type' }, { status: 400 });
+      return safeJson({ data: null, error: 'Missing type' }, { status: 400 });
     }
 
     // Optional metadata
@@ -59,19 +58,18 @@ export async function POST(req: Request) {
       ...(properties && typeof properties === 'object' ? properties : {}),
     };
 
-    // Unified logger (best-effort)
-    void track({
-      type,
-      level: 'info',
-      ip: ip || undefined,
-      ua,
-      source: 'api.events',
-      props: mergedProps,
-    });
+    // Persist to server analytics (e.g., Supabase events table)
+    try {
+      await ServerAnalytics.trackEventFromRequest(req, {
+        type,
+        source: 'api.events',
+        props: mergedProps,
+      });
+    } catch {}
 
-    return NextResponse.json({ data: { received: true }, error: null });
+    return safeJson({ data: { received: true }, error: null });
   } catch {
-    return NextResponse.json({ data: null, error: 'Invalid JSON' }, { status: 400 });
+    return safeJson({ data: null, error: 'Invalid JSON' }, { status: 400 });
   }
 }
 

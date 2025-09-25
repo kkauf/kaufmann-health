@@ -62,7 +62,7 @@ vi.mock('@/lib/google-ads', () => ({
 }));
 
 function makeReq(body: any, headers?: Record<string, string>) {
-  return new Request('http://localhost/api/leads', {
+  return new Request('http://localhost/api/public/leads', {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...(headers || {}) },
     body: JSON.stringify(body),
@@ -71,42 +71,49 @@ function makeReq(body: any, headers?: Record<string, string>) {
 
 beforeEach(() => {
   rateLimited = false;
-  insertError = null;
   insertResultId = 'lead-xyz';
   trackConversion.mockClear();
 });
 
-describe('/api/leads Google Ads conversions', () => {
-  it('fires client_registration conversion with value 10 on patient lead', async () => {
-    const { POST } = await import('@/app/api/public/leads/route');
-    const res = await POST(
+describe('Google Ads conversions', () => {
+  it('does NOT fire conversion on patient email-only submit (fires later on preferences)', async () => {
+    const { POST } = await import("@/app/api/public/leads/route");
+    const res: any = await POST(
       makeReq(
         { email: 'patient@example.com', type: 'patient', consent_share_with_therapists: true, privacy_version: 'test-v1' },
         { 'x-forwarded-for': '1.2.3.4' },
       ),
     );
     expect(res.status).toBe(200);
-
-    // fire-and-forget; allow microtask flush
     await Promise.resolve();
-    expect(trackConversion).toHaveBeenCalledTimes(1);
-    const call = trackConversion.mock.calls[0][0];
-    expect(call.conversionAction).toBe('client_registration');
-    expect(call.conversionValue).toBe(10);
-    expect(call.orderId).toBe('lead-xyz');
-    expect(call.email).toBe('patient@example.com');
+    expect(trackConversion).not.toHaveBeenCalled();
   });
 
-  it('fires client_registration conversion with value 10 on patient lead', async () => {
-    const { POST } = await import('@/app/api/public/leads/route');
-    const res = await POST(
-      makeReq(
-        { email: 'patient@example.com', type: 'patient', consent_share_with_therapists: true },
-        { 'x-forwarded-for': '1.2.3.4' },
-      ),
-    );
-    expect(res.status).toBe(200);
-
+  it('fires client_registration conversion on preferences submit (status becomes new)', async () => {
+    // Mock people row for preferences route to include email
+    vi.doMock('@/lib/supabase-server', () => {
+      const api: any = {
+        from: (table: string) => {
+          if (table === 'people') {
+            return {
+              select: (_sel?: string) => ({
+                eq: (_col?: string, _val?: string) => ({ single: async () => ({ data: { id: 'lead-xyz', email: 'patient@example.com', type: 'patient', metadata: {} }, error: null }) }),
+              }),
+              update: (_payload: any) => ({ eq: (_col?: string, _val?: string) => ({ data: null, error: null }) }),
+            };
+          }
+          return { from: () => ({}) } as any;
+        },
+      } as any;
+      return { supabaseServer: api };
+    });
+    const { POST: PREF_POST } = await import('@/app/api/public/leads/[id]/preferences/route');
+    const prefRes: any = await PREF_POST(new Request('http://localhost/api/public/leads/lead-xyz/preferences', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ city: 'Berlin', consent_share_with_therapists: true, privacy_version: '2025-09-01.v2' }),
+    }) as any);
+    expect(prefRes.status).toBe(200);
     await Promise.resolve();
     expect(trackConversion).toHaveBeenCalledTimes(1);
     const call = trackConversion.mock.calls[0][0];
@@ -118,7 +125,7 @@ describe('/api/leads Google Ads conversions', () => {
 
   it('does NOT fire therapist_registration conversion on therapist lead (fires on documents upload)', async () => {
     const { POST } = await import('@/app/api/public/leads/route');
-    const res = await POST(makeReq({ email: 'therapist@example.com', type: 'therapist', specializations: ['narm'] }));
+    const res: any = await POST(makeReq({ email: 'therapist@example.com', type: 'therapist', specializations: ['narm'] }));
     expect(res.status).toBe(200);
 
     await Promise.resolve();

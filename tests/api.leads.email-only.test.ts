@@ -41,7 +41,7 @@ vi.mock('@/lib/supabase-server', () => {
 });
 
 function makeReq(body: any, headers?: Record<string, string>) {
-  return new Request('http://localhost/api/leads?v=B', {
+  return new Request('http://localhost/api/public/leads?v=B', {
     method: 'POST',
     headers: { 'content-type': 'application/json', referer: 'http://localhost/ankommen-in-dir?utm_source=x', ...(headers || {}) },
     body: JSON.stringify(body),
@@ -49,26 +49,28 @@ function makeReq(body: any, headers?: Record<string, string>) {
 }
 
 beforeEach(() => {
-  process.env.REQUIRE_EMAIL_CONFIRMATION = 'true';
   process.env.NEXT_PUBLIC_BASE_URL = 'http://localhost';
   sentEmails = [];
   simulateUniqueViolation = false;
-  existingStatus = null;
 });
 
-describe('EARTH-146 /api/leads POST (email-only)', () => {
+describe('EARTH-146 /api/public/leads POST (email-only)', () => {
   it('creates pre_confirmation lead and sends confirmation email', async () => {
     const { POST } = await import('@/app/api/public/leads/route');
-    const res = await POST(makeReq({ email: 'user@example.com', type: 'patient' }));
+    const res = await POST(
+      makeReq({ email: 'user@example.com', type: 'patient', consent_share_with_therapists: true, privacy_version: 'test-v1' }),
+    );
+    if (!res) throw new Error('Expected Response from POST /api/public/leads');
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.error).toBeNull();
     expect(json.data.id).toBe(insertedId);
     expect(json.data.requiresConfirmation).toBe(true);
 
+    // Email was attempted with confirmation link
     expect(sentEmails.length).toBe(1);
     const html: string = sentEmails[0].html;
-    expect(html).toContain('/api/leads/confirm?token=');
+    expect(html).toContain('/api/public/leads/confirm?token=');
     expect(html).toContain(`&id=${insertedId}`);
   });
 
@@ -76,7 +78,10 @@ describe('EARTH-146 /api/leads POST (email-only)', () => {
     simulateUniqueViolation = true;
     existingStatus = 'new';
     const { POST } = await import('@/app/api/public/leads/route');
-    const res = await POST(makeReq({ email: 'user@example.com', type: 'patient' }));
+    const res = await POST(
+      makeReq({ email: 'user@example.com', type: 'patient', consent_share_with_therapists: true, privacy_version: 'test-v1' }),
+    );
+    if (!res) throw new Error('Expected Response from POST /api/public/leads');
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.error).toBeNull();

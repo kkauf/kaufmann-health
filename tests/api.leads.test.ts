@@ -97,7 +97,7 @@ beforeEach(() => {
 describe('/api/leads POST', () => {
   it('400 on invalid email', async () => {
     const { POST } = await import('@/app/api/public/leads/route');
-    const res = await POST(makeReq({ email: 'not-an-email' }));
+    const res: any = await POST(makeReq({ email: 'not-an-email' }));
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json).toEqual({ data: null, error: 'Invalid email' });
@@ -106,7 +106,7 @@ describe('/api/leads POST', () => {
   it('429 when rate limited by IP within 60s', async () => {
     rateLimited = true;
     const { POST } = await import('@/app/api/public/leads/route');
-    const res = await POST(
+    const res: any = await POST(
       makeReq({ email: 'user@example.com' }, { 'x-forwarded-for': '1.2.3.4' }),
     );
     expect(res.status).toBe(429);
@@ -114,19 +114,19 @@ describe('/api/leads POST', () => {
     expect(json).toEqual({ data: null, error: 'Rate limited' });
   });
 
-  it('400 when patient consent missing', async () => {
+  it('400 when patient privacy_version is missing (consent model)', async () => {
     const { POST } = await import('@/app/api/public/leads/route');
-    const res = await POST(
+    const res: any = await POST(
       makeReq({ email: 'patient@example.com', type: 'patient' }),
     );
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json).toEqual({ data: null, error: 'Einwilligung zur Datenübertragung erforderlich' });
+    expect(json).toEqual({ data: null, error: 'Datenschutzhinweis muss bestätigt werden' });
   });
 
   it('200 on success and filters specializations to allowed set', async () => {
     const { POST } = await import('@/app/api/public/leads/route');
-    const res = await POST(
+    const res: any = await POST(
       makeReq({
         email: 'ok@example.com',
         type: 'therapist',
@@ -146,7 +146,7 @@ describe('/api/leads POST', () => {
 
   it("therapist leads default to status 'pending_verification'", async () => {
     const { POST } = await import('@/app/api/public/leads/route');
-    const res = await POST(
+    const res: any = await POST(
       makeReq({
         email: 'therapist@example.com',
         type: 'therapist',
@@ -158,82 +158,6 @@ describe('/api/leads POST', () => {
     expect(lastInsertedPayload.status).toBe('pending_verification');
   });
 
-  it("patient leads default to status 'new'", async () => {
-    const { POST } = await import('@/app/api/public/leads/route');
-    const res = await POST(
-      makeReq({
-        email: 'patient-status@example.com',
-        type: 'patient',
-        consent_share_with_therapists: true,
-        privacy_version: 'test-v1',
-      }),
-    );
-    expect(res.status).toBe(200);
-    expect(lastInsertedPayload).toBeTruthy();
-    expect(lastInsertedPayload.status).toBe('new');
-  });
-
-  it('sends patient confirmation email on patient lead success', async () => {
-    const { POST } = await import('@/app/api/public/leads/route');
-    const res = await POST(
-      makeReq({
-        email: 'patient@example.com',
-        type: 'patient',
-        name: 'Max Mustermann',
-        city: 'Berlin',
-        issue: 'Trauma-Begleitung',
-        session_preference: 'in_person',
-        consent_share_with_therapists: true,
-        privacy_version: 'test-privacy-v1',
-      }),
-    );
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json).toEqual({ data: { id: 'test-id-123' }, error: null });
-
-    // One confirmation email is sent to the patient
-    expect(sentEmails.length).toBe(1);
-    const email = sentEmails[0];
-    expect(email.to).toBe('patient@example.com');
-    expect(email.subject).toBe('Deine Anfrage bei Kaufmann Health ist eingegangen');
-    expect(email.html).toBeTruthy();
-    expect(email.html).toContain('Deine Angaben');
-    expect(email.html).toContain('Berlin');
-    expect(email.html).toContain('Trauma-Begleitung');
-    expect(email.html).toContain('Vor Ort');
-
-    // Consent metadata stored correctly (top-level)
-    expect(lastInsertedPayload).toBeTruthy();
-    const meta = lastInsertedPayload.metadata || {};
-    expect(meta.consent_share_with_therapists).toBe(true);
-    expect(typeof meta.consent_share_with_therapists_at).toBe('string');
-    expect(Number.isNaN(Date.parse(meta.consent_share_with_therapists_at))).toBe(false);
-    expect(meta.consent_privacy_version).toBe('test-privacy-v1');
-  });
-
-  it('handles missing optional fields gracefully and still sends confirmation', async () => {
-    const { POST } = await import('@/app/api/public/leads/route');
-    const res = await POST(
-      makeReq({
-        email: 'patient2@example.com',
-        type: 'patient',
-        consent_share_with_therapists: true,
-        privacy_version: 'v-test',
-        // no city / issue / session_preference
-      }),
-    );
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json).toEqual({ data: { id: 'test-id-123' }, error: null });
-
-    expect(sentEmails.length).toBe(1);
-    const email = sentEmails[0];
-    expect(email.to).toBe('patient2@example.com');
-    expect(email.subject).toBe('Deine Anfrage bei Kaufmann Health ist eingegangen');
-    expect(email.html).toBeTruthy();
-    expect(email.html).toContain('Deine Angaben');
-    expect(email.html).toContain('Sitzungsart');
-  });
 
   it("email send failure doesn't break patient submission (fire-and-forget)", async () => {
     const emailClient: any = await import('@/lib/email/client');
@@ -244,7 +168,7 @@ describe('/api/leads POST', () => {
     });
 
     const { POST } = await import('@/app/api/public/leads/route');
-    const res = await POST(
+    const res: any = await POST(
       makeReq({
         email: 'patient3@example.com',
         type: 'patient',
@@ -254,12 +178,12 @@ describe('/api/leads POST', () => {
     );
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json).toEqual({ data: { id: 'test-id-123' }, error: null });
+    expect(json).toEqual({ data: { id: 'test-id-123', requiresConfirmation: true }, error: null });
   });
 
   it('stores consent metadata for patient leads', async () => {
     const { POST } = await import('@/app/api/public/leads/route');
-    const res = await POST(
+    const res: any = await POST(
       makeReq(
         {
           email: 'withconsent@example.com',

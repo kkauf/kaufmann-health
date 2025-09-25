@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { supabaseServer } from '@/lib/supabase-server';
 import { TERMS_VERSION } from '@/content/therapist-terms';
@@ -9,13 +8,13 @@ import { renderTherapistWelcome } from '@/lib/email/templates/therapistWelcome';
 import { renderEmailConfirmation } from '@/lib/email/templates/emailConfirmation';
 import { logError, track } from '@/lib/logger';
 import { BASE_URL } from '@/lib/constants';
-import { googleAdsTracker } from '@/lib/google-ads';
 import { parseAttributionFromRequest, parseCampaignFromRequest, ServerAnalytics } from '@/lib/server-analytics';
 import { sanitize, normalizeSpecializations, hashIP } from '@/lib/leads/validation';
 import { isIpRateLimited } from '@/lib/leads/rateLimit';
-import { handlePatientLead, handleTherapistLead } from '@/lib/leads/handlers';
+import { handleTherapistLead } from '@/lib/leads/handlers';
 import type { LeadPayload } from '@/lib/leads/types';
 import { isTestRequest } from '@/lib/test-mode';
+import { safeJson } from '@/lib/http';
 
 export const runtime = 'nodejs';
 
@@ -28,7 +27,7 @@ function getErrorMessage(err: unknown): string {
 }
 
 /**
- * @endpoint POST /api/leads
+ * @endpoint POST /api/public/leads
  * @description Form handler for incoming lead submissions. Returns { data, error }.
  */
 
@@ -41,7 +40,7 @@ export async function GET(req: Request) {
       try {
         return new URL(req.url).pathname;
       } catch {
-        return '/api/leads';
+        return '/api/public/leads';
       }
     })();
     void track({
@@ -53,7 +52,7 @@ export async function GET(req: Request) {
       props: { method: 'GET', path },
     });
   } catch {}
-  return NextResponse.json(
+  return safeJson(
     { data: null, error: 'Use POST' },
     { status: 405, headers: { 'Cache-Control': 'no-store' } },
   );
@@ -148,7 +147,7 @@ async function handleTherapistMultipart(req: Request) {
 
   const type = (form.get('type')?.toString() || 'therapist') as 'therapist' | 'patient';
   if (type !== 'therapist') {
-    return NextResponse.json(
+    return safeJson(
       { data: null, error: 'Invalid multipart payload' },
       { status: 400, headers: { 'Cache-Control': 'no-store' } },
     );
@@ -158,7 +157,7 @@ async function handleTherapistMultipart(req: Request) {
   const email = sanitize(emailRaw)?.toLowerCase();
   const isTest = isTestRequest(req, email);
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    return NextResponse.json(
+    return safeJson(
       { data: null, error: 'Invalid email' },
       { status: 400, headers: { 'Cache-Control': 'no-store' } },
     );
@@ -179,7 +178,7 @@ async function handleTherapistMultipart(req: Request) {
   const specializations = normalizeSpecializations(form.getAll('specializations') || []);
   const approachTextRaw = form.get('approach_text')?.toString();
   if (approachTextRaw && approachTextRaw.length > 500) {
-    return NextResponse.json(
+    return safeJson(
       { data: null, error: 'approach_text too long (max 500 chars)' },
       { status: 400, headers: { 'Cache-Control': 'no-store' } },
     );
@@ -205,7 +204,7 @@ async function handleTherapistMultipart(req: Request) {
           ...(attr.utm_campaign ? { utm_campaign: attr.utm_campaign } : {}),
         },
       });
-      return NextResponse.json(
+      return safeJson(
         { data: null, error: 'Rate limited' },
         { status: 429, headers: { 'Cache-Control': 'no-store' } },
       );
@@ -236,7 +235,7 @@ async function handleTherapistMultipart(req: Request) {
   if (err || !ins?.id) {
     console.error('Supabase error:', err);
     void logError('api.leads', err, { stage: 'insert_lead', lead_type: 'therapist', city }, ip, ua);
-    return NextResponse.json(
+    return safeJson(
       { data: null, error: 'Failed to save lead' },
       { status: 500, headers: { 'Cache-Control': 'no-store' } },
     );
@@ -280,7 +279,7 @@ async function handleTherapistMultipart(req: Request) {
   }
 
   if (missing.length > 0) {
-    return NextResponse.json(
+    return safeJson(
       { data: null, error: `Missing required documents: ${missing.join(', ')}` },
       { status: 400, headers: { 'Cache-Control': 'no-store' } },
     );
@@ -294,13 +293,13 @@ async function handleTherapistMultipart(req: Request) {
   const maybeProfilePhoto = form.get('profile_photo');
   if (maybeProfilePhoto instanceof File && maybeProfilePhoto.size > 0) {
     if (!ALLOWED_IMAGE_TYPES.has(maybeProfilePhoto.type)) {
-      return NextResponse.json(
+      return safeJson(
         { data: null, error: 'profile_photo: Unsupported file type (JPEG/PNG only)' },
         { status: 400, headers: { 'Cache-Control': 'no-store' } },
       );
     }
     if (maybeProfilePhoto.size > MAX_PROFILE_PHOTO_BYTES) {
-      return NextResponse.json(
+      return safeJson(
         { data: null, error: 'profile_photo: File too large (max 5MB)' },
         { status: 400, headers: { 'Cache-Control': 'no-store' } },
       );
@@ -325,7 +324,7 @@ async function handleTherapistMultipart(req: Request) {
   if (licenseFile) {
     const valid = isValidUpload(licenseFile);
     if (!valid.ok) {
-      return NextResponse.json(
+      return safeJson(
         { data: null, error: `license: ${valid.reason}` },
         { status: 400, headers: { 'Cache-Control': 'no-store' } },
       );
@@ -339,7 +338,7 @@ async function handleTherapistMultipart(req: Request) {
     if (upErr) {
       console.error('Upload failed:', upErr);
       void logError('api.leads', upErr, { stage: 'upload_document', key: 'license', therapist_id: therapistId }, ip, ua);
-      return NextResponse.json(
+      return safeJson(
         { data: null, error: 'Failed to upload document' },
         { status: 500, headers: { 'Cache-Control': 'no-store' } },
       );
@@ -352,7 +351,7 @@ async function handleTherapistMultipart(req: Request) {
     for (const file of files) {
       const valid = isValidUpload(file);
       if (!valid.ok) {
-        return NextResponse.json(
+        return safeJson(
           { data: null, error: `${slug}: ${valid.reason}` },
           { status: 400, headers: { 'Cache-Control': 'no-store' } },
         );
@@ -366,7 +365,7 @@ async function handleTherapistMultipart(req: Request) {
       if (upErr) {
         console.error('Upload failed:', upErr);
         void logError('api.leads', upErr, { stage: 'upload_document', key: `specialization_${slug}`, therapist_id: therapistId }, ip, ua);
-        return NextResponse.json(
+        return safeJson(
           { data: null, error: 'Failed to upload document' },
           { status: 500, headers: { 'Cache-Control': 'no-store' } },
         );
@@ -475,7 +474,7 @@ async function handleTherapistMultipart(req: Request) {
     },
   });
 
-  return NextResponse.json(
+  return safeJson(
     { data: { id: therapistId }, error: null },
     { headers: { 'Cache-Control': 'no-store' } },
   );
@@ -491,7 +490,7 @@ export async function POST(req: Request) {
     const email = sanitize(payload.email)?.toLowerCase();
 
     if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      return NextResponse.json(
+      return safeJson(
         { data: null, error: 'Invalid email' },
         { status: 400, headers: { 'Cache-Control': 'no-store' } },
       );
@@ -533,9 +532,8 @@ export async function POST(req: Request) {
     const confirmRedirectPathRaw = sanitize(payload.confirm_redirect_path as string | undefined);
     const confirmRedirectPath = isSafeRelativePath(confirmRedirectPathRaw) ? confirmRedirectPathRaw : undefined;
 
-    // Feature flag: double opt-in email-only flow for patients (EARTH-146)
-    const REQUIRE_EMAIL_CONFIRMATION = process.env.REQUIRE_EMAIL_CONFIRMATION !== 'false';
-    // Consent validation handled later with comprehensive tracking
+    // Email-first (double opt-in) flow for patients (EARTH-146/190)
+    // Capture consent implicitly via disclaimer + submit action (no checkbox)
 
     // Basic IP-based rate limiting (60s window). Note: best-effort and
     // dependent on upstream "x-forwarded-for" headers.
@@ -560,15 +558,27 @@ export async function POST(req: Request) {
             ...(attr.utm_campaign ? { utm_campaign: attr.utm_campaign } : {}),
           },
         });
-        return NextResponse.json(
+        return safeJson(
           { data: null, error: 'Rate limited' },
           { status: 429, headers: { 'Cache-Control': 'no-store' } },
         );
       }
     }
 
-    // EARTH-146: If email confirmation is required, run minimal email-only path for patient leads
-    if (REQUIRE_EMAIL_CONFIRMATION && leadType === 'patient') {
+    if (leadType === 'patient') {
+      // Require privacy version acknowledgement at email submission (legal basis)
+      if (!privacyVersion) {
+        return safeJson(
+          { data: null, error: 'Datenschutzhinweis muss bestätigt werden' },
+          { status: 400, headers: { 'Cache-Control': 'no-store' } },
+        );
+      }
+      if (!consentShare) {
+        return safeJson(
+          { data: null, error: 'Einwilligung zur Datenübertragung erforderlich' },
+          { status: 400, headers: { 'Cache-Control': 'no-store' } },
+        );
+      }
       const isTest = isTestRequest(req, email);
       // Campaign inference from referrer
       const campaign = parseCampaignFromRequest(req);
@@ -591,9 +601,15 @@ export async function POST(req: Request) {
         submitted_at: new Date().toISOString(),
         confirm_token: confirmToken,
         confirm_sent_at: new Date().toISOString(),
+        // Basic context for debugging/ops
+        ...(ip ? { ip } : {}),
+        ...(ua ? { user_agent: ua } : {}),
         ...(sessionPreference ? { session_preference: sessionPreference } : {}),
         ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
         ...(formSessionId ? { form_session_id: formSessionId } : {}),
+        consent_share_with_therapists: true,
+        consent_share_with_therapists_at: new Date().toISOString(),
+        consent_privacy_version: privacyVersion,
       };
       const insertPayload = {
         email,
@@ -661,7 +677,7 @@ export async function POST(req: Request) {
               source: 'api.leads',
               props: { campaign_source, campaign_variant, landing_page, requires_confirmation: false, is_test: isTest },
             });
-            return NextResponse.json(
+            return safeJson(
               { data: { id: existing.id, requiresConfirmation: false }, error: null },
               { headers: { 'Cache-Control': 'no-store' } },
             );
@@ -674,6 +690,9 @@ export async function POST(req: Request) {
               ...(sessionPreference ? { session_preference: sessionPreference } : {}),
               ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
               ...(isTest ? { is_test: true } : {}),
+              consent_share_with_therapists: true,
+              consent_share_with_therapists_at: new Date().toISOString(),
+              consent_privacy_version: privacyVersion,
             };
             if (isTest) {
               await supabaseServer.from('people').update({ status: 'pre_confirmation', metadata: merged }).eq('id', effectiveId);
@@ -690,7 +709,7 @@ export async function POST(req: Request) {
         // Non-schema errors still block to signal real failure
         console.error('Supabase insert error (email-only lead):', insErr);
         void logError('api.leads', insErr, { stage: 'insert_email_only_lead' }, ip, ua);
-        return NextResponse.json(
+        return safeJson(
           { data: null, error: 'Failed to save lead' },
           { status: 500, headers: { 'Cache-Control': 'no-store' } },
         );
@@ -700,7 +719,7 @@ export async function POST(req: Request) {
       try {
         // Use request origin to avoid port/domain mismatch in local/dev
         const origin = new URL(req.url).origin || BASE_URL;
-        const confirmBase = `${origin}/api/leads/confirm?token=${encodeURIComponent(confirmToken)}&id=${encodeURIComponent(
+        const confirmBase = `${origin}/api/public/leads/confirm?token=${encodeURIComponent(confirmToken)}&id=${encodeURIComponent(
           effectiveId!,
         )}`;
         const withFs = formSessionId ? `${confirmBase}&fs=${encodeURIComponent(formSessionId)}` : confirmBase;
@@ -724,23 +743,24 @@ export async function POST(req: Request) {
       await ServerAnalytics.trackEventFromRequest(req, {
         type: 'email_submitted',
         source: 'api.leads',
-        props: { campaign_source, campaign_variant, landing_page, requires_confirmation: true, is_test: isTest },
+        props: {
+          campaign_source,
+          campaign_variant,
+          landing_page,
+          requires_confirmation: true,
+          is_test: isTest,
+          consent_share_with_therapists: consentShare,
+          privacy_version: privacyVersion,
+        },
       });
 
-      return NextResponse.json(
+      return safeJson(
         { data: { id: effectiveId!, requiresConfirmation: true }, error: null },
         { headers: { 'Cache-Control': 'no-store' } },
       );
     }
 
-    // Enforce explicit consent for patient leads (GDPR Art. 6(1)(a), 9(2)(a)) in legacy path
-    if (leadType === 'patient' && !consentShare) {
-      return NextResponse.json(
-        { data: null, error: 'Einwilligung zur Datenübertragung erforderlich' },
-        { status: 400, headers: { 'Cache-Control': 'no-store' } },
-      );
-    }
-    // Delegate to handlers for actual processing
+    // Delegate to handlers for therapist processing
     if (leadType === 'therapist') {
       return await handleTherapistLead(
         { req, ip, ua },
@@ -752,28 +772,10 @@ export async function POST(req: Request) {
           session_id: session_id || undefined,
         },
       );
-    } else {
-      return await handlePatientLead(
-        { req, ip, ua },
-        {
-          data: { name: data.name, email: data.email, phone: data.phone, notes: data.notes },
-          city: city || undefined,
-          issue: issue || undefined,
-          availability: availability || undefined,
-          budget: budget || undefined,
-          sessionPreference: sessionPreference || undefined,
-          sessionPreferences,
-          specializations,
-          genderPreference,
-          consentShare,
-          privacyVersion: privacyVersion || undefined,
-          session_id: session_id || undefined,
-        },
-      );
     }
   } catch (e) {
     void logError('api.leads', e, { stage: 'json_parse' }, undefined, req.headers.get('user-agent') || undefined);
-    return NextResponse.json(
+    return safeJson(
       { data: null, error: 'Invalid JSON' },
       { status: 400, headers: { 'Cache-Control': 'no-store' } },
     );
