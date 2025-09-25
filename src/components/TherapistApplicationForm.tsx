@@ -137,19 +137,19 @@ export default function TherapistApplicationForm() {
       phone: form.get('phone')?.toString() || undefined,
       notes: form.get('notes')?.toString() || undefined,
       city: (form.get('city')?.toString() || '').trim() || undefined,
-      session_preferences: session_preferences,
+      session_preferences,
       specializations,
       session_id: sid || undefined,
     };
 
     setLoading(true);
     try {
-      const res = await fetch('/api/leads', {
+      const res = await fetch('/api/public/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || 'Request failed');
 
       const leadId = (json?.data?.id as string | undefined) || undefined;

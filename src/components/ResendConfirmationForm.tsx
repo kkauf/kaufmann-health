@@ -20,7 +20,7 @@ export function ResendConfirmationForm() {
     if (!email) return;
     setSubmitting(true);
     try {
-      const res = await fetch('/api/leads/resend-confirmation', {
+      const res = await fetch('/api/public/leads/resend-confirmation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),

@@ -76,7 +76,7 @@ export function EmailEntryForm({ defaultSessionPreference }: { defaultSessionPre
       // Forward campaign variant v from current URL if present
       const url = typeof window !== 'undefined' ? new URL(window.location.href) : null;
       const v = url?.searchParams.get('v');
-      const fetchUrl = `/api/leads${v ? `?v=${encodeURIComponent(v)}` : ''}`;
+      const fetchUrl = `/api/public/leads${v ? `?v=${encodeURIComponent(v)}` : ''}`;
 
       const res = await fetch(fetchUrl, {
         method: 'POST',
@@ -89,7 +89,7 @@ export function EmailEntryForm({ defaultSessionPreference }: { defaultSessionPre
           ...(defaultSessionPreference ? { session_preference: defaultSessionPreference } : {}),
         }),
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (!res.ok || json?.error) throw new Error(json?.error || 'Fehlgeschlagen');
 
       const leadId = (json?.data?.id as string | undefined) || undefined;
