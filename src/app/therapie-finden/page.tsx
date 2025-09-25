@@ -1,152 +1,158 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity, Euro, Clock, UserCheck, ShieldCheck, Lock } from 'lucide-react';
-import { COOKIES_ENABLED } from '@/lib/config';
-import { LandingHero } from '@/features/landing/components/LandingHero';
-import { PrivacySelfPaySection } from '@/features/landing/components/PrivacySelfPaySection';
 import type { Metadata } from 'next';
+import FaqAccordion from '@/components/FaqAccordion';
 import { Button } from '@/components/ui/button';
 import CtaLink from '@/components/CtaLink';
+import {
+  LandingHero,
+  RecognitionSection,
+  MethodComparison,
+  TherapistTeaserSection,
+  InvestmentSection,
+  ProcessSteps,
+  FinalCtaSection,
+  PrivacySelfPaySection,
+} from '@/features/landing/components';
+import { buildLandingMetadata, buildLocalBusinessJsonLd, buildFaqJsonLd } from '@/lib/seo';
+import { ShieldCheck, Clock, Lock, MessageCircle, UserCheck, PhoneCall } from 'lucide-react';
 
 export const revalidate = 3600;
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health.de';
 
-export const metadata: Metadata = {
-  title: 'Therapeut:innen finden – Körperorientierte Trauma-Therapie | Kaufmann Health',
-  description: 'Finde geprüfte körperorientierte Therapeut:innen in deiner Nähe. Persönlich kuratierte Empfehlungen für Selbstzahler. Termine innerhalb einer Woche.',
-  alternates: {
-    canonical: `${baseUrl}/therapie-finden`,
-  },
-  openGraph: {
-    title: 'Therapeut:innen finden – Körperorientierte Trauma-Therapie',
-    description: 'Persönlich kuratierte Therapeut:innen-Empfehlungen für körperorientierte Psychotherapie (NARM, Hakomi, Somatic Experiencing).',
-    url: `${baseUrl}/therapie-finden`,
-    type: 'website',
-    images: [
-      {
-        url: `${baseUrl}/logos/Health Logos - black/Kaufmann_health_logo_large.png`,
-        width: 1200,
-        height: 630,
-        alt: 'Kaufmann Health – Therapeut:innen finden',
-      },
-    ],
-  },
+export const metadata = async ({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }): Promise<Metadata> => {
+  const title = 'Therapeut:innen finden – Heilpraktiker:in für Psychotherapie | Kaufmann Health';
+  const description = 'Handverlesene Heilpraktiker:innen (Psychotherapie). Termine diese Woche. 80–120€ pro Sitzung. 100% diskret ohne Krankenkasse.';
+  const v = (searchParams?.v as string) || undefined;
+  return buildLandingMetadata({
+    baseUrl: baseUrl,
+    path: '/therapie-finden',
+    title,
+    description,
+    searchParams: { v },
+    openGraph: {
+      images: [
+        {
+          url: `${baseUrl}/images/color-patterns.png`,
+          width: 1200,
+          height: 630,
+        },
+      ],
+    },
+  });
 };
 
-export default function TherapieFindenPage() {
+export default async function TherapieFindenPage() {
+  // FAQs (low on page; non-blocking for conversion)
+  const faqs = [
+    { id: 'prices', question: 'Was kosten die Sitzungen?', answer: 'In der Regel 80–120€ pro 60 Minuten. Den genauen Satz sprichst du direkt mit deiner Therapeut:in ab.' },
+    { id: 'speed', question: 'Wie schnell bekomme ich Termine?', answer: 'Du erhältst handverlesene Vorschläge meist innerhalb weniger Stunden – Termine sind in der Regel noch diese Woche möglich.' },
+    { id: 'privacy', question: 'Wird die Therapie bei meiner Krankenkasse dokumentiert?', answer: 'Nein. Es erfolgt keine Kassenabrechnung, kein Eintrag in deiner Krankenakte und keine ICD‑10‑Diagnose bei der Kasse.' },
+    { id: 'methods', question: 'Mit welchen Methoden wird gearbeitet?', answer: 'Körperorientierte Verfahren wie NARM, Somatic Experiencing, Hakomi und Core Energetics – passend zu deinem Anliegen.' },
+  ];
+
+  const faqSchema = buildFaqJsonLd(faqs.map(({ question, answer }) => ({ question, answer })));
+  const businessSchema = buildLocalBusinessJsonLd({ baseUrl, path: '/therapie-finden', areaServed: { type: 'Country', name: 'Deutschland', addressCountry: 'DE' } });
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
       <LandingHero
-        title="Traumata lösen sich nicht durch Reden allein"
-        subtitle={
-          <>Finde körperorientierte Therapeut:innen in deiner Nähe. Persönlich kuratierte Empfehlungen für Selbstzahler. Termine innerhalb einer Woche.</>
-        }
+        title="Dein passender Heilpraktiker:in für Psychotherapie"
+        subtitle={<>Wenn Verstehen allein nicht mehr reicht</>}
+        trustItems={[
+          { icon: <ShieldCheck className="h-4 w-4 text-emerald-600" />, label: 'Staatlich geprüfte Heilpraktiker:innen (Psychotherapie)' },
+          { icon: <Clock className="h-4 w-4 text-sky-600" />, label: 'Termine diese Woche verfügbar' },
+          { icon: <Lock className="h-4 w-4 text-slate-700" />, label: '100% diskret ohne Krankenkasse' },
+        ]}
         showModalityLogos
         ctaPill={
           <Button size="lg" variant="outline" asChild data-cta="hero-secondary">
-            <CtaLink href="#top-form" eventType="cta_click">80–120€ pro Sitzung</CtaLink>
+            <CtaLink href="#pricing" eventType="cta_click">80–120€ pro Sitzung</CtaLink>
           </Button>
         }
         analyticsQualifier="LP-Therapie-Finden"
       />
 
-      {/* EARTH-143: Discreet self-pay therapy (no insurance record) */}
+      {/* Recognition Hook */}
+      <RecognitionSection
+        heading="Kommt dir das bekannt vor?"
+        items={[
+          'Du hast in der Therapie viel verstanden, aber die Muster wiederholen sich',
+          'Der Kopf weiß, was zu tun ist – der Körper macht nicht mit',
+          'Nach 25 Sitzungen Verhaltenstherapie fehlt noch etwas',
+          'Du spürst: Es braucht einen anderen Ansatz',
+        ]}
+      />
+      <p className="mt-4 sm:mt-5 max-w-3xl text-gray-700">
+        <strong>Du bist nicht „schwierig“ oder „therapieresistent“.</strong> Körperorientierte Ansätze erreichen, was reine Gesprächstherapie nicht kann: dein Nervensystem und die im Körper gespeicherten Erfahrungen.
+      </p>
+
+      {/* Method Bridge */}
+      <h2 className="mt-10 sm:mt-14 text-2xl font-semibold tracking-tight">Was deine bisherige Therapie nicht erreichen konnte</h2>
+      <MethodComparison
+        leftTitle="Gesprächstherapie"
+        rightTitle="+ Körperorientierte Verfahren"
+        leftItems={[
+          'Versteht und analysiert',
+          'Arbeitet mit dem Bewusstsein',
+          'Kognitive Einsichten',
+        ]}
+        rightItems={[
+          'Integriert und verkörpert',
+          'Erreicht das Nervensystem',
+          'Spürbare Veränderung',
+        ]}
+      />
+      <p className="mt-4 text-gray-700">Auf Basis neuester Erkenntnisse der Traumaforschung und Neurobiologie.</p>
+
+      {/* Therapist previews (random/accepting_new) */}
+      <TherapistTeaserSection title="Deine möglichen Therapeut:innen" subtitle="Termine diese Woche verfügbar." filters={{ accepting_new: true }} limit={3} />
+
+      {/* Investment (note) */}
+      <InvestmentSection
+        id="pricing"
+        heading="Transparente Investition in deine Gesundheit"
+        mode="note"
+        noteItems={[
+          'Sitzungspreise: 80–120€ (je nach Therapeut:in)',
+          '✓ Sofort verfügbar (statt 3–9 Monate warten)',
+          '✓ Keine Diagnose in deiner Krankenakte',
+          '✓ Methodenfreiheit ohne Kassenbeschränkungen',
+          '✓ Steuerlich absetzbar als außergewöhnliche Belastung',
+        ]}
+      />
+
+      {/* Privacy benefit */}
       <PrivacySelfPaySection />
 
-      {/* Trust Indicators */}
-      <section aria-labelledby="trust" className="mt-12 sm:mt-16">
-        <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-6 sm:p-8">
-          <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_120%_10%,rgba(99,102,241,0.08),transparent_60%),radial-gradient(30rem_16rem_at_-20%_80%,rgba(14,165,233,0.08),transparent_60%)]" />
-          <h2 id="trust" className="text-2xl font-semibold">Warum Körperpsychotherapie?</h2>
-          <p className="mt-3 max-w-3xl text-gray-700">
-            Traumatische Erfahrungen werden nicht nur im Kopf, sondern im gesamten Nervensystem gespeichert. Körperorientierte Therapieformen arbeiten direkt mit diesen somatischen Speicherungen.
-          </p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            <Card className="transition-all duration-200">
-              <CardHeader className="flex flex-row items-center gap-3">
-                <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600">
-                  <Activity className="h-5 w-5" />
-                </div>
-                <CardTitle className="text-3xl bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">80%</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>der Klienten berichten von Verbesserungen nach fünf Sitzungen</CardDescription>
-              </CardContent>
-            </Card>
-            <Card className="transition-all duration-200">
-              <CardHeader className="flex flex-row items-center gap-3">
-                <div className="rounded-xl bg-sky-50 p-2 text-sky-600">
-                  <Euro className="h-5 w-5" />
-                </div>
-                <CardTitle className="text-3xl bg-gradient-to-r from-sky-600 to-cyan-600 bg-clip-text text-transparent">€80-120</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>pro Sitzung bei Selbstzahlung</CardDescription>
-              </CardContent>
-            </Card>
-            <Card className="transition-all duration-200">
-              <CardHeader className="flex flex-row items-center gap-3">
-                <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
-                  <Clock className="h-5 w-5" />
-                </div>
-                <CardTitle className="text-3xl bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">Schnell</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>Meist Termine innerhalb weniger Tage verfügbar</CardDescription>
-              </CardContent>
-            </Card>
-          </div>
+      {/* Process with guarantee */}
+      <ProcessSteps
+        heading="So funktioniert deine Therapeuten‑Vermittlung"
+        items={[
+          { step: 1, title: 'Du teilst uns deine Präferenzen mit', icon: <MessageCircle className="h-5 w-5" />, bullets: ['Geschlecht, Ort, Online/Offline, besondere Anliegen'] },
+          { step: 2, title: 'Wir senden dir bis zu 3 passende Vorschläge', icon: <UserCheck className="h-5 w-5" />, bullets: ['Handverlesene Therapeut:innen passend zu deinem Fokus'] },
+          { step: 3, title: 'Du wählst und erhältst Termine in 24 Stunden', icon: <PhoneCall className="h-5 w-5" />, bullets: ['Direkter Kontakt mit konkreten Terminvorschlägen'] },
+        ]}
+        footnote={<><strong>Garantie:</strong> Termine diese Woche möglich – statt 3–6 Monate Wartezeit bei der Kassentherapie.</>}
+      />
+
+      {/* FAQ (low on page) */}
+      <section aria-labelledby="faq-heading" id="faq" className="mt-10 sm:mt-14">
+        <h2 id="faq-heading" className="text-xl font-semibold tracking-tight sm:text-2xl">Häufige Fragen</h2>
+        <div className="mt-4">
+          <FaqAccordion items={faqs} />
         </div>
       </section>
 
-      {/* Datenschutz & Vertrauen */}
-      <section aria-labelledby="privacy-trust" className="mt-12 sm:mt-16">
-        <div className="rounded-2xl border bg-white p-6 sm:p-8">
-          <h2 id="privacy-trust" className="text-2xl font-semibold">Datenschutz & Vertrauen</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            <Card className="transition-all duration-200">
-              <CardHeader className="flex items-center gap-3">
-                <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <CardTitle className="font-medium">Geprüfte Therapeut:innen</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>Wir verifizieren Qualifikationen und Spezialisierungen manuell.</CardDescription>
-              </CardContent>
-            </Card>
-            <Card className="transition-all duration-200">
-              <CardHeader className="flex items-center gap-3">
-                <div className="rounded-xl bg-slate-100 p-2 text-slate-700">
-                  <Lock className="h-5 w-5" />
-                </div>
-                <CardTitle className="font-medium">{COOKIES_ENABLED ? 'Datenschutzfreundlich' : 'Keine Tracking‑Cookies'}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>{COOKIES_ENABLED ? 'Minimales Conversion‑Signal; keine Analytics‑Cookies.' : 'Keine Tracking‑Cookies. Verwendung deiner Angaben nur zur Kontaktaufnahme.'}</CardDescription>
-              </CardContent>
-            </Card>
-            <Card className="transition-all duration-200">
-              <CardHeader className="flex items-center gap-3">
-                <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600">
-                  <UserCheck className="h-5 w-5" />
-                </div>
-                <CardTitle className="font-medium">Transparente Prozesse</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>DSGVO-konforme Verarbeitung. Details in unserer <a className="underline" href="/datenschutz#cookies">Datenschutzerklärung</a>.</CardDescription>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
+      {/* Final CTA */}
+      <FinalCtaSection
+        heading="Starte jetzt diese Woche statt in 6 Monaten"
+        subtitle="Du erhältst handverlesene Vorschläge innerhalb weniger Stunden"
+        buttonLabel="Jetzt passende Therapeut:innen finden"
+      />
 
-      {/* Footer legal note (page-specific) */}
-      <section aria-labelledby="footer-legal" className="mt-12 sm:mt-16">
-        <p id="footer-legal" className="text-xs text-gray-600">
-          Kaufmann Health vermittelt qualifizierte Therapeut:innen basierend auf deren Qualifikationen, Verfügbarkeit und deinen Präferenzen. Wir treffen keine medizinischen Empfehlungen bezüglich spezifischer Behandlungen. Die Entscheidung über eine Therapie triffst du eigenverantwortlich.
-        </p>
-      </section>
+      {/* JSON-LD */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(businessSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
     </main>
   );
 }

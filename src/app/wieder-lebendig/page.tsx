@@ -6,7 +6,6 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import WhatToExpectSection from "@/components/WhatToExpectSection";
 import RevealContainer from "@/components/RevealContainer";
 import FaqAccordion from "@/components/FaqAccordion";
-import WiederLebendigHero from "./Hero";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import ExitIntentModal from "@/components/ExitIntentModal";
 import { Activity, Euro, Clock, UserCheck, MessageCircle, PhoneCall } from "lucide-react";
@@ -15,6 +14,7 @@ import VariantGate from "@/components/VariantGate";
 import { TherapistTeaserSection } from "@/features/landing/components/TherapistTeaserSection";
 import { PrivacySelfPaySection } from "@/features/landing/components/PrivacySelfPaySection";
 import { ProcessSteps } from "@/features/landing/components/ProcessSteps";
+import { LandingHero } from "@/features/landing/components/LandingHero";
 
 export const revalidate = 3600;
 
@@ -161,7 +161,36 @@ export default async function WiederLebendigPage() {
     <div className="min-h-screen bg-white">
       <main className="mx-auto max-w-7xl px-4 py-10 sm:py-14">
         {/* Hero Section with A/B and embedded form */}
-        <WiederLebendigHero />
+        <LandingHero
+          title="Wieder spüren statt nur schaffen."
+          subtitle={
+            <>
+              <VariantGate show="C">
+                <span>Körperorientiertes Coaching & Begleitung – 80–120€ pro Sitzung. Diese Woche noch verfügbar.</span>
+              </VariantGate>
+              <VariantGate show="A">
+                <span>Körperorientierte Therapie mit handverlesenen Therapeut:innen – diese Woche noch verfügbar</span>
+              </VariantGate>
+              <VariantGate show="B">
+                <span>Körperorientierte Therapie mit handverlesenen Therapeut:innen – diese Woche noch verfügbar</span>
+              </VariantGate>
+            </>
+          }
+          showModalityLogos
+          badge={
+            <>
+              5 Therapeut:innen haben diese Woche Zeit für dich
+            </>
+          }
+          ctaPill={
+            <Button size="lg" variant="outline" asChild data-cta="hero-secondary">
+              <CtaLink href="#pricing" eventType="cta_click" aria-label="Preise anzeigen">
+                80-120€ pro Sitzung
+              </CtaLink>
+            </Button>
+          }
+          assignVariantParam
+        />
 
         {/* Trust section: real therapist previews */}
         <TherapistTeaserSection ids={selected} title="Deine Expert:innen" subtitle="Durchschnittlich 7+ Jahre Erfahrung" />

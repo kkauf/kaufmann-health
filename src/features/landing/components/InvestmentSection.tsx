@@ -19,6 +19,7 @@ export function InvestmentSection({
   tiers,
   noteItems,
   defaultCtaHref = "#top-form",
+  id,
 }: {
   heading?: string;
   intro?: string;
@@ -26,11 +27,12 @@ export function InvestmentSection({
   tiers?: Tier[];
   noteItems?: string[];
   defaultCtaHref?: string;
+  id?: string;
 }) {
   if (mode === "tiers") {
     const effectiveTiers: Tier[] = tiers && tiers.length > 0 ? tiers : defaultTiers(defaultCtaHref);
     return (
-      <section id="pricing" aria-labelledby="pricing-heading" className="scroll-mt-24 mt-10 sm:mt-14">
+      <section id={id || "pricing"} aria-labelledby="pricing-heading" className="scroll-mt-24 mt-10 sm:mt-14">
         <h2 id="pricing-heading" className="text-2xl font-semibold tracking-tight">{heading}</h2>
         {intro ? <p className="mt-3 max-w-2xl text-gray-700">{intro}</p> : null}
         <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -71,7 +73,7 @@ export function InvestmentSection({
   // note mode
   const items = noteItems && noteItems.length > 0 ? noteItems : defaultNoteItems();
   return (
-    <section aria-labelledby="investment-heading" className="mt-10 sm:mt-14">
+    <section id={id} aria-labelledby="investment-heading" className="scroll-mt-24 mt-10 sm:mt-14">
       <h2 id="investment-heading" className="text-2xl font-semibold tracking-tight">{heading}</h2>
       {intro ? <p className="mt-3 max-w-2xl text-gray-700">{intro}</p> : null}
       <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-700">

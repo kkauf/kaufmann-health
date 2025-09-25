@@ -12,7 +12,6 @@
       page.tsx               # Funnel (Klient:in)
     /wieder-lebendig
       page.tsx
-      Hero.tsx
     /ankommen-in-dir
       page.tsx
     /fuer-therapeuten

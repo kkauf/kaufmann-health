@@ -31,7 +31,7 @@ export function ProcessSteps({
                 <div className="rounded-lg bg-slate-100 p-2 text-slate-700">
                   {it.icon}
                 </div>
-                <div className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">{it.step}</div>
+                <div className="hidden sm:inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">{it.step}</div>
               </div>
               <CardTitle className="mt-2 text-lg">{it.title}</CardTitle>
               {it.description ? (
@@ -49,7 +49,7 @@ export function ProcessSteps({
         ))}
       </div>
       {footnote ? (
-        <div className="mt-6 rounded-2xl border bg-white p-4 text-sm text-slate-700">
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-center text-sm text-slate-700 sm:text-left">
           {footnote}
         </div>
       ) : null}

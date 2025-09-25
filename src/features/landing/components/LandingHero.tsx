@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { ShieldCheck, Lock, UserCheck } from "lucide-react";
 import { COOKIES_ENABLED } from "@/lib/config";
@@ -19,6 +19,7 @@ export function LandingHero({
   badge,
   ctaPill,
   analyticsQualifier,
+  assignVariantParam,
 }: {
   title: string;
   subtitle?: ReactNode;
@@ -28,7 +29,32 @@ export function LandingHero({
   badge?: ReactNode;
   ctaPill?: ReactNode; // e.g., <Button variant="outline" size="lg" asChild>...</Button>
   analyticsQualifier?: string;
+  assignVariantParam?: boolean;
 }) {
+  const [variant] = useState<"A" | "B" | "C" | undefined>(() => {
+    if (!assignVariantParam) return undefined;
+    try {
+      if (typeof window === 'undefined') return 'A';
+      const url = new URL(window.location.href);
+      const v = url.searchParams.get('v');
+      if (v) {
+        const up = v.toUpperCase();
+        if (up === 'B') return 'B';
+        if (up === 'C') return 'C';
+        return 'A';
+      }
+      const assigned: "A" | "B" = Math.random() < 0.5 ? "A" : "B";
+      try {
+        url.searchParams.set('v', assigned);
+        window.history.replaceState({}, '', url.toString());
+      } catch {}
+      return assigned;
+    } catch {
+      return 'A';
+    }
+  });
+
+  const analyticsQ = analyticsQualifier ?? (assignVariantParam ? variant : undefined);
   const computedTrustItems = useMemo<TrustItem[]>(() => {
     if (trustItems && trustItems.length > 0) return trustItems;
     const items: TrustItem[] = [
@@ -46,7 +72,7 @@ export function LandingHero({
       aria-labelledby="hero-heading"
       className="relative overflow-hidden rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-6 sm:p-8"
     >
-      {analyticsQualifier ? <PageAnalytics qualifier={analyticsQualifier} /> : null}
+      {analyticsQ ? <PageAnalytics qualifier={String(analyticsQ)} /> : null}
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_120%_10%,rgba(99,102,241,0.08),transparent_60%),radial-gradient(30rem_16rem_at_-20%_80%,rgba(14,165,233,0.08),transparent_60%)]" />
 
       {/* Two-column desktop layout: left copy, right form */}
@@ -68,7 +94,7 @@ export function LandingHero({
           ) : null}
 
           {/* Trust markers */}
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-700" aria-label="Vertrauen">
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-3 text-sm text-gray-700" aria-label="Vertrauen">
             {computedTrustItems.map((t, i) => (
               <span key={i} className="inline-flex items-center gap-2">
                 {t.icon}
