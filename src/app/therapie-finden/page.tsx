@@ -53,6 +53,16 @@ export default async function TherapieFindenPage() {
   const faqSchema = buildFaqJsonLd(faqs.map(({ question, answer }) => ({ question, answer })));
   const businessSchema = buildLocalBusinessJsonLd({ baseUrl, path: '/therapie-finden', areaServed: { type: 'Country', name: 'Deutschland', addressCountry: 'DE' } });
 
+  // Curated therapist IDs (limit display to these)
+  const TRUST_IDS = [
+    '7402bb04-c8d8-403e-a8d7-6bc32289c87b',
+    '58d98a45-21ab-40ea-99b3-f65ba27f6715',
+    'e81b560c-7489-4563-be53-1b6cd858f152',
+    '25ae2093-6d85-4d34-84bd-08411f713164',
+    '84c187fb-a981-442b-8a42-422093a3196b',
+  ];
+  const selected = [...TRUST_IDS].sort(() => 0.5 - Math.random()).slice(0, 3);
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
       <LandingHero
@@ -104,8 +114,8 @@ export default async function TherapieFindenPage() {
       />
       <p className="mt-4 text-gray-700">Auf Basis neuester Erkenntnisse der Traumaforschung und Neurobiologie.</p>
 
-      {/* Therapist previews (random/accepting_new) */}
-      <TherapistTeaserSection title="Deine möglichen Therapeut:innen" subtitle="Termine diese Woche verfügbar." filters={{ accepting_new: true }} limit={3} />
+      {/* Therapist previews (curated subset of 5) */}
+      <TherapistTeaserSection title="Deine möglichen Therapeut:innen" subtitle="Termine diese Woche verfügbar." ids={selected} limit={3} />
 
       {/* Investment (note) */}
       <InvestmentSection
