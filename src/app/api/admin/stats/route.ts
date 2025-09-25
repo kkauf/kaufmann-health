@@ -61,8 +61,15 @@ export async function GET(req: Request) {
 
     // Totals
     const [therapistsRes, clientsRes, matchesTotalRes] = await Promise.all([
-      supabaseServer.from('therapists').select('id', { count: 'exact', head: true }),
-      supabaseServer.from('people').select('id', { count: 'exact', head: true }).eq('type', 'patient'),
+      supabaseServer
+        .from('therapists')
+        .select('id', { count: 'exact', head: true })
+        .not('metadata->>is_test', 'eq', 'true'),
+      supabaseServer
+        .from('people')
+        .select('id', { count: 'exact', head: true })
+        .eq('type', 'patient')
+        .not('metadata->>is_test', 'eq', 'true'),
       supabaseServer.from('matches').select('id', { count: 'exact', head: true }),
     ]);
     // Be resilient: log but continue with defaults
@@ -111,6 +118,7 @@ export async function GET(req: Request) {
           .from('events')
           .select('created_at, properties')
           .eq('type', 'lead_submitted')
+          .not('properties->>is_test', 'eq', 'true')
           .gte('created_at', sinceIso)
           .order('created_at', { ascending: true })
           .limit(10000),
@@ -118,6 +126,7 @@ export async function GET(req: Request) {
           .from('events')
           .select('created_at, properties')
           .eq('type', 'patient_selected')
+          .not('properties->>is_test', 'eq', 'true')
           .gte('created_at', sinceIso)
           .order('created_at', { ascending: true })
           .limit(10000),
@@ -125,6 +134,7 @@ export async function GET(req: Request) {
           .from('events')
           .select('created_at, properties')
           .eq('type', 'profile_viewed')
+          .not('properties->>is_test', 'eq', 'true')
           .gte('created_at', sinceIso)
           .order('created_at', { ascending: true })
           .limit(10000),
@@ -169,12 +179,14 @@ export async function GET(req: Request) {
           .from('events')
           .select('properties')
           .eq('type', 'self_pay_confirmed')
+          .not('properties->>is_test', 'eq', 'true')
           .gte('created_at', sinceIso)
           .limit(10000),
         supabaseServer
           .from('events')
           .select('properties')
           .eq('type', 'self_pay_declined')
+          .not('properties->>is_test', 'eq', 'true')
           .gte('created_at', sinceIso)
           .limit(10000),
       ]);
@@ -308,6 +320,7 @@ export async function GET(req: Request) {
       .select('status, campaign_source, campaign_variant, type, created_at')
       .eq('type', 'patient')
       .not('campaign_source', 'is', null)
+      .not('metadata->>is_test', 'eq', 'true')
       .gte('created_at', sinceIso)
       .limit(50000);
     if (peopleErr) {
@@ -429,6 +442,7 @@ export async function GET(req: Request) {
         .select('status, campaign_source, campaign_variant, type, created_at')
         .eq('type', 'patient')
         .not('campaign_source', 'is', null)
+        .not('metadata->>is_test', 'eq', 'true')
         .gte('created_at', sinceIso)
         .limit(50000);
 

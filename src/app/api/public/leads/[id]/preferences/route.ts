@@ -106,7 +106,9 @@ export async function POST(req: Request) {
     // Fire Enhanced Conversions now that the lead is active (status='new')
     try {
       const email = person.email || '';
-      if (email) {
+      const meta = (person.metadata ?? {}) as Record<string, unknown>;
+      const isTest = typeof meta === 'object' && meta !== null && (meta as { is_test?: unknown }).is_test === true;
+      if (email && !isTest) {
         await googleAdsTracker.trackConversion({
           email,
           conversionAction: 'client_registration',

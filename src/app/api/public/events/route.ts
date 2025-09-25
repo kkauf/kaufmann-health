@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { track } from '@/lib/logger';
 import { parseAttributionFromRequest } from '@/lib/server-analytics';
+import { isLocalhostRequest } from '@/lib/test-mode';
 
 export const runtime = 'nodejs';
 
@@ -54,6 +55,7 @@ export async function POST(req: Request) {
       utm_source: utmSourceFinal,
       utm_medium: utmMediumFinal,
       utm_campaign: utmCampaignFinal,
+      ...(isLocalhostRequest(req) ? { is_test: true } : {}),
       ...(properties && typeof properties === 'object' ? properties : {}),
     };
 

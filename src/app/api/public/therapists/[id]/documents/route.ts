@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 import { googleAdsTracker } from '@/lib/google-ads';
+import { isTestRequest } from '@/lib/test-mode';
 import { sendEmail } from '@/lib/email/client';
 import { renderTherapistUploadConfirmation } from '@/lib/email/templates/therapistUploadConfirmation';
 
@@ -192,6 +193,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     // Google Ads Enhanced Conversion: therapist becomes a qualified lead after documents are submitted
     try {
       const toEmail = (therapist as { email?: string | null }).email || '';
+      const metaUnknown = (therapist as { metadata?: unknown }).metadata;
+      const metaIsTest = Boolean(typeof metaUnknown === 'object' && metaUnknown && (metaUnknown as { is_test?: unknown }).is_test === true);
+      const isTest = metaIsTest || isTestRequest(req, toEmail);
       if (toEmail) {
         const conversionActionAlias = 'therapist_registration';
         const value = 25;
@@ -201,14 +205,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           source: 'api.therapists.documents',
           ip,
           ua,
-          props: { action: conversionActionAlias, therapist_id: id, value },
+          props: { action: conversionActionAlias, therapist_id: id, value, is_test: isTest },
         });
         // Fire-and-forget; do not block the response on external API
-        void googleAdsTracker
-          .trackConversion({ email: toEmail, conversionAction: conversionActionAlias, conversionValue: value, orderId: id })
-          .catch(async (err) => {
-            await logError('api.therapists.documents', err, { stage: 'google_ads_conversion', therapist_id: id }, ip, ua);
-          });
+        if (!isTest) {
+          void googleAdsTracker
+            .trackConversion({ email: toEmail, conversionAction: conversionActionAlias, conversionValue: value, orderId: id })
+            .catch(async (err) => {
+              await logError('api.therapists.documents', err, { stage: 'google_ads_conversion', therapist_id: id }, ip, ua);
+            });
+        }
       }
     } catch (e) {
       await logError('api.therapists.documents', e, { stage: 'google_ads_conversion_outer', therapist_id: id }, ip, ua);

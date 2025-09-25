@@ -7,6 +7,7 @@ import { BASE_URL } from '@/lib/constants';
 import { logError, track } from '@/lib/logger';
 import { sanitize } from '@/lib/leads/validation';
 import { isIpRateLimited } from '@/lib/leads/rateLimit';
+import { isTestRequest } from '@/lib/test-mode';
 
 export const runtime = 'nodejs';
 
@@ -47,8 +48,9 @@ export async function POST(req: Request) {
       return ok();
     }
 
-    // Soft IP rate limiting (60s window). Always returns OK either way.
-    if (ip) {
+    // Soft IP rate limiting (60s window). Bypass when test.
+    const isTest = isTestRequest(req, email);
+    if (!isTest && ip) {
       try {
         const limited = await isIpRateLimited(supabaseServer, ip, undefined, 60_000);
         if (limited) return ok();
@@ -72,9 +74,9 @@ export async function POST(req: Request) {
 
     const metadata = (person.metadata ?? {}) as Record<string, unknown>;
 
-    // Throttle by last sent time: 10 minutes
+    // Throttle by last sent time: 10 minutes (bypass when test)
     const sentAtIso = metadata['confirm_sent_at'] as string | undefined;
-    if (sentAtIso) {
+    if (!isTest && sentAtIso) {
       const sentAt = Date.parse(sentAtIso);
       if (!Number.isNaN(sentAt) && Date.now() - sentAt < 10 * 60 * 1000) {
         return ok();
@@ -98,7 +100,8 @@ export async function POST(req: Request) {
 
     // Send email (best-effort)
     try {
-      const confirmUrl = `${BASE_URL}/api/leads/confirm?token=${encodeURIComponent(newToken)}&id=${encodeURIComponent(id)}`;
+      const origin = new URL(req.url).origin || BASE_URL;
+      const confirmUrl = `${origin}/api/leads/confirm?token=${encodeURIComponent(newToken)}&id=${encodeURIComponent(id)}`;
       const emailContent = renderEmailConfirmation({ confirmUrl });
       void track({
         type: 'email_attempted',

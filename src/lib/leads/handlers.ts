@@ -11,6 +11,7 @@ import { logError, track } from '@/lib/logger';
 import { googleAdsTracker } from '@/lib/google-ads';
 import { parseAttributionFromRequest, parseCampaignFromRequest } from '@/lib/server-analytics';
 import { hashIP } from './validation';
+import { isTestRequest } from '@/lib/test-mode';
 import type { HandlerContext } from './types';
 
 export type PatientHandlerInput = {
@@ -55,6 +56,7 @@ export async function handlePatientLead(ctx: HandlerContext, input: PatientHandl
 
   // Campaign parsing (first-party)
   const campaign = parseCampaignFromRequest(req);
+  const isTest = isTestRequest(req, data.email);
 
   const res = await supabaseServer
     .from('people')
@@ -68,6 +70,7 @@ export async function handlePatientLead(ctx: HandlerContext, input: PatientHandl
       campaign_variant: campaign.campaign_variant,
       landing_page: campaign.landing_page,
       metadata: {
+        ...(isTest ? { is_test: true } : {}),
         ...(data.notes ? { notes: data.notes } : {}),
         ...(city ? { city } : {}),
         ...(issue ? { issue } : {}),
@@ -140,7 +143,7 @@ export async function handlePatientLead(ctx: HandlerContext, input: PatientHandl
     }
 
     // Google Ads conversion (legacy flow only). In email-only mode (EARTH-146), this fires later at POST /api/leads/:id/preferences.
-    if (process.env.REQUIRE_EMAIL_CONFIRMATION === 'false') {
+    if (process.env.REQUIRE_EMAIL_CONFIRMATION === 'false' && !isTest) {
       try {
         const conversionActionAlias = 'client_registration';
         const value = 10;
@@ -225,6 +228,7 @@ export async function handlePatientLead(ctx: HandlerContext, input: PatientHandl
         campaign_source: campaign.campaign_source || null,
         campaign_variant: campaign.campaign_variant || null,
         landing_page: campaign.landing_page || null,
+        is_test: isTest,
         ...(session_id ? { session_id } : {}),
         ...(attr.referrer ? { referrer: attr.referrer } : {}),
         ...(attr.utm_source ? { utm_source: attr.utm_source } : {}),
@@ -243,6 +247,7 @@ export async function handlePatientLead(ctx: HandlerContext, input: PatientHandl
 export async function handleTherapistLead(ctx: HandlerContext, input: TherapistHandlerInput) {
   const { req, ip, ua } = ctx;
   const { data, city, sessionPreferences, specializations, session_id } = input;
+  const isTest = isTestRequest(req, data.email);
 
   const fullName = (data.name || '').trim();
   const first_name = fullName ? fullName.split(/\s+/)[0] : null;
@@ -260,6 +265,7 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
       session_preferences: sessionPreferences,
       modalities,
       status: 'pending_verification',
+      ...(isTest ? { metadata: { is_test: true } as Record<string, unknown> } : {}),
     })
     .select('id')
     .single();
@@ -325,6 +331,7 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
       lead_type: 'therapist',
       city: city || null,
       has_specializations: specializations.length > 0,
+      is_test: isTest,
       campaign_source: campaign.campaign_source || null,
       campaign_variant: campaign.campaign_variant || null,
       landing_page: campaign.landing_page || null,

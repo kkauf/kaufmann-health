@@ -15,6 +15,7 @@ import { sanitize, normalizeSpecializations, hashIP } from '@/lib/leads/validati
 import { isIpRateLimited } from '@/lib/leads/rateLimit';
 import { handlePatientLead, handleTherapistLead } from '@/lib/leads/handlers';
 import type { LeadPayload } from '@/lib/leads/types';
+import { isTestRequest } from '@/lib/test-mode';
 
 export const runtime = 'nodejs';
 
@@ -71,6 +72,16 @@ function getClientIP(headers: Headers) {
   const xrip = headers.get('x-real-ip');
   if (xrip) return xrip.trim();
   return undefined;
+}
+
+// Guard against open redirects: only allow absolute app-internal paths and disallow API paths
+function isSafeRelativePath(p?: string | null): p is string {
+  if (!p || typeof p !== 'string') return false;
+  // Must start with a single '/'
+  if (!p.startsWith('/') || p.startsWith('//')) return false;
+  // Disallow API namespace
+  if (p.startsWith('/api')) return false;
+  return true;
 }
 
 // Internal notification type moved to email lib; inline type removed
@@ -514,6 +525,10 @@ export async function POST(req: Request) {
     const genderPrefRaw = sanitize(payload.gender_preference as string | undefined);
     const genderPreference: 'male' | 'female' | 'no_preference' | undefined =
       genderPrefRaw === 'male' || genderPrefRaw === 'female' || genderPrefRaw === 'no_preference' ? genderPrefRaw : undefined;
+    // Optional form session linkage for email-first wizard flow (EARTH-190)
+    const formSessionId = sanitize(payload.form_session_id as string | undefined);
+    const confirmRedirectPathRaw = sanitize(payload.confirm_redirect_path as string | undefined);
+    const confirmRedirectPath = isSafeRelativePath(confirmRedirectPathRaw) ? confirmRedirectPathRaw : undefined;
 
     // Feature flag: double opt-in email-only flow for patients (EARTH-146)
     const REQUIRE_EMAIL_CONFIRMATION = process.env.REQUIRE_EMAIL_CONFIRMATION !== 'false';
@@ -551,6 +566,7 @@ export async function POST(req: Request) {
 
     // EARTH-146: If email confirmation is required, run minimal email-only path for patient leads
     if (REQUIRE_EMAIL_CONFIRMATION && leadType === 'patient') {
+      const isTest = isTestRequest(req, email);
       // Campaign inference from referrer
       const campaign = parseCampaignFromRequest(req);
       const campaign_source = campaign.campaign_source;
@@ -568,11 +584,13 @@ export async function POST(req: Request) {
       // Insert minimal lead with resilience to optional campaign columns not yet in schema
       // Also persist early session preference if provided (so we can prioritize online from signup)
       const baseMetadata: Record<string, unknown> = {
+        ...(isTest ? { is_test: true } : {}),
         submitted_at: new Date().toISOString(),
         confirm_token: confirmToken,
         confirm_sent_at: new Date().toISOString(),
         ...(sessionPreference ? { session_preference: sessionPreference } : {}),
         ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
+        ...(formSessionId ? { form_session_id: formSessionId } : {}),
       };
       const insertPayload = {
         email,
@@ -633,12 +651,12 @@ export async function POST(req: Request) {
         if (existing?.id) {
           effectiveId = existing.id as string;
           const existingStatus = (existing.status || '') as string;
-          if (existingStatus && existingStatus !== 'pre_confirmation') {
+          if (!isTest && existingStatus && existingStatus !== 'pre_confirmation') {
             // Already confirmed or other terminal state — don't downgrade or resend; treat as success
             await ServerAnalytics.trackEventFromRequest(req, {
               type: 'email_submitted',
               source: 'api.leads',
-              props: { campaign_source, campaign_variant, landing_page, requires_confirmation: false },
+              props: { campaign_source, campaign_variant, landing_page, requires_confirmation: false, is_test: isTest },
             });
             return NextResponse.json(
               { data: { id: existing.id, requiresConfirmation: false }, error: null },
@@ -652,8 +670,13 @@ export async function POST(req: Request) {
               confirm_sent_at: new Date().toISOString(),
               ...(sessionPreference ? { session_preference: sessionPreference } : {}),
               ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
+              ...(isTest ? { is_test: true } : {}),
             };
-            await supabaseServer.from('people').update({ metadata: merged }).eq('id', effectiveId);
+            if (isTest) {
+              await supabaseServer.from('people').update({ status: 'pre_confirmation', metadata: merged }).eq('id', effectiveId);
+            } else {
+              await supabaseServer.from('people').update({ metadata: merged }).eq('id', effectiveId);
+            }
           }
         } else if (selErr && !getErrorMessage(selErr).includes('schema cache')) {
           // Only treat as error if not a schema-mismatch handled above
@@ -672,9 +695,13 @@ export async function POST(req: Request) {
 
       // Send confirmation email (token already stored)
       try {
-        const confirmUrl = `${BASE_URL}/api/leads/confirm?token=${encodeURIComponent(confirmToken)}&id=${encodeURIComponent(
+        // Use request origin to avoid port/domain mismatch in local/dev
+        const origin = new URL(req.url).origin || BASE_URL;
+        const confirmBase = `${origin}/api/leads/confirm?token=${encodeURIComponent(confirmToken)}&id=${encodeURIComponent(
           effectiveId!,
         )}`;
+        const withFs = formSessionId ? `${confirmBase}&fs=${encodeURIComponent(formSessionId)}` : confirmBase;
+        const confirmUrl = confirmRedirectPath ? `${withFs}&redirect=${encodeURIComponent(confirmRedirectPath)}` : withFs;
         const emailContent = renderEmailConfirmation({ confirmUrl });
         void track({
           type: 'email_attempted',
@@ -694,7 +721,7 @@ export async function POST(req: Request) {
       await ServerAnalytics.trackEventFromRequest(req, {
         type: 'email_submitted',
         source: 'api.leads',
-        props: { campaign_source, campaign_variant, landing_page, requires_confirmation: true },
+        props: { campaign_source, campaign_variant, landing_page, requires_confirmation: true, is_test: isTest },
       });
 
       return NextResponse.json(
