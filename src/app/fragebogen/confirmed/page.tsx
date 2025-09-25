@@ -1,4 +1,6 @@
 import { Metadata } from 'next';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export const metadata: Metadata = {
   title: 'E-Mail bestätigt – Kaufmann Health',
@@ -6,8 +8,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function ConfirmedPage() {
+export default async function ConfirmedPage({ searchParams }: { searchParams?: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const name = undefined;
+  const params = (await searchParams) || {};
+  const fsParam = (params['fs'] ?? '') as string | string[];
+  const fs = Array.isArray(fsParam) ? fsParam[0] : fsParam;
   return (
     <div className="max-w-2xl mx-auto px-4 py-12 space-y-6">
       <h1 className="text-3xl font-semibold">✓ Deine E-Mail-Adresse ist bestätigt</h1>
@@ -23,6 +28,13 @@ export default function ConfirmedPage() {
           <li>Du wählst deine:n Therapeut:in innerhalb von 48 Stunden</li>
         </ul>
       </div>
+      {!!fs && (
+        <div>
+          <Button asChild className="h-11">
+            <Link href={`/fragebogen?fs=${encodeURIComponent(fs)}`}>Formular fortsetzen</Link>
+          </Button>
+        </div>
+      )}
       <p className="text-sm text-muted-foreground">Keine E‑Mail bekommen? Schau im Spam‑Ordner nach oder probiere es in ein paar Minuten erneut.</p>
     </div>
   );

@@ -23,6 +23,9 @@ export type LeadPayload = {
   consent_share_with_therapists?: boolean;
   privacy_version?: string;
   session_id?: string;
+  // EARTH-190: optional linkage for email-first wizard flow
+  form_session_id?: string;
+  confirm_redirect_path?: string;
 };
 
 export type HandlerContext = {

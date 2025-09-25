@@ -45,12 +45,16 @@ export default function SignupWizard() {
   const [data, setData] = React.useState<WizardData>({ name: '', email: '' });
   const [saving, setSaving] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
+  const [submitSlow, setSubmitSlow] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
   const lastSyncedRef = React.useRef<string>('');
   const sessionIdRef = React.useRef<string | null>(null);
   const [sessionId, setSessionId] = React.useState<string | null>(null);
   const loadedForSession = React.useRef<string | null>(null);
   const screenStartRef = React.useRef<number>(Date.now());
   const prevStepRef = React.useRef<number>(1);
+  const [navLock, setNavLock] = React.useState(false);
+  const [isOnline, setIsOnline] = React.useState<boolean>(true);
 
   // Analytics helper
   const trackEvent = React.useCallback(async (type: string, properties?: Record<string, unknown>) => {
@@ -116,6 +120,17 @@ export default function SignupWizard() {
         } catch {}
       }
       setSessionId(sessionIdRef.current);
+      // Online/offline listeners
+      setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
+      const handleOnline = () => setIsOnline(true);
+      const handleOffline = () => setIsOnline(false);
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+      // Cleanup
+      return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      };
     } catch {}
     // Scroll to top initially
     window.scrollTo({ top: 0 });
@@ -196,6 +211,21 @@ export default function SignupWizard() {
     });
   }, []);
 
+  // Safe navigation to prevent double-clicks on Next/Back
+  const safeGoToStep = React.useCallback(
+    (n: number) => {
+      if (navLock) return;
+      setNavLock(true);
+      try {
+        goToStep(n);
+      } finally {
+        // Release after short delay (matches UI transitions)
+        setTimeout(() => setNavLock(false), 250);
+      }
+    },
+    [goToStep, navLock],
+  );
+
   // Fire screen_viewed on step changes
   React.useEffect(() => {
     void trackEvent('screen_viewed', { step });
@@ -247,7 +277,8 @@ export default function SignupWizard() {
           <Screen1
             values={{ name: data.name, email: data.email }}
             onChange={saveLocal}
-            onNext={() => goToStep(2)}
+            onNext={() => safeGoToStep(2)}
+            disabled={navLock || submitting}
           />
         );
       case 2:
@@ -260,8 +291,9 @@ export default function SignupWizard() {
               what_missing: data.what_missing,
             }}
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
-            onBack={() => goToStep(1)}
-            onNext={() => goToStep(3)}
+            onBack={() => safeGoToStep(1)}
+            onNext={() => safeGoToStep(3)}
+            disabled={navLock || submitting}
           />
         );
       case 3:
@@ -274,8 +306,9 @@ export default function SignupWizard() {
               privacy_preference: data.privacy_preference,
             }}
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
-            onBack={() => goToStep(2)}
-            onNext={() => goToStep(4)}
+            onBack={() => safeGoToStep(2)}
+            onNext={() => safeGoToStep(4)}
+            disabled={navLock || submitting}
           />
         );
       case 4:
@@ -289,8 +322,9 @@ export default function SignupWizard() {
               methods: data.methods,
             }}
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
-            onBack={() => goToStep(3)}
-            onNext={() => goToStep(5)}
+            onBack={() => safeGoToStep(3)}
+            onNext={() => safeGoToStep(5)}
+            disabled={navLock || submitting}
           />
         );
       case 5:
@@ -298,8 +332,9 @@ export default function SignupWizard() {
           <Screen5
             values={{ additional_info: data.additional_info }}
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
-            onBack={() => goToStep(4)}
+            onBack={() => safeGoToStep(4)}
             onNext={handleSubmit}
+            disabled={navLock || submitting}
           />
         );
       case 6:
@@ -324,6 +359,9 @@ export default function SignupWizard() {
   async function handleSubmit() {
     if (submitting) return;
     setSubmitting(true);
+    setSubmitError(null);
+    setSubmitSlow(false);
+    const slowTimer = setTimeout(() => setSubmitSlow(true), 3000);
     try {
       // Track completion for last screen before submit
       {
@@ -341,7 +379,7 @@ export default function SignupWizard() {
           name: data.name,
           email: data.email,
           form_session_id: sessionIdRef.current || undefined,
-          confirm_redirect_path: '/fragebogen/confirmed',
+          confirm_redirect_path: '/fragebogen',
         }),
       });
       if (!res.ok) throw new Error('Lead submit failed');
@@ -349,21 +387,41 @@ export default function SignupWizard() {
       // Go to final screen
       goToStep(6);
     } catch {
-      // Friendly retry UI could be added here; keep minimal per step 1 delivery
-      console.warn('Submit failed, staying on current step');
+      setSubmitError('Senden fehlgeschlagen. Bitte überprüfe deine Verbindung und versuche es erneut.');
     } finally {
+      clearTimeout(slowTimer);
       setSubmitting(false);
     }
   }
 
   return (
     <div className="space-y-6">
+      {/* Offline banner */}
+      {!isOnline && (
+        <div className="rounded-md border p-3 text-sm bg-yellow-50 border-yellow-200">
+          Du bist offline. Wir speichern deine Eingaben lokal und synchronisieren sie automatisch, sobald du wieder online bist.
+        </div>
+      )}
       <ProgressBar value={PROGRESS[Math.max(0, Math.min(PROGRESS.length - 1, step - 1))]} />
       {renderScreen()}
       {/* Footer status only (per-screen navigation handles actions) */}
       <div className="flex items-center justify-end pt-2">
         <div className="text-sm text-muted-foreground">{saving ? 'Speichern…' : 'Gespeichert'}</div>
       </div>
+      {/* Submit states */}
+      {submitting && (
+        <div className="text-sm text-muted-foreground">
+          {submitSlow ? 'Senden… (langsame Verbindung erkannt)' : 'Senden…'}
+        </div>
+      )}
+      {submitError && (
+        <div className="rounded-md border p-4 bg-red-50 border-red-200">
+          <p className="text-sm text-red-700">{submitError}</p>
+          <div className="mt-2">
+            <Button className="h-10" onClick={handleSubmit}>Erneut versuchen</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

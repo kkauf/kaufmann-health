@@ -82,6 +82,42 @@ This doc captures the visual patterns that save debugging time and keep the UI c
 - Section spacing: `mt-12 sm:mt-16`
 - Inset padding for content blocks: `p-6 sm:p-8`
 
+## Mobile UX Principles (Email-First Wizard)
+
+- **Touch targets (44px min)**
+  - Buttons and inputs use `h-11` (≈44px) by default. Increase vertical padding instead of font size.
+
+- **Progressive trust, progressive disclosure**
+  - Capture email first, then ask for details in small, low‑friction steps. Avoid long forms on a single screen.
+  - Use short helper text to set expectations; keep labels concise.
+
+- **Step navigation and focus management**
+  - On step change, call `window.scrollTo({ top: 0, behavior: 'smooth' })` to prevent partial screens.
+  - Keep Back/Next CTAs large and consistently positioned. Avoid multiple competing CTAs per screen.
+
+- **Inline validation (no modals, no blocking)**
+  - Validate on blur or on navigation; render small inline error text beneath the field.
+  - Only show errors for fields the user interacted with or when leaving a screen.
+
+- **Keyboard & input types**
+  - Use semantic input types to trigger the right keyboard: `type="email"`, `inputmode="numeric"` when appropriate.
+  - Ensure the active input is not covered by the keyboard (use adequate bottom spacing and avoid sticky blockers near inputs).
+
+- **Autosave and resilience**
+  - Save on every field change to `localStorage`; sync to backend at a light cadence (≈30s) using a shallow payload.
+  - Prefer fire‑and‑forget network updates; UI must remain responsive when offline or on high latency.
+
+- **Analytics (no PII, server‑side)**
+  - Client sends small, PII‑free events via `navigator.sendBeacon` (fallback to `fetch`):
+    - `screen_viewed`, `screen_completed` (with `duration_ms`, `missing_required`), `field_change`, `field_abandonment`, `form_completed`.
+  - Do not duplicate in Vercel Analytics. Keep Vercel for high‑level conversions only.
+
+- **Copy & tone**
+  - Du‑Form throughout. Use plain language and affirmative microcopy (“Fast geschafft …”).
+
+- **Performance**
+  - Prefer native controls, minimal animation (≤300ms), and avoid heavy libraries on funnel pages.
+
 ## Radii & Elevation
 
 - Sections: `rounded-2xl border`, elevation via subtle background (plain or gradient panel).

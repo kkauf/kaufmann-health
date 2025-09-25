@@ -22,11 +22,13 @@ export default function Screen4({
   onChange,
   onNext,
   onBack,
+  disabled,
 }: {
   values: Screen4Values;
   onChange: (patch: Partial<Screen4Values>) => void;
   onNext: () => void;
   onBack: () => void;
+  disabled?: boolean;
 }) {
   const [errors, setErrors] = React.useState<{ language?: string; other?: string }>({});
 
@@ -59,6 +61,8 @@ export default function Screen4({
                 key={opt}
                 type="button"
                 className={`h-11 rounded border px-4 text-left ${values.gender === opt ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
+                disabled={!!disabled}
+                aria-disabled={disabled}
                 onClick={() => onChange({ gender: opt })}
               >
                 {opt}
@@ -76,6 +80,8 @@ export default function Screen4({
               key={opt}
               type="button"
               className={`h-11 rounded border px-4 text-left ${values.language === opt ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
+              disabled={!!disabled}
+              aria-disabled={disabled}
               onClick={() => onChange({ language: opt })}
             >
               {opt}
@@ -89,6 +95,7 @@ export default function Screen4({
             placeholder="Welche Sprache?"
             value={values.language_other || ''}
             onChange={(e) => onChange({ language_other: e.target.value })}
+            disabled={!!disabled}
           />
         )}
         {errors.language && <p className="text-sm text-red-600">{errors.language}</p>}
@@ -105,6 +112,8 @@ export default function Screen4({
                 key={opt}
                 type="button"
                 className={`h-11 rounded border px-4 text-left ${selected ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
+                disabled={!!disabled}
+                aria-disabled={disabled}
                 onClick={() => toggle('time_slots', opt)}
               >
                 {opt}
@@ -126,6 +135,8 @@ export default function Screen4({
                 type="button"
                 className={`h-11 rounded border px-4 text-left ${selected ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
                 onClick={() => toggle('methods', opt)}
+                disabled={!!disabled}
+                aria-disabled={disabled}
               >
                 {opt}
               </button>
@@ -135,8 +146,8 @@ export default function Screen4({
       </div>
 
       <div className="flex items-center justify-between pt-2">
-        <Button variant="secondary" className="h-11" onClick={onBack}>Zurück</Button>
-        <Button className="h-11" onClick={() => validate() && onNext()}>Weiter →</Button>
+        <Button variant="secondary" className="h-11" onClick={onBack} disabled={!!disabled} aria-disabled={disabled}>Zurück</Button>
+        <Button className="h-11" onClick={() => validate() && onNext()} disabled={!!disabled} aria-disabled={disabled}>Weiter →</Button>
       </div>
     </div>
   );

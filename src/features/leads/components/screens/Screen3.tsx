@@ -29,11 +29,13 @@ export default function Screen3({
   onChange,
   onNext,
   onBack,
+  disabled,
 }: {
   values: Screen3Values;
   onChange: (patch: Partial<Screen3Values>) => void;
   onNext: () => void;
   onBack: () => void;
+  disabled?: boolean;
 }) {
   const [errors, setErrors] = React.useState<{ location?: string }>({});
 
@@ -64,14 +66,16 @@ export default function Screen3({
                 className="h-11"
                 value={values.city || ''}
                 onChange={(e) => onChange({ city: e.target.value })}
+                disabled={!!disabled}
               />
             </div>
-            <label className="inline-flex items-center gap-2 select-none">
+            <label className="inline-flex items-center gap-2 select-none min-h-[44px] py-2">
               <input
                 type="checkbox"
-                className="h-5 w-5 rounded border-gray-300"
+                className="h-6 w-6 rounded border-gray-300"
                 checked={!!values.online_ok}
                 onChange={(e) => onChange({ online_ok: e.target.checked })}
+                disabled={!!disabled}
               />
               <span>Online‑Therapie ist auch okay</span>
             </label>
@@ -90,6 +94,8 @@ export default function Screen3({
               type="button"
               className={`h-11 rounded border px-4 text-left ${values.budget === opt ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
               onClick={() => onChange({ budget: opt })}
+              disabled={!!disabled}
+              aria-disabled={disabled}
             >
               {opt}
             </button>
@@ -107,6 +113,8 @@ export default function Screen3({
               type="button"
               className={`h-11 rounded border px-4 text-left ${values.privacy_preference === opt ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
               onClick={() => onChange({ privacy_preference: opt })}
+              disabled={!!disabled}
+              aria-disabled={disabled}
             >
               {opt}
             </button>
@@ -115,8 +123,8 @@ export default function Screen3({
       </div>
 
       <div className="flex items-center justify-between pt-2">
-        <Button variant="secondary" className="h-11" onClick={onBack}>Zurück</Button>
-        <Button className="h-11" onClick={() => validate() && onNext()}>Weiter →</Button>
+        <Button variant="secondary" className="h-11" onClick={onBack} disabled={!!disabled} aria-disabled={disabled}>Zurück</Button>
+        <Button className="h-11" onClick={() => validate() && onNext()} disabled={!!disabled} aria-disabled={disabled}>Weiter →</Button>
       </div>
     </div>
   );

@@ -15,10 +15,12 @@ export default function Screen1({
   values,
   onChange,
   onNext,
+  disabled,
 }: {
   values: Screen1Values;
   onChange: (patch: Partial<Screen1Values>) => void;
   onNext: () => void;
+  disabled?: boolean;
 }) {
   const [emailError, setEmailError] = React.useState<string | null>(null);
 
@@ -70,7 +72,9 @@ export default function Screen1({
       </div>
 
       <div>
-        <Button type="submit" className="h-12 w-full text-base">Passende Therapeut:innen finden →</Button>
+        <Button type="submit" className="h-12 w-full text-base" disabled={disabled} aria-disabled={disabled}>
+          Passende Therapeut:innen finden →
+        </Button>
       </div>
     </form>
   );

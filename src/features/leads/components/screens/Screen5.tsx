@@ -13,11 +13,13 @@ export default function Screen5({
   onChange,
   onBack,
   onNext,
+  disabled,
 }: {
   values: Screen5Values;
   onChange: (patch: Partial<Screen5Values>) => void;
   onBack: () => void;
   onNext: () => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="space-y-8">
@@ -30,14 +32,15 @@ export default function Screen5({
             className="min-h-[120px] w-full rounded border border-gray-300 px-3 py-2"
             placeholder="Optional"
             value={values.additional_info || ''}
-            onChange={(e) => onChange({ additional_info: e.target.value })}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange({ additional_info: e.target.value })}
+            disabled={!!disabled}
           />
         </div>
       </div>
 
       <div className="flex items-center justify-between pt-2">
-        <Button variant="secondary" className="h-11" onClick={onBack}>Zurück</Button>
-        <Button className="h-11" onClick={onNext}>Weiter →</Button>
+        <Button variant="secondary" className="h-11" onClick={onBack} disabled={!!disabled} aria-disabled={disabled}>Zurück</Button>
+        <Button className="h-11" onClick={onNext} disabled={!!disabled} aria-disabled={disabled}>Weiter →</Button>
       </div>
     </div>
   );

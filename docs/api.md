@@ -46,12 +46,14 @@
 - __Query Params__:
   - `id` (uuid, required)
   - `token` (string, required) — one-time token from the confirmation email; valid for 24 hours
+  - `fs?` (string, optional) — form session id used for resume; passed through on redirect when applicable
+  - `redirect?` (string, optional) — safe path (must start with `/` and not `/api` or `//`) to redirect to on success
 - __Behavior__:
   - Loads the `people` row by `id`, verifies `metadata.confirm_token` and TTL using `metadata.confirm_sent_at` (24h).
   - On success: sets `status='email_confirmed'`, clears `confirm_token` and `confirm_sent_at`, sets `confirmed_at` timestamp; emits analytics event `email_confirmed` with campaign properties (`campaign_source`, `campaign_variant`, `landing_page`) and `elapsed_seconds`. The lead is redirected to `/preferences` to complete profile details before becoming active.
   - On invalid/expired tokens: no changes are made.
 - __Redirects__:
-  - 302 → on success: `/preferences?confirm=1&id=<leadId>`
+  - 302 → on success: `/preferences?confirm=1&id=<leadId>` (or to `redirect` if provided)
   - 302 → if already confirmed: `/preferences?id=<leadId>`
   - 302 → on invalid/expired/error: `/confirm?state=invalid | expired | error`
 
@@ -104,6 +106,34 @@
   - 400: `{ data: null, error: 'Missing id' | 'Missing fields' | 'Einwilligung zur Datenübertragung erforderlich' | 'Invalid JSON' }`
   - 404: `{ data: null, error: 'Not found' }`
   - 500: `{ data: null, error: 'Failed to update' | 'Unexpected error' }`
+
+## Form Sessions (EARTH-190)
+
+### POST /api/public/form-sessions
+
+- __Purpose__: Create a lightweight server record for autosaving the email-first wizard state and enabling resume across devices.
+- __Auth__: None (public). Payload is sanitized and stored as opaque JSON.
+- __Request Body__ (JSON):
+  - `data` (object, optional) — partial form state; kept small and PII-minimal
+  - `email?` (string, optional) — used to associate session to lead later; optional
+- __Behavior__:
+  - Creates a new form session row and returns its id.
+  - Emits `form_session_created` event (optional; for ops visibility only).
+- __Response__:
+  - 200: `{ data: { id: string }, error: null }`
+  - 400/500 on failure.
+
+### GET /api/public/form-sessions/:id
+
+- __Purpose__: Retrieve the latest saved wizard state for the given session id.
+- __Response__: `{ data: { id, data, updated_at }, error: null }`
+
+### PATCH /api/public/form-sessions/:id
+
+- __Purpose__: Merge and persist the next partial state; used by the autosave loop (~30s cadence) and on relevant field changes.
+- __Request Body__ (JSON): `{ data: object, email?: string }`
+- __Behavior__: Shallow merges `data`; small payloads only. Emits low-volume events for debugging in development.
+- __Response__: `{ data: { ok: true }, error: null }` or appropriate error.
 
 
 ## POST /api/therapists/:id/documents
@@ -262,6 +292,38 @@ curl -X POST /api/leads \
 
 __Notes__:
 - When `status` is `verified` (or omitted), only therapists with `accepting_new=true` are returned by default. This keeps admin matching focused on currently available therapists.
+
+## POST/GET /api/admin/leads/confirmation-reminders (EARTH-190)
+
+- __Purpose__: Send a single 24‑hour follow‑up email to patient leads still in `status='pre_confirmation'`.
+- __Auth__: One of:
+  - Admin session cookie (`kh_admin`), or
+  - Cron secret header `x-cron-secret` (or `Authorization: Bearer <CRON_SECRET>`), or
+  - Vercel platform header `x-vercel-cron` (when invoked by Vercel Cron)
+- __Methods__:
+  - `POST` with JSON body (manual/scripted runs)
+  - `GET` with query params (Vercel Cron)
+- __Body__ (JSON) or Query Params (GET):
+  - `limit?`: number (default 100, max 1000)
+- __Behavior__:
+  - Selects `people(type='patient', status='pre_confirmation')` whose `metadata.confirm_sent_at` is ≥ 24h old.
+  - De‑duplicates: checks `public.events` for `email_sent` with `stage='patient_confirmation_reminder_24h'` and matching `lead_id` to prevent multiple sends.
+  - Re‑issues a fresh `confirm_token`, updates `metadata.confirm_sent_at`, and sends a single reminder email (best‑effort).
+  - Includes `&fs=<form_session_id>` in the magic link when available to support session resume.
+  - Emits `cron_executed` / `cron_completed` / `cron_failed` and the usual email events for observability.
+- __Response__:
+  - 200: `{ data: { processed, sent, skipped_too_recent, skipped_no_email, skipped_already }, error: null }`
+  - 401/500 on failure.
+
+### Cron Configuration
+
+Added in `vercel.json`:
+
+```
+{ "path": "/api/admin/leads/confirmation-reminders?limit=200", "schedule": "0 * * * *" }
+```
+
+__Deliverability Note__: We intentionally send only one reminder at 24h to protect sender reputation.
 
 ## GET /api/admin/therapists/:id
 - __Purpose__: Retrieve single therapist details including profile data for review.

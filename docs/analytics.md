@@ -75,6 +75,19 @@ trackEvent('cta_click', {
 - `form_submit` - Form completions
 - `faq_open` - FAQ expansions
 
+#### Email-First Wizard (EARTH-190)
+
+- `screen_viewed` — when the user lands on a step
+  - props: `{ step: number }`
+- `screen_completed` — when navigating forward/back from a step
+  - props: `{ step: number, duration_ms: number, missing_required: string[] }`
+- `field_change` — on input change (no values, names only)
+  - props: `{ field: string, step: number }`
+- `field_abandonment` — navigating away with required fields missing
+  - props: `{ step: number, fields: string[] }`
+- `form_completed` — after successful submit on the last step
+  - props: `{ steps: number } // currently 5`
+
 **System Events:**
 - `error` - Application errors
 - `email_sent` - Email delivery tracking

@@ -49,11 +49,13 @@ export default function Screen2({
   onChange,
   onNext,
   onBack,
+  disabled,
 }: {
   values: Screen2Values;
   onChange: (patch: Partial<Screen2Values>) => void;
   onNext: () => void;
   onBack: () => void;
+  disabled?: boolean;
 }) {
   const [errors, setErrors] = React.useState<{ start?: string; kasse?: string }>({});
 
@@ -79,6 +81,8 @@ export default function Screen2({
                 key={opt}
                 type="button"
                 className={`h-11 rounded border px-4 text-left ${values.start_timing === opt ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
+                disabled={disabled}
+                aria-disabled={disabled}
                 onClick={() => onChange({ start_timing: opt })}
               >
                 {opt}
@@ -97,6 +101,8 @@ export default function Screen2({
               key={opt}
               type="button"
               className={`h-11 rounded border px-4 text-left ${values.kassentherapie === opt ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
+              disabled={disabled}
+              aria-disabled={disabled}
               onClick={() => onChange({ kassentherapie: opt })}
             >
               {opt}
@@ -115,6 +121,8 @@ export default function Screen2({
                 key={opt}
                 type="button"
                 className={`h-11 rounded border px-4 text-left ${values.therapy_type === opt ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
+                disabled={disabled}
+                aria-disabled={disabled}
                 onClick={() => onChange({ therapy_type: opt })}
               >
                 {opt}
@@ -134,6 +142,8 @@ export default function Screen2({
                 key={opt}
                 type="button"
                 className={`h-11 rounded border px-4 text-left ${selected ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
+                disabled={disabled}
+                aria-disabled={disabled}
                 onClick={() => {
                   const list = new Set(values.what_missing || []);
                   if (selected) list.delete(opt);
@@ -149,8 +159,8 @@ export default function Screen2({
       </div>
 
       <div className="flex items-center justify-between pt-2">
-        <Button variant="secondary" className="h-11" onClick={onBack}>Zurück</Button>
-        <Button className="h-11" onClick={() => validate() && onNext()}>Weiter →</Button>
+        <Button variant="secondary" className="h-11" onClick={onBack} disabled={disabled} aria-disabled={disabled}>Zurück</Button>
+        <Button className="h-11" onClick={() => validate() && onNext()} disabled={disabled} aria-disabled={disabled}>Weiter →</Button>
       </div>
     </div>
   );
