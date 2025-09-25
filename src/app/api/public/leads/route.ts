@@ -156,6 +156,7 @@ async function handleTherapistMultipart(req: Request) {
 
   const emailRaw = form.get('email')?.toString();
   const email = sanitize(emailRaw)?.toLowerCase();
+  const isTest = isTestRequest(req, email);
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return NextResponse.json(
       { data: null, error: 'Invalid email' },
@@ -226,6 +227,7 @@ async function handleTherapistMultipart(req: Request) {
       city: city || null,
       session_preferences: sessionPreferences,
       modalities,
+      ...(isTest ? { metadata: { is_test: true } as Record<string, unknown> } : {}),
       status: 'pending_verification',
     })
     .select('id')
@@ -378,7 +380,7 @@ async function handleTherapistMultipart(req: Request) {
   const profileMeta: Record<string, unknown> = {};
   if (profilePendingPath) profileMeta.photo_pending_path = profilePendingPath;
   if (approach_text) profileMeta.approach_text = approach_text;
-  const metadata: Record<string, unknown> = { documents };
+  const metadata: Record<string, unknown> = { ...(isTest ? { is_test: true } : {}), documents };
   if (Object.keys(profileMeta).length > 0) {
     metadata.profile = profileMeta;
   }
@@ -465,6 +467,7 @@ async function handleTherapistMultipart(req: Request) {
       lead_type: 'therapist',
       city: city || null,
       has_specializations: specializations.length > 0,
+      is_test: isTest,
       ...(attr.referrer ? { referrer: attr.referrer } : {}),
       ...(attr.utm_source ? { utm_source: attr.utm_source } : {}),
       ...(attr.utm_medium ? { utm_medium: attr.utm_medium } : {}),
