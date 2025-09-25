@@ -46,7 +46,7 @@ vi.mock('@/lib/supabase-server', () => {
 });
 
 function makeReq(body: any, headers?: Record<string, string>) {
-  return new Request('http://localhost/api/leads/resend-confirmation', {
+  return new Request('http://localhost/api/public/leads/resend-confirmation', {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...(headers || {}) },
     body: JSON.stringify(body),
@@ -61,7 +61,7 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_BASE_URL = 'http://localhost';
 });
 
-describe('POST /api/leads/resend-confirmation', () => {
+describe('POST /api/public/leads/resend-confirmation', () => {
   it('always returns ok for invalid/unknown email and does not send', async () => {
     const { POST } = await import('@/app/api/public/leads/resend-confirmation/route');
     const res = await POST(makeReq({ email: 'not-an-email' }));
@@ -89,7 +89,7 @@ describe('POST /api/leads/resend-confirmation', () => {
     // Email sent
     expect(sentEmails.length).toBe(1);
     const html: string = sentEmails[0].html;
-    expect(html).toContain('/api/leads/confirm?token=');
+    expect(html).toContain('/api/public/leads/confirm?token=');
     expect(html).toContain('&id=p1');
 
     // Metadata updated

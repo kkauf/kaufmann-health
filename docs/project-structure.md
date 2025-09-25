@@ -2,43 +2,43 @@
 
 ```
 /src
-  /app
+  /app                      # Pages only (UI + layout)
     layout.tsx
     globals.css
-    page.tsx                 # Homepage (UI only)
-    sitemap.ts
-    robots.ts
-    /therapie-finden
-      page.tsx               # Funnel (Klient:in)
-    /wieder-lebendig
-      page.tsx
-    /ankommen-in-dir
-      page.tsx
-    /fuer-therapeuten
-      page.tsx               # Therapist application (posts to /api/leads)
-    /ueber-uns
-      page.tsx
-    /impressum
-      page.tsx
-    /datenschutz
-      page.tsx
-    /therapist-terms
-      page.tsx
-    /preferences
-      page.tsx
+    /(public)
+      page.tsx              # Homepage
+      therapie-finden/page.tsx
+      wieder-lebendig/page.tsx
+      ankommen-in-dir/page.tsx
+      fuer-therapeuten/page.tsx
+      ueber-uns/page.tsx
+      datenschutz/page.tsx
+      impressum/page.tsx
+      confirm/page.tsx
+      preferences/page.tsx   # Email-first step 2 (city/consent)
+      fragebogen/            # 6-screen questionnaire (EARTH-190)
     /therapists
-      /complete-profile
-        /[id]
-          page.tsx
-          ProfileForm.tsx
-      /upload-documents
-        /[id]
-          page.tsx
-          UploadForm.tsx
-    /auswahl-bestaetigt
-    20250917134000_earth_146_email_double_opt_in.sql
+      complete-profile/[id]/page.tsx
+      therapists/upload-documents/[id]/page.tsx
+    /auswahl-bestaetigt/page.tsx
+    /api
+      /public
+        events/route.ts                      # Server-side analytics ingest
+        leads/route.ts                       # Email-first intake (patients + therapists)
+        leads/[id]/preferences/route.ts      # Patient confirmation → status `new`
+        therapists/[id]/documents/route.ts   # Therapist docs + Enhanced Conversions
+      /admin
+        ...                                  # Stats, reminders, matching, cron endpoints
+      /images
+        therapist-profiles/[...path]/route.ts
+  /components               # UI primitives + shared components
+  /features                 # Domain-specific UI + hooks (e.g., leads, landing)
+  /lib                      # Shared utilities (Supabase clients, analytics, config)
+  /content                  # Markdown/HTML content blocks
 /tests
-  ...                         # Vitest suite (see tests/README.md)
+  ...                       # Vitest suite (see tests/README.md)
+/supabase
+  /migrations               # Database schema
 
 ```
 
@@ -94,5 +94,5 @@ Quick recipes:
 
 Notes for A/B/C variants:
 - Use existing `VariantGate` inside page copy where variants diverge.
-- `EmailEntryForm` automatically forwards `?v=` to `/api/leads`.
+- `EmailEntryForm` automatically forwards `?v=` to `/api/public/leads`.
 - For test variants (B/C), `buildLandingMetadata` sets `robots: noindex, nofollow`.

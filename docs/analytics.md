@@ -44,12 +44,12 @@ await ServerAnalytics.trackEventFromRequest(req, {
 const trackEvent = (type: string, props = {}) => {
   const payload = { type, ...props };
   if (navigator.sendBeacon) {
-    navigator.sendBeacon('/api/events', JSON.stringify(payload));
+    navigator.sendBeacon('/api/public/events', JSON.stringify(payload));
   } else {
-    fetch('/api/events', { 
-      method: 'POST', 
+    fetch('/api/public/events', {
+      method: 'POST',
       body: JSON.stringify(payload),
-      keepalive: true 
+      keepalive: true,
     });
   }
 };
@@ -67,8 +67,8 @@ trackEvent('cta_click', {
 - `lead_submitted` - Form submissions (patient/therapist)
 - `email_submitted` - Email-only capture started (EARTH-146)
 - `email_confirmed` - Email confirmed via token (EARTH-146)
-- `preferences_viewed` - Preferences page viewed after email confirmation (client-side ping via /api/events)
-- `preferences_submitted` - Preferences saved via POST /api/leads/:id/preferences (server-side)
+- `preferences_viewed` - Preferences page viewed after email confirmation (client-side ping via `/api/public/events`)
+- `preferences_submitted` - Preferences saved via `POST /api/public/leads/:id/preferences` (server-side)
 - `therapist_responded` - Match responses
 - `match_created` - Manual matches by admin
 - `cta_click` - Call-to-action interactions
@@ -79,22 +79,19 @@ trackEvent('cta_click', {
 
 - `screen_viewed` — when the user lands on a step
   - props: `{ step: number }`
-- `screen_completed` — when navigating forward/back from a step
   - props: `{ step: number, duration_ms: number, missing_required: string[] }`
 - `field_change` — on input change (no values, names only)
   - props: `{ field: string, step: number }`
 - `field_abandonment` — navigating away with required fields missing
   - props: `{ step: number, fields: string[] }`
-- `form_completed` — after successful submit on the last step
-  - props: `{ steps: number } // currently 5`
+- `form_completed` — after successful submit## Analytics & Event Tracking
 
-**System Events:**
-- `error` - Application errors
-- `email_sent` - Email delivery tracking
-- `payment_completed` - Transaction events
-
-**Event ID Naming Convention:**
-`{page}-{location}-{action}[-{qualifier}]`
+- Endpoint: POST `/api/public/events` with `{ type: string, id?: string, title?: string }`
+- Event types (use these):
+  - `cta_click` (for button/link clicks)
+  - `faq_open` (FAQ expansion)
+  - `form_submit` or feature-specific (e.g., `therapist_apply_submitted`)
+- eventId naming convention: `{page}-{location}-{action}[-{qualifier}]`
 
 Examples:
 - `fuer-therapeuten-hero-apply`
@@ -119,7 +116,7 @@ First‑party campaign fields are captured server‑side and stored on `public.p
 
 Persistence & events
 - Email‑only flow (EARTH‑146): persisted on `people` at insert (`status='pre_confirmation'`) and included in `email_submitted`.
-- Legacy patient flow (flag off): persisted on `people` at insert (`status='new'`) and included in `lead_submitted`.
+- Legacy patient flow was removed; all patient leads now follow the email-first path. (Older rows with `status='new'` directly were migrated; legacy references exist only in tests.)
 - Therapist flow: not persisted (no columns) but included in `lead_submitted` event props.
 - We continue to include UTM/referrer via `ServerAnalytics.parseAttributionFromRequest` for broader marketing reporting—do not duplicate into Vercel Analytics.
 
@@ -304,7 +301,7 @@ __Privacy__: Consent Mode defaults to `denied` for all storages. No cookies/trac
 
 __Implementation__:
 - `app/layout.tsx`: inject Google Ads tag with Consent Mode defaults (all denied). Load only when `NEXT_PUBLIC_GOOGLE_ADS_ID` is set.
-- `components/PreferencesForm.tsx`: after successful submit (HTTP 200 from `POST /api/leads/:id/preferences`), call
+- `components/PreferencesForm.tsx`: after successful submit (HTTP 200 from `POST /api/public/leads/:id/preferences`), call
   `gtag('event', 'conversion', { send_to: "AW-XXXX/YYYY", value: 10, currency: 'EUR', transaction_id: <leadId> })` guarded by environment checks, with per‑lead dedupe via `sessionStorage` and `localStorage`.
 
 __Environment__:
@@ -323,12 +320,12 @@ __Notes__:
 **Why:** Improve deliverability and list quality by requiring email confirmation before treating a patient lead as active.
 
 **Server Events:**
-- `email_submitted` — emitted by `POST /api/leads` in the email‑only path with props `{ campaign_source, campaign_variant, landing_page, requires_confirmation: true }`.
-- `email_confirmed` — emitted by `GET /api/leads/confirm` with props `{ campaign_source, campaign_variant, landing_page, elapsed_seconds }`.
+- `email_submitted` — emitted by `POST /api/public/leads` in the email‑only path with props `{ campaign_source, campaign_variant, landing_page, requires_confirmation: true }`.
+- `email_confirmed` — emitted by `GET /api/public/leads/confirm` with props `{ campaign_source, campaign_variant, landing_page, elapsed_seconds }`.
 
 **Enhanced Conversions timing:**
-- In email-only mode, server-side Google Ads Enhanced Conversions (`client_registration`) are sent when preferences are submitted (status becomes `new`) via `POST /api/leads/:id/preferences`. The confirmation endpoint (`GET /api/leads/confirm`) only sets status to `email_confirmed` and redirects to preferences.
-- In legacy mode (flag off), they continue to fire after the initial patient insert.
+- In email-only mode, server-side Google Ads Enhanced Conversions (`client_registration`) are sent when preferences are submitted (status becomes `new`) via `POST /api/public/leads/:id/preferences`. The confirmation endpoint (`GET /api/public/leads/confirm`) only sets status to `email_confirmed` and redirects to preferences.
+- Legacy immediate-activation path was removed.
 
 __Therapists (EARTH-174)__:
 - We only consider therapists “qualified” after documents are submitted.

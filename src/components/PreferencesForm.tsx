@@ -6,9 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
-
-// Keep in sync with Datenschutz version
-const PRIVACY_VERSION = '2025-09-01.v2';
+import { PRIVACY_VERSION } from '@/lib/privacy';
 
 // Minimal client-side Google Ads conversion: fire when preferences are successfully submitted
 // (i.e., when the patient status transitions to 'new'). This aligns the browser signal with our
@@ -80,7 +78,7 @@ export function PreferencesForm({ leadId }: Props) {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/leads/${encodeURIComponent(leadId)}/preferences`, {
+      const res = await fetch(`/api/public/leads/${encodeURIComponent(leadId)}/preferences`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

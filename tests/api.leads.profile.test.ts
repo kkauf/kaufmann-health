@@ -44,7 +44,7 @@ vi.mock('@/lib/email/client', () => ({ sendEmail: vi.fn(async () => {}) }));
 vi.mock('@/lib/google-ads', () => ({ googleAdsTracker: { trackConversion: vi.fn(async () => {}) } }));
 
 function makeMultipartReq(form: FormData, headers?: Record<string, string>) {
-  return new Request('http://localhost/api/leads', {
+  return new Request('http://localhost/api/public/leads', {
     method: 'POST',
     headers: { ...(headers || {}) },
     body: form,
@@ -56,13 +56,12 @@ beforeEach(() => {
   lastTherapistUpdate = null;
   uploads = [];
 });
-
-describe('/api/leads POST (multipart therapist profile fields)', () => {
+describe('/api/public/leads POST (multipart therapist profile fields)', () => {
   it('400 when approach_text exceeds 2000 chars', async () => {
-    const { POST } = await import('@/app/api/public/leads/route');
+    const { POST } = await import("@/app/api/public/leads/route");
     const form = new FormData();
     form.set('type', 'therapist');
-    form.set('email', 't@example.com');
+    form.set('email', 'therapist@example.com');
     form.set('name', 'T Name');
     // Minimal required license
     const lic = new File([new Uint8Array([0, 1, 2])], 'license.png', { type: 'image/png' });
@@ -70,13 +69,14 @@ describe('/api/leads POST (multipart therapist profile fields)', () => {
     form.set('approach_text', 'x'.repeat(2001));
 
     const res = await POST(makeMultipartReq(form));
+    if (!res) throw new Error('Expected Response from POST /api/public/leads');
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toContain('approach_text too long');
   });
 
   it('valid profile_photo and approach_text stored (pending path), upload to applications bucket', async () => {
-    const { POST } = await import('@/app/api/public/leads/route');
+    const { POST } = await import("@/app/api/public/leads/route");
     const form = new FormData();
     form.set('type', 'therapist');
     form.set('email', 't2@example.com');
@@ -88,6 +88,7 @@ describe('/api/leads POST (multipart therapist profile fields)', () => {
     form.set('approach_text', 'My approach');
 
     const res = await POST(makeMultipartReq(form));
+    if (!res) throw new Error('Expected Response from POST /api/public/leads');
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json).toEqual({ data: { id: 'tid-1' }, error: null });
@@ -105,7 +106,7 @@ describe('/api/leads POST (multipart therapist profile fields)', () => {
   });
 
   it('rejects invalid profile_photo type', async () => {
-    const { POST } = await import('@/app/api/public/leads/route');
+    const { POST } = await import("@/app/api/public/leads/route");
     const form = new FormData();
     form.set('type', 'therapist');
     form.set('email', 't3@example.com');
@@ -114,6 +115,7 @@ describe('/api/leads POST (multipart therapist profile fields)', () => {
     form.set('profile_photo', new File([new Uint8Array([0])], 'photo.gif', { type: 'image/gif' }));
 
     const res = await POST(makeMultipartReq(form));
+    if (!res) throw new Error('Expected Response from POST /api/public/leads');
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toContain('Unsupported file type');

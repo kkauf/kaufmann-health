@@ -7,12 +7,12 @@
   - Browser client placeholder in `src/lib/supabase.ts` (not used for writes).
   - Server client in `src/lib/supabase-server.ts` with service role for secure writes from API routes.
 - __Indexes__: Deferred per expected low volume (~10 leads). Revisit with real usage. For rate-limit lookups on `metadata`, consider: `CREATE INDEX people_metadata_gin_idx ON public.people USING GIN (metadata);`.
-- __Lead intake security__: Basic IP-based rate limiting (60s) in `POST /api/leads` using `x-forwarded-for`; stores `ip` and `user_agent` in `metadata` to aid debugging/abuse triage. Tradeoff: best-effort; can be bypassed (NAT/VPN). Future: Upstash rate limit and/or hCaptcha if abuse observed.
+- __Lead intake security__: Basic IP-based rate limiting (60s) in `POST /api/public/leads` using `x-forwarded-for`; stores `ip` and `user_agent` in `metadata` to aid debugging/abuse triage. Tradeoff: best-effort; can be bypassed (NAT/VPN). Future: Upstash rate limit and/or hCaptcha if abuse observed.
 - __Notifications (optional)__: Fire-and-forget email via Resend when `RESEND_API_KEY` and `LEADS_NOTIFY_EMAIL` are set to avoid adding latency to the request path. Safe to disable in non-prod.
   - Verified sending domain: `kaufmann-health.de` (Resend Dashboard)
   - From address: `LEADS_FROM_EMAIL` (default: `no-reply@kaufmann-health.de`)
   - DNS: follow Resend’s exact DNS instructions for SPF/DKIM (and optional custom Return-Path). If also sending via Google Workspace, keep a single SPF record that includes both Google and Resend includes.
-- __CORS__: Not added; funnel submits same-origin. If cross-origin is needed, add `OPTIONS` handler and CORS headers on `/api/leads`.
+- __CORS__: Not added; funnel submits same-origin. If cross-origin is needed, add `OPTIONS` handler and CORS headers on `/api/public/leads`.
 - __Service role writes__: Writes handled only on the server via `supabaseServer` (service role). Never expose service role keys to the browser.
 
 ## Images & Performance
@@ -29,10 +29,8 @@
   - Safety: No-op unless env is configured; errors go through unified logger. Secrets live in server env only.
   - Mapping: Conversion action aliases (e.g., `client_registration`) map to resource names via env `GOOGLE_ADS_CA_*` (see `.env.example`). This lets us add/rename actions without code changes.
   - Trigger points:
-    - `therapist_registration` (25 EUR): fired by `POST /api/therapists/:id/documents` after successful document submission (qualified lead moment).
-    - `client_registration` (10 EUR):
-      - Legacy mode (feature flag off): fired by `POST /api/leads` after successful patient insert.
-      - Email-only mode (EARTH-146; `REQUIRE_EMAIL_CONFIRMATION` enabled): fired by `POST /api/leads/:id/preferences` when status becomes `new` (post-confirmation activation).
+    - `therapist_registration` (25 EUR): fired by `POST /api/public/therapists/:id/documents` after successful document submission (qualified lead moment).
+    - `client_registration` (10 EUR): fired by `POST /api/public/leads/:id/preferences` when status becomes `new` (post-confirmation activation). Patient intake is always email-first; the legacy immediate-activation path was removed.
     - Future events (match, payment, etc.) can call the tracker via their alias.
   - Observability: staged logs for OAuth (`get_access_token`) and upload, logs missing config keys, parses `receivedOperationsCount` and partial failures for actionable diagnostics. See also: [architecture](./architecture.md).
 

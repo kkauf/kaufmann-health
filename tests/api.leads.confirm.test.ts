@@ -49,7 +49,7 @@ vi.mock('@/lib/supabase-server', () => {
 });
 
 function makeUrl(id: string, token: string) {
-  return `http://localhost/api/leads/confirm?token=${encodeURIComponent(token)}&id=${encodeURIComponent(id)}`;
+  return `http://localhost/api/public/leads/confirm?token=${encodeURIComponent(token)}&id=${encodeURIComponent(id)}`;
 }
 
 beforeEach(() => {
@@ -69,7 +69,7 @@ beforeEach(() => {
   };
 });
 
-describe('EARTH-146 GET /api/leads/confirm', () => {
+describe('EARTH-146 GET /api/public/leads/confirm', () => {
   it('confirms valid token, updates status and redirects to preferences', async () => {
     const { GET } = await import('@/app/api/public/leads/confirm/route');
     const res = await GET(new Request(makeUrl('p1', 't1')));

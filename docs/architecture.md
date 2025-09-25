@@ -14,9 +14,13 @@
 - Why: Single source of truth for therapist cards across web/admin/email to prevent divergence and keep UX consistent.
 
 ## Data Flow (Frontend → API → DB)
-- UI submits to `POST /api/leads` for patient/therapist intake.
-  - Therapist intake supports `multipart/form-data` for verification: one `license` file and per-specialization certificates (multiple allowed). Files land in private Storage; only server/admin can read.
-- Attribution events go to `POST /api/events` (server merges session/referrer/UTM; no client cookies).
+- Patient intake is email-first:
+  - Step 1 posts to `POST /api/public/leads` with just name/email/session preference. Lead is stored with `status='pre_confirmation'`, token issued, and confirmation email sent.
+  - Confirmation (via `GET /api/public/leads/confirm`) moves the lead to `status='email_confirmed'` and redirects to `/preferences`.
+  - Preferences form posts to `POST /api/public/leads/[id]/preferences`, requires city + consent, and promotes the lead to `status='new'`.
+- Therapist intake uses the same `POST /api/public/leads` endpoint but accepts JSON or `multipart/form-data` for profile + compliance docs.
+  - Documents land in private buckets; only server/admin can read (RLS enforced).
+- Attribution events go to `POST /api/public/events` (server merges session/referrer/UTM; no client cookies).
 - Magic link actions go to `POST /api/match/[uuid]/respond` (therapist accept/decline).
 - Admin dashboard uses `/api/admin/*` routes for stats and match actions (protected; see Security).
 - Route handlers use the server-side Supabase client (service role) to write to Postgres.
@@ -58,7 +62,9 @@ Why this design:
 - Unified logger (`src/lib/logger.ts`) accepts optional `ip/ua` and records hashed IP for error/event context. Reason: privacy-preserving diagnostics.
 
 ## Google Ads Enhanced Conversions
-- Implemented server-side in `src/lib/google-ads.ts` and triggered from `POST /api/leads` after successful inserts.
+- Implemented server-side in `src/lib/google-ads.ts`.
+  - Patient conversions fire after preferences submission (`POST /api/public/leads/[id]/preferences`).
+  - Therapist conversions fire after document uploads (`POST /api/public/therapists/[id]/documents`).
 - Hashes normalized emails (incl. Gmail dot removal) and uses `userIdentifierSource: 'FIRST_PARTY'`. Uses ConversionUploadService v21.
 - Observability: logs stages (e.g., `get_access_token`, upload), missing config keys, and parses responses (`receivedOperationsCount`, partial failures).
 - Why server-side: honors “no cookies” policy while retaining conversion measurement; resilient to client blockers.

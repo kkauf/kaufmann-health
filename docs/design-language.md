@@ -70,7 +70,7 @@ This doc captures the visual patterns that save debugging time and keep the UI c
     - Wrapper: `grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 group-open:grid-rows-[1fr]`
     - Inner: `overflow-hidden`
   - Chevron rotation on open: `group-open:rotate-180`
-  - Tracking: POST `/api/events` with `{ type: 'faq_open', id, title }`
+  - Tracking: POST `/api/public/events` with `{ type: 'faq_open', id, title }`
 
 ## Buttons (shadcn/ui)
 
@@ -170,7 +170,7 @@ This doc captures the visual patterns that save debugging time and keep the UI c
 
 ## Analytics & Event Tracking
 
-- Endpoint: POST `/api/events` with `{ type: string, id?: string, title?: string }`
+- Endpoint: POST `/api/public/events` with `{ type: string, id?: string, title?: string }`
 - Event types (use these):
   - `cta_click` (for button/link clicks)
   - `faq_open` (FAQ expansion)

@@ -224,7 +224,7 @@
 
 Example (multipart):
 ```bash
-curl -X POST http://localhost:3000/api/leads \
+curl -X POST http://localhost:3000/api/public/leads \
   -F type=therapist \
   -F email=therapist@example.com \
   -F name="Max Muster" \
@@ -241,7 +241,7 @@ curl -X POST http://localhost:3000/api/leads \
 
 Example:
 ```bash
-curl -X POST /api/leads \
+curl -X POST /api/public/leads \
   -H 'Content-Type: application/json' \
   -d '{"email":"max@example.com","city":"Berlin"}'
 ```

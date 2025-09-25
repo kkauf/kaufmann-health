@@ -20,7 +20,7 @@ function getClientIP(headers: Headers) {
 }
 
 /**
- * POST /api/leads/resend-confirmation
+ * POST /api/public/leads/resend-confirmation
  * Purpose: Re-send email confirmation for patients in pre_confirmation state.
  * Privacy: Always returns 200 with ok=true to avoid user enumeration.
  */
@@ -101,7 +101,7 @@ export async function POST(req: Request) {
     // Send email (best-effort)
     try {
       const origin = new URL(req.url).origin || BASE_URL;
-      const confirmUrl = `${origin}/api/leads/confirm?token=${encodeURIComponent(newToken)}&id=${encodeURIComponent(id)}`;
+      const confirmUrl = `${origin}/api/public/leads/confirm?token=${encodeURIComponent(newToken)}&id=${encodeURIComponent(id)}`;
       const emailContent = renderEmailConfirmation({ confirmUrl });
       void track({
         type: 'email_attempted',

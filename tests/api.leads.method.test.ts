@@ -7,29 +7,24 @@ vi.mock('@/lib/logger', () => {
   } as any;
 });
 // Prevent supabase client initialization during import of the route
-vi.mock('@/lib/supabase-server', () => {
-  return {
-    supabaseServer: {} as any,
-  };
-});
+vi.mock('@/lib/supabase-server', () => ({ supabaseServer: {} as any }));
 
-describe('/api/leads GET (wrong method)', () => {
+describe('/api/public/leads GET (wrong method)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('returns 405 with no-store and tracks a diagnostic event', async () => {
+  it('logs warn and returns 405 with cache headers', async () => {
     const { GET } = await import('@/app/api/public/leads/route');
     const { track } = await import('@/lib/logger');
 
-    const req = new Request('http://localhost/api/leads', { method: 'GET' });
+    const req = new Request('http://localhost/api/public/leads', { method: 'GET' });
     const res = await GET(req);
+    const json = await res.json();
 
     expect(res.status).toBe(405);
     expect(res.headers.get('cache-control')).toBe('no-store');
-
-    const body = await res.json();
-    expect(body).toEqual({ data: null, error: 'Use POST' });
+    expect(json).toEqual({ data: null, error: 'Use POST' });
 
     // Ensure a diagnostic event was attempted
     expect((track as any).mock.calls.length).toBeGreaterThan(0);

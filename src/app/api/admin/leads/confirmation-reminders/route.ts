@@ -150,7 +150,7 @@ async function processBatch(thresholdKey: keyof typeof THRESHOLDS, limit: number
     // Send email
     try {
       const fs = typeof (meta as Record<string, unknown>)['form_session_id'] === 'string' ? String((meta as Record<string, unknown>)['form_session_id']) : '';
-      const base = `${BASE_URL}/api/leads/confirm?token=${encodeURIComponent(newToken)}&id=${encodeURIComponent(row.id)}`;
+      const base = `${BASE_URL}/api/public/leads/confirm?token=${encodeURIComponent(newToken)}&id=${encodeURIComponent(row.id)}`;
       const confirmUrl = fs ? `${base}&fs=${encodeURIComponent(fs)}` : base;
       const content = renderEmailConfirmation({ confirmUrl });
       void track({ type: 'email_attempted', level: 'info', source: 'admin.api.leads.confirmation_reminders', ip, ua, props: { stage, lead_id: row.id, subject: content.subject } });

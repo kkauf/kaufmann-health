@@ -76,7 +76,7 @@ vi.mock('@/lib/email/client', () => {
 });
 
 function makeReq(body: any, headers?: Record<string, string>) {
-  return new Request('http://localhost/api/leads', {
+  return new Request('http://localhost/api/public/leads', {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...(headers || {}) },
     body: JSON.stringify(body),
@@ -94,7 +94,7 @@ beforeEach(() => {
   sentEmails = [];
 });
 
-describe('/api/leads POST', () => {
+describe('/api/public/leads POST', () => {
   it('400 on invalid email', async () => {
     const { POST } = await import('@/app/api/public/leads/route');
     const res: any = await POST(makeReq({ email: 'not-an-email' }));

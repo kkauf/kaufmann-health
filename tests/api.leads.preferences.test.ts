@@ -52,17 +52,17 @@ beforeEach(() => {
   personRow = { id: 'p1', type: 'patient', metadata: {} };
 });
 
-describe('POST /api/leads/[id]/preferences', () => {
+describe('POST /api/public/leads/[id]/preferences', () => {
   it('returns 400 when id missing', async () => {
     const { POST } = await import('@/app/api/public/leads/[id]/preferences/route');
-    const res = await POST(makeReq('http://localhost/api/leads//preferences'));
+    const res = await POST(makeReq('http://localhost/api/public/leads//preferences'));
     expect(res.status).toBe(400);
   });
 
   it('returns 404 when person not found', async () => {
     personRow = null;
     const { POST } = await import('@/app/api/public/leads/[id]/preferences/route');
-    const res = await POST(makeReq('http://localhost/api/leads/p1/preferences', {
+    const res = await POST(makeReq('http://localhost/api/public/leads/p1/preferences', {
       name: 'Max', city: 'Berlin', consent_share_with_therapists: true, privacy_version: '2025-09-01.v1'
     }));
     expect(res.status).toBe(404);
@@ -70,12 +70,12 @@ describe('POST /api/leads/[id]/preferences', () => {
 
   it('validates required fields and consent', async () => {
     const { POST } = await import('@/app/api/public/leads/[id]/preferences/route');
-    let res = await POST(makeReq('http://localhost/api/leads/p1/preferences', { name: '', city: '', consent_share_with_therapists: false }));
+    let res = await POST(makeReq('http://localhost/api/public/leads/p1/preferences', { name: '', city: '', consent_share_with_therapists: false }));
     expect(res.status).toBe(400);
     const json1 = await res.json();
     expect(json1.error).toBeTruthy();
 
-    res = await POST(makeReq('http://localhost/api/leads/p1/preferences', { name: 'Max', city: 'Berlin', consent_share_with_therapists: false }));
+    res = await POST(makeReq('http://localhost/api/public/leads/p1/preferences', { name: 'Max', city: 'Berlin', consent_share_with_therapists: false }));
     expect(res.status).toBe(400);
     const json2 = await res.json();
     expect(json2.error).toContain('Einwilligung');
@@ -83,7 +83,7 @@ describe('POST /api/leads/[id]/preferences', () => {
 
   it('updates metadata and returns ok', async () => {
     const { POST } = await import('@/app/api/public/leads/[id]/preferences/route');
-    const res = await POST(makeReq('http://localhost/api/leads/p1/preferences', {
+    const res = await POST(makeReq('http://localhost/api/public/leads/p1/preferences', {
       name: 'Max',
       city: 'Berlin',
       issue: 'Stress',

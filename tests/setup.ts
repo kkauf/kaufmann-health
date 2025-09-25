@@ -15,7 +15,6 @@ process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 process.env.RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 process.env.LEADS_NOTIFY_EMAIL = process.env.LEADS_NOTIFY_EMAIL || '';
-process.env.REQUIRE_EMAIL_CONFIRMATION = process.env.REQUIRE_EMAIL_CONFIRMATION ?? 'false';
 process.env.NEXT_PUBLIC_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://kaufmann-health.de';
 
 // Google Ads: ensure missing config by default so tracker no-ops in tests
