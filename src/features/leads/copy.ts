@@ -68,7 +68,7 @@ export const wizardCopy = {
   screen6: {
     header: '✓ Geschafft! Deine Anfrage ist bei uns',
     body1: 'Hallo {name},',
-    body2: 'Konstantin prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.',
+    body2: 'Unser Team von Kaufmann Health prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.',
     body3: 'Du bekommst deine Matches innerhalb von 24 Stunden.',
     important: 'Wichtig: Bitte bestätige deine E-Mail-Adresse, damit wir dir deine Matches schicken können.',
     checkEmail: 'E-Mail wurde gesendet – jetzt checken',

@@ -32,19 +32,18 @@
   - `redirect?` (string, optional) — safe path (must start with `/` and not `/api` or `//`) to redirect to on success
 - __Behavior__:
   - Loads the `people` row by `id`, verifies `metadata.confirm_token` and TTL using `metadata.confirm_sent_at` (24h).
-  - On success: clears `confirm_token` and `confirm_sent_at`, stamps `confirmed_at` and `email_confirmed_at`, sets `status='email_confirmed'` by default. If `metadata.form_completed_at` exists and verification mode allows email-only activation (`VERIFICATION_MODE=email|choice`), sets `status='active'` instead. Emits analytics event `email_confirmed` with campaign properties (`campaign_source`, `campaign_variant`) and `elapsed_seconds`.
+  - On success: clears `confirm_token` and `confirm_sent_at`, stamps `confirmed_at` and `email_confirmed_at`, sets `status='email_confirmed'` by default. If `metadata.form_completed_at` exists, sets `status='new'` instead. Emits analytics event `email_confirmed` with campaign properties (`campaign_source`, `campaign_variant`) and `elapsed_seconds`.
   - On invalid/expired tokens: no changes are made.
 - __Redirects__:
-  - 302 → on success: `/fragebogen/confirmed?confirm=1&id=<leadId>` (or `redirect` path if provided; passes `fs` through when present)
-  - 302 → if already confirmed: `/fragebogen/confirmed?confirm=1&id=<leadId>`
-  - 302 → on invalid/expired/error: `/confirm?state=invalid | expired | error`
+  - 302 → on success: `/fragebogen?confirm=1&id=<leadId>` (or `redirect` path if provided; passes `fs` through when present)
+  - 302 → if already confirmed: `/fragebogen?confirm=1&id=<leadId>` (passes `fs` when present)
+  - 302 → on invalid/expired/error: `/fragebogen?confirm=invalid | expired | error`
 
 ### Public Confirmation Page (`/confirm`)
 
-- Purpose: Friendly, index‑excluded page that displays the outcome of the confirmation flow.
-- States (via `?state=`): `invalid | expired | error`.
-- UX: Uses a simple card with CTAs back to `/` and `/therapie-finden`. On `expired`, the page offers an email input to request a new confirmation email (see endpoint below). On success, users are redirected directly to `/preferences` to continue without an extra click.
- - UX: Uses a simple card with CTAs back to `/` and `/therapie-finden`. On `expired`, the page offers an email input to request a new confirmation email (see endpoint below). Successful confirmations are not shown here; the API redirects directly to `/fragebogen/confirmed` (optionally including `fs` for resume).
+- Purpose: Routing shim (index‑excluded). Immediately maps `?state=success|invalid|expired|error` to `/fragebogen?confirm=1|invalid|expired|error` and redirects. Success maps to `confirm=1`.
+- States (via `?state=`): `success | invalid | expired | error`.
+- UX: The Fragebogen step 6 is the single surface that renders either the confirmed variant (when `confirm=1`) or the not‑confirmed variant with inline resend. `/confirm` itself renders no UI.
 - SEO: `noindex, nofollow`.
 
 ## POST /api/public/leads/resend-confirmation

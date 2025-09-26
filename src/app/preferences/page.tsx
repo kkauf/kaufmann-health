@@ -14,5 +14,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   params.set('confirm', '1');
   if (id) params.set('id', id);
   if (fs) params.set('fs', fs);
-  redirect(`/fragebogen/confirmed?${params.toString()}`);
+  redirect(`/fragebogen?${params.toString()}`);
 }

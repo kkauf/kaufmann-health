@@ -58,6 +58,10 @@ export default function SignupWizard() {
   const prevStepRef = React.useRef<number>(1);
   const [navLock, setNavLock] = React.useState(false);
   const [isOnline, setIsOnline] = React.useState<boolean>(true);
+  // Inline resend confirmation UX state (step 6)
+  const [resendEmail, setResendEmail] = React.useState<string>('');
+  const [resendSubmitting, setResendSubmitting] = React.useState(false);
+  const [resendMessage, setResendMessage] = React.useState<string>('');
 
   // Analytics helper
   const trackEvent = React.useCallback(async (type: string, properties?: Record<string, unknown>) => {
@@ -185,6 +189,28 @@ export default function SignupWizard() {
     } catch {}
     // Scroll to top initially
     window.scrollTo({ top: 0 });
+  }, [searchParams]);
+
+  // Capture leadId from URL when coming back via email link; prime resend email from data/localStorage
+  React.useEffect(() => {
+    try {
+      const c = searchParams?.get('confirm');
+      const idFromUrl = searchParams?.get('id');
+      if (idFromUrl) {
+        localStorage.setItem('leadId', idFromUrl);
+      }
+      // Prefer current form email, otherwise prior stored email for resend UX
+      const fromForm = (data.email || '').trim();
+      if (fromForm) {
+        setResendEmail(fromForm);
+      } else {
+        const fromLs = localStorage.getItem('leadEmail') || '';
+        if (fromLs) setResendEmail(fromLs);
+      }
+      // If arriving confirmed, we can clear any previous resend message
+      if (c === '1' || c === 'success') setResendMessage('');
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // If we have a session id (possibly from URL), try to load remote state once
@@ -409,18 +435,68 @@ export default function SignupWizard() {
           />
         );
       case 6:
-        return (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-semibold">✓ Geschafft! Deine Anfrage ist bei uns</h2>
-            <p>Konstantin prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.</p>
-            <p>Du bekommst deine Matches innerhalb von 24 Stunden.</p>
-            <p className="font-medium">Wichtig: Bitte bestätige deine E-Mail-Adresse, damit wir dir deine Matches schicken können.</p>
-            <p className="text-sm text-muted-foreground">
-              Keine E‑Mail bekommen? Schau im Spam‑Ordner nach oder{' '}
-              <a className="underline" href="/confirm?state=expired">klick hier für neuen Versand</a>.
-            </p>
-          </div>
-        );
+        return (() => {
+          const confirmParam = searchParams?.get('confirm');
+          const isConfirmed = confirmParam === '1' || confirmParam === 'success';
+          if (isConfirmed) {
+            return (
+              <div className="space-y-4">
+                <h2 className="text-2xl font-semibold">✓ E‑Mail bestätigt – wir bereiten deine Empfehlungen vor</h2>
+                <p>Unser Team von Kaufmann Health prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.</p>
+                <p>Du bekommst deine Matches innerhalb von 24 Stunden.</p>
+                <div className="rounded-md border p-3 bg-emerald-50 border-emerald-200">
+                  <p className="text-sm">Was als Nächstes passiert: Wir gleichen deine Präferenzen ab und senden dir deine Auswahl mit einem 1‑Klick‑Bestätigungslink.</p>
+                </div>
+              </div>
+            );
+          }
+          // Not confirmed yet → show callout and inline resend
+          async function handleResend() {
+            if (resendSubmitting) return;
+            const email = (resendEmail || '').trim();
+            if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+              setResendMessage('Bitte eine gültige E‑Mail eingeben.');
+              return;
+            }
+            setResendSubmitting(true);
+            setResendMessage('');
+            try {
+              await fetch('/api/public/leads/resend-confirmation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email }),
+              });
+              setResendMessage('E‑Mail versendet. Bitte Posteingang prüfen.');
+            } catch {
+              setResendMessage('Bitte später erneut versuchen.');
+            } finally {
+              setResendSubmitting(false);
+            }
+          }
+          return (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-semibold">✓ Geschafft! Deine Anfrage ist bei uns</h2>
+              <p>Unser Team von Kaufmann Health prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.</p>
+              <p>Du bekommst deine Matches innerhalb von 24 Stunden.</p>
+              <p className="font-medium">Wichtig: Bitte bestätige deine E‑Mail‑Adresse, damit wir dir deine Matches schicken können.</p>
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <input
+                  type="email"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  placeholder="dein.name@example.com"
+                  className="h-10 min-w-[220px] flex-1 rounded border border-gray-300 px-3 py-2"
+                  aria-label="E‑Mail"
+                />
+                <Button className="h-10" onClick={handleResend} disabled={resendSubmitting} aria-disabled={resendSubmitting}>
+                  Bestätigungs‑E‑Mail erneut senden
+                </Button>
+                <span className="text-sm text-muted-foreground" aria-live="polite">{resendMessage}</span>
+              </div>
+              <p className="text-sm text-muted-foreground">Keine E‑Mail bekommen? Schau im Spam‑Ordner nach.</p>
+            </div>
+          );
+        })();
       default:
         return null;
     }

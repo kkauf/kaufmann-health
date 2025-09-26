@@ -17,7 +17,7 @@
 - Patient intake is email-first:
   - Step 1 posts to `POST /api/public/leads` with just name/email/session preference. Lead is stored with `status='pre_confirmation'`, token issued, and confirmation email sent.
   - Fragebogen completion calls `POST /api/public/leads/:id/form-completed`: stamps `form_completed_at`, persists a subset of answers into `people.metadata`, and fires server-side Enhanced Conversions. Client `gtag` conversion also fires with dedupe.
-  - Confirmation (via `GET /api/public/leads/confirm`) stamps `email_confirmed_at` and redirects to `/fragebogen/confirmed`. Activation (`status='active'`) occurs when verification requirements per `VERIFICATION_MODE` are satisfied and `form_completed_at` exists.
+  - Confirmation (via `GET /api/public/leads/confirm`) stamps `email_confirmed_at` and redirects to `/fragebogen?confirm=1[&id=<id>&fs=<fs>]`. The Fragebogen (step 6) is the single surface that renders the confirmed variant. Status is set to `email_confirmed` by default (or `new` when `form_completed_at` already exists). Activation occurs per `VERIFICATION_MODE` when requirements are satisfied.
 - Therapist intake uses the same `POST /api/public/leads` endpoint but accepts JSON or `multipart/form-data` for profile + compliance docs.
   - Documents land in private buckets; only server/admin can read (RLS enforced).
 - Attribution events go to `POST /api/public/events` (server merges session/referrer/UTM; no client cookies).

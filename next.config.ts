@@ -17,7 +17,12 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/preferences",
-        destination: "/fragebogen/confirmed",
+        destination: "/fragebogen",
+        permanent: true,
+      },
+      {
+        source: "/fragebogen/confirmed",
+        destination: "/fragebogen",
         permanent: true,
       },
     ];
