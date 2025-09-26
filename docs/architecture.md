@@ -68,8 +68,6 @@ Why this design:
 - Hashes normalized emails (incl. Gmail dot removal) and uses `userIdentifierSource: 'FIRST_PARTY'`. Uses ConversionUploadService v21.
 - Observability: logs stages (e.g., `get_access_token`, upload), missing config keys, and parses responses (`receivedOperationsCount`, partial failures).
 - Why server-side: honors “no cookies” policy while retaining conversion measurement; resilient to client blockers.
-- Safety tooling: backfill scripts in `google_ads_api_scripts/` for outage recovery within Google’s 63-day window.
-
 ## Testing & CI
 - Vitest for API and utility tests under `tests/`. Focus on high-ROI paths (lead intake, matching actions, analytics, Google Ads upload).
 - GitHub Actions workflow `.github/workflows/ci.yml` runs lint, build, and tests on Node 20 with minimal env.
@@ -80,3 +78,26 @@ Why this design:
 - [Technical decisions](./technical-decisions.md)
 - [Project structure](./project-structure.md)
 - [Security](./security.md)
+
+## Boundaries & Responsibilities
+
+- Components: UI only (render + local state). No business logic.
+- Hooks: data fetching + business logic close to usage; extract when repeated.
+- API routes: server-only logic and DB writes via service role. Always return `{ data, error }`.
+- State placement: as close to usage as possible; context only when prop drilling >3 levels.
+- Abstractions: start simple; extract when repeated 3× or file >200 lines.
+
+## Observability & Alerts
+
+- Unified events: server routes call `track` / `logError` to write to `public.events`. No PII in `properties`; IPs hashed.
+- Birdseye:
+  - Admin Errors UI: `/admin/errors` (filter by `source`, `type`, `level`).
+  - Digest email every 15m when errors/cron failures occur: `src/app/api/admin/alerts/system/route.ts` (scheduled in `vercel.json`).
+  - Deep dive: Vercel → Functions → Logs.
+- Separation of concerns: Vercel Analytics stays high-level (funnels); detailed events/errors live in Supabase.
+
+## Performance Choices
+
+- Static/ISR for key public pages; CDN headers in `vercel.json`.
+- Avoid middleware on public routes to keep TTFB low.
+- Images via Next.js `Image` with AVIF/WebP and responsive sizes; lazy-load below the fold.

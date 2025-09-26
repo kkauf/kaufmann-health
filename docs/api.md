@@ -1,5 +1,7 @@
 # API
 
+> Looking for a concise overview? See `docs/api-quick-reference.md` for invariants, auth patterns, observability, and the key endpoints. This file is the deep reference with full behavior and edge cases.
+
 ## POST /api/public/leads
 - __Purpose__: Create a `people` row for a new lead (patient email-first intake or therapist application).
 - __Auth__: None (public funnel). Route uses the Supabase service role; keep upstream rate limiting/bot protection in place.
@@ -214,29 +216,7 @@
   ```
   Access is restricted; only server (service role) and admin endpoints can fetch files.
 
-Example (multipart):
-```bash
-curl -X POST http://localhost:3000/api/public/leads \
-  -F type=therapist \
-  -F email=therapist@example.com \
-  -F name="Max Muster" \
-  -F city=Berlin \
-  -F "session_preference=online" \
-  -F "specializations=narm" \
-  -F "specializations=hakomi" \
-  -F license=@/path/to/license.pdf \
-  -F specialization_cert_narm=@/path/to/narm-cert-1.pdf \
-  -F specialization_cert_hakomi=@/path/to/hakomi-cert-1.jpg \
-  -H "Accept: application/json"
-```
-
-
-Example:
-```bash
-curl -X POST /api/public/leads \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"max@example.com","city":"Berlin"}'
-```
+> Examples omitted for brevity. See `docs/api-quick-reference.md` for sample payloads and usage tips, or use the Admin UI to exercise endpoints.
 
 ## GET /api/admin/leads
 - __Purpose__: List patient leads for manual matching.
@@ -530,14 +510,7 @@ __UI Consistency__: Email templates reuse a small, inline-styled therapist previ
 
 ### Cron Configuration
 
-Vercel Cron is configured in `vercel.json`:
-
-```
-{ "path": "/api/admin/matches/selection-reminders?stage=24h", "schedule": "0 12 * * *" }
-{ "path": "/api/admin/matches/selection-reminders?stage=48h", "schedule": "0 16 * * *" }
-{ "path": "/api/admin/matches/selection-reminders?stage=72h", "schedule": "0 18 * * *" }
-{ "path": "/api/admin/matches/therapist-action-reminders?stage=20h", "schedule": "0 * * * *" }
-```
+See `vercel.json` for these cron schedules.
 
 Notes:
 - Email HTML uses inline styles and the existing `renderTherapistPreviewEmail()` to ensure client compatibility.
@@ -594,24 +567,11 @@ Notes:
 
 ### Cron Configuration
 
-Added in `vercel.json`:
-
-```
-{ "path": "/api/admin/matches/blocker-survey", "schedule": "0 10 * * *" }
-```
+See `vercel.json` for this cron schedule.
 
 ### Admin Stats
 
-`GET /api/admin/stats` now returns a new dataset:
-
-```
-blockers: {
-  last30Days: {
-    total: number,
-    breakdown: Array<{ reason: string; count: number; percentage: number }>
-  }
-}
-```
+Response shape (high-level): totals, trends, blockers breakdown. Exact fields may evolve—see endpoint code.
 
 ### Campaign Reporting (EARTH-153)
 

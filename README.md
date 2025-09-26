@@ -62,18 +62,17 @@
 5. Verify emails send (Resend) and Enhanced Conversions fire server-side
 6. Check error logging and events are recorded
 
-**Success Metrics:**
-- Landing → Signup: >15%
-- Signup → Profile completion: >80%
-- CAC: <€50
-- Match success rate: >60%
-
 ## Project Docs
+
+authority: This README is the canonical index of documentation. For decisions, see `docs/technical-decisions.md` (ADRs).
+
 - [Architecture](./docs/architecture.md)
+- [Technical decisions (ADRs)](./docs/technical-decisions.md)
+- [Analytics & Observability](./docs/analytics.md)
+- [API Quick Reference](./docs/api-quick-reference.md)
+- [API (deep reference)](./docs/api.md)
 - [Data model](./docs/data-model.md)
 - [Security](./docs/security.md)
-- [Technical decisions](./docs/technical-decisions.md)
-- [API](./docs/api.md)
 - [Development](./docs/development.md)
 - [Project structure](./docs/project-structure.md)
 

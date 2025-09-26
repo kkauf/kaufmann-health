@@ -224,4 +224,4 @@ Our natural color story communicates **human-centered healing** rather than algo
 ---
 
 *Color palette designed to embody: "Natural healing wisdom meets thoughtful technology"*  
-*Last updated: January 2025*
+*Last updated: August 2025*
