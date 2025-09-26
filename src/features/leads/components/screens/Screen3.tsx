@@ -10,7 +10,7 @@ export type Screen3Values = {
   // Derived from session_preference for backward compatibility
   online_ok?: boolean;
   // Explicit preference selection
-  session_preference?: 'Online' | 'Vor Ort (in der Praxis)' | 'Beides ist okay';
+  session_preference?: 'online' | 'in_person' | 'either';
   budget?: 'Unter 80€' | '80-120€' | 'Über 120€' | 'Brauche einen Zahlungsplan';
   privacy_preference?: 'Ja, sehr wichtig' | 'Nein, ist mir egal' | 'Bin mir unsicher';
 };
