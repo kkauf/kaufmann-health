@@ -1,4 +1,16 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+# Pre-clean Next types to avoid flaky type-gen references
+rm -rf .next/types 2>/dev/null || true
+
+# First attempt
+if npm run build; then
+  exit 0
+fi
+
+echo "[pre-push] Build failed, retrying once after cleaning .next/types..."
+rm -rf .next/types 2>/dev/null || true
+
+# Second attempt (propagate exit code)
 npm run build
