@@ -58,67 +58,90 @@ export async function POST(req: Request) {
     if (ip && !metadata.ip) metadata.ip = ip;
     if (ua && !metadata.user_agent) metadata.user_agent = ua;
 
-    // If a form_session_id is linked, pull the latest data and persist a subset into metadata
-    const fsid = typeof metadata['form_session_id'] === 'string' ? (metadata['form_session_id'] as string) : undefined;
-    if (fsid) {
-      try {
+    // If a form_session_id is linked, pull the latest data and persist a subset into metadata.
+    // Robustness: if not linked, fall back to most recent form session by email (if present).
+    let fsid = typeof metadata['form_session_id'] === 'string' ? (metadata['form_session_id'] as string) : undefined;
+    let fsData: { data: Record<string, unknown>; email?: string | null; updated_at?: string | null; expires_at?: string | null } | null = null;
+    try {
+      if (fsid) {
         const { data: fs, error: fsErr } = await supabaseServer
           .from('form_sessions')
           .select('data,email,updated_at,expires_at')
           .eq('id', fsid)
           .single<{ data: Record<string, unknown>; email?: string | null; updated_at?: string | null; expires_at?: string | null }>();
-        if (!fsErr && fs?.data) {
-          const d = fs.data as Record<string, unknown>;
-          // Copy a stable subset to people.metadata, mirroring existing patterns and extending with Fragebogen fields
-          // Existing possible keys: city, session_preference, gender_preference, budget, etc.
-          const maybeString = (k: string) => (typeof d[k] === 'string' ? (d[k] as string).trim() : undefined);
-          const maybeBool = (k: string) => (typeof d[k] === 'boolean' ? (d[k] as boolean) : undefined);
-          const maybeArray = (k: string) => (Array.isArray(d[k]) ? (d[k] as unknown[]) : undefined);
-
-          const city = maybeString('city');
-          if (city) metadata.city = city;
-          const sessionPref = maybeString('session_preference');
-          if (sessionPref === 'online' || sessionPref === 'in_person') metadata.session_preference = sessionPref;
-
-          const start_timing = maybeString('start_timing');
-          if (start_timing) metadata.start_timing = start_timing;
-          const kassentherapie = maybeString('kassentherapie');
-          if (kassentherapie) metadata.kassentherapie = kassentherapie;
-          const therapy_type = maybeString('therapy_type');
-          if (therapy_type) metadata.therapy_type = therapy_type;
-          const what_missing = maybeArray('what_missing');
-          if (what_missing) metadata.what_missing = what_missing;
-          const online_ok = maybeBool('online_ok');
-          if (typeof online_ok === 'boolean') metadata.online_ok = online_ok;
-          const budget = maybeString('budget');
-          if (budget) metadata.budget = budget;
-          const privacy_preference = maybeString('privacy_preference');
-          if (privacy_preference) metadata.privacy_preference = privacy_preference;
-
-          // Gender mapping: Wizard may store human-friendly strings; preserve raw and map to legacy key if clear
-          const gender = maybeString('gender');
-          if (gender) {
-            metadata.gender = gender;
-            const g = gender.toLowerCase();
-            if (g.includes('mann')) metadata.gender_preference = 'male';
-            else if (g.includes('frau')) metadata.gender_preference = 'female';
-            else if (g.includes('keine') || g.includes('keine präferenz')) metadata.gender_preference = 'no_preference';
-          }
-
-          const language = maybeString('language');
-          if (language) metadata.language = language;
-          const language_other = maybeString('language_other');
-          if (language_other) metadata.language_other = language_other;
-          const time_slots = maybeArray('time_slots');
-          if (time_slots) metadata.time_slots = time_slots;
-          const methods = maybeArray('methods');
-          if (methods) metadata.methods = methods;
-          const additional_info = maybeString('additional_info');
-          if (additional_info) metadata.additional_info = additional_info;
-        }
-      } catch (e) {
-        await logError('api.leads.form_completed', e, { stage: 'load_form_session', id, fsid });
+        if (!fsErr && fs?.data) fsData = fs;
       }
+      if (!fsData && person.email) {
+        const { data: rows, error: byEmailErr } = await supabaseServer
+          .from('form_sessions')
+          .select('id,data,email,updated_at,expires_at')
+          .eq('email', person.email)
+          .order('updated_at', { ascending: false })
+          .limit(1);
+        if (!byEmailErr && Array.isArray(rows) && rows[0]) {
+          const candidate = rows[0] as { id: string; data: Record<string, unknown>; email?: string | null; updated_at?: string | null; expires_at?: string | null };
+          // Respect expiration TTL
+          const exp = candidate.expires_at ? Date.parse(candidate.expires_at) : NaN;
+          if (!candidate.expires_at || !Number.isNaN(exp) && exp > Date.now()) {
+            fsid = candidate.id;
+            fsData = candidate;
+          }
+        }
+      }
+      if (fsData) {
+        // Persist discovered form_session_id back onto the person for future merges
+        if (!metadata['form_session_id'] && fsid) metadata['form_session_id'] = fsid;
+
+        const d = fsData.data as Record<string, unknown>;
+        // Copy a stable subset to people.metadata, mirroring existing patterns and extending with Fragebogen fields
+        // Existing possible keys: city, session_preference, gender_preference, budget, etc.
+        const maybeString = (k: string) => (typeof d[k] === 'string' ? (d[k] as string).trim() : undefined);
+        const maybeBool = (k: string) => (typeof d[k] === 'boolean' ? (d[k] as boolean) : undefined);
+        const maybeArray = (k: string) => (Array.isArray(d[k]) ? (d[k] as unknown[]) : undefined);
+
+        const city = maybeString('city');
+        if (city) metadata.city = city;
+        const sessionPref = maybeString('session_preference');
+        if (sessionPref === 'online' || sessionPref === 'in_person') metadata.session_preference = sessionPref;
+
+        const start_timing = maybeString('start_timing');
+        if (start_timing) metadata.start_timing = start_timing;
+        const kassentherapie = maybeString('kassentherapie');
+        if (kassentherapie) metadata.kassentherapie = kassentherapie;
+        const therapy_type = maybeString('therapy_type');
+        if (therapy_type) metadata.therapy_type = therapy_type;
+        const what_missing = maybeArray('what_missing');
+        if (what_missing) metadata.what_missing = what_missing;
+        const online_ok = maybeBool('online_ok');
+        if (typeof online_ok === 'boolean') metadata.online_ok = online_ok;
+        const budget = maybeString('budget');
+        if (budget) metadata.budget = budget;
+        const privacy_preference = maybeString('privacy_preference');
+        if (privacy_preference) metadata.privacy_preference = privacy_preference;
+
+        // Gender mapping: Wizard may store human-friendly strings; preserve raw and map to legacy key if clear
+        const gender = maybeString('gender');
+        if (gender) {
+          metadata.gender = gender;
+          const g = gender.toLowerCase();
+          if (g.includes('mann')) metadata.gender_preference = 'male';
+          else if (g.includes('frau')) metadata.gender_preference = 'female';
+          else if (g.includes('keine') || g.includes('keine präferenz')) metadata.gender_preference = 'no_preference';
+        }
+
+        const language = maybeString('language');
+        if (language) metadata.language = language;
+        const language_other = maybeString('language_other');
+        if (language_other) metadata.language_other = language_other;
+        const time_slots = maybeArray('time_slots');
+        if (time_slots) metadata.time_slots = time_slots;
+        const methods = maybeArray('methods');
+        if (methods) metadata.methods = methods;
+        const additional_info = maybeString('additional_info');
+        if (additional_info) metadata.additional_info = additional_info;
+      }
+    } catch (e) {
+      await logError('api.leads.form_completed', e, { stage: 'load_form_session', id, fsid });
     }
 
     // Persist metadata
