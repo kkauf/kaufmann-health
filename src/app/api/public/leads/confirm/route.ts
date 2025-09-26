@@ -41,7 +41,6 @@ export async function GET(req: Request) {
       metadata?: Record<string, unknown> | null;
       campaign_source?: string | null;
       campaign_variant?: string | null;
-      landing_page?: string | null;
     };
 
     let person: PersonRow | null = null;
@@ -49,14 +48,14 @@ export async function GET(req: Request) {
     try {
       const res = await supabaseServer
         .from('people')
-        .select('id,email,status,metadata,campaign_source,campaign_variant,landing_page')
+        .select('id,email,status,metadata,campaign_source,campaign_variant')
         .eq('id', id)
         .single<PersonRow>();
       person = (res.data as PersonRow) ?? null;
       error = res.error;
       const msg = getErrorMessage(res.error);
       if (msg && msg.includes('schema cache')) {
-        // Retry without optional columns (campaign_source/variant/landing_page)
+        // Retry without optional columns (campaign_source/variant)
         const res2 = await supabaseServer
           .from('people')
           .select('id,email,status,metadata')
@@ -107,17 +106,11 @@ export async function GET(req: Request) {
     newMetadata['confirmed_at'] = nowIso;
     newMetadata['email_confirmed_at'] = nowIso;
 
-    // Decide final status based on VERIFICATION_MODE and whether form has been completed
-    let nextStatus: 'email_confirmed' | 'active' = 'email_confirmed';
+    // If the questionnaire was completed already, the lead is actionable: mark as 'new'.
+    // Otherwise, keep the transitional 'email_confirmed' status.
     const formCompletedAt = typeof newMetadata['form_completed_at'] === 'string' ? (newMetadata['form_completed_at'] as string) : undefined;
     const formIsCompleted = !!(formCompletedAt && !Number.isNaN(Date.parse(formCompletedAt)));
-    // Email path confirms one channel. Activate if mode allows email-only activation and form is completed.
-    if (formIsCompleted) {
-      if (VERIFICATION_MODE === 'email' || VERIFICATION_MODE === 'choice') {
-        nextStatus = 'active';
-      }
-      // VERIFICATION_MODE 'both' requires SMS as well; 'sms' requires SMS only.
-    }
+    const nextStatus: 'email_confirmed' | 'new' = formIsCompleted ? 'new' : 'email_confirmed';
 
     const { error: upErr } = await supabaseServer
       .from('people')
@@ -138,7 +131,6 @@ export async function GET(req: Request) {
         props: {
           campaign_source: person.campaign_source || null,
           campaign_variant: person.campaign_variant || null,
-          landing_page: person.landing_page || null,
           elapsed_seconds: elapsed,
         },
       });

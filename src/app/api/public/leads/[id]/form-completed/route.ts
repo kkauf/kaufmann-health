@@ -33,10 +33,10 @@ export async function POST(req: Request) {
   if (!id) return safeJson({ data: null, error: 'Missing id' }, { status: 400 });
 
   try {
-    type Person = { id: string; email?: string | null; type?: string | null; metadata?: Record<string, unknown> | null };
+    type Person = { id: string; email?: string | null; type?: string | null; status?: string | null; metadata?: Record<string, unknown> | null };
     const { data: person, error } = await supabaseServer
       .from('people')
-      .select('id,email,type,metadata')
+      .select('id,email,type,status,metadata')
       .eq('id', id)
       .single<Person>();
 
@@ -144,10 +144,13 @@ export async function POST(req: Request) {
       await logError('api.leads.form_completed', e, { stage: 'load_form_session', id, fsid });
     }
 
-    // Persist metadata
+    // Persist metadata and, if applicable, promote status from 'email_confirmed' -> 'new'.
+    const currentStatus = (person.status || '').toLowerCase();
+    const promoteToNew = currentStatus === 'email_confirmed';
+    const updatePayload: Record<string, unknown> = promoteToNew ? { status: 'new', metadata } : { metadata };
     const { error: upErr } = await supabaseServer
       .from('people')
-      .update({ metadata })
+      .update(updatePayload)
       .eq('id', id);
     if (upErr) {
       await logError('api.leads.form_completed', upErr, { stage: 'update_metadata', id });
