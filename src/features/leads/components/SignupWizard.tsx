@@ -9,6 +9,7 @@ import Screen3, { type Screen3Values } from './screens/Screen3';
 import Screen4, { type Screen4Values } from './screens/Screen4';
 import Screen5 from './screens/Screen5';
 import { Button } from '@/components/ui/button';
+import { leadSubmissionSchema } from '@/lib/contracts';
 import { PRIVACY_VERSION } from '@/lib/privacy';
 
 const LS_KEYS = {
@@ -70,6 +71,44 @@ export default function SignupWizard() {
         (await fetch('/api/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }));
     } catch {}
   }, []);
+
+  // Client-side Google Ads conversion (deduped). Mirrors PreferencesForm behavior.
+  function fireGoogleAdsClientConversion(leadId?: string) {
+    try {
+      const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
+      const label = process.env.NEXT_PUBLIC_GAD_CONV_CLIENT;
+      if (!adsId || !label) return; // not configured
+      if (typeof window === 'undefined') return;
+
+      const dedupeKey = leadId ? `ga_conv_client_registration${leadId}` : 'ga_conv_client_registration';
+      try {
+        if (window.sessionStorage.getItem(dedupeKey) === '1') return;
+        if (window.localStorage.getItem(dedupeKey) === '1') return;
+      } catch {}
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const g = (window as any).gtag as ((...args: any[]) => void) | undefined;
+      const sendTo = `${adsId}/${label}`;
+      const payload: Record<string, unknown> = { send_to: sendTo, value: 10, currency: 'EUR' };
+      if (leadId) payload.transaction_id = leadId;
+
+      if (typeof g === 'function') {
+        g('event', 'conversion', payload);
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const w = window as any;
+        w.dataLayer = w.dataLayer || [];
+        w.dataLayer.push(['event', 'conversion', payload]);
+      }
+
+      try {
+        window.sessionStorage.setItem(dedupeKey, '1');
+        window.localStorage.setItem(dedupeKey, '1');
+      } catch {}
+    } catch {
+      // best-effort only
+    }
+  }
 
   function missingRequiredForStep(s: number, d: WizardData): string[] {
     switch (s) {
@@ -374,6 +413,10 @@ export default function SignupWizard() {
                 <a href="/confirm" rel="nofollow">E-Mail wurde gesendet – jetzt checken</a>
               </Button>
             </div>
+            <p className="text-sm text-muted-foreground">
+              Keine E‑Mail bekommen? Schau im Spam‑Ordner nach oder{' '}
+              <a className="underline" href="/confirm?state=expired">klick hier für neuen Versand</a>.
+            </p>
           </div>
         );
       default:
@@ -401,18 +444,25 @@ export default function SignupWizard() {
         void trackEvent('screen_completed', { step: 5, duration_ms: elapsed, missing_required: miss });
       }
       // Trigger email confirmation after completion (EARTH-190)
+      // Validate contract before sending
+      const submission = leadSubmissionSchema.safeParse({
+        type: 'patient' as const,
+        name: data.name,
+        email: data.email,
+        form_session_id: sessionIdRef.current || undefined,
+        confirm_redirect_path: '/fragebogen' as const,
+        consent_share_with_therapists: true as const,
+        privacy_version: PRIVACY_VERSION,
+      });
+      if (!submission.success) {
+        setSubmitError('Fehlgeschlagen. Bitte Seite aktualisieren und erneut versuchen.');
+        return;
+      }
+
       const res = await fetch('/api/public/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'patient',
-          name: data.name,
-          email: data.email,
-          form_session_id: sessionIdRef.current || undefined,
-          confirm_redirect_path: '/fragebogen',
-          consent_share_with_therapists: true,
-          privacy_version: PRIVACY_VERSION,
-        }),
+        body: JSON.stringify(submission.data),
       });
       if (!res.ok) throw new Error('Lead submit failed');
       void trackEvent('form_completed', { steps: 5 });

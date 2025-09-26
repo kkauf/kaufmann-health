@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
 import { track } from '@vercel/analytics';
+import { leadSubmissionSchema } from '@/lib/contracts';
 import { getOrCreateSessionId } from '@/lib/attribution';
 import { PRIVACY_VERSION } from '@/lib/privacy';
 
@@ -77,24 +78,37 @@ export function EmailEntryForm({ defaultSessionPreference }: { defaultSessionPre
       // Forward campaign variant v from current URL if present
       const url = typeof window !== 'undefined' ? new URL(window.location.href) : null;
       const v = url?.searchParams.get('v');
-      const fetchUrl = `/api/public/leads${v ? `?v=${encodeURIComponent(v)}` : ''}`;
+      const fetchUrl = url ? `/api/public/leads${v ? `?v=${encodeURIComponent(v)}` : ''}` : '/api/public/leads';
+
+      // Prepare payload and validate against shared contract
+      const payload = {
+        name,
+        email,
+        session_id: getOrCreateSessionId(),
+        ...(defaultSessionPreference ? { session_preference: defaultSessionPreference } : {}),
+        // Consent (email-first flow captures via disclaimer + submit)
+        consent_share_with_therapists: true as const,
+        privacy_version: PRIVACY_VERSION,
+        confirm_redirect_path: '/fragebogen' as const,
+      };
+      const parsed = leadSubmissionSchema.safeParse(payload);
+      if (!parsed.success) {
+        const errs = parsed.error.issues.reduce<Record<string, string>>((acc, curr) => {
+          const key = String(curr.path.join('.'));
+          acc[key] = curr.message;
+          return acc;
+        }, {});
+        setErrors(errs);
+        return;
+      }
 
       const res = await fetch(fetchUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'patient',
-          name,
-          email,
-          session_id: getOrCreateSessionId(),
-          ...(defaultSessionPreference ? { session_preference: defaultSessionPreference } : {}),
-          // Consent (email-first flow captures via disclaimer + submit)
-          consent_share_with_therapists: true,
-          privacy_version: PRIVACY_VERSION,
-        }),
+        body: JSON.stringify(parsed.data),
       });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || json?.error) throw new Error(json?.error || 'Fehlgeschlagen');
+      const json = await res.json().catch(() => ({} as any));
+      if (!res.ok || (json && json.error)) throw new Error(json?.error || 'Fehlgeschlagen');
 
       const leadId = (json?.data?.id as string | undefined) || undefined;
       try {

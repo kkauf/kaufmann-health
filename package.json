@@ -21,7 +21,10 @@
     "ads:monitor": "tsx google_ads_api_scripts/monitor-campaigns.ts",
     "ads:monitor:apply": "tsx google_ads_api_scripts/monitor-campaigns.ts --apply",
     "ads:export:perf": "tsx google_ads_api_scripts/export-keyword-asset-performance.ts",
-    "spam:test": "tsx scripts/send-spam-test.ts"
+    "spam:test": "tsx scripts/send-spam-test.ts",
+    "smoke": "tsx scripts/smoke-test.ts",
+    "smoke:local": "tsx scripts/smoke-test.ts --base-url=http://localhost:3000",
+    "smoke:preview": "tsx scripts/smoke-test.ts --base-url=$PREVIEW_URL"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
@@ -60,6 +63,7 @@
     "tw-animate-css": "^1.3.6",
     "typescript": "^5",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^2.1.9"
+    "vitest": "^2.1.9",
+    "playwright": "^1.47.2"
   }
 }

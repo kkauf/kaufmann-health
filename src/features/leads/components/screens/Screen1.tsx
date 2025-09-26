@@ -72,7 +72,7 @@ export default function Screen1({
       </div>
 
       <div>
-        <Button type="submit" className="h-12 w-full text-base" disabled={disabled} aria-disabled={disabled}>
+        <Button type="submit" data-testid="wizard-next" className="h-12 w-full text-base" disabled={disabled} aria-disabled={disabled}>
           Passende Therapeut:innen finden →
         </Button>
       </div>
