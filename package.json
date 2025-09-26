@@ -24,7 +24,8 @@
     "spam:test": "tsx scripts/send-spam-test.ts",
     "smoke": "tsx scripts/smoke-test.ts",
     "smoke:local": "tsx scripts/smoke-test.ts --base-url=http://localhost:3000",
-    "smoke:preview": "tsx scripts/smoke-test.ts --base-url=$PREVIEW_URL"
+    "smoke:preview": "tsx scripts/smoke-test.ts --base-url=$PREVIEW_URL",
+    "prepare": "husky install"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
@@ -64,6 +65,7 @@
     "typescript": "^5",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^2.1.9",
-    "playwright": "^1.47.2"
+    "playwright": "^1.47.2",
+    "husky": "^8.0.0"
   }
 }
