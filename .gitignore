@@ -23,7 +23,6 @@
 # misc
 .DS_Store
 *.pem
-.windsurf/
 
 # debug
 npm-debug.log*
