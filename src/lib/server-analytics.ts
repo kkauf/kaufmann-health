@@ -33,7 +33,6 @@ export function parseAttributionFromRequest(req: Request): ServerAttribution {
 export function parseCampaignFromRequest(req: Request): {
   campaign_source?: string;
   campaign_variant?: 'A' | 'B' | 'C';
-  landing_page?: string;
 } {
   const ref = req.headers.get('referer') || '';
   let pathname: string | undefined;
@@ -67,7 +66,6 @@ export function parseCampaignFromRequest(req: Request): {
   return {
     campaign_source: src,
     campaign_variant: vv,
-    landing_page: pathname,
   };
 }
 

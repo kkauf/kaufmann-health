@@ -111,10 +111,8 @@ First‑party campaign fields are captured server‑side and stored on `public.p
 
 - `campaign_source`: inferred from Referer pathname
   - `/ankommen-in-dir` | `/wieder-lebendig` | default `/therapie-finden`
-- `campaign_variant`: A/B variant from `?v=`
-  - Precedence: Referer query param `?v=A|B` wins; fallback to the API URL’s `?v=`; default `A`.
-  - Sanitized to `A | B` only.
-- `landing_page`: Referer pathname only (e.g. `/wieder-lebendig`), not the full URL.
+- `campaign_variant`: A/B/C variant from `?v=`
+  - Precedence: Referer query param `?v=A|B|C` wins; fallback to the API URL’s `?v=`; default `A`.
 
 Persistence & events
 - Email‑only flow (EARTH‑146): persisted on `people` at insert (`status='pre_confirmation'`) and included in `email_submitted`.
@@ -317,13 +315,12 @@ __Notes__:
 - This complements server-side Enhanced Conversions; both use the same value (10 EUR) and the same identifier (`transaction_id` == `orderId` == lead id) for deduplication.
 - Keep disabled in non-production environments by leaving env vars unset.
 
-## Email Double Opt-in (EARTH-146)
+## **Email Double Opt-in (EARTH-146)**
 
 **Why:** Improve deliverability and list quality by requiring email confirmation before treating a patient lead as active.
 
 **Server Events:**
-- `email_submitted` — emitted by `POST /api/public/leads` in the email‑only path with props `{ campaign_source, campaign_variant, landing_page, requires_confirmation: true }`.
-- `email_confirmed` — emitted by `GET /api/public/leads/confirm` with props `{ campaign_source, campaign_variant, landing_page, elapsed_seconds }`.
+- `email_submitted` — emitted by `POST /api/public/leads` in the email‑only path with props `{ campaign_source, campaign_variant, requires_confirmation: true }`.
 
 **Enhanced Conversions timing:**
 - In the Fragebogen flow, Server Enhanced Conversions (`client_registration`) and Client `gtag` conversion both fire at form completion (Screen 5) and are deduped by lead id. The confirmation endpoint (`GET /api/public/leads/confirm`) does not fire conversions; it sets confirmation timestamps and may activate the lead depending on verification mode.

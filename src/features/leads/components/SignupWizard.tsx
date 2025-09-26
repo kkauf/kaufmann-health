@@ -27,8 +27,9 @@ export type WizardData = Screen1Values & {
   // Screen 3
   city?: string;
   online_ok?: boolean;
+  session_preference?: 'online' | 'in_person' | 'either';
   budget?: Screen3Values['budget'];
-  privacy_preference?: Screen3Values['privacy_preference'];
+  privacy_preference?: Screen3Values['privacy_preference']; 
   // Screen 4
   gender?: Screen4Values['gender'];
   language?: Screen4Values['language'];
@@ -125,8 +126,9 @@ export default function SignupWizard() {
       case 3: {
         const miss: string[] = [];
         const hasCity = !!(d.city && d.city.trim());
-        const online = !!d.online_ok;
-        if (!hasCity && !online) miss.push('location');
+        const pref = d.session_preference;
+        if (!pref) miss.push('session_preference');
+        if (pref === 'in_person' && !hasCity) miss.push('city');
         return miss;
       }
       case 4: {
@@ -370,6 +372,7 @@ export default function SignupWizard() {
             values={{
               city: data.city,
               online_ok: data.online_ok,
+              session_preference: data.session_preference,
               budget: data.budget,
               privacy_preference: data.privacy_preference,
             }}
@@ -471,6 +474,7 @@ export default function SignupWizard() {
       } catch {}
       // Trigger email confirmation after completion (EARTH-190)
       // Validate contract before sending
+      const sessionPref = data.session_preference;
       const submission = leadSubmissionSchema.safeParse({
         type: 'patient' as const,
         name: data.name,
@@ -479,6 +483,11 @@ export default function SignupWizard() {
         confirm_redirect_path: '/fragebogen' as const,
         consent_share_with_therapists: true as const,
         privacy_version: PRIVACY_VERSION,
+        ...(sessionPref === 'either'
+          ? { session_preferences: ['online', 'in_person'] }
+          : sessionPref
+          ? { session_preference: sessionPref }
+          : {}),
       });
       if (!submission.success) {
         setSubmitError('Fehlgeschlagen. Bitte Seite aktualisieren und erneut versuchen.');

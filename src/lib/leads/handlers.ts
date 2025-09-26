@@ -110,7 +110,6 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
       is_test: isTest,
       campaign_source: campaign.campaign_source || null,
       campaign_variant: campaign.campaign_variant || null,
-      landing_page: campaign.landing_page || null,
       ...(session_id ? { session_id } : {}),
       ...(attr.referrer ? { referrer: attr.referrer } : {}),
       ...(attr.utm_source ? { utm_source: attr.utm_source } : {}),

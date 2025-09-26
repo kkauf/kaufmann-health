@@ -10,7 +10,7 @@
   - Therapist flow (JSON path): optional `city`, `session_preferences`, `specializations` (array of modality slugs). For multipart uploads (profile photo, documents) see therapist section below.
 - __Validation__: emails validated server-side; all strings sanitized (control chars stripped, ~1 KB max). Missing patient consent or privacy version -> 400.
 - __Behavior__:
-  - Patients: insert minimal row with `status='pre_confirmation'`, attribution metadata (`campaign_source`, `campaign_variant`, `landing_page`), confirmation token + timestamp, and consent footprint. Confirmation email is sent fire-and-forget.
+  - Patients: insert minimal row with `status='pre_confirmation'`, attribution metadata (`campaign_source`, `campaign_variant`), confirmation token + timestamp, and consent footprint. Confirmation email is sent fire-and-forget.
   - Therapists (JSON): insert `people` row in `therapists` table with `status='pending_verification'`, optional metadata, and enqueue welcome email + internal notification.
   - Multipart therapist submissions are handled inside this route (documents & profile photo go to private storage; metadata merged as pending — see POST `/api/public/therapists/:id/documents`).
   - Google Ads Enhanced Conversions are fired at form completion for patient leads (see `POST /api/public/leads/:id/form-completed`) and at document upload for therapists (`POST /api/public/therapists/:id/documents`).
@@ -32,7 +32,7 @@
   - `redirect?` (string, optional) — safe path (must start with `/` and not `/api` or `//`) to redirect to on success
 - __Behavior__:
   - Loads the `people` row by `id`, verifies `metadata.confirm_token` and TTL using `metadata.confirm_sent_at` (24h).
-  - On success: clears `confirm_token` and `confirm_sent_at`, stamps `confirmed_at` and `email_confirmed_at`, sets `status='email_confirmed'` by default. If `metadata.form_completed_at` exists and verification mode allows email-only activation (`VERIFICATION_MODE=email|choice`), sets `status='active'` instead. Emits analytics event `email_confirmed` with campaign properties (`campaign_source`, `campaign_variant`, `landing_page`) and `elapsed_seconds`.
+  - On success: clears `confirm_token` and `confirm_sent_at`, stamps `confirmed_at` and `email_confirmed_at`, sets `status='email_confirmed'` by default. If `metadata.form_completed_at` exists and verification mode allows email-only activation (`VERIFICATION_MODE=email|choice`), sets `status='active'` instead. Emits analytics event `email_confirmed` with campaign properties (`campaign_source`, `campaign_variant`) and `elapsed_seconds`.
   - On invalid/expired tokens: no changes are made.
 - __Redirects__:
   - 302 → on success: `/fragebogen/confirmed?confirm=1&id=<leadId>` (or `redirect` path if provided; passes `fs` through when present)

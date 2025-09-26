@@ -11,6 +11,8 @@ export const leadSubmissionSchema = z.object({
   type: z.enum(['patient', 'therapist']).default('patient').optional(),
   session_id: z.string().optional(),
   session_preference: z.enum(['online', 'in_person']).optional(),
+  // For 'either' selection, the client may send both values here
+  session_preferences: z.array(z.enum(['online', 'in_person'])).min(1).max(2).optional(),
   form_session_id: z.string().optional(),
   confirm_redirect_path: z.string().optional(),
 });

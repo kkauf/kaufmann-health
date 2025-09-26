@@ -102,7 +102,22 @@ export async function POST(req: Request) {
         const city = maybeString('city');
         if (city) metadata.city = city;
         const sessionPref = maybeString('session_preference');
-        if (sessionPref === 'online' || sessionPref === 'in_person') metadata.session_preference = sessionPref;
+        if (sessionPref) {
+          const s = sessionPref.toLowerCase();
+          if (s === 'online' || s.startsWith('online')) {
+            metadata.session_preference = 'online';
+          } else if (s === 'in_person' || s.includes('vor ort')) {
+            metadata.session_preference = 'in_person';
+          } else if (s.startsWith('beides') || s.includes('beides ist okay') || s === 'either') {
+            // Both are acceptable → store as array and omit single preference
+            (metadata as Record<string, unknown>).session_preferences = ['online', 'in_person'];
+            if ('session_preference' in metadata) delete (metadata as Record<string, unknown>)['session_preference'];
+            (metadata as Record<string, unknown>).online_ok = true;
+          }
+        }
+        // If an explicit array is present, prefer it (defensive)
+        const spArray = maybeArray('session_preferences');
+        if (Array.isArray(spArray)) (metadata as Record<string, unknown>).session_preferences = spArray;
 
         const start_timing = maybeString('start_timing');
         if (start_timing) metadata.start_timing = start_timing;
@@ -144,13 +159,10 @@ export async function POST(req: Request) {
       await logError('api.leads.form_completed', e, { stage: 'load_form_session', id, fsid });
     }
 
-    // Persist metadata and, if applicable, promote status from 'email_confirmed' -> 'new'.
-    const currentStatus = (person.status || '').toLowerCase();
-    const promoteToNew = currentStatus === 'email_confirmed';
-    const updatePayload: Record<string, unknown> = promoteToNew ? { status: 'new', metadata } : { metadata };
+    // Persist metadata only (activation handled on confirmation depending on VERIFICATION_MODE)
     const { error: upErr } = await supabaseServer
       .from('people')
-      .update(updatePayload)
+      .update({ metadata })
       .eq('id', id);
     if (upErr) {
       await logError('api.leads.form_completed', upErr, { stage: 'update_metadata', id });

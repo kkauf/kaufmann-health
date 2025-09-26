@@ -589,7 +589,6 @@ export async function POST(req: Request) {
       const campaign_variant = vMatch
         ? ((vMatch[1].toUpperCase() === 'B') ? 'B' : (vMatch[1].toUpperCase() === 'C' ? 'C' : 'A'))
         : campaign.campaign_variant;
-      const landing_page = campaign.landing_page || null;
 
       // Prepare confirmation token up-front so we can store it at insert time
       const confirmToken = randomUUID();
@@ -604,6 +603,7 @@ export async function POST(req: Request) {
         // Basic context for debugging/ops
         ...(ip ? { ip } : {}),
         ...(ua ? { user_agent: ua } : {}),
+        ...(data.name ? { name: data.name } : {}),
         ...(sessionPreference ? { session_preference: sessionPreference } : {}),
         ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
         ...(formSessionId ? { form_session_id: formSessionId } : {}),
@@ -622,7 +622,6 @@ export async function POST(req: Request) {
         status: 'pre_confirmation' as const,
         campaign_source,
         campaign_variant,
-        landing_page,
         metadata: baseMetadata,
       };
       const attemptInsert = async (payload: Record<string, unknown>) =>
@@ -680,7 +679,7 @@ export async function POST(req: Request) {
             await ServerAnalytics.trackEventFromRequest(req, {
               type: 'email_submitted',
               source: 'api.leads',
-              props: { campaign_source, campaign_variant, landing_page, requires_confirmation: false, is_test: isTest },
+              props: { campaign_source, campaign_variant, requires_confirmation: false, is_test: isTest },
             });
             return safeJson(
               { data: { id: existing.id, requiresConfirmation: false }, error: null },
@@ -692,6 +691,7 @@ export async function POST(req: Request) {
               ...(existing.metadata || {}),
               confirm_token: confirmToken,
               confirm_sent_at: new Date().toISOString(),
+              ...(data.name ? { name: data.name } : {}),
               ...(sessionPreference ? { session_preference: sessionPreference } : {}),
               ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
               ...(isTest ? { is_test: true } : {}),
@@ -767,7 +767,6 @@ export async function POST(req: Request) {
         props: {
           campaign_source,
           campaign_variant,
-          landing_page,
           requires_confirmation: true,
           is_test: isTest,
           consent_share_with_therapists: consentShare,

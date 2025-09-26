@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button';
 
 export type Screen3Values = {
   city?: string;
+  // Derived from session_preference for backward compatibility
   online_ok?: boolean;
+  // Explicit preference selection
+  session_preference?: 'Online' | 'Vor Ort (in der Praxis)' | 'Beides ist okay';
   budget?: 'Unter 80€' | '80-120€' | 'Über 120€' | 'Brauche einen Zahlungsplan';
   privacy_preference?: 'Ja, sehr wichtig' | 'Nein, ist mir egal' | 'Bin mir unsicher';
 };
@@ -37,13 +40,14 @@ export default function Screen3({
   onBack: () => void;
   disabled?: boolean;
 }) {
-  const [errors, setErrors] = React.useState<{ location?: string }>({});
+  const [errors, setErrors] = React.useState<{ location?: string; session?: string }>({});
 
   function validate() {
-    const e: { location?: string } = {};
+    const e: { location?: string; session?: string } = {};
+    const pref = values.session_preference;
+    if (!pref) e.session = 'Bitte wähle: Online, Vor Ort oder Beides.';
     const hasCity = !!(values.city && values.city.trim().length > 0);
-    const online = !!values.online_ok;
-    if (!hasCity && !online) e.location = 'Bitte gib eine Stadt an oder aktiviere Online‑Therapie.';
+    if (pref === 'in_person' && !hasCity) e.location = 'Bitte gib deine Stadt an.';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -69,16 +73,31 @@ export default function Screen3({
                 disabled={!!disabled}
               />
             </div>
-            <label className="inline-flex items-center gap-2 select-none min-h-[44px] py-2">
-              <input
-                type="checkbox"
-                className="h-6 w-6 rounded border-gray-300"
-                checked={!!values.online_ok}
-                onChange={(e) => onChange({ online_ok: e.target.checked })}
-                disabled={!!disabled}
-              />
-              <span>Online‑Therapie ist auch okay</span>
-            </label>
+            <div className="space-y-2">
+              <Label className="text-sm">Wie möchtest du die Sitzungen machen?</Label>
+              <div className="grid gap-2">
+                {([
+                  { value: 'online', label: 'Online (Video)' },
+                  { value: 'in_person', label: 'Vor Ort (in Präsenz)' },
+                  { value: 'either', label: 'Beides ist okay' },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`h-11 rounded border px-4 text-left ${values.session_preference === opt.value ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
+                    onClick={() => {
+                      const derivedOnlineOk = opt.value === 'online' || opt.value === 'either';
+                      onChange({ session_preference: opt.value, online_ok: derivedOnlineOk });
+                    }}
+                    disabled={!!disabled}
+                    aria-disabled={disabled}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {errors.session && <p className="text-sm text-red-600">{errors.session}</p>}
+            </div>
             {errors.location && <p className="text-sm text-red-600">{errors.location}</p>}
           </div>
         </div>
