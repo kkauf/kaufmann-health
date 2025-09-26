@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
         destination: "/wieder-lebendig",
         permanent: true,
       },
+      {
+        source: "/preferences",
+        destination: "/fragebogen/confirmed",
+        permanent: true,
+      },
     ];
   },
 };

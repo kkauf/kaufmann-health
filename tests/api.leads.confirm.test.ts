@@ -70,11 +70,11 @@ beforeEach(() => {
 });
 
 describe('EARTH-146 GET /api/public/leads/confirm', () => {
-  it('confirms valid token, updates status and redirects to preferences', async () => {
+  it('confirms valid token, updates status and redirects to questionnaire confirmation', async () => {
     const { GET } = await import('@/app/api/public/leads/confirm/route');
     const res = await GET(new Request(makeUrl('p1', 't1')));
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('http://localhost/preferences?confirm=1&id=p1');
+    expect(res.headers.get('location')).toBe('http://localhost/fragebogen/confirmed?confirm=1&id=p1');
     // status update
     expect(updateArgs).toBeTruthy();
     expect(updateArgs.status).toBe('email_confirmed');
@@ -106,14 +106,14 @@ describe('EARTH-146 GET /api/public/leads/confirm', () => {
     expect(updateArgs).toBeNull();
   });
 
-  it('redirects to preferences if already email_confirmed (idempotent link)', async () => {
+  it('redirects to questionnaire confirmation if already email_confirmed (idempotent link)', async () => {
     person.status = 'email_confirmed';
     // even if token mismatches, we should send to preferences rather than invalid
     person.metadata.confirm_token = 'different';
     const { GET } = await import('@/app/api/public/leads/confirm/route');
     const res = await GET(new Request(makeUrl('p1', 't1')));
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('http://localhost/preferences?id=p1');
+    expect(res.headers.get('location')).toBe('http://localhost/fragebogen/confirmed?confirm=1&id=p1');
     // no update since it's already confirmed
     expect(updateArgs).toBeNull();
   });

@@ -3,6 +3,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { BASE_URL } from '@/lib/constants';
 import { logError } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
+import { VERIFICATION_MODE } from '@/lib/config';
 
 export const runtime = 'nodejs';
 
@@ -79,7 +80,7 @@ export async function GET(req: Request) {
         const suffix = `?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
         return NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
       }
-      return NextResponse.redirect(`${origin}/preferences?id=${id}`, 302);
+      return NextResponse.redirect(`${origin}/fragebogen/confirmed?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`, 302);
     }
 
     const metadata: Record<string, unknown> = person.metadata ?? {};
@@ -98,15 +99,29 @@ export async function GET(req: Request) {
       return NextResponse.redirect(`${origin}/confirm?state=expired`, 302);
     }
 
-    // Update status -> 'email_confirmed' and clear token
+    // Update status -> 'email_confirmed' and clear token; stamp email_confirmed_at (keep confirmed_at for backward compatibility)
     const newMetadata: Record<string, unknown> = { ...metadata };
     delete newMetadata['confirm_token'];
     delete newMetadata['confirm_sent_at'];
-    newMetadata['confirmed_at'] = new Date().toISOString();
+    const nowIso = new Date().toISOString();
+    newMetadata['confirmed_at'] = nowIso;
+    newMetadata['email_confirmed_at'] = nowIso;
+
+    // Decide final status based on VERIFICATION_MODE and whether form has been completed
+    let nextStatus: 'email_confirmed' | 'active' = 'email_confirmed';
+    const formCompletedAt = typeof newMetadata['form_completed_at'] === 'string' ? (newMetadata['form_completed_at'] as string) : undefined;
+    const formIsCompleted = !!(formCompletedAt && !Number.isNaN(Date.parse(formCompletedAt)));
+    // Email path confirms one channel. Activate if mode allows email-only activation and form is completed.
+    if (formIsCompleted) {
+      if (VERIFICATION_MODE === 'email' || VERIFICATION_MODE === 'choice') {
+        nextStatus = 'active';
+      }
+      // VERIFICATION_MODE 'both' requires SMS as well; 'sms' requires SMS only.
+    }
 
     const { error: upErr } = await supabaseServer
       .from('people')
-      .update({ status: 'email_confirmed', metadata: newMetadata })
+      .update({ status: nextStatus, metadata: newMetadata })
       .eq('id', id);
 
     if (upErr) {
@@ -136,7 +151,7 @@ export async function GET(req: Request) {
       const suffix = `?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
       return NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
     }
-    return NextResponse.redirect(`${origin}/preferences?confirm=1&id=${id}`, 302);
+    return NextResponse.redirect(`${origin}/fragebogen/confirmed?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`, 302);
   } catch (e) {
     await logError('api.leads.confirm', e, { stage: 'unhandled' });
     return NextResponse.redirect(`${origin}/confirm?state=error`, 302);

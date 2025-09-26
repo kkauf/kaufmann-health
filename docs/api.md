@@ -13,7 +13,7 @@
   - Patients: insert minimal row with `status='pre_confirmation'`, attribution metadata (`campaign_source`, `campaign_variant`, `landing_page`), confirmation token + timestamp, and consent footprint. Confirmation email is sent fire-and-forget.
   - Therapists (JSON): insert `people` row in `therapists` table with `status='pending_verification'`, optional metadata, and enqueue welcome email + internal notification.
   - Multipart therapist submissions are handled inside this route (documents & profile photo go to private storage; metadata merged as pending — see POST `/api/public/therapists/:id/documents`).
-  - Google Ads Enhanced Conversions are deferred until activation steps (`/api/public/leads/:id/preferences` for patients, `/api/public/therapists/:id/documents` for therapists).
+  - Google Ads Enhanced Conversions are fired at form completion for patient leads (see `POST /api/public/leads/:id/form-completed`) and at document upload for therapists (`POST /api/public/therapists/:id/documents`).
 - __Rate limiting__: IP-based best effort (60 s window) using `x-forwarded-for`; both patient and therapist paths share helpers.
 - __Notifications__: if `RESEND_API_KEY` & `LEADS_NOTIFY_EMAIL` set, therapist submissions trigger a fire-and-forget internal email (PII-free) via Resend. Sender defaults to `LEADS_FROM_EMAIL` (`kontakt@kaufmann-health.de`).
 - __Response__:
@@ -32,11 +32,11 @@
   - `redirect?` (string, optional) — safe path (must start with `/` and not `/api` or `//`) to redirect to on success
 - __Behavior__:
   - Loads the `people` row by `id`, verifies `metadata.confirm_token` and TTL using `metadata.confirm_sent_at` (24h).
-  - On success: sets `status='email_confirmed'`, clears `confirm_token` and `confirm_sent_at`, sets `confirmed_at` timestamp; emits analytics event `email_confirmed` with campaign properties (`campaign_source`, `campaign_variant`, `landing_page`) and `elapsed_seconds`. The lead is redirected to `/preferences` to complete profile details before becoming active.
+  - On success: clears `confirm_token` and `confirm_sent_at`, stamps `confirmed_at` and `email_confirmed_at`, sets `status='email_confirmed'` by default. If `metadata.form_completed_at` exists and verification mode allows email-only activation (`VERIFICATION_MODE=email|choice`), sets `status='active'` instead. Emits analytics event `email_confirmed` with campaign properties (`campaign_source`, `campaign_variant`, `landing_page`) and `elapsed_seconds`.
   - On invalid/expired tokens: no changes are made.
 - __Redirects__:
-  - 302 → on success: `/preferences?confirm=1&id=<leadId>` (or to `redirect` if provided)
-  - 302 → if already confirmed: `/preferences?id=<leadId>`
+  - 302 → on success: `/fragebogen/confirmed?confirm=1&id=<leadId>` (or `redirect` path if provided; passes `fs` through when present)
+  - 302 → if already confirmed: `/fragebogen/confirmed?confirm=1&id=<leadId>`
   - 302 → on invalid/expired/error: `/confirm?state=invalid | expired | error`
 
 ### Public Confirmation Page (`/confirm`)
@@ -44,6 +44,7 @@
 - Purpose: Friendly, index‑excluded page that displays the outcome of the confirmation flow.
 - States (via `?state=`): `invalid | expired | error`.
 - UX: Uses a simple card with CTAs back to `/` and `/therapie-finden`. On `expired`, the page offers an email input to request a new confirmation email (see endpoint below). On success, users are redirected directly to `/preferences` to continue without an extra click.
+ - UX: Uses a simple card with CTAs back to `/` and `/therapie-finden`. On `expired`, the page offers an email input to request a new confirmation email (see endpoint below). Successful confirmations are not shown here; the API redirects directly to `/fragebogen/confirmed` (optionally including `fs` for resume).
 - SEO: `noindex, nofollow`.
 
 ## POST /api/public/leads/resend-confirmation
@@ -62,33 +63,25 @@
   - 200: `{ data: { ok: true }, error: null }`
 
 
-## POST /api/public/leads/:id/preferences
+## POST /api/public/leads/:id/preferences (Deprecated)
 
-- __Purpose__: Capture Klient:in Präferenzen after email confirmation to enrich the lead for better matching.
-- __Auth__: None (public flow via emailed link redirect). Best-effort validation; does not expose internal states.
+- __Purpose__: Deprecated in EARTH-190. Returns HTTP 410. Use Fragebogen completion (`POST /api/public/leads/:id/form-completed`) plus confirmation instead.
+
+## POST /api/public/leads/:id/form-completed
+
+- __Purpose__: Mark Fragebogen completion and trigger conversions.
+- __Auth__: None (public flow). Called internally by the Fragebogen at the end of Screen 5.
 - __Path Param__:
-  - `:id` — the patient lead UUID (from confirmation redirect).
-- __Request Body__ (JSON):
-  - `name` (string, optional)
-  - `city` (string, required)
-  - `issue?` (string, optional)
-  - `session_preference?` (string, optional: `online` | `in_person`)
-  - `consent_share_with_therapists` (boolean, required)
-  - `privacy_version?` (string, optional; version stamp for consent proof)
+  - `:id` — the patient lead UUID (from `POST /api/public/leads`).
 - __Behavior__:
-  - Verifies `people(id).type === 'patient'` and returns 404 for unknown leads.
-  - Updates `people.status` to `'new'` (lead becomes active), sets `people.name` when provided, and merges into `people.metadata`:
-    - `city`, `issue?`, `session_preference?`
-    - `consent_share_with_therapists = true`, `consent_share_with_therapists_at = now()`
-    - `consent_privacy_version?` when provided
-  - Emits Supabase event `preferences_submitted` via server analytics.
-  - Fires Google Ads Enhanced Conversions for `client_registration` at this point (post-confirmation, on activation).
-  - Note: This endpoint provides a secondary confirmation of consent (defense‑in‑depth). If consent was already captured during the email‑only submission, this write is idempotent and simply re‑affirms consent with the latest `privacy_version` if provided.
+  - Stamps `people.metadata.form_completed_at`.
+  - Copies a subset of Fragebogen fields from `form_sessions` into `people.metadata` for matching (e.g., `city`, `session_preference`, `gender_preference`, `language`, `methods`, etc.).
+  - Emits Supabase event `form_completed`.
+  - Fires server-side Google Ads Enhanced Conversions for `client_registration` with `orderId=<id>`.
+  - Does not change status. Activation happens on confirmation depending on `VERIFICATION_MODE`.
 - __Response__:
   - 200: `{ data: { ok: true }, error: null }`
-  - 400: `{ data: null, error: 'Missing id' | 'Missing fields' | 'Einwilligung zur Datenübertragung erforderlich' | 'Invalid JSON' }`
-  - 404: `{ data: null, error: 'Not found' }`
-  - 500: `{ data: null, error: 'Failed to update' | 'Unexpected error' }`
+  - 400/404/500 on failure.
 
 ## Form Sessions (EARTH-190)
 

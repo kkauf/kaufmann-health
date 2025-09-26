@@ -15,8 +15,7 @@
       datenschutz/page.tsx
       impressum/page.tsx
       confirm/page.tsx
-      preferences/page.tsx   # Email-first step 2 (city/consent)
-      fragebogen/            # 6-screen questionnaire (EARTH-190)
+      fragebogen/            # 6-screen questionnaire (EARTH-190) – primary intake
     /therapists
       complete-profile/[id]/page.tsx
       therapists/upload-documents/[id]/page.tsx
@@ -25,7 +24,7 @@
       /public
         events/route.ts                      # Server-side analytics ingest
         leads/route.ts                       # Email-first intake (patients + therapists)
-        leads/[id]/preferences/route.ts      # Patient confirmation → status `new`
+        leads/[id]/form-completed/route.ts   # Fragebogen completion → conversions & metadata
         therapists/[id]/documents/route.ts   # Therapist docs + Enhanced Conversions
       /admin
         ...                                  # Stats, reminders, matching, cron endpoints

@@ -72,7 +72,7 @@ export default function SignupWizard() {
     } catch {}
   }, []);
 
-  // Client-side Google Ads conversion (deduped). Mirrors PreferencesForm behavior.
+  // Client-side Google Ads conversion (deduped). Mirrors legacy client conversion behavior.
   function fireGoogleAdsClientConversion(leadId?: string) {
     try {
       const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
@@ -286,6 +286,19 @@ export default function SignupWizard() {
     void trackEvent('screen_viewed', { step });
   }, [step, trackEvent]);
 
+  // Auto-advance from Screen 1 when name+email are already filled (landing handoff)
+  const autoAdvancedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (autoAdvancedRef.current) return;
+    if (step !== 1) return;
+    const hasName = typeof data.name === 'string' && data.name.trim().length > 0;
+    const hasEmail = typeof data.email === 'string' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email);
+    if (hasName && hasEmail) {
+      autoAdvancedRef.current = true;
+      safeGoToStep(2);
+    }
+  }, [step, data.name, data.email, safeGoToStep]);
+
   // Backend autosave every 30s when data changes
   React.useEffect(() => {
     const interval = setInterval(async () => {
@@ -464,7 +477,28 @@ export default function SignupWizard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submission.data),
       });
-      if (!res.ok) throw new Error('Lead submit failed');
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || j?.error) throw new Error('Lead submit failed');
+      const leadId = (j?.data?.id as string | undefined) || undefined;
+
+      // Persist for confirm fallback UX
+      try {
+        if (leadId && typeof window !== 'undefined') {
+          window.localStorage.setItem('leadId', leadId);
+          if (data.email) window.localStorage.setItem('leadEmail', data.email);
+        }
+      } catch {}
+
+      // Server conversions: mark form completed
+      if (leadId) {
+        try {
+          await fetch(`/api/public/leads/${encodeURIComponent(leadId)}/form-completed`, { method: 'POST' });
+        } catch {}
+      }
+
+      // Client conversions (deduped)
+      try { fireGoogleAdsClientConversion(leadId); } catch {}
+
       void trackEvent('form_completed', { steps: 5 });
       // Go to final screen
       goToStep(6);

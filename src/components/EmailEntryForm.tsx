@@ -4,55 +4,13 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle } from 'lucide-react';
 import { track } from '@vercel/analytics';
-import { leadSubmissionSchema } from '@/lib/contracts';
-import { getOrCreateSessionId } from '@/lib/attribution';
-import { PRIVACY_VERSION } from '@/lib/privacy';
 
-// Minimal client-side Google Ads conversion for legacy flow (no email confirmation):
-// Fire only when the API indicates requiresConfirmation === false, meaning the lead became active ('new') on initial submit.
-function fireGoogleAdsClientConversion(leadId?: string) {
-  try {
-    const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
-    const label = process.env.NEXT_PUBLIC_GAD_CONV_CLIENT;
-    if (!adsId || !label) return;
-    if (typeof window === 'undefined') return;
-
-    const dedupeKey = leadId ? `ga_conv_client_registration${leadId}` : 'ga_conv_client_registration';
-    try {
-      if (window.sessionStorage.getItem(dedupeKey) === '1') return;
-      if (window.localStorage.getItem(dedupeKey) === '1') return;
-    } catch {}
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const g = (window as any).gtag as ((...args: any[]) => void) | undefined;
-    const sendTo = `${adsId}/${label}`;
-    const payload: Record<string, unknown> = { send_to: sendTo, value: 10, currency: 'EUR' };
-    if (leadId) payload.transaction_id = leadId;
-
-    if (typeof g === 'function') {
-      g('event', 'conversion', payload);
-    } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const w = window as any;
-      w.dataLayer = w.dataLayer || [];
-      w.dataLayer.push(['event', 'conversion', payload]);
-    }
-
-    try {
-      window.sessionStorage.setItem(dedupeKey, '1');
-      window.localStorage.setItem(dedupeKey, '1');
-    } catch {}
-  } catch {}
-}
+// Note: Google Ads conversions are handled at Fragebogen completion (client + server).
 
 export function EmailEntryForm({ defaultSessionPreference }: { defaultSessionPreference?: 'online' | 'in_person' }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -75,87 +33,35 @@ export function EmailEntryForm({ defaultSessionPreference }: { defaultSessionPre
 
     setSubmitting(true);
     try {
-      // Forward campaign variant v from current URL if present
+      // Persist to wizard localStorage for seamless handoff to /fragebogen
+      try {
+        const LS_KEY = 'kh_wizard_data';
+        const LS_STEP = 'kh_wizard_step';
+        const existing = typeof window !== 'undefined' ? window.localStorage.getItem(LS_KEY) : null;
+        const parsed = existing ? JSON.parse(existing) : {};
+        const merged = {
+          ...(parsed && typeof parsed === 'object' ? parsed : {}),
+          name,
+          email,
+          consent_share_with_therapists: true,
+          ...(defaultSessionPreference ? { session_preference: defaultSessionPreference } : {}),
+        } as Record<string, unknown>;
+        window.localStorage.setItem(LS_KEY, JSON.stringify(merged));
+        window.localStorage.setItem(LS_STEP, '1');
+      } catch {}
+
+      // Navigate to the Fragebogen, preserving variant (?v=) if present
       const url = typeof window !== 'undefined' ? new URL(window.location.href) : null;
       const v = url?.searchParams.get('v');
-      const fetchUrl = url ? `/api/public/leads${v ? `?v=${encodeURIComponent(v)}` : ''}` : '/api/public/leads';
-
-      // Prepare payload and validate against shared contract
-      const payload = {
-        name,
-        email,
-        session_id: getOrCreateSessionId(),
-        ...(defaultSessionPreference ? { session_preference: defaultSessionPreference } : {}),
-        // Consent (email-first flow captures via disclaimer + submit)
-        consent_share_with_therapists: true as const,
-        privacy_version: PRIVACY_VERSION,
-        confirm_redirect_path: '/fragebogen' as const,
-      };
-      const parsed = leadSubmissionSchema.safeParse(payload);
-      if (!parsed.success) {
-        const errs = parsed.error.issues.reduce<Record<string, string>>((acc, curr) => {
-          const key = String(curr.path.join('.'));
-          acc[key] = curr.message;
-          return acc;
-        }, {});
-        setErrors(errs);
-        return;
-      }
-
-      const res = await fetch(fetchUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsed.data),
-      });
-      const json = await res.json().catch(() => ({} as any));
-      if (!res.ok || (json && json.error)) throw new Error(json?.error || 'Fehlgeschlagen');
-
-      const leadId = (json?.data?.id as string | undefined) || undefined;
-      try {
-        if (leadId && typeof window !== 'undefined') {
-          window.localStorage.setItem('leadId', leadId);
-          window.localStorage.setItem('leadEmail', email);
-        }
-      } catch {}
-
-      // Fire client-side Google Ads conversion immediately only in legacy flow (no confirmation required)
-      try {
-        if (json?.data && (json.data as { requiresConfirmation?: boolean }).requiresConfirmation === false) {
-          fireGoogleAdsClientConversion(leadId);
-        }
-      } catch {}
-
-      setSubmitted(true);
-      setSubmittedEmail(email);
-      try { track('Lead Submitted'); } catch {}
-      form.reset();
+      const next = v ? `/fragebogen?v=${encodeURIComponent(v)}` : '/fragebogen';
+      try { track('Lead Started'); } catch {}
+      if (typeof window !== 'undefined') window.location.assign(next);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Fehlgeschlagen. Bitte später erneut versuchen.');
     } finally {
       setSubmitting(false);
     }
   }, [submitting, defaultSessionPreference]);
-
-  if (submitted) {
-    return (
-      <Card className="max-w-xl">
-        <CardHeader>
-          <CardTitle>Fast geschafft</CardTitle>
-          <CardDescription>
-            Wir haben dir eine Bestätigungs‑E‑Mail{submittedEmail ? ` an ${submittedEmail}` : ''} gesendet. Bitte bestätige deine E‑Mail‑Adresse, damit wir passende Therapeut:innen‑Empfehlungen für dich finden können.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-            <AlertCircle className="mt-0.5 h-4 w-4 text-amber-600" aria-hidden="true" />
-            <p className="text-xs text-amber-800">
-              Hinweis: Der Link ist 24 Stunden gültig. Prüfe ggf. deinen SPAM‑Ordner.
-            </p>
-          </div>
-        </CardFooter>
-      </Card>
-    );
-  }
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="space-y-4 max-w-xl">

@@ -67,8 +67,7 @@ trackEvent('cta_click', {
 - `lead_submitted` - Form submissions (patient/therapist)
 - `email_submitted` - Email-only capture started (EARTH-146)
 - `email_confirmed` - Email confirmed via token (EARTH-146)
-- `preferences_viewed` - Preferences page viewed after email confirmation (client-side ping via `/api/public/events`)
-- `preferences_submitted` - Preferences saved via `POST /api/public/leads/:id/preferences` (server-side)
+- `form_completed` - Fragebogen completed (end of Screen 5)
 - `therapist_responded` - Match responses
 - `match_created` - Manual matches by admin
 - `cta_click` - Call-to-action interactions
@@ -79,12 +78,15 @@ trackEvent('cta_click', {
 
 - `screen_viewed` — when the user lands on a step
   - props: `{ step: number }`
+- `screen_completed` — when navigating away from a step
   - props: `{ step: number, duration_ms: number, missing_required: string[] }`
 - `field_change` — on input change (no values, names only)
   - props: `{ field: string, step: number }`
 - `field_abandonment` — navigating away with required fields missing
   - props: `{ step: number, fields: string[] }`
-- `form_completed` — after successful submit## Analytics & Event Tracking
+- `form_completed` — after the Fragebogen is successfully submitted (end of Screen 5)
+  - Server: emits `form_completed` (Supabase events)
+  - Ads: fires Server Enhanced Conversions (`client_registration`) and Client `gtag` conversion. Deduplication uses `orderId` (server) == `transaction_id` (client) == lead id.
 
 - Endpoint: POST `/api/public/events` with `{ type: string, id?: string, title?: string }`
 - Event types (use these):
@@ -295,13 +297,13 @@ __Queries__: Use the `events` table to derive:
 
 __Why__: Google Ads' optimization algorithms require a client-side conversion signal to learn which clicks lead to conversions. Our server-side Enhanced Conversions remain the source of truth, but without a browser-side ping Google cannot attribute conversions to ad clicks, hurting optimization and budget scaling.
 
-__What__: A single, minimal client-side `gtag` conversion event fired only after successful preferences submission on `PreferencesForm` (the moment a patient lead becomes active: status transitions to `new`). This aligns exactly with server-side Enhanced Conversions for 1:1 accuracy.
+__What__: A single, minimal client-side `gtag` conversion event fired only after Fragebogen completion (end of Screen 5 in the wizard). This aligns exactly with server-side Enhanced Conversions for 1:1 accuracy.
 
 __Privacy__: Consent Mode defaults to `denied` for all storages. No cookies/tracking, no PII, and no cross-site profiling. This yields a cookieless conversion signal suitable for model-based attribution.
 
 __Implementation__:
 - `app/layout.tsx`: inject Google Ads tag with Consent Mode defaults (all denied). Load only when `NEXT_PUBLIC_GOOGLE_ADS_ID` is set.
-- `components/PreferencesForm.tsx`: after successful submit (HTTP 200 from `POST /api/public/leads/:id/preferences`), call
+- `features/leads/components/SignupWizard.tsx`: after successful submit to `POST /api/public/leads`, parse `leadId`, call `POST /api/public/leads/:id/form-completed`, and then call
   `gtag('event', 'conversion', { send_to: "AW-XXXX/YYYY", value: 10, currency: 'EUR', transaction_id: <leadId> })` guarded by environment checks, with per‑lead dedupe via `sessionStorage` and `localStorage`.
 
 __Environment__:
@@ -324,8 +326,22 @@ __Notes__:
 - `email_confirmed` — emitted by `GET /api/public/leads/confirm` with props `{ campaign_source, campaign_variant, landing_page, elapsed_seconds }`.
 
 **Enhanced Conversions timing:**
-- In email-only mode, server-side Google Ads Enhanced Conversions (`client_registration`) are sent when preferences are submitted (status becomes `new`) via `POST /api/public/leads/:id/preferences`. The confirmation endpoint (`GET /api/public/leads/confirm`) only sets status to `email_confirmed` and redirects to preferences.
-- Legacy immediate-activation path was removed.
+- In the Fragebogen flow, Server Enhanced Conversions (`client_registration`) and Client `gtag` conversion both fire at form completion (Screen 5) and are deduped by lead id. The confirmation endpoint (`GET /api/public/leads/confirm`) does not fire conversions; it sets confirmation timestamps and may activate the lead depending on verification mode.
+- Legacy preferences-based activation was removed in favor of Fragebogen completion + verification.
+
+**Verification Mode (activation rules):**
+- Controlled by environment variable `VERIFICATION_MODE` (`email | sms | both | choice`). Defaults to `email`.
+- Server reads `VERIFICATION_MODE`. Client UI can optionally read `NEXT_PUBLIC_VERIFICATION_MODE` to adjust copy (e.g., on Screen 6). Keep both values consistent.
+- Activation requires Fragebogen completion (`metadata.form_completed_at`) plus verification per mode:
+  - `email`: Email confirmation + form completion → `status='active'`.
+  - `sms`: SMS confirmation + form completion → `status='active'`.
+  - `both`: Email & SMS confirmed + form completion → `status='active'`.
+  - `choice`: Any one channel confirmed + form completion → `status='active'`.
+
+Status progression (patient leads):
+- Insert (email submission or Fragebogen submit): `status='pre_confirmation'`.
+- Email confirmation: `status='email_confirmed'` and stamps `metadata.email_confirmed_at` (also `confirmed_at` for backwards compatibility).
+- Activation: set `status='active'` when verification requirements (per `VERIFICATION_MODE`) are met AND `metadata.form_completed_at` exists.
 
 __Therapists (EARTH-174)__:
 - We only consider therapists “qualified” after documents are submitted.

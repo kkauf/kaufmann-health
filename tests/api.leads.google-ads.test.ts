@@ -89,7 +89,7 @@ describe('Google Ads conversions', () => {
     expect(trackConversion).not.toHaveBeenCalled();
   });
 
-  it('fires client_registration conversion on preferences submit (status becomes new)', async () => {
+  it('fires client_registration conversion on form completion (Fragebogen)', async () => {
     // Mock people row for preferences route to include email
     vi.doMock('@/lib/supabase-server', () => {
       const api: any = {
@@ -107,11 +107,11 @@ describe('Google Ads conversions', () => {
       } as any;
       return { supabaseServer: api };
     });
-    const { POST: PREF_POST } = await import('@/app/api/public/leads/[id]/preferences/route');
-    const prefRes: any = await PREF_POST(new Request('http://localhost/api/public/leads/lead-xyz/preferences', {
+    const { POST: FORM_COMPLETED } = await import('@/app/api/public/leads/[id]/form-completed/route');
+    const prefRes: any = await FORM_COMPLETED(new Request('http://localhost/api/public/leads/lead-xyz/form-completed', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ city: 'Berlin', consent_share_with_therapists: true, privacy_version: '2025-09-01.v2' }),
+      body: JSON.stringify({}),
     }) as any);
     expect(prefRes.status).toBe(200);
     await Promise.resolve();

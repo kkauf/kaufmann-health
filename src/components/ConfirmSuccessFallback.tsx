@@ -13,20 +13,20 @@ export default function ConfirmSuccessFallback() {
       if (id) {
         setLeadId(id);
         // Seamless redirect to preferences when we know the lead id
-        window.location.replace(`/preferences?confirm=1&id=${encodeURIComponent(id)}`);
+        window.location.replace(`/fragebogen/confirmed?confirm=1&id=${encodeURIComponent(id)}`);
       }
     } catch {
       // ignore
     }
   }, []);
 
-  const href = leadId ? `/preferences?confirm=1&id=${encodeURIComponent(leadId)}` : '/therapie-finden';
+  const href = leadId ? `/fragebogen/confirmed?confirm=1&id=${encodeURIComponent(leadId)}` : '/therapie-finden';
 
   return (
     <div className="flex gap-3">
       <Button asChild>
-        <Link href={href} aria-label="Weiter zu Präferenzen">
-          Weiter zu Präferenzen
+        <Link href={href} aria-label="Zum Fragebogen">
+          Zum Fragebogen
         </Link>
       </Button>
     </div>

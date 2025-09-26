@@ -14,9 +14,9 @@ function getStateContent(state?: string) {
   switch (state) {
     case 'success':
       return {
-        title: 'E‑Mail bestätigt – weiter zu Präferenzen',
+        title: 'E‑Mail bestätigt – Formular fortsetzen',
         description:
-          'Falls du nicht automatisch weitergeleitet wirst, klicke auf „Weiter zu Präferenzen“.',
+          'Falls du nicht automatisch weitergeleitet wirst, klicke auf „Zum Fragebogen“.',
         showResend: false,
       } as const;
     case 'invalid':
