@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { safeJson } from '@/lib/http';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 
@@ -45,12 +45,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     if (fetchErr || !therapist) {
       await logError('api.therapists.profile', fetchErr, { stage: 'fetch_therapist', therapist_id: id }, ip, ua);
-      return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
+      return safeJson({ data: null, error: 'Not found' }, { status: 404 });
     }
 
     if ((therapist as { status?: string }).status !== 'pending_verification') {
       // Hide details; treat as not found to avoid information leak
-      return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
+      return safeJson({ data: null, error: 'Not found' }, { status: 404 });
     }
 
     const contentType = req.headers.get('content-type') || '';
@@ -74,7 +74,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (typeof at === 'string') {
         const trimmed = at.trim();
         if (trimmed.length > 500) {
-          return NextResponse.json({ data: null, error: 'approach_text too long (max 500 chars)' }, { status: 400 });
+          return safeJson({ data: null, error: 'approach_text too long (max 500 chars)' }, { status: 400 });
         }
         if (trimmed) approachText = trimmed;
       }
@@ -92,7 +92,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (typeof at === 'string') {
         const trimmed = at.trim();
         if (trimmed.length > 500) {
-          return NextResponse.json({ data: null, error: 'approach_text too long (max 500 chars)' }, { status: 400 });
+          return safeJson({ data: null, error: 'approach_text too long (max 500 chars)' }, { status: 400 });
         }
         if (trimmed) approachText = trimmed;
       }
@@ -100,7 +100,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     // Validate gender if provided
     if (typeof gender === 'string' && !['male', 'female', 'diverse'].includes(gender)) {
-      return NextResponse.json({ data: null, error: 'invalid gender' }, { status: 400 });
+      return safeJson({ data: null, error: 'invalid gender' }, { status: 400 });
     }
 
     // Upload profile photo if provided
@@ -108,7 +108,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (profilePhoto) {
       const valid = isValidPhoto(profilePhoto);
       if (!valid.ok) {
-        return NextResponse.json({ data: null, error: `profile_photo: ${valid.reason}` }, { status: 400 });
+        return safeJson({ data: null, error: `profile_photo: ${valid.reason}` }, { status: 400 });
       }
       const photoExt = getFileExtension(profilePhoto.name || '', profilePhoto.type);
       const photoPath = `applications/${id}/profile-photo-${Date.now()}${photoExt}`;
@@ -118,7 +118,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         .upload(photoPath, buf, { contentType: profilePhoto.type, upsert: false });
       if (upErr) {
         await logError('api.therapists.profile', upErr, { stage: 'upload_profile_photo', therapist_id: id, path: photoPath }, ip, ua);
-        return NextResponse.json({ data: null, error: 'Failed to upload profile photo' }, { status: 500 });
+        return safeJson({ data: null, error: 'Failed to upload profile photo' }, { status: 500 });
       }
       uploadedProfilePhotoPath = photoPath;
     }
@@ -144,14 +144,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       .eq('id', id);
     if (updateErr) {
       await logError('api.therapists.profile', updateErr, { stage: 'update_metadata', therapist_id: id }, ip, ua);
-      return NextResponse.json({ data: null, error: 'Failed to update' }, { status: 500 });
+      return safeJson({ data: null, error: 'Failed to update' }, { status: 500 });
     }
 
     void track({ type: 'therapist_profile_updated', level: 'info', source: 'api.therapists.profile', ip, ua, props: { therapist_id: id, fields: { gender: Boolean(gender), city: Boolean(city), accepting_new: typeof acceptingNew === 'boolean', approach_text: Boolean(approachText), profile_photo: Boolean(uploadedProfilePhotoPath) } } });
 
-    return NextResponse.json({ data: { ok: true, nextStep: `/therapists/upload-documents/${id}` }, error: null });
+    return safeJson({ data: { ok: true, nextStep: `/therapists/upload-documents/${id}` }, error: null });
   } catch (e) {
     await logError('api.therapists.profile', e, { stage: 'exception', therapist_id: id }, ip, ua);
-    return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });
+    return safeJson({ data: null, error: 'Unexpected error' }, { status: 500 });
   }
 }

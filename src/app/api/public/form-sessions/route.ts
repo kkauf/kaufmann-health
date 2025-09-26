@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ServerAnalytics } from '@/lib/server-analytics';
+import { safeJson } from '@/lib/http';
 
 export const runtime = 'nodejs';
 
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     try {
       body = await req.json();
     } catch {
-      return NextResponse.json({ data: null, error: 'Invalid JSON' }, { status: 400 });
+      return safeJson({ data: null, error: 'Invalid JSON' }, { status: 400 });
     }
 
     type CreatePayload = { email?: string; data: Record<string, unknown> };
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     const email = typeof payload.email === 'string' ? payload.email.trim() : undefined;
     const data = payload.data as unknown;
     if (!data || typeof data !== 'object' || Array.isArray(data as unknown[])) {
-      return NextResponse.json({ data: null, error: 'Invalid data' }, { status: 400 });
+      return safeJson({ data: null, error: 'Invalid data' }, { status: 400 });
     }
 
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       .single<{ id: string }>();
 
     if (error || !inserted?.id) {
-      return NextResponse.json({ data: null, error: 'Failed to create form session' }, { status: 500 });
+      return safeJson({ data: null, error: 'Failed to create form session' }, { status: 500 });
     }
 
     try {
@@ -41,8 +41,8 @@ export async function POST(req: Request) {
       });
     } catch {}
 
-    return NextResponse.json({ data: { id: inserted.id }, error: null }, { headers: { 'Cache-Control': 'no-store' } });
+    return safeJson({ data: { id: inserted.id }, error: null }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
-    return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });
+    return safeJson({ data: null, error: 'Unexpected error' }, { status: 500 });
   }
 }

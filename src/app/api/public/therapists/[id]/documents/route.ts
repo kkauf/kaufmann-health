@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { safeJson } from '@/lib/http';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 import { googleAdsTracker } from '@/lib/google-ads';
@@ -54,12 +54,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     if (fetchErr || !therapist) {
       await logError('api.therapists.documents', fetchErr, { stage: 'fetch_therapist', therapist_id: id }, ip, ua);
-      return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
+      return safeJson({ data: null, error: 'Not found' }, { status: 404 });
     }
 
     if ((therapist as { status?: string }).status !== 'pending_verification') {
       // Hide details; treat as not found to avoid information leak
-      return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
+      return safeJson({ data: null, error: 'Not found' }, { status: 404 });
     }
 
     const form = await req.formData();
@@ -81,11 +81,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       // Allow certificate-only upload if license already exists; otherwise require license first
       if (specializationFiles.length > 0) {
         if (!hasExistingLicense) {
-          return NextResponse.json({ data: null, error: 'License must be uploaded first' }, { status: 400 });
+          return safeJson({ data: null, error: 'License must be uploaded first' }, { status: 400 });
         }
         // proceed with specialization-only upload path
       } else {
-        return NextResponse.json({ data: null, error: 'Missing psychotherapy_license or specialization_cert' }, { status: 400 });
+        return safeJson({ data: null, error: 'Missing psychotherapy_license or specialization_cert' }, { status: 400 });
       }
     }
 
@@ -95,7 +95,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (license instanceof File && license.size > 0) {
       const licValid = isValidUpload(license);
       if (!licValid.ok) {
-        return NextResponse.json({ data: null, error: `license: ${licValid.reason}` }, { status: 400 });
+        return safeJson({ data: null, error: `license: ${licValid.reason}` }, { status: 400 });
       }
       const licExt = getFileExtension(license.name || '', license.type);
       licPath = `therapists/${id}/license-${Date.now()}${licExt}`;
@@ -105,7 +105,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         .upload(licPath, licBuf, { contentType: license.type, upsert: false });
       if (upLicErr) {
         await logError('api.therapists.documents', upLicErr, { stage: 'upload_license', therapist_id: id, path: licPath }, ip, ua);
-        return NextResponse.json({ data: null, error: 'Failed to upload document' }, { status: 500 });
+        return safeJson({ data: null, error: 'Failed to upload document' }, { status: 500 });
       }
     }
 
@@ -113,7 +113,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const specPaths: string[] = [];
     for (const file of specializationFiles) {
       const v = isValidUpload(file);
-      if (!v.ok) return NextResponse.json({ data: null, error: `specialization: ${v.reason}` }, { status: 400 });
+      if (!v.ok) return safeJson({ data: null, error: `specialization: ${v.reason}` }, { status: 400 });
       const ext = getFileExtension(file.name || '', file.type);
       const path = `therapists/${id}/specialization-${Date.now()}${ext}`;
       const buf = await fileToBuffer(file);
@@ -122,7 +122,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         .upload(path, buf, { contentType: file.type, upsert: false });
       if (upErr) {
         await logError('api.therapists.documents', upErr, { stage: 'upload_specialization', therapist_id: id, path }, ip, ua);
-        return NextResponse.json({ data: null, error: 'Failed to upload document' }, { status: 500 });
+        return safeJson({ data: null, error: 'Failed to upload document' }, { status: 500 });
       }
       specPaths.push(path);
     }
@@ -147,7 +147,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (profilePhoto instanceof File && profilePhoto.size > 0) {
       const valid = isValidPhoto(profilePhoto);
       if (!valid.ok) {
-        return NextResponse.json({ data: null, error: `profile_photo: ${valid.reason}` }, { status: 400 });
+        return safeJson({ data: null, error: `profile_photo: ${valid.reason}` }, { status: 400 });
       }
       const photoExt = getFileExtension(profilePhoto.name || '', profilePhoto.type);
       const photoPath = `applications/${id}/profile-photo-${Date.now()}${photoExt}`;
@@ -157,7 +157,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         .upload(photoPath, buf, { contentType: profilePhoto.type, upsert: false });
       if (upPhotoErr) {
         await logError('api.therapists.documents', upPhotoErr, { stage: 'upload_profile_photo', therapist_id: id, path: photoPath }, ip, ua);
-        return NextResponse.json({ data: null, error: 'Failed to upload profile photo' }, { status: 500 });
+        return safeJson({ data: null, error: 'Failed to upload profile photo' }, { status: 500 });
       }
       uploadedProfilePhotoPath = photoPath;
     }
@@ -166,7 +166,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (typeof approachRaw === 'string') {
       const trimmed = approachRaw.trim();
       if (trimmed.length > 500) {
-        return NextResponse.json({ data: null, error: 'approach_text too long (max 500 chars)' }, { status: 400 });
+        return safeJson({ data: null, error: 'approach_text too long (max 500 chars)' }, { status: 400 });
       }
       if (trimmed.length > 0) approach_text = trimmed;
     }
@@ -185,7 +185,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       .eq('id', id);
     if (updateErr) {
       await logError('api.therapists.documents', updateErr, { stage: 'update_metadata', therapist_id: id }, ip, ua);
-      return NextResponse.json({ data: null, error: 'Failed to update' }, { status: 500 });
+      return safeJson({ data: null, error: 'Failed to update' }, { status: 500 });
     }
 
     void track({ type: 'therapist_documents_uploaded', level: 'info', source: 'api.therapists.documents', ip, ua, props: { therapist_id: id, license: true, specialization_count: specPaths.length, profile_photo: Boolean(uploadedProfilePhotoPath), approach_text: Boolean(approach_text) } });
@@ -235,9 +235,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       await logError('api.therapists.documents', e, { stage: 'send_upload_confirmation', therapist_id: id }, ip, ua);
     }
 
-    return NextResponse.json({ data: { ok: true }, error: null }, { status: 200 });
+    return safeJson({ data: { ok: true }, error: null }, { status: 200 });
   } catch (e) {
     await logError('api.therapists.documents', e, { stage: 'exception', therapist_id: id }, ip, ua);
-    return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });
+    return safeJson({ data: null, error: 'Unexpected error' }, { status: 500 });
   }
 }

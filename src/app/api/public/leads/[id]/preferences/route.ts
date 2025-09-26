@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { googleAdsTracker } from '@/lib/google-ads';
+import { safeJson } from '@/lib/http';
 
 export const runtime = 'nodejs';
 
@@ -34,7 +34,7 @@ function getBoolean(obj: unknown, key: string): boolean {
 
 export async function POST(req: Request) {
   const id = getIdFromUrl(req.url);
-  if (!id) return NextResponse.json({ data: null, error: 'Missing id' }, { status: 400 });
+  if (!id) return safeJson({ data: null, error: 'Missing id' }, { status: 400 });
 
   try {
     type Person = { id: string; email?: string | null; type?: string | null; metadata?: Record<string, unknown> | null };
@@ -45,17 +45,17 @@ export async function POST(req: Request) {
       .single<Person>();
 
     if (error || !person) {
-      return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
+      return safeJson({ data: null, error: 'Not found' }, { status: 404 });
     }
     if ((person.type || '').toLowerCase() !== 'patient') {
-      return NextResponse.json({ data: null, error: 'Invalid lead type' }, { status: 400 });
+      return safeJson({ data: null, error: 'Invalid lead type' }, { status: 400 });
     }
 
     let body: unknown;
     try {
       body = await req.json();
     } catch {
-      return NextResponse.json({ data: null, error: 'Invalid JSON' }, { status: 400 });
+      return safeJson({ data: null, error: 'Invalid JSON' }, { status: 400 });
     }
 
     const name = getString(body, 'name');
@@ -66,10 +66,10 @@ export async function POST(req: Request) {
     const privacyVersion = getString(body, 'privacy_version');
 
     if (!city) {
-      return NextResponse.json({ data: null, error: 'Missing fields' }, { status: 400 });
+      return safeJson({ data: null, error: 'Missing fields' }, { status: 400 });
     }
     if (!consent) {
-      return NextResponse.json({ data: null, error: 'Einwilligung zur Datenübertragung erforderlich' }, { status: 400 });
+      return safeJson({ data: null, error: 'Einwilligung zur Datenübertragung erforderlich' }, { status: 400 });
     }
 
     const metadata: Record<string, unknown> = { ...(person.metadata || {}) };
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
 
     if (upErr) {
       await logError('api.leads.preferences', upErr, { stage: 'update', id });
-      return NextResponse.json({ data: null, error: 'Failed to update' }, { status: 500 });
+      return safeJson({ data: null, error: 'Failed to update' }, { status: 500 });
     }
 
     try {
@@ -120,9 +120,9 @@ export async function POST(req: Request) {
       await logError('api.leads.preferences', e, { stage: 'google_ads_conversion', id });
     }
 
-    return NextResponse.json({ data: { ok: true }, error: null });
+    return safeJson({ data: { ok: true }, error: null });
   } catch (e) {
     await logError('api.leads.preferences', e, { stage: 'unhandled' });
-    return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });
+    return safeJson({ data: null, error: 'Unexpected error' }, { status: 500 });
   }
 }

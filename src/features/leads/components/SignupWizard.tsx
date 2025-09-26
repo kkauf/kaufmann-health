@@ -9,6 +9,7 @@ import Screen3, { type Screen3Values } from './screens/Screen3';
 import Screen4, { type Screen4Values } from './screens/Screen4';
 import Screen5 from './screens/Screen5';
 import { Button } from '@/components/ui/button';
+import { PRIVACY_VERSION } from '@/lib/privacy';
 
 const LS_KEYS = {
   data: 'kh_wizard_data',
@@ -35,6 +36,7 @@ export type WizardData = Screen1Values & {
   methods?: Screen4Values['methods'];
   // Screen 5
   additional_info?: string;
+  consent_share_with_therapists?: boolean;
 };
 
 const PROGRESS = [0, 20, 50, 75, 90, 100];
@@ -42,7 +44,7 @@ const PROGRESS = [0, 20, 50, 75, 90, 100];
 export default function SignupWizard() {
   const searchParams = useSearchParams();
   const [step, setStep] = React.useState<number>(1);
-  const [data, setData] = React.useState<WizardData>({ name: '', email: '' });
+  const [data, setData] = React.useState<WizardData>({ name: '', email: '', consent_share_with_therapists: false });
   const [saving, setSaving] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [submitSlow, setSubmitSlow] = React.useState(false);
@@ -95,6 +97,11 @@ export default function SignupWizard() {
         if (d.language === 'Andere' && !(d.language_other && d.language_other.trim())) miss.push('language_other');
         return miss;
       }
+      case 5: {
+        const miss: string[] = [];
+        if (!d.consent_share_with_therapists) miss.push('consent_share_with_therapists');
+        return miss;
+      }
       default:
         return [];
     }
@@ -106,7 +113,13 @@ export default function SignupWizard() {
       const saved = localStorage.getItem(LS_KEYS.data);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') setData(parsed);
+        if (parsed && typeof parsed === 'object') {
+          setData((prev) => ({
+            ...prev,
+            ...(parsed as Partial<WizardData>),
+            consent_share_with_therapists: Boolean((parsed as Partial<WizardData>).consent_share_with_therapists),
+          }));
+        }
       }
       const savedStep = Number(localStorage.getItem(LS_KEYS.step) || '1');
       if (savedStep >= 1 && savedStep <= 6) setStep(savedStep);
@@ -183,6 +196,9 @@ export default function SignupWizard() {
         for (const k of keys) {
           void trackEvent('field_change', { field: String(k), step });
         }
+        if (keys.includes('consent_share_with_therapists')) {
+          setSubmitError((prevErr) => (prevErr === 'consent_required' ? null : prevErr));
+        }
       } catch {}
       return merged;
     });
@@ -239,7 +255,15 @@ export default function SignupWizard() {
       lastSyncedRef.current = json;
       setSaving(true);
       try {
-        const payload = { data: { ...data, step }, email: data.email || undefined };
+        const payload = {
+          data: {
+            ...data,
+            step,
+            consent_share_with_therapists: data.consent_share_with_therapists ?? false,
+            privacy_version: data.consent_share_with_therapists ? PRIVACY_VERSION : undefined,
+          },
+          email: data.email || undefined,
+        };
         if (!sessionIdRef.current) {
           const res = await fetch('/api/public/form-sessions', {
             method: 'POST',
@@ -330,11 +354,12 @@ export default function SignupWizard() {
       case 5:
         return (
           <Screen5
-            values={{ additional_info: data.additional_info }}
+            values={{ additional_info: data.additional_info, consent_share_with_therapists: data.consent_share_with_therapists }}
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
             onBack={() => safeGoToStep(4)}
             onNext={handleSubmit}
             disabled={navLock || submitting}
+            consentError={Boolean(submitError && submitError === 'consent_required')}
           />
         );
       case 6:
@@ -363,6 +388,11 @@ export default function SignupWizard() {
     setSubmitSlow(false);
     const slowTimer = setTimeout(() => setSubmitSlow(true), 3000);
     try {
+      if (!data.consent_share_with_therapists) {
+        setSubmitError('consent_required');
+        return;
+      }
+
       // Track completion for last screen before submit
       {
         const now = Date.now();
@@ -380,14 +410,18 @@ export default function SignupWizard() {
           email: data.email,
           form_session_id: sessionIdRef.current || undefined,
           confirm_redirect_path: '/fragebogen',
+          consent_share_with_therapists: true,
+          privacy_version: PRIVACY_VERSION,
         }),
       });
       if (!res.ok) throw new Error('Lead submit failed');
       void trackEvent('form_completed', { steps: 5 });
       // Go to final screen
       goToStep(6);
-    } catch {
-      setSubmitError('Senden fehlgeschlagen. Bitte überprüfe deine Verbindung und versuche es erneut.');
+    } catch (err) {
+      if (submitError !== 'consent_required') {
+        setSubmitError('Senden fehlgeschlagen. Bitte überprüfe deine Verbindung und versuche es erneut.');
+      }
     } finally {
       clearTimeout(slowTimer);
       setSubmitting(false);
@@ -414,7 +448,7 @@ export default function SignupWizard() {
           {submitSlow ? 'Senden… (langsame Verbindung erkannt)' : 'Senden…'}
         </div>
       )}
-      {submitError && (
+      {submitError && submitError !== 'consent_required' && (
         <div className="rounded-md border p-4 bg-red-50 border-red-200">
           <p className="text-sm text-red-700">{submitError}</p>
           <div className="mt-2">

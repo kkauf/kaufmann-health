@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ServerAnalytics } from '@/lib/server-analytics';
+import { safeJson } from '@/lib/http';
 
 export const runtime = 'nodejs';
 
@@ -18,7 +18,7 @@ function getIdFromUrl(url: string): string | null {
 
 export async function GET(req: Request) {
   const id = getIdFromUrl(req.url);
-  if (!id) return NextResponse.json({ data: null, error: 'Missing id' }, { status: 400 });
+  if (!id) return safeJson({ data: null, error: 'Missing id' }, { status: 400 });
 
   const { data, error } = await supabaseServer
     .from('form_sessions')
@@ -27,24 +27,24 @@ export async function GET(req: Request) {
     .single<{ id: string; data: Record<string, unknown>; email?: string | null; expires_at?: string | null; updated_at?: string }>();
 
   if (error || !data) {
-    return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
+    return safeJson({ data: null, error: 'Not found' }, { status: 404 });
   }
   if (data.expires_at && Date.parse(data.expires_at) < Date.now()) {
-    return NextResponse.json({ data: null, error: 'Expired' }, { status: 410 });
+    return safeJson({ data: null, error: 'Expired' }, { status: 410 });
   }
 
-  return NextResponse.json({ data: { id: data.id, data: data.data, email: data.email, updated_at: data.updated_at }, error: null }, { headers: { 'Cache-Control': 'no-store' } });
+  return safeJson({ data: { id: data.id, data: data.data, email: data.email, updated_at: data.updated_at }, error: null }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function PATCH(req: Request) {
   const id = getIdFromUrl(req.url);
-  if (!id) return NextResponse.json({ data: null, error: 'Missing id' }, { status: 400 });
+  if (!id) return safeJson({ data: null, error: 'Missing id' }, { status: 400 });
 
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ data: null, error: 'Invalid JSON' }, { status: 400 });
+    return safeJson({ data: null, error: 'Invalid JSON' }, { status: 400 });
   }
 
   type UpdatePayload = { data: Record<string, unknown>; email?: string };
@@ -52,7 +52,7 @@ export async function PATCH(req: Request) {
   const nextData = payload.data as unknown;
   const email = typeof payload.email === 'string' ? payload.email.trim() : undefined;
   if (!nextData || typeof nextData !== 'object' || Array.isArray(nextData as unknown[])) {
-    return NextResponse.json({ data: null, error: 'Invalid data' }, { status: 400 });
+    return safeJson({ data: null, error: 'Invalid data' }, { status: 400 });
   }
 
   const nowIso = new Date().toISOString();
@@ -62,7 +62,7 @@ export async function PATCH(req: Request) {
     .eq('id', id);
 
   if (error) {
-    return NextResponse.json({ data: null, error: 'Failed to update' }, { status: 500 });
+    return safeJson({ data: null, error: 'Failed to update' }, { status: 500 });
   }
 
   try {
@@ -73,5 +73,5 @@ export async function PATCH(req: Request) {
     });
   } catch {}
 
-  return NextResponse.json({ data: { ok: true }, error: null });
+  return safeJson({ data: { ok: true }, error: null });
 }
