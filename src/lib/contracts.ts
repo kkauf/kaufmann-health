@@ -16,7 +16,7 @@ export const leadSubmissionSchema = z.object({
 });
 
 // Middleware-style helper for API routes (server only)
-export function validateContract<T extends ZodSchema<any, any>>(schema: T) {
+export function validateContract<TSchema extends ZodSchema>(schema: TSchema) {
   return async (req: Request) => {
     const body = await req.json().catch(() => undefined);
     const result = schema.safeParse(body);
@@ -24,6 +24,6 @@ export function validateContract<T extends ZodSchema<any, any>>(schema: T) {
       console.error('Contract violation:', result.error);
       return safeJson({ data: null, error: 'Contract validation failed', details: result.error.flatten() }, { status: 400 });
     }
-    return result.data as z.infer<T>;
+    return result.data as z.infer<TSchema>;
   };
 }
