@@ -61,6 +61,17 @@ export async function POST(req: Request) {
       maxAge: ADMIN_SESSION_MAX_AGE_SEC, // seconds
       expires: new Date(Date.now() + ADMIN_SESSION_MAX_AGE_SEC * 1000),
     });
+    // Also scope a copy to /api/admin so client-side requests to admin APIs include the cookie
+    // This keeps the public site cookie-free while allowing admin UI fetches to authenticate.
+    {
+      const secureAttr = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+      const sameSiteAttr = '; SameSite=Lax';
+      const expiresStr = new Date(Date.now() + ADMIN_SESSION_MAX_AGE_SEC * 1000).toUTCString();
+      res.headers.append(
+        'Set-Cookie',
+        `${ADMIN_SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/api/admin; HttpOnly${sameSiteAttr}${secureAttr}; Max-Age=${ADMIN_SESSION_MAX_AGE_SEC}; Expires=${expiresStr}`,
+      );
+    }
     await track({ type: 'admin_login_success', props: { }, ua, ip, source: 'api.admin.login' });
     return res;
   } catch (err) {
