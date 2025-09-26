@@ -743,7 +743,18 @@ export async function POST(req: Request) {
           ua,
           props: { stage: 'email_confirmation', lead_id: effectiveId!, lead_type: 'patient', subject: emailContent.subject },
         });
-        await sendEmail({ to: email, subject: emailContent.subject, html: emailContent.html, context: { stage: 'email_confirmation', lead_id: effectiveId!, lead_type: 'patient' } });
+        await sendEmail({
+          to: email,
+          subject: emailContent.subject,
+          html: emailContent.html,
+          context: {
+            stage: 'email_confirmation',
+            lead_id: effectiveId!,
+            lead_type: 'patient',
+            template: 'email_confirmation',
+            email_token: confirmToken,
+          },
+        });
       } catch (e) {
         console.error('[email-confirmation] Failed to render/send', e);
         void logError('api.leads', e, { stage: 'email_confirmation_email' }, ip, ua);

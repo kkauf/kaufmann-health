@@ -101,7 +101,9 @@ export async function POST(req: Request) {
     // Send email (best-effort)
     try {
       const origin = new URL(req.url).origin || BASE_URL;
-      const confirmUrl = `${origin}/api/public/leads/confirm?token=${encodeURIComponent(newToken)}&id=${encodeURIComponent(id)}`;
+      const base = `${origin}/api/public/leads/confirm?token=${encodeURIComponent(newToken)}&id=${encodeURIComponent(id)}`;
+      const fs = typeof metadata['form_session_id'] === 'string' ? String(metadata['form_session_id']) : '';
+      const confirmUrl = fs ? `${base}&fs=${encodeURIComponent(fs)}` : base;
       const emailContent = renderEmailConfirmation({ confirmUrl });
       void track({
         type: 'email_attempted',
@@ -115,7 +117,13 @@ export async function POST(req: Request) {
         to: email,
         subject: emailContent.subject,
         html: emailContent.html,
-        context: { stage: 'email_confirmation_resend', lead_id: id, lead_type: 'patient' },
+        context: {
+          stage: 'email_confirmation_resend',
+          lead_id: id,
+          lead_type: 'patient',
+          template: 'email_confirmation',
+          email_token: newToken,
+        },
       });
     } catch (e) {
       void logError('api.leads.resend_confirmation', e, { stage: 'send_email' }, ip, ua);

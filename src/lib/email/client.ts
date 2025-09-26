@@ -68,6 +68,10 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
         match_id: ctx['match_id'],
         patient_id: ctx['patient_id'],
         therapist_id: ctx['therapist_id'],
+        // Include lead_id for patient flows and email_token (e.g., confirmation token)
+        // to ensure re-sends with a new token do not get deduplicated by Resend
+        lead_id: ctx['lead_id'],
+        email_token: ctx['email_token'],
         kind: ctx['kind'],
         template: (ctx as Record<string, unknown>)['template'],
       };
