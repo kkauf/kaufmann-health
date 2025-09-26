@@ -72,10 +72,11 @@ export async function POST(req: Request) {
         if (!fsErr && fs) {
           // In production, Supabase returns the row shape. In certain tests/mocks, 'data' may be wrapped differently.
           const maybe = fs as unknown as { data?: Record<string, unknown> } | Record<string, unknown>;
-          if (maybe && typeof maybe === 'object' && 'data' in maybe && (maybe as any).data) {
-            fsData = maybe as { data: Record<string, unknown> } as any;
+          if (maybe && typeof maybe === 'object' && 'data' in maybe && (maybe as { data?: Record<string, unknown> }).data) {
+            const d2 = (maybe as { data: Record<string, unknown> }).data;
+            fsData = { data: d2 };
           } else if (maybe && typeof maybe === 'object') {
-            fsData = { data: maybe as Record<string, unknown> } as any;
+            fsData = { data: maybe as Record<string, unknown> };
           }
         }
       }
