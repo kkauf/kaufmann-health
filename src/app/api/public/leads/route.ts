@@ -603,7 +603,6 @@ export async function POST(req: Request) {
         // Basic context for debugging/ops
         ...(ip ? { ip } : {}),
         ...(ua ? { user_agent: ua } : {}),
-        ...(data.name ? { name: data.name } : {}),
         ...(sessionPreference ? { session_preference: sessionPreference } : {}),
         ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
         ...(formSessionId ? { form_session_id: formSessionId } : {}),
@@ -617,6 +616,7 @@ export async function POST(req: Request) {
         consent_privacy_version: privacyVersion,
       };
       const insertPayload = {
+        ...(data.name ? { name: data.name } : {}),
         email,
         type: 'patient' as const,
         status: 'pre_confirmation' as const,
@@ -642,6 +642,7 @@ export async function POST(req: Request) {
           props: { stage: 'insert_email_only_lead', missing: 'campaign_columns', note: 'retrying without campaign fields' },
         });
         const fallbackPayload = {
+          ...(data.name ? { name: data.name } : {}),
           email,
           type: 'patient' as const,
           status: 'pre_confirmation' as const,
@@ -691,7 +692,6 @@ export async function POST(req: Request) {
               ...(existing.metadata || {}),
               confirm_token: confirmToken,
               confirm_sent_at: new Date().toISOString(),
-              ...(data.name ? { name: data.name } : {}),
               ...(sessionPreference ? { session_preference: sessionPreference } : {}),
               ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
               ...(isTest ? { is_test: true } : {}),
@@ -705,9 +705,15 @@ export async function POST(req: Request) {
               consent_privacy_version: privacyVersion,
             };
             if (isTest) {
-              await supabaseServer.from('people').update({ status: 'pre_confirmation', metadata: merged }).eq('id', effectiveId);
+              await supabaseServer
+                .from('people')
+                .update({ status: 'pre_confirmation', metadata: merged, ...(data.name ? { name: data.name } : {}) })
+                .eq('id', effectiveId);
             } else {
-              await supabaseServer.from('people').update({ metadata: merged }).eq('id', effectiveId);
+              await supabaseServer
+                .from('people')
+                .update({ metadata: merged, ...(data.name ? { name: data.name } : {}) })
+                .eq('id', effectiveId);
             }
           }
         } else if (selErr && !getErrorMessage(selErr).includes('schema cache')) {
