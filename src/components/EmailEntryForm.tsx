@@ -8,6 +8,7 @@ import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/comp
 import { AlertCircle } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { getOrCreateSessionId } from '@/lib/attribution';
+import { PRIVACY_VERSION } from '@/lib/privacy';
 
 // Minimal client-side Google Ads conversion for legacy flow (no email confirmation):
 // Fire only when the API indicates requiresConfirmation === false, meaning the lead became active ('new') on initial submit.
@@ -87,6 +88,9 @@ export function EmailEntryForm({ defaultSessionPreference }: { defaultSessionPre
           email,
           session_id: getOrCreateSessionId(),
           ...(defaultSessionPreference ? { session_preference: defaultSessionPreference } : {}),
+          // Consent (email-first flow captures via disclaimer + submit)
+          consent_share_with_therapists: true,
+          privacy_version: PRIVACY_VERSION,
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -158,6 +162,12 @@ export function EmailEntryForm({ defaultSessionPreference }: { defaultSessionPre
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={submitting}>{submitting ? 'Senden…' : 'Passende Therapeut:innen finden'}</Button>
       </div>
+
+      <p className="mt-2 text-xs text-gray-600">
+        Mit dem Absenden bestätigst du die{' '}
+        <a href="/datenschutz" className="underline">Datenschutzerklärung</a>{' '}und die{' '}
+        <a href="/agb" className="underline">AGB</a> sowie die Weitergabe deiner Angaben an passende Therapeut:innen zur Kontaktaufnahme.
+      </p>
 
       <p className="mt-1 text-xs text-gray-600">
         100% kostenlos & unverbindlich. Deine Daten werden ausschließlich zur Erstellung der Empfehlungen verwendet.

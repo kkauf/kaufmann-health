@@ -1,5 +1,4 @@
 import { parseAttributionFromRequest, ServerAnalytics } from '@/lib/server-analytics';
-import { track } from '@/lib/logger';
 import { safeJson } from '@/lib/http';
 import { isLocalhostRequest } from '@/lib/test-mode';
 
@@ -37,8 +36,6 @@ export async function POST(req: Request) {
     }
 
     // Optional metadata
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
-    const ua = req.headers.get('user-agent') || undefined;
     const attr = parseAttributionFromRequest(req);
     const referrer = (referrerBody || attr.referrer) ?? undefined;
     const utmSourceFinal = utm_source || attr.utm_source;

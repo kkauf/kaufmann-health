@@ -122,7 +122,20 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
     } finally {
       setLoading(false);
     }
-  }, [therapistId, showGender, showCity, showAcceptingNew, showApproachText, showProfilePhoto, gender, city, acceptingNew, approach, storageKey]);
+  }, [
+    therapistId,
+    showGender,
+    showCity,
+    showAcceptingNew,
+    showApproachText,
+    showProfilePhoto,
+    gender,
+    city,
+    acceptingNew,
+    approach,
+    storageKey,
+    MAX_PHOTO_BYTES,
+  ]);
 
   const remaining = 500 - approach.length;
 
@@ -211,12 +224,12 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
             <Input id="profile_photo" name="profile_photo" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" onChange={onPhotoChange} />
             {photoPreview && (
               <div className="mt-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={photoPreview} alt="Vorschau" className="h-32 w-32 object-cover rounded-md border" />
               </div>
             )}
           </div>
         )}
-
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={loading}>{loading ? 'Speichern…' : 'Profil speichern'}</Button>
           <span className="text-xs text-gray-500">Automatisches Zwischenspeichern alle 30s</span>

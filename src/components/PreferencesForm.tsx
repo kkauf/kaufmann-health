@@ -103,8 +103,9 @@ export function PreferencesForm({ leadId }: Props) {
 
   const ConsentHint = useMemo(() => (
     <p className="mt-2 text-xs text-gray-600">
-      Durch Absenden stimmst du der Weitergabe deiner Daten an passende Therapeut:innen zu. Details: {' '}
-      <Link href="/datenschutz" className="underline">Datenschutzerklärung</Link>
+      Mit dem Absenden bestätigst du die{' '}
+      <Link href="/datenschutz" className="underline">Datenschutzerklärung</Link>{' '}und die{' '}
+      <Link href="/agb" className="underline">AGB</Link> sowie die Weitergabe deiner Angaben an passende Therapeut:innen zur Kontaktaufnahme.
     </p>
   ), []);
 
