@@ -44,6 +44,7 @@ jobs:
     name: Storage Health (secure)
     runs-on: ubuntu-latest
     env:
+      # Provided via repository secrets; job is skipped if secrets are not configured.
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
@@ -68,7 +69,7 @@ jobs:
     name: Smoke Test (Preview)
     runs-on: ubuntu-latest
     needs: [smoke]
-    if: ${{ vars.PREVIEW_URL != '' }}
+    if: ${{ vars.PREVIEW_URL && vars.PREVIEW_URL != '' }}
     env:
       PREVIEW_URL: ${{ vars.PREVIEW_URL }}
     steps:
