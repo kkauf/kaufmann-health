@@ -110,17 +110,18 @@ export async function GET(req: Request) {
 
       if (res.error) {
         const msg = (res.error as { message?: string }).message || '';
+        // Fallback for schema mismatches (e.g., production doesn't have people.updated_at or campaign columns)
         if (msg.includes('schema cache') || msg.includes('column') || msg.includes('missing')) {
           const res2 = await supabaseServer
             .from('people')
-            .select('id,status,metadata,created_at,updated_at')
+            .select('id,status,metadata,created_at')
             .eq('type', 'patient')
             .eq('status', 'new')
-            .gt('updated_at', sinceIso)
-            .order('updated_at', { ascending: true })
+            .gt('created_at', sinceIso)
+            .order('created_at', { ascending: true })
             .limit(500);
           if (res2.error) {
-            await logError('admin.api.alerts.new_leads', res2.error, { stage: 'fetch_people_fallback', hours }, ip, ua);
+            await logError('admin.api.alerts.new_leads', res2.error, { stage: 'fetch_people_fallback_created_at', hours }, ip, ua);
             return NextResponse.json({ data: null, error: 'Failed to fetch leads' }, { status: 500 });
           }
           rows = (res2.data as PersonRow[] | null) || [];
@@ -181,7 +182,8 @@ export async function GET(req: Request) {
       const pref = sp ? sp : (Array.isArray(spArr) && spArr.length > 1 ? 'both' : (Array.isArray(spArr) && spArr[0] ? String(spArr[0]) : ''));
       const src = r.campaign_source || 'unknown';
       const v = r.campaign_variant || '';
-      const when = r.updated_at ? new Date(r.updated_at).toISOString() : '';
+      const ts = r.updated_at || r.created_at || '';
+      const when = ts ? new Date(ts).toISOString() : '';
       lines.push(`- ${when} | ${r.id} | ${city}${pref ? ` | pref: ${pref}` : ''} | src: ${src}${v ? ` (${v})` : ''}`);
     }
 
