@@ -18,6 +18,48 @@ export function rewriteTherapistProfileImagesInHtml(html?: string): string | und
   }
 }
 
+// Very small HTML -> text fallback for providers that weigh plain text positively.
+// - Removes script/style
+// - Converts <a> to "text (URL)"
+// - Replaces <br>/<p>/<li> with newlines and bullets
+// - Strips remaining tags
+function htmlToText(html?: string): string | undefined {
+  if (!html) return undefined;
+  try {
+    let s = html;
+    // Remove script/style blocks
+    s = s.replace(/<script[\s\S]*?<\/script>/gi, '');
+    s = s.replace(/<style[\s\S]*?<\/style>/gi, '');
+    // Links: capture text and href
+    s = s.replace(/<a\s+[^>]*href=("|')([^"']+)("|')[^>]*>([\s\S]*?)<\/a>/gi, (_m, _q1, href, _q2, text) => {
+      const t = String(text).replace(/<[^>]+>/g, '').trim();
+      const u = String(href).trim();
+      return t ? `${t} (${u})` : u;
+    });
+    // Line breaks and list items
+    s = s.replace(/<\s*br\s*\/?>/gi, '\n');
+    s = s.replace(/<\s*\/p\s*>/gi, '\n\n');
+    s = s.replace(/<\s*li\s*>/gi, '\n- ');
+    s = s.replace(/<\s*\/li\s*>/gi, '');
+    // Strip remaining tags
+    s = s.replace(/<[^>]+>/g, '');
+    // Decode a few common entities
+    s = s
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+    // Collapse excessive whitespace
+    s = s.replace(/[ \t\x0B\f\r]+/g, ' ');
+    s = s.replace(/\n{3,}/g, '\n\n');
+    return s.trim();
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Thin wrapper around Resend HTTP API.
  * No-ops if RESEND_API_KEY is not configured or if 'to' is missing.
@@ -89,7 +131,9 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
+      // Prepare payload content for this attempt
       const htmlToSend = params.html ? rewriteTherapistProfileImagesInHtml(params.html) : undefined;
+      const finalText = params.text ?? (htmlToSend ? htmlToText(htmlToSend) : undefined);
       const resp = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -102,8 +146,9 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
           to: toList,
           subject: params.subject,
           ...(htmlToSend ? { html: htmlToSend } : {}),
-          ...(params.text ? { text: params.text } : {}),
+          ...(finalText ? { text: finalText } : {}),
           ...(params.replyTo ? { reply_to: params.replyTo } : {}),
+          ...(params.headers && Object.keys(params.headers).length > 0 ? { headers: params.headers } : {}),
         }),
         signal: controller.signal,
       });
@@ -119,7 +164,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
             subject: params.subject,
             to_count: toList.length,
             has_html: Boolean(params.html),
-            has_text: Boolean(params.text),
+            has_text: Boolean(finalText),
             attempt,
             ...(params.context || {}),
           },
@@ -143,7 +188,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
             subject: params.subject,
             to_count: toList.length,
             has_html: Boolean(params.html),
-            has_text: Boolean(params.text),
+            has_text: Boolean(finalText),
             status,
             status_text: resp.statusText,
             body,
@@ -180,7 +225,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
             subject: params.subject,
             to_count: toList.length,
             has_html: Boolean(params.html),
-            has_text: Boolean(params.text),
+            has_text: Boolean(params.text || params.html),
             attempt,
             timeout_ms: timeoutMs,
             ...(params.context || {}),
@@ -193,7 +238,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
         subject: params.subject,
         to_count: toList.length,
         has_html: Boolean(params.html),
-        has_text: Boolean(params.text),
+        has_text: Boolean(params.text || params.html),
         attempt,
         timeout_ms: timeoutMs,
         ...(params.context || {}),

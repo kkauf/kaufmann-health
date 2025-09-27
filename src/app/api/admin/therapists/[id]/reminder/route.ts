@@ -177,7 +177,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     });
 
     void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.reminder', props: { stage: 'therapist_profile_reminder', therapist_id: id, subject: reminder.subject } });
-    await sendEmail({ to, subject: reminder.subject, html: reminder.html, context: { stage: 'therapist_profile_reminder', therapist_id: id } });
+    await sendEmail({
+      to,
+      subject: reminder.subject,
+      html: reminder.html,
+      headers: {
+        'List-Unsubscribe': `<${optOutUrl}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+      context: { stage: 'therapist_profile_reminder', therapist_id: id },
+    });
 
     return NextResponse.json({ data: { ok: true }, error: null });
   } catch (e) {

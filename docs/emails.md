@@ -44,17 +44,23 @@ const { subject, html } = renderExampleWelcome({ name: user.name });
 await sendEmail({ to: user.email, subject, html });
 ```
 
-Notes:
-- Always use absolute links (derive from `BASE_URL`) when linking to your site.
-- Keep business logic in the route/hook, not inside templates.
-
-## Deliverability (why)
-
 - To avoid spam filters, patient-facing emails must not include external links. Multiple external domains in a single email are a known spam signal and reduce inbox placement.
 - Flagged domains we explicitly avoid in emails: `narmtraining.com`, `traumahealing.org`, `hakomi.de`, `coreenergetics.nl`.
 - Use only internal links derived from `BASE_URL` (e.g., booking pages, match selection URLs). If education is needed, link on the website, not in the email.
 - Enforcement: a unit test (`tests/email.patientSelection.links.test.ts`) asserts these domains are not present in the patient selection email.
- - Images in patient-facing emails are served from our own domain via the proxy endpoint `/api/images/therapist-profiles/...` to avoid external image-domain warnings in providers like Resend and Gmail. See `src/app/api/images/therapist-profiles/[...path]/route.ts`.
+- Images in patient-facing emails are served from our own domain via the proxy endpoint `/api/images/therapist-profiles/...` to avoid external image-domain warnings in providers like Resend and Gmail. See `src/app/api/images/therapist-profiles/[...path]/route.ts`.
+
+### Success pattern (guidelines)
+
+- **Text/plain fallback**: Always include a text version. Our sender (`src/lib/email/client.ts`) auto-generates a plain‑text fallback from HTML if `text` is omitted, but if you customize templates it’s fine to pass an explicit `text` too.
+- **List-Unsubscribe for recurring therapist emails**: Add headers on reminder/onboarding emails (not on one-off transactional messages). This surfaces Gmail’s native unsubscribe and lowers complaints.
+- **Keep link density low**: Prefer a single primary CTA. Patient selection is moving to the web (fewer individual card links inside the email).
+- **No external domains in patient emails**: Keep all links first‑party (already enforced above).
+- **Clean subjects**: Short, descriptive, no gimmicks. Avoid emojis for therapist notifications.
+- **First‑party images only**: Already proxied to our domain; do not inline third‑party images.
+- **Sender is human‑friendly**: Use `kontakt@kaufmann-health.de`, never `no-reply`. Encourage direct replies.
+- **Authentication & alignment**: SPF includes Resend, DKIM is signed on our domain, DMARC aligned; keep `From` domain consistent.
+- **Gentle send patterns**: Avoid bursty, look‑alike sends. Space tests, randomize delays, and avoid subject codes or visible test markers.
 
 ### Gmail JSON-LD Schema (inbox actions)
 
@@ -95,3 +101,15 @@ Use `buildInternalLeadNotification()` to construct subject/text with type and ci
   - `tests/email.emailConfirmation.test.ts`
   - `tests/email.patientSelection.schema.test.ts`
 - In tests, `sendEmail()` is a no-op when `RESEND_API_KEY` is empty, so accidental sends are avoided.
+
+### Deliverability test (manual)
+
+- Use `scripts/send-spam-test.ts` for small, staggered sends:
+
+  ```bash
+  RESEND_API_KEY=... tsx scripts/send-spam-test.ts --max=5
+  # Optional marker appended subtly (not in subject):
+  RESEND_API_KEY=... tsx scripts/send-spam-test.ts --to="a@example.com,b@example.com" --marker="trace-123" --max=10
+  ```
+
+- The script avoids subject markers, caps recipients by default, and randomizes per‑send delays to prevent burst patterns that look like outreach.

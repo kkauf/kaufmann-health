@@ -248,7 +248,16 @@ export async function GET(req: Request) {
 
       try {
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.reminders.batch', props: { stage: 'therapist_profile_reminder', therapist_id: t.id, subject: reminder.subject } });
-        await sendEmail({ to, subject: reminder.subject, html: reminder.html, context: { stage: 'therapist_profile_reminder', therapist_id: t.id } });
+        await sendEmail({
+          to,
+          subject: reminder.subject,
+          html: reminder.html,
+          headers: {
+            'List-Unsubscribe': `<${optOutUrl}>`,
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          },
+          context: { stage: 'therapist_profile_reminder', therapist_id: t.id },
+        });
         sent++;
         if (examples.length < 3) {
           const miss: string[] = [];
@@ -485,7 +494,16 @@ export async function POST(req: Request) {
 
       try {
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.reminders.batch', props: { stage: 'therapist_profile_reminder', therapist_id: t.id, subject: reminder.subject } });
-        await sendEmail({ to, subject: reminder.subject, html: reminder.html, context: { stage: 'therapist_profile_reminder', therapist_id: t.id } });
+        await sendEmail({
+          to,
+          subject: reminder.subject,
+          html: reminder.html,
+          headers: {
+            'List-Unsubscribe': `<${optOutUrl}>`,
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          },
+          context: { stage: 'therapist_profile_reminder', therapist_id: t.id },
+        });
         sent++;
         if (examples.length < 3) {
           const miss: string[] = [];

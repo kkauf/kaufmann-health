@@ -1,16 +1,20 @@
 /*
- One-off deliverability/spam test sender using our real email template and Resend client.
+ One-off deliverability test sender using our real email template and Resend client.
+
+ Defaults are tuned for inbox placement testing (not cold outreach patterns):
+ - No subject markers or visible injected codes by default
+ - Caps recipients to 5 unless overridden with --max
+ - Adds randomized per-send delay to avoid burst traffic
 
  Usage examples:
-   # Send to default list with default code
+   # Send to default list (first 5 only), no marker
    RESEND_API_KEY=... tsx scripts/send-spam-test.ts
 
-   # Override recipients and code
-   RESEND_API_KEY=... tsx scripts/send-spam-test.ts --to="a@example.com,b@example.com" --code="mlrch-XXXX"
+   # Override recipients and include an optional marker (appended at end of text only)
+   RESEND_API_KEY=... tsx scripts/send-spam-test.ts --to="a@example.com,b@example.com" --marker="mlrch-XXXX" --max=10
 
  Notes:
  - Sends INDIVIDUAL emails per recipient (so addresses are not exposed in To:).
- - Inserts the tracking code visibly near the top of the email body and appends it to the subject.
  - Requires RESEND_API_KEY in env. Uses LEADS_FROM_EMAIL/EMAIL_FROM_DEFAULT for sender.
 */
 
@@ -72,14 +76,13 @@ const DEFAULT_RECIPIENTS = [
   'oliver.yikes43@yahoo.com',
 ];
 
-const DEFAULT_CODE = 'mlrch-75ab1156732';
+const DEFAULT_MARKER = '';
 
-function injectTestCode(html: string, code: string): string {
-  const marker = '<td style="padding:24px; font-family: Arial, sans-serif; line-height:1.6; color:#374151;">';
-  // Insert the raw code as plain, visible text at the very top of the email body.
-  const block = `<p data-test-code="true" style="margin:0 0 12px; color:#111827; font-size:14px; line-height:1.4;">${code}</p>`;
-  if (html.includes(marker)) return html.replace(marker, marker + block);
-  // Fallback: append before </body>
+// Optional: append a small marker to the bottom of the HTML body for traceability
+function appendMarker(html: string, marker?: string): string {
+  const code = (marker || '').trim();
+  if (!code) return html;
+  const block = `<p data-test-marker="true" style="margin:16px 0 0; color:#9CA3AF; font-size:11px;">${code}</p>`;
   return html.replace('</body>', `${block}</body>`);
 }
 
@@ -96,11 +99,13 @@ async function main() {
   }
 
   const args = parseArgs(process.argv.slice(2));
-  const code = (args['code'] || DEFAULT_CODE).trim();
+  const marker = (args['marker'] || DEFAULT_MARKER).trim();
   const toCsv = (args['to'] || '').trim();
   const recipients = toCsv
     ? toCsv.split(',').map((s) => s.trim()).filter(Boolean)
     : DEFAULT_RECIPIENTS;
+  const max = Math.max(1, Number(args['max'] || 5));
+  const limited = recipients.slice(0, max);
 
   // Render a real transactional template (patient confirmation) with benign sample data
   const { subject: baseSubject, html: baseHtml } = renderPatientConfirmation({
@@ -110,25 +115,26 @@ async function main() {
     sessionPreference: 'online',
   });
 
-  const subject = `${baseSubject} [${code}]`;
-  const html = baseHtml ? injectTestCode(baseHtml, code) : undefined;
-  // Put the code as the very first line in the plain-text body
-  const text = `${code}\n\nThis is a one-off deliverability test using our real patient confirmation template.`;
+  const subject = baseSubject; // No subject marker by default
+  const html = baseHtml ? appendMarker(baseHtml, marker) : undefined;
+  // Place marker only in text (end) to avoid top-heavy signals
+  const text = `This is a one-off deliverability test using our real patient confirmation template.${marker ? `\n\n${marker}` : ''}`;
 
-  console.log(`Preparing to send ${recipients.length} emails...`);
+  console.log(`Preparing to send ${limited.length} emails (cap=${max})...`);
   let sent = 0;
-  for (const to of recipients) {
+  for (const to of limited) {
     try {
-      await sendEmail({ to, subject, html, text, context: { template: 'spam_test', code } });
+      await sendEmail({ to, subject, html, text, context: { template: 'spam_test', marker } });
       sent++;
       console.log(`Sent to ${to}`);
-      // small delay to avoid potential rate limiting
-      await sleep(250);
+      // randomized delay (600-1400ms) to avoid burst patterns
+      const jitter = 600 + Math.floor(Math.random() * 800);
+      await sleep(jitter);
     } catch (e) {
       console.error(`Failed to send to ${to}:`, e);
     }
   }
-  console.log(`Done. Successfully attempted ${sent}/${recipients.length}.`);
+  console.log(`Done. Successfully attempted ${sent}/${limited.length}.`);
 }
 
 main().catch((e) => {
