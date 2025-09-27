@@ -66,7 +66,7 @@ export default async function TherapieFindenPage() {
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
       <LandingHero
-        title="Dein passender Heilpraktiker:in für Psychotherapie"
+        title="Heilpraktiker:in für Psychotherapie - passend für dich"
         subtitle={<>Wenn Verstehen allein nicht mehr reicht</>}
         trustItems={[
           { icon: <ShieldCheck className="h-4 w-4 text-emerald-600" />, label: 'Staatlich geprüfte Heilpraktiker:innen (Psychotherapie)' },
