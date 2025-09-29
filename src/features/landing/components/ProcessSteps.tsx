@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import RevealContainer from "@/components/RevealContainer";
 import { cn } from "@/lib/utils";
 
 export type ProcessStep = {
@@ -36,12 +37,15 @@ export function ProcessSteps({
         </h2>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        {items.map((it, idx) => (
-          <Card
-            key={idx}
-            className="group relative overflow-hidden border border-slate-200 bg-white/95 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-          >
+      <RevealContainer>
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          {items.map((it, idx) => (
+            <Card
+              key={idx}
+              data-reveal
+              style={{ transitionDelay: `${idx * 60}ms` }}
+              className="group relative overflow-hidden border border-slate-200 bg-white/95 shadow-sm opacity-0 translate-y-2 transition-all duration-500 hover:-translate-y-1 hover:shadow-lg"
+            >
             <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500" />
             <CardHeader className="space-y-3">
               <div className="flex items-center justify-between">
@@ -75,9 +79,10 @@ export function ProcessSteps({
                 </ul>
               ) : null}
             </CardContent>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      </RevealContainer>
 
       {footnote ? (
         <div className="mt-8 rounded-xl border border-slate-200/80 bg-white/70 p-4 text-sm text-slate-700 shadow-sm">

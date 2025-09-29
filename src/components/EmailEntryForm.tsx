@@ -8,7 +8,7 @@ import { track } from '@vercel/analytics';
 
 // Note: Google Ads conversions are handled at Fragebogen completion (client + server).
 
-export function EmailEntryForm({ defaultSessionPreference }: { defaultSessionPreference?: 'online' | 'in_person' }) {
+export function EmailEntryForm({ defaultSessionPreference, dataCta }: { defaultSessionPreference?: 'online' | 'in_person'; dataCta?: string }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -64,7 +64,8 @@ export function EmailEntryForm({ defaultSessionPreference }: { defaultSessionPre
   }, [submitting, defaultSessionPreference]);
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="space-y-4 max-w-xl">
+    <form ref={formRef} onSubmit={onSubmit} className="space-y-4 max-w-xl" data-cta={dataCta}
+    >
       <div className="space-y-2">
         <Label htmlFor="name">Wie dürfen wir dich ansprechen?</Label>
         <Input id="name" name="name" placeholder="Vorname oder Spitzname" aria-invalid={Boolean(errors.name)} className={errors.name ? 'border-red-500 focus-visible:ring-red-500' : undefined} />

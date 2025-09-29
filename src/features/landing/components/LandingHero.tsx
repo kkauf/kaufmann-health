@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { ShieldCheck, Lock, UserCheck } from "lucide-react";
@@ -20,6 +21,7 @@ export function LandingHero({
   ctaPill,
   analyticsQualifier,
   assignVariantParam,
+  formDataCta,
 }: {
   title: string;
   subtitle?: ReactNode;
@@ -30,6 +32,7 @@ export function LandingHero({
   ctaPill?: ReactNode; // e.g., <Button variant="outline" size="lg" asChild>...</Button>
   analyticsQualifier?: string;
   assignVariantParam?: boolean;
+  formDataCta?: string;
 }) {
   const [variant] = useState<"A" | "B" | "C" | undefined>(() => {
     if (!assignVariantParam) return undefined;
@@ -115,8 +118,8 @@ export function LandingHero({
         </div>
 
         {/* Top-of-page embedded form (right) */}
-        <div className="lg:pl-6 scroll-mt-24" id="top-form">
-          <EmailEntryForm defaultSessionPreference={defaultSessionPreference} />
+        <div className="lg:pl-6 scroll-mt-24" id="top-form" {...(formDataCta ? { 'data-cta': formDataCta } : {})}>
+          <EmailEntryForm defaultSessionPreference={defaultSessionPreference} dataCta={formDataCta} />
         </div>
       </div>
     </section>
