@@ -8,6 +8,11 @@ export type TherapyPage = {
 // Keep concise descriptions for cards and SEO snippets.
 export const THERAPY_PAGES: TherapyPage[] = [
   {
+    slug: 'koerpertherapie',
+    title: 'Körpertherapie',
+    description: 'Wissenschaftlich fundierte körperorientierte Therapie – professionell und ohne Esoterik.'
+  },
+  {
     slug: 'somatic-experiencing',
     title: 'Somatic Experiencing (SE)®',
     description: 'Trauma über das Nervensystem lösen – sanft, sicher und evidenzbasiert.'

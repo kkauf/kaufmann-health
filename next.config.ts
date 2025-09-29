@@ -25,6 +25,11 @@ const nextConfig: NextConfig = {
         destination: "/fragebogen",
         permanent: true,
       },
+      {
+        source: "/therapie/koerpertherapie",
+        destination: "/therapie",
+        permanent: true,
+      },
     ];
   },
 };

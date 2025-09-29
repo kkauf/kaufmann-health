@@ -47,13 +47,13 @@
       ]
     },
     {
-      "source": "/therapie/somatic-experiencing",
+      "source": "/therapie",
       "headers": [
         { "key": "Cache-Control", "value": "public, s-maxage=3600, stale-while-revalidate=86400" }
       ]
     },
     {
-      "source": "/koerpertherapie",
+      "source": "/therapie/somatic-experiencing",
       "headers": [
         { "key": "Cache-Control", "value": "public, s-maxage=3600, stale-while-revalidate=86400" }
       ]
