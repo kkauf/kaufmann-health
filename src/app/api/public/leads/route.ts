@@ -501,10 +501,30 @@ export async function POST(req: Request) {
     }
     const payload = (await req.json()) as Partial<LeadPayload>;
     const email = sanitize(payload.email)?.toLowerCase();
+    const phoneNumber = sanitize(payload.phone_number);
+    const contactMethod = payload.contact_method;
 
-    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    // EARTH-191: Support both email and phone as primary contact
+    // At least one must be provided
+    if (!email && !phoneNumber) {
+      return safeJson(
+        { data: null, error: 'Email or phone number required' },
+        { status: 400, headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
+
+    // Validate email if provided
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       return safeJson(
         { data: null, error: 'Invalid email' },
+        { status: 400, headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
+
+    // Validate phone if provided (basic E.164 check)
+    if (phoneNumber && phoneNumber.length < 8) {
+      return safeJson(
+        { data: null, error: 'Invalid phone number' },
         { status: 400, headers: { 'Cache-Control': 'no-store' } },
       );
     }
@@ -513,7 +533,9 @@ export async function POST(req: Request) {
       name: sanitize(payload.name),
       email,
       phone: sanitize(payload.phone),
+      phone_number: phoneNumber,
       notes: sanitize(payload.notes),
+      contact_method: contactMethod,
     };
 
     // Optional additional fields captured as metadata
@@ -630,7 +652,8 @@ export async function POST(req: Request) {
       };
       const insertPayload = {
         ...(data.name ? { name: data.name } : {}),
-        email,
+        ...(email ? { email } : {}),
+        ...(phoneNumber ? { phone_number: phoneNumber } : {}),
         type: 'patient' as const,
         status: 'pre_confirmation' as const,
         campaign_source,
@@ -656,7 +679,8 @@ export async function POST(req: Request) {
         });
         const fallbackPayload = {
           ...(data.name ? { name: data.name } : {}),
-          email,
+          ...(email ? { email } : {}),
+          ...(phoneNumber ? { phone_number: phoneNumber } : {}),
           type: 'patient' as const,
           status: 'pre_confirmation' as const,
           metadata: insertPayload.metadata,
@@ -669,18 +693,22 @@ export async function POST(req: Request) {
         insErr = res.error;
       }
 
-      // Handle unique violation gracefully by looking up existing email
+      // Handle unique violation gracefully by looking up existing email or phone
       if ((insErr as { code?: string } | null | undefined)?.code === '23505') {
         type ExistingPerson = { id: string; status?: string | null; metadata?: Record<string, unknown> | null; campaign_source?: string | null; campaign_variant?: string | null };
-        const doSelect = async (cols: string) =>
-          supabaseServer.from('people').select(cols).eq('email', email!).single<ExistingPerson>();
+        const doSelect = async (cols: string) => {
+          let query = supabaseServer.from('people').select(cols);
+          if (email) query = query.eq('email', email);
+          else if (phoneNumber) query = query.eq('phone_number', phoneNumber);
+          return query.single<ExistingPerson>();
+        };
         const sel = await doSelect('id,status,metadata,campaign_source,campaign_variant');
         let existing: ExistingPerson | null = (sel.data as ExistingPerson) ?? null;
         let selErr: unknown = sel.error;
         const selMsg = getErrorMessage(sel.error);
         if (selMsg.includes('schema cache')) {
           // Retry without optional columns
-          void track({ type: 'leads_schema_mismatch', level: 'warn', source: 'api.leads', ip, ua, props: { stage: 'select_existing_email', missing: 'campaign_columns' } });
+          void track({ type: 'leads_schema_mismatch', level: 'warn', source: 'api.leads', ip, ua, props: { stage: 'select_existing_contact', missing: 'campaign_columns' } });
           const sel2 = await doSelect('id,status,metadata');
           existing = (sel2.data as ExistingPerson) ?? null;
           selErr = sel2.error;
@@ -688,12 +716,44 @@ export async function POST(req: Request) {
         if (existing?.id) {
           effectiveId = existing.id as string;
           const existingStatus = (existing.status || '') as string;
-          if (!isTest && existingStatus && existingStatus !== 'pre_confirmation') {
+          const isPhoneContact = contactMethod === 'phone';
+          const existingMetadata = (existing.metadata || {}) as Record<string, unknown>;
+          const isPhoneVerified = isPhoneContact && existingMetadata.phone_verified === true;
+          
+          // EARTH-191: Allow overwrites for unverified phone leads
+          if (isPhoneContact && existingStatus === 'pre_confirmation' && !isPhoneVerified) {
+            // Unverified phone lead — allow complete overwrite with fresh token
+            const merged: Record<string, unknown> = {
+              confirm_token: confirmToken,
+              confirm_sent_at: new Date().toISOString(),
+              ...(sessionPreference ? { session_preference: sessionPreference } : {}),
+              ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
+              ...(isTest ? { is_test: true } : {}),
+              ...(city ? { city } : {}),
+              ...(issue ? { issue } : {}),
+              ...(availability ? { availability } : {}),
+              ...(budget ? { budget } : {}),
+              ...(genderPreference ? { gender_preference: genderPreference } : {}),
+              consent_share_with_therapists: true,
+              consent_share_with_therapists_at: new Date().toISOString(),
+              consent_privacy_version: privacyVersion,
+              phone_verified: false, // Reset verification status
+            };
+            await supabaseServer
+              .from('people')
+              .update({ 
+                status: 'pre_confirmation', 
+                metadata: merged, 
+                ...(data.name ? { name: data.name } : {}),
+                ...(phoneNumber ? { phone_number: phoneNumber } : {})
+              })
+              .eq('id', effectiveId);
+          } else if (!isTest && existingStatus && existingStatus !== 'pre_confirmation') {
             // Already confirmed or other terminal state — don't downgrade or resend; treat as success
             await ServerAnalytics.trackEventFromRequest(req, {
-              type: 'email_submitted',
+              type: 'contact_submitted',
               source: 'api.leads',
-              props: { campaign_source, campaign_variant, requires_confirmation: false, is_test: isTest },
+              props: { campaign_source, campaign_variant, requires_confirmation: false, is_test: isTest, contact_method: contactMethod },
             });
             return safeJson(
               { data: { id: existing.id, requiresConfirmation: false }, error: null },
@@ -744,40 +804,42 @@ export async function POST(req: Request) {
         );
       }
 
-      // Send confirmation email (token already stored)
-      try {
-        // Use request origin to avoid port/domain mismatch in local/dev
-        const origin = new URL(req.url).origin || BASE_URL;
-        const confirmBase = `${origin}/api/public/leads/confirm?token=${encodeURIComponent(confirmToken)}&id=${encodeURIComponent(
-          effectiveId!,
-        )}`;
-        const withFs = formSessionId ? `${confirmBase}&fs=${encodeURIComponent(formSessionId)}` : confirmBase;
-        const confirmUrl = confirmRedirectPath ? `${withFs}&redirect=${encodeURIComponent(confirmRedirectPath)}` : withFs;
-        const emailContent = renderEmailConfirmation({ confirmUrl });
-        void track({
-          type: 'email_attempted',
-          level: 'info',
-          source: 'api.leads',
-          ip,
-          ua,
-          props: { stage: 'email_confirmation', lead_id: effectiveId!, lead_type: 'patient', subject: emailContent.subject },
-        });
-        await sendEmail({
-          to: email,
-          subject: emailContent.subject,
-          html: emailContent.html,
-          replyTo: 'kontakt@kaufmann-health.de',
-          context: {
-            stage: 'email_confirmation',
-            lead_id: effectiveId!,
-            lead_type: 'patient',
-            template: 'email_confirmation',
-            email_token: confirmToken,
-          },
-        });
-      } catch (e) {
-        console.error('[email-confirmation] Failed to render/send', e);
-        void logError('api.leads', e, { stage: 'email_confirmation_email' }, ip, ua);
+      // Send confirmation email only if email was provided (phone users verify via SMS)
+      if (email) {
+        try {
+          // Use request origin to avoid port/domain mismatch in local/dev
+          const origin = new URL(req.url).origin || BASE_URL;
+          const confirmBase = `${origin}/api/public/leads/confirm?token=${encodeURIComponent(confirmToken)}&id=${encodeURIComponent(
+            effectiveId!,
+          )}`;
+          const withFs = formSessionId ? `${confirmBase}&fs=${encodeURIComponent(formSessionId)}` : confirmBase;
+          const confirmUrl = confirmRedirectPath ? `${withFs}&redirect=${encodeURIComponent(confirmRedirectPath)}` : withFs;
+          const emailContent = renderEmailConfirmation({ confirmUrl });
+          void track({
+            type: 'email_attempted',
+            level: 'info',
+            source: 'api.leads',
+            ip,
+            ua,
+            props: { stage: 'email_confirmation', lead_id: effectiveId!, lead_type: 'patient', subject: emailContent.subject },
+          });
+          await sendEmail({
+            to: email,
+            subject: emailContent.subject,
+            html: emailContent.html,
+            replyTo: 'kontakt@kaufmann-health.de',
+            context: {
+              stage: 'email_confirmation',
+              lead_id: effectiveId!,
+              lead_type: 'patient',
+              template: 'email_confirmation',
+              email_token: confirmToken,
+            },
+          });
+        } catch (e) {
+          console.error('[email-confirmation] Failed to render/send', e);
+          void logError('api.leads', e, { stage: 'email_confirmation_email' }, ip, ua);
+        }
       }
 
       // Analytics (server-side)

@@ -185,6 +185,7 @@ export function ContactEntryForm({
           id="name" 
           name="name" 
           placeholder="Vorname oder Spitzname" 
+          autoComplete="given-name"
           aria-invalid={Boolean(errors.name)} 
           className={errors.name ? 'border-red-500 focus-visible:ring-red-500' : undefined} 
         />
@@ -200,6 +201,8 @@ export function ContactEntryForm({
               id="email" 
               name="email" 
               type="email" 
+              autoComplete="email"
+              inputMode="email"
               placeholder="dein.name@example.com" 
               aria-invalid={Boolean(errors.email)} 
               className={errors.email ? 'border-red-500 focus-visible:ring-red-500' : undefined} 
@@ -217,6 +220,10 @@ export function ContactEntryForm({
               className="w-full"
               placeholder="176 123 45678"
               forceDialCode={true}
+              inputProps={{
+                autoComplete: 'tel',
+                inputMode: 'tel' as const,
+              }}
             />
             {errors.phone && <p className="text-xs text-red-600">{errors.phone}</p>}
             <p className="text-xs text-gray-500">Du bekommst einen SMS-Code zur Bestätigung</p>
