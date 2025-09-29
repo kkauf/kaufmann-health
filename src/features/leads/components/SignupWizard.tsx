@@ -310,18 +310,22 @@ export default function SignupWizard() {
     void trackEvent('screen_viewed', { step });
   }, [step, trackEvent]);
 
-  // Auto-advance from Screen 1 when name+email are already filled (landing handoff)
+  // Auto-advance from Screen 1 when name+(email|phone) are already filled (landing handoff)
   const autoAdvancedRef = React.useRef(false);
   React.useEffect(() => {
     if (autoAdvancedRef.current) return;
     if (step !== 1) return;
     const hasName = typeof data.name === 'string' && data.name.trim().length > 0;
     const hasEmail = typeof data.email === 'string' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email);
-    if (hasName && hasEmail) {
+    const hasPhone = typeof data.phone_number === 'string' && data.phone_number.length >= 8;
+    const hasContactInfo = data.contact_method === 'email' ? hasEmail : hasPhone;
+    if (hasName && hasContactInfo) {
       autoAdvancedRef.current = true;
-      safeGoToStep(2);
+      // Phone users need SMS verification (step 1.5), email users go directly to step 2
+      const nextStep = data.contact_method === 'phone' ? 1.5 : 2;
+      safeGoToStep(nextStep);
     }
-  }, [step, data.name, data.email, safeGoToStep]);
+  }, [step, data.name, data.email, data.phone_number, data.contact_method, safeGoToStep]);
 
   // Backend autosave every 30s when data changes
   React.useEffect(() => {
