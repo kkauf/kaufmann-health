@@ -265,9 +265,11 @@ export default function SignupWizard() {
       } catch {}
       // Track changed fields (PII-safe: only field names, no values)
       try {
-        const keys = Object.keys(next) as Array<keyof WizardData>;
-        for (const k of keys) {
-          void trackEvent('field_change', { field: String(k), step });
+        if (process.env.NEXT_PUBLIC_ANALYTICS_VERBOSE === 'true') {
+          const keys = Object.keys(next) as Array<keyof WizardData>;
+          for (const k of keys) {
+            void trackEvent('field_change', { field: String(k), step });
+          }
         }
       } catch {}
       return merged;
@@ -387,6 +389,21 @@ export default function SignupWizard() {
       throw err;
     }
   }, [data.phone_number, sessionId, trackEvent, saveLocal]);
+
+  // If we arrive directly on step 1.5 with a phone number, auto-send the SMS code once
+  const autoSentRef = React.useRef(false);
+  React.useEffect(() => {
+    if (autoSentRef.current) return;
+    if (step !== 1.5) return;
+    if (data.contact_method !== 'phone') return;
+    if (!data.phone_number) return;
+    if (data.phone_verified) return;
+    autoSentRef.current = true;
+    void handleSendSmsCode().catch(() => {
+      // ignore here; user can retry or switch to email
+      autoSentRef.current = false; // allow manual retry
+    });
+  }, [step, data.contact_method, data.phone_number, data.phone_verified, handleSendSmsCode]);
 
   const handleVerifySmsCode = React.useCallback(async (code: string): Promise<{ success: boolean; error?: string }> => {
     if (!data.phone_number) return { success: false, error: 'Keine Telefonnummer' };

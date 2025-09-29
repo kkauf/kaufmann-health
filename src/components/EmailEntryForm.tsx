@@ -172,7 +172,9 @@ export function ContactEntryForm({
           ...(defaultSessionPreference ? { session_preference: defaultSessionPreference } : {}),
         } as Record<string, unknown>;
         window.localStorage.setItem(LS_KEY, JSON.stringify(merged));
-        window.localStorage.setItem(LS_STEP, '1');
+        // Jump directly to relevant step on wizard: 1.5 for phone, 2 for email
+        const nextStep = contactMethod === 'phone' ? '1.5' : '2';
+        window.localStorage.setItem(LS_STEP, nextStep);
       } catch {}
 
       // Navigate to the Fragebogen, preserving variant (?v=) if present
