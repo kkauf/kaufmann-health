@@ -248,8 +248,8 @@ export function ContactEntryForm({
         ) : null}
       </div>
 
-      {/* Switch contact method link (choice mode only) */}
-      {showSwitchLink && (
+      {/* Switch contact method link (choice mode only; gated by mount to avoid hydration mismatch) */}
+      {showSwitchLink && mounted && (
         <div className="text-center">
           <button
             type="button"

@@ -378,11 +378,8 @@ export default function SignupWizard() {
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error('Failed to send SMS');
-      // If API indicates fallback to email, don't move to SMS screen
-      if (j?.data?.fallback === 'email') {
-        saveLocal({ contact_method: 'email' });
-        return false;
-      }
+      // If API indicates fallback to email, keep user on step 1 to choose email manually
+      if (j?.data?.fallback === 'email') return false;
       void trackEvent('verification_code_sent', { contact_type: 'phone' });
       return true;
     } catch (err) {
@@ -441,7 +438,7 @@ export default function SignupWizard() {
                 try {
                   const sent = await handleSendSmsCode();
                   if (sent) safeGoToStep(1.5);
-                  else safeGoToStep(2); // Fallback to email
+                  // else: stay on step 1 so user can switch to email or retry
                 } catch (err) {
                   console.error('Failed to send SMS:', err);
                   // Could show error to user here
