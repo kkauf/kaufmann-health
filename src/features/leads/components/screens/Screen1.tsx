@@ -54,26 +54,27 @@ export default function Screen1({
   const [phoneError, setPhoneError] = React.useState<string | null>(null);
   const [mounted, setMounted] = React.useState(false);
 
-  // Determine contact method on mount (hydration-safe)
+  // Initialize contact method on mount (hydration-safe)
   React.useEffect(() => {
     setMounted(true);
     
     // If already set, don't override
     if (values.contact_method) return;
     
+    // Must match server-side default (email) to avoid hydration mismatch
     let defaultMethod: ContactMethod = 'email';
     
     if (mode === 'email') {
       defaultMethod = 'email';
     } else if (mode === 'sms') {
       defaultMethod = 'phone';
-    } else {
+    } else if (mode === 'choice') {
+      // In choice mode, check saved preference only (not device detection)
       const saved = getSavedContactMethod();
       if (saved) {
         defaultMethod = saved;
-      } else {
-        defaultMethod = isMobileDevice() ? 'phone' : 'email';
       }
+      // Don't auto-detect device to avoid hydration issues
     }
     
     onChange({ contact_method: defaultMethod });

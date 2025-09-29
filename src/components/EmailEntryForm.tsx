@@ -71,34 +71,36 @@ export function ContactEntryForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [mounted, setMounted] = useState(false);
   
-  // Always start with email to avoid hydration mismatch
-  // Real default is determined after mount
-  const [contactMethod, setContactMethod] = useState<ContactMethod>('email');
+  // Determine default contact method - must be consistent between server and client
+  // to avoid hydration mismatch. We can't use device detection on server, so we
+  // default to email and let user switch if needed.
+  const getInitialContactMethod = (): ContactMethod => {
+    if (mode === 'email') return 'email';
+    if (mode === 'sms') return 'phone';
+    // For 'choice' mode, always start with email to avoid hydration mismatch
+    // User can switch after mount
+    return 'email';
+  };
+
+  const [contactMethod, setContactMethod] = useState<ContactMethod>(getInitialContactMethod());
   const [phone, setPhone] = useState('+49'); // Default to Germany
 
-  // Determine default contact method after mount to avoid hydration issues
+  // After mount, offer to switch based on saved preference or device (choice mode only)
   useEffect(() => {
     setMounted(true);
     
-    // Determine actual default based on mode and device
-    let defaultMethod: ContactMethod = 'email';
+    if (mode !== 'choice') return; // Only auto-switch in choice mode
     
-    if (mode === 'email') {
-      defaultMethod = 'email';
-    } else if (mode === 'sms') {
-      defaultMethod = 'phone';
-    } else {
-      // Choice mode: check saved preference, then device
-      const saved = getSavedContactMethod();
-      if (saved) {
-        defaultMethod = saved;
-      } else {
-        defaultMethod = isMobileDevice() ? 'phone' : 'email';
-      }
+    // Check saved preference first
+    const saved = getSavedContactMethod();
+    if (saved && saved !== contactMethod) {
+      setContactMethod(saved);
+      return;
     }
     
-    setContactMethod(defaultMethod);
-  }, [mode]);
+    // On mobile, suggest phone (but don't force it to avoid disruption)
+    // User sees the toggle and can click if they want
+  }, [mode, contactMethod]);
 
   const handleContactMethodSwitch = useCallback(() => {
     const newMethod: ContactMethod = contactMethod === 'email' ? 'phone' : 'email';
