@@ -15,8 +15,8 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.kaufmann-health
 export const metadata = async ({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }): Promise<Metadata> => {
   const variant = (searchParams?.v as string)?.toUpperCase();
   const isTestVariant = variant === 'B' || variant === 'C';
-  const title = "NARM Therapie | Entwicklungstrauma heilen | NeuroAffektives Beziehungsmodell";
-  const description = "NARM (NeuroAffektives Beziehungsmodell) für Entwicklungstrauma nach Dr. Laurence Heller. Ohne Retraumatisierung zu mehr Selbstregulation.";
+  const title = "NARM Therapie | Entwicklungstrauma sanft heilen";
+  const description = "NARM (NeuroAffektives Beziehungsmodell) für Entwicklungstrauma nach Dr. Laurence Heller. Ohne Retraumatisierung zu mehr Selbstregulation. Therapeuten finden.";
   return {
     title,
     description,
@@ -72,11 +72,12 @@ function PrinciplesGrid() {
 
 export default async function NarmPage() {
   const faqs = [
-    { id: "difference-se", question: "Was ist der Unterschied zwischen NARM und Somatic Experiencing?", answer: "SE fokussiert primär auf Schocktrauma und Nervensystem-Regulation. NARM spezialisiert sich auf Entwicklungstrauma und frühe Beziehungsprägungen. SE ist eher bottom-up (Körper → Bewusstsein), NARM integriert bottom-up und top-down (Bewusstsein → Körper) gleichwertig." },
-    { id: "duration", question: "Wie lange dauert eine NARM-Therapie?", answer: "Entwicklungstrauma-Arbeit ist ein Prozess, kein Quick-Fix. Typische Therapien dauern 1–3 Jahre mit wöchentlichen oder zweiwöchentlichen Sitzungen. Erste Veränderungen sind oft schon nach Wochen spürbar – etwa mehr Erdung, weniger Selbstkritik." },
-    { id: "childhood-memory", question: "Muss ich mich an meine Kindheit erinnern können?", answer: "Nein! Das ist das Revolutionäre an NARM: Sie müssen Ihre Geschichte nicht detailliert aufarbeiten. NARM arbeitet mit dem, was jetzt lebendig ist – Ihre Körperempfindungen, Beziehungsmuster, limitierende Überzeugungen." },
-    { id: "retraumatisierung", question: "Ist NARM retraumatisierend?", answer: "NARM ist explizit nicht-retraumatisierend. Sie müssen Ihr Trauma nicht erneut durchleben. Der Fokus liegt auf dem Hier-und-Jetzt: Was spüren Sie gerade? Sie bleiben im Toleranzfenster Ihres Nervensystems." },
-    { id: "vs-psychoanalyse", question: "Unterschied zur klassischen Psychoanalyse?", answer: "Psychoanalyse ist eher kognitiv und vergangenheitsorientiert. NARM integriert den Körper, arbeitet mit Ihrem Nervensystem im Moment und fokussiert auf gegenwärtige Beziehungs- und Selbstregulationsmuster." },
+    { id: "difference-se", question: "Wie unterscheidet sich NARM von Somatic Experiencing?", answer: "Während SE primär Schocktrauma behandelt, fokussiert NARM auf Entwicklungstrauma. SE arbeitet mit Entladung, NARM mit Organisation und Identität." },
+    { id: "childhood-memory", question: "Muss ich über meine Kindheit sprechen?", answer: "Nein. NARM interessiert sich für Ihre gegenwärtigen Muster, nicht für detaillierte Geschichten." },
+    { id: "duration", question: "Wie lange dauert eine NARM-Therapie?", answer: "NARM ist ein Prozess ohne festgelegtes Ende. Viele Klient:innen berichten von spürbaren Veränderungen nach 10-20 Sitzungen, die Arbeit kann aber auch länger dauern." },
+    { id: "schocktrauma", question: "Ist NARM auch bei Schocktrauma wirksam?", answer: "NARM fokussiert auf Entwicklungstrauma. Bei PTBS von Einzelereignissen sind andere Methoden wie Somatic Experiencing oft geeigneter." },
+    { id: "kosten", question: "Was kostet eine NARM-Sitzung?", answer: "Die meisten NARM-Therapeut:innen arbeiten privat. Rechnen Sie mit 80-120€ pro Sitzung. Manche Zusatzversicherungen übernehmen Anteile." },
+    { id: "therapeut-finden", question: "Wie finde ich einen qualifizierten NARM-Therapeuten?", answer: "Achten Sie auf abgeschlossene NARM-Ausbildung (mind. 2 Jahre). Unsere Therapeut:innen sind alle zertifiziert." },
   ];
 
   const therapySchema = {
@@ -93,8 +94,8 @@ export default async function NarmPage() {
     <div className="min-h-screen bg-white">
       <main className="mx-auto max-w-7xl px-4 py-10 sm:py-14">
         <LandingHero
-          title="NARM Therapie"
-          subtitle={<span>Entwicklungstrauma heilen – ressourcenorientiert, ohne Retraumatisierung. Das NeuroAffektive Beziehungsmodell (NARM™) nach Dr. Laurence Heller.</span>}
+          title="NARM: Entwicklungstrauma heilen, ohne in die Vergangenheit zu gehen"
+          subtitle={<span>Das NeuroAffektive Beziehungsmodell arbeitet mit dem, was jetzt ist – für Menschen, die funktionieren, aber nicht wirklich leben</span>}
           formDataCta="narm-page-signup"
         />
 
@@ -116,198 +117,194 @@ export default async function NarmPage() {
           </div>
         </section>
 
-        {/* SE process: Sicher und selbstreguliert */}
+        {/* Die 5 biologischen Überlebensstrategien */}
+        <section aria-labelledby="survival-strategies-heading" className="mt-12 sm:mt-16">
+          <div className="relative rounded-2xl border bg-white p-6 sm:p-8">
+            <h2 id="survival-strategies-heading" className="text-2xl font-semibold">Die 5 biologischen Überlebensstrategien</h2>
+            <p className="mt-3 text-gray-700 leading-7">
+              NARM identifiziert fünf Kernbedürfnisse, die für gesunde Entwicklung essentiell sind. Werden diese früh frustriert, entwickeln wir adaptive Überlebensstrategien, die uns später einschränken:
+            </p>
+            
+            <div className="mt-6 space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold">1. Kontakt (Prä- und perinatal)</h3>
+                <p className="mt-2 text-sm text-gray-700"><strong>Kernbedürfnis:</strong> In Kontakt sein mit sich selbst und anderen</p>
+                <p className="mt-1 text-sm text-gray-700"><strong>Wenn frustriert:</strong> &bdquo;Ich existiere nicht wirklich&ldquo;</p>
+                <p className="mt-1 text-sm text-gray-700"><strong>Adaptive Strategie:</strong> Rückzug, Dissoziation, Leben im Kopf</p>
+                <p className="mt-1 text-sm text-gray-700"><strong>Körperlich:</strong> Schwache Erdung, fragmentiertes Körpergefühl</p>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold">2. Einstimmung (0-6 Monate)</h3>
+                <p className="mt-2 text-sm text-gray-700"><strong>Kernbedürfnis:</strong> Physische und emotionale Bedürfnisse erfüllt bekommen</p>
+                <p className="mt-1 text-sm text-gray-700"><strong>Wenn frustriert:</strong> &bdquo;Meine Bedürfnisse zählen nicht&ldquo;</p>
+                <p className="mt-1 text-sm text-gray-700"><strong>Adaptive Strategie:</strong> Bedürfnislosigkeit, Abhängigkeit oder extreme Unabhängigkeit</p>
+                <p className="mt-1 text-sm text-gray-700"><strong>Körperlich:</strong> Probleme mit Hunger, Sättigung, Selbstfürsorge</p>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold">3. Vertrauen (6-18 Monate)</h3>
+                <p className="mt-2 text-sm text-gray-700"><strong>Kernbedürfnis:</strong> Gesunde Abhängigkeit und Vertrauen</p>
+                <p className="mt-1 text-sm text-gray-700"><strong>Wenn frustriert:</strong> &bdquo;Ich kann niemandem trauen&ldquo;</p>
+                <p className="mt-1 text-sm text-gray-700"><strong>Adaptive Strategie:</strong> Kontrolle, Manipulation oder Unterwerfung</p>
+                <p className="mt-1 text-sm text-gray-700"><strong>Körperlich:</strong> Chronische Muskelspannung, Hypervigilanz</p>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold">4. Autonomie (18 Monate - 3 Jahre)</h3>
+                <p className="mt-2 text-sm text-gray-700"><strong>Kernbedürfnis:</strong> Eigenen Willen ausdrücken ohne Liebesverlust</p>
+                <p className="mt-1 text-sm text-gray-700"><strong>Wenn frustriert:</strong> &bdquo;Ich darf nicht ich selbst sein&ldquo;</p>
+                <p className="mt-1 text-sm text-gray-700"><strong>Adaptive Strategie:</strong> Überanpassung, passive Aggression</p>
+                <p className="mt-1 text-sm text-gray-700"><strong>Körperlich:</strong> Gehaltene Wut im Körper, chronische Verspannungen</p>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold">5. Liebe/Sexualität (3-6 Jahre und Pubertät)</h3>
+                <p className="mt-2 text-sm text-gray-700"><strong>Kernbedürfnis:</strong> Offenes, liebevolles Herz mit integrierter Sexualität</p>
+                <p className="mt-1 text-sm text-gray-700"><strong>Wenn frustriert:</strong> &bdquo;Ich kann nicht gleichzeitig lieben und begehren&ldquo;</p>
+                <p className="mt-1 text-sm text-gray-700"><strong>Adaptive Strategie:</strong> Spaltung zwischen Herz und Sexualität</p>
+                <p className="mt-1 text-sm text-gray-700"><strong>Körperlich:</strong> Trennung zwischen oberem und unterem Körper</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Wie funktioniert NARM? */}
+        <section aria-labelledby="how-narm-works-heading" className="mt-12 sm:mt-16">
+          <div className="relative rounded-2xl border bg-white p-6 sm:p-8">
+            <h2 id="how-narm-works-heading" className="text-2xl font-semibold">Wie funktioniert NARM?</h2>
+            
+            <h3 className="mt-6 text-xl font-semibold">Das Dual-Bewusstsein: Hier und Jetzt</h3>
+            <p className="mt-3 text-gray-700 leading-7">
+              NARM kultiviert ein &bdquo;duales Bewusstsein&ldquo; – die Fähigkeit, gleichzeitig wahrzunehmen:
+            </p>
+            <ul className="mt-2 ml-4 list-disc space-y-1 text-sm text-gray-700">
+              <li>Was Sie gerade erleben (somatische Achtsamkeit)</li>
+              <li>Wie Sie diese Erfahrung organisieren (Selbstbeobachtung)</li>
+            </ul>
+            <p className="mt-3 text-sm text-gray-700">
+              <strong>Beispiel:</strong> Sie spüren Enge in der Brust (somatisch) und bemerken gleichzeitig: &bdquo;Ah, ich ziehe mich gerade zurück, wie immer wenn jemand mir nahekommt&ldquo; (Organisation).
+            </p>
+
+            <h3 className="mt-6 text-xl font-semibold">Top-Down und Bottom-Up Integration</h3>
+            <div className="mt-3 grid gap-6 sm:grid-cols-2">
+              <div>
+                <h4 className="font-semibold text-gray-900">Bottom-Up (Körper → Bewusstsein):</h4>
+                <ul className="mt-2 ml-4 list-disc space-y-1 text-sm text-gray-700">
+                  <li>Somatische Achtsamkeit für Körperempfindungen</li>
+                  <li>Verfolgung von Impulsen und Bewegungen</li>
+                  <li>Nervensystem-Regulation durch Atmung und Erdung</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold text-gray-900">Top-Down (Bewusstsein → Körper):</h4>
+                <ul className="mt-2 ml-4 list-disc space-y-1 text-sm text-gray-700">
+                  <li>Erkennen limitierender Identifikationen (&bdquo;Ich bin halt so&ldquo;)</li>
+                  <li>Arbeit mit Scham und Selbsthass</li>
+                  <li>Infragestellen alter Überzeugungen</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* NARM-Prozess */}
         <section aria-labelledby="process-heading" className="mt-12 sm:mt-16">
           <div className="relative rounded-2xl border bg-white p-6 sm:p-8">
-            <h2 id="process-heading" className="text-2xl font-semibold">Der SE‑Prozess: Sicher und selbstreguliert</h2>
-            <h3 className="mt-4 text-xl font-semibold">Eine typische SE‑Sitzung</h3>
+            <h2 id="process-heading" className="text-2xl font-semibold">Der NARM-Prozess: Sanft und tiefgreifend</h2>
+            <h3 className="mt-4 text-xl font-semibold">Eine typische NARM-Sitzung</h3>
             <ol className="mt-3 list-inside list-decimal space-y-2 text-sm text-gray-700">
-              <li><strong>Ankommen und Orientierung</strong> (5–10 Min.): Sich im Raum orientieren, Kontakt zum Hier und Jetzt.</li>
-              <li><strong>Ressourcen etablieren</strong> (10–15 Min.): Sichere Körperempfindungen finden, positive Erinnerungen aktivieren.</li>
-              <li><strong>Achtsame Annäherung</strong> (20–30 Min.): Langsames Berühren der Aktivierung, Tracking, Pendeln zwischen Aktivierung und Ressource.</li>
-              <li><strong>Entladung und Integration</strong> (10–15 Min.): Natürliche Entladung (z. B. Zittern, Wärme), Neuverhandlung statt Wiederholung.</li>
-              <li><strong>Stabilisierung</strong> (5–10 Min.): Zurück zu Ressourcen, Verankerung der neuen Erfahrung.</li>
+              <li><strong>Ankommen im Jetzt</strong> (5–10 Min.): Was ist gerade präsent? Körperliche Empfindungen wahrnehmen</li>
+              <li><strong>Erkundung der Organisation</strong> (20–30 Min.): Wie organisieren Sie diese Erfahrung? Welche alten Muster werden sichtbar?</li>
+              <li><strong>Somatische Begleitung</strong> (10–15 Min.): Verfolgen von Körperempfindungen, Unterstützung der Selbstregulation</li>
+              <li><strong>Reflexion und Integration</strong> (10–15 Min.): Was wird möglich, wenn das alte Muster sich löst? Verankerung neuer Erfahrungen</li>
             </ol>
-            <p className="mt-2 text-sm text-gray-700"><strong>Wichtig:</strong> Kein Wiedererleben des Traumas – SE arbeitet mit der gefühlten Gegenwart.</p>
+            <p className="mt-3 text-sm text-gray-700"><strong>Wichtig:</strong> Sie müssen Ihre Kindheit nicht detailliert aufarbeiten. NARM arbeitet mit dem, was jetzt lebendig ist.</p>
           </div>
         </section>
 
-        {/* Suitability */}
+        {/* Für wen ist NARM besonders geeignet? */}
         <section aria-labelledby="suitability-heading" className="mt-12 sm:mt-16">
           <div className="relative rounded-2xl border bg-white p-6 sm:p-8">
-            <h2 id="suitability-heading" className="text-2xl font-semibold">Für wen ist SE geeignet?</h2>
-            <div className="mt-3 grid gap-6 sm:grid-cols-2">
-              <div>
-                <h3 className="font-medium">Schocktrauma</h3>
-                <ul className="mt-2 ml-4 list-disc space-y-1 text-sm text-gray-700">
-                  <li>Unfälle (insb. Verkehr)</li>
-                  <li>Stürze und Verletzungen</li>
-                  <li>Medizinische Eingriffe/Operationen</li>
-                  <li>Überfälle und Gewalt</li>
-                  <li>Naturkatastrophen</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-medium">Entwicklungstrauma</h3>
-                <ul className="mt-2 ml-4 list-disc space-y-1 text-sm text-gray-700">
-                  <li>Frühe Vernachlässigung (ergänzend zu NARM)</li>
-                  <li>Geburtstrauma</li>
-                  <li>Frühe medizinische Traumata</li>
-                </ul>
-              </div>
-            </div>
-            <div className="mt-6">
-              <h3 className="font-medium">Symptomkomplexe</h3>
-              <ul className="mt-2 ml-4 list-disc space-y-1 text-sm text-gray-700">
-                <li>PTBS, Panikattacken</li>
-                <li>Chronische Schmerzen, Fibromyalgie</li>
-                <li>Chronisches Erschöpfungssyndrom</li>
-                <li>Schlafstörungen, Dissoziation</li>
-              </ul>
-            </div>
-            <div className="mt-6">
-              <h3 className="font-medium">Besondere Stärken von SE</h3>
-              <ul className="mt-2 ml-4 list-disc space-y-1 text-sm text-gray-700">
-                <li><strong>Keine Retraumatisierung:</strong> Durch Titration immer im sicheren Bereich</li>
-                <li><strong>Ohne Geschichte:</strong> Trauma muss nicht verbal erzählt werden</li>
-                <li><strong>Körperliche Symptome:</strong> Besonders wirksam bei somatischen Beschwerden</li>
-                <li><strong>Schnelle Stabilisierung:</strong> Oft rasche Verbesserung der Selbstregulation</li>
-              </ul>
-            </div>
+            <h2 id="suitability-heading" className="text-2xl font-semibold">Für wen ist NARM besonders geeignet?</h2>
+            <p className="mt-3 text-gray-700 leading-7">
+              NARM ist ideal für &bdquo;hochfunktionale&ldquo; Menschen mit Entwicklungstrauma:
+            </p>
+            <ul className="mt-3 ml-4 space-y-2 text-sm text-gray-700">
+              <li>✓ Sie sind nach außen erfolgreich, fühlen sich innerlich aber leer</li>
+              <li>✓ Beziehungen sind schwierig – zu nah oder zu distanziert</li>
+              <li>✓ Chronische Selbstkritik und das Gefühl &bdquo;nicht gut genug&ldquo; zu sein</li>
+              <li>✓ Das Leben fühlt sich an wie eine Performance, nicht authentisch</li>
+              <li>✓ Emotionale Dysregulation trotz kognitiven Verstehens</li>
+              <li>✓ Psychosomatische Beschwerden ohne medizinische Ursache</li>
+            </ul>
           </div>
         </section>
 
-        {/* Comparison table */}
-        <section aria-labelledby="comparison-heading" className="mt-12 sm:mt-16">
+        {/* Wissenschaftlicher Hintergrund */}
+        <section aria-labelledby="scientific-basis-heading" className="mt-12 sm:mt-16">
           <div className="relative rounded-2xl border bg-white p-6 sm:p-8">
-            <h2 id="comparison-heading" className="text-2xl font-semibold">SE vs. andere Traumatherapien</h2>
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-left text-sm text-gray-700">
-                <thead>
-                  <tr className="border-b text-gray-600">
-                    <th className="py-2 pr-4">Methode</th>
-                    <th className="py-2 pr-4">Ansatz</th>
-                    <th className="py-2">Besonders geeignet für</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b">
-                    <td className="py-2 pr-4 font-medium">SE</td>
-                    <td className="py-2 pr-4">Nervensystem‑Regulation</td>
-                    <td className="py-2">Schocktrauma, somatische Symptome</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-2 pr-4 font-medium">EMDR</td>
-                    <td className="py-2 pr-4">Bilaterale Stimulation</td>
-                    <td className="py-2">PTBS mit klaren Erinnerungen</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-2 pr-4 font-medium">Trauma‑VT</td>
-                    <td className="py-2 pr-4">Kognitive Umstrukturierung</td>
-                    <td className="py-2">Wenn Denkmuster im Vordergrund</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2 pr-4 font-medium">NARM</td>
-                    <td className="py-2 pr-4">Entwicklungs‑/Beziehungsmuster</td>
-                    <td className="py-2">Frühe Bindungstraumata</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-2 text-sm text-gray-700">SE kann hervorragend mit anderen Methoden kombiniert werden.</p>
+            <h2 id="scientific-basis-heading" className="text-2xl font-semibold">Wissenschaftlicher Hintergrund</h2>
+            
+            <h3 className="mt-4 text-xl font-semibold">Theoretische Fundierung</h3>
+            <p className="mt-3 text-gray-700 leading-7">
+              NARM integriert verschiedene wissenschaftlich fundierte Ansätze:
+            </p>
+            <ul className="mt-2 ml-4 list-disc space-y-1 text-sm text-gray-700">
+              <li><strong>Bindungstheorie</strong> (Bowlby, Ainsworth): Frühe Beziehungsmuster prägen</li>
+              <li><strong>Interpersonelle Neurobiologie</strong> (Siegel): Beziehungen formen das Gehirn</li>
+              <li><strong>Polyvagal-Theorie</strong> (Porges): Nervensystem und soziale Verbindung</li>
+              <li><strong>Affektregulationstheorie</strong> (Schore): Rechte Gehirnhälfte und Emotionsregulation</li>
+              <li><strong>Somatische Therapieansätze</strong>: Körper als Ressource für Heilung</li>
+            </ul>
+
+            <h3 className="mt-6 text-xl font-semibold">Aktuelle Evidenzlage</h3>
+            <p className="mt-3 text-sm text-gray-700">
+              <strong>Transparenzhinweis:</strong> NARM selbst hat noch keine randomisierten kontrollierten Studien. Die Methode basiert auf:
+            </p>
+            <ul className="mt-2 ml-4 list-disc space-y-1 text-sm text-gray-700">
+              <li>15+ Jahren klinischer Praxis und Fallstudien</li>
+              <li>Integration evidenzbasierter Komponenten (Achtsamkeit, somatische Ansätze)</li>
+              <li>Systematischer Ausbildung mit über 2000 Therapeut:innen weltweit</li>
+              <li>Positiven Erfahrungsberichten aus der Praxis</li>
+            </ul>
+            <p className="mt-3 text-sm text-gray-700">
+              Die einzelnen Komponenten von NARM (somatische Achtsamkeit, Bindungsarbeit) sind gut erforscht. Spezifische NARM-Forschung ist in Planung.
+            </p>
           </div>
         </section>
 
-        {/* Training */}
+        {/* NARM-Ausbildung */}
         <section aria-labelledby="training-heading" className="mt-12 sm:mt-16">
           <div className="relative rounded-2xl border bg-white p-6 sm:p-8">
-            <h2 id="training-heading" className="text-2xl font-semibold">Die SE‑Ausbildung: Höchste Standards</h2>
-            <div className="mt-3 grid gap-6 sm:grid-cols-2">
+            <h2 id="training-heading" className="text-2xl font-semibold">NARM-Ausbildung in Deutschland</h2>
+            <p className="mt-3 text-gray-700 leading-7">
+              Die 3-jährige NARM-Ausbildung (720 Stunden) wird angeboten von:
+            </p>
+            
+            <div className="mt-4 space-y-4">
               <div>
-                <h3 className="font-medium">Struktur</h3>
+                <h3 className="font-semibold text-gray-900">UTA Akademie Köln</h3>
                 <ul className="mt-2 ml-4 list-disc space-y-1 text-sm text-gray-700">
-                  <li>Beginner I–II (je 4 Tage)</li>
-                  <li>Intermediate I–III (je 4 Tage)</li>
-                  <li>Advanced I–III (je 4 Tage)</li>
-                  <li>18 Übungsgruppentreffen</li>
-                  <li>12 Einzelsitzungen eigene SE‑Erfahrung</li>
-                  <li>6 Supervisionssitzungen</li>
+                  <li>4 Module à 5 Tage pro Jahr</li>
+                  <li>Direkte Supervision durch Senior-Trainer</li>
+                  <li><a href="https://uta-akademie.de" className="underline" target="_blank" rel="noopener noreferrer">www.uta-akademie.de</a></li>
                 </ul>
               </div>
+
               <div>
-                <h3 className="font-medium">Anbieter & Zertifizierung</h3>
+                <h3 className="font-semibold text-gray-900">NARM Training Institute</h3>
                 <ul className="mt-2 ml-4 list-disc space-y-1 text-sm text-gray-700">
-                  <li>Somatic Experiencing Deutschland e.V. (<a className="underline" href="https://somatic-experiencing.de" target="_blank" rel="noopener noreferrer">somatic-experiencing.de</a>)</li>
-                  <li>Zertifizierung durch SE International</li>
-                  <li>Geschützte Bezeichnung „SEP“ (SE Practitioner)</li>
-                  <li>Kontinuierliche Fortbildung erforderlich</li>
+                  <li>Internationale Ausbildungen</li>
+                  <li>Online- und Präsenzmodule</li>
+                  <li><a href="https://narmtraining.com" className="underline" target="_blank" rel="noopener noreferrer">www.narmtraining.com</a></li>
                 </ul>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* Exercise */}
-        <section aria-labelledby="exercise-heading" className="mt-12 sm:mt-16">
-          <div className="relative rounded-2xl border bg-white p-6 sm:p-8">
-            <h2 id="exercise-heading" className="text-2xl font-semibold">SE‑Übung: Orientierung im Raum</h2>
-            <ol className="mt-3 list-inside list-decimal space-y-2 text-sm text-gray-700">
-              <li><strong>Lass deinen Blick langsam wandern</strong> – ohne zu suchen, einfach schauen.</li>
-              <li><strong>Folge deiner natürlichen Neugier</strong> – was zieht deine Aufmerksamkeit an?</li>
-              <li><strong>Bewege dabei sanft den Kopf</strong> – spüre die Nackenbewegung.</li>
-              <li><strong>Bemerke Veränderungen</strong> – Atmung? Entspannung? Gähnen?</li>
-            </ol>
-            <p className="mt-2 text-sm text-gray-700">Diese einfache Übung signalisiert Sicherheit und ist die Basis jeder SE‑Arbeit.</p>
-          </div>
-        </section>
-
-        
-
-        {/* Core concepts */}
-        <section aria-labelledby="core-concepts-heading" className="mt-12 sm:mt-16">
-          <div className="relative rounded-2xl border bg-white p-6 sm:p-8">
-            <h2 id="core-concepts-heading" className="text-2xl font-semibold">Die SE‑Kernkonzepte</h2>
-
-            <h3 className="mt-4 text-xl font-semibold">1. Titration – Die Kunst der Dosierung</h3>
-            <p className="mt-2 text-sm text-gray-700">Traumatische Aktivierung wird in kleinsten Einheiten bearbeitet – wie ein Tropfen Essenz in Wasser. Dies verhindert Überflutung und ermöglicht Integration.</p>
-            <p className="mt-1 text-sm text-gray-700"><em>Beispiel:</em> Statt die ganze Unfallsituation zu aktivieren, nur die leichte Anspannung im Nacken spüren.</p>
-
-            <h3 className="mt-5 text-xl font-semibold">2. Pendulation – Der natürliche Rhythmus</h3>
-            <ul className="mt-2 ml-4 list-disc space-y-1 text-sm text-gray-700">
-              <li>Von Aktivierung zu Beruhigung</li>
-              <li>Von Kontraktion zu Expansion</li>
-              <li>Von Dysregulation zu Regulation</li>
-            </ul>
-
-            <h3 className="mt-5 text-xl font-semibold">3. Ressourcenbildung</h3>
-            <ul className="mt-2 ml-4 list-disc space-y-1 text-sm text-gray-700">
-              <li>Körperliche Ressourcen: Orte der Ruhe im Körper</li>
-              <li>Äußere Ressourcen: Positive Erinnerungen, Menschen</li>
-              <li>Gegenwärtige Ressourcen: Sicherheit im Hier und Jetzt</li>
-            </ul>
-
-            <h3 className="mt-5 text-xl font-semibold">4. Felt Sense – Die Sprache des Körpers</h3>
-            <ul className="mt-2 ml-4 list-disc space-y-1 text-sm text-gray-700">
-              <li>Kribbeln, Wärme, Enge, Weite</li>
-              <li>Bewegungsimpulse</li>
-              <li>Subtile Veränderungen</li>
-            </ul>
-          </div>
-        </section>
-
-        {/* SIBAM model */}
-        <section aria-labelledby="sibam-heading" className="mt-12 sm:mt-16">
-          <div className="relative rounded-2xl border bg-white p-6 sm:p-8">
-            <h2 id="sibam-heading" className="text-2xl font-semibold">Das SIBAM‑Modell: Integration der Erfahrung</h2>
-            <p className="mt-2 text-sm text-gray-700">Trauma fragmentiert unsere Erfahrung. SE integriert fünf Kanäle:</p>
-            <ul className="mt-3 ml-4 list-disc space-y-2 text-sm text-gray-700">
-              <li><strong>S – Sensation (Empfindung):</strong> Was spürst du gerade?</li>
-              <li><strong>I – Image (Bild):</strong> Innere Bilder, Farben, Formen</li>
-              <li><strong>B – Behavior (Verhalten):</strong> Bewegungsimpulse, Gesten, Haltungen</li>
-              <li><strong>A – Affect (Affekt):</strong> Emotionen, die auftauchen dürfen</li>
-              <li><strong>M – Meaning (Bedeutung):</strong> Gedanken und Interpretationen</li>
-            </ul>
-            <p className="mt-2 text-sm text-gray-700">Integration dieser Elemente = kohärente Erfahrung = Heilung.</p>
+            
+            <p className="mt-4 text-sm text-gray-700">
+              <strong>Voraussetzung:</strong> Psychotherapeutische oder beratende Grundausbildung
+            </p>
           </div>
         </section>
 
@@ -319,27 +316,15 @@ export default async function NarmPage() {
         {/* Related treatments (exclude current) */}
         <RelatedTreatments currentSlug="narm" />
 
-        {/* Wissenschaftliche Quellen */}
-        <section aria-labelledby="sources-heading" className="mt-12 sm:mt-16">
-          <div className="relative rounded-2xl border bg-white p-6 sm:p-8">
-            <h2 id="sources-heading" className="text-2xl font-semibold">Wissenschaftliche Quellen</h2>
-            <ul className="mt-3 ml-4 list-disc space-y-2 text-sm text-gray-700">
-              <li>Brom, D. et al. (2017). Somatic Experiencing for PTSD – randomized controlled outcome study. <em>Journal of Traumatic Stress, 30</em>(3).</li>
-              <li>Andersen, T. E. et al. (2017). Brief SE für chronische Rückenschmerzen mit komorbider PTBS. <em>European Journal of Psychotraumatology, 8</em>(1).</li>
-              <li>Levine, P. A. (2010). <em>In an Unspoken Voice</em>. North Atlantic Books.</li>
-              <li>Porges, S. W. (2011). <em>The Polyvagal Theory</em>. W. W. Norton.</li>
-            </ul>
-          </div>
-        </section>
 
         {/* Weiterführende Links */}
         <section aria-labelledby="links-heading" className="mt-12 sm:mt-16">
           <div className="relative rounded-2xl border bg-white p-6 sm:p-8">
             <h2 id="links-heading" className="text-2xl font-semibold">Weiterführende Links</h2>
             <ul className="mt-3 ml-4 list-disc space-y-2 text-sm text-gray-700">
-              <li><a className="underline" href="https://traumahealing.org" target="_blank" rel="noopener noreferrer">SE International</a></li>
-              <li><a className="underline" href="https://somatic-experiencing.de" target="_blank" rel="noopener noreferrer">Somatic Experiencing Deutschland e.V.</a></li>
-              <li><a className="underline" href="https://www.peterllevine.com" target="_blank" rel="noopener noreferrer">Dr. Peter Levine – Bücher & Ressourcen</a></li>
+              <li><a className="underline" href="https://drlaurenceheller.com/de/" target="_blank" rel="noopener noreferrer">NARM auf Deutsch – Laurence Heller</a></li>
+              <li><a className="underline" href="https://www.kosel.de/buecher/entwicklungstrauma-heilen" target="_blank" rel="noopener noreferrer">Buch: „Entwicklungstrauma heilen“ – Heller & LaPierre</a></li>
+              <li>Andere Methoden: <a className="underline" href="/therapie/somatic-experiencing">Somatic Experiencing</a></li>
             </ul>
           </div>
         </section>
@@ -357,7 +342,7 @@ export default async function NarmPage() {
 
         <FinalCtaSection
           heading="Bereit, aus alten Mustern auszusteigen?"
-          subtitle="NARM hilft Ihnen, von einem Leben des Überlebens zu einem Leben der Lebendigkeit zu finden. Unsere zertifizierten NARM-Therapeuten begleiten Sie dabei."
+          subtitle="NARM hilft Ihnen, von einem Leben des Überlebens zu einem Leben der Lebendigkeit zu finden. Unsere zertifizierten NARM-Therapeut:innen begleiten Sie dabei."
           buttonLabel="Jetzt Therapeut:in finden"
         />
       </main>

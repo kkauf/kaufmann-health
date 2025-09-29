@@ -16,8 +16,8 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.kaufmann-health
 export const metadata = async ({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }): Promise<Metadata> => {
   const variant = (searchParams?.v as string)?.toUpperCase();
   const isTestVariant = variant === 'B' || variant === 'C';
-  const title = "Körpertherapie Berlin | Wissenschaftlich fundierte körperorientierte Therapie";
-  const description = "Körpertherapie in Berlin: Wissenschaftlich fundiert, professionell und ohne Esoterik. Erfahren Sie, wie körperorientierte Therapie bei Trauma, Stress und emotionalen Blockaden helfen kann.";
+  const title = "Körpertherapie | Wissenschaftlich fundierte körperorientierte Therapie";
+  const description = "Körpertherapie: Wissenschaftlich fundiert, professionell und ohne Esoterik. Erfahren Sie, wie körperorientierte Therapie bei Trauma, Stress und emotionalen Blockaden helfen kann.";
   return {
     title,
     description,
@@ -395,7 +395,7 @@ export default async function KoerpertherapiePage() {
 
         <FinalCtaSection 
           heading="Bereit für körperorientierte Therapie?" 
-          subtitle="Finden Sie eine:n qualifizierte:n Therapeut:in für Körpertherapie in Berlin – wissenschaftlich fundiert und professionell begleitet."
+          subtitle="Finden Sie eine:n qualifizierte:n Therapeut:in für Körpertherapie – wissenschaftlich fundiert und professionell begleitet."
         />
       </main>
 
