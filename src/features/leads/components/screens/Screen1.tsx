@@ -99,7 +99,10 @@ export default function Screen1({
       if (!err) onNext();
     } else {
       const phone = values.phone_number || '';
-      if (!phone || phone.length < 8) {
+      // react-international-phone gives us E.164 format (e.g., +4915212345678)
+      // German mobile numbers: +49 followed by 10-11 digits = 13-14 chars total
+      const cleaned = phone.replace(/\s+/g, '');
+      if (!phone || cleaned.length < 12 || !cleaned.startsWith('+')) {
         setPhoneError('Bitte gib eine gültige Handynummer ein.');
       } else {
         setPhoneError(null);

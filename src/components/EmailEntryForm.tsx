@@ -130,8 +130,10 @@ export function ContactEntryForm({
       }
     } else {
       // Basic phone validation (detailed validation happens on backend)
-      // react-international-phone gives us E.164 format
-      if (!phoneValue || phoneValue.length < 8) {
+      // react-international-phone gives us E.164 format (e.g., +4915212345678)
+      // German mobile numbers: +49 followed by 10-11 digits = 13-14 chars total
+      const cleaned = phoneValue.replace(/\s+/g, '');
+      if (!phoneValue || cleaned.length < 12 || !cleaned.startsWith('+')) {
         nextErrors.phone = 'Bitte gib eine gültige Handynummer ein.';
       }
     }
