@@ -2,8 +2,12 @@ import { z, type ZodSchema } from 'zod';
 import { safeJson } from '@/lib/http';
 
 // Shared schema that both frontend and backend can import
+// EARTH-191: Support both email and phone as primary contact
 export const leadSubmissionSchema = z.object({
-  email: z.string().email(),
+  // Contact: either email OR phone_number required (validated with refine below)
+  email: z.string().email().optional(),
+  phone_number: z.string().min(8).optional(),
+  contact_method: z.enum(['email', 'phone']).optional(),
   consent_share_with_therapists: z.literal(true),
   privacy_version: z.string().min(1),
   // Optional-but-commonly-present fields
@@ -15,7 +19,10 @@ export const leadSubmissionSchema = z.object({
   session_preferences: z.array(z.enum(['online', 'in_person'])).min(1).max(2).optional(),
   form_session_id: z.string().optional(),
   confirm_redirect_path: z.string().optional(),
-});
+}).refine(
+  (data) => data.email || data.phone_number,
+  { message: 'Either email or phone_number is required' }
+);
 
 // Middleware-style helper for API routes (server only)
 export function validateContract<TSchema extends ZodSchema>(schema: TSchema) {

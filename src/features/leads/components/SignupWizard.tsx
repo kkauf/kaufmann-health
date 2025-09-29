@@ -656,13 +656,15 @@ export default function SignupWizard() {
           void trackEvent('fs_patched_on_submit', { step });
         }
       } catch {}
-      // Trigger email confirmation after completion (EARTH-190)
-      // Validate contract before sending
+      // Trigger email confirmation after completion (EARTH-190, EARTH-191)
+      // Validate contract before sending (supports both email and phone)
       const sessionPref = data.session_preference;
       const submission = leadSubmissionSchema.safeParse({
         type: 'patient' as const,
         name: data.name,
         email: data.email,
+        phone_number: data.phone_number,
+        contact_method: data.contact_method,
         form_session_id: sessionIdRef.current || undefined,
         confirm_redirect_path: '/fragebogen' as const,
         consent_share_with_therapists: true as const,
