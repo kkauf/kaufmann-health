@@ -4,8 +4,9 @@ export type LeadType = 'patient' | 'therapist';
 
 export type LeadPayload = {
   name?: string;
-  email: string;
+  email?: string; // Optional now that we support phone_number as primary contact
   phone?: string;
+  phone_number?: string; // EARTH-191: E.164 format for SMS verification
   notes?: string;
   city?: string;
   issue?: string;
@@ -26,6 +27,9 @@ export type LeadPayload = {
   // EARTH-190: optional linkage for email-first wizard flow
   form_session_id?: string;
   confirm_redirect_path?: string;
+  // EARTH-191: SMS verification support
+  verification_code?: string; // 6-digit SMS code for verification
+  contact_method?: 'email' | 'phone'; // Which method user chose
 };
 
 export type HandlerContext = {
