@@ -161,7 +161,7 @@ export default function Screen1({
             <PhoneInput
               defaultCountry="de"
               value={values.phone_number || '+49'}
-              onChange={(phone) => onChange({ phone_number: phone })}
+              onChange={(phone) => onChange({ phone_number: phone.replace(/\s+/g, '') })}
               inputClassName={phoneError ? 'border-red-500' : ''}
               className="w-full"
               placeholder="176 123 45678"

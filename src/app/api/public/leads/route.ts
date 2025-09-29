@@ -522,11 +522,16 @@ export async function POST(req: Request) {
     }
 
     // Validate phone if provided (basic E.164 check)
-    if (phoneNumber && phoneNumber.length < 8) {
-      return safeJson(
-        { data: null, error: 'Invalid phone number' },
-        { status: 400, headers: { 'Cache-Control': 'no-store' } },
-      );
+    // react-international-phone gives us E.164 format (e.g., +4915212345678)
+    // German mobile numbers: +49 followed by 10-11 digits = 13-14 chars total
+    if (phoneNumber) {
+      const cleaned = phoneNumber.replace(/\s+/g, '');
+      if (cleaned.length < 12 || !cleaned.startsWith('+')) {
+        return safeJson(
+          { data: null, error: 'Invalid phone number' },
+          { status: 400, headers: { 'Cache-Control': 'no-store' } },
+        );
+      }
     }
 
     const data: LeadPayload = {

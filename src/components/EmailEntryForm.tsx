@@ -217,7 +217,7 @@ export function ContactEntryForm({
             <PhoneInput
               defaultCountry="de"
               value={phone}
-              onChange={(phone) => setPhone(phone)}
+              onChange={(phone) => setPhone(phone.replace(/\s+/g, ''))}
               inputClassName={errors.phone ? 'border-red-500' : ''}
               className="w-full"
               placeholder="176 123 45678"
