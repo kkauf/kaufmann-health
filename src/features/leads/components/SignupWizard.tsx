@@ -12,6 +12,7 @@ import Screen5 from './screens/Screen5';
 import { Button } from '@/components/ui/button';
 import { leadSubmissionSchema } from '@/lib/contracts';
 import { PRIVACY_VERSION } from '@/lib/privacy';
+import { normalizePhoneNumber } from '@/lib/verification/phone';
 
 const LS_KEYS = {
   data: 'kh_wizard_data',
@@ -316,31 +317,7 @@ export default function SignupWizard() {
     void trackEvent('screen_viewed', { step });
   }, [step, trackEvent]);
 
-  // Auto-advance from Screen 1 when name+(email|phone) are already filled (landing handoff)
-  const autoAdvancedRef = React.useRef(false);
-  React.useEffect(() => {
-    if (autoAdvancedRef.current) return;
-    if (step !== 1) return;
-    const hasName = typeof data.name === 'string' && data.name.trim().length > 0;
-    const hasEmail = typeof data.email === 'string' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email);
-    const hasPhone = typeof data.phone_number === 'string' && data.phone_number.length >= 8;
-    
-    // Email users: can advance to step 2 with just email (verified later via email link)
-    // Phone users: must have completed SMS verification to skip past step 1.5
-    if (data.contact_method === 'email') {
-      if (hasName && hasEmail) {
-        autoAdvancedRef.current = true;
-        safeGoToStep(2);
-      }
-    } else if (data.contact_method === 'phone') {
-      if (hasName && hasPhone) {
-        autoAdvancedRef.current = true;
-        // Only advance to step 2 if phone is verified, otherwise stay at step 1.5 for verification
-        const nextStep = data.phone_verified === true ? 2 : 1.5;
-        safeGoToStep(nextStep);
-      }
-    }
-  }, [step, data.name, data.email, data.phone_number, data.contact_method, data.phone_verified, safeGoToStep]);
+  // (moved below after handleSendSmsCode definition)
 
   // Backend autosave every 30s when data changes
   React.useEffect(() => {
@@ -387,9 +364,8 @@ export default function SignupWizard() {
   }, [data, step]);
 
   // SMS code sending and verification handlers
-  const handleSendSmsCode = React.useCallback(async () => {
-    if (!data.phone_number) return;
-    
+  const handleSendSmsCode = React.useCallback(async (): Promise<boolean> => {
+    if (!data.phone_number) return false;
     try {
       const res = await fetch('/api/public/verification/send-code', {
         method: 'POST',
@@ -400,15 +376,20 @@ export default function SignupWizard() {
           form_session_id: sessionId || undefined,
         }),
       });
-      
+      const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error('Failed to send SMS');
-      
+      // If API indicates fallback to email, don't move to SMS screen
+      if (j?.data?.fallback === 'email') {
+        saveLocal({ contact_method: 'email' });
+        return false;
+      }
       void trackEvent('verification_code_sent', { contact_type: 'phone' });
+      return true;
     } catch (err) {
       console.error('Failed to send SMS code:', err);
       throw err;
     }
-  }, [data.phone_number, sessionId, trackEvent]);
+  }, [data.phone_number, sessionId, trackEvent, saveLocal]);
 
   const handleVerifySmsCode = React.useCallback(async (code: string): Promise<{ success: boolean; error?: string }> => {
     if (!data.phone_number) return { success: false, error: 'Keine Telefonnummer' };
@@ -458,8 +439,9 @@ export default function SignupWizard() {
               // If email, go directly to Screen2
               if (data.contact_method === 'phone' && data.phone_number) {
                 try {
-                  await handleSendSmsCode();
-                  safeGoToStep(1.5);
+                  const sent = await handleSendSmsCode();
+                  if (sent) safeGoToStep(1.5);
+                  else safeGoToStep(2); // Fallback to email
                 } catch (err) {
                   console.error('Failed to send SMS:', err);
                   // Could show error to user here
@@ -481,7 +463,7 @@ export default function SignupWizard() {
           <Screen1_5
             phoneNumber={data.phone_number}
             onVerify={handleVerifySmsCode}
-            onResend={handleSendSmsCode}
+            onResend={async () => { await handleSendSmsCode(); }}
             disabled={navLock || submitting}
           />
         );

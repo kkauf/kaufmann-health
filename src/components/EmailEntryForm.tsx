@@ -19,6 +19,7 @@ import { getVerificationModeClient } from '@/lib/verification/config';
 import { PhoneInput } from 'react-international-phone';
 import 'react-international-phone/style.css';
 import './phone-input-custom.css';
+import { normalizePhoneNumber } from '@/lib/verification/phone';
 
 // Note: Google Ads conversions are handled at Fragebogen completion (client + server).
 
@@ -83,7 +84,7 @@ export function ContactEntryForm({
   };
 
   const [contactMethod, setContactMethod] = useState<ContactMethod>(getInitialContactMethod());
-  const [phone, setPhone] = useState('+49'); // Default to Germany
+  const [phone, setPhone] = useState(''); // Controlled; dial code shown via forceDialCode
 
   // After mount, offer to switch based on saved preference or device (choice mode only)
   useEffect(() => {
@@ -121,7 +122,17 @@ export function ContactEntryForm({
     const data = new FormData(form);
     const name = String(data.get('name') || '').trim();
     const email = contactMethod === 'email' ? String(data.get('email') || '').trim().toLowerCase() : '';
-    const phoneValue = contactMethod === 'phone' ? phone : '';
+    // Prefer controlled state, but fall back to DOM value in case of library quirks
+    let phoneValue = contactMethod === 'phone' ? phone : '';
+    if (contactMethod === 'phone') {
+      if (!phoneValue || phoneValue === '+49') {
+        const domInput = form.querySelector<HTMLInputElement>('input[type="tel"], input.PhoneInputInput');
+        if (domInput?.value) phoneValue = domInput.value;
+      }
+      // Normalize to E.164 (+4917...)
+      const normalized = normalizePhoneNumber(phoneValue || '');
+      phoneValue = normalized || phoneValue;
+    }
 
     const nextErrors: Record<string, string> = {};
     if (!name) nextErrors.name = 'Bitte gib deinen Namen an.';
@@ -131,12 +142,13 @@ export function ContactEntryForm({
         nextErrors.email = 'Bitte gib eine gültige E‑Mail-Adresse ein.';
       }
     } else {
-      // Basic phone validation (detailed validation happens on backend)
-      // react-international-phone gives us E.164 format (e.g., +4915212345678)
-      // German mobile numbers: +49 followed by 10-11 digits = 13-14 chars total
-      const cleaned = phoneValue.replace(/\s+/g, '');
-      if (!phoneValue || cleaned.length < 12 || !cleaned.startsWith('+')) {
+      // Client-side phone validation aligned with server: must normalize to E.164
+      const normalized = normalizePhoneNumber(phoneValue || '');
+      if (!normalized) {
         nextErrors.phone = 'Bitte gib eine gültige Handynummer ein.';
+      } else {
+        // Replace with normalized value for downstream persistence
+        phoneValue = normalized;
       }
     }
 
@@ -219,12 +231,13 @@ export function ContactEntryForm({
             <PhoneInput
               defaultCountry="de"
               value={phone}
-              onChange={(phone) => setPhone(phone)}
+              onChange={(phone) => setPhone(phone.replace(/\s+/g, ''))}
               inputClassName={errors.phone ? 'border-red-500' : ''}
               className="w-full"
               placeholder="176 123 45678"
               forceDialCode={true}
               inputProps={{
+                name: 'phone_number',
                 autoComplete: 'tel',
                 inputMode: 'tel' as const,
               }}
