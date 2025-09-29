@@ -249,7 +249,7 @@ export default async function SomaticExperiencingPage() {
                 <ul className="mt-2 ml-4 list-disc space-y-1 text-sm text-gray-700">
                   <li>Somatic Experiencing Deutschland e.V. (<a className="underline" href="https://somatic-experiencing.de" target="_blank" rel="noopener noreferrer">somatic-experiencing.de</a>)</li>
                   <li>Zertifizierung durch SE International</li>
-                  <li>Geschützte Bezeichnung „SEP" (SE Practitioner)</li>
+                  <li>Geschützte Bezeichnung „SEP“ (SE Practitioner)</li>
                   <li>Kontinuierliche Fortbildung erforderlich</li>
                 </ul>
               </div>
