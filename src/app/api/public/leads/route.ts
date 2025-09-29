@@ -805,7 +805,7 @@ export async function POST(req: Request) {
       return await handleTherapistLead(
         { req, ip, ua },
         {
-          data: { name: data.name, email: data.email, phone: data.phone, notes: data.notes },
+          data: { name: data.name, email: data.email || '', phone: data.phone || '', notes: data.notes || '' },
           city: city || undefined,
           sessionPreferences,
           specializations,
