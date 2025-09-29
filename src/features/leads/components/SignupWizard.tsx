@@ -4,6 +4,7 @@ import React from 'react';
 import { useSearchParams } from 'next/navigation';
 import ProgressBar from './ProgressBar';
 import Screen1, { type Screen1Values } from './screens/Screen1';
+import Screen1_5, { type Screen1_5Values } from './screens/Screen1_5';
 import Screen2, { type Screen2Values } from './screens/Screen2';
 import Screen3, { type Screen3Values } from './screens/Screen3';
 import Screen4, { type Screen4Values } from './screens/Screen4';
@@ -18,7 +19,8 @@ const LS_KEYS = {
   sessionId: 'kh_form_session_id',
 } as const;
 
-export type WizardData = Screen1Values & {
+export type WizardData = Omit<Screen1Values, 'email'> & Screen1_5Values & {
+  email?: string; // Make email optional since we might use phone instead
   // Screen 2
   start_timing?: Screen2Values['start_timing'];
   kassentherapie?: Screen2Values['kassentherapie'];
@@ -40,12 +42,12 @@ export type WizardData = Screen1Values & {
   additional_info?: string;
 };
 
-const PROGRESS = [0, 20, 50, 75, 90, 100];
+const PROGRESS = [0, 10, 20, 50, 75, 90, 100]; // 0, step1, step1.5, step2, step3, step4, step5
 
 export default function SignupWizard() {
   const searchParams = useSearchParams();
   const [step, setStep] = React.useState<number>(1);
-  const [data, setData] = React.useState<WizardData>({ name: '', email: '' });
+  const [data, setData] = React.useState<WizardData>({ name: '' });
   const [saving, setSaving] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [submitSlow, setSubmitSlow] = React.useState(false);
@@ -365,15 +367,102 @@ export default function SignupWizard() {
     return () => clearInterval(interval);
   }, [data, step]);
 
-  // Simple screen renderers (only Screen 1 fully implemented now)
+  // SMS code sending and verification handlers
+  const handleSendSmsCode = React.useCallback(async () => {
+    if (!data.phone_number) return;
+    
+    try {
+      const res = await fetch('/api/public/verification/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact: data.phone_number,
+          contact_type: 'phone',
+          form_session_id: sessionId || undefined,
+        }),
+      });
+      
+      if (!res.ok) throw new Error('Failed to send SMS');
+      
+      void trackEvent('verification_code_sent', { contact_type: 'phone' });
+    } catch (err) {
+      console.error('Failed to send SMS code:', err);
+      throw err;
+    }
+  }, [data.phone_number, sessionId, trackEvent]);
+
+  const handleVerifySmsCode = React.useCallback(async (code: string): Promise<{ success: boolean; error?: string }> => {
+    if (!data.phone_number) return { success: false, error: 'Keine Telefonnummer' };
+    
+    try {
+      const res = await fetch('/api/public/verification/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact: data.phone_number,
+          contact_type: 'phone',
+          code,
+        }),
+      });
+      
+      const result = await res.json();
+      
+      if (result.data?.verified) {
+        saveLocal({ phone_verified: true });
+        void trackEvent('verification_code_verified', { contact_type: 'phone' });
+        safeGoToStep(2);
+        return { success: true };
+      }
+      
+      return { success: false, error: 'Ungültiger Code' };
+    } catch (err) {
+      console.error('Failed to verify SMS code:', err);
+      return { success: false, error: 'Fehler bei der Überprüfung' };
+    }
+  }, [data.phone_number, saveLocal, trackEvent]);
+
+  // Simple screen renderers
   function renderScreen() {
     switch (step) {
       case 1:
         return (
           <Screen1
-            values={{ name: data.name, email: data.email }}
+            values={{ 
+              name: data.name, 
+              email: data.email, 
+              phone_number: data.phone_number,
+              contact_method: data.contact_method,
+            }}
             onChange={saveLocal}
-            onNext={() => safeGoToStep(2)}
+            onNext={async () => {
+              // If phone, send SMS and go to Screen1.5
+              // If email, go directly to Screen2
+              if (data.contact_method === 'phone' && data.phone_number) {
+                try {
+                  await handleSendSmsCode();
+                  safeGoToStep(1.5);
+                } catch (err) {
+                  console.error('Failed to send SMS:', err);
+                  // Could show error to user here
+                }
+              } else {
+                safeGoToStep(2);
+              }
+            }}
+            disabled={navLock || submitting}
+          />
+        );
+      case 1.5:
+        // SMS verification screen (phone users only)
+        if (data.contact_method !== 'phone' || !data.phone_number) {
+          safeGoToStep(2);
+          return null;
+        }
+        return (
+          <Screen1_5
+            phoneNumber={data.phone_number}
+            onVerify={handleVerifySmsCode}
+            onResend={handleSendSmsCode}
             disabled={navLock || submitting}
           />
         );
