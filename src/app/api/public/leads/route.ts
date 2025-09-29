@@ -8,6 +8,7 @@ import { renderTherapistWelcome } from '@/lib/email/templates/therapistWelcome';
 import { renderEmailConfirmation } from '@/lib/email/templates/emailConfirmation';
 import { logError, track } from '@/lib/logger';
 import { BASE_URL } from '@/lib/constants';
+import { createTherapistOptOutToken } from '@/lib/signed-links';
 import { parseAttributionFromRequest, parseCampaignFromRequest, ServerAnalytics } from '@/lib/server-analytics';
 import { sanitize, normalizeSpecializations, hashIP } from '@/lib/leads/validation';
 import { isIpRateLimited } from '@/lib/leads/rateLimit';
@@ -418,10 +419,22 @@ async function handleTherapistMultipart(req: Request) {
       ua,
       props: { stage: 'therapist_welcome', lead_id: therapistId, lead_type: 'therapist', subject: welcome.subject },
     });
+    // Include List-Unsubscribe for recurring onboarding reminders (opt-out)
+    let headers: Record<string, string> | undefined;
+    try {
+      const token = await createTherapistOptOutToken(String(therapistId));
+      const optOutUrl = `${BASE_URL}/api/therapists/opt-out?token=${encodeURIComponent(token)}`;
+      headers = {
+        'List-Unsubscribe': `<${optOutUrl}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      };
+    } catch {}
     await sendEmail({
       to: data.email,
       subject: welcome.subject,
       html: welcome.html,
+      ...(headers ? { headers } : {}),
+      replyTo: 'kontakt@kaufmann-health.de',
       context: { stage: 'therapist_welcome', lead_id: therapistId, lead_type: 'therapist' },
     });
   } catch (e) {
@@ -753,6 +766,7 @@ export async function POST(req: Request) {
           to: email,
           subject: emailContent.subject,
           html: emailContent.html,
+          replyTo: 'kontakt@kaufmann-health.de',
           context: {
             stage: 'email_confirmation',
             lead_id: effectiveId!,

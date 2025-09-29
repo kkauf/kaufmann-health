@@ -73,8 +73,8 @@ export function renderTherapistNotification(params: TherapistNotificationParams)
 
   let subject: string;
   if (params.subjectOverride && params.subjectOverride.trim()) subject = params.subjectOverride.trim();
-  else if (params.type === 'selection') subject = '🎉 Ein:e Klient:in hat dich ausgewählt – bitte Rückmeldung geben';
-  else if (params.type === 'reminder') subject = '⚠️ Erinnerung: Klient:in wartet auf deine Antwort';
+  else if (params.type === 'selection') subject = 'Ein:e Klient:in hat dich ausgewählt – bitte Rückmeldung geben';
+  else if (params.type === 'reminder') subject = 'Erinnerung: Klient:in wartet auf deine Antwort';
   else subject = `Neue Klientenanfrage – ${city || 'unbekannt'} – ${issue || 'Allgemein'}`;
 
   return { subject, html };

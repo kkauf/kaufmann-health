@@ -5,6 +5,7 @@ import { logError, track } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { renderTherapistNotification } from '@/lib/email/templates/therapistNotification';
 import { BASE_URL } from '@/lib/constants';
+import { createTherapistOptOutToken } from '@/lib/signed-links';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -155,16 +156,29 @@ export async function GET(req: Request) {
         patientIssue: patientMeta.issue || null,
         patientSessionPreference: patientMeta.session_preference ?? null,
         magicUrl,
-        subjectOverride: '⚠️ Erinnerung: Klient wartet auf Ihre Antwort',
+        subjectOverride: 'Erinnerung: Klient wartet auf Ihre Antwort',
       });
 
       try {
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.matches.therapist_action_reminders', props: { match_id } });
+        // Build List-Unsubscribe header using therapist opt-out token
+        let headers: Record<string, string> | undefined;
+        try {
+          const token = await createTherapistOptOutToken(String(tRow?.id || ''));
+          if (token) {
+            const optOutUrl = `${BASE_URL}/api/therapists/opt-out?token=${encodeURIComponent(token)}`;
+            headers = {
+              'List-Unsubscribe': `<${optOutUrl}>`,
+              'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+            };
+          }
+        } catch {}
         await sendEmail({
           to: therapistEmail,
           subject: notif.subject,
           html: notif.html,
-          text: notif.text,
+          ...(headers ? { headers } : {}),
+          replyTo: 'kontakt@kaufmann-health.de',
           context: { kind: 'therapist_action_reminder', match_id },
         });
         sent++;

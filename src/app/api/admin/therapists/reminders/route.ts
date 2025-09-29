@@ -256,6 +256,7 @@ export async function GET(req: Request) {
             'List-Unsubscribe': `<${optOutUrl}>`,
             'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
           },
+          replyTo: 'kontakt@kaufmann-health.de',
           context: { stage: 'therapist_profile_reminder', therapist_id: t.id },
         });
         sent++;
@@ -502,6 +503,7 @@ export async function POST(req: Request) {
             'List-Unsubscribe': `<${optOutUrl}>`,
             'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
           },
+          replyTo: 'kontakt@kaufmann-health.de',
           context: { stage: 'therapist_profile_reminder', therapist_id: t.id },
         });
         sent++;

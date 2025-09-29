@@ -22,7 +22,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import dotenv from 'dotenv';
 import { sendEmail } from '../src/lib/email/client';
+import { BASE_URL } from '../src/lib/constants';
 import { renderPatientConfirmation } from '../src/lib/email/templates/patientConfirmation';
+import { renderTherapistWelcome } from '../src/lib/email/templates/therapistWelcome';
+import { renderTherapistNotification } from '../src/lib/email/templates/therapistNotification';
 
 function loadEnv() {
   const cwd = process.cwd();
@@ -100,6 +103,13 @@ async function main() {
 
   const args = parseArgs(process.argv.slice(2));
   const marker = (args['marker'] || DEFAULT_MARKER).trim();
+  const template = (args['template'] || 'patientConfirmation').trim();
+  const neutral = (args['neutral'] || '').toLowerCase();
+  const useNeutral = neutral === 'true' || neutral === '1' || neutral === 'yes';
+  const textOnlyArg = (args['textOnly'] || '').toLowerCase();
+  const textOnly = textOnlyArg === 'true' || textOnlyArg === '1' || textOnlyArg === 'yes';
+  const replyTo = (args['replyTo'] || '').trim();
+  const unsubscribeRaw = (args['unsubscribe'] || '').trim();
   const toCsv = (args['to'] || '').trim();
   const recipients = toCsv
     ? toCsv.split(',').map((s) => s.trim()).filter(Boolean)
@@ -107,24 +117,62 @@ async function main() {
   const max = Math.max(1, Number(args['max'] || 5));
   const limited = recipients.slice(0, max);
 
-  // Render a real transactional template (patient confirmation) with benign sample data
-  const { subject: baseSubject, html: baseHtml } = renderPatientConfirmation({
-    name: 'Deliverability Test',
-    city: 'Berlin',
-    issue: 'Deliverability test email',
-    sessionPreference: 'online',
-  });
+  // Render chosen template with benign sample data
+  function renderContent(tpl: string): { subject: string; html?: string; text?: string } {
+    const t = tpl.toLowerCase();
+    if (t === 'therapistwelcome') {
+      const uploadUrl = `${BASE_URL}/therapists/complete-profile/test`;
+      return renderTherapistWelcome({
+        name: useNeutral ? 'Alex' : 'Deliverability Test',
+        city: 'Berlin',
+        isActiveCity: true,
+        termsVersion: '2025-09',
+        uploadUrl,
+      });
+    }
+    if (t.startsWith('therapistnotification')) {
+      const parts = tpl.split(':');
+      const subtype = (parts[1] || 'reminder').toLowerCase();
+      const type = (subtype === 'outreach' || subtype === 'selection' || subtype === 'reminder') ? (subtype as 'outreach' | 'selection' | 'reminder') : 'reminder';
+      const magicUrl = `${BASE_URL}/match/test`; // benign placeholder
+      return renderTherapistNotification({
+        type,
+        therapistName: useNeutral ? 'Alex' : 'Deliverability Test',
+        patientCity: 'Berlin',
+        patientIssue: useNeutral ? 'Anfrage' : 'Inbox test',
+        patientSessionPreference: 'online',
+        subjectOverride: type === 'reminder' ? 'Erinnerung: Bitte Rückmeldung geben' : undefined,
+        magicUrl,
+        expiresHours: 72,
+      });
+    }
+    // Default: patientConfirmation
+    return renderPatientConfirmation({
+      name: useNeutral ? 'Alex' : 'Deliverability Test',
+      city: 'Berlin',
+      issue: useNeutral ? 'Therapieanfrage' : 'Deliverability test email',
+      sessionPreference: 'online',
+    });
+  }
 
+  const { subject: baseSubject, html: baseHtml } = renderContent(template);
   const subject = baseSubject; // No subject marker by default
-  const html = baseHtml ? appendMarker(baseHtml, marker) : undefined;
-  // Place marker only in text (end) to avoid top-heavy signals
-  const text = `This is a one-off deliverability test using our real patient confirmation template.${marker ? `\n\n${marker}` : ''}`;
+  const html = textOnly ? undefined : (baseHtml ? appendMarker(baseHtml, marker) : undefined);
+  // Text body: neutral phrasing to avoid spammy 'test' wording
+  const baseText = useNeutral
+    ? 'Dies ist eine einmalige E-Mail mit neutralem Inhalt für Zustellbarkeitsprüfung.'
+    : 'This is a one-off deliverability test using our real transactional template.';
+  const text = `${baseText}${marker ? `\n\n${marker}` : ''}`;
 
   console.log(`Preparing to send ${limited.length} emails (cap=${max})...`);
   let sent = 0;
-  for (const to of limited) {
+  for (let i = 0; i < limited.length; i++) {
+    const to = limited[i];
     try {
-      await sendEmail({ to, subject, html, text, context: { template: 'spam_test', marker } });
+      const headers: Record<string, string> | undefined = unsubscribeRaw
+        ? { 'List-Unsubscribe': unsubscribeRaw.startsWith('<') ? unsubscribeRaw : `<${unsubscribeRaw}>`, ...(unsubscribeRaw.startsWith('http') ? { 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : {}) }
+        : undefined;
+      await sendEmail({ to, subject, html, text, ...(replyTo ? { replyTo } : {}), ...(headers ? { headers } : {}), context: { template: 'spam_test', marker, neutral: useNeutral, text_only: textOnly } });
       sent++;
       console.log(`Sent to ${to}`);
       // randomized delay (600-1400ms) to avoid burst patterns
@@ -132,6 +180,11 @@ async function main() {
       await sleep(jitter);
     } catch (e) {
       console.error(`Failed to send to ${to}:`, e);
+    }
+    // Explicit pause every 10 emails to further reduce burst patterns
+    if ((i + 1) % 10 === 0 && (i + 1) < limited.length) {
+      console.log(`Pause: waiting 30s before continuing (sent ${i + 1}/${limited.length})...`);
+      await sleep(30_000);
     }
   }
   console.log(`Done. Successfully attempted ${sent}/${limited.length}.`);

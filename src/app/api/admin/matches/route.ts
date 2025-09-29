@@ -5,6 +5,7 @@ import { logError } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { renderTherapistNotification } from '@/lib/email/templates/therapistNotification';
 import { BASE_URL } from '@/lib/constants';
+import { createTherapistOptOutToken } from '@/lib/signed-links';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { computeMismatches } from '@/lib/leads/match';
 
@@ -365,7 +366,24 @@ export async function POST(req: Request) {
 
           if (magicUrl && therapistEmail) {
             const content = renderTherapistNotification({ type: 'outreach', therapistName, patientCity: city, patientIssue: issue, magicUrl, expiresHours: 72 });
-            void sendEmail({ to: therapistEmail, subject: content.subject, html: content.html, context: { kind: 'therapist_outreach', match_id: matchId, patient_id, therapist_id: tid } });
+            // Opt-out header for recurring therapist notifications
+            let headers: Record<string, string> | undefined;
+            try {
+              const token = await createTherapistOptOutToken(String(tid));
+              const optOutUrl = `${BASE_URL}/api/therapists/opt-out?token=${encodeURIComponent(token)}`;
+              headers = {
+                'List-Unsubscribe': `<${optOutUrl}>`,
+                'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+              };
+            } catch {}
+            void sendEmail({
+              to: therapistEmail,
+              subject: content.subject,
+              html: content.html,
+              ...(headers ? { headers } : {}),
+              replyTo: 'kontakt@kaufmann-health.de',
+              context: { kind: 'therapist_outreach', match_id: matchId, patient_id, therapist_id: tid },
+            });
             void ServerAnalytics.trackEventFromRequest(req, { type: 'match_outreach_enqueued', source: 'admin.api.matches', props: { match_id: matchId, patient_id, therapist_id: tid } });
           } else {
             void ServerAnalytics.trackEventFromRequest(req, { type: 'match_outreach_skipped_no_secure_uuid', source: 'admin.api.matches', props: { match_id: matchId, patient_id, therapist_id: tid } });
