@@ -120,7 +120,13 @@ export default function SignupWizard() {
     switch (s) {
       case 1: {
         const miss: string[] = [];
-        if (!d.email) miss.push('email');
+        // Check contact info based on method
+        if (d.contact_method === 'email') {
+          if (!d.email) miss.push('email');
+        } else if (d.contact_method === 'phone') {
+          if (!d.phone_number) miss.push('phone_number');
+          if (!d.phone_verified) miss.push('phone_verified');
+        }
         return miss;
       }
       case 2: {
@@ -318,14 +324,23 @@ export default function SignupWizard() {
     const hasName = typeof data.name === 'string' && data.name.trim().length > 0;
     const hasEmail = typeof data.email === 'string' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email);
     const hasPhone = typeof data.phone_number === 'string' && data.phone_number.length >= 8;
-    const hasContactInfo = data.contact_method === 'email' ? hasEmail : hasPhone;
-    if (hasName && hasContactInfo) {
-      autoAdvancedRef.current = true;
-      // Phone users need SMS verification (step 1.5), email users go directly to step 2
-      const nextStep = data.contact_method === 'phone' ? 1.5 : 2;
-      safeGoToStep(nextStep);
+    
+    // Email users: can advance to step 2 with just email (verified later via email link)
+    // Phone users: must have completed SMS verification to skip past step 1.5
+    if (data.contact_method === 'email') {
+      if (hasName && hasEmail) {
+        autoAdvancedRef.current = true;
+        safeGoToStep(2);
+      }
+    } else if (data.contact_method === 'phone') {
+      if (hasName && hasPhone) {
+        autoAdvancedRef.current = true;
+        // Only advance to step 2 if phone is verified, otherwise stay at step 1.5 for verification
+        const nextStep = data.phone_verified === true ? 2 : 1.5;
+        safeGoToStep(nextStep);
+      }
     }
-  }, [step, data.name, data.email, data.phone_number, data.contact_method, safeGoToStep]);
+  }, [step, data.name, data.email, data.phone_number, data.contact_method, data.phone_verified, safeGoToStep]);
 
   // Backend autosave every 30s when data changes
   React.useEffect(() => {
