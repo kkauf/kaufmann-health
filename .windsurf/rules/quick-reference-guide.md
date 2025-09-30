@@ -21,16 +21,16 @@ npx shadcn@latest add button  # Add ShadCN component
 ```
 
 ## File Placement Rules
-- New API route? → `/api/public` or `/api/admin` (never under /app)
-- New component? → `/features/[domain]/components` or `/shared/components`
+- New API route? → `/app/api/public` or `/app/api/admin` (never scattered in /app)
+- New component? → `/features/[domain]/components` or `/components`
 - Business logic? → `/features/[domain]/lib`
 - Page? → `/app` with route groups: `/(public)`, `/(admin)`, `/(auth)`
 
 ## Active Features
-/features/leads → Lead forms, verification
-/features/therapists → Applications, profiles
-/features/matching → Match workflow
-/features/analytics → Tracking, attribution
+/features/leads → Email-first wizard, confirmation
+/features/landing → Landing page components (hero, process steps, therapist teasers)
+/features/therapy → Therapy modality pages
+/components → Shared UI (forms, analytics, email entry)
 
 If a file takes >3 clicks to find, move it.
 
@@ -122,10 +122,9 @@ const { data, error } = await supabase
 ### Update
 ```typescript
 const { error } = await supabase
-  .from('therapist_profiles')
-  .update({ available: false })
+  .from('therapists')
+  .update({ accepting_new: false })
   .eq('id', therapistId);
-```
 
 ## Email Patterns
 
@@ -170,6 +169,18 @@ const templates = {
 **Common mistake to avoid**: Don't duplicate the same event in both systems. Each serves different analytical needs.
 
 **When in doubt**: Check existing implementations in the codebase and follow established patterns from `docs/analytics.md`.
+
+## Google Ads Integration
+
+**Server-side Enhanced Conversions** (no client PII sent):
+- Fire-and-forget in POST /api/leads after successful insert
+- Uses OAuth2 refresh token (GOOGLE_ADS_CA_* env vars)
+- Hashed email only, sent server-side to Google Ads API
+
+**Client-side** (consent-gated when NEXT_PUBLIC_COOKIES=true):
+- Gtag loads only after consent via GtagLoader
+- Consent Mode v2 (default denied)
+- Conversion tracking with conversion_linker + url_passthrough
 
 ## Testing
 
