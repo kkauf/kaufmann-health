@@ -278,6 +278,15 @@ export default function SignupWizard() {
 
   const goToStep = React.useCallback((n: number) => {
     setStep((current) => {
+      // SECURITY: Block navigation to step 1.5 (SMS verification) unless requirements are met
+      if (n === 1.5) {
+        if (data.contact_method !== 'phone' || !data.phone_number) {
+          console.warn('[SignupWizard] Blocked navigation to step 1.5: invalid contact method or missing phone');
+          void trackEvent('navigation_blocked', { target_step: 1.5, reason: 'missing_phone_setup' });
+          return current; // Stay on current step
+        }
+      }
+      
       // Track completion for current screen
       const now = Date.now();
       const elapsed = now - (screenStartRef.current || now);
@@ -297,7 +306,7 @@ export default function SignupWizard() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return v;
     });
-  }, []);
+  }, [data, trackEvent]);
 
   // Safe navigation to prevent double-clicks on Next/Back
   const safeGoToStep = React.useCallback(
@@ -469,8 +478,10 @@ export default function SignupWizard() {
         );
       case 1.5:
         // SMS verification screen (phone users only)
+        // SECURITY: Never auto-advance forward from verification step
         if (data.contact_method !== 'phone' || !data.phone_number) {
-          safeGoToStep(2);
+          // Send user back to step 1 to properly set up phone verification
+          safeGoToStep(1);
           return null;
         }
         return (
