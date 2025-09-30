@@ -25,10 +25,15 @@ describe('Phone validation and formatting', () => {
       expect(normalizePhoneNumber('017912345678')).toBe('+4917912345678');
     });
 
-    it('rejects invalid prefixes', () => {
+    it('rejects invalid prefixes for German numbers', () => {
       expect(normalizePhoneNumber('01234567890')).toBeNull(); // Invalid prefix
       expect(normalizePhoneNumber('030123456')).toBeNull(); // Landline
-      expect(normalizePhoneNumber('+1234567890')).toBeNull(); // Non-German
+    });
+
+    it('accepts valid international E.164 numbers', () => {
+      expect(normalizePhoneNumber('+12125551234')).toBe('+12125551234'); // US
+      expect(normalizePhoneNumber('+447700900123')).toBe('+447700900123'); // UK
+      expect(normalizePhoneNumber('+33612345678')).toBe('+33612345678'); // France
     });
 
     it('rejects too short/long numbers', () => {
@@ -51,10 +56,16 @@ describe('Phone validation and formatting', () => {
       expect(isValidGermanMobile('015112345678')).toBe(true);
     });
 
+    it('validates international numbers', () => {
+      expect(isValidGermanMobile('+12125551234')).toBe(true); // US
+      expect(isValidGermanMobile('+447700900123')).toBe(true); // UK
+    });
+
     it('rejects invalid numbers', () => {
-      expect(isValidGermanMobile('030123456')).toBe(false);
+      expect(isValidGermanMobile('030123456')).toBe(false); // German landline
       expect(isValidGermanMobile('invalid')).toBe(false);
-      expect(isValidGermanMobile('+1234567890')).toBe(false);
+      expect(isValidGermanMobile('+1234')).toBe(false); // Too short
+      expect(isValidGermanMobile('+12345678901234567')).toBe(false); // Too long
     });
   });
 

@@ -1,45 +1,42 @@
 /**
  * Phone number validation and formatting utilities
- * German mobile numbers only (+49)
+ * Supports international phone numbers in E.164 format
  */
 
 /**
- * Normalize German phone number to E.164 format
- * Accepts: 0176 123 456 78, +49 176 123 456 78, 49176123456, etc.
- * Returns: +4917612345678 or null if invalid
+ * Normalize phone number to E.164 format
+ * Accepts any valid international number (e.g., +1, +49, +44, etc.)
+ * Returns: E.164 format (+<country><number>) or null if invalid
  */
 export function normalizePhoneNumber(input: string): string | null {
   // Remove all non-digit characters except leading +
   const cleaned = input.replace(/[^\d+]/g, '');
   
-  // Handle different input formats
-  let digits = cleaned;
-  
-  if (digits.startsWith('+49')) {
-    digits = digits.slice(3); // Remove +49
-  } else if (digits.startsWith('0049')) {
-    digits = digits.slice(4); // Remove 0049
-  } else if (digits.startsWith('49')) {
-    digits = digits.slice(2); // Remove 49
-  } else if (digits.startsWith('0')) {
-    digits = digits.slice(1); // Remove leading 0
-  }
-  
-  // Validate German mobile prefixes (15x, 16x, 17x)
-  const validPrefixes = ['15', '16', '17'];
-  const hasValidPrefix = validPrefixes.some(prefix => digits.startsWith(prefix));
-  
-  if (!hasValidPrefix) {
+  // Must start with + for E.164 format
+  if (!cleaned.startsWith('+')) {
+    // If starts with 0, assume German number
+    if (cleaned.startsWith('0')) {
+      const digits = cleaned.slice(1);
+      // Validate German mobile prefixes (15x, 16x, 17x)
+      const validPrefixes = ['15', '16', '17'];
+      const hasValidPrefix = validPrefixes.some(prefix => digits.startsWith(prefix));
+      if (hasValidPrefix && digits.length >= 10 && digits.length <= 12) {
+        return `+49${digits}`;
+      }
+    }
     return null;
   }
   
-  // German mobile numbers should be 10-11 digits after country code
-  // Allow some flexibility for different formats
-  if (digits.length < 10 || digits.length > 12) {
+  // Basic E.164 validation:
+  // - Must start with +
+  // - Country code (1-3 digits) + subscriber number
+  // - Total length 8-15 digits (excluding +)
+  const digitsOnly = cleaned.slice(1); // Remove +
+  if (digitsOnly.length < 8 || digitsOnly.length > 15) {
     return null;
   }
   
-  return `+49${digits}`;
+  return cleaned;
 }
 
 /**
@@ -58,7 +55,8 @@ export function formatPhoneForDisplay(e164: string): string {
 }
 
 /**
- * Validate if string is a valid German mobile number
+ * Validate if string is a valid mobile number (international)
+ * Legacy name kept for compatibility
  */
 export function isValidGermanMobile(input: string): boolean {
   return normalizePhoneNumber(input) !== null;

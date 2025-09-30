@@ -60,6 +60,8 @@
   padding: 0.5rem 0.75rem;
   cursor: pointer;
   transition: background-color 0.15s;
+  color: hsl(var(--foreground));
+  opacity: 1;
 }
 
 .react-international-phone-country-selector-dropdown__list-item:hover {

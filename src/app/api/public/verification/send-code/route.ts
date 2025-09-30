@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     // Send verification based on type
     if (contact_type === 'phone') {
-      // Validate German mobile
+      // Validate phone number (international E.164 format)
       if (!isValidGermanMobile(contact)) {
         void ServerAnalytics.trackEventFromRequest(req, {
           type: 'verification_code_failed',
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
           props: { reason: 'invalid_phone', contact_type },
         });
         return NextResponse.json(
-          { error: 'Bitte gib eine gültige deutsche Handynummer ein' },
+          { error: 'Bitte gib eine gültige Handynummer ein' },
           { status: 400 }
         );
       }
