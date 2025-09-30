@@ -1,4 +1,4 @@
-import AdminNav from './AdminNav';
+import AdminNav from '@/features/admin/components/AdminNav';
 
 export const dynamic = 'force-dynamic';
 

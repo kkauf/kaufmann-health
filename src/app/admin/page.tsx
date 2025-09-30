@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
-import AdminStats from './AdminStats';
+import AdminStats from '@/features/admin/components/AdminStats';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';

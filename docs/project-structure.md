@@ -20,6 +20,14 @@
       complete-profile/[id]/page.tsx
       therapists/upload-documents/[id]/page.tsx
     /auswahl-bestaetigt/page.tsx
+    /admin                  # Admin pages only
+      page.tsx              # Admin dashboard
+      layout.tsx
+      login/page.tsx
+      leads/page.tsx
+      matches/page.tsx
+      therapists/page.tsx
+      errors/page.tsx
     /api
       /public
         events/route.ts                      # Server-side analytics ingest
@@ -31,13 +39,15 @@
       /images
         therapist-profiles/[...path]/route.ts
   /components               # UI primitives + shared components (e.g., ui/, PageAnalytics)
-  /features                 # Domain-specific UI + hooks (e.g., leads, landing, therapy)
+  /features                 # Domain-specific UI + hooks (e.g., leads, landing, therapy, admin)
     /leads                  # Lead conversion domain (#1 business goal: 10 patient bookings)
       /components           # EmailEntryForm, TherapistApplicationForm, SignupWizard, screens
       /lib                  # validation, rateLimit, handlers, types, match logic
       copy.ts               # Lead-specific copy text
     /landing                # Reusable landing page blocks (LandingHero, etc.)
     /therapy                # Therapy-specific features
+    /admin                  # Admin domain (management & monitoring)
+      /components           # AdminNav, AdminStats
   /lib                      # Shared utilities (Supabase clients, analytics, config)
   /content                  # Markdown/HTML content blocks
 /tests
@@ -131,3 +141,24 @@ Notes for A/B/C variants:
 - Use existing `VariantGate` inside page copy where variants diverge.
 - `EmailEntryForm` automatically forwards `?v=` to `/api/public/leads`.
 - For test variants (B/C), `buildLandingMetadata` sets `robots: noindex, nofollow`.
+
+## Admin Domain (Management & Monitoring)
+
+**Location**: `src/features/admin/`
+
+Admin functionality is cleanly separated between pages, APIs, and components.
+
+**Structure**:
+- `components/` — Admin UI components
+  - `AdminNav.tsx` — Navigation bar for admin pages
+  - `AdminStats.tsx` — Dashboard statistics and analytics display
+
+**Usage**:
+- Import components: `import AdminNav from '@/features/admin/components/AdminNav'`
+- Admin pages: Located in `/app/admin` (pages only)
+- Admin APIs: Located in `/app/api/admin` (backend logic)
+
+**Architecture**:
+- **Pages**: `/app/admin` — All admin page routes (dashboard, leads, matches, therapists, errors)
+- **APIs**: `/app/api/admin` — All admin backend endpoints (stats, reminders, matching, cron)
+- **Components**: `/features/admin/components` — Reusable admin UI components
