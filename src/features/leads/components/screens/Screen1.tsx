@@ -4,7 +4,7 @@ import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { getEmailError } from '@/lib/validation';
+import { getEmailError } from '@/features/leads/lib/validation';
 import { PhoneInput } from 'react-international-phone';
 import { getVerificationModeClient } from '@/lib/verification/config';
 import 'react-international-phone/style.css';

@@ -6,7 +6,7 @@ import { sendEmail } from '@/lib/email/client';
 import { renderPatientCustomUpdate, renderPatientMatchFound } from '@/lib/email/templates/patientUpdates';
 import { renderPatientSelectionEmail } from '@/lib/email/templates/patientSelection';
 import { BASE_URL } from '@/lib/constants';
-import { computeMismatches } from '@/lib/leads/match';
+import { computeMismatches } from '@/features/leads/lib/match';
 import type { EmailContent } from '@/lib/email/types';
 
 export const runtime = 'nodejs';

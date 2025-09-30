@@ -7,7 +7,7 @@ import { renderTherapistNotification } from '@/lib/email/templates/therapistNoti
 import { BASE_URL } from '@/lib/constants';
 import { createTherapistOptOutToken } from '@/lib/signed-links';
 import { ServerAnalytics } from '@/lib/server-analytics';
-import { computeMismatches } from '@/lib/leads/match';
+import { computeMismatches } from '@/features/leads/lib/match';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

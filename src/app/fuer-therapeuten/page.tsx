@@ -2,7 +2,7 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import FaqAccordion from "@/components/FaqAccordion";
-import TherapistApplicationForm from "@/components/TherapistApplicationForm";
+import TherapistApplicationForm from "@/features/leads/components/TherapistApplicationForm";
 import { CheckCircle2, Target, Users, Clock, Shield, TrendingUp, ShieldCheck, Lock, UserCheck } from "lucide-react";
 import CtaLink from "@/components/CtaLink";
 import { COOKIES_ENABLED } from "@/lib/config";

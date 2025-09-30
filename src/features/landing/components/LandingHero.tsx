@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { ShieldCheck, Lock, UserCheck } from "lucide-react";
 import { COOKIES_ENABLED } from "@/lib/config";
 import PageAnalytics from "@/components/PageAnalytics";
-import { EmailEntryForm } from "@/components/EmailEntryForm";
+import { EmailEntryForm } from "@/features/leads/components/EmailEntryForm";
 import ModalityLogoStrip from "./ModalityLogoStrip";
 
 export type TrustItem = { icon?: ReactNode; label: ReactNode };

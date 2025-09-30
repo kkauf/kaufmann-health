@@ -10,10 +10,10 @@ import { logError, track } from '@/lib/logger';
 import { BASE_URL } from '@/lib/constants';
 import { createTherapistOptOutToken } from '@/lib/signed-links';
 import { parseAttributionFromRequest, parseCampaignFromRequest, ServerAnalytics } from '@/lib/server-analytics';
-import { sanitize, normalizeSpecializations, hashIP } from '@/lib/leads/validation';
-import { isIpRateLimited } from '@/lib/leads/rateLimit';
-import { handleTherapistLead } from '@/lib/leads/handlers';
-import type { LeadPayload } from '@/lib/leads/types';
+import { sanitize, normalizeSpecializations, hashIP } from '@/features/leads/lib/validation';
+import { isIpRateLimited } from '@/features/leads/lib/rateLimit';
+import { handleTherapistLead } from '@/features/leads/lib/handlers';
+import type { LeadPayload } from '@/features/leads/lib/types';
 import { isTestRequest } from '@/lib/test-mode';
 import { safeJson } from '@/lib/http';
 

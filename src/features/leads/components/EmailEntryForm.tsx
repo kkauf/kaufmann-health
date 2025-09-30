@@ -18,7 +18,7 @@ import { track } from '@vercel/analytics';
 import { getVerificationModeClient } from '@/lib/verification/config';
 import { PhoneInput } from 'react-international-phone';
 import 'react-international-phone/style.css';
-import './phone-input-custom.css';
+import '@/components/phone-input-custom.css';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 
 // Note: Google Ads conversions are handled at Fragebogen completion (client + server).

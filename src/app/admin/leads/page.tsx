@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TherapistPreview } from '@/components/TherapistPreview';
-import { computeMismatches } from '@/lib/leads/match';
+import { computeMismatches } from '@/features/leads/lib/match';
 
 export const dynamic = 'force-dynamic';
 

@@ -5,7 +5,7 @@ import { logError, track } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { renderPatientSelectionEmail } from '@/lib/email/templates/patientSelection';
 import { BASE_URL } from '@/lib/constants';
-import { computeMismatches } from '@/lib/leads/match';
+import { computeMismatches } from '@/features/leads/lib/match';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

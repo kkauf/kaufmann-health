@@ -2,7 +2,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { EmailEntryForm } from '@/components/EmailEntryForm';
+import { EmailEntryForm } from '@/features/leads/components/EmailEntryForm';
 
 vi.mock('@vercel/analytics', () => ({ track: vi.fn() }));
 

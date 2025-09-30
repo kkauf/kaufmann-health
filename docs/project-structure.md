@@ -30,8 +30,14 @@
         ...                                  # Stats, reminders, matching, cron endpoints
       /images
         therapist-profiles/[...path]/route.ts
-  /components               # UI primitives + shared components
-  /features                 # Domain-specific UI + hooks (e.g., leads, landing)
+  /components               # UI primitives + shared components (e.g., ui/, PageAnalytics)
+  /features                 # Domain-specific UI + hooks (e.g., leads, landing, therapy)
+    /leads                  # Lead conversion domain (#1 business goal: 10 patient bookings)
+      /components           # EmailEntryForm, TherapistApplicationForm, SignupWizard, screens
+      /lib                  # validation, rateLimit, handlers, types, match logic
+      copy.ts               # Lead-specific copy text
+    /landing                # Reusable landing page blocks (LandingHero, etc.)
+    /therapy                # Therapy-specific features
   /lib                      # Shared utilities (Supabase clients, analytics, config)
   /content                  # Markdown/HTML content blocks
 /tests
@@ -41,11 +47,41 @@
 
 ```
 
+## Leads Domain (Lead Conversion Flow)
+
+**Location**: `src/features/leads/`
+
+All lead submission and conversion logic is consolidated here. This is the #1 business goal domain.
+
+**Structure**:
+- `components/` — Form components for lead capture
+  - `EmailEntryForm.tsx` (alias: ContactEntryForm) — Device-aware email/phone entry
+  - `TherapistApplicationForm.tsx` — Therapist registration form
+  - `ResendConfirmationForm.tsx` — Resend email confirmation
+  - `SignupWizard.tsx` — Multi-step patient intake wizard
+  - `screens/` — Wizard screen components (Screen1-5)
+- `lib/` — Lead processing utilities
+  - `handlers.ts` — `handleTherapistLead` for therapist submission
+  - `rateLimit.ts` — `isIpRateLimited` for rate limiting
+  - `validation.ts` — `sanitize`, `normalizeSpecializations`, `hashIP`, `getEmailError`
+  - `types.ts` — `LeadType`, `LeadPayload`, `HandlerContext`
+  - `match.ts` — `computeMismatches` for therapist-patient matching
+- `copy.ts` — Lead-specific copy text
+
+**Usage**:
+- Import forms: `import { EmailEntryForm } from '@/features/leads/components/EmailEntryForm'`
+- Import utilities: `import { getEmailError } from '@/features/leads/lib/validation'`
+- API routes use handlers from `@/features/leads/lib/handlers`
+
 ## Landing Kit (Reusable Landing Page Blocks)
 
-Locations:
-- `src/features/landing/components/` — UI-only reusable sections
-- `src/features/landing/lib/therapists.ts` — server helpers for therapist data (Supabase)
+**Location**: `src/features/landing/`
+
+UI-only reusable sections for landing pages.
+
+**Structure**:
+- `components/` — Reusable landing page sections
+- `lib/therapists.ts` — Server helpers for therapist data (Supabase)
 - `src/lib/seo.ts` — SEO helpers (metadata + JSON-LD)
 
 Component index (what to use and when):

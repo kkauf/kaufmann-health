@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { TERMS_VERSION, TERMS_TITLE, TERMS_SOURCE_FILE } from '@/content/therapist-terms';
-import { THERAPIST_TERMS_VERSION } from '@/components/TherapistApplicationForm';
+import { THERAPIST_TERMS_VERSION } from '@/features/leads/components/TherapistApplicationForm';
 import { version as SOURCE_VERSION, title as SOURCE_TITLE, sourceFileName as SOURCE_FILE } from '@/content/therapist-terms/v1.0';
 
 describe('therapist-terms versioning', () => {

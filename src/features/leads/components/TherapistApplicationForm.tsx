@@ -10,7 +10,7 @@ import { buildEventId } from '@/lib/analytics';
 import { TERMS_VERSION } from '@/content/therapist-terms';
 import { getAttribution } from '@/lib/attribution';
 import { getOrCreateSessionId } from '@/lib/attribution';
-import { getEmailError } from '@/lib/validation';
+import { getEmailError } from '@/features/leads/lib/validation';
 import Link from 'next/link';
 import { ShieldCheck, Lock, UserCheck } from 'lucide-react';
 import { COOKIES_ENABLED } from '@/lib/config';
