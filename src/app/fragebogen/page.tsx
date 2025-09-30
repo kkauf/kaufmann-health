@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="min-h-[100svh] overscroll-contain max-w-2xl mx-auto px-4 py-8">
       <Suspense fallback={<div className="text-sm text-muted-foreground">Lade…</div>}>
         <SignupWizard />
       </Suspense>
