@@ -173,6 +173,25 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
       }
 
       const status = resp.status;
+      
+      // 409 Conflict = idempotent success (Resend already sent this email)
+      if (status === 409) {
+        await track({
+          type: 'email_sent',
+          level: 'info',
+          source: 'email.client',
+          props: {
+            subject: params.subject,
+            to_count: toList.length,
+            has_html: Boolean(params.html),
+            has_text: Boolean(finalText),
+            attempt,
+            idempotent: true,
+            ...(params.context || {}),
+          },
+        });
+        return;
+      }
       let body = '';
       try {
         body = (await resp.text()).slice(0, 500);
