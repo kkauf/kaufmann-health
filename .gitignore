@@ -47,3 +47,8 @@ next-env.d.ts
 /google_ads_api_scripts/private/
 /logs/
 *.jsonl
+
+# windsurf
+# Keep rules, ignore everything else in .windsurf
+.windsurf/*
+!.windsurf/rules/
