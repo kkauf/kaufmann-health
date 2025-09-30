@@ -62,6 +62,8 @@ export default function SignupWizard() {
   const prevStepRef = React.useRef<number>(1);
   const [navLock, setNavLock] = React.useState(false);
   const [isOnline, setIsOnline] = React.useState<boolean>(true);
+  // Track baseline viewport height to detect keyboard open on mobile (iOS Safari)
+  const baseVVHeightRef = React.useRef<number | null>(null);
   // Inline resend confirmation UX state (step 6)
   const [resendEmail, setResendEmail] = React.useState<string>('');
   const [resendSubmitting, setResendSubmitting] = React.useState(false);
@@ -191,6 +193,12 @@ export default function SignupWizard() {
       const handleOffline = () => setIsOnline(false);
       window.addEventListener('online', handleOnline);
       window.addEventListener('offline', handleOffline);
+      // Capture baseline visual viewport height for keyboard detection
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const vv = (window as any).visualViewport as { height: number } | undefined;
+        baseVVHeightRef.current = vv?.height || null;
+      } catch {}
       // Mark initialization complete only after attempting to load saved state
       setInitialized(true);
       // Cleanup
@@ -305,8 +313,21 @@ export default function SignupWizard() {
       try {
         localStorage.setItem(LS_KEYS.step, String(v));
       } catch {}
-      // Scroll to top on navigation
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Scroll to top on navigation (avoid smooth scroll when virtual keyboard is open)
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const vv = (window as any).visualViewport as { height: number } | undefined;
+        const base = baseVVHeightRef.current || 0;
+        const isKbOpen = !!(vv && base && vv.height < base * 0.9);
+        if (!isKbOpen) {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          // Minimize jank while keyboard is up
+          window.scrollTo({ top: 0, behavior: 'auto' });
+        }
+      } catch {
+        window.scrollTo({ top: 0 });
+      }
       return v;
     });
   }, [data, trackEvent]);
