@@ -49,6 +49,7 @@ export default function SignupWizard() {
   const searchParams = useSearchParams();
   const [step, setStep] = React.useState<number>(1);
   const [data, setData] = React.useState<WizardData>({ name: '' });
+  const [initialized, setInitialized] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [submitSlow, setSubmitSlow] = React.useState(false);
@@ -190,6 +191,8 @@ export default function SignupWizard() {
       const handleOffline = () => setIsOnline(false);
       window.addEventListener('online', handleOnline);
       window.addEventListener('offline', handleOffline);
+      // Mark initialization complete only after attempting to load saved state
+      setInitialized(true);
       // Cleanup
       return () => {
         window.removeEventListener('online', handleOnline);
@@ -456,6 +459,7 @@ export default function SignupWizard() {
               phone_number: data.phone_number,
               contact_method: data.contact_method,
             }}
+            initialized={initialized}
             onChange={saveLocal}
             onNext={async () => {
               // If phone, send SMS and go to Screen1.5

@@ -37,17 +37,18 @@ function saveContactMethod(method: ContactMethod) {
     window.localStorage.setItem('kh_contact_method', method);
   }
 }
-
 export default function Screen1({
   values,
   onChange,
   onNext,
   disabled,
+  initialized = false,
 }: {
   values: Screen1Values;
   onChange: (patch: Partial<Screen1Values>) => void;
   onNext: () => void;
   disabled?: boolean;
+  initialized?: boolean;
 }) {
   const mode = getVerificationModeClient();
   const [emailError, setEmailError] = React.useState<string | null>(null);
@@ -57,13 +58,15 @@ export default function Screen1({
   // Initialize contact method on mount (hydration-safe)
   React.useEffect(() => {
     setMounted(true);
-    
+
+    // Wait until wizard has loaded saved data to avoid overwriting prefill
+    if (!initialized) return;
+
     // If already set, don't override
     if (values.contact_method) return;
     
     // Must match server-side default (email) to avoid hydration mismatch
     let defaultMethod: ContactMethod = 'email';
-    
     if (mode === 'email') {
       defaultMethod = 'email';
     } else if (mode === 'sms') {
@@ -78,7 +81,7 @@ export default function Screen1({
     }
     
     onChange({ contact_method: defaultMethod });
-  }, [mode, values.contact_method, onChange]);
+  }, [mode, values.contact_method, onChange, initialized]);
 
   const contactMethod = values.contact_method || 'email';
   const canSwitchMethod = mode === 'choice';
@@ -161,12 +164,20 @@ export default function Screen1({
             <Label htmlFor="phone" className="text-base">Deine Handynummer für die Therapievorschläge</Label>
             <PhoneInput
               defaultCountry="de"
-              value={values.phone_number || '+49'}
+              value={values.phone_number || ''}
               onChange={(phone) => onChange({ phone_number: phone.replace(/\s+/g, '') })}
               inputClassName={phoneError ? 'border-red-500' : ''}
               className="w-full"
-              placeholder="176 123 45678"
-              forceDialCode={true}
+              placeholder="+49 176 123 45678"
+              disableDialCodeAndPrefix={true}
+              forceDialCode={false}
+              countrySelectorStyleProps={{
+                buttonClassName: 'phone-country-button',
+                dropdownStyleProps: {
+                  className: 'phone-country-dropdown',
+                  listItemClassName: 'phone-country-item',
+                }
+              }}
             />
             {phoneError && (
               <p className="text-sm text-red-600">{phoneError}</p>
