@@ -10,13 +10,20 @@ describe('Email client 409 handling', () => {
   });
 
   it('treats 409 Conflict as idempotent success (no retry)', async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce({
-      ok: false,
-      status: 409,
-      statusText: 'Conflict',
-      text: async () => JSON.stringify({ message: 'Email already sent' }),
+    const okJson = new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+    const mockFetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+      if (typeof url === 'string' && url.includes('resend.com/emails')) {
+        return {
+          ok: false,
+          status: 409,
+          statusText: 'Conflict',
+          text: async () => JSON.stringify({ message: 'Email already sent' }),
+        } as unknown as Response;
+      }
+      return okJson.clone(); // Ignore non-Resend calls (e.g., logger events)
     });
-    global.fetch = mockFetch;
+    global.fetch = mockFetch as unknown as typeof fetch;
 
     const { sendEmail } = await import('@/lib/email/client');
 
@@ -27,38 +34,40 @@ describe('Email client 409 handling', () => {
       html: '<p>Test</p>',
     })).resolves.not.toThrow();
 
-    // Should only call once (no retry on 409)
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-    expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.resend.com/emails',
-      expect.objectContaining({
-        method: 'POST',
-      })
-    );
+    // Count only Resend calls
+    const resendCallsCount = mockFetch.mock.calls.reduce((acc, call) => {
+      const u = call[0];
+      const url = typeof u === 'string' ? u : u instanceof URL ? u.href : (u as Request).url;
+      return acc + (typeof url === 'string' && url.includes('resend.com/emails') ? 1 : 0);
+    }, 0);
+    expect(resendCallsCount).toBe(1);
   });
 
   it('retries on 500 but treats subsequent 409 as success', async () => {
-    let callCount = 0;
-    const mockFetch = vi.fn().mockImplementation(async () => {
-      callCount++;
-      if (callCount === 1) {
-        // First call: server error (retry)
+    const okJson = new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+    let resendCallCount = 0;
+    const mockFetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+      if (typeof url === 'string' && url.includes('resend.com/emails')) {
+        resendCallCount++;
+        if (resendCallCount === 1) {
+          return {
+            ok: false,
+            status: 500,
+            statusText: 'Internal Server Error',
+            text: async () => 'Server error',
+          } as unknown as Response;
+        }
         return {
           ok: false,
-          status: 500,
-          statusText: 'Internal Server Error',
-          text: async () => 'Server error',
-        };
+          status: 409,
+          statusText: 'Conflict',
+          text: async () => JSON.stringify({ message: 'Email already sent' }),
+        } as unknown as Response;
       }
-      // Second call: 409 (already sent)
-      return {
-        ok: false,
-        status: 409,
-        statusText: 'Conflict',
-        text: async () => JSON.stringify({ message: 'Email already sent' }),
-      };
+      return okJson.clone();
     });
-    global.fetch = mockFetch;
+    global.fetch = mockFetch as unknown as typeof fetch;
 
     const { sendEmail } = await import('@/lib/email/client');
 
@@ -68,19 +77,25 @@ describe('Email client 409 handling', () => {
       html: '<p>Test</p>',
     })).resolves.not.toThrow();
 
-    // Should call twice: once for 500 (retry), once for 409 (success)
-    expect(callCount).toBe(2);
-    expect(mockFetch).toHaveBeenCalledTimes(2);
+    // Should call Resend twice: 500 then 409
+    expect(resendCallCount).toBe(2);
   });
 
   it('does not retry 409 (unlike 500)', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 409,
-      statusText: 'Conflict',
-      text: async () => JSON.stringify({ message: 'Email already sent' }),
+    const okJson = new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+    const mockFetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+      if (typeof url === 'string' && url.includes('resend.com/emails')) {
+        return {
+          ok: false,
+          status: 409,
+          statusText: 'Conflict',
+          text: async () => JSON.stringify({ message: 'Email already sent' }),
+        } as unknown as Response;
+      }
+      return okJson.clone();
     });
-    global.fetch = mockFetch;
+    global.fetch = mockFetch as unknown as typeof fetch;
 
     const { sendEmail } = await import('@/lib/email/client');
 
@@ -90,7 +105,12 @@ describe('Email client 409 handling', () => {
       html: '<p>Test</p>',
     });
 
-    // 409 should NOT trigger retry logic - just returns immediately
-    expect(mockFetch).toHaveBeenCalledTimes(1);
+    // 409 should NOT trigger retry logic - count only Resend calls
+    const resendCallsCount = mockFetch.mock.calls.reduce((acc, call) => {
+      const u = call[0];
+      const url = typeof u === 'string' ? u : u instanceof URL ? u.href : (u as Request).url;
+      return acc + (typeof url === 'string' && url.includes('resend.com/emails') ? 1 : 0);
+    }, 0);
+    expect(resendCallsCount).toBe(1);
   });
 });

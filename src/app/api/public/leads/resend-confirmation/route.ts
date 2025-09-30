@@ -5,7 +5,7 @@ import { sendEmail } from '@/lib/email/client';
 import { renderEmailConfirmation } from '@/lib/email/templates/emailConfirmation';
 import { BASE_URL } from '@/lib/constants';
 import { logError, track } from '@/lib/logger';
-import { sanitize } from '@/lib/leads/validation';
+import { sanitize } from '@/features/leads/lib/validation';
 import { isIpRateLimited } from '@/lib/leads/rateLimit';
 import { isTestRequest } from '@/lib/test-mode';
 
