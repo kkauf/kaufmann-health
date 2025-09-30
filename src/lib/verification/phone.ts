@@ -12,12 +12,21 @@ export function normalizePhoneNumber(input: string): string | null {
   // Remove all non-digit characters except leading +
   const cleaned = input.replace(/[^\d+]/g, '');
   
-  // Must start with + for E.164 format
+  // Handle German-specific formats first
   if (!cleaned.startsWith('+')) {
-    // If starts with 0, assume German number
+    // 0049 prefix (German international without +)
+    if (cleaned.startsWith('0049')) {
+      const digits = cleaned.slice(4);
+      const validPrefixes = ['15', '16', '17'];
+      const hasValidPrefix = validPrefixes.some(prefix => digits.startsWith(prefix));
+      if (hasValidPrefix && digits.length >= 10 && digits.length <= 12) {
+        return `+49${digits}`;
+      }
+      return null;
+    }
+    // 0 prefix (German domestic)
     if (cleaned.startsWith('0')) {
       const digits = cleaned.slice(1);
-      // Validate German mobile prefixes (15x, 16x, 17x)
       const validPrefixes = ['15', '16', '17'];
       const hasValidPrefix = validPrefixes.some(prefix => digits.startsWith(prefix));
       if (hasValidPrefix && digits.length >= 10 && digits.length <= 12) {
@@ -27,7 +36,7 @@ export function normalizePhoneNumber(input: string): string | null {
     return null;
   }
   
-  // Basic E.164 validation:
+  // E.164 format validation (international numbers)
   // - Must start with +
   // - Country code (1-3 digits) + subscriber number
   // - Total length 8-15 digits (excluding +)
