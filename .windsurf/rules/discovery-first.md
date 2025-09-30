@@ -5,6 +5,23 @@ description: Apply when starting new tasks or making code changes
 
 # Discovery-First Development
 
+## Testing Protocol (NON-NEGOTIABLE)
+
+**STOP. Before proceeding to next change:**
+
+1. ✅ Run test: `npm test tests/[affected].test.ts`
+2. ✅ See green (screenshot/paste result)
+3. ✅ Only then continue
+
+**After changing `phone.ts` → MUST run `npm test tests/verification.phone.test.ts`**
+**After changing route → MUST run `npm run build`**
+**After changing component → MUST verify in browser**
+
+❌ "It should work" = NOT TESTED = BROKEN
+✅ "Tests pass: [paste result]" = VERIFIED
+
+**If you skip verification, you're guessing. Guessing breaks production.**
+
 ## Before Writing ANY Code
 
 **1. Map the Territory (5 minutes)**
