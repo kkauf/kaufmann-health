@@ -236,12 +236,18 @@ export function ContactEntryForm({
               onChange={(phone) => setPhone(phone.replace(/\s+/g, ''))}
               inputClassName={errors.phone ? 'border-red-500' : ''}
               className="w-full"
-              placeholder="176 123 45678"
-              forceDialCode={true}
+              placeholder="+49 176 123 45678"
               inputProps={{
                 name: 'phone_number',
                 autoComplete: 'tel',
                 inputMode: 'tel' as const,
+              }}
+              countrySelectorStyleProps={{
+                buttonClassName: 'phone-country-button',
+                dropdownStyleProps: {
+                  className: 'phone-country-dropdown',
+                  listItemClassName: 'phone-country-item',
+                }
               }}
             />
             {errors.phone && <p className="text-xs text-red-600">{errors.phone}</p>}
