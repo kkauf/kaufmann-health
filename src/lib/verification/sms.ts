@@ -5,16 +5,45 @@
 
 import twilio from 'twilio';
 import { normalizePhoneNumber } from './phone';
+import { logError } from '@/lib/logger';
 
 interface SendCodeResult {
   success: boolean;
   error?: string;
   sid?: string; // Twilio verification SID
+  // Optional diagnostics (not exposed to users)
+  twilio_status?: number;
+  twilio_code?: number;
+  classification?: 'config' | 'auth' | 'provider' | 'unexpected';
 }
 
 interface VerifyCodeResult {
   success: boolean;
   error?: string;
+  twilio_status?: number;
+  twilio_code?: number;
+  classification?: 'config' | 'auth' | 'provider' | 'unexpected';
+}
+
+function extractTwilioError(err: unknown): {
+  message: string;
+  status?: number;
+  code?: number;
+  classification: 'auth' | 'provider' | 'unexpected';
+} {
+  const anyErr = err as { status?: unknown; code?: unknown; message?: unknown; moreInfo?: unknown };
+  const status = typeof anyErr?.status === 'number' ? anyErr.status : undefined;
+  const code = typeof anyErr?.code === 'number' ? anyErr.code : undefined;
+  const rawMessage = typeof anyErr?.message === 'string' ? anyErr.message : String(err);
+  const msg = rawMessage || 'Unknown error';
+  // Twilio common auth error code: 20003, or HTTP 401, or message contains "Authenticate"
+  const isAuth = status === 401 || code === 20003 || /authenticate/i.test(msg);
+  return {
+    message: msg,
+    status,
+    code,
+    classification: isAuth ? 'auth' : 'provider',
+  };
 }
 
 /**
@@ -29,7 +58,15 @@ export async function sendSmsCode(phoneNumber: string): Promise<SendCodeResult> 
   // Check configuration
   if (!accountSid || !authToken || !serviceSid) {
     console.error('[sms] Missing Twilio configuration');
-    return { success: false, error: 'SMS service not configured' };
+    // Emit structured error log without secrets
+    void logError('verification.sms.send', new Error('Missing Twilio configuration'), {
+      twilio_config_present: {
+        accountSid: Boolean(accountSid),
+        authToken: Boolean(authToken),
+        serviceSid: Boolean(serviceSid),
+      },
+    });
+    return { success: false, error: 'SMS service not configured', classification: 'config' };
   }
 
   // Normalize phone to E.164
@@ -56,10 +93,21 @@ export async function sendSmsCode(phoneNumber: string): Promise<SendCodeResult> 
     return { success: false, error: `Unexpected status: ${verification.status}` };
   } catch (error) {
     console.error('[sms] Failed to send verification code:', error);
-    
+    const info = extractTwilioError(error);
+    // Log detailed provider error for observability (PII-free)
+    void logError('verification.sms.send', error, {
+      twilio_status: info.status,
+      twilio_code: info.code,
+      classification: info.classification,
+    });
     // Return user-friendly error
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return { success: false, error: `SMS delivery failed: ${message}` };
+    return {
+      success: false,
+      error: `SMS delivery failed: ${info.message}`,
+      twilio_status: info.status,
+      twilio_code: info.code,
+      classification: info.classification,
+    };
   }
 }
 
@@ -75,7 +123,8 @@ export async function verifySmsCode(
   const serviceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
 
   if (!accountSid || !authToken || !serviceSid) {
-    return { success: false, error: 'SMS service not configured' };
+    void logError('verification.sms.verify', new Error('Missing Twilio configuration'));
+    return { success: false, error: 'SMS service not configured', classification: 'config' };
   }
 
   const e164Phone = normalizePhoneNumber(phoneNumber);
@@ -101,8 +150,19 @@ export async function verifySmsCode(
     return { success: false, error: 'Falscher Code' };
   } catch (error) {
     console.error('[sms] Failed to verify code:', error);
-    
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return { success: false, error: `Verification failed: ${message}` };
+    const info = extractTwilioError(error);
+    void logError('verification.sms.verify', error, {
+      twilio_status: info.status,
+      twilio_code: info.code,
+      classification: info.classification,
+    });
+    return {
+      success: false,
+      error: `Verification failed: ${info.message}`,
+      twilio_status: info.status,
+      twilio_code: info.code,
+      classification: info.classification,
+    };
   }
 }
+

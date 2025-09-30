@@ -31,11 +31,26 @@ export async function POST(req: NextRequest) {
       const result = await verifySmsCode(contact, code);
 
       if (!result.success) {
+        const classification = result.classification || 'unexpected';
         void ServerAnalytics.trackEventFromRequest(req, {
           type: 'verification_code_failed',
           source: 'api.verification.verify-code',
-          props: { contact_type: 'phone', reason: result.error },
+          props: {
+            contact_type: 'phone',
+            reason: result.error,
+            classification,
+            twilio_status: result.twilio_status,
+            twilio_code: result.twilio_code,
+          },
         });
+
+        // Auth/config errors should surface as 500 for observability
+        if (classification === 'auth' || classification === 'config') {
+          return NextResponse.json(
+            { error: 'Verifizierungsdienst vorübergehend nicht verfügbar' },
+            { status: 500 }
+          );
+        }
 
         return NextResponse.json(
           { error: result.error || 'Falscher Code' },

@@ -70,26 +70,42 @@ export async function POST(req: NextRequest) {
       const result = await sendSmsCode(contact);
 
       if (!result.success) {
-        // SMS failed: try email fallback if in choice mode
+        const classification = result.classification || 'unexpected';
+        // Always log details for observability
+        void ServerAnalytics.trackEventFromRequest(req, {
+          type: 'verification_code_failed',
+          source: 'api.verification.send-code',
+          props: {
+            contact_type,
+            error: result.error,
+            classification,
+            twilio_status: result.twilio_status,
+            twilio_code: result.twilio_code,
+          },
+        });
+
+        // Credentials / config issues should surface as 500 to trigger alarms
+        if (classification === 'auth' || classification === 'config') {
+          return NextResponse.json(
+            { error: 'SMS-Dienst vorübergehend nicht verfügbar' },
+            { status: 500 }
+          );
+        }
+
+        // Provider/temporary issues: in choice mode, gracefully fall back to email
         if (mode === 'choice') {
           void ServerAnalytics.trackEventFromRequest(req, {
             type: 'verification_fallback_email',
             source: 'api.verification.send-code',
-            props: { reason: result.error },
+            props: { reason: result.error, classification },
           });
-
           return NextResponse.json({
             data: { fallback: 'email', reason: result.error },
             error: null,
           });
         }
 
-        void ServerAnalytics.trackEventFromRequest(req, {
-          type: 'verification_code_failed',
-          source: 'api.verification.send-code',
-          props: { contact_type, error: result.error },
-        });
-
+        // SMS-only mode: treat as server error
         return NextResponse.json(
           { error: 'SMS konnte nicht gesendet werden. Bitte versuche es erneut.' },
           { status: 500 }
@@ -110,10 +126,9 @@ export async function POST(req: NextRequest) {
     } else {
       // Email verification: generate token and send email
       const token = randomBytes(32).toString('hex');
-      const confirmUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/public/leads/confirm?token=${token}`;
-
+      let confirmUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/public/leads/confirm?token=${token}`;
       if (form_session_id) {
-        confirmUrl.concat(`&fs=${form_session_id}`);
+        confirmUrl = `${confirmUrl}&fs=${encodeURIComponent(form_session_id)}`;
       }
 
       const emailContent = renderEmailConfirmation({ confirmUrl });
