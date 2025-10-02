@@ -314,7 +314,7 @@ export async function GET(req: Request) {
     }
 
     // --- Pre-signup: Wizard funnel + FAQ engagement ---
-    let preSignup: {
+    const preSignup: {
       wizardFunnel: { page_views: number; step1: number; step2: number; step3: number; step4: number; step5: number; form_completed: number; start_rate: number };
       faqClicks: Array<{ title: string; count: number }>;
     } = {
@@ -419,7 +419,7 @@ export async function GET(req: Request) {
     }
 
     // --- Post-signup: last-7 signups and client funnel ---
-    let postSignup: {
+    const postSignup: {
       last7: { clients_new: number; therapists_new: number };
       clientFunnel: { pre_confirmation: number; new: number; selected: number; session_booked: number };
     } = { last7: { clients_new: 0, therapists_new: 0 }, clientFunnel: { pre_confirmation: 0, new: 0, selected: 0, session_booked: 0 } };
