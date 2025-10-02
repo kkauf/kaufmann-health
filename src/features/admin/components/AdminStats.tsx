@@ -22,6 +22,14 @@ type StatsData = {
   campaignStats?: Array<{ campaign_source: string; campaign_variant: string; leads: number; confirmed: number; confirmation_rate: number }>;
   campaignByDay?: Array<{ day: string; campaign_source: string; campaign_variant: string; leads: number; confirmed: number; confirmation_rate: number }>;
   blockers?: { last30Days: { total: number; breakdown: Array<{ reason: string; count: number; percentage: number }> } };
+  preSignup?: {
+    wizardFunnel: { page_views: number; step1: number; step2: number; step3: number; step4: number; step5: number; form_completed: number; start_rate: number };
+    faqClicks: Array<{ title: string; count: number }>;
+  };
+  postSignup?: {
+    last7: { clients_new: number; therapists_new: number };
+    clientFunnel: { pre_confirmation: number; new: number; selected: number; session_booked: number };
+  };
 };
 
 export default function AdminStats() {
@@ -154,6 +162,150 @@ export default function AdminStats() {
               })
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Post-signup: New signups */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Neuanmeldungen (letzte 7 Tage)</CardTitle>
+          <CardDescription>Aktivierte Klient:innen und neue Therapeut:innen</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!data?.postSignup ? (
+            <div className="text-sm text-muted-foreground">Keine Daten</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <div className="text-sm text-muted-foreground">Klient:innen (Status „new“)</div>
+                <div className="text-2xl font-semibold">{data.postSignup.last7.clients_new}</div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Therapeut:innen</div>
+                <div className="text-2xl font-semibold">{data.postSignup.last7.therapists_new}</div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Post-signup: Client conversion funnel */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Client‑Funnel (7 Tage)</CardTitle>
+          <CardDescription>pre‑confirmation → new → selected → session booked</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!data?.postSignup ? (
+            <div className="text-sm text-muted-foreground">Keine Daten</div>
+          ) : (
+            (() => {
+              const cf = data.postSignup.clientFunnel;
+              const r1 = pct(cf.new, cf.pre_confirmation);
+              const r2 = pct(cf.selected, cf.new);
+              const r3 = pct(cf.session_booked, cf.selected);
+              return (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-muted-foreground">
+                        <th className="py-1 pr-3">Stufe</th>
+                        <th className="py-1 pr-3">Anzahl</th>
+                        <th className="py-1 pr-3">Konversion</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t"><td className="py-1 pr-3">Pre‑confirmation</td><td className="py-1 pr-3 tabular-nums">{cf.pre_confirmation}</td><td className="py-1 pr-3 text-muted-foreground">–</td></tr>
+                      <tr className="border-t"><td className="py-1 pr-3">New</td><td className="py-1 pr-3 tabular-nums">{cf.new}</td><td className="py-1 pr-3 tabular-nums">{r1}%</td></tr>
+                      <tr className="border-t"><td className="py-1 pr-3">Selected</td><td className="py-1 pr-3 tabular-nums">{cf.selected}</td><td className="py-1 pr-3 tabular-nums">{r2}%</td></tr>
+                      <tr className="border-t"><td className="py-1 pr-3">Session booked</td><td className="py-1 pr-3 tabular-nums">{cf.session_booked}</td><td className="py-1 pr-3 tabular-nums">{r3}%</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Pre-signup: Wizard Funnel */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Fragebogen‑Funnel (7 Tage)</CardTitle>
+          <CardDescription>Page Views → Schritt 1 → … → Abschluss</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!data?.preSignup ? (
+            <div className="text-sm text-muted-foreground">Keine Daten</div>
+          ) : (
+            (() => {
+              const wf = data.preSignup.wizardFunnel;
+              const rows = [
+                { k: 'Page Views', v: wf.page_views },
+                { k: 'Schritt 1 (Kontakt)', v: wf.step1 },
+                { k: 'Schritt 2', v: wf.step2 },
+                { k: 'Schritt 3', v: wf.step3 },
+                { k: 'Schritt 4', v: wf.step4 },
+                { k: 'Schritt 5', v: wf.step5 },
+                { k: 'Abgeschlossen', v: wf.form_completed },
+              ];
+              return (
+                <div className="space-y-2">
+                  <div className="text-sm">Start‑Rate (Views → Schritt 1): <span className="font-medium">{wf.start_rate}%</span></div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-muted-foreground">
+                          <th className="py-1 pr-3">Stufe</th>
+                          <th className="py-1 pr-3">Anzahl</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((r) => (
+                          <tr key={r.k} className="border-t">
+                            <td className="py-1 pr-3">{r.k}</td>
+                            <td className="py-1 pr-3 tabular-nums">{r.v}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Pre-signup: FAQ Engagement */}
+      <Card>
+        <CardHeader>
+          <CardTitle>FAQ‑Klicks (7 Tage)</CardTitle>
+          <CardDescription>Top Fragen, die Nutzer öffnen</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!data?.preSignup?.faqClicks?.length ? (
+            <div className="text-sm text-muted-foreground">Keine Daten</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-muted-foreground">
+                    <th className="py-1 pr-3">Frage</th>
+                    <th className="py-1 pr-3">Klicks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.preSignup.faqClicks.map((f) => (
+                    <tr key={f.title} className="border-t">
+                      <td className="py-1 pr-3">{f.title}</td>
+                      <td className="py-1 pr-3 tabular-nums">{f.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

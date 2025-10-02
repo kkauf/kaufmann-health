@@ -313,6 +313,204 @@ export async function GET(req: Request) {
       await logError('admin.api.stats', e, { stage: 'optional_datasets' });
     }
 
+    // --- Pre-signup: Wizard funnel + FAQ engagement ---
+    let preSignup: {
+      wizardFunnel: { page_views: number; step1: number; step2: number; step3: number; step4: number; step5: number; form_completed: number; start_rate: number };
+      faqClicks: Array<{ title: string; count: number }>;
+    } = {
+      wizardFunnel: { page_views: 0, step1: 0, step2: 0, step3: 0, step4: 0, step5: 0, form_completed: 0, start_rate: 0 },
+      faqClicks: [],
+    };
+    try {
+      // Wizard steps: unique sessions per step using client session_id
+      const { data: stepEvents, error: stepErr } = await supabaseServer
+        .from('events')
+        .select('created_at, properties')
+        .eq('type', 'screen_viewed')
+        .gte('created_at', sinceIso)
+        .limit(20000);
+      if (!stepErr && Array.isArray(stepEvents)) {
+        const sessionsByStep = {
+          1: new Set<string>(),
+          2: new Set<string>(),
+          3: new Set<string>(),
+          4: new Set<string>(),
+          5: new Set<string>(),
+        } as const;
+        for (const row of stepEvents as Array<{ properties?: Record<string, unknown> }>) {
+          try {
+            const props = (row.properties || {}) as Record<string, unknown>;
+            const sid = String((props['session_id'] as string | undefined) || '').trim();
+            const stepRaw = String((props['step'] as string | number | undefined) ?? '');
+            const stepNum = Number(stepRaw);
+            if (sid && [1, 2, 3, 4, 5].includes(stepNum)) {
+              // @ts-expect-error narrowed by includes
+              sessionsByStep[stepNum].add(sid);
+            }
+          } catch {}
+        }
+        preSignup.wizardFunnel.step1 = sessionsByStep[1].size;
+        preSignup.wizardFunnel.step2 = sessionsByStep[2].size;
+        preSignup.wizardFunnel.step3 = sessionsByStep[3].size;
+        preSignup.wizardFunnel.step4 = sessionsByStep[4].size;
+        preSignup.wizardFunnel.step5 = sessionsByStep[5].size;
+      }
+
+      // Page views: unique sessions with page_view in window
+      try {
+        const { data: pvEvents } = await supabaseServer
+          .from('events')
+          .select('properties')
+          .eq('type', 'page_view')
+          .gte('created_at', sinceIso)
+          .limit(50000);
+        const pvSessions = new Set<string>();
+        for (const row of (pvEvents || []) as Array<{ properties?: Record<string, unknown> }>) {
+          try {
+            const props = (row.properties || {}) as Record<string, unknown>;
+            const sid = String((props['session_id'] as string | undefined) || '').trim();
+            if (sid) pvSessions.add(sid);
+          } catch {}
+        }
+        preSignup.wizardFunnel.page_views = pvSessions.size;
+      } catch {}
+
+      // Form completed: count via people.metadata.form_completed_at within window (patients only, exclude tests)
+      try {
+        const completedRes = await supabaseServer
+          .from('people')
+          .select('id', { count: 'exact', head: true })
+          .eq('type', 'patient')
+          .not('metadata->>is_test', 'eq', 'true')
+          .gte('metadata->>form_completed_at', sinceIso);
+        preSignup.wizardFunnel.form_completed = completedRes.error ? 0 : (completedRes.count || 0);
+      } catch {}
+
+      // Start rate: step1 unique sessions over page_view unique sessions
+      try {
+        const den = preSignup.wizardFunnel.page_views;
+        const num = preSignup.wizardFunnel.step1;
+        preSignup.wizardFunnel.start_rate = den > 0 ? Math.round((num / den) * 1000) / 10 : 0;
+      } catch {}
+
+      // FAQ clicks: aggregate last N days by title
+      const { data: faqEvents, error: faqErr } = await supabaseServer
+        .from('events')
+        .select('created_at, properties')
+        .eq('type', 'faq_open')
+        .gte('created_at', sinceIso)
+        .limit(10000);
+      if (!faqErr && Array.isArray(faqEvents)) {
+        const map = new Map<string, number>();
+        for (const row of faqEvents as Array<{ properties?: Record<string, unknown> }>) {
+          try {
+            const props = (row.properties || {}) as Record<string, unknown>;
+            const title = String((props['title'] as string | undefined) || '').trim() || 'Unbekannt';
+            map.set(title, (map.get(title) || 0) + 1);
+          } catch {}
+        }
+        preSignup.faqClicks = Array.from(map.entries())
+          .map(([title, count]) => ({ title, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 15);
+      }
+    } catch (e) {
+      await logError('admin.api.stats', e, { stage: 'pre_signup' });
+    }
+
+    // --- Post-signup: last-7 signups and client funnel ---
+    let postSignup: {
+      last7: { clients_new: number; therapists_new: number };
+      clientFunnel: { pre_confirmation: number; new: number; selected: number; session_booked: number };
+    } = { last7: { clients_new: 0, therapists_new: 0 }, clientFunnel: { pre_confirmation: 0, new: 0, selected: 0, session_booked: 0 } };
+    try {
+      // Clients with status 'new' transitioned within window (use email_confirmed_at as transition marker)
+      const clientsNewRes = await supabaseServer
+        .from('people')
+        .select('id', { count: 'exact', head: true })
+        .eq('type', 'patient')
+        .eq('status', 'new')
+        .not('metadata->>is_test', 'eq', 'true')
+        .gte('metadata->>email_confirmed_at', sinceIso);
+      postSignup.last7.clients_new = clientsNewRes.error ? 0 : (clientsNewRes.count || 0);
+
+      // Therapists created within window (exclude tests where possible)
+      const therapistsNewRes = await supabaseServer
+        .from('therapists')
+        .select('id', { count: 'exact', head: true })
+        .not('metadata->>is_test', 'eq', 'true')
+        .gte('created_at', sinceIso);
+      postSignup.last7.therapists_new = therapistsNewRes.error ? 0 : (therapistsNewRes.count || 0);
+
+      // Client funnel steps within window
+      const preConfRes = await supabaseServer
+        .from('people')
+        .select('id', { count: 'exact', head: true })
+        .eq('type', 'patient')
+        .eq('status', 'pre_confirmation')
+        .not('metadata->>is_test', 'eq', 'true')
+        .gte('created_at', sinceIso);
+      postSignup.clientFunnel.pre_confirmation = preConfRes.error ? 0 : (preConfRes.count || 0);
+
+      const newRes = await supabaseServer
+        .from('people')
+        .select('id', { count: 'exact', head: true })
+        .eq('type', 'patient')
+        .eq('status', 'new')
+        .not('metadata->>is_test', 'eq', 'true')
+        .gte('metadata->>email_confirmed_at', sinceIso);
+      postSignup.clientFunnel.new = newRes.error ? 0 : (newRes.count || 0);
+
+      // Therapist selected: unique patients in patient_selected events within window
+      try {
+        const { data: selEv, error: selErr } = await supabaseServer
+          .from('events')
+          .select('created_at, properties')
+          .eq('type', 'patient_selected')
+          .gte('created_at', sinceIso)
+          .limit(20000);
+        if (!selErr && Array.isArray(selEv)) {
+          const patients = new Set<string>();
+          for (const row of selEv as Array<{ properties?: Record<string, unknown> }>) {
+            try {
+              const props = (row.properties || {}) as Record<string, unknown>;
+              const pid = String((props['patient_id'] as string | undefined) || '').trim();
+              if (pid) patients.add(pid);
+            } catch {}
+          }
+          postSignup.clientFunnel.selected = patients.size;
+        }
+      } catch {}
+
+      // Session booked: prefer patient_confirmed_at timestamp if present; fallback to created_at
+      let sessionBooked = 0;
+      try {
+        const { data: sbRows, error: sbErr } = await supabaseServer
+          .from('matches')
+          .select('id, status, patient_confirmed_at, created_at')
+          .in('status', ['session_booked', 'completed'])
+          .gte('patient_confirmed_at', sinceIso)
+          .limit(20000);
+        if (!sbErr && Array.isArray(sbRows)) {
+          sessionBooked = (sbRows as unknown[]).length;
+        } else {
+          // Fallback: filter by created_at when patient_confirmed_at not available
+          const { data: sbRows2 } = await supabaseServer
+            .from('matches')
+            .select('id, status, created_at')
+            .in('status', ['session_booked', 'completed'])
+            .gte('created_at', sinceIso)
+            .limit(20000);
+          sessionBooked = Array.isArray(sbRows2) ? (sbRows2 as unknown[]).length : 0;
+        }
+      } catch {
+        // Final fallback: 0
+      }
+      postSignup.clientFunnel.session_booked = sessionBooked;
+    } catch (e) {
+      await logError('admin.api.stats', e, { stage: 'post_signup' });
+    }
+
     // 6) Campaign performance (patient leads with campaign attribution)
     type PeopleRow = { status?: string | null; campaign_source?: string | null; campaign_variant?: string | null };
     const { data: peopleRows, error: peopleErr } = await supabaseServer
@@ -415,6 +613,8 @@ export async function GET(req: Request) {
       // Campaign performance (patient leads with campaign attribution)
       campaignStats: campaignStats,
       campaignByDay,
+      preSignup,
+      postSignup,
       blockers: {
         last30Days: {
           total: blockersTotal,

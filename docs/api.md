@@ -573,6 +573,25 @@ See `vercel.json` for this cron schedule.
 
 Response shape (high-level): totals, trends, blockers breakdown. Exact fields may evolve—see endpoint code.
 
+Pre-/Post‑Signup metrics (existing signals only):
+
+- preSignup
+  - wizardFunnel
+    - page_views: unique sessions with page_view events in window
+    - step1..step5: unique sessions that viewed each Fragebogen step (screen_viewed with step)
+    - form_completed: count of patients with people.metadata.form_completed_at in window
+    - start_rate: page_views → step1 conversion (percent, one decimal)
+  - faqClicks: Array<{ title, count }> top opened FAQ items
+- postSignup
+  - last7
+    - clients_new: patients that became active (status=new) within window (based on metadata.email_confirmed_at)
+    - therapists_new: therapists created within window (excludes tests)
+  - clientFunnel
+    - pre_confirmation: new patient leads created within window (status=pre_confirmation)
+    - new: confirmed/activated patients within window (status=new)
+    - selected: unique patients from patient_selected events within window
+    - session_booked: matches with status in (session_booked, completed) in window (prefers patient_confirmed_at, falls back to created_at)
+
 ### Campaign Reporting (EARTH-153)
 
 The endpoint also returns campaign performance based on first‑party attribution stored on `public.people` (client leads only). The window is controlled by `?days=N` (default `7`, max `30`).
