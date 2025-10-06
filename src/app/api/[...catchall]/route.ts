@@ -1,0 +1,77 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { logError } from '@/lib/logger';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+// Critical API patterns that should NEVER 404 - these indicate broken email links or production issues
+const CRITICAL_PATTERNS = [
+  { pattern: /^\/api\/match\/[^/]+\/(select|respond)/, name: 'patient_therapist_magic_links' },
+  { pattern: /^\/api\/therapists\/opt-out/, name: 'therapist_opt_out' },
+  { pattern: /^\/api\/leads\/(confirm|resend-confirmation)/, name: 'lead_confirmation' },
+  { pattern: /^\/api\/leads\/[^/]+\/preferences/, name: 'lead_preferences' },
+];
+
+async function handle(req: NextRequest) {
+  const pathname = new URL(req.url).pathname;
+
+  // Check if this is a critical endpoint that should never 404
+  const criticalMatch = CRITICAL_PATTERNS.find(({ pattern }) => pattern.test(pathname));
+
+  if (criticalMatch) {
+    // CRITICAL: Log this as a high-severity error - broken magic link/email flow
+    await logError(
+      'api.404.critical',
+      new Error(`CRITICAL: 404 on ${criticalMatch.name} endpoint - broken email/magic link`),
+      {
+        pathname,
+        query: new URL(req.url).search,
+        method: req.method,
+        pattern: criticalMatch.name,
+        referrer: req.headers.get('referer') || null,
+        userAgent: req.headers.get('user-agent')?.slice(0, 200) || null,
+        severity: 'CRITICAL',
+        impact: 'Business flow broken - users cannot complete action',
+      }
+    );
+  } else {
+    // Non-critical 404, still log for monitoring
+    await logError(
+      'api.404',
+      new Error(`API route not found: ${pathname}`),
+      {
+        pathname,
+        query: new URL(req.url).search,
+        method: req.method,
+      }
+    );
+  }
+
+  return NextResponse.json(
+    {
+      error: 'Not found',
+      message: 'The requested API endpoint does not exist',
+    },
+    { status: 404 }
+  );
+}
+
+export async function GET(req: NextRequest) {
+  return handle(req);
+}
+
+export async function POST(req: NextRequest) {
+  return handle(req);
+}
+
+export async function PUT(req: NextRequest) {
+  return handle(req);
+}
+
+export async function DELETE(req: NextRequest) {
+  return handle(req);
+}
+
+export async function PATCH(req: NextRequest) {
+  return handle(req);
+}
