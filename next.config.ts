@@ -32,6 +32,18 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      {
+        source: "/api/match/:uuid/select",
+        destination: "/api/public/match/:uuid/select",
+      },
+      {
+        source: "/api/match/:uuid/respond",
+        destination: "/api/public/match/:uuid/respond",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
