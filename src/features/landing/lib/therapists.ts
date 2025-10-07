@@ -12,6 +12,7 @@ type TherapistRow = {
   modalities: unknown;
   accepting_new: boolean | null;
   photo_url: string | null;
+  status: string | null;
   metadata?: unknown;
 };
 
@@ -37,8 +38,10 @@ export async function getTherapistsByIds(ids: string[]): Promise<AppTherapist[]>
   if (!ids || ids.length === 0) return [];
   const { data, error } = await supabaseServer
     .from('therapists')
-    .select('id, first_name, last_name, city, modalities, accepting_new, photo_url, metadata')
-    .in('id', ids);
+    .select('id, first_name, last_name, city, modalities, accepting_new, photo_url, status, metadata')
+    .in('id', ids)
+    .eq('status', 'verified')
+    .not('photo_url', 'is', null);
 
   if (error) {
     console.error('[landing/lib/therapists] getTherapistsByIds error:', error);
@@ -55,7 +58,9 @@ export async function getTherapistsForLanding(options?: {
 }): Promise<AppTherapist[]> {
   let query = supabaseServer
     .from('therapists')
-    .select('id, first_name, last_name, city, modalities, accepting_new, photo_url, metadata');
+    .select('id, first_name, last_name, city, modalities, accepting_new, photo_url, status, metadata')
+    .eq('status', 'verified')
+    .not('photo_url', 'is', null);
 
   if (options?.city) {
     query = query.eq('city', options.city);

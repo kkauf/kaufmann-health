@@ -318,7 +318,19 @@ export default function AdminTherapistsPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Erinnerung fehlgeschlagen");
-      setMessage("Erinnerungs-E-Mail gesendet");
+
+      if (json?.data?.skipped) {
+        const reason = json.data.reason;
+        const reasonMap: Record<string, string> = {
+          no_missing: "Keine fehlenden Informationen",
+          opt_out: "Therapeut hat Erinnerungen abbestellt",
+          capped: "Maximale Anzahl an Erinnerungen erreicht (3)",
+          cooldown: "Erinnerung bereits kürzlich gesendet (Wartezeit: 7 Tage)",
+        };
+        setMessage(reasonMap[reason] || "Erinnerung übersprungen");
+      } else {
+        setMessage("Erinnerungs-E-Mail gesendet");
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
       setMessage(msg);
