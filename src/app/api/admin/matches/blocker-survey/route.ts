@@ -162,12 +162,8 @@ export async function GET(req: Request) {
 
       try {
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.matches.blocker_survey', props: { match_id } });
-        const emailSent = await sendEmail({ to, subject: content.subject, html: content.html, text: content.text, context: { kind: 'patient_blocker_survey', match_id } });
-        if (emailSent) {
-          sent++;
-        } else {
-          await logError('admin.api.matches.blocker_survey', new Error('Email send returned false'), { stage: 'send_email_failed', match_id, email: to }, ip, ua);
-        }
+        await sendEmail({ to, subject: content.subject, html: content.html, text: content.text, context: { kind: 'patient_blocker_survey', match_id } });
+        sent++;
       } catch (e) {
         await logError('admin.api.matches.blocker_survey', e, { stage: 'send_email', match_id }, ip, ua);
       }

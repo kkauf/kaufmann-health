@@ -13,7 +13,6 @@ vi.mock('@/lib/email/client', () => {
   return {
     sendEmail: vi.fn(async (params: any) => {
       sentEmails.push({ to: params?.to, subject: params?.subject, html: params?.html });
-      return true; // Indicate successful send
     }),
   };
 });

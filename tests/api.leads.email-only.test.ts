@@ -4,7 +4,7 @@ let sentEmails: any[] = [];
 
 // Mock email client to capture email sends
 vi.mock('@/lib/email/client', () => ({
-  sendEmail: vi.fn(async (params: any) => { sentEmails.push(params); return true; }),
+  sendEmail: vi.fn(async (params: any) => { sentEmails.push(params); }),
 }));
 
 // Minimal supabase mock for email-only flow

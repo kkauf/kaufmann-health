@@ -10,7 +10,7 @@ vi.mock('@/lib/leads/rateLimit', () => ({
 }));
 
 vi.mock('@/lib/email/client', () => ({
-  sendEmail: vi.fn(async () => true),
+  sendEmail: vi.fn(async () => {}),
 }));
 
 vi.mock('@/lib/server-analytics', async (orig) => {

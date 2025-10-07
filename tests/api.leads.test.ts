@@ -71,7 +71,6 @@ vi.mock('@/lib/email/client', () => {
   return {
     sendEmail: vi.fn(async (params: any) => {
       sentEmails.push(params);
-      return true;
     }),
   } as any;
 });

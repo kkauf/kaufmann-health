@@ -429,7 +429,7 @@ async function handleTherapistMultipart(req: Request) {
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
       };
     } catch {}
-    const sent = await sendEmail({
+    await sendEmail({
       to: data.email,
       subject: welcome.subject,
       html: welcome.html,
@@ -437,9 +437,6 @@ async function handleTherapistMultipart(req: Request) {
       replyTo: 'kontakt@kaufmann-health.de',
       context: { stage: 'therapist_welcome', lead_id: therapistId, lead_type: 'therapist' },
     });
-    if (!sent) {
-      await logError('api.leads', new Error('Therapist welcome email send failed'), { stage: 'therapist_welcome_send_failed', lead_id: therapistId, email: data.email }, ip, ua);
-    }
   } catch (e) {
     console.error('[welcome-email] Failed to render/send therapist welcome', e);
     void logError('api.leads', e, { stage: 'welcome_email' }, ip, ua);
@@ -831,7 +828,7 @@ export async function POST(req: Request) {
             ua,
             props: { stage: 'email_confirmation', lead_id: effectiveId!, lead_type: 'patient', subject: emailContent.subject },
           });
-          const sent = await sendEmail({
+          await sendEmail({
             to: email,
             subject: emailContent.subject,
             html: emailContent.html,
@@ -844,9 +841,6 @@ export async function POST(req: Request) {
               email_token: confirmToken,
             },
           });
-          if (!sent) {
-            await logError('api.leads', new Error('Confirmation email send failed'), { stage: 'email_confirmation_send_failed', lead_id: effectiveId!, email }, ip, ua);
-          }
         } catch (e) {
           console.error('[email-confirmation] Failed to render/send', e);
           void logError('api.leads', e, { stage: 'email_confirmation_email' }, ip, ua);

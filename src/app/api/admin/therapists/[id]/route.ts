@@ -209,18 +209,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         const visible = Boolean((after as { photo_url?: string | null })?.photo_url);
         const approval = renderTherapistApproval({ name, profileVisible: visible });
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.update', props: { stage: 'therapist_approval', therapist_id: id, subject: approval.subject } });
-        const sent = await sendEmail({ to, subject: approval.subject, html: approval.html, context: { stage: 'therapist_approval', therapist_id: id } });
-        if (!sent) {
-          await logError('admin.api.therapists.update', new Error('Approval email send failed'), { stage: 'therapist_approval_send_failed', therapist_id: id, email: to });
-        }
+        await sendEmail({ to, subject: approval.subject, html: approval.html, context: { stage: 'therapist_approval', therapist_id: id } });
       } else if (to && finalStatus === 'rejected') {
         const uploadUrl = `${BASE_URL}/therapists/upload-documents/${id}`;
         const rejection = renderTherapistRejection({ name, uploadUrl, adminNotes: verification_notes || null });
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.update', props: { stage: 'therapist_rejection', therapist_id: id, subject: rejection.subject } });
-        const sent = await sendEmail({ to, subject: rejection.subject, html: rejection.html, context: { stage: 'therapist_rejection', therapist_id: id } });
-        if (!sent) {
-          await logError('admin.api.therapists.update', new Error('Rejection email send failed'), { stage: 'therapist_rejection_send_failed', therapist_id: id, email: to });
-        }
+        await sendEmail({ to, subject: rejection.subject, html: rejection.html, context: { stage: 'therapist_rejection', therapist_id: id } });
       }
     } catch (e) {
       await logError('admin.api.therapists.update', e, { stage: 'send_status_email', therapist_id: id });
