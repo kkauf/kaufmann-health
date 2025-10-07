@@ -173,7 +173,7 @@ export async function GET(req: Request) {
             };
           }
         } catch {}
-        await sendEmail({
+        const emailSent = await sendEmail({
           to: therapistEmail,
           subject: notif.subject,
           html: notif.html,
@@ -181,7 +181,11 @@ export async function GET(req: Request) {
           replyTo: 'kontakt@kaufmann-health.de',
           context: { kind: 'therapist_action_reminder', match_id },
         });
-        sent++;
+        if (emailSent) {
+          sent++;
+        } else {
+          await logError('admin.api.matches.therapist_action_reminders', new Error('Email send returned false'), { stage: 'send_email_failed', match_id, email: therapistEmail }, ip, ua);
+        }
       } catch (e) {
         await logError('admin.api.matches.therapist_action_reminders', e, { stage: 'send_email', match_id }, ip, ua);
       }

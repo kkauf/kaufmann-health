@@ -62,9 +62,10 @@ function htmlToText(html?: string): string | undefined {
 
 /**
  * Thin wrapper around Resend HTTP API.
- * No-ops if RESEND_API_KEY is not configured or if 'to' is missing.
+ * Returns true if email was sent successfully, false otherwise.
+ * No-ops (returns false) if RESEND_API_KEY is not configured or if 'to' is missing.
  */
-export async function sendEmail(params: SendEmailParams): Promise<void> {
+export async function sendEmail(params: SendEmailParams): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     // Observability: make it visible when emailing is disabled
@@ -74,7 +75,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
       source: 'email.client',
       props: { reason: 'missing_api_key', subject: params.subject, ...(params.context || {}) },
     });
-    return; // disabled in tests or locally
+    return false; // disabled in tests or locally
   }
 
   const toList = !params.to
@@ -90,7 +91,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
       source: 'email.client',
       props: { reason: 'missing_recipient', subject: params.subject, ...(params.context || {}) },
     });
-    return;
+    return false;
   }
 
   const fromAddress = params.from || process.env.LEADS_FROM_EMAIL || EMAIL_FROM_DEFAULT;
@@ -169,7 +170,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
             ...(params.context || {}),
           },
         });
-        return;
+        return true;
       }
 
       const status = resp.status;
@@ -190,7 +191,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
             ...(params.context || {}),
           },
         });
-        return;
+        return true;
       }
       let body = '';
       try {
@@ -231,7 +232,7 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
         attempt,
         ...(params.context || {}),
       });
-      return; // give up
+      return false; // give up
     } catch (e) {
       clearTimeout(timer);
       // Network error or timeout; log and maybe retry.
@@ -262,7 +263,9 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
         timeout_ms: timeoutMs,
         ...(params.context || {}),
       });
-      return;
+      return false;
     }
   }
+  // If we exhausted all attempts without success, return false
+  return false;
 }

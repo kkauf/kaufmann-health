@@ -319,8 +319,12 @@ export async function GET(req: Request) {
 
       try {
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.matches.selection_reminders', props: { stage, patient_id } });
-        await sendEmail({ to, subject: content.subject, html: content.html, text: content.text, context: { kind: 'patient_selection_reminder', stage, patient_id } });
-        sent++;
+        const emailSent = await sendEmail({ to, subject: content.subject, html: content.html, text: content.text, context: { kind: 'patient_selection_reminder', stage, patient_id } });
+        if (emailSent) {
+          sent++;
+        } else {
+          await logError('admin.api.matches.selection_reminders', new Error('Email send returned false'), { stage: 'send_email_failed', patient_id, email: to }, ip, ua);
+        }
       } catch (e) {
         await logError('admin.api.matches.selection_reminders', e, { stage: 'send_email', patient_id }, ip, ua);
       }
