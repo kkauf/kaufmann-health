@@ -177,7 +177,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     });
 
     void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.reminder', props: { stage: 'therapist_profile_reminder', therapist_id: id, subject: reminder.subject } });
-    await sendEmail({
+    const sent = await sendEmail({
       to,
       subject: reminder.subject,
       html: reminder.html,
@@ -187,6 +187,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       },
       context: { stage: 'therapist_profile_reminder', therapist_id: id },
     });
+
+    if (!sent) {
+      await logError('admin.api.therapists.reminder', new Error('Email send failed'), { stage: 'send_failed', therapist_id: id, email: to });
+      return NextResponse.json({ data: null, error: 'Email send failed' }, { status: 500 });
+    }
 
     return NextResponse.json({ data: { ok: true }, error: null });
   } catch (e) {

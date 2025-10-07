@@ -40,7 +40,7 @@ vi.mock('@/lib/supabase-server', () => {
   return { supabaseServer };
 });
 
-vi.mock('@/lib/email/client', () => ({ sendEmail: vi.fn(async () => {}) }));
+vi.mock('@/lib/email/client', () => ({ sendEmail: vi.fn(async () => true) }));
 vi.mock('@/lib/google-ads', () => ({ googleAdsTracker: { trackConversion: vi.fn(async () => {}) } }));
 
 function makeMultipartReq(form: FormData, headers?: Record<string, string>) {

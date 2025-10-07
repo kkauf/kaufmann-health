@@ -248,7 +248,7 @@ export async function GET(req: Request) {
 
       try {
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.reminders.batch', props: { stage: 'therapist_profile_reminder', therapist_id: t.id, subject: reminder.subject } });
-        await sendEmail({
+        const emailSent = await sendEmail({
           to,
           subject: reminder.subject,
           html: reminder.html,
@@ -259,13 +259,17 @@ export async function GET(req: Request) {
           replyTo: 'kontakt@kaufmann-health.de',
           context: { stage: 'therapist_profile_reminder', therapist_id: t.id },
         });
-        sent++;
-        if (examples.length < 3) {
-          const miss: string[] = [];
-          if (missingDocuments) miss.push('documents');
-          if (missingPhoto) miss.push('photo');
-          if (missingApproach) miss.push('approach');
-          examples.push({ id: t.id as string, missing: miss });
+        if (emailSent) {
+          sent++;
+          if (examples.length < 3) {
+            const miss: string[] = [];
+            if (missingDocuments) miss.push('documents');
+            if (missingPhoto) miss.push('photo');
+            if (missingApproach) miss.push('approach');
+            examples.push({ id: t.id as string, missing: miss });
+          }
+        } else {
+          await logError('admin.api.therapists.reminders.batch', new Error('Email send returned false'), { stage: 'send_email_failed', therapist_id: t.id, email: to }, ip, ua);
         }
       } catch (e) {
         await logError('admin.api.therapists.reminders.batch', e, { stage: 'send_email', therapist_id: t.id }, ip, ua);
@@ -495,7 +499,7 @@ export async function POST(req: Request) {
 
       try {
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.reminders.batch', props: { stage: 'therapist_profile_reminder', therapist_id: t.id, subject: reminder.subject } });
-        await sendEmail({
+        const emailSent = await sendEmail({
           to,
           subject: reminder.subject,
           html: reminder.html,
@@ -506,13 +510,17 @@ export async function POST(req: Request) {
           replyTo: 'kontakt@kaufmann-health.de',
           context: { stage: 'therapist_profile_reminder', therapist_id: t.id },
         });
-        sent++;
-        if (examples.length < 3) {
-          const miss: string[] = [];
-          if (missingDocuments) miss.push('documents');
-          if (missingPhoto) miss.push('photo');
-          if (missingApproach) miss.push('approach');
-          examples.push({ id: t.id as string, missing: miss });
+        if (emailSent) {
+          sent++;
+          if (examples.length < 3) {
+            const miss: string[] = [];
+            if (missingDocuments) miss.push('documents');
+            if (missingPhoto) miss.push('photo');
+            if (missingApproach) miss.push('approach');
+            examples.push({ id: t.id as string, missing: miss });
+          }
+        } else {
+          await logError('admin.api.therapists.reminders.batch', new Error('Email send returned false'), { stage: 'send_email_failed', therapist_id: t.id, email: to }, ip, ua);
         }
       } catch (e) {
         await logError('admin.api.therapists.reminders.batch', e, { stage: 'send_email', therapist_id: t.id }, ip, ua);

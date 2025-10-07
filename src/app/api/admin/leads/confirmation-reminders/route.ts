@@ -154,7 +154,7 @@ async function processBatch(thresholdKey: keyof typeof THRESHOLDS, limit: number
       const confirmUrl = fs ? `${base}&fs=${encodeURIComponent(fs)}` : base;
       const content = renderEmailConfirmation({ confirmUrl });
       void track({ type: 'email_attempted', level: 'info', source: 'admin.api.leads.confirmation_reminders', ip, ua, props: { stage, lead_id: row.id, subject: content.subject } });
-      await sendEmail({
+      const emailSent = await sendEmail({
         to: email,
         subject: content.subject,
         html: content.html,
@@ -165,7 +165,11 @@ async function processBatch(thresholdKey: keyof typeof THRESHOLDS, limit: number
           email_token: newToken,
         },
       });
-      sent++;
+      if (emailSent) {
+        sent++;
+      } else {
+        await logError('admin.api.leads.confirmation_reminders', new Error('Email send returned false'), { stage: 'send_email_failed', lead_id: row.id, email }, ip, ua);
+      }
     } catch (e) {
       await logError('admin.api.leads.confirmation_reminders', e, { stage: 'send_email', lead_id: row.id }, ip, ua);
     }

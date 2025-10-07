@@ -52,7 +52,7 @@ vi.mock('@/lib/supabase-server', () => {
 
 // Mock email client (not relevant here, but route calls it)
 vi.mock('@/lib/email/client', () => ({
-  sendEmail: vi.fn(async () => {}),
+  sendEmail: vi.fn(async () => true),
 }));
 
 // Spy on google ads tracker
