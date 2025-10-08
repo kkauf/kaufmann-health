@@ -135,7 +135,7 @@ export default function UeberUnsPage() {
                   coaching and somatic sessions internationally.
                 </p>
                 <p className="text-base leading-relaxed text-gray-700">
-                  I'm also a mother, an avid reader of poetry and mystical texts, and a lover of the natural landscapes
+                  I&apos;m also a mother, an avid reader of poetry and mystical texts, and a lover of the natural landscapes
                   of central New York, my home state.
                 </p>
               </div>
