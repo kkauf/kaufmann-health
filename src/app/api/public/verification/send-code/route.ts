@@ -12,12 +12,16 @@ import { ServerAnalytics } from '@/lib/server-analytics';
 import { renderEmailConfirmation } from '@/lib/email/templates/emailConfirmation';
 import { sendEmail } from '@/lib/email/client';
 import { randomBytes } from 'crypto';
+import { supabaseServer } from '@/lib/supabase-server';
 
 interface SendCodeRequest {
   contact: string; // email or phone
   contact_type: 'email' | 'phone';
   lead_id?: string; // Optional: if associated with existing lead
   form_session_id?: string;
+  // Optional redirect path for magic link confirmations.
+  // Must be a safe, relative path (validated before use).
+  redirect?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -26,7 +30,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = (await req.json()) as SendCodeRequest;
-    const { contact, contact_type, lead_id, form_session_id } = body;
+    const { contact, contact_type, lead_id, form_session_id, redirect } = body;
 
     if (!contact || !contact_type) {
       return NextResponse.json(
@@ -129,6 +133,75 @@ export async function POST(req: NextRequest) {
       let confirmUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/public/leads/confirm?token=${token}`;
       if (form_session_id) {
         confirmUrl = `${confirmUrl}&fs=${encodeURIComponent(form_session_id)}`;
+      }
+      // If a safe redirect path is provided, include it so the confirm endpoint
+      // can return the user to the correct UI context (e.g. ContactModal on /therapeuten).
+      if (redirect && typeof redirect === 'string') {
+        const isSafe = redirect.startsWith('/') && !redirect.startsWith('/api') && !redirect.startsWith('//');
+        if (isSafe) {
+          confirmUrl = `${confirmUrl}&redirect=${encodeURIComponent(redirect)}`;
+        }
+      }
+
+      // Ensure a person exists for this email so confirmation can succeed.
+      // Store the token & timestamp in metadata and include the id in the confirm URL.
+      let personId = lead_id || '';
+      try {
+        if (!personId) {
+          const { data: existing, error: selErr } = await supabaseServer
+            .from('people')
+            .select('id, metadata')
+            .eq('email', contact)
+            .limit(1);
+          if (!selErr && existing && existing.length > 0) {
+            personId = existing[0].id as string;
+            const meta = (existing[0].metadata as Record<string, unknown>) || {};
+            meta['confirm_token'] = token;
+            meta['confirm_sent_at'] = new Date().toISOString();
+            await supabaseServer
+              .from('people')
+              .update({ metadata: meta, status: 'email_confirmation_sent' })
+              .eq('id', personId);
+          } else {
+            // Create a minimal patient lead row
+            const { data: inserted, error: insErr } = await supabaseServer
+              .from('people')
+              .insert({
+                email: contact,
+                type: 'patient',
+                status: 'email_confirmation_sent',
+                metadata: {
+                  confirm_token: token,
+                  confirm_sent_at: new Date().toISOString(),
+                },
+              })
+              .select('id')
+              .single();
+            if (!insErr && inserted?.id) {
+              personId = inserted.id as string;
+            }
+          }
+        } else {
+          // Update provided lead_id metadata
+          const { data: existing } = await supabaseServer
+            .from('people')
+            .select('metadata')
+            .eq('id', personId)
+            .single();
+          const meta = (existing?.metadata as Record<string, unknown>) || {};
+          meta['confirm_token'] = token;
+          meta['confirm_sent_at'] = new Date().toISOString();
+          await supabaseServer
+            .from('people')
+            .update({ metadata: meta, status: 'email_confirmation_sent' })
+            .eq('id', personId);
+        }
+      } catch {
+        // Best-effort: if DB ops fail, the link will still render but confirm endpoint will reject.
+      }
+
+      if (personId) {
+        confirmUrl = `${confirmUrl}&id=${encodeURIComponent(personId)}`;
       }
 
       const emailContent = renderEmailConfirmation({ confirmUrl });

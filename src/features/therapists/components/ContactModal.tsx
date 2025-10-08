@@ -26,11 +26,22 @@ interface ContactModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  /** If true, user is considered verified (EARTH-204 cookie). Skip verification. */
+  verified?: boolean;
 }
 
-type Step = 'verify' | 'verify-code' | 'compose' | 'success';
+type Step = 'verify' | 'verify-code' | 'verify-link' | 'compose' | 'success';
 
-export function ContactModal({ therapist, contactType, open, onClose, onSuccess }: ContactModalProps) {
+interface PreAuthParams {
+  /** Secure match UUID proving pre-authenticated access */
+  uuid: string;
+  /** Optional known patient name to personalize copy */
+  patientName?: string | null;
+  /** Optional default reason to prefill composer */
+  defaultReason?: string | null;
+}
+
+export function ContactModal({ therapist, contactType, open, onClose, onSuccess, preAuth, verified }: ContactModalProps & { preAuth?: PreAuthParams }) {
   const [step, setStep] = useState<Step>('verify');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +60,37 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess 
   const therapistName = `${therapist.first_name} ${therapist.last_name}`;
   const initials = `${therapist.first_name[0]}${therapist.last_name[0]}`.toUpperCase();
   
+  // If pre-authenticated via match UUID, skip verification and prefill
+  useEffect(() => {
+    if (open && preAuth) {
+      setError(null);
+      // Prefill name if provided (not shown in UI in pre-auth compose mode)
+      if (preAuth.patientName) setName(preAuth.patientName);
+      const greeting = `Guten Tag ${therapist.first_name}`;
+      const intent = contactType === 'booking'
+        ? 'ich möchte gerne einen Termin vereinbaren'
+        : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
+      const initialReason = (preAuth.defaultReason || '').trim();
+      if (initialReason) setReason(initialReason);
+      setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei ${initialReason || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.`);
+      setStep('compose');
+    }
+  }, [open, preAuth, therapist.first_name, contactType]);
+
+  // If user returned from email magic link and is considered verified via cookie (EARTH-204),
+  // skip verification and jump straight to compose.
+  useEffect(() => {
+    if (open && verified && !preAuth) {
+      setError(null);
+      const greeting = `Guten Tag ${therapist.first_name}`;
+      const intent = contactType === 'booking'
+        ? 'ich möchte gerne einen Termin vereinbaren'
+        : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
+      setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei [beschreibe dein Anliegen] und fand dein Profil sehr ansprechend.`);
+      setStep('compose');
+    }
+  }, [open, verified, preAuth, therapist.first_name, contactType]);
+
   // Track modal open
   useEffect(() => {
     if (open) {
@@ -110,12 +152,34 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess 
     setLoading(true);
     
     try {
+      // For email magic-link: include a safe redirect back to the current page
+      // so that the confirm endpoint can bring the user back into the ContactModal
+      // compose step. EARTH-204 will set the client cookie so the user is treated
+      // as verified when they return.
+      let redirectPath: string | undefined;
+      if (contactMethod === 'email') {
+        try {
+          const url = new URL(window.location.href);
+          const basePath = url.pathname;
+          const qs = new URLSearchParams({
+            contact: 'compose',
+            tid: therapist.id,
+            type: contactType,
+          });
+          redirectPath = `${basePath}?${qs.toString()}`;
+        } catch {
+          redirectPath = `/therapeuten?contact=compose&tid=${therapist.id}&type=${contactType}`;
+        }
+      }
+
       const res = await fetch('/api/public/verification/send-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contact,
           contact_type: contactMethod,
+          // Only used by the email path (magic link)
+          redirect: redirectPath,
         }),
       });
       
@@ -125,7 +189,8 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess 
         throw new Error(data.error || 'Fehler beim Senden des Codes');
       }
       
-      setStep('verify-code');
+      // Email uses magic link → show link instructions; Phone uses OTP → show code entry
+      setStep(contactMethod === 'email' ? 'verify-link' : 'verify-code');
       trackEvent('contact_verification_code_sent', { contact_method: contactMethod });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
@@ -133,7 +198,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess 
     } finally {
       setLoading(false);
     }
-  }, [name, contactMethod, email, phone, trackEvent]);
+  }, [name, contactMethod, email, phone, therapist.id, contactType, trackEvent]);
   
   // Verify code
   const handleVerifyCode = useCallback(async () => {
@@ -188,19 +253,31 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess 
     setLoading(true);
     
     try {
-      const res = await fetch('/api/public/contact', {
+      const isPreAuth = Boolean(preAuth?.uuid);
+      const endpoint = isPreAuth
+        ? `/api/public/matches/${encodeURIComponent(preAuth!.uuid)}/contact`
+        : '/api/public/contact';
+      const payload = isPreAuth
+        ? {
+            therapist_id: therapist.id,
+            contact_type: contactType,
+            patient_reason: reason,
+            patient_message: message,
+          }
+        : {
+            therapist_id: therapist.id,
+            contact_type: contactType,
+            patient_name: name,
+            patient_email: contactMethod === 'email' ? email : undefined,
+            patient_phone: contactMethod === 'phone' ? normalizePhoneNumber(phone) : undefined,
+            contact_method: contactMethod,
+            patient_reason: reason,
+            patient_message: message,
+          };
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          therapist_id: therapist.id,
-          contact_type: contactType,
-          patient_name: name,
-          patient_email: contactMethod === 'email' ? email : undefined,
-          patient_phone: contactMethod === 'phone' ? normalizePhoneNumber(phone) : undefined,
-          contact_method: contactMethod,
-          patient_reason: reason,
-          patient_message: message,
-        }),
+        body: JSON.stringify(payload),
       });
       
       const data = await res.json();
@@ -213,7 +290,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess 
       }
       
       setStep('success');
-      trackEvent('contact_message_sent');
+      if (!preAuth) {
+        trackEvent('contact_message_sent');
+      } else {
+        // Mark a separate client-side signal for observability without affecting server rate limit
+        trackEvent('contact_message_sent_client_pre_auth');
+      }
       
       if (onSuccess) {
         setTimeout(() => {
@@ -227,7 +309,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess 
     } finally {
       setLoading(false);
     }
-  }, [therapist.id, contactType, name, email, phone, contactMethod, reason, message, trackEvent, onSuccess, handleClose]);
+  }, [therapist.id, contactType, name, email, phone, contactMethod, reason, message, trackEvent, onSuccess, handleClose, preAuth]);
   
   // Handle enter key submission
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -362,6 +444,65 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess 
       <p className="text-xs text-gray-500 text-center leading-relaxed">
         Mit dem Absenden stimmst du unserer <a href="/datenschutz" className="underline hover:text-gray-700">Datenschutzerklärung</a> zu.
       </p>
+    </div>
+  );
+
+  // Render email magic-link verification step (no code entry)
+  const renderVerifyLinkStep = () => (
+    <div className="space-y-5" onKeyDown={handleKeyDown}>
+      <p className="text-sm leading-relaxed text-gray-600">
+        Wir haben dir einen Bestätigungslink per E‑Mail gesendet. Bitte öffne deine E‑Mail und klicke auf
+        „E‑Mail bestätigen“. Danach kehrst du automatisch hierher zurück und kannst die Nachricht senden.
+      </p>
+
+      <div className="rounded-lg border border-gray-200/60 bg-white/80 p-4 text-sm text-gray-700">
+        <p className="font-medium text-gray-900">Tipps, falls nichts ankommt:</p>
+        <ul className="mt-2 list-disc pl-5 space-y-1">
+          <li>Prüfe Spam/Unbekannt</li>
+          <li>Warte 1–2 Minuten</li>
+          <li>Nutze alternativ SMS</li>
+        </ul>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setStep('verify')}
+          disabled={loading}
+          className="flex-1 h-11"
+        >
+          Zurück
+        </Button>
+        <Button
+          type="button"
+          onClick={handleSendCode}
+          disabled={loading}
+          className="flex-1 h-11"
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Erneut senden'}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => { setContactMethod('phone'); setStep('verify'); }}
+          disabled={loading}
+          className="flex-1 h-11"
+        >
+          Stattdessen SMS verwenden
+        </Button>
+      </div>
+
+      {/* NOTE: After clicking the email link, /api/public/leads/confirm will redirect back
+          to this page with a query that we can use to reopen the ContactModal in the
+          compose step. EARTH-204 will set a cookie so the user is treated as verified. */}
     </div>
   );
   
@@ -545,9 +686,10 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess 
         </DialogHeader>
         
         <div className="pb-2">
-          {step === 'verify' && renderVerifyStep()}
-          {step === 'verify-code' && renderVerifyCodeStep()}
+          {step === 'verify' && !preAuth && renderVerifyStep()}
+          {step === 'verify-code' && !preAuth && renderVerifyCodeStep()}
           {step === 'compose' && renderComposeStep()}
+          {step === 'verify-link' && renderVerifyLinkStep()}
           {step === 'success' && renderSuccessStep()}
         </div>
       </DialogContent>

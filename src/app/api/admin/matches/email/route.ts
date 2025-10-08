@@ -270,7 +270,8 @@ export async function POST(req: Request) {
         };
       });
 
-      content = renderPatientSelectionEmail({ patientName, items });
+      const matchesUrl = `${BASE_URL}/matches/${secure_uuid}`;
+      content = renderPatientSelectionEmail({ patientName, items, matchesUrl });
     } else {
       return NextResponse.json({ data: null, error: 'Invalid template' }, { status: 400 });
     }

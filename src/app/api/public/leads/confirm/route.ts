@@ -4,6 +4,7 @@ import { BASE_URL } from '@/lib/constants';
 import { logError } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { VERIFICATION_MODE } from '@/lib/config';
+import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
 
 export const runtime = 'nodejs';
 
@@ -37,6 +38,7 @@ export async function GET(req: Request) {
     type PersonRow = {
       id: string;
       email: string;
+      name?: string | null;
       status?: string | null;
       metadata?: Record<string, unknown> | null;
       campaign_source?: string | null;
@@ -48,7 +50,7 @@ export async function GET(req: Request) {
     try {
       const res = await supabaseServer
         .from('people')
-        .select('id,email,status,metadata,campaign_source,campaign_variant')
+        .select('id,email,name,status,metadata,campaign_source,campaign_variant')
         .eq('id', id)
         .single<PersonRow>();
       person = (res.data as PersonRow) ?? null;
@@ -58,7 +60,7 @@ export async function GET(req: Request) {
         // Retry without optional columns (campaign_source/variant)
         const res2 = await supabaseServer
           .from('people')
-          .select('id,email,status,metadata')
+          .select('id,email,name,status,metadata')
           .eq('id', id)
           .single<Pick<PersonRow, 'id' | 'email' | 'status' | 'metadata'>>();
         person = (res2.data as PersonRow) ?? null;
@@ -75,11 +77,31 @@ export async function GET(req: Request) {
     // If the email has already been confirmed previously, but preferences may not be set yet,
     // send the user directly to the preferences screen instead of showing an invalid link.
     if ((person.status || '').toLowerCase() === 'email_confirmed') {
-      if (isSafeRedirect) {
-        const suffix = `?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
-        return NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
+      // Set client session cookie so the user is treated as verified (EARTH-204)
+      try {
+        const token = await createClientSessionToken({
+          patient_id: id,
+          contact_method: 'email',
+          contact_value: person.email.toLowerCase(),
+          name: person.name || undefined,
+        });
+        const cookie = createClientSessionCookie(token);
+        if (isSafeRedirect) {
+          const suffix = `?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
+          const resp = NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
+          resp.headers.set('Set-Cookie', cookie);
+          return resp;
+        }
+        const resp = NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`, 302);
+        resp.headers.set('Set-Cookie', cookie);
+        return resp;
+      } catch {
+        if (isSafeRedirect) {
+          const suffix = `?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
+          return NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
+        }
+        return NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`, 302);
       }
-      return NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`, 302);
     }
 
     const metadata: Record<string, unknown> = person.metadata ?? {};
@@ -138,12 +160,31 @@ export async function GET(req: Request) {
 
     // Enhanced Conversions moved to preferences submission when status becomes 'new'
 
-    // Success
-    if (isSafeRedirect) {
-      const suffix = `?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
-      return NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
+    // Success → set client session cookie (EARTH-204)
+    try {
+      const token = await createClientSessionToken({
+        patient_id: id,
+        contact_method: 'email',
+        contact_value: person.email.toLowerCase(),
+        name: person.name || undefined,
+      });
+      const cookie = createClientSessionCookie(token);
+      if (isSafeRedirect) {
+        const suffix = `?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
+        const resp = NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
+        resp.headers.set('Set-Cookie', cookie);
+        return resp;
+      }
+      const resp = NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`, 302);
+      resp.headers.set('Set-Cookie', cookie);
+      return resp;
+    } catch {
+      if (isSafeRedirect) {
+        const suffix = `?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
+        return NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
+      }
+      return NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`, 302);
     }
-    return NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`, 302);
   } catch (e) {
     await logError('api.leads.confirm', e, { stage: 'unhandled' });
     return NextResponse.redirect(`${origin}/fragebogen?confirm=error`, 302);

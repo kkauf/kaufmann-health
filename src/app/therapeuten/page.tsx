@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import PageAnalytics from '@/components/PageAnalytics';
 import { TherapistDirectory } from '@/features/therapists/components/TherapistDirectory';
+import { TherapistMatchCallout } from '@/features/therapists/components/TherapistMatchCallout';
 import { buildLandingMetadata } from '@/lib/seo';
 
 export const revalidate = 3600;
@@ -30,6 +31,8 @@ export default function TherapeutenPage() {
           Persönlich ausgewählte Spezialist:innen für körperorientierte Psychotherapie
         </p>
       </div>
+
+      <TherapistMatchCallout />
 
       <TherapistDirectory />
     </main>

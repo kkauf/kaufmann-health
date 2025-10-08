@@ -29,6 +29,7 @@ export function renderPatientSelectionEmail(params: {
   items: PatientSelectionItem[];
   subjectOverride?: string;
   bannerOverrideHtml?: string; // optional custom banner instead of default urgency box
+  matchesUrl?: string; // optional: link to the pre-auth matches page
 }): EmailContent {
   const name = (params.patientName || '').trim();
   const items = Array.isArray(params.items) ? params.items : [];
@@ -48,6 +49,15 @@ export function renderPatientSelectionEmail(params: {
     ${name ? `<p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569;">Hallo ${escapeHtml(name)},</p>` : ''}
     <p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569;">Vielen Dank für deine Anfrage bei Kaufmann Health.</p>
   `;
+ 
+  // Optional primary CTA to view matches page
+  const matchesCta = params.matchesUrl
+    ? `
+      <div style="margin: 0 0 20px; text-align: center;">
+        ${renderButton(params.matchesUrl, 'Ihre Empfehlungen ansehen')}
+      </div>
+    `
+    : '';
  
   // Trust and quality box
   const trustBox = `
@@ -119,7 +129,7 @@ export function renderPatientSelectionEmail(params: {
     <p style="margin:24px 0 0; font-size:16px; line-height:1.65; color:#475569;">Herzliche Grüße<br/><strong style="color:#0f172a;">Dein Team von Kaufmann Health</strong></p>
   `;
  
-  const contentHtml = [header, greetingHtml, trustBox, availabilityLine, cardsHtml, actionGuidance, urgencyBox, modalitiesHtml, closingHtml].join('\n');
+  const contentHtml = [header, greetingHtml, matchesCta, trustBox, availabilityLine, cardsHtml, actionGuidance, urgencyBox, modalitiesHtml, closingHtml].join('\n');
 
   const actionTarget = items[0]?.selectUrl;
   const schema = actionTarget

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TherapistCard } from './TherapistCard';
 import { TherapistDetailModal } from './TherapistDetailModal';
+import { ContactModal } from './ContactModal';
 
 export type TherapistData = {
   id: string;
@@ -31,6 +32,10 @@ export function TherapistDirectory() {
   const [selectedModality, setSelectedModality] = useState<string>('all');
   const [onlineOnly, setOnlineOnly] = useState<boolean | null>(null);
   const [selectedTherapist, setSelectedTherapist] = useState<TherapistData | null>(null);
+  // Auto contact (EARTH-204): when returning from email magic link with redirect
+  const [autoContactTherapist, setAutoContactTherapist] = useState<TherapistData | null>(null);
+  const [autoContactOpen, setAutoContactOpen] = useState(false);
+  const [autoContactType, setAutoContactType] = useState<'booking' | 'consultation'>('booking');
 
   useEffect(() => {
     async function fetchTherapists() {
@@ -51,6 +56,35 @@ export function TherapistDirectory() {
     }
     fetchTherapists();
   }, []);
+
+  // When therapists are loaded, check query params and auto-open the ContactModal in compose step.
+  // We rely on EARTH-204 cookie to treat the user as verified when returning via magic link.
+  useEffect(() => {
+    if (loading) return;
+    try {
+      const url = new URL(window.location.href);
+      const contact = url.searchParams.get('contact');
+      const tid = url.searchParams.get('tid');
+      const t = (url.searchParams.get('type') || 'booking').toLowerCase();
+      const type = t === 'consultation' ? 'consultation' : 'booking';
+      if (contact === 'compose' && tid) {
+        const th = therapists.find(x => x.id === tid) || null;
+        if (th) {
+          setAutoContactTherapist(th);
+          setAutoContactType(type);
+          setAutoContactOpen(true);
+        }
+        // Clean the URL so we don't reopen on navigation
+        url.searchParams.delete('contact');
+        url.searchParams.delete('tid');
+        url.searchParams.delete('type');
+        const cleaned = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ''}${url.hash}`;
+        window.history.replaceState({}, '', cleaned);
+      }
+    } catch {
+      // ignore
+    }
+  }, [loading, therapists]);
 
   const normalizeModality = (m: string): string => {
     return m.toLowerCase().replace(/\s+/g, '-');
@@ -184,6 +218,17 @@ export function TherapistDirectory() {
           therapist={selectedTherapist}
           open={!!selectedTherapist}
           onClose={() => setSelectedTherapist(null)}
+        />
+      )}
+
+      {/* Auto-open ContactModal when returning from magic link (verified state handled by EARTH-204 cookie). */}
+      {autoContactTherapist && (
+        <ContactModal
+          therapist={autoContactTherapist}
+          contactType={autoContactType}
+          open={autoContactOpen}
+          onClose={() => setAutoContactOpen(false)}
+          verified={true}
         />
       )}
     </>
