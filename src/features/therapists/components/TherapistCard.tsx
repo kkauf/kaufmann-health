@@ -5,9 +5,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, User, Calendar, MessageCircle } from 'lucide-react';
+import { MapPin, Video, Calendar, MessageCircle } from 'lucide-react';
 import type { TherapistData } from './TherapistDirectory';
-import CtaLink from '@/components/CtaLink';
+import { ContactModal } from './ContactModal';
 
 interface TherapistCardProps {
   therapist: TherapistData;
@@ -44,13 +44,20 @@ function getModalityDisplay(m: string): { label: string; color: string } {
 
 export function TherapistCard({ therapist, onViewDetails }: TherapistCardProps) {
   const [imageError, setImageError] = useState(false);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [contactType, setContactType] = useState<'booking' | 'consultation'>('booking');
+  
   const photoSrc = therapist.photo_url && !imageError ? therapist.photo_url : undefined;
   const initials = getInitials(therapist.first_name, therapist.last_name);
   const avatarColor = `hsl(${hashCode(therapist.id) % 360}, 70%, 50%)`;
 
   const sessionPrefs = therapist.session_preferences || [];
   const offersOnline = Array.isArray(sessionPrefs) && sessionPrefs.includes('online');
-  const offersInPerson = Array.isArray(sessionPrefs) && sessionPrefs.includes('in_person');
+  
+  const handleContactClick = (type: 'booking' | 'consultation') => {
+    setContactType(type);
+    setContactModalOpen(true);
+  };
 
   return (
     <Card className="group relative flex h-full flex-col overflow-hidden transition-shadow hover:shadow-lg">
@@ -148,39 +155,38 @@ export function TherapistCard({ therapist, onViewDetails }: TherapistCardProps) 
           <Button
             size="lg"
             className="w-full bg-emerald-600 hover:bg-emerald-700"
-            asChild
+            onClick={() => handleContactClick('booking')}
             disabled={!therapist.accepting_new}
           >
-            <CtaLink
-              href="/fragebogen"
-              eventType="cta_click"
-              data-cta="book-therapist"
-              data-therapist-id={therapist.id}
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              Therapeut:in buchen
-            </CtaLink>
+            <Calendar className="mr-2 h-4 w-4" />
+            Therapeut:in buchen
           </Button>
 
           <Button
             size="lg"
             variant="outline"
-            className="w-full"
-            asChild
+            className="w-full text-sm"
+            onClick={() => handleContactClick('consultation')}
             disabled={!therapist.accepting_new}
           >
-            <CtaLink
-              href="/fragebogen"
-              eventType="cta_click"
-              data-cta="request-consultation"
-              data-therapist-id={therapist.id}
-            >
-              <MessageCircle className="mr-2 h-4 w-4" />
-              Kostenloses Erstgespräch (15 min)
-            </CtaLink>
+            <MessageCircle className="mr-2 h-4 w-4 shrink-0" />
+            <span className="truncate">Kostenloses Erstgespräch (15 min)</span>
           </Button>
         </div>
       </CardContent>
+      
+      {/* Contact modal */}
+      <ContactModal
+        therapist={{
+          id: therapist.id,
+          first_name: therapist.first_name,
+          last_name: therapist.last_name,
+          photo_url: therapist.photo_url,
+        }}
+        contactType={contactType}
+        open={contactModalOpen}
+        onClose={() => setContactModalOpen(false)}
+      />
     </Card>
   );
 }

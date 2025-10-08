@@ -10,9 +10,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, User, Calendar, MessageCircle, Mail, Globe } from 'lucide-react';
+import { MapPin, Video, User, Calendar, MessageCircle, Globe } from 'lucide-react';
 import type { TherapistData } from './TherapistDirectory';
-import CtaLink from '@/components/CtaLink';
+import { ContactModal } from './ContactModal';
 
 interface TherapistDetailModalProps {
   therapist: TherapistData;
@@ -50,6 +50,9 @@ function getModalityDisplay(m: string): { label: string; color: string } {
 
 export function TherapistDetailModal({ therapist, open, onClose }: TherapistDetailModalProps) {
   const [imageError, setImageError] = useState(false);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [contactType, setContactType] = useState<'booking' | 'consultation'>('booking');
+  
   const photoSrc = therapist.photo_url && !imageError ? therapist.photo_url : undefined;
   const initials = getInitials(therapist.first_name, therapist.last_name);
   const avatarColor = `hsl(${hashCode(therapist.id) % 360}, 70%, 50%)`;
@@ -61,6 +64,11 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
   const profile = therapist.metadata?.profile;
   const languages = profile?.languages || [];
   const yearsExperience = profile?.years_experience;
+  
+  const handleContactClick = (type: 'booking' | 'consultation') => {
+    setContactType(type);
+    setContactModalOpen(true);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -183,41 +191,38 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
           <Button
             className="!h-11 min-w-0 flex-1 bg-emerald-600 hover:bg-emerald-700"
             size="lg"
-            asChild
+            onClick={() => handleContactClick('booking')}
             disabled={!therapist.accepting_new}
           >
-            <CtaLink
-              href="/fragebogen"
-              eventType="cta_click"
-              data-cta="book-therapist-modal"
-              data-therapist-id={therapist.id}
-              className="!flex !h-11 !min-h-[44px] !min-w-0 !items-center !justify-center !whitespace-normal !text-center"
-            >
-              <Calendar className="mr-2 h-5 w-5 shrink-0" />
-              <span className="break-words">Therapeut:in buchen</span>
-            </CtaLink>
+            <Calendar className="mr-2 h-5 w-5 shrink-0" />
+            <span className="break-words">Therapeut:in buchen</span>
           </Button>
 
           <Button
             variant="outline"
             size="lg"
             className="!h-11 min-w-0 flex-1"
-            asChild
+            onClick={() => handleContactClick('consultation')}
             disabled={!therapist.accepting_new}
           >
-            <CtaLink
-              href="/fragebogen"
-              eventType="cta_click"
-              data-cta="request-consultation-modal"
-              data-therapist-id={therapist.id}
-              className="!flex !h-11 !min-h-[44px] !min-w-0 !items-center !justify-center !whitespace-normal !text-center"
-            >
-              <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
-              <span className="break-words">Kostenloses Erstgespräch (15 min)</span>
-            </CtaLink>
+            <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
+            <span className="break-words">Kostenloses Erstgespräch (15 min)</span>
           </Button>
         </div>
       </DialogContent>
+      
+      {/* Contact modal */}
+      <ContactModal
+        therapist={{
+          id: therapist.id,
+          first_name: therapist.first_name,
+          last_name: therapist.last_name,
+          photo_url: therapist.photo_url,
+        }}
+        contactType={contactType}
+        open={contactModalOpen}
+        onClose={() => setContactModalOpen(false)}
+      />
     </Dialog>
   );
 }

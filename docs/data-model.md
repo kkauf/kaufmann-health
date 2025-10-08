@@ -52,6 +52,7 @@ RLS:
   - `session_booked`
   - `completed`
   - `failed`
+- `metadata jsonb default '{}'::jsonb` — for patient-initiated contacts (EARTH-203): `{ patient_initiated: true, contact_type: "booking"|"consultation", patient_reason: "...", patient_message: "...", contact_method: "email"|"phone" }`
 - `created_at timestamptz not null default now()`
 
 Purpose:

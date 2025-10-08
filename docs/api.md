@@ -84,6 +84,36 @@
   - 200: `{ data: { ok: true }, error: null }`
   - 400/404/500 on failure.
 
+## POST /api/public/contact (EARTH-203)
+
+- __Purpose__: Patient-initiated contact flow from therapist directory. Creates a match between patient and therapist, sends notification email with magic link.
+- __Auth__: None (public). Uses functional cookie `kh_client` (HTTP-only, 30 days) to track verified sessions and avoid re-verification.
+- __Request Body__ (JSON):
+  - `therapist_id` (uuid, required) — target therapist
+  - `contact_type` ('booking' | 'consultation', required) — type of contact request
+  - `patient_name` (string, required)
+  - `patient_email` (string, required if `contact_method='email'`)
+  - `patient_phone` (string, required if `contact_method='phone'`)
+  - `contact_method` ('email' | 'phone', required)
+  - `patient_reason` (string, required) — brief description of what they need help with
+  - `patient_message` (string, optional) — full message to therapist
+- __Behavior__:
+  - Checks for existing `kh_client` session cookie. If valid, reuses patient record.
+  - If no session: creates or finds patient by contact method, creates session token, sets cookie.
+  - Rate limit: max 3 contacts per patient per 24 hours (tracked via `matches` table).
+  - Creates `match` record with `status='proposed'` and metadata: `{ patient_initiated: true, contact_type, patient_reason, patient_message, contact_method }`.
+  - Sends therapist notification email with magic link to `/match/[secure_uuid]` (privacy-first: no PII in email).
+  - Emits analytics: `patient_created` (if new), `contact_match_created`, `contact_email_sent`, `contact_rate_limit_hit` (if blocked).
+- __Rate Limiting__:
+  - Returns 429 with `{ error: "Du hast bereits 3 Therapeuten kontaktiert...", code: "RATE_LIMIT_EXCEEDED" }` when limit exceeded.
+- __Response__:
+  - 200: `{ data: { match_id: uuid, therapist_name: string, success: true }, error: null }` + `Set-Cookie: kh_client=...` (for new patients)
+  - 400: validation errors
+  - 404: therapist not found or not verified
+  - 429: rate limit exceeded
+  - 500: server error
+- __Cookie__: `kh_client` is a functional cookie (not tracking) containing signed JWT with `{ patient_id, contact_method, contact_value, name }`. Valid for 30 days, scoped to `/`, HTTP-only, SameSite=Lax.
+
 ## Form Sessions (EARTH-190)
 
 ### POST /api/public/form-sessions
