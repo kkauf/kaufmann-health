@@ -35,10 +35,10 @@ export async function TherapistTeaserSection({
   })();
 
   return (
-    <section aria-labelledby="trust-previews" className={(className ? className + " " : "") + "mt-10 sm:mt-14"}>
-      <h2 id="trust-previews" className="text-2xl font-semibold tracking-tight">{title}</h2>
-      {subtitle ? <p className="mt-2 max-w-2xl text-gray-700">{subtitle}</p> : null}
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <section aria-labelledby="trust-previews" className={(className ? className + " " : "") + "mt-14 sm:mt-20 lg:mt-24"}>
+      <h2 id="trust-previews" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">{title}</h2>
+      {subtitle ? <p className="mt-4 max-w-2xl text-base sm:text-lg leading-relaxed text-gray-700">{subtitle}</p> : null}
+      <div className="mt-8 sm:mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
         {displayed.map((t) => (
           <TherapistPreview key={t.id} therapist={t} />
         ))}

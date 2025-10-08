@@ -36,13 +36,13 @@ export default function Header() {
 
   const NavLinks = ({ onClick }: { onClick?: () => void }) => (
     <>
-      <Link onClick={onClick} className="hover:opacity-80" href="/fuer-therapeuten">
+      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150" href="/fuer-therapeuten">
         Für Therapeut:innen
       </Link>
-      <Link onClick={onClick} className="hover:opacity-80" href="/therapie-finden">
+      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150" href="/start">
         Für Klient:innen
       </Link>
-      <Link onClick={onClick} className="hover:opacity-80" href="/ueber-uns">
+      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150" href="/ueber-uns">
         Über uns
       </Link>
     </>
@@ -50,29 +50,29 @@ export default function Header() {
 
   return (
     <>
-    <header className={`sticky top-0 z-[120] isolate border-b ${open ? 'bg-white' : 'bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60'}`}>
-      <div className="mx-auto max-w-7xl px-4">
-        <div className="flex h-14 md:h-16 items-center justify-between">
+    <header className={`sticky top-0 z-[120] isolate border-b border-gray-200/60 shadow-sm ${open ? 'bg-white' : 'bg-white/90 backdrop-blur-md supports-[backdrop-filter]:bg-white/80'}`}>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="flex h-16 md:h-18 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="inline-flex items-center" aria-label="Kaufmann Health Startseite">
+          <Link href="/" className="inline-flex items-center hover:opacity-80 transition-opacity duration-200" aria-label="Kaufmann Health Startseite">
             <Image
               src="/logos/Health Logos - black/Kaufmann_health_logo.svg"
               alt="Kaufmann Health"
-              width={180}
-              height={36}
+              width={200}
+              height={40}
               priority
-              className="h-6 w-auto md:h-9 lg:h-10"
+              className="h-7 w-auto md:h-10 lg:h-11"
             />
           </Link>
 
           {/* Desktop nav */}
           <nav
             aria-label="Hauptnavigation"
-            className="hidden items-center gap-6 text-sm text-foreground/90 md:flex"
+            className="hidden items-center gap-8 text-sm font-medium text-gray-700 md:flex"
           >
             <NavLinks />
-            <Button asChild size="sm" className="ml-2">
-              <Link href="/therapie-finden">Therapeut:in finden</Link>
+            <Button asChild size="sm" className="ml-3 h-10 px-5 text-sm font-semibold shadow-md hover:shadow-lg transition-all duration-200">
+              <Link href="/fragebogen">Therapeut:in finden</Link>
             </Button>
           </nav>
 
@@ -85,8 +85,9 @@ export default function Header() {
               aria-expanded={open}
               aria-controls="mobile-menu"
               onClick={() => setOpen((v) => !v)}
+              className="h-10 w-10 hover:bg-gray-100 transition-colors"
             >
-              {open ? <X aria-hidden className="size-5" /> : <Menu aria-hidden className="size-5" />}
+              {open ? <X aria-hidden className="h-5 w-5" /> : <Menu aria-hidden className="h-5 w-5" />}
             </Button>
           </div>
         </div>
@@ -98,12 +99,12 @@ export default function Header() {
       <>
         {/* Mobile overlay (portal) */}
         <div
-          className={`fixed inset-0 z-[10000] transition-opacity ${open ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
+          className={`fixed inset-0 z-[10000] transition-opacity duration-300 ${open ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
           aria-hidden={!open}
           onClick={() => setOpen(false)}
           style={{ touchAction: 'none' }}
         >
-          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
         </div>
 
         {/* Mobile panel (portal) */}
@@ -111,24 +112,51 @@ export default function Header() {
           id="mobile-menu"
           role="dialog"
           aria-modal="true"
-          className={`fixed inset-y-0 right-0 z-[10001] w-72 translate-x-full bg-white shadow-xl transition-transform duration-200 ease-out ${open ? '!translate-x-0' : ''}`}
+          className={`fixed inset-y-0 right-0 z-[10001] w-80 translate-x-full bg-white shadow-2xl transition-transform duration-300 ease-out ${open ? '!translate-x-0' : ''}`}
         >
-          <div className="flex h-14 items-center justify-between border-b px-4">
-            <span className="text-sm font-semibold">Menü</span>
+          {/* Header */}
+          <div className="flex h-16 items-center justify-between border-b border-gray-200/60 bg-gradient-to-br from-slate-50 to-white px-5">
+            <span className="text-base font-bold text-gray-900">Menü</span>
             <Button
               ref={closeBtnRef}
               variant="ghost"
               size="icon"
               aria-label="Menü schließen"
               onClick={() => setOpen(false)}
+              className="h-10 w-10 hover:bg-gray-100 transition-colors"
             >
-              <X aria-hidden className="size-5" />
+              <X aria-hidden className="h-5 w-5" />
             </Button>
           </div>
-          <nav aria-label="Mobile Hauptnavigation" className="flex flex-col gap-4 px-4 py-6 text-[15px]">
-            <NavLinks onClick={() => setOpen(false)} />
-            <Button asChild className="mt-2">
-              <Link href="/therapie-finden">Therapeut:in finden</Link>
+
+          {/* Navigation */}
+          <nav aria-label="Mobile Hauptnavigation" className="flex flex-col gap-2 px-4 py-6">
+            <div className="flex flex-col gap-1 text-base font-medium text-gray-700">
+              <Link
+                onClick={() => setOpen(false)}
+                href="/fuer-therapeuten"
+                className="px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Für Therapeut:innen
+              </Link>
+              <Link
+                onClick={() => setOpen(false)}
+                href="/start"
+                className="px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Für Klient:innen
+              </Link>
+              <Link
+                onClick={() => setOpen(false)}
+                href="/ueber-uns"
+                className="px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Über uns
+              </Link>
+            </div>
+
+            <Button asChild className="mt-4 h-12 text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-200">
+              <Link href="/fragebogen">Therapeut:in finden</Link>
             </Button>
           </nav>
         </aside>

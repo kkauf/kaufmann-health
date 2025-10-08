@@ -27,8 +27,8 @@ export function HeroNoForm({
   valueProps?: string[];
 }) {
   return (
-    <section aria-labelledby="kh-hero-heading" className="relative isolate overflow-hidden rounded-2xl border">
-      {/* Background image */}
+    <section aria-labelledby="kh-hero-heading" className="relative isolate overflow-hidden rounded-3xl border border-slate-200/60 shadow-xl">
+      {/* Background image with enhanced overlay and blur */}
       <div className="absolute inset-0 -z-10">
         <Image
           src={backgroundSrc}
@@ -36,25 +36,32 @@ export function HeroNoForm({
           fill
           priority
           sizes="100vw"
-          className="object-cover"
+          className="object-cover scale-105 blur-[2px]"
         />
-        <div className="absolute inset-0 bg-black/40" />
+        {/* Enhanced gradient overlay for better text legibility */}
+        <div className="absolute inset-0 bg-gradient-to-br from-black/50 via-black/45 to-black/40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
       </div>
 
-      <div className="mx-auto grid min-h-[500px] w-full max-w-7xl grid-rows-[1fr] px-6 py-16 sm:min-h-[600px] sm:py-20 lg:px-8">
+      <div className="mx-auto grid min-h-[520px] w-full max-w-7xl grid-rows-[1fr] px-6 py-20 sm:min-h-[640px] sm:py-24 lg:px-8 lg:py-28">
         <div className="flex flex-col justify-center">
-          <h1 id="kh-hero-heading" className="text-4xl font-semibold tracking-tight text-white sm:text-5xl md:text-6xl">
+          <h1 id="kh-hero-heading" className="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl leading-tight drop-shadow-lg">
             {title}
           </h1>
           {subtitle ? (
-            <p className="mt-4 max-w-3xl text-2xl text-white/90 sm:text-3xl">{subtitle}</p>
+            <p className="mt-5 max-w-3xl text-xl text-white/95 sm:text-2xl md:text-3xl leading-relaxed drop-shadow-md">{subtitle}</p>
           ) : null}
           {supportLine ? (
-            <p className="mt-2 max-w-2xl text-lg text-white/85 sm:text-xl">{supportLine}</p>
+            <p className="mt-3 max-w-2xl text-base text-white/90 sm:text-lg md:text-xl leading-relaxed drop-shadow-md">{supportLine}</p>
           ) : null}
 
-          <div className="mt-8">
-            <Button asChild size="lg" className="h-12 px-6 text-base font-semibold" data-cta="hero-primary">
+          <div className="mt-10">
+            <Button
+              asChild
+              size="lg"
+              className="h-14 px-8 text-base sm:text-lg font-semibold shadow-xl shadow-emerald-900/30 hover:shadow-2xl hover:shadow-emerald-900/40 transition-all duration-200 hover:scale-[1.02]"
+              data-cta="hero-primary"
+            >
               <CtaLink href={ctaHref} eventType="cta_click" aria-label={ctaLabel}>
                 {ctaLabel}
               </CtaLink>
@@ -62,9 +69,9 @@ export function HeroNoForm({
           </div>
 
           {valueProps?.length ? (
-            <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-base text-white/90">
+            <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-3 text-base sm:text-lg text-white/95 drop-shadow-md">
               {valueProps.map((vp, i) => (
-                <span key={i} className="inline-flex items-center">
+                <span key={i} className="inline-flex items-center font-medium">
                   {vp}
                 </span>
               ))}

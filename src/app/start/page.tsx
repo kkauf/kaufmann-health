@@ -60,7 +60,7 @@ export default async function StartPage() {
   const businessSchema = buildLocalBusinessJsonLd({ baseUrl, path: '/start', areaServed: { type: 'Country', name: 'Deutschland', addressCountry: 'DE' } });
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
+    <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
       <PageAnalytics qualifier="LP-Start" />
 
       {/* HERO (no form) */}
@@ -107,8 +107,13 @@ export default async function StartPage() {
           subtitle="Persönlich ausgewählte Spezialist:innen"
           limit={3}
         />
-        <div className="mt-6 flex justify-center">
-          <Button variant="outline" size="lg" asChild>
+        <div className="mt-8 sm:mt-10 flex justify-center">
+          <Button
+            variant="outline"
+            size="lg"
+            asChild
+            className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200"
+          >
             <CtaLink href="/therapeuten" eventType="cta_click" data-cta="view-all-therapists">
               Alle Therapeut:innen ansehen →
             </CtaLink>
@@ -131,9 +136,9 @@ export default async function StartPage() {
       />
 
       {/* FAQ */}
-      <section aria-labelledby="faq-heading" id="faq" className="mt-10 sm:mt-14">
-        <h2 id="faq-heading" className="text-xl font-semibold tracking-tight sm:text-2xl">Häufige Fragen</h2>
-        <div className="mt-4">
+      <section aria-labelledby="faq-heading" id="faq" className="mt-14 sm:mt-20 lg:mt-24">
+        <h2 id="faq-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Häufige Fragen</h2>
+        <div className="mt-6 sm:mt-8">
           <FaqAccordion items={faqs} />
         </div>
       </section>

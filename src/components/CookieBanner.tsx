@@ -128,27 +128,27 @@ export default function CookieBanner() {
   if (!process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || !show) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/70">
-      <div className="mx-auto flex max-w-7xl flex-col items-start gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-gray-800">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200/60 shadow-2xl bg-white/95 backdrop-blur-lg supports-[backdrop-filter]:bg-white/90">
+      <div className="mx-auto flex max-w-7xl flex-col items-start gap-5 p-5 sm:p-6 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm sm:text-base leading-relaxed text-gray-800">
           Für eine bessere Zuordnung von Werbeklicks zu erfolgreichen Formularsendungen können wir einen Conversion‑Linker (Google Ads) einsetzen.
           Keine Analytics‑Cookies. Mehr Infos in unserer{' '}
-          <a href="/datenschutz#cookies" className="underline">Datenschutzerklärung</a>.
+          <a href="/datenschutz#cookies" className="underline decoration-emerald-300 underline-offset-4 hover:text-emerald-700 hover:decoration-emerald-600 transition-colors font-medium">Datenschutzerklärung</a>.
         </p>
-        <div className="flex gap-2">
+        <div className="flex gap-3 w-full sm:w-auto">
           <button
             type="button"
             onClick={onReject}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="flex-1 sm:flex-none rounded-lg border-2 border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200"
           >
             Ablehnen
           </button>
           <button
             type="button"
             onClick={onAccept}
-            className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-emerald-700"
+            className="flex-1 sm:flex-none rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/40 transition-all duration-200"
           >
-            Alle akzeptieren
+            Akzeptieren
           </button>
         </div>
       </div>

@@ -8,30 +8,33 @@ export function FoundersValuesSection({
   imageSrc?: string;
 }) {
   return (
-    <section aria-labelledby="founders-heading" className="mt-10 rounded-2xl border bg-white p-6 sm:mt-14 sm:p-8">
-      <h2 id="founders-heading" className="text-2xl font-semibold tracking-tight">{heading}</h2>
+    <section aria-labelledby="founders-heading" className="relative mt-14 rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:mt-20 sm:p-10 lg:mt-24">
+      {/* Optional subtle overlay */}
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30 rounded-2xl" />
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[360px_1fr]">
-        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl ring-1 ring-slate-200">
+      <h2 id="founders-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">{heading}</h2>
+
+      <div className="mt-8 sm:mt-10 grid gap-8 lg:grid-cols-[380px_1fr] lg:gap-10">
+        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl shadow-lg ring-1 ring-slate-300/50">
           <Image
             src={imageSrc}
             alt="Katherine und Konstantin von Kaufmann Health"
             fill
-            sizes="(min-width: 1024px) 360px, 100vw"
+            sizes="(min-width: 1024px) 380px, 100vw"
             className="object-cover"
             priority
           />
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-8">
           <div>
-            <p className="text-slate-700">
+            <p className="text-base sm:text-lg leading-relaxed text-slate-700">
               Wir sind Katherine und Konstantin – ein familiengeführtes Team, das Therapie‑, Technologie‑ und
               Rechtskompetenz vereint.
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-2 sm:gap-6">
             <Point title="Familiengeführt">
               Katherine ist Heilpraktikerin für Psychotherapie, Konstantin bringt Erfahrung aus Tech und Product.
               Gemeinsam verbinden wir Menschen mit den richtigen Therapeut:innen – persönlich statt algorithmisch.
@@ -56,9 +59,9 @@ export function FoundersValuesSection({
 
 function Point({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border p-4">
-      <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-slate-700">{children}</p>
+    <div className="group rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+      <h3 className="text-base sm:text-lg font-semibold text-slate-900">{title}</h3>
+      <p className="mt-3 text-sm sm:text-base leading-relaxed text-slate-700">{children}</p>
     </div>
   );
 }

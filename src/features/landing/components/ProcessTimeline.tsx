@@ -23,86 +23,110 @@ export function ProcessTimeline({
     <section
       aria-labelledby="timeline-heading"
       className={cn(
-        'relative mt-10 overflow-hidden rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-6 sm:mt-14 sm:p-8',
+        'relative mt-14 overflow-hidden rounded-3xl border border-slate-200/60 shadow-lg shadow-slate-100/50 bg-gradient-to-br from-slate-50/80 via-white to-slate-50/60 p-8 sm:mt-20 sm:p-10 lg:p-12',
         className,
       )}
     >
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(36rem_16rem_at_110%_10%,rgba(99,102,241,0.08),transparent_60%),radial-gradient(28rem_14rem_at_-10%_90%,rgba(14,165,233,0.08),transparent_60%)]" />
+      {/* Enhanced gradient overlays */}
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_50%_0%,rgba(99,102,241,0.1),transparent_70%),radial-gradient(30rem_16rem_at_100%_100%,rgba(14,165,233,0.08),transparent_65%)]" />
+
+      {/* Optional decorative blur */}
+      <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-gradient-to-br from-indigo-200/20 to-transparent blur-3xl" />
 
       <div className="text-center">
-        <h2 id="timeline-heading" className="text-2xl font-semibold tracking-tight">
+        <h2 id="timeline-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
           {heading}
         </h2>
         {tagline ? (
-          <p className="mt-2 text-base text-slate-700">{tagline}</p>
+          <p className="mt-4 text-base sm:text-lg leading-relaxed text-gray-700 max-w-3xl mx-auto">{tagline}</p>
         ) : null}
       </div>
 
       {/* Mobile: stacked timeline */}
-      <div className="mt-8 sm:hidden">
-        <ol role="list" className="relative border-l border-slate-200 pl-4">
+      <div className="mt-10 sm:hidden">
+        <ol role="list" className="space-y-6">
           {items.map((it, idx) => (
-            <li key={idx} className="relative pb-6">
-              <span className="absolute -left-3.5 mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 via-sky-500 to-emerald-500 text-white shadow ring-2 ring-white">
-                <span className="sr-only">Schritt {idx + 1}</span>
-                <span className="text-[11px] font-semibold">{idx + 1}</span>
-              </span>
-              <div className="flex items-start gap-3">
-                <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600">{it.icon}</div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-semibold text-slate-900">{it.title}</h3>
+            <li key={idx} className="relative">
+              <div className="flex gap-4">
+                {/* Icon bubble with number badge */}
+                <div className="relative flex-shrink-0">
+                  <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/60 p-3 text-indigo-600 shadow-sm">
+                    {it.icon}
+                  </div>
+                  {/* Number badge - top left corner */}
+                  <span className="absolute -top-2 -left-2 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 text-white text-xs font-bold shadow-md ring-2 ring-white">
+                    {idx + 1}
+                  </span>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-lg font-semibold text-slate-900">{it.title}</h3>
                     {it.caption ? (
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 ring-1 ring-slate-200">
+                      <span className="rounded-full bg-gradient-to-br from-emerald-100 to-emerald-200/60 px-3 py-1 text-xs font-medium text-emerald-800 ring-1 ring-emerald-300/50 shadow-sm">
                         {it.caption}
                       </span>
                     ) : null}
                   </div>
                   {it.bullets && it.bullets.length ? (
-                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
+                    <ul className="mt-3 space-y-2 text-sm leading-relaxed text-slate-700">
                       {it.bullets.map((b, i) => (
-                        <li key={i}>{b}</li>
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="mt-1.5 inline-block h-1.5 w-1.5 flex-none rounded-full bg-gradient-to-br from-indigo-500 via-sky-500 to-emerald-500" />
+                          <span>{b}</span>
+                        </li>
                       ))}
                     </ul>
                   ) : null}
                 </div>
               </div>
+
+              {/* Connector line to next item */}
+              {idx < items.length - 1 ? (
+                <div className="absolute left-[26px] top-[56px] bottom-[-24px] w-0.5 bg-gradient-to-b from-slate-300 to-slate-200" />
+              ) : null}
             </li>
           ))}
         </ol>
       </div>
 
       {/* Desktop: three columns with connectors */}
-      <div className="mt-8 hidden sm:grid sm:grid-cols-3 sm:gap-6">
+      <div className="mt-10 hidden sm:grid sm:grid-cols-3 sm:gap-6 lg:gap-8">
         {items.map((it, idx) => (
-          <div key={idx} className="relative">
-            {/* connector */}
+          <div key={idx} className="relative pt-4">
+            {/* Step number badge - positioned outside card */}
+            <div className="absolute top-0 left-0 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 text-white text-base font-bold shadow-lg ring-4 ring-white">
+              <span>{idx + 1}</span>
+            </div>
+
+            {/* Enhanced connector */}
             {idx < items.length - 1 ? (
-              <div className="pointer-events-none absolute right-[-12px] top-10 hidden h-1 w-6 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 sm:block" />
+              <div className="pointer-events-none absolute right-[-12px] top-16 hidden h-1 w-6 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 sm:block lg:right-[-16px] lg:w-8 rounded-full shadow-sm" />
             ) : null}
-            <div className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white/95 p-4 shadow-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-lg">
-              <div className="flex items-center justify-between">
-                <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600">
+
+            <div className="group relative flex h-full flex-col rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm p-5 sm:p-6 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5">
+              <div className="flex items-center justify-between pt-2">
+                <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/60 p-3 text-indigo-600 shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-200">
                   {it.icon}
                 </div>
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-indigo-100 bg-white text-sm font-semibold text-indigo-600 shadow-sm">
-                  <span>{idx + 1}</span>
-                </div>
               </div>
-              <div className="mt-3">
-                <h3 className="text-lg font-semibold text-slate-900">{it.title}</h3>
+
+              <div className="mt-4">
+                <h3 className="text-xl font-semibold text-slate-900">{it.title}</h3>
                 {it.caption ? (
-                  <span className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 ring-1 ring-slate-200">
+                  <span className="mt-2 inline-block rounded-full bg-gradient-to-br from-emerald-100 to-emerald-200/60 px-3 py-1 text-xs font-medium text-emerald-800 ring-1 ring-emerald-300/50 shadow-sm">
                     {it.caption}
                   </span>
                 ) : null}
               </div>
+
               {it.bullets && it.bullets.length ? (
-                <ul className="mt-2 flex-1 space-y-1.5 text-sm text-slate-700">
+                <ul className="mt-4 flex-1 space-y-2 text-sm leading-relaxed text-slate-700">
                   {it.bullets.map((b, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className="mt-1 inline-block h-1.5 w-1.5 flex-none rounded-full bg-gradient-to-br from-indigo-500 via-sky-500 to-emerald-500" />
-                      <span className="leading-snug">{b}</span>
+                    <li key={i} className="flex items-start gap-2.5">
+                      <span className="mt-1.5 inline-block h-2 w-2 flex-none rounded-full bg-gradient-to-br from-indigo-500 via-sky-500 to-emerald-500 shadow-sm" />
+                      <span>{b}</span>
                     </li>
                   ))}
                 </ul>
