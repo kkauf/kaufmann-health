@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import FaqAccordion from '@/components/FaqAccordion';
 import PageAnalytics from '@/components/PageAnalytics';
 import CtaLink from '@/components/CtaLink';
-import { Button } from '@/components/ui/button';
 import { HeroNoForm } from '@/features/landing/components/HeroNoForm';
 import { ProcessTimeline } from '@/features/landing/components/ProcessTimeline';
+import { MidPageConversion } from '@/features/landing/components/MidPageConversion';
 import { FoundersValuesSection } from '@/features/landing/components/FoundersValuesSection';
 import { TherapistTeaserSection } from '@/features/landing/components/TherapistTeaserSection';
 import { FinalCtaSection } from '@/features/landing/components/FinalCtaSection';
@@ -77,7 +77,7 @@ export default async function StartPage() {
             icon: <MessageCircle className="h-5 w-5" />,
             title: 'Deine Präferenzen',
             caption: '5 Minuten',
-            bullets: ['Geschlecht, Verfügbarkeit, Budget, Erfahrung'],
+            bullets: [' Du sagst uns, was dir wichtig ist'],
           },
           {
             icon: <UserCheck className="h-5 w-5" />,
@@ -94,36 +94,37 @@ export default async function StartPage() {
         ]}
       />
 
-      {/* Therapist network teaser with link to directory placeholder */}
+      {/* Therapist network teaser - MOVED UP for trust-first flow */}
       <section className="mt-10 sm:mt-14">
         <TherapistTeaserSection
-          title="Unser Therapeuten‑Netzwerk"
+          title="Unser Therapeuten–Netzwerk"
           subtitle="Persönlich ausgewählte Spezialist:innen"
           limit={3}
         />
-        <div className="mt-8 sm:mt-10 flex justify-center">
-          <Button
-            variant="outline"
-            size="lg"
-            asChild
-            className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200"
+        <div className="mt-8 sm:mt-10 text-center">
+          <CtaLink
+            href="/therapeuten"
+            eventType="cta_click"
+            data-cta="view-all-therapists"
+            className="inline-flex items-center gap-2 rounded-lg bg-white border-2 border-teal-600 px-6 sm:px-8 py-3 sm:py-3.5 text-base sm:text-lg font-semibold text-teal-700 shadow-md hover:bg-teal-600 hover:text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2"
           >
-            <CtaLink href="/therapeuten" eventType="cta_click" data-cta="view-all-therapists">
-              Alle Therapeut:innen ansehen →
-            </CtaLink>
-          </Button>
+            Alle Therapeut:innen ansehen
+            <span className="text-xl">→</span>
+          </CtaLink>
         </div>
       </section>
 
-      {/* Founders + values */}
+      {/* Founders + values - MOVED UP for credibility before conversion */}
       <FoundersValuesSection imageSrc="/profile-pictures/katherine and konstantin.PNG" />
+
+      {/* Mid-page conversion: simplified matching path only - EARTH-209 */}
+      <MidPageConversion />
 
       <FinalCtaSection
         heading="Bereit für den ersten Schritt?"
-        subtitle="Fülle unseren 5‑Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten‑Vorschläge."
+        subtitle="Fülle unseren 5–Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten–Vorschläge."
         buttonLabel="Jetzt Therapeut:in finden"
         targetId="/fragebogen"
-        footnoteText="🔒 DSGVO-konform  •  SSL-verschlüsselt  •  Therapie ohne Krankenkassen-Eintrag"
         align="center"
         variant="tinted"
         showAvailabilityNote={false}

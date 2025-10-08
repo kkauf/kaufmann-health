@@ -211,6 +211,28 @@ export default function SignupWizard() {
       }
       const savedStep = Number(localStorage.getItem(LS_KEYS.step) || '1');
       if (savedStep >= 1 && savedStep <= 9) setStep(savedStep);
+      
+      // Handle ?experience= param from mid-page conversion (EARTH-209)
+      const experienceParam = searchParams?.get('experience');
+      if (experienceParam) {
+        let therapy_experience: 'has_experience' | 'first_time' | 'unsure' | undefined;
+        switch (experienceParam) {
+          case 'yes':
+            therapy_experience = 'has_experience';
+            break;
+          case 'no':
+            therapy_experience = 'first_time';
+            break;
+          case 'unsure':
+            therapy_experience = 'unsure';
+            break;
+        }
+        if (therapy_experience) {
+          setData((prev) => ({ ...prev, therapy_experience }));
+          void trackEvent('midpage_prefill', { experience: experienceParam });
+        }
+      }
+      
       // Prefer fs from URL if present, otherwise fall back to localStorage
       const fsFromUrl = searchParams?.get('fs');
       const fsid = fsFromUrl || localStorage.getItem(LS_KEYS.sessionId);
@@ -244,6 +266,32 @@ export default function SignupWizard() {
     // Scroll to top initially
     window.scrollTo({ top: 0 });
   }, [searchParams]);
+
+  // Auto-advance for mid-page conversion: 'no' and 'unsure' have no follow-up questions (EARTH-209)
+  React.useEffect(() => {
+    if (!initialized) return;
+    if (step !== 1) return;
+    
+    const experienceParam = searchParams?.get('experience');
+    // Only auto-advance for 'no' and 'unsure' - 'yes' needs therapy_type answer
+    if (experienceParam === 'no' || experienceParam === 'unsure') {
+      const shouldAutoAdvance = data.therapy_experience === 'first_time' || data.therapy_experience === 'unsure';
+      if (shouldAutoAdvance) {
+        // Small delay to avoid jarring UX, let user see the pre-filled state briefly
+        const timer = setTimeout(() => {
+          void trackEvent('midpage_auto_advance', { experience: experienceParam });
+          setStep(2);
+          try {
+            localStorage.setItem(LS_KEYS.step, '2');
+          } catch {}
+          try {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          } catch {}
+        }, 600);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [initialized, step, data.therapy_experience, searchParams, trackEvent]);
 
   // Capture leadId from URL when coming back via email link; prime resend email from data/localStorage
   React.useEffect(() => {
