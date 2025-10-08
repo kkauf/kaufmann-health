@@ -12,10 +12,10 @@ export function HeroNoForm({
   ctaHref = '/fragebogen',
   backgroundSrc = '/images/hero.jpg',
   valueProps = [
-    '✓ Persönlich ausgewählt',
+    '✓ Handverlesene Therapeuten',
     '✓ Termine in 24 Stunden',
-    '✓ Trauma-informiert',
-    '✓ Online oder Berlin',
+    '✓ Traumasensibel',
+    '✓ Vor Ort in Berlin oder online',
   ],
 }: {
   title: string;

@@ -17,7 +17,7 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }): Promise<Metadata> {
   const title = 'Kaufmann Health – Persönlich kuratierte Therapeut:innen (Termine in 24h)';
-  const description = 'So viel Arbeit an dir selbst, immer noch kein Fortschritt? Persönlich kuratierte Therapeut:innen. Trauma‑informiert. Termine in 24 Stunden.';
+  const description = 'So viel Arbeit an dir selbst, immer noch kein Fortschritt? Persönlich kuratierte Therapeut:innen. Traumasensibel. Termine in 24 Stunden.';
   const params = await searchParams;
   const v = (params?.v as string) || undefined;
   const base = buildLandingMetadata({
@@ -65,9 +65,9 @@ export default async function StartPage() {
 
       {/* HERO (no form) */}
       <HeroNoForm
-        title="So viel Arbeit an dir selbst, immer noch kein Fortschritt?"
+        title="Wenn der Kopf nicht weiterkommt, hilft der Körper"
         subtitle={
-          'Persönlich kuratierte Therapeut:innen für Menschen, die bereit sind für echte Veränderung – und nicht noch 6 Monate warten können.'
+          'Erfahrene Körpertherapeut:innen, die wirklich verfügbar sind. Handverlesen, traumasensibel, in Berlin oder online.'
         }
         ctaLabel="Jetzt Therapeut:in finden"
         ctaHref="/fragebogen"
