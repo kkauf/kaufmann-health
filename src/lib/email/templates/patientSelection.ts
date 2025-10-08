@@ -34,10 +34,10 @@ export function renderPatientSelectionEmail(params: {
   const name = (params.patientName || '').trim();
   const items = Array.isArray(params.items) ? params.items : [];
  
-  // Urgency notice (shown after cards by default, can be overridden by admin)
+  // Gentle urgency notice (shown after cards by default, can be overridden by admin)
   const urgencyBox = params.bannerOverrideHtml ?? `
     <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding:16px 20px; border-radius:12px; border:1px solid rgba(251, 191, 36, 0.3); margin-top:24px; box-shadow: 0 2px 4px 0 rgba(251, 191, 36, 0.1);">
-      <p style="margin:0; font-size:15px; line-height:1.6; color:#78350f;"><strong style="font-weight:700;">⏰ Diese Therapeut:innen haben begrenzte Kapazitäten.</strong><br/>Bitte wähle innerhalb von 48 Stunden, damit wir die Kapazitäten für dich sichern können.</p>
+      <p style="margin:0; font-size:15px; line-height:1.6; color:#78350f;"><strong style="font-weight:700;">💡 Tipp:</strong> Diese Therapeut:innen haben begrenzte Kapazitäten. Wir empfehlen, sich zeitnah zu melden, um einen Termin in den nächsten 7 Tagen zu sichern.</p>
     </div>
   `;
  
@@ -50,11 +50,13 @@ export function renderPatientSelectionEmail(params: {
     <p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569;">Vielen Dank für deine Anfrage bei Kaufmann Health.</p>
   `;
  
-  // Optional primary CTA to view matches page
+  // Primary CTA to view matches page (prominent when matchesUrl provided)
   const matchesCta = params.matchesUrl
     ? `
-      <div style="margin: 0 0 20px; text-align: center;">
-        ${renderButton(params.matchesUrl, 'Ihre Empfehlungen ansehen')}
+      <div style="margin: 0 0 32px; text-align: center; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding:24px; border-radius:12px; border:1px solid rgba(34, 197, 94, 0.3); box-shadow: 0 2px 8px 0 rgba(34, 197, 94, 0.1);">
+        <p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#166534; font-weight:600;">📱 Für die beste Ansicht öffnen Sie Ihre Empfehlungen auf Ihrem Handy oder Computer:</p>
+        ${renderButton(params.matchesUrl, 'Ihre Empfehlungen ansehen →')}
+        <p style="margin:16px 0 0; font-size:13px; line-height:1.5; color:#166534;">Diese Ansicht funktioniert auf allen Geräten und zeigt Ihnen alle Details.</p>
       </div>
     `
     : '';
@@ -129,7 +131,9 @@ export function renderPatientSelectionEmail(params: {
     <p style="margin:24px 0 0; font-size:16px; line-height:1.65; color:#475569;">Herzliche Grüße<br/><strong style="color:#0f172a;">Dein Team von Kaufmann Health</strong></p>
   `;
  
-  const contentHtml = [header, greetingHtml, matchesCta, trustBox, availabilityLine, cardsHtml, actionGuidance, urgencyBox, modalitiesHtml, closingHtml].join('\n');
+  // Only show cards if no matchesUrl (backward compatibility)
+  const cardsSection = params.matchesUrl ? '' : [availabilityLine, cardsHtml, actionGuidance, urgencyBox].join('\n');
+  const contentHtml = [header, greetingHtml, matchesCta, trustBox, cardsSection, modalitiesHtml, closingHtml].join('\n');
 
   const actionTarget = items[0]?.selectUrl;
   const schema = actionTarget

@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import CtaLink from '@/components/CtaLink';
-import { Sparkles } from 'lucide-react';
+import Image from 'next/image';
 
 /**
  * Subtle callout inviting users to use the questionnaire for better matching.
@@ -19,18 +19,28 @@ export function TherapistMatchCallout() {
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-start gap-3">
-          {/* Icon bubble */}
-          <div className="flex-shrink-0 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 p-2.5 sm:p-3 text-emerald-600 shadow-sm">
-            <Sparkles className="h-5 w-5" />
+          {/* Founder photo */}
+          <div className="flex-shrink-0">
+            <Image
+              src="/profile-pictures/katherine-clear.jpg"
+              alt="Katherine Kaufmann"
+              width={56}
+              height={56}
+              className="rounded-full object-cover object-center shadow-sm ring-2 ring-emerald-100"
+              style={{ objectPosition: '50% 30%' }}
+            />
           </div>
 
           {/* Content */}
           <div className="flex-1">
             <h2 id="match-callout-heading" className="text-base sm:text-lg font-semibold text-gray-900">
-              Unsicher, wer am besten passt?
+              Unsicher, wer wirklich zu dir passt?
             </h2>
             <p className="mt-1 text-sm sm:text-base text-gray-600 leading-relaxed">
-              Wir finden die perfekte Therapeut:in für deine Bedürfnisse
+              Ich schaue mir deine Anfrage persönlich an und helfe dir dabei, die richtige Therapeut:in zu dir zu finden.
+            </p>
+            <p className="mt-2 text-xs sm:text-sm text-gray-500 italic">
+              – Katherine, Gründerin und Therapeutin
             </p>
           </div>
         </div>

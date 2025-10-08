@@ -116,21 +116,22 @@
 
 ## Returning Contact Flow (EARTH-204)
 
-### GET /api/public/matches/:uuid
+### GET /api/public/matches/:uuid (EARTH-206 Enhanced)
 
-- __Purpose__: Load patient context and recommended therapists from a pre‑authenticated match link (no re‑verification).
+- __Purpose__: Load patient context and recommended therapists from a pre‑authenticated match link for rich match page display.
 - __Auth__: None (magic link via `matches.secure_uuid`).
 - __Link TTL__: 30 days from the reference match creation (returns 410 after).
 - __Path Param__:
   - `:uuid` — secure match UUID from email.
 - __Behavior__:
   - Resolves `:uuid` to `patient_id` via `matches.secure_uuid`.
-  - Returns patient context (name, issue, session_preference) and up to 3 recommended therapists derived from recent matches.
+  - Returns enriched patient context (name, issue, session_preference, city, specializations, gender_preference) for match quality computation.
+  - Returns up to 3 recommended therapists with rich data: modalities, session_preferences, approach_text, gender.
   - Marks therapists already contacted by the patient via `matches.metadata.patient_initiated` (exposes `contacted_at`).
   - Orders therapists using the same mismatch logic as Admin matching (perfect matches first).
   - Emits `match_link_view` via `ServerAnalytics`.
 - __Response__:
-  - 200: `{ data: { patient: { name?, issue?, session_preference? }, therapists: Array<{ id, first_name, last_name, photo_url?, city?, accepting_new?, contacted_at? }> }, error: null }`
+  - 200: `{ data: { patient: { name?, issue?, session_preference?, city?, session_preferences?, specializations?, gender_preference? }, therapists: Array<{ id, first_name, last_name, photo_url?, city?, accepting_new?, contacted_at?, modalities?, session_preferences?, approach_text?, gender? }> }, error: null }`
   - 400: `{ data: null, error: 'Missing uuid' }`
   - 404: `{ data: null, error: 'Not found' }`
   - 410: `{ data: null, error: 'Link expired' }`

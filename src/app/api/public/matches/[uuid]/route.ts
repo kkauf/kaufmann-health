@@ -95,7 +95,7 @@ export async function GET(req: Request) {
     }
     const therapistIds = chosen.map(m => m.therapist_id);
 
-    // Fetch therapist profiles (include fields needed for mismatch scoring)
+    // Fetch therapist profiles (include fields needed for mismatch scoring + rich display)
     type TherapistRow = {
       id: string;
       first_name: string;
@@ -105,13 +105,14 @@ export async function GET(req: Request) {
       city?: string | null;
       modalities?: string[] | null;
       accepting_new?: boolean | null;
-      metadata?: { session_preferences?: string[] | null; [k: string]: unknown } | null;
+      approach_text?: string | null;
+      metadata?: { session_preferences?: string[] | null; profile?: { approach_text?: string }; [k: string]: unknown } | null;
     };
     let therapists: TherapistRow[] = [];
     if (therapistIds.length > 0) {
       const { data: trows } = await supabaseServer
         .from('therapists')
-        .select('id, first_name, last_name, gender, photo_url, city, modalities, accepting_new, metadata')
+        .select('id, first_name, last_name, gender, photo_url, city, modalities, accepting_new, approach_text, metadata')
         .in('id', therapistIds);
       if (Array.isArray(trows)) therapists = trows as TherapistRow[];
     }
@@ -150,6 +151,10 @@ export async function GET(req: Request) {
       city: (t.city || '') || undefined,
       accepting_new: Boolean(t.accepting_new),
       contacted_at: contactedById.get(t.id) || null,
+      modalities: Array.isArray(t.modalities) ? t.modalities : [],
+      session_preferences: Array.isArray(t.metadata?.session_preferences) ? t.metadata?.session_preferences : [],
+      approach_text: t.approach_text || t.metadata?.profile?.approach_text || '',
+      gender: t.gender || undefined,
     }));
 
     void ServerAnalytics.trackEventFromRequest(req, {
@@ -160,7 +165,15 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       data: {
-        patient: { name: patientName, issue, session_preference: sessionPreference },
+        patient: { 
+          name: patientName, 
+          issue, 
+          session_preference: sessionPreference,
+          city: patientMeta.city,
+          session_preferences: patientMeta.session_preferences,
+          specializations: patientMeta.specializations,
+          gender_preference: patientMeta.gender_preference,
+        },
         therapists: list,
       },
       error: null,
