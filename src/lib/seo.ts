@@ -21,6 +21,24 @@ export function buildLandingMetadata({
   const variant = (searchParams?.v || '').toUpperCase();
   const isTestVariant = variant === 'B' || variant === 'C';
 
+  // Default to hero.jpg if no images specified
+  const defaultOgImage = [{ url: `${trimSlash(baseUrl)}/images/hero.jpg`, width: 1200, height: 630 }];
+  const ogImages = openGraph?.images || defaultOgImage;
+
+  // Extract twitter image from OG images
+  let twitterImages: string[] = [];
+  if (twitter?.images) {
+    twitterImages = twitter.images as string[];
+  } else if (Array.isArray(ogImages) && ogImages.length > 0) {
+    const firstImage = ogImages[0];
+    if (typeof firstImage === 'string') {
+      twitterImages = [firstImage];
+    } else if (firstImage && typeof firstImage === 'object' && 'url' in firstImage) {
+      const url = firstImage.url;
+      twitterImages = [typeof url === 'string' ? url : url.toString()];
+    }
+  }
+
   return {
     title,
     description,
@@ -31,14 +49,16 @@ export function buildLandingMetadata({
       description,
       url: canonical,
       type: 'website',
-      images: openGraph?.images,
+      siteName: 'Kaufmann Health',
+      locale: 'de_DE',
+      images: ogImages,
       ...openGraph,
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: twitter?.images as string[] | undefined,
+      images: twitterImages,
       ...twitter,
     },
   };
@@ -67,7 +87,7 @@ export function buildLocalBusinessJsonLd({ baseUrl, path, areaServed }: {
     '@type': 'LocalBusiness',
     name: 'Kaufmann Health',
     url: canonical,
-    image: `${trimSlash(baseUrl)}/images/color-patterns.png`,
+    image: `${trimSlash(baseUrl)}/images/hero.jpg`,
     description: 'Kaufmann Health – Körperorientierte Begleitung',
     areaServed: {
       '@type': areaServed.type,

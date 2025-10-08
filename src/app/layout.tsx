@@ -43,8 +43,20 @@ export const metadata: Metadata = {
     locale: "de_DE",
     type: "website",
     images: [
-      "/logos/Health Logos - black/Kaufmann_health_logo_large.png",
+      {
+        url: "/images/hero.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Kaufmann Health – Körperorientierte Psychotherapie",
+      },
     ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Therapeut:innen-Empfehlung | Kaufmann Health",
+    description:
+      "Handverlesene Empfehlungen sorgfältig geprüfter Therapeut:innen für körperorientierte Psychotherapie.",
+    images: ["/images/hero.jpg"],
   },
   robots: {
     index: true,

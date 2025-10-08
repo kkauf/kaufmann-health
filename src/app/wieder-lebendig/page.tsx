@@ -38,10 +38,12 @@ export const metadata = async ({ searchParams }: { searchParams?: { [key: string
       description:
         "Körperorientierte Therapie für Menschen, die wieder lebendig sein wollen.",
       url: `${baseUrl}/wieder-lebendig`,
+      siteName: "Kaufmann Health",
+      locale: "de_DE",
       type: "website",
       images: [
         {
-          url: `${baseUrl}/images/color-patterns.png`,
+          url: `${baseUrl}/images/hero.jpg`,
           width: 1200,
           height: 630,
           alt: "Kaufmann Health – Körpertherapie Berlin",
@@ -52,7 +54,7 @@ export const metadata = async ({ searchParams }: { searchParams?: { [key: string
       card: "summary_large_image",
       title: "Du hast alles erreicht. Warum fühlt es sich so leer an?",
       description: "Körperorientierte Therapie für Menschen, die wieder lebendig sein wollen.",
-      images: [`${baseUrl}/images/color-patterns.png`],
+      images: [`${baseUrl}/images/hero.jpg`],
     },
   };
 };
@@ -72,7 +74,7 @@ export default async function WiederLebendigPage() {
     "@type": "LocalBusiness",
     name: "Kaufmann Health",
     url: `${baseUrl}/wieder-lebendig`,
-    image: `${baseUrl}/images/color-patterns.png`,
+    image: `${baseUrl}/images/hero.jpg`,
     description:
       "Körperorientierte Therapie für Menschen, die wieder lebendig sein wollen – nicht noch erfolgreicher.",
     areaServed: {

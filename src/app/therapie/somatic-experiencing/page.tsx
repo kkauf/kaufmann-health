@@ -26,16 +26,18 @@ export const metadata = async ({ searchParams }: { searchParams?: { [key: string
       title,
       description,
       url: `${baseUrl}/therapie/somatic-experiencing`,
+      siteName: "Kaufmann Health",
+      locale: "de_DE",
       type: "website",
       images: [
-        { url: `${baseUrl}/images/color-patterns.png`, width: 1200, height: 630, alt: "Kaufmann Health – Somatic Experiencing" },
+        { url: `${baseUrl}/images/hero.jpg`, width: 1200, height: 630, alt: "Kaufmann Health – Somatic Experiencing" },
       ],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [`${baseUrl}/images/color-patterns.png`],
+      images: [`${baseUrl}/images/hero.jpg`],
     },
   };
 };

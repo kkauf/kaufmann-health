@@ -26,11 +26,6 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     title,
     description,
     searchParams: { v },
-    openGraph: {
-      images: [
-        { url: `${baseUrl}/images/color-patterns.png`, width: 1200, height: 630 },
-      ],
-    },
   });
   return { ...base, robots: { index: false, follow: false } };
 }
@@ -121,7 +116,7 @@ export default async function StartPage() {
       </section>
 
       {/* Founders + values */}
-      <FoundersValuesSection imageSrc="/images/katherine and konstantin.PNG" />
+      <FoundersValuesSection imageSrc="/profile-pictures/katherine and konstantin.PNG" />
 
       <FinalCtaSection
         heading="Bereit für den ersten Schritt?"

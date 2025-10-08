@@ -35,14 +35,16 @@ export const metadata = async ({ searchParams }: { searchParams?: { [key: string
       title: "Ankommen in dir – Körperorientierte Therapie online",
       description: "Handverlesene Empfehlungen für Online-Sitzungen, deutschlandweit.",
       url: `${baseUrl}/ankommen-in-dir`,
+      siteName: "Kaufmann Health",
+      locale: "de_DE",
       type: "website",
-      images: [{ url: `${baseUrl}/images/color-patterns.png`, width: 1200, height: 630 }],
+      images: [{ url: `${baseUrl}/images/hero.jpg`, width: 1200, height: 630, alt: "Kaufmann Health – Körperorientierte Therapie online" }],
     },
     twitter: {
       card: "summary_large_image",
       title: "Ankommen in dir – Körperorientierte Therapie online",
       description: "Handverlesene Empfehlungen für Online-Sitzungen, deutschlandweit.",
-      images: [`${baseUrl}/images/color-patterns.png`],
+      images: [`${baseUrl}/images/hero.jpg`],
     },
   };
 };
@@ -106,7 +108,7 @@ export default async function AnkommenInDirPage() {
     "@type": "LocalBusiness",
     name: "Kaufmann Health",
     url: `${baseUrl}/ankommen-in-dir`,
-    image: `${baseUrl}/images/color-patterns.png`,
+    image: `${baseUrl}/images/hero.jpg`,
     description:
       "Körperorientierte Therapie online – handverlesen. NARM, Somatic Experiencing, Hakomi, Core Energetics.",
     areaServed: {

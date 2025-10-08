@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,38 @@ import { ShieldCheck, Lock, UserCheck } from "lucide-react";
 import { COOKIES_ENABLED } from "@/lib/config";
 
 export const revalidate = 3600;
+
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.kaufmann-health.de";
+
+export const metadata: Metadata = {
+  title: "Therapeut:innen-Empfehlung – Sorgfältig geprüfte Therapeut:innen in deiner Nähe | Kaufmann Health",
+  description: "Handverlesene Therapeut:innen-Empfehlungen für körperorientierte Psychotherapie (NARM, Hakomi, Somatic Experiencing). Direkter Kontakt, transparente Auswahl, ohne Wartezeit.",
+  alternates: {
+    canonical: `${baseUrl}/`,
+  },
+  openGraph: {
+    title: "Finde geprüfte körperorientierte Trauma-Therapeut:innen | Kaufmann Health",
+    description: "Handverlesene Therapeut:innen-Empfehlungen. Persönlich ausgewählt und geprüft – für eine Empfehlung, der du vertrauen kannst.",
+    url: `${baseUrl}/`,
+    siteName: "Kaufmann Health",
+    locale: "de_DE",
+    type: "website",
+    images: [
+      {
+        url: `${baseUrl}/images/hero.jpg`,
+        width: 1200,
+        height: 630,
+        alt: "Kaufmann Health – Körperorientierte Psychotherapie",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Finde geprüfte körperorientierte Trauma-Therapeut:innen",
+    description: "Handverlesene Therapeut:innen-Empfehlungen. Persönlich ausgewählt und geprüft.",
+    images: [`${baseUrl}/images/hero.jpg`],
+  },
+};
 
 export default function Home() {
   const variant = process.env.NEXT_PUBLIC_EXPERIMENT_HOME_VARIANT || "dual";

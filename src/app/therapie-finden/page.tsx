@@ -29,15 +29,6 @@ export const metadata = async ({ searchParams }: { searchParams?: { [key: string
     title,
     description,
     searchParams: { v },
-    openGraph: {
-      images: [
-        {
-          url: `${baseUrl}/images/color-patterns.png`,
-          width: 1200,
-          height: 630,
-        },
-      ],
-    },
   });
 };
 
