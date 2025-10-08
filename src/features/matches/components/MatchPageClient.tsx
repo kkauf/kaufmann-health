@@ -193,7 +193,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
                   disabled={t.accepting_new === false}
                 >
                   <Calendar className="mr-2 h-4 w-4" />
-                  Therapeut:in buchen
+                  {t.contacted_at ? 'Erneut senden' : 'Therapeut:in buchen'}
                 </Button>
                 <Button
                   size="lg"

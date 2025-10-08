@@ -114,6 +114,71 @@
   - 500: server error
 - __Cookie__: `kh_client` is a functional cookie (not tracking) containing signed JWT with `{ patient_id, contact_method, contact_value, name }`. Valid for 30 days, scoped to `/`, HTTP-only, SameSite=Lax.
 
+## Returning Contact Flow (EARTH-204)
+
+### GET /api/public/matches/:uuid
+
+- __Purpose__: Load patient context and recommended therapists from a pre‑authenticated match link (no re‑verification).
+- __Auth__: None (magic link via `matches.secure_uuid`).
+- __Link TTL__: 30 days from the reference match creation (returns 410 after).
+- __Path Param__:
+  - `:uuid` — secure match UUID from email.
+- __Behavior__:
+  - Resolves `:uuid` to `patient_id` via `matches.secure_uuid`.
+  - Returns patient context (name, issue, session_preference) and up to 3 recommended therapists derived from recent matches.
+  - Marks therapists already contacted by the patient via `matches.metadata.patient_initiated` (exposes `contacted_at`).
+  - Orders therapists using the same mismatch logic as Admin matching (perfect matches first).
+  - Emits `match_link_view` via `ServerAnalytics`.
+- __Response__:
+  - 200: `{ data: { patient: { name?, issue?, session_preference? }, therapists: Array<{ id, first_name, last_name, photo_url?, city?, accepting_new?, contacted_at? }> }, error: null }`
+  - 400: `{ data: null, error: 'Missing uuid' }`
+  - 404: `{ data: null, error: 'Not found' }`
+  - 410: `{ data: null, error: 'Link expired' }`
+  - 500: `{ data: null, error: 'Unexpected error' }`
+
+### POST /api/public/matches/:uuid/contact
+
+- __Purpose__: Contact a recommended therapist directly from the pre‑authenticated match page (skip verification).
+- __Auth__: None (pre‑authenticated by `:uuid`).
+- __Link TTL__: 30 days from the reference match creation (returns 410 after).
+- __Rate limiting__: 3 contacts per patient per 24h, counted via `matches` with `metadata.patient_initiated=true` in last 24h.
+- __Path Param__:
+  - `:uuid` — secure match UUID.
+- __Request Body__ (JSON):
+  - `therapist_id` (uuid, required)
+  - `contact_type` (`'booking' | 'consultation'`, required)
+  - `patient_reason` (string, required)
+  - `patient_message` (string, optional)
+- __Behavior__:
+  - Resolves `patient_id` from `:uuid`.
+  - Validates therapist (`status='verified'`).
+  - Reuses existing match for `(patient_id, therapist_id)` when present; otherwise creates a new one with `status='proposed'` and metadata `{ patient_initiated: true, contact_type, patient_reason, patient_message }`.
+  - Sends a privacy‑first therapist notification email with magic link to `/match/:secure_uuid` (PII‑free).
+  - Emits `contact_message_sent` on success; `contact_rate_limit_hit` when blocked.
+- __Responses__:
+  - 200: `{ data: { ok: true, match_id }, error: null }`
+  - 400: `{ data: null, error: 'Fehlende Pflichtfelder' | 'Ungültiger Kontakttyp' | 'Invalid JSON' }`
+  - 404: `{ data: null, error: 'Therapeut nicht gefunden' }`
+  - 410: `{ data: null, error: 'Link expired' }`
+  - 429: `{ error: 'Du hast bereits 3 Therapeuten kontaktiert...', code: 'RATE_LIMIT_EXCEEDED' }`
+  - 500: `{ data: null, error: 'Unerwarteter Fehler' }`
+
+### GET /api/public/session
+
+- __Purpose__: Reflect whether a verified client session exists (functional cookie `kh_client`).
+- __Auth__: None (public).
+- __Response__:
+  - 200: `{ data: { verified: boolean, name?: string|null, contact_method?: 'email'|'phone', contact_value?: string }, error: null }`
+
+### Public Page `/matches/[uuid]`
+
+- __Purpose__: Show “Ihre persönlichen Empfehlungen” with up to 3 therapist cards and allow contacting any without re‑verification.
+- __Notes__:
+  - Highlights first card as “Top‑Empfehlung”.
+  - Shows “Bereits kontaktiert am …” when applicable; primary button becomes “Erneut senden”.
+  - Provides CTA to the full directory when no matches are available.
+  - Uses `ContactModal` in pre‑auth mode (skips verification, pre‑fills issue).
+
 ## Form Sessions (EARTH-190)
 
 ### POST /api/public/form-sessions

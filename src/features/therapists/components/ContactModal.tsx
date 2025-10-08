@@ -77,19 +77,37 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     }
   }, [open, preAuth, therapist.first_name, contactType]);
 
-  // If user returned from email magic link and is considered verified via cookie (EARTH-204),
-  // skip verification and jump straight to compose.
+  // If a verified client session exists (kh_client), skip verification in directory flow
   useEffect(() => {
-    if (open && verified && !preAuth) {
-      setError(null);
-      const greeting = `Guten Tag ${therapist.first_name}`;
-      const intent = contactType === 'booking'
-        ? 'ich möchte gerne einen Termin vereinbaren'
-        : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
-      setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei [beschreibe dein Anliegen] und fand dein Profil sehr ansprechend.`);
-      setStep('compose');
+    let cancelled = false;
+    async function checkSession() {
+      if (!open || preAuth) return;
+      try {
+        const res = await fetch('/api/public/session');
+        if (!res.ok) return;
+        const json = await res.json();
+        const s = json?.data;
+        if (s?.verified && !cancelled) {
+          setError(null);
+          if (typeof s.name === 'string' && s.name) setName(s.name);
+          if (s.contact_method === 'email') {
+            setContactMethod('email');
+            if (typeof s.contact_value === 'string') setEmail(s.contact_value);
+          } else if (s.contact_method === 'phone') {
+            setContactMethod('phone');
+            if (typeof s.contact_value === 'string') setPhone(s.contact_value);
+          }
+          setStep('compose');
+        }
+      } catch {}
     }
-  }, [open, verified, preAuth, therapist.first_name, contactType]);
+    void checkSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, preAuth]);
+
+  // (Removed redundant effect that referenced undefined `verified`)
 
   // Track modal open
   useEffect(() => {

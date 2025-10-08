@@ -22,6 +22,11 @@
 - Event naming (core)
   - Business: `lead_submitted`, `email_submitted`, `email_confirmed`, `form_completed`, `therapist_responded`, `match_created`, `faq_open`, `cta_click`.
   - Contact flow (EARTH-203): `contact_modal_opened`, `contact_verification_code_sent`, `contact_verification_completed`, `contact_message_sent`, `contact_match_created`, `contact_email_sent`, `contact_rate_limit_hit`.
+
+- Returning contact flow (EARTH-204):
+  - `match_link_view` (GET /api/public/matches/:uuid)
+  - `contact_message_sent` (POST /api/public/matches/:uuid/contact)
+  - `contact_rate_limit_hit` (POST /api/public/matches/:uuid/contact when blocked)
   - Ops: `cron_executed`, `cron_completed`, `cron_failed`, `internal_alert_sent`.
 
 ### Email‑first wizard (EARTH‑190)

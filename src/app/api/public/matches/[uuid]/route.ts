@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { logError } from '@/lib/logger';
+import { computeMismatches, type PatientMeta, type TherapistRowForMatch } from '@/features/leads/lib/match';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,11 +57,19 @@ export async function GET(req: Request) {
       .eq('id', patientId)
       .single();
 
-    type PatientRow = { name?: string | null; metadata?: { issue?: string; session_preference?: 'online'|'in_person'; notes?: string } | null };
+    type PatientRow = { name?: string | null; metadata?: { issue?: string; notes?: string; city?: string; session_preference?: 'online'|'in_person'; session_preferences?: ('online'|'in_person')[]; specializations?: string[]; gender_preference?: 'male'|'female'|'no_preference' } | null };
     const p = (patient || null) as PatientRow | null;
     const patientName = (p?.name || '') || null;
     const issue = (p?.metadata?.notes || p?.metadata?.issue || '') || null;
     const sessionPreference = p?.metadata?.session_preference ?? null;
+    const patientMeta: PatientMeta = {
+      city: p?.metadata?.city,
+      session_preference: p?.metadata?.session_preference,
+      session_preferences: p?.metadata?.session_preferences,
+      issue: p?.metadata?.issue,
+      specializations: p?.metadata?.specializations,
+      gender_preference: p?.metadata?.gender_preference,
+    };
 
     // Fetch all matches for this patient (recent window)
     const { data: matches } = await supabaseServer
@@ -86,21 +95,23 @@ export async function GET(req: Request) {
     }
     const therapistIds = chosen.map(m => m.therapist_id);
 
-    // Fetch therapist profiles
+    // Fetch therapist profiles (include fields needed for mismatch scoring)
     type TherapistRow = {
       id: string;
       first_name: string;
       last_name: string;
+      gender?: string | null;
       photo_url?: string | null;
       city?: string | null;
+      modalities?: string[] | null;
       accepting_new?: boolean | null;
-      metadata?: Record<string, unknown> | null;
+      metadata?: { session_preferences?: string[] | null; [k: string]: unknown } | null;
     };
     let therapists: TherapistRow[] = [];
     if (therapistIds.length > 0) {
       const { data: trows } = await supabaseServer
         .from('therapists')
-        .select('id, first_name, last_name, photo_url, city, accepting_new, metadata')
+        .select('id, first_name, last_name, gender, photo_url, city, modalities, accepting_new, metadata')
         .in('id', therapistIds);
       if (Array.isArray(trows)) therapists = trows as TherapistRow[];
     }
@@ -114,7 +125,24 @@ export async function GET(req: Request) {
       }
     }
 
-    const list = therapists.map((t) => ({
+    // Rank therapists using admin mismatch logic
+    const scored = therapists.map((t) => {
+      const tRow: TherapistRowForMatch = {
+        id: t.id,
+        gender: t.gender || undefined,
+        city: t.city || undefined,
+        session_preferences: Array.isArray(t.metadata?.session_preferences) ? t.metadata?.session_preferences : [],
+        modalities: Array.isArray(t.modalities) ? t.modalities : [],
+      };
+      const mm = computeMismatches(patientMeta, tRow);
+      return { t, mm } as const;
+    });
+    scored.sort((a, b) => {
+      if (a.mm.isPerfect !== b.mm.isPerfect) return a.mm.isPerfect ? -1 : 1;
+      return a.mm.reasons.length - b.mm.reasons.length;
+    });
+
+    const list = scored.map(({ t }) => ({
       id: t.id,
       first_name: t.first_name,
       last_name: t.last_name,

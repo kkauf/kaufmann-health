@@ -21,6 +21,7 @@ async function checkRateLimitByMatches(patientId: string): Promise<{ allowed: bo
       .from('matches')
       .select('id')
       .eq('patient_id', patientId)
+      .contains('metadata', { patient_initiated: true })
       .gte('created_at', oneDayAgo);
     if (error) return { allowed: true, count: 0 };
     const count = Array.isArray(data) ? data.length : 0;
