@@ -15,31 +15,33 @@ export function renderPatientConfirmation(params: {
   const prefLabel = pref === 'online' ? 'Online' : pref === 'in_person' ? 'Vor Ort' : '—';
 
   const detailsHtml = `
-    <div style="background-color:#F9FAFB; padding:16px; border-radius:8px; border:1px solid #E5E7EB; margin: 16px 0;">
-      <h3 style="margin:0 0 8px; color:#1A365D; font-size:16px;">Deine Angaben</h3>
-      <table role="presentation" cellpadding="0" cellspacing="0" style="font-size:14px; color:#374151;">
-        <tr><td style="padding:4px 8px 4px 0; width:160px; color:#6B7280;">Stadt</td><td style="padding:4px 0;">${escapeHtml(city || '—')}</td></tr>
-        <tr><td style="padding:4px 8px 4px 0; width:160px; color:#6B7280;">Anliegen</td><td style="padding:4px 0;">${escapeHtml(issue || '—')}</td></tr>
-        <tr><td style="padding:4px 8px 4px 0; width:160px; color:#6B7280;">Sitzungsart</td><td style="padding:4px 0;">${prefLabel}</td></tr>
+    <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding:20px 24px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); margin: 20px 0; box-shadow: 0 2px 4px 0 rgba(100, 116, 139, 0.05);">
+      <h3 style="margin:0 0 16px; color:#0f172a; font-size:18px; font-weight:700;">Deine Angaben</h3>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="font-size:15px; color:#475569; line-height:1.65;">
+        <tr><td style="padding:6px 12px 6px 0; width:160px; color:#64748b; font-weight:500;">Stadt</td><td style="padding:6px 0; color:#0f172a;">${escapeHtml(city || '—')}</td></tr>
+        <tr><td style="padding:6px 12px 6px 0; width:160px; color:#64748b; font-weight:500;">Anliegen</td><td style="padding:6px 0; color:#0f172a;">${escapeHtml(issue || '—')}</td></tr>
+        <tr><td style="padding:6px 12px 6px 0; width:160px; color:#64748b; font-weight:500;">Sitzungsart</td><td style="padding:6px 0; color:#0f172a;">${prefLabel}</td></tr>
       </table>
     </div>
   `;
 
   const contentHtml = `
-    <h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Deine Anfrage ist eingegangen</h1>
-    <p style="margin:0 0 12px;">Hallo${name ? ` ${escapeHtml(name)}` : ''},</p>
-    <p style="margin:0 0 12px;">vielen Dank für deine Anfrage bei Kaufmann Health. Wir haben deine Angaben erhalten und melden uns <strong>innerhalb von 24&nbsp;Stunden</strong> mit den nächsten Schritten.</p>
+    <h1 style="color:#0f172a; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Deine Anfrage ist eingegangen</h1>
+    <p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569;">Hallo${name ? ` ${escapeHtml(name)}` : ''},</p>
+    <p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569;">vielen Dank für deine Anfrage bei Kaufmann Health. Wir haben deine Angaben erhalten und melden uns <strong style="color:#0f172a;">innerhalb von 24&nbsp;Stunden</strong> mit den nächsten Schritten.</p>
     ${detailsHtml}
-    <div style="background-color:#FFFFFF; padding:16px; border-radius:8px; border:1px solid #E5E7EB;">
-      <h3 style="margin:0 0 8px; color:#1A365D; font-size:16px;">Wie geht es weiter?</h3>
-      <ol style="margin:0 0 0 18px; padding:0;">
-        <li style="margin:0 0 6px;">Wir prüfen deine Anfrage und wählen passende Profile aus unserem kuratierten Netzwerk sorgfältig geprüfter Therapeuten.</li>
-        <li style="margin:0 0 6px;">Du erhältst in der Regel innerhalb von 24&nbsp;Stunden eine Rückmeldung per E‑Mail.</li>
+    <div style="background:#ffffff; padding:20px 24px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 2px 4px 0 rgba(100, 116, 139, 0.05);">
+      <h3 style="margin:0 0 16px; color:#0f172a; font-size:18px; font-weight:700;">Wie geht es weiter?</h3>
+      <ol style="margin:0 0 0 20px; padding:0; font-size:15px; color:#475569; line-height:1.65;">
+        <li style="margin:0 0 12px;">Wir prüfen deine Anfrage und wählen passende Profile aus unserem kuratierten Netzwerk sorgfältig geprüfter Therapeuten.</li>
+        <li style="margin:0 0 12px;">Du erhältst in der Regel innerhalb von 24&nbsp;Stunden eine Rückmeldung per E‑Mail.</li>
         <li style="margin:0;">Bei Rückfragen melden wir uns direkt bei dir. Antworte gerne auf diese E‑Mail.</li>
       </ol>
-      <div style="text-align:center; margin-top:12px;">${renderButton(BASE_URL + '/therapie-finden', 'Mehr zur Therapeuten-Empfehlung')}</div>
+      <div style="text-align:center; margin-top:20px;">${renderButton(BASE_URL + '/therapie-finden', 'Mehr zur Therapeuten-Empfehlung')}</div>
     </div>
-    <p style="color:#6B7280; font-size:12px; margin-top:16px;">Du kannst jederzeit auf diese Nachricht antworten, falls du Ergänzungen oder Fragen hast.</p>
+    <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding:16px 20px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); margin-top:20px;">
+      <p style="color:#64748b; font-size:14px; margin:0; line-height:1.6;">Du kannst jederzeit auf diese Nachricht antworten, falls du Ergänzungen oder Fragen hast.</p>
+    </div>
   `;
 
   return {

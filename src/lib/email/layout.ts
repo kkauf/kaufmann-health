@@ -2,7 +2,7 @@ import { BASE_URL } from '@/lib/constants';
 
 export function renderButton(href: string, label: string) {
   return `
-    <a href="${href}" role="button" style="display:block; width:100%; box-sizing:border-box; background-color:#4A9B8E; color:#ffffff; padding:14px 16px; border-radius:10px; text-decoration:none; font-weight:600; text-align:center; font-size:16px; line-height:1.2; border:1px solid #3f8d80;">${label}</a>
+    <a href="${href}" role="button" style="display:block; width:100%; box-sizing:border-box; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color:#ffffff; padding:16px 24px; border-radius:12px; text-decoration:none; font-weight:700; text-align:center; font-size:17px; line-height:1.3; border:none; box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.25);">${label}</a>
   `;
 }
 
@@ -20,23 +20,23 @@ export function renderLayout(params: { title?: string; contentHtml: string; preh
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     ${schema ? `\n    <script type="application/ld+json">\n${JSON.stringify(schema, null, 2)}\n    </script>\n    ` : ''}
   </head>
-  <body style="margin:0; padding:0; background-color:#F9FAFB;">
+  <body style="margin:0; padding:0; background: linear-gradient(to bottom, #f9fafb 0%, #f3f4f6 100%);">
     ${preheader ? `<div style="display:none; font-size:1px; color:#F9FAFB; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">${escapeHtml(preheader)}</div>` : ''}
-    <div style="max-width:640px; margin:0 auto; padding:24px;">
-      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #E5E7EB;">
+    <div style="max-width:640px; margin:0 auto; padding:32px 16px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#ffffff; border-radius:16px; overflow:hidden; border:1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);">
         <tr>
-          <td style="padding:16px 24px; background:#FFFFFF; border-bottom:1px solid #E5E7EB;">
-            <img src="${logoSrc}" alt="Kaufmann Health" height="28" style="display:block; height:28px; width:auto;" />
+          <td style="padding:24px 32px; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-bottom:1px solid rgba(226, 232, 240, 0.6);">
+            <img src="${logoSrc}" alt="Kaufmann Health" height="32" style="display:block; height:32px; width:auto;" />
           </td>
         </tr>
         <tr>
-          <td style="padding:24px; font-family: Arial, sans-serif; line-height:1.6; color:#374151;">
+          <td style="padding:32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height:1.65; color:#334155;">
             ${params.contentHtml}
           </td>
         </tr>
       </table>
-      <div style="text-align:center; color:#9CA3AF; font-size:12px; margin-top:12px;">
-        <a href="${BASE_URL}" style="color:#9CA3AF; text-decoration:none;">${BASE_URL.replace('https://','')}</a>
+      <div style="text-align:center; color:#94a3b8; font-size:13px; margin-top:16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;">
+        <a href="${BASE_URL}" style="color:#94a3b8; text-decoration:none;">${BASE_URL.replace('https://','')}</a>
       </div>
     </div>
   </body>

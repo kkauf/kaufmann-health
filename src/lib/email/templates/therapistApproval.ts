@@ -18,14 +18,19 @@ export function renderTherapistApproval(params: {
   const visible = Boolean(params.profileVisible);
 
   const lines: string[] = [];
-  lines.push(`<p style=\"margin:0 0 12px;\">Hi${name ? ` ${escapeHtml(name)}` : ''},</p>`);
-  lines.push('<p style="margin:0 0 12px;">Herzlichen Glückwunsch! Dein Profil wurde genehmigt.</p>');
+  lines.push('<h1 style="color:#0f172a; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Herzlichen Glückwunsch!</h1>');
+  lines.push(`<p style=\"margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569;\">Hi${name ? ` ${escapeHtml(name)}` : ''},</p>`);
+  lines.push('<div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); padding:20px 24px; border-radius:12px; border:1px solid rgba(16, 185, 129, 0.3); margin:0 0 20px; box-shadow: 0 2px 8px 0 rgba(16, 185, 129, 0.15);">');
+  lines.push('<p style="margin:0; font-size:17px; line-height:1.65; color:#064e3b; font-weight:600;">✓ Dein Profil wurde genehmigt</p>');
+  lines.push('</div>');
   if (visible) {
-    lines.push('<p style="margin:0 0 12px;">Dein Profil ist nun im Verzeichnis sichtbar und du kannst Klienten‑Anfragen erhalten.</p>');
+    lines.push('<p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569;">Dein Profil ist nun im Verzeichnis sichtbar und du kannst Klienten‑Anfragen erhalten.</p>');
   } else {
-    lines.push('<p style="margin:0 0 12px;">Deine Qualifikationsnachweise wurden genehmigt. Dein Profilfoto wird nach Freigabe durch das Team veröffentlicht.</p>');
+    lines.push('<p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569;">Deine Qualifikationsnachweise wurden genehmigt. Dein Profilfoto wird nach Freigabe durch das Team veröffentlicht.</p>');
   }
-  lines.push('<p style="margin:16px 0 0; color:#6B7280; font-size:12px;">Antworte gerne auf diese E‑Mail bei Fragen.</p>');
+  lines.push('<div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding:16px 20px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); margin-top:20px;">');
+  lines.push('<p style="color:#64748b; font-size:14px; margin:0; line-height:1.6;">Antworte gerne auf diese E‑Mail bei Fragen.</p>');
+  lines.push('</div>');
 
   return {
     subject: 'Du kannst ab sofort Klienten‑Anfragen erhalten',
