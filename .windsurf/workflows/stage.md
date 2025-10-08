@@ -1,15 +1,10 @@
 ---
-description: Complete a task locally and on Linear
-auto_execution_mode: 1
+description: Commit changes from this conversation
+auto_execution_mode: 3
 ---
 
-- Post an update to Linear about task progress / completion
-- Move Linear task to "Done"
-- Stage changes locally related to the changes in this conversation ONLY (do not include other changes)
-- Create a commit message follow the Conventional Commits specification, referencing the Linear ticket:
-```<type>(<scope>): <description> [<LINEAR-ID>]
-
-[optional body]
-
-[optional footer(s)]```
-- Commit locally but do not push
+Stage all changes that were touches in this conversation only.
+Create a Conventional Committ message for the changes.
+Write an update to the Linear task and move it to done.
+If no Linear task was indicated, confirm with the user whether a new task should be created. This ALWAYS makes sense for larger changes (>100 lines of code changed, i.e. you don't need to confirm with the user).
+The user will push changes themselves.

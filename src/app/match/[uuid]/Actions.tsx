@@ -20,12 +20,22 @@ export function Actions({
   expired: expiredInitial,
   initialStatus,
   initialContact,
+  contactType,
+  patientName,
+  patientReason,
+  contactMethod,
+  therapistName,
 }: {
   uuid: string;
   matchId: string;
   expired: boolean;
   initialStatus: string;
   initialContact?: { name?: string | null; email?: string | null; phone?: string | null };
+  contactType?: 'booking' | 'consultation';
+  patientName?: string;
+  patientReason?: string;
+  contactMethod?: 'email' | 'phone';
+  therapistName?: string;
 }) {
   const [status, setStatus] = useState(initialStatus);
   const [expired, setExpired] = useState(expiredInitial);
@@ -103,6 +113,34 @@ export function Actions({
     );
   }
 
+  // EARTH-205: Generate mailto link for accepted contact requests
+  const generateMailto = () => {
+    if (!contact?.email) return null;
+    
+    const subject = encodeURIComponent('Re: Ihre Anfrage bei Kaufmann Health');
+    const name = contact.name || patientName || 'dort';
+    const firstName = name.split(' ')[0] || name;
+    
+    let body = `Guten Tag ${firstName},\n\nvielen Dank für deine Nachricht über Kaufmann Health.\n\n`;
+    
+    if (contactType === 'booking') {
+      body += `Gerne können wir einen Termin vereinbaren. Wann passt es dir am besten?\n\n`;
+      body += `[Ihre Praxis-Adresse hier einfügen]\n\n`;
+    } else if (contactType === 'consultation') {
+      body += `Gerne können wir einen Termin vereinbaren. Wann passt es dir am besten?\n\n`;
+      body += `Das kostenlose Erstgespräch dauert 15 Minuten und dient zum gegenseitigen Kennenlernen.\n\n`;
+    } else {
+      body += `Gerne können wir einen Termin vereinbaren. Wann passt es dir am besten?\n\n`;
+    }
+    
+    body += `Viele Grüße`;
+    if (therapistName) {
+      body += `,\n${therapistName}`;
+    }
+    
+    return `mailto:${contact.email}?subject=${subject}&body=${encodeURIComponent(body)}`;
+  };
+
   if (isFinal) {
     return (
       <div className="space-y-3">
@@ -110,24 +148,42 @@ export function Actions({
           <div className="space-y-2">
             <p className="text-sm">Vielen Dank! Du hast die Anfrage angenommen.</p>
             {contact ? (
-              <div className="rounded-md border p-3 text-sm">
-                <p className="font-medium">Kontaktdaten</p>
-                {contact.name ? <p>Name: {contact.name}</p> : null}
-                {contact.email ? (
-                  <p>
-                    E-Mail{' '}
-                    <a className="underline" href={`mailto:${contact.email}`}>
-                      {contact.email}
+              <div className="space-y-3">
+                <div className="rounded-md border p-3 text-sm">
+                  <p className="font-medium">Kontaktdaten</p>
+                  {contact.name ? <p>Name: {contact.name}</p> : null}
+                  {contact.email ? (
+                    <p>
+                      E-Mail{' '}
+                      <a className="underline" href={`mailto:${contact.email}`}>
+                        {contact.email}
+                      </a>
+                    </p>
+                  ) : null}
+                  {contact.phone ? (
+                    <p>
+                      Telefon{' '}
+                      <a className="underline" href={`tel:${contact.phone}`}>
+                        {contact.phone}
+                      </a>
+                    </p>
+                  ) : null}
+                </div>
+                {/* EARTH-205: Mailto button for patient-initiated contacts */}
+                {contact.email && contactType ? (
+                  <Button asChild className="w-full bg-emerald-600 hover:bg-emerald-700">
+                    <a href={generateMailto() || '#'}>
+                      E-Mail-Entwurf öffnen
                     </a>
-                  </p>
+                  </Button>
                 ) : null}
-                {contact.phone ? (
-                  <p>
-                    Telefon{' '}
-                    <a className="underline" href={`tel:${contact.phone}`}>
-                      {contact.phone}
-                    </a>
-                  </p>
+                {contact.phone && !contact.email ? (
+                  <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm">
+                    <p className="font-medium text-amber-900">Patient bevorzugt SMS/Anruf</p>
+                    <p className="text-amber-700 mt-1">
+                      Bitte kontaktiere den/die Klient:in direkt unter der angegebenen Telefonnummer.
+                    </p>
+                  </div>
                 ) : null}
               </div>
             ) : (
@@ -147,9 +203,13 @@ export function Actions({
   return (
     <div className="space-y-4">
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <div className="flex gap-3">
-        <Button onClick={() => respond('accept')} disabled={!!loading}>
-          {loading === 'accept' ? 'Bitte warten…' : 'Annehmen'}
+      <div className="flex flex-col gap-3">
+        <Button 
+          onClick={() => respond('accept')} 
+          disabled={!!loading}
+          className="bg-emerald-600 hover:bg-emerald-700"
+        >
+          {loading === 'accept' ? 'Bitte warten…' : (contactType ? 'Annehmen und antworten' : 'Annehmen')}
         </Button>
         <Button variant="outline" onClick={() => respond('decline')} disabled={!!loading}>
           {loading === 'decline' ? 'Bitte warten…' : 'Ablehnen'}

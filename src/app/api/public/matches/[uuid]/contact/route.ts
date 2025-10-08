@@ -149,7 +149,7 @@ export async function POST(req: Request) {
       magicUuid = (newMatch.secure_uuid as string) || null;
     }
 
-    // Send notification email to therapist (privacy-first)
+    // Send notification email to therapist (privacy-first, EARTH-205: include message and contact type)
     try {
       type TherapistRow = { email: string; first_name: string | null };
       const t = therapist as unknown as TherapistRow;
@@ -163,6 +163,8 @@ export async function POST(req: Request) {
           patientSessionPreference: null,
           magicUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://kaufmann.health'}/match/${magicUuid}`,
           expiresHours: 72,
+          contactType: contact_type as 'booking' | 'consultation',
+          patientMessage: patient_message,
         });
         void sendEmail({ to: email, subject: content.subject, html: content.html }).catch(err => {
           void logError('email.therapist_notification', err, { match_id: matchId, therapist_id }, ip, ua);

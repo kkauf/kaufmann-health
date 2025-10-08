@@ -69,7 +69,6 @@ export default async function StartPage() {
         subtitle={
           'Persönlich kuratierte Therapeut:innen für Menschen, die bereit sind für echte Veränderung – und nicht noch 6 Monate warten können.'
         }
-        supportLine="Trauma‑informierte Spezialist:innen. Termine in 24 Stunden."
         ctaLabel="Jetzt Therapeut:in finden"
         ctaHref="/fragebogen"
         backgroundSrc="/images/hero.jpg"

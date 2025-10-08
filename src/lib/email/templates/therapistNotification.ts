@@ -19,6 +19,9 @@ export type TherapistNotificationParams = {
   patientSessionPreference?: 'online' | 'in_person' | null;
   subjectOverride?: string | null;
   expiresHours?: number | null; // for outreach copy
+  // EARTH-205: Patient-initiated contact fields
+  contactType?: 'booking' | 'consultation' | null;
+  patientMessage?: string | null;
 };
 
 export function renderTherapistNotification(params: TherapistNotificationParams): EmailContent {
@@ -27,6 +30,8 @@ export function renderTherapistNotification(params: TherapistNotificationParams)
   const issue = (params.patientIssue || '').trim();
   const format = (params.patientSessionPreference || '').trim();
   const expiresHours = typeof params.expiresHours === 'number' && params.expiresHours > 0 ? params.expiresHours : 72;
+  const contactType = params.contactType;
+  const patientMessage = (params.patientMessage || '').trim();
 
   const lines: string[] = [];
   // Header based on type
@@ -46,6 +51,11 @@ export function renderTherapistNotification(params: TherapistNotificationParams)
     // outreach
     lines.push(`<p style=\"margin:0 0 12px;\">Hallo${tName ? ` ${esc(tName)}` : ''},</p>`);
     lines.push('<h2 style="margin:0 0 8px; font-size:20px;">Neue Klientenanfrage</h2>');
+    // EARTH-205: Show request type if available
+    if (contactType) {
+      const requestLabel = contactType === 'booking' ? 'Direktbuchung' : 'Kostenloses Erstgespräch (15 Min)';
+      lines.push(`<p style=\"margin:0 0 8px; font-weight:600; color:#059669;\">${esc(requestLabel)}</p>`);
+    }
     lines.push(`<p style=\"margin:0 0 12px;\">Bitte prüfe die Details und gib deine Rückmeldung. Der Link ist aus Sicherheitsgründen nur für ${expiresHours} Stunden gültig.</p>`);
   }
 
@@ -59,6 +69,14 @@ export function renderTherapistNotification(params: TherapistNotificationParams)
     lines.push('<ul style="margin:0 0 12px 16px; padding:0;">');
     lines.push(details.join(''));
     lines.push('</ul>');
+  }
+
+  // EARTH-205: Include patient message if provided
+  if (patientMessage) {
+    lines.push('<h3 style="margin:12px 0 8px; font-size:16px;">Nachricht vom Klienten</h3>');
+    lines.push('<div style="background:#F9FAFB; border:1px solid #E5E7EB; border-radius:8px; padding:12px; margin:0 0 12px;">');
+    lines.push(`<p style=\"margin:0; white-space:pre-wrap;\">${esc(patientMessage)}</p>`);
+    lines.push('</div>');
   }
 
   // CTA
@@ -75,7 +93,15 @@ export function renderTherapistNotification(params: TherapistNotificationParams)
   if (params.subjectOverride && params.subjectOverride.trim()) subject = params.subjectOverride.trim();
   else if (params.type === 'selection') subject = 'Ein:e Klient:in hat dich ausgewählt – bitte Rückmeldung geben';
   else if (params.type === 'reminder') subject = 'Erinnerung: Klient:in wartet auf deine Antwort';
-  else subject = `Neue Klientenanfrage – ${city || 'unbekannt'} – ${issue || 'Allgemein'}`;
+  else {
+    // EARTH-205: Include request type in subject for patient-initiated contacts
+    if (contactType) {
+      const typeLabel = contactType === 'booking' ? 'Direktbuchung' : 'Erstgespräch';
+      subject = `Neue Anfrage: ${typeLabel}`;
+    } else {
+      subject = `Neue Klientenanfrage – ${city || 'unbekannt'} – ${issue || 'Allgemein'}`;
+    }
+  }
 
   return { subject, html };
 }

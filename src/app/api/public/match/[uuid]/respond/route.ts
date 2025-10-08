@@ -3,7 +3,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { logError } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { sendEmail } from '@/lib/email/client';
-import { renderPatientCustomUpdate, renderPatientMatchFound } from '@/lib/email/templates/patientUpdates';
+import { renderPatientCustomUpdate, renderPatientMatchFound, renderTherapistRejection } from '@/lib/email/templates/patientUpdates';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
     const { data: match, error: matchErr } = await supabaseServer
       .from('matches')
-      .select('id, status, created_at, patient_id, therapist_id')
+      .select('id, status, created_at, patient_id, therapist_id, metadata')
       .eq('secure_uuid', uuid)
       .single();
 
@@ -49,7 +49,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
     }
 
-    type MatchRow = { id: string; status?: string | null; created_at?: string | null; patient_id: string; therapist_id: string };
+    type MatchRow = { 
+      id: string; 
+      status?: string | null; 
+      created_at?: string | null; 
+      patient_id: string; 
+      therapist_id: string;
+      metadata?: { patient_initiated?: boolean } | null;
+    };
     const m = match as unknown as MatchRow;
     const age = hoursSince(m.created_at ?? undefined);
     if (age == null || age > 72) {
@@ -195,16 +202,31 @@ export async function POST(req: Request) {
               });
             }
           } else if (nextStatus === 'declined') {
-            const message =
-              'kurzes Update: Der vorgeschlagene Therapeut kann Ihren Fall leider nicht übernehmen. Wir suchen weiterhin nach einer passenden Option und melden uns schnellstmöglich.';
-            const content = renderPatientCustomUpdate({ patientName, message });
-            void sendEmail({
-              to: patientEmail,
-              subject: content.subject,
-              html: content.html,
-              text: content.text,
-              context: { kind: 'patient_update_auto', template: 'declined', match_id: m.id, patient_id: m.patient_id, therapist_id: m.therapist_id },
-            });
+            // EARTH-205: For patient-initiated contacts, send therapist rejection email
+            const isPatientInitiated = m.metadata?.patient_initiated === true;
+            
+            if (isPatientInitiated && therapistRow) {
+              const therapistName = [therapistRow.first_name || '', therapistRow.last_name || ''].join(' ').trim() || null;
+              const content = renderTherapistRejection({ patientName, therapistName });
+              void sendEmail({
+                to: patientEmail,
+                subject: content.subject,
+                html: content.html || '',
+                text: content.text,
+                context: { kind: 'patient_update_auto', template: 'therapist_rejection', match_id: m.id, patient_id: m.patient_id, therapist_id: m.therapist_id },
+              });
+            } else {
+              const message =
+                'kurzes Update: Der vorgeschlagene Therapeut kann Ihren Fall leider nicht übernehmen. Wir suchen weiterhin nach einer passenden Option und melden uns schnellstmöglich.';
+              const content = renderPatientCustomUpdate({ patientName, message });
+              void sendEmail({
+                to: patientEmail,
+                subject: content.subject,
+                html: content.html || '',
+                text: content.text,
+                context: { kind: 'patient_update_auto', template: 'declined', match_id: m.id, patient_id: m.patient_id, therapist_id: m.therapist_id },
+              });
+            }
           }
         }
       }

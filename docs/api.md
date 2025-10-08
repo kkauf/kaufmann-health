@@ -703,13 +703,3 @@ campaignStats: Array<{
 campaignByDay: Array<{
   day: string;                  // 'YYYY-MM-DD' (UTC buckets)
   campaign_source: string;
-  campaign_variant: string;     // 'A' | 'B'
-  leads: number;
-  confirmed: number;
-  confirmation_rate: number;
-}>
-```
-
-Notes:
-- The mid‑funnel signal for “confirmed” aligns with email double opt-in (EARTH‑146): a lead is counted as confirmed when `people.status != 'pre_confirmation'`.
-- Self‑pay intent is tracked separately via events (`self_pay_confirmed` / `self_pay_declined`) and is surfaced in the existing “Lead‑Qualität” card; it is not mixed into the campaign aggregates above.

@@ -2,7 +2,7 @@ import Image from 'next/image';
 
 export function FoundersValuesSection({
   heading = 'Was uns auszeichnet',
-  imageSrc = '/images/katherine and konstantin.PNG',
+  imageSrc = '/profile-pictures/katherine and konstantin.PNG',
 }: {
   heading?: string;
   imageSrc?: string;
@@ -29,8 +29,7 @@ export function FoundersValuesSection({
         <div className="space-y-8">
           <div>
             <p className="text-base sm:text-lg leading-relaxed text-slate-700">
-              Wir sind Katherine und Konstantin – ein familiengeführtes Team, das Therapie‑, Technologie‑ und
-              Rechtskompetenz vereint.
+              Wir sind Katherine und Konstantin – ein familiengeführtes Team, das Therapie‑ und Technologiekompetenz vereint.
             </p>
           </div>
 

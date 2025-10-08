@@ -45,6 +45,40 @@ export function renderPatientMatchFound(params: {
   };
 }
 
+/**
+ * EARTH-205: Rejection email when therapist declines patient-initiated contact
+ */
+export function renderTherapistRejection(params: {
+  patientName?: string | null;
+  therapistName?: string | null;
+}): EmailContent {
+  const patient = (params.patientName || '').trim();
+  const therapist = (params.therapistName || '').trim();
+  const firstName = patient ? patient.split(' ')[0] : '';
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://kaufmann.health';
+  const directoryUrl = `${baseUrl}/therapeuten`;
+
+  const lines: string[] = [];
+  lines.push(`<p style="margin:0 0 12px;">Guten Tag${firstName ? ` ${escapeHtml(firstName)}` : ''},</p>`);
+  lines.push('<p style="margin:0 0 12px;">vielen Dank für Ihr Interesse. Leider kann ich aktuell keine neuen Klienten aufnehmen.</p>');
+  lines.push('<p style="margin:0 0 12px;">Über Kaufmann Health finden Sie andere qualifizierte Therapeut:innen:</p>');
+  lines.push('<div style="margin:16px 0; text-align:center;">');
+  lines.push(`<a href="${directoryUrl}" style="display:inline-block; padding:12px 24px; background-color:#059669; color:white; text-decoration:none; border-radius:6px; font-weight:600;">Therapeuten-Verzeichnis ansehen</a>`);
+  lines.push('</div>');
+  lines.push(`<p style="margin:16px 0 0;">Alles Gute für Sie${therapist ? `,<br/>${escapeHtml(therapist)}` : ''}</p>`);
+
+  const html = renderLayout({
+    title: 'Update zu Ihrer Anfrage',
+    contentHtml: lines.join(''),
+  });
+
+  return {
+    subject: therapist ? `Ihre Anfrage bei ${therapist}` : 'Update zu Ihrer Anfrage',
+    html,
+  };
+}
+
 export function renderPatientCustomUpdate(params: {
   patientName?: string | null;
   message?: string | null;

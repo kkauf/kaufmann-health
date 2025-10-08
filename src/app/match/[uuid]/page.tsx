@@ -12,12 +12,25 @@ function hoursSince(iso: string | null | undefined): number | null {
 async function getData(uuid: string) {
   const { data: match, error } = await supabaseServer
     .from('matches')
-    .select('id, status, created_at, patient_id')
+    .select('id, status, created_at, patient_id, therapist_id, metadata')
     .eq('secure_uuid', uuid)
     .single();
   if (error || !match) return null;
 
-  type MatchRow = { id: string; status?: string | null; created_at?: string | null; patient_id: string };
+  type MatchRow = { 
+    id: string; 
+    status?: string | null; 
+    created_at?: string | null; 
+    patient_id: string;
+    therapist_id: string;
+    metadata?: {
+      patient_initiated?: boolean;
+      contact_type?: 'booking' | 'consultation';
+      patient_reason?: string;
+      patient_message?: string;
+      contact_method?: 'email' | 'phone';
+    } | null;
+  };
   const m = match as unknown as MatchRow;
 
   const { data: patient } = await supabaseServer
@@ -63,6 +76,28 @@ async function getData(uuid: string) {
 
   const currentStatus = String(m.status || 'proposed').toLowerCase();
 
+  // Extract patient-initiated contact metadata (EARTH-205)
+  const contactType = m.metadata?.contact_type as 'booking' | 'consultation' | undefined;
+  const patientMessage = typeof m.metadata?.patient_message === 'string' ? m.metadata.patient_message : undefined;
+  const patientReason = typeof m.metadata?.patient_reason === 'string' ? m.metadata.patient_reason : undefined;
+  const contactMethod = m.metadata?.contact_method as 'email' | 'phone' | undefined;
+
+  // Fetch therapist name (EARTH-205: needed for mailto signature)
+  let therapistName: string | null = null;
+  try {
+    const { data: therapist } = await supabaseServer
+      .from('therapists')
+      .select('first_name, last_name')
+      .eq('id', m.therapist_id)
+      .single();
+    if (therapist) {
+      type TherapistRow = { first_name?: string | null; last_name?: string | null };
+      const t = therapist as unknown as TherapistRow;
+      const parts = [t.first_name || '', t.last_name || ''].filter(Boolean);
+      therapistName = parts.length > 0 ? parts.join(' ') : null;
+    }
+  } catch {}
+
   // Only fetch contact details if already accepted (avoid exposing PII prematurely)
   let contact: { name?: string | null; email?: string | null; phone?: string | null } | null = null;
   if (currentStatus === 'accepted') {
@@ -96,6 +131,13 @@ async function getData(uuid: string) {
     specializations,
     notes,
     contact,
+    // EARTH-205: Patient-initiated contact fields
+    contactType,
+    patientMessage,
+    patientReason,
+    contactMethod,
+    createdAt: m.created_at,
+    therapistName,
   } as const;
 }
 
@@ -133,6 +175,21 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
         </CardHeader>
         <CardContent>
           <div className="space-y-5">
+            {/* EARTH-205: Show request type and timestamp */}
+            {data.contactType || data.createdAt ? (
+              <div className="flex items-center justify-between text-sm">
+                {data.contactType ? (
+                  <span className="font-medium text-emerald-700">
+                    {data.contactType === 'booking' ? 'Direktbuchung' : 'Kostenloses Erstgespräch (15 Min)'}
+                  </span>
+                ) : null}
+                {data.createdAt ? (
+                  <span className="text-muted-foreground">
+                    Angefragt vor {Math.round(hoursSince(data.createdAt) || 0)} Stunden
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
             <p className="text-sm text-muted-foreground">
               {data.expiresInHours != null && !data.expired
                 ? `Noch ${data.expiresInHours < 1 ? '<1' : data.expiresInHours} Stunden gültig`
@@ -160,6 +217,13 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
                 </p>
               ) : null}
             </div>
+            {/* EARTH-205: Display patient message */}
+            {data.patientMessage ? (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <p className="text-sm font-medium text-gray-900 mb-2">Nachricht vom Klienten</p>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{data.patientMessage}</p>
+              </div>
+            ) : null}
             {!data.expired ? (
               <p className="text-xs text-muted-foreground">
                 Nach Annahme erhältst du die Kontaktdaten zur direkten Kontaktaufnahme.
@@ -171,6 +235,11 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
               expired={data.expired}
               initialStatus={data.status}
               initialContact={data.contact || undefined}
+              contactType={data.contactType}
+              patientName={data.name}
+              patientReason={data.patientReason}
+              contactMethod={data.contactMethod}
+              therapistName={data.therapistName || undefined}
             />
           </div>
         </CardContent>

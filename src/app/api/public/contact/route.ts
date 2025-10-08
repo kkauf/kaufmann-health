@@ -281,7 +281,7 @@ export async function POST(req: Request) {
       },
     });
     
-    // Send notification email to therapist
+    // Send notification email to therapist (EARTH-205: include message and contact type)
     try {
       const emailContent = renderTherapistNotification({
         type: 'outreach',
@@ -291,6 +291,8 @@ export async function POST(req: Request) {
         patientSessionPreference: null, // Not collected in this flow
         magicUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://kaufmann.health'}/match/${match.secure_uuid}`,
         expiresHours: 72,
+        contactType: contact_type,
+        patientMessage: patient_message,
       });
       
       void sendEmail({
