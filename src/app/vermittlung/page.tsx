@@ -11,7 +11,7 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health
 
 export const metadata = async ({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }): Promise<Metadata> => {
   const title = 'Therapie‑Vermittlung – So funktioniert’s | Kaufmann Health';
-  const description = 'In drei Schritten zu passenden Therapeut:innen: Anliegen teilen, kuratierte Vorschläge erhalten, direkt Termine vereinbaren. 80–120€ pro Sitzung, diese Woche verfügbar.';
+  const description = 'In drei Schritten zu passenden Therapeut:innen: Anliegen teilen, handverlesene Vorschläge erhalten, direkt Termine vereinbaren. 80–120€ pro Sitzung, diese Woche verfügbar.';
   const v = (searchParams?.v as string) || undefined;
   return buildLandingMetadata({
     baseUrl,
@@ -37,7 +37,7 @@ export default async function VermittlungPage() {
           <span className="block sm:inline">Therapeuten‑Vermittlung</span>
           <span className="block sm:inline">– Einfach starten</span>
         </h1>
-        <p className="mt-3 max-w-2xl text-gray-700">Wir kuratieren bis zu 3 passende Therapeut:innen für dich. Du wählst und vereinbarst direkt Termine.</p>
+        <p className="mt-3 max-w-2xl text-gray-700">Wir wählen bis zu 3 passende Therapeut:innen für dich aus. Du wählst und vereinbarst direkt Termine.</p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <Button size="lg" asChild className="w-full bg-black text-white hover:bg-black/90 sm:w-auto" data-cta="hero-primary">
             <CtaLink href="/fragebogen" eventType="cta_click">Zum Fragebogen</CtaLink>
@@ -54,7 +54,7 @@ export default async function VermittlungPage() {
           heading="So funktioniert’s"
           items={[
             { step: 1, title: 'Du schilderst dein Anliegen', icon: <MessageCircle className="h-5 w-5" />, bullets: ['Stadt oder online, Zeitfenster, besondere Themen'] },
-            { step: 2, title: 'Wir kuratieren bis zu 3 Profile', icon: <UserCheck className="h-5 w-5" />, bullets: ['Geprüfte Qualifikationen, passende Methoden, echte Verfügbarkeit'] },
+            { step: 2, title: 'Wir wählen bis zu 3 Profile aus', icon: <UserCheck className="h-5 w-5" />, bullets: ['Geprüfte Qualifikationen, passende Methoden, echte Verfügbarkeit'] },
             { step: 3, title: 'Du wählst & vereinbarst Termine', icon: <PhoneCall className="h-5 w-5" />, bullets: ['Direkter Kontakt, konkrete Vorschläge in 24h'] },
           ]}
         />

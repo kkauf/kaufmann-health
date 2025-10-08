@@ -43,7 +43,7 @@ export function renderPatientSelectionEmail(params: {
  
   // Header and greeting/thanks
   const header = `
-    <h1 style="color:#0f172a; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Deine persönlich kuratierte Auswahl</h1>
+    <h1 style="color:#0f172a; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Deine handverlesene Auswahl</h1>
   `;
   const greetingHtml = `
     ${name ? `<p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569;">Hallo ${escapeHtml(name)},</p>` : ''}
@@ -147,7 +147,7 @@ export function renderPatientSelectionEmail(params: {
     : undefined;
 
   return {
-    subject: params.subjectOverride || 'Deine persönlich kuratierte Auswahl – Termine in den nächsten 7 Tagen (bitte innerhalb von 48 Std. wählen)',
-    html: renderLayout({ title: 'Therapie-Auswahl', contentHtml, preheader: 'Deine persönlich kuratierte Auswahl ist da – bitte innerhalb von 48 Std. wählen.', schema }),
+    subject: params.subjectOverride || 'Deine handverlesene Auswahl – Termine in den nächsten 7 Tagen (bitte innerhalb von 48 Std. wählen)',
+    html: renderLayout({ title: 'Therapie-Auswahl', contentHtml, preheader: 'Deine handverlesene Auswahl ist da – bitte innerhalb von 48 Std. wählen.', schema }),
   };
 }

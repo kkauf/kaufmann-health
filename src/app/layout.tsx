@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   title:
     "Therapeut:innen-Empfehlung – Sorgfältig geprüfte Therapeut:innen in deiner Nähe | Kaufmann Health",
   description:
-    "Persönlich kuratierte Therapeut:innen-Empfehlungen für körperorientierte Psychotherapie (NARM, Hakomi, Somatic Experiencing). Direkter Kontakt, transparente Auswahl, ohne Wartezeit.",
+    "Handverlesene Therapeut:innen-Empfehlungen für körperorientierte Psychotherapie (NARM, Hakomi, Somatic Experiencing). Direkter Kontakt, transparente Auswahl, ohne Wartezeit.",
   keywords: [
     "Therapeut:innen finden",
     "Therapeut:innen-Empfehlung",
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Therapeut:innen-Empfehlung | Kaufmann Health",
     description:
-      "Persönlich kuratierte Empfehlungen und Kontaktdaten sorgfältig geprüfter Therapeut:innen (NARM, Hakomi, Somatic Experiencing).",
+      "Handverlesene Empfehlungen und Kontaktdaten sorgfältig geprüfter Therapeut:innen (NARM, Hakomi, Somatic Experiencing).",
     url: "https://kaufmann-health.de/",
     siteName: "Kaufmann Health",
     locale: "de_DE",

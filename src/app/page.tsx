@@ -35,8 +35,8 @@ export default function Home() {
             Finde geprüfte körperorientierte Trauma‑Therapeut:innen
           </h1>
           <p className="mt-4 sm:mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-gray-700">
-            Persönlich kuratierte Therapeut:innen-Empfehlungen.
-            Handverlesen und persönlich geprüft – für eine Empfehlung, der du vertrauen kannst.
+            Handverlesene Therapeut:innen-Empfehlungen.
+            Persönlich ausgewählt und geprüft – für eine Empfehlung, der du vertrauen kannst.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Button
@@ -213,7 +213,7 @@ export default function Home() {
                   Neue Klienten für deine Praxis
                 </h2>
                 <p className="mt-3 sm:mt-4 text-base sm:text-lg leading-relaxed text-gray-700">
-                  Werde Teil unseres kuratierten Netzwerks. Du zahlst
+                  Werde Teil unseres handverlesenen Netzwerks. Du zahlst
                   nur eine Erfolgsgebühr, wenn Klient:innen über unsere Plattform zu
                   dir finden.
                 </p>

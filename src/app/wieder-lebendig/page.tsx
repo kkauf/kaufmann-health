@@ -134,7 +134,7 @@ export default async function WiederLebendigPage() {
       id: "kontakt-mehrere",
       question: "Kann ich selbst verschiedene Therapeut:innen kontaktieren?",
       answer:
-        "Ja. Du entscheidest eigenverantwortlich, mit wem du sprechen möchtest. Wir stellen dir eine kuratierte Auswahl und die Kontaktdaten bereit.",
+        "Ja. Du entscheidest eigenverantwortlich, mit wem du sprechen möchtest. Wir stellen dir eine handverlesene Auswahl und die Kontaktdaten bereit.",
     },
     {
       id: "not-for-me",
@@ -297,7 +297,7 @@ export default async function WiederLebendigPage() {
         <ProcessSteps
           items={[
             { icon: <MessageCircle className="h-5 w-5" />, step: 1, title: "Du schilderst uns deine Situation", description: "Schreib uns kurz, worum es geht und was dir wichtig ist." },
-            { icon: <UserCheck className="h-5 w-5" />, step: 2, title: "Wir wählen passende Therapeut:innen aus", description: "Aus unserer kuratierten Liste – passend zu deinem Anliegen und deiner Stadt." },
+            { icon: <UserCheck className="h-5 w-5" />, step: 2, title: "Wir wählen passende Therapeut:innen aus", description: "Aus unserer handverlesenen Liste – passend zu deinem Anliegen und deiner Stadt." },
             { icon: <PhoneCall className="h-5 w-5" />, step: 3, title: "Direkter Kontakt", description: "Du erhältst direkte Kontaktdaten und kannst sofort einen Termin vereinbaren." },
           ]}
         />

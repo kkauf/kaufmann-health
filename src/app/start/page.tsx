@@ -16,8 +16,8 @@ export const revalidate = 3600;
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health.de';
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }): Promise<Metadata> {
-  const title = 'Kaufmann Health – Persönlich kuratierte Therapeut:innen (Termine in 24h)';
-  const description = 'So viel Arbeit an dir selbst, immer noch kein Fortschritt? Persönlich kuratierte Therapeut:innen. Traumasensibel. Termine in 24 Stunden.';
+  const title = 'Kaufmann Health – Handverlesene Therapeut:innen (Termine in 24h)';
+  const description = 'So viel Arbeit an dir selbst, immer noch kein Fortschritt? Handverlesene Therapeut:innen. Traumasensibel. Termine in 24 Stunden.';
   const params = await searchParams;
   const v = (params?.v as string) || undefined;
   const base = buildLandingMetadata({
@@ -88,7 +88,7 @@ export default async function StartPage() {
             icon: <UserCheck className="h-5 w-5" />,
             title: 'Unsere persönliche Auswahl',
             caption: '24 Stunden',
-            bullets: ['Bis zu 3 passende Profile, von uns kuratiert'],
+            bullets: ['Bis zu 3 passende Profile, von uns handverlesen'],
           },
           {
             icon: <PhoneCall className="h-5 w-5" />,

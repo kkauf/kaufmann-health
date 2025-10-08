@@ -33,7 +33,7 @@ export function renderPatientConfirmation(params: {
     <div style="background:#ffffff; padding:20px 24px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 2px 4px 0 rgba(100, 116, 139, 0.05);">
       <h3 style="margin:0 0 16px; color:#0f172a; font-size:18px; font-weight:700;">Wie geht es weiter?</h3>
       <ol style="margin:0 0 0 20px; padding:0; font-size:15px; color:#475569; line-height:1.65;">
-        <li style="margin:0 0 12px;">Wir prüfen deine Anfrage und wählen passende Profile aus unserem kuratierten Netzwerk sorgfältig geprüfter Therapeuten.</li>
+        <li style="margin:0 0 12px;">Wir prüfen deine Anfrage und wählen passende Profile aus unserem handverlesenen Netzwerk sorgfältig geprüfter Therapeuten.</li>
         <li style="margin:0 0 12px;">Du erhältst in der Regel innerhalb von 24&nbsp;Stunden eine Rückmeldung per E‑Mail.</li>
         <li style="margin:0;">Bei Rückfragen melden wir uns direkt bei dir. Antworte gerne auf diese E‑Mail.</li>
       </ol>

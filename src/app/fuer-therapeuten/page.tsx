@@ -12,12 +12,12 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "Neue Klient:innen für deine Praxis | Für Therapeut:innen | Kaufmann Health",
   description:
-    "Werde Teil unseres kuratierten Netzwerks. Du zahlst nur eine Erfolgsgebühr, wenn Klient:innen über unsere Plattform zu dir finden.",
+    "Werde Teil unseres handverlesenen Netzwerks. Du zahlst nur eine Erfolgsgebühr, wenn Klient:innen über unsere Plattform zu dir finden.",
   alternates: { canonical: "/fuer-therapeuten" },
   openGraph: {
     title: "Neue Klient:innen für deine Praxis | Für Therapeut:innen",
     description:
-      "Spezialisiertes, kuratiertes Therapeut:innen-Netzwerk mit erfolgsbasierter Vergütung. Keine Vorabkosten.",
+      "Spezialisiertes, handverlesenes Therapeut:innen-Netzwerk mit erfolgsbasierter Vergütung. Keine Vorabkosten.",
   },
 };
 
@@ -78,7 +78,7 @@ export default function TherapistsPage() {
             "@type": "WebPage",
             name: "Neue Klient:innen für deine Praxis | Für Therapeut:innen | Kaufmann Health",
             description:
-              "Werde Teil unseres kuratierten Netzwerks. Du zahlst nur eine Erfolgsgebühr, wenn Klient:innen über unsere Plattform zu dir finden.",
+              "Werde Teil unseres handverlesenen Netzwerks. Du zahlst nur eine Erfolgsgebühr, wenn Klient:innen über unsere Plattform zu dir finden.",
           }),
         }}
       />
@@ -111,7 +111,7 @@ export default function TherapistsPage() {
           Neue Klient:innen für deine Praxis
         </h1>
         <p className="mt-4 sm:mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-gray-700">
-          Werde Teil unseres kuratierten Netzwerks. Du zahlst nur eine Erfolgsgebühr, wenn Klient:innen über unsere Plattform zu dir finden.
+          Werde Teil unseres handverlesenen Netzwerks. Du zahlst nur eine Erfolgsgebühr, wenn Klient:innen über unsere Plattform zu dir finden.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm sm:text-base text-gray-700" aria-label="Vertrauen">
           <span className="inline-flex items-center gap-2">
@@ -383,7 +383,7 @@ export default function TherapistsPage() {
             Bereit für mehr Sichtbarkeit?
           </h2>
           <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-700">
-            Werde jetzt Teil unseres kuratierten Netzwerks für körperorientierte Psychotherapie.
+            Werde jetzt Teil unseres handverlesenen Netzwerks für körperorientierte Psychotherapie.
           </p>
           <div className="mt-8 sm:mt-10">
             <TherapistApplicationForm />

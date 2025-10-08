@@ -48,7 +48,7 @@ export default function UeberUnsPage() {
 
         <div className="relative z-10 max-w-4xl mx-auto text-center">
           <h1 id="about-hero" className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent leading-tight">
-            Persönlich kuratiert.<br />Familiengeführt. Für dich.
+            Handverlesen.<br />Familiengeführt. Für dich.
           </h1>
           <p className="mt-6 text-base sm:text-lg leading-relaxed text-gray-700 max-w-2xl mx-auto">
             Wir sind Katherine und Konstantin – ein Team aus Therapie-Expertise und Tech-Erfahrung.
@@ -297,7 +297,7 @@ export default function UeberUnsPage() {
               Exzellenz und strategische Klarheit.
             </p>
             <p className="text-base sm:text-lg leading-relaxed text-gray-700">
-              Gemeinsam kuratieren wir persönlich jede Empfehlung – keine Algorithmen, keine automatischen Matches.
+              Gemeinsam wählen wir persönlich jede Empfehlung aus – keine Algorithmen, keine automatischen Matches.
               Nur durchdachte, individuelle Vorschläge von Menschen, die beide Welten verstehen:
               die der erfolgreichen Leistungsträger und die der tiefgreifenden inneren Arbeit.
             </p>

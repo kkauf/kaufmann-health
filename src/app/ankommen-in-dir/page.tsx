@@ -28,12 +28,12 @@ export const metadata = async ({ searchParams }: { searchParams?: { [key: string
   return {
     title: "Ankommen in dir – Körperorientierte Therapie online | Kaufmann Health",
     description:
-      "Körperorientierte Therapie – persönlich kuratiert und online verfügbar, deutschlandweit. Embodiment & Nervensystem‑Regulation.",
+      "Körperorientierte Therapie – handverlesen und online verfügbar, deutschlandweit. Embodiment & Nervensystem‑Regulation.",
     alternates: { canonical: `${baseUrl}/ankommen-in-dir` },
     robots: isTestVariant ? { index: false, follow: false } : { index: true, follow: true },
     openGraph: {
       title: "Ankommen in dir – Körperorientierte Therapie online",
-      description: "Persönlich kuratierte Empfehlungen für Online-Sitzungen, deutschlandweit.",
+      description: "Handverlesene Empfehlungen für Online-Sitzungen, deutschlandweit.",
       url: `${baseUrl}/ankommen-in-dir`,
       type: "website",
       images: [{ url: `${baseUrl}/images/color-patterns.png`, width: 1200, height: 630 }],
@@ -41,7 +41,7 @@ export const metadata = async ({ searchParams }: { searchParams?: { [key: string
     twitter: {
       card: "summary_large_image",
       title: "Ankommen in dir – Körperorientierte Therapie online",
-      description: "Persönlich kuratierte Empfehlungen für Online-Sitzungen, deutschlandweit.",
+      description: "Handverlesene Empfehlungen für Online-Sitzungen, deutschlandweit.",
       images: [`${baseUrl}/images/color-patterns.png`],
     },
   };
@@ -108,7 +108,7 @@ export default async function AnkommenInDirPage() {
     url: `${baseUrl}/ankommen-in-dir`,
     image: `${baseUrl}/images/color-patterns.png`,
     description:
-      "Körperorientierte Therapie online – persönlich kuratiert. NARM, Somatic Experiencing, Hakomi, Core Energetics.",
+      "Körperorientierte Therapie online – handverlesen. NARM, Somatic Experiencing, Hakomi, Core Energetics.",
     areaServed: {
       "@type": "Country",
       name: "Deutschland",
@@ -126,13 +126,13 @@ export default async function AnkommenInDirPage() {
             subtitle={
               <>
                 <VariantGate show="C">
-                  <span>Körperorientiertes Coaching & Begleitung – persönlich kuratiert und online verfügbar. 80–120€ pro Sitzung.</span>
+                  <span>Körperorientiertes Coaching & Begleitung – handverlesen und online verfügbar. 80–120€ pro Sitzung.</span>
                 </VariantGate>
                 <VariantGate show="A">
-                  <span>Körperorientierte Therapie online – persönlich kuratiert. NARM, Somatic Experiencing, Hakomi, Core Energetics. 80–120€ pro Sitzung.</span>
+                  <span>Körperorientierte Therapie online – handverlesen. NARM, Somatic Experiencing, Hakomi, Core Energetics. 80–120€ pro Sitzung.</span>
                 </VariantGate>
                 <VariantGate show="B">
-                  <span>Körperorientierte Therapie online – persönlich kuratiert. NARM, Somatic Experiencing, Hakomi, Core Energetics. 80–120€ pro Sitzung.</span>
+                  <span>Körperorientierte Therapie online – handverlesen. NARM, Somatic Experiencing, Hakomi, Core Energetics. 80–120€ pro Sitzung.</span>
                 </VariantGate>
               </>
             }
@@ -205,7 +205,7 @@ export default async function AnkommenInDirPage() {
           <ProcessSteps
             items={[
               { icon: <MessageCircle className="h-5 w-5" />, step: 1, title: "Du schilderst deinen Weg" },
-              { icon: <UserCheck className="h-5 w-5" />, step: 2, title: "Wir kuratieren passend zu deinem Fokus" },
+              { icon: <UserCheck className="h-5 w-5" />, step: 2, title: "Wir wählen passend zu deinem Fokus aus" },
               { icon: <PhoneCall className="h-5 w-5" />, step: 3, title: "Direkter Kontakt & erste Online-Session" },
             ]}
           />
@@ -294,7 +294,7 @@ export default async function AnkommenInDirPage() {
         <SectionViewTracker location="final-cta">
           <section className="mt-12 sm:mt-16 relative overflow-hidden rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-6 sm:p-8">
             <h2 className="text-2xl font-semibold tracking-tight">Bereit anzukommen?</h2>
-            <p className="mt-3 max-w-2xl text-gray-700">Beginne mit einer Empfehlung – persönlich kuratiert und online verfügbar.</p>
+            <p className="mt-3 max-w-2xl text-gray-700">Beginne mit einer Empfehlung – handverlesen und online verfügbar.</p>
             <div className="mt-6">
               <Button asChild size="lg" data-cta="final-primary">
                 <CtaLink href="#top-form" eventType="cta_click" aria-label="Passende Therapeut:innen finden">
