@@ -9,13 +9,12 @@ export type Screen4Values = {
   language?: 'Deutsch' | 'Englisch' | 'Andere';
   language_other?: string;
   time_slots?: string[]; // e.g., 'Morgens (8-12 Uhr)'
-  methods?: string[];
+  methods?: string[]; // Still here for compatibility, but modality is handled in NewScreen5
 };
 
 const GENDER: NonNullable<Screen4Values['gender']>[] = ['Frau', 'Mann', 'Keine Präferenz', 'Divers/non-binär'];
 const LANGS: NonNullable<Screen4Values['language']>[] = ['Deutsch', 'Englisch', 'Andere'];
 const TIMES = ['Morgens (8-12 Uhr)', 'Nachmittags (12-17 Uhr)', 'Abends (17-21 Uhr)', 'Wochenende', 'Bin flexibel'];
-const METHODS = ['NARM (Entwicklungstrauma)', 'Somatic Experiencing', 'Core Energetics', 'Hakomi', 'Bin offen für Vorschläge'];
 
 export default function Screen4({
   values,
@@ -30,10 +29,10 @@ export default function Screen4({
   onBack: () => void;
   disabled?: boolean;
 }) {
-  const [errors, setErrors] = React.useState<{ language?: string; other?: string }>({});
+  const [errors, setErrors] = React.useState<{ language?: string; other?: string; time_slots?: string; methods?: string }>({});
 
   function validate() {
-    const e: { language?: string; other?: string } = {};
+    const e: { language?: string; other?: string; time_slots?: string; methods?: string } = {};
     if (!values.language) e.language = 'Bitte wähle eine Sprache.';
     if (values.language === 'Andere' && !(values.language_other && values.language_other.trim())) {
       e.other = 'Bitte gib die gewünschte Sprache an.';
@@ -123,27 +122,6 @@ export default function Screen4({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <p className="font-medium">Interessierst du dich für bestimmte Methoden? (Optional)</p>
-        <p className="text-sm text-muted-foreground">Nicht sicher? Wir helfen dir bei der Auswahl</p>
-        <div className="grid gap-2">
-          {METHODS.map((opt) => {
-            const selected = (values.methods || []).includes(opt);
-            return (
-              <button
-                key={opt}
-                type="button"
-                className={`h-11 rounded border px-4 text-left ${selected ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
-                onClick={() => toggle('methods', opt)}
-                disabled={!!disabled}
-                aria-disabled={disabled}
-              >
-                {opt}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       <div className="flex items-center justify-between pt-2">
         <Button variant="secondary" className="h-11" onClick={onBack} disabled={!!disabled} aria-disabled={disabled}>Zurück</Button>
