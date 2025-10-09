@@ -20,7 +20,7 @@ vi.mock('@/lib/auth/clientSession', () => ({
   createClientSessionCookie: vi.fn().mockReturnValue('kh_client=mock-token; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000'),
 }));
 
-describe('EARTH-204: /therapeuten email verification return flow', () => {
+describe('EARTH-204: confirm endpoint redirect URL merging', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
