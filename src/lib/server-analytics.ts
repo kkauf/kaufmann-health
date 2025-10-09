@@ -32,40 +32,41 @@ export function parseAttributionFromRequest(req: Request): ServerAttribution {
 
 export function parseCampaignFromRequest(req: Request): {
   campaign_source?: string;
-  campaign_variant?: 'A' | 'B' | 'C';
+  campaign_variant?: 'A' | 'B';
 } {
   const ref = req.headers.get('referer') || '';
   let pathname: string | undefined;
-  let vFromRef: string | undefined;
+  let variantParam: string | undefined;
   try {
     const u = new URL(ref);
     pathname = u.pathname || undefined;
-    vFromRef = u.searchParams.get('v') || undefined;
+    // Check for new variant param (Test #0: Positioning A/B)
+    variantParam = u.searchParams.get('variant') || undefined;
   } catch {
     pathname = undefined;
   }
 
-  // Fallback: look at API URL for variant when not present on referer
-  let v: string | undefined = vFromRef;
-  if (!v) {
-    try {
-      const apiUrl = new URL(req.url);
-      v = apiUrl.searchParams.get('v') || undefined;
-    } catch {}
-  }
-  const vt = (v || 'A').toUpperCase();
-  const vv: 'A' | 'B' | 'C' = vt === 'B' ? 'B' : vt === 'C' ? 'C' : 'A';
-
-  // Source mapping (EARTH-146)
-  const src = pathname?.includes('/ankommen-in-dir')
+  // Determine source from pathname
+  const src = pathname?.includes('/start')
+    ? '/start'
+    : pathname?.includes('/ankommen-in-dir')
     ? '/ankommen-in-dir'
     : pathname?.includes('/wieder-lebendig')
     ? '/wieder-lebendig'
     : '/therapie-finden';
 
+  // Map variant parameter to A/B
+  // - For /start: variant=body-oriented → A, variant=ready-now → B
+  // - For legacy pages: no variant support (default A)
+  let variant: 'A' | 'B' = 'A';
+  if (src === '/start' && variantParam) {
+    const normalized = variantParam.toLowerCase();
+    variant = normalized === 'ready-now' ? 'B' : 'A';
+  }
+
   return {
     campaign_source: src,
-    campaign_variant: vv,
+    campaign_variant: variant,
   };
 }
 

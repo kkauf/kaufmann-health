@@ -528,7 +528,7 @@ export async function GET(req: Request) {
     for (const row of ((peopleRows || []) as Array<PeopleRow>)) {
       const src = String(row.campaign_source || '').trim();
       const vRaw = String(row.campaign_variant || '').toUpperCase();
-      const v = vRaw === 'B' ? 'B' : vRaw === 'C' ? 'C' : 'A';
+      const v = vRaw === 'B' ? 'B' : 'A'; // Test #0: A/B only
       if (!src) continue;
       const key = `${src}__${v}`;
       if (!cmap.has(key)) cmap.set(key, { campaign_source: src, campaign_variant: v, leads: 0, confirmed: 0 });
@@ -548,7 +548,7 @@ export async function GET(req: Request) {
     for (const row of ((peopleRows || []) as Array<PeopleRow & { created_at?: string }>)) {
       const src = String(row.campaign_source || '').trim();
       const vRaw = String(row.campaign_variant || '').toUpperCase();
-      const v = vRaw === 'B' ? 'B' : vRaw === 'C' ? 'C' : 'A';
+      const v = vRaw === 'B' ? 'B' : 'A'; // Test #0: A/B only
       if (!src) continue;
       const createdAtIso = (row as { created_at?: string }).created_at ?? new Date().toISOString();
       const day = toDayKey(createdAtIso);
@@ -650,7 +650,7 @@ export async function GET(req: Request) {
       for (const row of ((peopleRows || []) as Array<PeopleRow>)) {
         const src = String(row.campaign_source || '').trim();
         const vRaw = String(row.campaign_variant || '').toUpperCase();
-        const v = vRaw === 'B' ? 'B' : vRaw === 'C' ? 'C' : 'A';
+        const v = vRaw === 'B' ? 'B' : 'A'; // Test #0: A/B only
         if (!src) continue;
         const key = `${src}__${v}`;
         if (!cmap.has(key)) cmap.set(key, { campaign_source: src, campaign_variant: v, leads: 0, confirmed: 0 });
@@ -670,7 +670,7 @@ export async function GET(req: Request) {
       for (const row of ((peopleRows || []) as Array<PeopleRow & { created_at?: string }>)) {
         const src = String(row.campaign_source || '').trim();
         const vRaw = String(row.campaign_variant || '').toUpperCase();
-        const v = vRaw === 'B' ? 'B' : vRaw === 'C' ? 'C' : 'A';
+        const v = vRaw === 'B' ? 'B' : 'A'; // Test #0: A/B only
         if (!src) continue;
         const createdAtIso = (row as { created_at?: string }).created_at ?? new Date().toISOString();
         const day = toDayKey(createdAtIso);

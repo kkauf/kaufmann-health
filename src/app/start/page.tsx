@@ -15,55 +15,106 @@ export const revalidate = 3600;
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health.de';
 
+type Variant = 'body-oriented' | 'ready-now';
+
+function normalizeVariant(raw?: string | string[]): Variant {
+  const v = typeof raw === 'string' ? raw.toLowerCase() : '';
+  return v === 'ready-now' ? 'ready-now' : 'body-oriented';
+}
+
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }): Promise<Metadata> {
-  const title = 'Kaufmann Health – Handverlesene Therapeut:innen (Termine in 24h)';
-  const description = 'Therapeuten finden in 24 Stunden. Persönlich ausgewählt für dich. Online oder vor Ort. Ohne Wartezeit.';
   const params = await searchParams;
-  const v = (params?.v as string) || undefined;
+  const variant = normalizeVariant(params?.variant);
+  
+  const title = variant === 'ready-now'
+    ? 'Kaufmann Health – Therapie ohne Wartezeit (Termine in 24h)'
+    : 'Kaufmann Health – Körperorientierte Therapie (Termine in 24h)';
+  const description = variant === 'ready-now'
+    ? 'Sofort verfügbare Therapeuten in Berlin und online. Persönlich ausgewählt, keine Wartelisten, keine Kassentherapie.'
+    : 'Körperorientierte Traumatherapie in Berlin und online. Handverlesene Spezialist:innen, sofort verfügbar.';
+  
   const base = buildLandingMetadata({
     baseUrl,
     path: '/start',
     title,
     description,
-    searchParams: { v },
   });
   return { ...base, robots: { index: false, follow: false } };
 }
 
-export default async function StartPage() {
-  const faqs = [
-    {
-      id: 'why-body',
-      question: 'Warum körperorientierte Therapie?',
-      answer:
-        'Verstehen allein reicht oft nicht. Körperorientierte Ansätze arbeiten mit deinem Nervensystem und lösen festgefahrene Muster – für echte, spürbare Veränderung.',
+export default async function StartPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const params = await searchParams;
+  const variant = normalizeVariant(params?.variant);
+  
+  // Variant A: Body-Oriented Specialist
+  const bodyOrientedCopy = {
+    hero: {
+      title: 'Wenn der Kopf nicht weiterkommt, hilft der Körper',
+      subtitle: 'Erfahrene Körpertherapeut:innen, die wirklich verfügbar sind. Handverlesen, traumasensibel, in Berlin oder online.',
     },
-    {
-      id: 'how-it-works',
-      question: 'Wie funktioniert die Vermittlung genau?',
-      answer:
-        'Du füllst einen kurzen Fragebogen aus (5 Minuten). Wir senden dir innerhalb von 24 Stunden bis zu 3 passende Profile – du entscheidest und buchst direkt.',
+    process: {
+      tagline: 'Keine Algorithmen. Keine Wartelisten. Nur persönliche Empfehlungen.',
     },
-    {
-      id: 'prices',
-      question: 'Was kostet eine Sitzung?',
-      answer:
-        'In der Regel 80–120€ pro 50–60 Minuten – flexibel nach Therapeut:in. Keine Kassenabrechnung, dafür sofort verfügbar und ohne Diagnose in der Kassenakte.',
+    faqs: [
+      {
+        id: 'why-body',
+        question: 'Warum körperorientierte Therapie?',
+        answer: 'Viele Menschen verstehen ihre Probleme bereits – sie wissen, woher ihre Ängste kommen, welche Muster sie haben. Aber Verstehen allein führt nicht zu Veränderung. Trauma und festgefahrene Reaktionen leben in deinem Nervensystem. Körperorientierte Therapie arbeitet direkt mit deinem Körper, um diese Muster zu lösen. Das Ergebnis: Nachhaltige Veränderung, nicht nur Einsicht.',
+      },
+      {
+        id: 'how-it-works',
+        question: 'Wie funktioniert die Vermittlung genau?',
+        answer: 'Du füllst einen kurzen Fragebogen aus (5 Minuten). Wir senden dir innerhalb von 24 Stunden bis zu 3 passende Profile – du entscheidest und buchst direkt.',
+      },
+      {
+        id: 'prices',
+        question: 'Was kostet eine Sitzung?',
+        answer: 'In der Regel 80–120€ pro 50–60 Minuten – flexibel nach Therapeut:in. Keine Kassenabrechnung, dafür sofort verfügbar und ohne Diagnose in der Kassenakte.',
+      },
+    ],
+  };
+  
+  // Variant B: Ready Now / Urgency-Driven
+  const readyNowCopy = {
+    hero: {
+      title: 'Therapie ohne Wartezeit – Termine in 24 Stunden',
+      subtitle: 'Kein monatelanges Warten. Keine Kassentherapie. Nur handverlesene Therapeut:innen, die sofort verfügbar sind – in Berlin oder online.',
     },
-  ];
+    process: {
+      tagline: 'Keine Wartelisten. Keine Bürokratie. Einfach starten.',
+    },
+    faqs: [
+      {
+        id: 'why-no-wait',
+        question: 'Warum keine Wartezeit?',
+        answer: 'Wir arbeiten ausschließlich mit Selbstzahlenden Therapeut:innen, die aktiv neue Klient:innen aufnehmen. Keine Kassenzulassung bedeutet: keine Wartelisten, kein Antragsprozess, keine Diagnose in deiner Kassenakte.',
+      },
+      {
+        id: 'how-it-works',
+        question: 'Wie funktioniert die Vermittlung?',
+        answer: 'Du füllst einen 5-Minuten-Fragebogen aus. Innerhalb von 24 Stunden senden wir dir bis zu 3 passende Therapeut:innen-Profile. Du wählst deinen Favoriten und buchst direkt einen Termin.',
+      },
+      {
+        id: 'prices',
+        question: 'Was kostet eine Sitzung?',
+        answer: 'In der Regel 80–120€ pro 50–60 Minuten, je nach Therapeut:in. Selbstzahlung bedeutet: keine Wartezeit, volle Flexibilität, und deine Daten bleiben privat.',
+      },
+    ],
+  };
+  
+  const copy = variant === 'ready-now' ? readyNowCopy : bodyOrientedCopy;
+  const faqs = copy.faqs;
   const faqSchema = buildFaqJsonLd(faqs.map(({ question, answer }) => ({ question, answer })));
   const businessSchema = buildLocalBusinessJsonLd({ baseUrl, path: '/start', areaServed: { type: 'Country', name: 'Deutschland', addressCountry: 'DE' } });
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
-      <PageAnalytics qualifier="LP-Start" />
+      <PageAnalytics qualifier={`LP-Start-${variant}`} />
 
       {/* HERO (no form) */}
       <HeroNoForm
-        title="Wenn der Kopf nicht weiterkommt, hilft der Körper"
-        subtitle={
-          'Erfahrene Körpertherapeut:innen, die wirklich verfügbar sind. Handverlesen, traumasensibel, in Berlin oder online.'
-        }
+        title={copy.hero.title}
+        subtitle={copy.hero.subtitle}
         ctaLabel="Jetzt Therapeut:in finden"
         ctaHref="/fragebogen"
         backgroundSrc="/images/hero.jpg"
@@ -71,7 +122,7 @@ export default async function StartPage() {
 
       {/* Process timeline (mobile‑first) */}
       <ProcessTimeline
-        tagline="Keine Algorithmen. Keine Wartelisten. Nur persönliche Empfehlungen."
+        tagline={copy.process.tagline}
         items={[
           {
             icon: <MessageCircle className="h-5 w-5" />,
