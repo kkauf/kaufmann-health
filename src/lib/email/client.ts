@@ -96,13 +96,17 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
 
   const fromAddress = params.from || process.env.LEADS_FROM_EMAIL || EMAIL_FROM_DEFAULT;
 
-  // Minimal resiliency: short timeout + retry on 429/5xx. Never throw.
+  // Minimal resiliency: timeout + retry on 429/5xx with exponential backoff. Never throw.
   const maxAttempts = 3;
-  const timeoutMs = Number(process.env.RESEND_TIMEOUT_MS || 10000);
+  const timeoutMs = Number(process.env.RESEND_TIMEOUT_MS || 15000);
 
   // Build a stable idempotency key to avoid duplicate deliveries when our request
   // times out locally but was already accepted by the provider.
   const idempotencyKey = (() => {
+    // Allow disabling idempotency for local testing
+    if (process.env.RESEND_DISABLE_IDEMPOTENCY === 'true') {
+      return undefined;
+    }
     try {
       const ctx = (params.context || {}) as Record<string, unknown>;
       const stable = {
@@ -126,7 +130,8 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
   })();
 
   const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
-  const backoff = (attempt: number) => [200, 1000, 3000][Math.min(attempt - 1, 2)];
+  // Exponential backoff: 500ms, 2000ms, 8000ms
+  const backoff = (attempt: number) => Math.min(500 * Math.pow(4, attempt - 1), 8000);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const controller = new AbortController();

@@ -38,22 +38,26 @@ async function checkRateLimit(
   patientId: string,
   _ip: string
 ): Promise<{ allowed: boolean; count: number }> {
+  // Allow disabling rate limit for local testing
+  if (process.env.RESEND_DISABLE_IDEMPOTENCY === 'true') {
+    return { allowed: true, count: 0 };
+  }
   const supabase = supabaseServer;
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  
+
   // Count matches created by this patient in last 24h
   const { data: matches, error } = await supabase
     .from('matches')
     .select('id')
     .eq('patient_id', patientId)
     .gte('created_at', oneDayAgo);
-  
+
   if (error) {
     console.error('[contact] Rate limit check failed:', error);
     // Fail open: allow request if we can't check
     return { allowed: true, count: 0 };
   }
-  
+
   const count = matches?.length || 0;
   return { allowed: count < RATE_LIMIT_PER_DAY, count };
 }

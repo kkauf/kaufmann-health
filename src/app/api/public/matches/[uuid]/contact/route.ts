@@ -17,6 +17,10 @@ function hoursSince(iso: string | null | undefined): number | null {
 }
 
 async function checkRateLimitByMatches(patientId: string): Promise<{ allowed: boolean; count: number }> {
+  // Allow disabling rate limit for local testing
+  if (process.env.RESEND_DISABLE_IDEMPOTENCY === 'true') {
+    return { allowed: true, count: 0 };
+  }
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   try {
     const { data, error } = await supabaseServer
