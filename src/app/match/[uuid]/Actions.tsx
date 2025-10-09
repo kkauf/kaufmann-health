@@ -255,7 +255,7 @@ export function Actions({
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-indigo-600 font-bold">•</span>
-                      <span><strong>48h-Reservierung:</strong> Empathisch formulieren („Ich reserviere diese Termine für dich…"), Flexibilität anbieten</span>
+                      <span><strong>48h-Reservierung:</strong> Empathisch formulieren (&quot;Ich reserviere diese Termine für dich…&quot;), Flexibilität anbieten</span>
                     </li>
                   </ul>
                   {contact.phone && contact.email ? (
