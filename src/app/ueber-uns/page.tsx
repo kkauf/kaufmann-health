@@ -121,7 +121,7 @@ export default function UeberUnsPage() {
                   Katherine Kaufmann
                 </h2>
                 <p className="mt-2 text-lg font-medium text-indigo-700">
-                  Heilpraktikerin für Psychotherapie • NARM Therapeutin
+                  Gründerin • NARM & Core Energetics Therapeutin
                 </p>
               </div>
 
