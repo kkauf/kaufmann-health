@@ -52,3 +52,6 @@ next-env.d.ts
 # Keep rules, ignore everything else in .windsurf
 .windsurf/*
 !.windsurf/rules/
+
+# signature
+signature.html
