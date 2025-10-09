@@ -22,6 +22,7 @@
 - Event naming (core)
   - Business: `lead_submitted`, `email_submitted`, `email_confirmed`, `form_completed`, `therapist_responded`, `match_created`, `faq_open`, `cta_click`.
   - Contact flow (EARTH-203): `contact_modal_opened`, `contact_verification_code_sent`, `contact_verification_completed`, `contact_message_sent`, `contact_match_created`, `contact_email_sent`, `contact_rate_limit_hit`.
+  - **Phone-only gap tracking**: `patient_notify_skipped` with `reason: 'phone_only_no_email'` tracks when therapist accepts/declines but patient has no real email (temp placeholder). Monitor this to measure SMS notification need.
 
 - Returning contact flow (EARTH-204):
   - `match_link_view` (GET /api/public/matches/:uuid)

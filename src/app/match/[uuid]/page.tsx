@@ -29,6 +29,7 @@ async function getData(uuid: string) {
       patient_reason?: string;
       patient_message?: string;
       contact_method?: 'email' | 'phone';
+      session_format?: 'online' | 'in_person';
     } | null;
   };
   const m = match as unknown as MatchRow;
@@ -50,7 +51,12 @@ async function getData(uuid: string) {
   const sps = Array.isArray(p?.metadata?.session_preferences) ? p?.metadata?.session_preferences : [];
   let sessionPreference: string | undefined;
   const toLabel = (v: 'online' | 'in_person') => (v === 'online' ? 'Online' : 'Vor Ort');
-  if (sps && sps.length > 0) {
+  
+  // For patient-initiated contacts, check match metadata for session_format
+  const matchSessionFormat = m.metadata?.session_format;
+  if (matchSessionFormat === 'online' || matchSessionFormat === 'in_person') {
+    sessionPreference = toLabel(matchSessionFormat);
+  } else if (sps && sps.length > 0) {
     const set = new Set(sps);
     if (set.has('online') && set.has('in_person')) sessionPreference = 'Online oder Vor Ort';
     else if (set.has('online')) sessionPreference = toLabel('online');

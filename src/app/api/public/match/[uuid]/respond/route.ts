@@ -179,7 +179,23 @@ export async function POST(req: Request) {
         const patient = patientRow as unknown as PatientRow;
         const patientEmail = (patient?.email || '').trim();
         const patientName = (patient?.name || '') || null;
-        if (patientEmail) {
+        
+        // Track phone-only clients who can't receive email notifications
+        const isPhoneOnly = patientEmail.startsWith('temp_') && patientEmail.endsWith('@kaufmann.health');
+        if (isPhoneOnly) {
+          void ServerAnalytics.trackEventFromRequest(req, {
+            type: 'patient_notify_skipped',
+            source: 'api.match.respond',
+            props: { 
+              match_id: m.id, 
+              reason: 'phone_only_no_email',
+              action: nextStatus,
+              patient_initiated: m.metadata?.patient_initiated || false,
+            },
+          });
+        }
+        
+        if (patientEmail && !isPhoneOnly) {
           if (nextStatus === 'accepted') {
             if (!wasPatientSelected) {
               const therapistName = therapistRow
