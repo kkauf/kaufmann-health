@@ -23,6 +23,8 @@ interface SendCodeRequest {
   // Optional redirect path for magic link confirmations.
   // Must be a safe, relative path (validated before use).
   redirect?: string;
+  // Optional patient name for therapist directory contact flow (used for both email and SMS)
+  name?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -31,7 +33,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = (await req.json()) as SendCodeRequest;
-    const { contact, contact_type, lead_id, form_session_id, redirect } = body;
+    const { contact, contact_type, lead_id, form_session_id, redirect, name } = body;
 
     if (!contact || !contact_type) {
       return NextResponse.json(
@@ -69,6 +71,52 @@ export async function POST(req: NextRequest) {
           { error: 'Bitte gib eine gültige Handynummer ein' },
           { status: 400 }
         );
+      }
+
+      // Create or update person record with name (if provided) before sending SMS
+      // This ensures the name is available when the user verifies and creates a session
+      if (name) {
+        try {
+          // Check if person already exists for this phone number
+          const { data: existing } = await supabaseServer
+            .from('people')
+            .select('id, name')
+            .eq('phone_number', contact)
+            .eq('type', 'patient')
+            .single();
+
+          if (existing) {
+            // Update name if not already set or if different
+            if (!existing.name || existing.name !== name) {
+              await supabaseServer
+                .from('people')
+                .update({ name })
+                .eq('id', existing.id);
+            }
+          } else {
+            // Create new person record with phone and name
+            await supabaseServer
+              .from('people')
+              .insert({
+                type: 'patient',
+                phone_number: contact,
+                email: `temp_${Date.now()}@kaufmann.health`,
+                name,
+                status: 'new',
+                metadata: {
+                  contact_method: 'phone',
+                  source: 'directory_contact',
+                },
+              });
+          }
+        } catch (err) {
+          // Log but don't fail - SMS can still be sent
+          void track({
+            type: 'verification_person_upsert_failed',
+            source: 'api.verification.send-code',
+            props: { contact, error: err instanceof Error ? err.message : 'unknown' },
+          });
+        }
       }
 
       // Send SMS via Twilio
@@ -173,9 +221,21 @@ export async function POST(req: NextRequest) {
           const meta = (existing[0].metadata as Record<string, unknown>) || {};
           meta['confirm_token'] = token;
           meta['confirm_sent_at'] = new Date().toISOString();
+
+          // Prepare update data: always update metadata and status
+          const updateData: Record<string, unknown> = {
+            metadata: meta,
+            status: 'email_confirmation_sent',
+          };
+
+          // Include name if provided (from therapist directory contact flow)
+          if (name) {
+            updateData.name = name;
+          }
+
           const { error: updateErr } = await supabaseServer
             .from('people')
-            .update({ metadata: meta, status: 'email_confirmation_sent' })
+            .update(updateData)
             .eq('id', personId);
           if (updateErr) {
             void track({
@@ -190,17 +250,22 @@ export async function POST(req: NextRequest) {
           }
         } else {
           // Create a minimal patient lead row
+          const insertData: Record<string, unknown> = {
+            email: contact,
+            type: 'patient',
+            status: 'email_confirmation_sent',
+            metadata: {
+              confirm_token: token,
+              confirm_sent_at: new Date().toISOString(),
+            },
+          };
+          // Include name if provided (from therapist directory contact flow)
+          if (name) {
+            insertData.name = name;
+          }
           const { data: inserted, error: insErr } = await supabaseServer
             .from('people')
-            .insert({
-              email: contact,
-              type: 'patient',
-              status: 'email_confirmation_sent',
-              metadata: {
-                confirm_token: token,
-                confirm_sent_at: new Date().toISOString(),
-              },
-            })
+            .insert(insertData)
             .select('id')
             .single();
           if (insErr || !inserted?.id) {
@@ -226,9 +291,21 @@ export async function POST(req: NextRequest) {
         const meta = (existing?.metadata as Record<string, unknown>) || {};
         meta['confirm_token'] = token;
         meta['confirm_sent_at'] = new Date().toISOString();
+
+        // Prepare update data: always update metadata and status
+        const updateData: Record<string, unknown> = {
+          metadata: meta,
+          status: 'email_confirmation_sent',
+        };
+
+        // Include name if provided (from therapist directory contact flow)
+        if (name) {
+          updateData.name = name;
+        }
+
         const { error: updateErr } = await supabaseServer
           .from('people')
-          .update({ metadata: meta, status: 'email_confirmation_sent' })
+          .update(updateData)
           .eq('id', personId);
         if (updateErr) {
           void track({

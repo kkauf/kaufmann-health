@@ -90,7 +90,8 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         const s = json?.data;
         if (s?.verified && !cancelled) {
           setError(null);
-          if (typeof s.name === 'string' && s.name) setName(s.name);
+          const userName = typeof s.name === 'string' && s.name ? s.name : '';
+          if (userName) setName(userName);
           if (s.contact_method === 'email') {
             setContactMethod('email');
             if (typeof s.contact_value === 'string') setEmail(s.contact_value);
@@ -98,6 +99,15 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             setContactMethod('phone');
             if (typeof s.contact_value === 'string') setPhone(s.contact_value);
           }
+
+          // Pre-fill message with signature when session is restored
+          const greeting = `Guten Tag ${therapist.first_name}`;
+          const intent = contactType === 'booking'
+            ? 'ich möchte gerne einen Termin vereinbaren'
+            : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
+          const signature = userName ? `\n\nViele Grüße\n${userName}` : '';
+          setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei [beschreibe dein Anliegen] und fand dein Profil sehr ansprechend.${signature}`);
+
           setStep('compose');
         }
       } catch {}
@@ -106,7 +116,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     return () => {
       cancelled = true;
     };
-  }, [open, preAuth]);
+  }, [open, preAuth, therapist.first_name, contactType]);
 
   // (Removed redundant effect that referenced undefined `verified`)
 
@@ -197,6 +207,8 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         body: JSON.stringify({
           contact,
           contact_type: contactMethod,
+          // Include name so it can be stored in DB for both email and SMS flows
+          name: name.trim(),
           // Only used by the email path (magic link)
           redirect: redirectPath,
         }),
@@ -268,12 +280,32 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       setError('Bitte beschreibe dein Anliegen');
       return;
     }
-    
+
+    // Additional validation for non-preAuth flow
+    const isPreAuth = Boolean(preAuth?.uuid);
+    if (!isPreAuth) {
+      if (!name.trim()) {
+        setError('Name fehlt. Bitte lade die Seite neu.');
+        console.error('[ContactModal] Missing name:', { name, contactMethod, email, phone });
+        return;
+      }
+      if (!contactMethod) {
+        setError('Kontaktmethode fehlt. Bitte lade die Seite neu.');
+        console.error('[ContactModal] Missing contact_method:', { name, contactMethod, email, phone });
+        return;
+      }
+      const contactValue = contactMethod === 'email' ? email : phone;
+      if (!contactValue || !contactValue.trim()) {
+        setError('Kontaktinformation fehlt. Bitte lade die Seite neu.');
+        console.error('[ContactModal] Missing contact value:', { name, contactMethod, email, phone });
+        return;
+      }
+    }
+
     setError(null);
     setLoading(true);
-    
+
     try {
-      const isPreAuth = Boolean(preAuth?.uuid);
       const endpoint = isPreAuth
         ? `/api/public/matches/${encodeURIComponent(preAuth!.uuid)}/contact`
         : '/api/public/contact';

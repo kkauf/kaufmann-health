@@ -75,6 +75,14 @@ export async function POST(req: Request) {
     
     // Validation
     if (!therapist_id || !contact_type || !patient_name || !contact_method || !patient_reason) {
+      console.error('[contact] Missing required fields:', {
+        therapist_id: !!therapist_id,
+        contact_type: !!contact_type,
+        patient_name: !!patient_name,
+        contact_method: !!contact_method,
+        patient_reason: !!patient_reason,
+        body,
+      });
       return NextResponse.json(
         { error: 'Fehlende Pflichtfelder' },
         { status: 400 }
@@ -140,7 +148,7 @@ export async function POST(req: Request) {
         : contactValue.toLowerCase().trim();
       
       // Check if patient already exists by contact method
-      const lookupField = contact_method === 'email' ? 'email' : 'phone';
+      const lookupField = contact_method === 'email' ? 'email' : 'phone_number';
       const { data: existing } = await supabase
         .from('people')
         .select('id')
@@ -167,7 +175,7 @@ export async function POST(req: Request) {
         if (contact_method === 'email') {
           insertData.email = normalizedContact;
         } else {
-          insertData.phone = normalizedContact;
+          insertData.phone_number = normalizedContact;
           insertData.email = `temp_${Date.now()}@kaufmann.health`; // Temporary email
         }
         
