@@ -115,6 +115,10 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
         statusRef.current?.focus();
         statusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
+      // Auto-redirect to documents page after 2 seconds
+      setTimeout(() => {
+        window.location.href = `/therapists/upload-documents/${therapistId}`;
+      }, 2000);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Speichern fehlgeschlagen';
       setMessage(msg);
@@ -134,30 +138,34 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
     acceptingNew,
     approach,
     storageKey,
-    MAX_PHOTO_BYTES,
   ]);
 
   const remaining = 500 - approach.length;
 
   return (
-    <div className="max-w-2xl">
+    <div className="rounded-lg border bg-white p-6">
       {submitted ? (
-        <div ref={statusRef} tabIndex={-1} className="rounded-lg border bg-white p-4 mb-6" aria-live="polite">
-          <h2 className="text-lg font-semibold">Profil aktualisiert</h2>
-          <p className="text-sm text-gray-700 mt-2">Dein Profil ist jetzt fast fertig. Als nächstes lade bitte deine Zulassung als Psychotherapeut:in hoch.</p>
-          <div className="mt-3">
-            <a className="underline" href={`/therapists/upload-documents/${therapistId}`}>Weiter: Dokumente hochladen</a>
+        <div
+          ref={statusRef}
+          tabIndex={-1}
+          aria-live="polite"
+          className="rounded-lg border border-emerald-200 bg-emerald-50 p-6"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-emerald-600">
+              <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold text-emerald-900">Profil gespeichert!</h2>
+              <p className="mt-1 text-sm text-emerald-800">Wird weitergeleitet zum Dokumente-Upload...</p>
+            </div>
           </div>
-          {showProfilePhoto && (
-            <p className="text-xs text-gray-600 mt-3">Tipp: Du kannst jetzt unten auch dein Profilfoto hinzufügen.</p>
-          )}
         </div>
       ) : null}
 
-      <form onSubmit={onSubmit} encType="multipart/form-data" className="space-y-6">
-        <div className="rounded-md border p-3 bg-amber-50 text-amber-900 text-sm">
-          Fast geschafft! Ergänze die fehlenden Profilangaben. Das dauert nur 2–3 Minuten.
-        </div>
+      <form onSubmit={onSubmit} encType="multipart/form-data" className="space-y-6" hidden={submitted}>
 
         {showGender && (
           <div className="space-y-2">

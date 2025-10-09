@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import UploadForm from './UploadForm';
 import { supabaseServer } from '@/lib/supabase-server';
+import { OnboardingProgress } from '@/components/OnboardingProgress';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -54,7 +55,9 @@ export default async function Page(props: { params: Promise<{ id: string }>; sea
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-2xl font-semibold">Dokumente hochladen</h1>
+      <OnboardingProgress currentStep={2} />
+      
+      <h1 className="text-2xl font-semibold">Schritt 2: Dokumente hochladen</h1>
       {name ? (
         <p className="mt-2 text-sm text-gray-700">Therapeut/in: {name}</p>
       ) : null}
@@ -71,28 +74,47 @@ export default async function Page(props: { params: Promise<{ id: string }>; sea
       ) : null}
       {!hasLicense && !forceCertsStep ? (
         <>
-          <p className="mt-4 text-sm text-gray-700">
-            Lade zuerst deine staatliche Psychotherapie-Berechtigung hoch. PDF oder Bilddatei, maximal 4MB pro Datei.
-          </p>
+          <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4">
+            <p className="text-sm font-medium text-blue-900">📋 Staatliche Zulassung erforderlich</p>
+            <p className="mt-1 text-sm text-blue-800">
+              Lade deine staatlich anerkannte Psychotherapie-Berechtigung hoch (PDF oder Bild, max. 4MB).
+            </p>
+          </div>
           <div className="mt-6">
             <UploadForm therapistId={id} mode="license" />
           </div>
         </>
       ) : !hasCert ? (
         <>
-          <p className="mt-4 text-sm text-gray-700">
-            Danke! Als nächstes lade bitte mindestens ein Abschlusszertifikat deiner Therapieverfahren hoch (je Datei max. 4MB).
-          </p>
+          <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4">
+            <p className="text-sm font-medium text-blue-900">✅ Zulassung hochgeladen</p>
+            <p className="mt-1 text-sm text-blue-800">
+              Jetzt bitte mindestens ein Abschlusszertifikat deiner Spezialisierung hochladen (NARM, Hakomi, Somatic Experiencing, Core Energetics). Je Datei max. 4MB.
+            </p>
+          </div>
           <div className="mt-6">
             <UploadForm therapistId={id} mode="certs" />
           </div>
         </>
       ) : (
-        <div className="mt-6 rounded-lg border bg-white p-4">
-          <p className="text-sm text-gray-700">Deine Zulassung und mindestens ein Zertifikat sind hinterlegt.</p>
-          <p className="text-sm text-gray-700 mt-2">
-            Nächster Schritt: <a className="underline" href={`/therapists/complete-profile/${id}`}>Profil vervollständigen</a>
-          </p>
+        <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-6">
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-emerald-600">
+              <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold text-emerald-900">Dokumente hochgeladen!</h2>
+              <p className="text-sm text-emerald-800 mt-1">Deine Zulassung und Zertifikate wurden übermittelt.</p>
+              <a
+                href={`/therapists/onboarding-complete/${id}`}
+                className="mt-4 inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+              >
+                Weiter zur Bestätigung →
+              </a>
+            </div>
+          </div>
         </div>
       )}
     </main>

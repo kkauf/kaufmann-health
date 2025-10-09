@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { supabaseServer } from '@/lib/supabase-server';
 import ProfileForm from './ProfileForm';
+import { OnboardingProgress } from '@/components/OnboardingProgress';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -60,9 +61,16 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-2xl font-semibold">Profil vervollständigen</h1>
+      <OnboardingProgress currentStep={1} />
+      
+      <h1 className="text-2xl font-semibold">Schritt 1: Profil vervollständigen</h1>
       {name ? <p className="mt-2 text-sm text-gray-700">Therapeut/in: {name}</p> : null}
-      <p className="mt-4 text-sm text-gray-700">{totalMissing > 0 ? `Noch ${totalMissing} Schritt${totalMissing > 1 ? 'e' : ''}` : 'Profil vollständig'}</p>
+      
+      <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-4">
+        <p className="text-sm text-emerald-900">
+          ✨ <span className="font-medium">Das macht Spaß:</span> Füge dein Foto hinzu und beschreibe deinen therapeutischen Ansatz. Im nächsten Schritt laden wir dann die offiziellen Dokumente hoch.
+        </p>
+      </div>
 
       {totalMissing === 0 ? (
         <div className="mt-6 rounded-lg border bg-white p-4">

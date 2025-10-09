@@ -86,12 +86,17 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
         setTimeout(() => { try { window.location.replace(url); } catch { /* noop */ } }, 0);
         return;
       }
+      // Certificates uploaded successfully - redirect to completion
       setSubmitted(true);
       (e.target as HTMLFormElement).reset();
       requestAnimationFrame(() => {
         statusRef.current?.focus();
         statusRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
+      // Auto-redirect to completion page after 2 seconds
+      setTimeout(() => {
+        window.location.href = `/therapists/onboarding-complete/${therapistId}`;
+      }, 2000);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Upload fehlgeschlagen";
       setMessage(msg);
@@ -107,16 +112,25 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
         <div
           ref={statusRef}
           tabIndex={-1}
-          className="rounded-lg border bg-white p-4 mb-6"
+          className="rounded-lg border border-emerald-200 bg-emerald-50 p-6 mb-6"
           aria-live="polite"
         >
-          <h2 className="text-lg font-semibold">Dokumente hochgeladen</h2>
-          <p className="text-sm text-gray-700 mt-2">
-            Deine Dokumente wurden übermittelt. Wir prüfen diese und melden uns in Kürze.
-          </p>
-          {message && (
-            <p className="text-xs text-gray-600 mt-2">{message}</p>
-          )}
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-emerald-600">
+              <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold text-emerald-900">Dokumente hochgeladen!</h2>
+              <p className="text-sm text-emerald-800 mt-1">
+                Deine Dokumente wurden übermittelt. Wird weitergeleitet...
+              </p>
+              {message && (
+                <p className="text-xs text-emerald-700 mt-2">{message}</p>
+              )}
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -140,24 +154,6 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
             <p className="text-xs text-gray-500">Du kannst Zertifikate auch später nachreichen.</p>
           </div>
         )}
-
-        {/* Optional profile completion on documents page */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium mt-4">Optionales Profil</h3>
-          <Label htmlFor="profile_photo">Profilfoto (JPG/PNG, max. 5MB)</Label>
-          <Input id="profile_photo" name="profile_photo" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="approach_text">Dein therapeutischer Ansatz (optional)</Label>
-          <textarea
-            id="approach_text"
-            name="approach_text"
-            rows={4}
-            maxLength={500}
-            className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg/input/30 w-full rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-            placeholder="Kurzbeschreibung deines Ansatzes (max. 500 Zeichen)"
-          />
-        </div>
 
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={loading}>
