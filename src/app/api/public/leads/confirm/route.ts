@@ -87,7 +87,9 @@ export async function GET(req: Request) {
         });
         const cookie = createClientSessionCookie(token);
         if (isSafeRedirect) {
-          const suffix = `?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
+          const hasQuery = redirectPath!.includes('?');
+          const separator = hasQuery ? '&' : '?';
+          const suffix = `${separator}confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
           const resp = NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
           resp.headers.set('Set-Cookie', cookie);
           return resp;
@@ -97,7 +99,9 @@ export async function GET(req: Request) {
         return resp;
       } catch {
         if (isSafeRedirect) {
-          const suffix = `?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
+          const hasQuery = redirectPath!.includes('?');
+          const separator = hasQuery ? '&' : '?';
+          const suffix = `${separator}confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
           return NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
         }
         return NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`, 302);
@@ -170,7 +174,9 @@ export async function GET(req: Request) {
       });
       const cookie = createClientSessionCookie(token);
       if (isSafeRedirect) {
-        const suffix = `?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
+        const hasQuery = redirectPath!.includes('?');
+        const separator = hasQuery ? '&' : '?';
+        const suffix = `${separator}confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
         const resp = NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
         resp.headers.set('Set-Cookie', cookie);
         return resp;
@@ -180,7 +186,9 @@ export async function GET(req: Request) {
       return resp;
     } catch {
       if (isSafeRedirect) {
-        const suffix = `?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
+        const hasQuery = redirectPath!.includes('?');
+        const separator = hasQuery ? '&' : '?';
+        const suffix = `${separator}confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
         return NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
       }
       return NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`, 302);
