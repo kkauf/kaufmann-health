@@ -131,7 +131,21 @@ export async function POST(req: NextRequest) {
     } else {
       // Email verification: generate token and send email
       const token = randomBytes(32).toString('hex');
-      let confirmUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/public/leads/confirm?token=${token}`;
+
+      // Determine base URL from request host for local development (localhost or LAN IP)
+      // Falls back to NEXT_PUBLIC_BASE_URL in production
+      let baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+      if (!baseUrl || baseUrl.includes('localhost')) {
+        const host = req.headers.get('host');
+        if (host) {
+          const protocol = host.includes('localhost') || host.startsWith('192.168.') || host.startsWith('10.') ? 'http' : 'https';
+          baseUrl = `${protocol}://${host}`;
+        } else {
+          baseUrl = 'http://localhost:3000';
+        }
+      }
+
+      let confirmUrl = `${baseUrl}/api/public/leads/confirm?token=${token}`;
       if (form_session_id) {
         confirmUrl = `${confirmUrl}&fs=${encodeURIComponent(form_session_id)}`;
       }
