@@ -79,7 +79,7 @@ export default function Home() {
               data-audience="patients"
               className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 transition-all duration-200 hover:scale-[1.02]"
             >
-              <Link href="/therapie-finden">Therapeut:innen finden</Link>
+              <Link href="/start">Therapeut:innen finden</Link>
             </Button>
             <Button
               size="lg"
