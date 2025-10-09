@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+/// <reference types="vitest/globals" />
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { POST } from '@/app/api/public/verification/send-code/route';
 import { supabaseServer } from '@/lib/supabase-server';
 import { sendEmail } from '@/lib/email/client';
@@ -35,7 +36,7 @@ describe('EARTH-204: send-code URL generation (the actual bug)', () => {
     const therapistId = 'therapist-456';
     
     // Mock existing person lookup
-    (supabaseServer.from as unknown as vi.Mock).mockReturnValue({
+    (supabaseServer.from as unknown as Mock).mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           limit: vi.fn().mockResolvedValue({
@@ -98,7 +99,7 @@ describe('EARTH-204: send-code URL generation (the actual bug)', () => {
 
     // Mock no existing person, then successful insert
     let fromCallCount = 0;
-    (supabaseServer.from as unknown as vi.Mock).mockImplementation(() => {
+    (supabaseServer.from as unknown as Mock).mockImplementation(() => {
       fromCallCount++;
       if (fromCallCount === 1) {
         // First call: select returns empty (no existing)
@@ -164,7 +165,7 @@ describe('EARTH-204: send-code URL generation (the actual bug)', () => {
 
     // Mock no existing person, then failed insert
     let fromCallCount = 0;
-    (supabaseServer.from as unknown as vi.Mock).mockImplementation(() => {
+    (supabaseServer.from as unknown as Mock).mockImplementation(() => {
       fromCallCount++;
       if (fromCallCount === 1) {
         return {
@@ -221,7 +222,7 @@ describe('EARTH-204: send-code URL generation (the actual bug)', () => {
     const email = 'update-fail@example.com';
     const existingPersonId = 'existing-999';
 
-    (supabaseServer.from as unknown as vi.Mock).mockReturnValue({
+    (supabaseServer.from as unknown as Mock).mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           limit: vi.fn().mockResolvedValue({
@@ -263,7 +264,7 @@ describe('EARTH-204: send-code URL generation (the actual bug)', () => {
     const email = 'with-lead-id@example.com';
     const providedLeadId = 'provided-lead-123';
 
-    (supabaseServer.from as unknown as vi.Mock).mockReturnValue({
+    (supabaseServer.from as unknown as Mock).mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({

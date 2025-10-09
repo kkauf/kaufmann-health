@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+/// <reference types="vitest/globals" />
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { GET } from '@/app/api/public/leads/confirm/route';
 import { supabaseServer } from '@/lib/supabase-server';
 
@@ -31,7 +32,7 @@ describe('EARTH-204: confirm endpoint redirect URL merging', () => {
     const therapistId = 'therapist-456';
     
     // Mock person lookup with valid token
-    (supabaseServer.from as unknown as vi.Mock).mockReturnValue({
+    (supabaseServer.from as unknown as Mock).mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
@@ -92,7 +93,7 @@ describe('EARTH-204: confirm endpoint redirect URL merging', () => {
     const personId = 'patient-789';
     const token = 'valid-token-xyz';
     
-    (supabaseServer.from as unknown as vi.Mock).mockReturnValue({
+    (supabaseServer.from as unknown as Mock).mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
@@ -136,7 +137,7 @@ describe('EARTH-204: confirm endpoint redirect URL merging', () => {
     const token = 'any-token';
     const therapistId = 'therapist-999';
     
-    (supabaseServer.from as unknown as vi.Mock).mockReturnValue({
+    (supabaseServer.from as unknown as Mock).mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
