@@ -42,8 +42,30 @@ export default function NewScreen1_TherapyExperience({
   disabled?: boolean;
 }) {
   const [error, setError] = React.useState<string | null>(null);
+  const [flashKey, setFlashKey] = React.useState<string | null>(null);
 
   const needsType = values.therapy_experience === 'has_experience';
+
+  // Auto-advance logic
+  React.useEffect(() => {
+    if (disabled) return;
+    let timer: NodeJS.Timeout;
+    
+    // Auto-advance if experience is selected and either:
+    // 1. Not "has_experience" (first_time/unsure don't need follow-up)
+    // 2. "has_experience" AND therapy_type is selected
+    const shouldAutoAdvance = 
+      values.therapy_experience && 
+      (values.therapy_experience !== 'has_experience' || !!values.therapy_type);
+    
+    if (shouldAutoAdvance) {
+      timer = setTimeout(() => {
+        onNext();
+      }, 800);
+    }
+    
+    return () => clearTimeout(timer);
+  }, [values.therapy_experience, values.therapy_type, disabled, onNext]);
 
   function validate() {
     if (!values.therapy_experience) {
@@ -63,14 +85,17 @@ export default function NewScreen1_TherapyExperience({
             <button
               key={opt.value}
               type="button"
-              className={`h-11 rounded border px-4 text-left ${
+              className={`h-11 rounded border px-4 text-left transition-all ${
                 values.therapy_experience === opt.value
-                  ? 'border-emerald-600 bg-emerald-50'
+                  ? 'border-emerald-600 bg-emerald-50' + (flashKey === opt.value ? ' scale-[1.02] shadow-md' : '')
                   : 'border-gray-300'
               }`}
               disabled={disabled}
               aria-disabled={disabled}
-              onClick={() => onChange({ therapy_experience: opt.value })}
+              onClick={() => {
+                setFlashKey(opt.value);
+                onChange({ therapy_experience: opt.value });
+              }}
             >
               {opt.label}
             </button>
@@ -87,14 +112,17 @@ export default function NewScreen1_TherapyExperience({
               <button
                 key={opt}
                 type="button"
-                className={`h-11 rounded border px-4 text-left ${
+                className={`h-11 rounded border px-4 text-left transition-all ${
                   values.therapy_type === opt
-                    ? 'border-emerald-600 bg-emerald-50'
+                    ? 'border-emerald-600 bg-emerald-50' + (flashKey === `type-${opt}` ? ' scale-[1.02] shadow-md' : '')
                     : 'border-gray-300'
                 }`}
                 disabled={disabled}
                 aria-disabled={disabled}
-                onClick={() => onChange({ therapy_type: opt })}
+                onClick={() => {
+                  setFlashKey(`type-${opt}`);
+                  onChange({ therapy_type: opt });
+                }}
               >
                 {opt}
               </button>

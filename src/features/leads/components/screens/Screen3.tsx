@@ -11,16 +11,9 @@ export type Screen3Values = {
   online_ok?: boolean;
   // Explicit preference selection
   session_preference?: 'online' | 'in_person' | 'either';
-  budget?: 'Unter 80€' | '80-120€' | 'Über 120€' | 'Brauche einen Zahlungsplan';
   privacy_preference?: 'Ja, sehr wichtig' | 'Nein, ist mir egal' | 'Bin mir unsicher';
 };
 
-const BUDGETS: NonNullable<Screen3Values['budget']>[] = [
-  'Unter 80€',
-  '80-120€',
-  'Über 120€',
-  'Brauche einen Zahlungsplan',
-];
 const PRIVACY: NonNullable<Screen3Values['privacy_preference']>[] = [
   'Ja, sehr wichtig',
   'Nein, ist mir egal',
@@ -100,25 +93,6 @@ export default function Screen3({
             </div>
             {errors.location && <p className="text-sm text-red-600">{errors.location}</p>}
           </div>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <p className="font-medium">Wie viel kannst du pro Sitzung investieren?</p>
-        <p className="text-sm text-muted-foreground">Steuerlich absetzbar als außergewöhnliche Belastung</p>
-        <div className="grid gap-2">
-          {BUDGETS.map((opt) => (
-            <button
-              key={opt}
-              type="button"
-              className={`h-11 rounded border px-4 text-left ${values.budget === opt ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
-              onClick={() => onChange({ budget: opt })}
-              disabled={!!disabled}
-              aria-disabled={disabled}
-            >
-              {opt}
-            </button>
-          ))}
         </div>
       </div>
 

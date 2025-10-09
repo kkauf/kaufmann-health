@@ -115,8 +115,8 @@ describe('EARTH-209: SignupWizard Experience Param Integration', () => {
     const { container, unmount } = render(<SignupWizard />);
     
     try {
-      // Wait for auto-advance (600ms delay + buffer)
-      await new Promise((r) => setTimeout(r, 800));
+      // Wait for component to mount and prefill (100ms), then auto-advance (800ms + buffer)
+      await new Promise((r) => setTimeout(r, 1000));
       // Should be on step 2 (Timeline) - check for unique step 2 text
       expect(container.textContent).toContain('Wann möchtest du idealerweise beginnen');
       expect(container.textContent).toContain('Innerhalb der nächsten Woche');
@@ -131,8 +131,8 @@ describe('EARTH-209: SignupWizard Experience Param Integration', () => {
     const { container, unmount } = render(<SignupWizard />);
     
     try {
-      // Wait for auto-advance (600ms delay + buffer)
-      await new Promise((r) => setTimeout(r, 800));
+      // Wait for component to mount and prefill (100ms), then auto-advance (800ms + buffer)
+      await new Promise((r) => setTimeout(r, 1000));
       // Should be on step 2 (Timeline) - check for unique step 2 text
       expect(container.textContent).toContain('Wann möchtest du idealerweise beginnen');
       expect(container.textContent).toContain('Innerhalb der nächsten Woche');

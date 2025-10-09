@@ -27,6 +27,16 @@ export default function NewScreen4_Budget({
   onBack: () => void;
   disabled?: boolean;
 }) {
+  const [flashKey, setFlashKey] = React.useState<string | null>(null);
+
+  // Auto-advance after selection
+  React.useEffect(() => {
+    if (disabled || !values.budget) return;
+    const timer = setTimeout(() => {
+      onNext();
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [values.budget, disabled, onNext]);
   return (
     <div className="space-y-8">
       <div className="space-y-3">
@@ -36,14 +46,17 @@ export default function NewScreen4_Budget({
             <button
               key={opt}
               type="button"
-              className={`h-11 rounded border px-4 text-left ${
+              className={`h-11 rounded border px-4 text-left transition-all ${
                 values.budget === opt
-                  ? 'border-emerald-600 bg-emerald-50'
+                  ? 'border-emerald-600 bg-emerald-50' + (flashKey === opt ? ' scale-[1.02] shadow-md' : '')
                   : 'border-gray-300'
               }`}
               disabled={disabled}
               aria-disabled={disabled}
-              onClick={() => onChange({ budget: opt })}
+              onClick={() => {
+                setFlashKey(opt);
+                onChange({ budget: opt });
+              }}
             >
               {opt}
             </button>

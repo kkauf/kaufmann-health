@@ -267,32 +267,6 @@ export default function SignupWizard() {
     window.scrollTo({ top: 0 });
   }, [searchParams]);
 
-  // Auto-advance for mid-page conversion: 'no' and 'unsure' have no follow-up questions (EARTH-209)
-  React.useEffect(() => {
-    if (!initialized) return;
-    if (step !== 1) return;
-    
-    const experienceParam = searchParams?.get('experience');
-    // Only auto-advance for 'no' and 'unsure' - 'yes' needs therapy_type answer
-    if (experienceParam === 'no' || experienceParam === 'unsure') {
-      const shouldAutoAdvance = data.therapy_experience === 'first_time' || data.therapy_experience === 'unsure';
-      if (shouldAutoAdvance) {
-        // Small delay to avoid jarring UX, let user see the pre-filled state briefly
-        const timer = setTimeout(() => {
-          void trackEvent('midpage_auto_advance', { experience: experienceParam });
-          setStep(2);
-          try {
-            localStorage.setItem(LS_KEYS.step, '2');
-          } catch {}
-          try {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          } catch {}
-        }, 600);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [initialized, step, data.therapy_experience, searchParams, trackEvent]);
-
   // Capture leadId from URL when coming back via email link; prime resend email from data/localStorage
   React.useEffect(() => {
     try {

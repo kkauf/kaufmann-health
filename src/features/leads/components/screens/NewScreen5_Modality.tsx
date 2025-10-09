@@ -25,11 +25,30 @@ export default function NewScreen5_Modality({
   onBack: () => void;
   disabled?: boolean;
 }) {
+  const [flashKey, setFlashKey] = React.useState<string | null>(null);
+  const [flashNext, setFlashNext] = React.useState(false);
+
+  // Auto-advance when "Nein" is selected (single choice)
+  React.useEffect(() => {
+    if (disabled || values.modality_matters !== false) return;
+    const timer = setTimeout(() => {
+      onNext();
+    }, 1200); // Longer delay to read affirmation message
+    return () => clearTimeout(timer);
+  }, [values.modality_matters, disabled, onNext]);
+
   const toggle = (val: string) => {
     const set = new Set(values.methods || []);
     if (set.has(val)) set.delete(val);
     else set.add(val);
     onChange({ methods: Array.from(set) });
+  };
+
+  const handleNextClick = () => {
+    setFlashNext(true);
+    setTimeout(() => {
+      onNext();
+    }, 200); // Brief flash before advancing
   };
 
   return (
@@ -40,12 +59,13 @@ export default function NewScreen5_Modality({
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              className={`h-11 rounded border px-4 text-center font-medium ${
+              className={`h-11 rounded border px-4 text-center font-medium transition-all ${
                 values.modality_matters === true
-                  ? 'border-emerald-600 bg-emerald-50 text-emerald-900'
+                  ? 'border-emerald-600 bg-emerald-50 text-emerald-900' + (flashKey === 'yes' ? ' scale-[1.02] shadow-md' : '')
                   : 'border-gray-300 hover:border-gray-400'
               }`}
               onClick={() => {
+                setFlashKey('yes');
                 onChange({ modality_matters: true });
                 // Keep existing selections when switching back to Yes
               }}
@@ -56,12 +76,13 @@ export default function NewScreen5_Modality({
             </button>
             <button
               type="button"
-              className={`h-11 rounded border px-4 text-center font-medium ${
+              className={`h-11 rounded border px-4 text-center font-medium transition-all ${
                 values.modality_matters === false
-                  ? 'border-emerald-600 bg-emerald-50 text-emerald-900'
+                  ? 'border-emerald-600 bg-emerald-50 text-emerald-900' + (flashKey === 'no' ? ' scale-[1.02] shadow-md' : '')
                   : 'border-gray-300 hover:border-gray-400'
               }`}
               onClick={() => {
+                setFlashKey('no');
                 onChange({ modality_matters: false, methods: [] });
               }}
               disabled={disabled}
@@ -91,7 +112,7 @@ export default function NewScreen5_Modality({
                     <button
                       key={opt}
                       type="button"
-                      className={`h-11 rounded border px-4 text-left ${
+                      className={`h-11 rounded border px-4 text-left transition-all ${
                         selected ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'
                       }`}
                       onClick={() => toggle(opt)}
@@ -105,32 +126,75 @@ export default function NewScreen5_Modality({
               </div>
             </div>
 
-            <div className="mt-6">
+            {/* Navigation buttons for multi-select (moved up) */}
+            <div className="flex items-center justify-between pt-2">
+              <Button
+                variant="secondary"
+                className="h-11"
+                onClick={onBack}
+                disabled={disabled}
+                aria-disabled={disabled}
+              >
+                Zurück
+              </Button>
+              <Button
+                className={`h-11 transition-all ${
+                  flashNext ? 'scale-[1.05] shadow-lg' : ''
+                }`}
+                onClick={handleNextClick}
+                disabled={disabled}
+                aria-disabled={disabled}
+              >
+                Weiter →
+              </Button>
+            </div>
+
+            {/* Optional explanations below */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <p className="text-sm text-muted-foreground mb-4">Mehr über diese Methoden:</p>
               <TherapyModalityExplanations />
             </div>
           </>
         )}
       </div>
 
-      <div className="flex items-center justify-between pt-2">
-        <Button
-          variant="secondary"
-          className="h-11"
-          onClick={onBack}
-          disabled={disabled}
-          aria-disabled={disabled}
-        >
-          Zurück
-        </Button>
-        <Button
-          className="h-11"
-          onClick={onNext}
-          disabled={disabled}
-          aria-disabled={disabled}
-        >
-          Weiter →
-        </Button>
-      </div>
+      {/* Navigation buttons for single-select (Nein) */}
+      {values.modality_matters === false && (
+        <div className="flex items-center justify-between pt-2">
+          <Button
+            variant="secondary"
+            className="h-11"
+            onClick={onBack}
+            disabled={disabled}
+            aria-disabled={disabled}
+          >
+            Zurück
+          </Button>
+          <Button
+            className="h-11"
+            onClick={onNext}
+            disabled={disabled}
+            aria-disabled={disabled}
+          >
+            Weiter →
+          </Button>
+        </div>
+      )}
+
+      {/* Show back button only if neither option selected yet */}
+      {values.modality_matters === undefined && (
+        <div className="flex items-center justify-start pt-2">
+          <Button
+            variant="secondary"
+            className="h-11"
+            onClick={onBack}
+            disabled={disabled}
+            aria-disabled={disabled}
+          >
+            Zurück
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

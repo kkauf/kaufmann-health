@@ -28,6 +28,16 @@ export default function NewScreen2_Timeline({
   disabled?: boolean;
 }) {
   const [error, setError] = React.useState<string | null>(null);
+  const [flashKey, setFlashKey] = React.useState<string | null>(null);
+
+  // Auto-advance after selection
+  React.useEffect(() => {
+    if (disabled || !values.start_timing) return;
+    const timer = setTimeout(() => {
+      onNext();
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [values.start_timing, disabled, onNext]);
 
   function validate() {
     if (!values.start_timing) {
@@ -47,14 +57,17 @@ export default function NewScreen2_Timeline({
             <button
               key={opt}
               type="button"
-              className={`h-11 rounded border px-4 text-left ${
+              className={`h-11 rounded border px-4 text-left transition-all ${
                 values.start_timing === opt
-                  ? 'border-emerald-600 bg-emerald-50'
+                  ? 'border-emerald-600 bg-emerald-50' + (flashKey === opt ? ' scale-[1.02] shadow-md' : '')
                   : 'border-gray-300'
               }`}
               disabled={disabled}
               aria-disabled={disabled}
-              onClick={() => onChange({ start_timing: opt })}
+              onClick={() => {
+                setFlashKey(opt);
+                onChange({ start_timing: opt });
+              }}
             >
               {opt}
             </button>
