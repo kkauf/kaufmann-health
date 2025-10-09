@@ -2,7 +2,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { safeJson } from '@/lib/http';
 import { logError, track } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
-import { googleAdsTracker } from '@/lib/google-ads';
+import { maybeFirePatientConversion } from '@/lib/conversion';
 
 export const runtime = 'nodejs';
 
@@ -187,19 +187,19 @@ export async function POST(req: Request) {
       });
     } catch {}
 
-    // Server-side Enhanced Conversions
+    // Server-side Enhanced Conversions (EARTH-204)
+    // Note: Conversion will only fire if contact is verified (email OR SMS)
+    // Deduplication handled by maybeFirePatientConversion
     try {
-      const email = person.email || '';
-      const meta = (person.metadata ?? {}) as Record<string, unknown>;
-      const isTest = typeof meta === 'object' && meta !== null && (meta as { is_test?: unknown }).is_test === true;
-      if (email && !isTest) {
-        await googleAdsTracker.trackConversion({
-          email,
-          conversionAction: 'client_registration',
-          conversionValue: 10,
-          orderId: id,
-        });
-      }
+      const ip = getClientIP(req.headers);
+      const ua = req.headers.get('user-agent') || undefined;
+      await maybeFirePatientConversion({
+        patient_id: id,
+        email: person.email || undefined,
+        verification_method: 'email', // form completion implies email flow (legacy)
+        ip,
+        ua,
+      });
     } catch (e) {
       await logError('api.leads.form_completed', e, { stage: 'google_ads_conversion', id });
     }

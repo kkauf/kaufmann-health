@@ -7,6 +7,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySmsCode } from '@/lib/verification/sms';
 import { ServerAnalytics } from '@/lib/server-analytics';
+import { supabaseServer } from '@/lib/supabase-server';
+import { maybeFirePatientConversion } from '@/lib/conversion';
+import { logError } from '@/lib/logger';
+import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
 
 interface VerifyCodeRequest {
   contact: string; // email or phone
@@ -64,10 +68,65 @@ export async function POST(req: NextRequest) {
         props: { contact_type: 'phone' },
       });
 
-      return NextResponse.json({
+      // Persist phone_verified flag to person record and fire conversion (EARTH-204)
+      let sessionCookie: string | null = null;
+      try {
+        type PersonRow = { id: string; name?: string | null; email?: string | null; metadata?: Record<string, unknown> | null };
+        const { data: person, error: fetchErr } = await supabaseServer
+          .from('people')
+          .select('id,name,email,metadata')
+          .eq('phone_number', contact)
+          .eq('type', 'patient')
+          .single<PersonRow>();
+
+        if (!fetchErr && person) {
+          // Update metadata with phone_verified flag
+          const metadata = { ...(person.metadata || {}), phone_verified: true };
+          await supabaseServer
+            .from('people')
+            .update({ metadata })
+            .eq('id', person.id);
+
+          // Fire Google Ads conversion
+          const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined;
+          const ua = req.headers.get('user-agent') || undefined;
+          await maybeFirePatientConversion({
+            patient_id: person.id,
+            email: person.email || undefined,
+            phone_number: contact,
+            verification_method: 'sms',
+            ip,
+            ua,
+          });
+
+          // Create session cookie (EARTH-204)
+          try {
+            const token = await createClientSessionToken({
+              patient_id: person.id,
+              contact_method: 'phone',
+              contact_value: contact,
+              name: person.name || undefined,
+            });
+            sessionCookie = createClientSessionCookie(token);
+          } catch (cookieErr) {
+            await logError('api.verification.verify-code', cookieErr, { stage: 'create_session_cookie' });
+          }
+        }
+      } catch (err) {
+        // Log but don't fail the verification response
+        await logError('api.verification.verify-code', err, { stage: 'persist_phone_verified' });
+      }
+
+      const response = NextResponse.json({
         data: { verified: true, method: 'sms' },
         error: null,
       });
+      
+      if (sessionCookie) {
+        response.headers.set('Set-Cookie', sessionCookie);
+      }
+
+      return response;
     } else {
       // Email token verification handled by /api/public/leads/confirm
       // This endpoint just validates the token format

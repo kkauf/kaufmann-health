@@ -5,6 +5,7 @@ import { logError } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { VERIFICATION_MODE } from '@/lib/config';
 import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
+import { maybeFirePatientConversion } from '@/lib/conversion';
 
 export const runtime = 'nodejs';
 
@@ -162,7 +163,20 @@ export async function GET(req: Request) {
       });
     } catch {}
 
-    // Enhanced Conversions moved to preferences submission when status becomes 'new'
+    // Fire Google Ads conversion on email verification (EARTH-204)
+    try {
+      const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined;
+      const ua = req.headers.get('user-agent') || undefined;
+      await maybeFirePatientConversion({
+        patient_id: id,
+        email: person.email,
+        verification_method: 'email',
+        ip,
+        ua,
+      });
+    } catch {}
+
+    // Enhanced Conversions handled by maybeFirePatientConversion above
 
     // Success → set client session cookie (EARTH-204)
     try {

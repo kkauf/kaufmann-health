@@ -3,6 +3,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 import { renderTherapistNotification } from '@/lib/email/templates/therapistNotification';
 import { sendEmail } from '@/lib/email/client';
+import { maybeFirePatientConversion } from '@/lib/conversion';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -176,6 +177,30 @@ export async function POST(req: Request) {
     }
 
     void track({ type: 'contact_message_sent', source: 'api.public.matches.contact', props: { match_id: matchId, patient_id: patientId, therapist_id } });
+
+    // Fire Google Ads conversion when patient sends message (Scenario 4: direct contact from /therapeuten)
+    // Only fires if contact was verified (email OR SMS) - EARTH-204
+    try {
+      // Fetch patient email/phone for conversion
+      const { data: patient, error: pErr } = await supabaseServer
+        .from('people')
+        .select('email, phone_number')
+        .eq('id', patientId)
+        .single();
+      if (!pErr && patient) {
+        await maybeFirePatientConversion({
+          patient_id: patientId,
+          email: patient.email || undefined,
+          phone_number: patient.phone_number || undefined,
+          verification_method: patient.email ? 'email' : 'sms',
+          ip,
+          ua,
+        });
+      }
+    } catch (e) {
+      // Log but don't fail the contact flow
+      await logError('api.public.matches.contact', e, { stage: 'fire_conversion', match_id: matchId });
+    }
 
     return NextResponse.json({ data: { ok: true, match_id: matchId }, error: null });
   } catch (e) {
