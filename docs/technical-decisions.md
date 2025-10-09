@@ -145,12 +145,21 @@
   - Single helper `maybeFirePatientConversion()` in `src/lib/conversion.ts` fires Enhanced Conversions once per patient.
   - Idempotent via `metadata.google_ads_conversion_fired_at`; test leads (`is_test: true`) excluded.
   - Fires at: (1) email verification (`GET /api/public/leads/confirm`), (2) SMS verification (`POST /api/public/verification/verify-code`), (3) direct therapist contact (`POST /api/public/matches/[uuid]/contact`).
-  - Legacy `POST /api/public/leads/[id]/form-completed` uses same helper for deduplication.
-  - Gracefully skips phone-only patients (Enhanced Conversions require email for hashing).
-- **Consequences**: Accurate conversion attribution at verification point (earlier than form completion); consistent across email/SMS flows; strict deduplication prevents double-fire.
-- **Links**: `src/lib/conversion.ts`, `tests/conversion.test.ts`, `tests/api.conversion.integration.test.ts`.
 
-## Patient-Initiated Contact & Verification (ADR-011)
+## Client Session Cookies for Verified Users (ADR-011)
+
+- **Why**: After verifying contact (email/SMS), users shouldn't re-verify when contacting therapists from `/therapeuten`.
+- **Decision** (EARTH-204):
+  - Service-delivery cookie `kh_client` (HTTP-only, 30-day expiry, SameSite=Lax) set after verification.
+  - JWT payload: `{ patient_id, contact_method, contact_value, name }` signed with `JWT_SECRET`.
+  - Set by: (1) `GET /api/public/leads/confirm` (email), (2) `POST /api/public/verification/verify-code` (SMS).
+  - Read by: `GET /api/public/session` → `ContactModal` auto-skips to compose when session valid.
+  - Implementation: `src/lib/auth/clientSession.ts` (token create/verify/cookie helpers).
+- **Consequences**: Verified users skip verification flow on subsequent therapist contacts; cookie scoped to `/` for site-wide access.
+- **Tests**: `tests/earth-204.session-persistence.test.ts` validates cookie set/read across email/SMS paths and redirect preservation.
+- **Links**: `src/app/api/public/session/route.ts`, `src/features/therapists/components/ContactModal.tsx`.
+
+## Patient-Initiated Contact & Verification (ADR-012)
 
 - **Why**: Enable direct patient→therapist contact from directory; keep modal UX consistent between SMS and email verification.
 - **Decision** (EARTH-203):
