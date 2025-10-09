@@ -91,6 +91,7 @@ describe('POST /api/public/matches/:uuid/contact', () => {
       body: JSON.stringify({
         therapist_id: 'therapist-456',
         contact_type: 'booking',
+        session_format: 'online',
         patient_reason: 'Need help with anxiety',
         patient_message: 'Looking forward to working with you',
       }),
@@ -157,6 +158,7 @@ describe('POST /api/public/matches/:uuid/contact', () => {
       body: JSON.stringify({
         therapist_id: 'therapist-456',
         contact_type: 'booking',
+        session_format: 'online',
         patient_reason: 'Need help',
       }),
     });
@@ -192,6 +194,7 @@ describe('POST /api/public/matches/:uuid/contact', () => {
       body: JSON.stringify({
         therapist_id: 'nonexistent-therapist',
         contact_type: 'booking',
+        session_format: 'online',
         patient_reason: 'Need help',
       }),
     });
@@ -221,6 +224,7 @@ describe('POST /api/public/matches/:uuid/contact', () => {
       body: JSON.stringify({
         therapist_id: 'therapist-456',
         contact_type: 'booking',
+        session_format: 'online',
         patient_reason: 'Need help',
       }),
     });

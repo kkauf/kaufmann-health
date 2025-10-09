@@ -121,6 +121,7 @@ describe('POST /api/public/contact', () => {
         contact_method: 'email',
         patient_reason: 'Panikattacken',
         patient_message: 'Guten Tag Anna, ich möchte gerne einen Termin vereinbaren...',
+        session_format: 'online',
       }),
     });
 
@@ -195,6 +196,7 @@ describe('POST /api/public/contact', () => {
         patient_email: 'max@example.com',
         contact_method: 'email',
         patient_reason: 'Panikattacken',
+        session_format: 'online',
       }),
     });
 
@@ -293,6 +295,7 @@ describe('POST /api/public/contact', () => {
         patient_email: 'max@example.com',
         contact_method: 'email',
         patient_reason: 'Panikattacken',
+        session_format: 'online',
       }),
     });
 

@@ -8,10 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
-import { PhoneInput } from 'react-international-phone';
-import 'react-international-phone/style.css';
-import '@/components/phone-input-custom.css';
+import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
+import { validatePhone } from '@/lib/verification/usePhoneValidation';
 
 type ContactType = 'booking' | 'consultation';
 
@@ -56,6 +55,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   // Message step
   const [reason, setReason] = useState('');
   const [message, setMessage] = useState('');
+  const [sessionFormat, setSessionFormat] = useState<'online' | 'in_person' | ''>(''); // Required for booking
   
   const therapistName = `${therapist.first_name} ${therapist.last_name}`;
   const initials = `${therapist.first_name[0]}${therapist.last_name[0]}`.toUpperCase();
@@ -148,19 +148,20 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     setVerificationCode('');
     setReason('');
     setMessage('');
+    setSessionFormat('');
     onClose();
   }, [onClose]);
   
   // Send verification code
   const handleSendCode = useCallback(async () => {
     setError(null);
-    
+
     // Validate inputs before sending
     if (!name.trim()) {
       setError('Bitte gib deinen Namen an.');
       return;
     }
-    
+
     let contact = '';
     if (contactMethod === 'email') {
       if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
@@ -169,13 +170,13 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       }
       contact = email;
     } else {
-      // Normalize phone to E.164 format
-      const normalized = normalizePhoneNumber(phone);
-      if (!normalized) {
-        setError('Bitte gib eine gültige Handynummer ein.');
+      // Validate and normalize phone to E.164 format
+      const validation = validatePhone(phone);
+      if (!validation.isValid || !validation.normalized) {
+        setError(validation.error || 'Bitte gib eine gültige Handynummer ein.');
         return;
       }
-      contact = normalized;
+      contact = validation.normalized;
     }
     
     setLoading(true);
@@ -281,6 +282,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       return;
     }
 
+    // Validate session format for booking type
+    if (contactType === 'booking' && !sessionFormat) {
+      setError('Bitte wähle, ob der Termin online oder vor Ort stattfinden soll');
+      return;
+    }
+
     // Additional validation for non-preAuth flow
     const isPreAuth = Boolean(preAuth?.uuid);
     if (!isPreAuth) {
@@ -315,6 +322,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             contact_type: contactType,
             patient_reason: reason,
             patient_message: message,
+            session_format: sessionFormat || undefined,
           }
         : {
             therapist_id: therapist.id,
@@ -325,6 +333,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             contact_method: contactMethod,
             patient_reason: reason,
             patient_message: message,
+            session_format: sessionFormat || undefined,
           };
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -440,31 +449,13 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       ) : (
         <div className="space-y-2">
           <Label htmlFor="phone" className="text-sm font-medium">Telefonnummer *</Label>
-          <PhoneInput
-            defaultCountry="de"
+          <VerifiedPhoneInput
             value={phone}
-            onChange={(phone) => setPhone(phone.replace(/\s+/g, ''))}
+            onChange={setPhone}
             disabled={loading}
             inputClassName="h-11"
-            className="w-full"
-            placeholder="+49 176 123 45678"
-            inputProps={{
-              name: 'phone_number',
-              autoComplete: 'tel',
-              inputMode: 'tel' as const,
-              id: 'phone',
-            }}
-            countrySelectorStyleProps={{
-              buttonClassName: 'phone-country-button',
-              dropdownStyleProps: {
-                className: 'phone-country-dropdown',
-                listItemClassName: 'phone-country-item',
-              }
-            }}
+            helpText="Wir senden dir einen Bestätigungscode per SMS"
           />
-          <p className="text-xs text-gray-500">
-            Wir senden dir einen Bestätigungscode per SMS
-          </p>
         </div>
       )}
       
@@ -661,7 +652,37 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           Beschreibe kurz, wobei du Unterstützung suchst
         </p>
       </div>
-      
+
+      {/* Session format selector - only for booking type */}
+      {contactType === 'booking' && (
+        <div className="space-y-3">
+          <Label className="text-sm font-medium">Format *</Label>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={sessionFormat === 'online' ? 'default' : 'outline'}
+              onClick={() => setSessionFormat('online')}
+              disabled={loading}
+              className="flex-1 h-11"
+            >
+              Online
+            </Button>
+            <Button
+              type="button"
+              variant={sessionFormat === 'in_person' ? 'default' : 'outline'}
+              onClick={() => setSessionFormat('in_person')}
+              disabled={loading}
+              className="flex-1 h-11"
+            >
+              Vor Ort
+            </Button>
+          </div>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            Soll der Termin online oder vor Ort stattfinden?
+          </p>
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="message" className="text-sm font-medium">Nachricht (optional)</Label>
         <Textarea
@@ -696,7 +717,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         </Button>
         <Button
           onClick={handleSendMessage}
-          disabled={loading || !reason.trim()}
+          disabled={loading || !reason.trim() || (contactType === 'booking' && !sessionFormat)}
           className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Nachricht senden'}

@@ -15,6 +15,7 @@ import { renderTherapistNotification } from '@/lib/email/templates/therapistNoti
 import { logError, track } from '@/lib/logger';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { PRIVACY_VERSION } from '@/lib/privacy';
+import { BASE_URL } from '@/lib/constants';
 
 const RATE_LIMIT_PER_DAY = 3;
 
@@ -27,6 +28,7 @@ interface ContactRequestBody {
   contact_method: 'email' | 'phone';
   patient_reason: string;
   patient_message?: string;
+  session_format?: 'online' | 'in_person';
 }
 
 /**
@@ -71,6 +73,7 @@ export async function POST(req: Request) {
       contact_method,
       patient_reason,
       patient_message,
+      session_format,
     } = body;
     
     // Validation
@@ -102,7 +105,15 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    
+
+    // Validate session format for booking type
+    if (contact_type === 'booking' && !session_format) {
+      return NextResponse.json(
+        { error: 'Bitte wähle, ob der Termin online oder vor Ort stattfinden soll' },
+        { status: 400 }
+      );
+    }
+
     const contactValue = contact_method === 'email' ? patient_email : patient_phone;
     if (!contactValue) {
       return NextResponse.json(
@@ -260,6 +271,7 @@ export async function POST(req: Request) {
       patient_reason,
       patient_message: patient_message || '',
       contact_method,
+      session_format: session_format || null,
     };
     
     const { data: match, error: matchError } = await supabase
@@ -296,8 +308,8 @@ export async function POST(req: Request) {
         therapistName: therapist.first_name,
         patientCity: '', // Not collected in this flow
         patientIssue: patient_reason,
-        patientSessionPreference: null, // Not collected in this flow
-        magicUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://kaufmann.health'}/match/${match.secure_uuid}`,
+        patientSessionPreference: session_format || null,
+        magicUrl: `${BASE_URL}/match/${match.secure_uuid}`,
         expiresHours: 72,
         contactType: contact_type,
         patientMessage: patient_message,

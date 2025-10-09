@@ -4,6 +4,7 @@ import { logError, track } from '@/lib/logger';
 import { renderTherapistNotification } from '@/lib/email/templates/therapistNotification';
 import { sendEmail } from '@/lib/email/client';
 import { maybeFirePatientConversion } from '@/lib/conversion';
+import { BASE_URL } from '@/lib/constants';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,12 +57,17 @@ export async function POST(req: Request) {
     const contact_type = String(body?.contact_type || '').trim();
     const patient_reason = String(body?.patient_reason || '').trim();
     const patient_message = typeof body?.patient_message === 'string' ? String(body.patient_message) : '';
+    const session_format = body?.session_format === 'online' || body?.session_format === 'in_person' ? body.session_format : null;
 
     if (!therapist_id || !patient_reason || !contact_type) {
       return NextResponse.json({ data: null, error: 'Fehlende Pflichtfelder' }, { status: 400 });
     }
     if (contact_type !== 'booking' && contact_type !== 'consultation') {
       return NextResponse.json({ data: null, error: 'Ungültiger Kontakttyp' }, { status: 400 });
+    }
+    // Validate session format for booking type
+    if (contact_type === 'booking' && !session_format) {
+      return NextResponse.json({ data: null, error: 'Bitte wähle, ob der Termin online oder vor Ort stattfinden soll' }, { status: 400 });
     }
 
     // Resolve reference match to get patient context and TTL (30 days)
@@ -138,7 +144,7 @@ export async function POST(req: Request) {
           patient_id: patientId,
           therapist_id,
           status: 'proposed',
-          metadata: { patient_initiated: true, contact_type, patient_reason, patient_message },
+          metadata: { patient_initiated: true, contact_type, patient_reason, patient_message, session_format },
         })
         .select('id, secure_uuid')
         .single();
@@ -161,8 +167,8 @@ export async function POST(req: Request) {
           therapistName: t.first_name || null,
           patientCity: null,
           patientIssue: patient_reason,
-          patientSessionPreference: null,
-          magicUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://kaufmann.health'}/match/${magicUuid}`,
+          patientSessionPreference: session_format,
+          magicUrl: `${BASE_URL}/match/${magicUuid}`,
           expiresHours: 72,
           contactType: contact_type as 'booking' | 'consultation',
           patientMessage: patient_message,
