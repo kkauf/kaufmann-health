@@ -18,7 +18,7 @@ export function renderTherapistWelcome(params: {
 
   const termsUrl = `${BASE_URL}/therapist-terms?version=${encodeURIComponent(params.termsVersion)}`;
 
-  const founderImg = `${BASE_URL}/profile-pictures/konstantin-kaufmann.jpg`;
+  const founderImg = `${BASE_URL}/profile-pictures/konstantin.JPEG`;
 
   const contentHtml = `
     <h1 style="color:#0f172a; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Willkommen! Vervollständige dein Profil</h1>
