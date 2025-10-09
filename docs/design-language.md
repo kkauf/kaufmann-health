@@ -166,6 +166,7 @@ This doc captures the visual patterns that save debugging time and keep the UI c
 - **Secondary CTA**
   - Base: `<Button size="lg" variant="outline">`
   - Enhanced: `h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200`
+  - Note: Outline buttons do not invert text color on hover (avoid white on light backgrounds). Keep text readable; background shifts subtly.
 
 - **Ghost/Tertiary**
   - `<Button variant="ghost" size="lg" className="hover:bg-gray-100/80 transition-colors">`
@@ -366,8 +367,9 @@ This doc captures the visual patterns that save debugging time and keep the UI c
   - Spinner: Use minimal, branded spinner (emerald-600)
 
 - **Focus States** (accessibility critical)
-  - All interactive: `focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 outline-none transition-all`
+  - All interactive: `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all`
   - Buttons: Add `focus-visible:scale-[1.02]`
+  - Rationale: Use the design token `ring` (brand teal) and include a ring offset to ensure good contrast on both white and tinted backgrounds.
 
 - **Duration Guidelines**
   - Micro (hover, focus): 150-200ms
