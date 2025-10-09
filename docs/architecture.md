@@ -47,6 +47,27 @@ Why this design:
 - Design: Step 1 (fun & fast) collects only profile basics and pending photo; Step 2 (compliance) uploads the license (certificates optional). Public pages mirror this logic so users always see the next actionable step.
 - Emails/Reminders: Subjects and CTAs adapt to what's actually missing (license vs profile). This keeps nudges relevant without extra client logic.
 
+### Patient-Initiated Contact Flow (EARTH-203/205/206)
+- **Why**: Enable direct patient→therapist contact from directory; reduce admin matching bottleneck; preserve privacy until acceptance.
+- **Patient journey**:
+  1. Click "Therapeut:in buchen" or "Kostenloses Erstgespräch" from therapist directory → opens ContactModal
+  2. Enter name + email/phone → verify 6-digit code (reuses `/api/public/verification/*`)
+  3. Compose message (pre-filled, editable) with reason field → send
+  4. Match created with `metadata.patient_initiated=true`, therapist receives magic link notification
+- **Therapist response** (EARTH-205):
+  1. Email notification shows request type (booking/consultation), patient reason, message preview
+  2. Click magic link → `/match/[uuid]` page shows full context (72h expiry)
+  3. Accept → contact info revealed + mailto button with pre-filled template (includes therapist name in signature)
+  4. Decline → patient receives personalized rejection email with directory link
+- **Match page** (EARTH-206):
+  - For admin-created matches: displays up to 3 therapist recommendations with quality indicators
+  - Auto-computed "⭐ Perfekte Übereinstimmung" badge for perfect matches; "Top-Empfehlung" for best
+  - Rich cards reuse directory components (TherapistCard, TherapistDetailModal)
+  - Pre-authenticated contact via ContactModal (skips verification, prefills patient context)
+  - Gentle urgency messaging: "💡 Tipp: Wir empfehlen, sich zeitnah zu melden" (no hard deadline)
+- **Session management**: Functional cookie `kh_client` (JWT, 30 days, HTTP-only) persists verified patient sessions; rate-limited to 3 contacts/day.
+- **Privacy**: No PII in therapist notification email; contact info revealed only after acceptance; magic links use `secure_uuid`.
+
 ## Runtime & Hosting
 - Next.js (App Router), Tailwind v4, shadcn/ui (style: new-york, baseColor: slate).
 - Node.js runtime for API routes with secrets (e.g., Supabase `service_role`, Google Ads).

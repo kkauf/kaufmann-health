@@ -137,3 +137,27 @@
   - Auth: same as system alerts (Vercel cron header, `CRON_SECRET` header/bearer, or `?token=`).
 - **Consequences**: Low‑noise operational awareness that supports manual matching triage.
 - **Links**: `src/app/api/admin/alerts/new-leads/route.ts`, `vercel.json`.
+
+## Universal Conversion Tracking (ADR-010)
+
+- **Why**: Fire conversions consistently when contact is verified (email OR SMS) across all patient signup flows, not just at form completion.
+- **Decision** (EARTH-204):
+  - Single helper `maybeFirePatientConversion()` in `src/lib/conversion.ts` fires Enhanced Conversions once per patient.
+  - Idempotent via `metadata.google_ads_conversion_fired_at`; test leads (`is_test: true`) excluded.
+  - Fires at: (1) email verification (`GET /api/public/leads/confirm`), (2) SMS verification (`POST /api/public/verification/verify-code`), (3) direct therapist contact (`POST /api/public/matches/[uuid]/contact`).
+  - Legacy `POST /api/public/leads/[id]/form-completed` uses same helper for deduplication.
+  - Gracefully skips phone-only patients (Enhanced Conversions require email for hashing).
+- **Consequences**: Accurate conversion attribution at verification point (earlier than form completion); consistent across email/SMS flows; strict deduplication prevents double-fire.
+- **Links**: `src/lib/conversion.ts`, `tests/conversion.test.ts`, `tests/api.conversion.integration.test.ts`.
+
+## Patient-Initiated Contact & Verification (ADR-011)
+
+- **Why**: Enable direct patient→therapist contact from directory; keep modal UX consistent between SMS and email verification.
+- **Decision** (EARTH-203):
+  - Patient clicks "Therapeut:in buchen" or "Kostenloses Erstgespräch" → opens modal for name + email/phone.
+  - Both SMS and email use **verification codes** (6-digit, via existing `/api/public/verification/*` endpoints). Rationale: modal continuity, mobile auto-fill, simpler than context-aware magic links.
+  - Session cookie `kh_client` (HTTP-only, 30 days, functional) stores JWT for verified patients to skip re-verification.
+  - `POST /api/public/contact` creates match with `metadata.patient_initiated=true`, rate-limited to 3 contacts/day.
+  - Therapist receives notification email with magic link to `/match/[uuid]` (EARTH-205).
+- **Consequences**: Fast contact flow; no navigation away from modal; reuses existing verification infrastructure; privacy-first (no PII in therapist email until acceptance).
+- **Links**: `src/features/therapists/components/ContactModal.tsx`, `src/app/api/public/contact/route.ts`, `src/lib/auth/clientSession.ts`.

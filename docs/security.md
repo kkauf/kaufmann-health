@@ -77,6 +77,65 @@
 4. If email delivery issues: verify `RESEND_API_KEY`, template context, and check logger entries `email_attempted` / `error`.
 5. If cron failed: re-run with `?token=<CRON_SECRET>`; inspect `cron_failed` events.
 
+## Google Ads Campaign Configuration Security
+
+**Problem:** Campaign configs contain sensitive competitive intelligence (keywords, budgets, ad copy, policy workarounds). Public exposure reveals strategy to competitors and violates operational security.
+
+### Private Folder Policy
+
+**All production campaign configs MUST be stored in:**
+```
+google_ads_api_scripts/private/
+```
+
+This folder is **gitignored** and will never be committed to the public repo.
+
+**File naming convention:**
+- `campaign-config-{test-name}.ts` — TypeScript configs (preferred)
+- `{campaign-name}.json` — JSON configs (for CLI use)
+
+**What goes in `private/`:**
+- Actual keywords, budgets, and scheduling
+- Real landing page URLs
+- Ad copy (headlines, descriptions)
+- Negative keyword lists
+- Budget amounts and bid strategies
+- Policy workaround strategies and flagged keywords
+
+**What can be public:**
+- Type definitions (`CampaignConfig`, `KeywordTier`)
+- Generic scripts (`create-campaigns.ts`, `monitor-campaigns.ts`)
+- Ultra-minimal examples with dummy data only
+
+### Protection Mechanisms
+
+**.gitignore entry (enforced):**
+```gitignore
+/google_ads_api_scripts/private/
+```
+
+**Public file rules:**
+- No comments revealing flagged keywords or policy violations
+- No real keyword examples (use generic placeholders)
+- No budget amounts or actual landing pages
+- Sample configs for type demonstration only
+
+### Audit Commands
+
+Check for accidental exposure:
+```bash
+# Check if private configs were ever committed
+git log --all --full-history -- "google_ads_api_scripts/private/"
+
+# Check for keyword leaks in commit messages
+git log --all --grep="keyword-terms" --oneline
+
+# Check for deleted config files that might have been public
+git log --all --full-history --diff-filter=D -- "google_ads_api_scripts/*.json"
+```
+
+**Status:** Private folder contents have never been committed; sensitive comments removed from public files.
+
 ## Security Checklist (Essentials)
 
 - [ ] Service role only in server routes; never in client code.
@@ -86,3 +145,4 @@
 - [ ] No PII in analytics events; IPs hashed with salt.
 - [ ] Cron endpoints require `x-vercel-cron` or `CRON_SECRET`.
 - [ ] Secrets set in Vercel env; Node runtime for secret-using routes.
+- [ ] Campaign configs in `private/` folder; no real keywords in public files.
