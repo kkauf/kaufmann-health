@@ -36,11 +36,14 @@ export default function Header() {
 
   const NavLinks = ({ onClick }: { onClick?: () => void }) => (
     <>
-      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150" href="/fuer-therapeuten">
-        Für Therapeut:innen
+      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150" href="/therapeuten">
+        Unsere Therapeuten
       </Link>
       <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150" href="/start">
         Für Klient:innen
+      </Link>
+      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150" href="/fuer-therapeuten">
+        Für Therapeut:innen
       </Link>
       <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150" href="/ueber-uns">
         Über uns
@@ -134,10 +137,10 @@ export default function Header() {
             <div className="flex flex-col gap-1 text-base font-medium text-gray-700">
               <Link
                 onClick={() => setOpen(false)}
-                href="/fuer-therapeuten"
+                href="/therapeuten"
                 className="px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors"
               >
-                Für Therapeut:innen
+                Unsere Therapeuten
               </Link>
               <Link
                 onClick={() => setOpen(false)}
@@ -145,6 +148,13 @@ export default function Header() {
                 className="px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 Für Klient:innen
+              </Link>
+              <Link
+                onClick={() => setOpen(false)}
+                href="/fuer-therapeuten"
+                className="px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Für Therapeut:innen
               </Link>
               <Link
                 onClick={() => setOpen(false)}

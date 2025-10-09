@@ -161,6 +161,9 @@ export function TherapistDirectory() {
   const handleResetFilters = () => {
     setDraftModality('all');
     setDraftOnlineOnly(null);
+    setSelectedModality('all');
+    setOnlineOnly(null);
+    setSheetOpen(false);
   };
 
   const handleClearAllFilters = () => {
@@ -305,81 +308,83 @@ export function TherapistDirectory() {
 
       {/* Mobile filter sheet */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent side="bottom" className="h-[85vh] flex flex-col">
-          <SheetHeader>
-            <SheetTitle>Filter</SheetTitle>
-            <SheetDescription>
-              Finde die passende Therapeut:in
-            </SheetDescription>
-          </SheetHeader>
+        <SheetContent side="bottom" className="h-auto max-h-[85vh] p-0">
+          <div className="flex flex-col h-full max-h-[85vh]">
+            <SheetHeader className="px-4 pt-4 pb-2">
+              <SheetTitle>Filter</SheetTitle>
+              <SheetDescription>
+                Finde die passende Therapeut:in
+              </SheetDescription>
+            </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto py-6 space-y-6">
-            {/* Modality filter */}
-            <div>
-              <label className="mb-3 block text-sm font-semibold text-gray-900">
-                Modalität
-              </label>
-              <Select value={draftModality} onValueChange={setDraftModality}>
-                <SelectTrigger className="w-full h-12">
-                  <SelectValue placeholder="Alle Modalitäten" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle Modalitäten</SelectItem>
-                  {allModalities.map(m => (
-                    <SelectItem key={m} value={m}>
-                      {getModalityLabel(m)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+              {/* Modality filter */}
+              <div>
+                <label className="mb-3 block text-sm font-semibold text-gray-900">
+                  Modalität
+                </label>
+                <Select value={draftModality} onValueChange={setDraftModality}>
+                  <SelectTrigger className="w-full h-12">
+                    <SelectValue placeholder="Alle Modalitäten" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle Modalitäten</SelectItem>
+                    {allModalities.map(m => (
+                      <SelectItem key={m} value={m}>
+                        {getModalityLabel(m)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Format filter */}
-            <div>
-              <label className="mb-3 block text-sm font-semibold text-gray-900">
-                Therapieformat
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <Button
-                  variant={draftOnlineOnly === null ? 'default' : 'outline'}
-                  onClick={() => setDraftOnlineOnly(null)}
-                  className="h-12"
-                >
-                  Alle
-                </Button>
-                <Button
-                  variant={draftOnlineOnly === true ? 'default' : 'outline'}
-                  onClick={() => setDraftOnlineOnly(true)}
-                  className="h-12"
-                >
-                  Online
-                </Button>
-                <Button
-                  variant={draftOnlineOnly === false ? 'default' : 'outline'}
-                  onClick={() => setDraftOnlineOnly(false)}
-                  className="h-12"
-                >
-                  Vor Ort
-                </Button>
+              {/* Format filter */}
+              <div>
+                <label className="mb-3 block text-sm font-semibold text-gray-900">
+                  Therapieformat
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    variant={draftOnlineOnly === null ? 'default' : 'outline'}
+                    onClick={() => setDraftOnlineOnly(null)}
+                    className="h-12"
+                  >
+                    Alle
+                  </Button>
+                  <Button
+                    variant={draftOnlineOnly === true ? 'default' : 'outline'}
+                    onClick={() => setDraftOnlineOnly(true)}
+                    className="h-12"
+                  >
+                    Online
+                  </Button>
+                  <Button
+                    variant={draftOnlineOnly === false ? 'default' : 'outline'}
+                    onClick={() => setDraftOnlineOnly(false)}
+                    className="h-12"
+                  >
+                    Vor Ort
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <SheetFooter className="flex-row gap-2 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={handleResetFilters}
-              className="flex-1 h-12"
-            >
-              Zurücksetzen
-            </Button>
-            <Button
-              onClick={handleApplyFilters}
-              className="flex-1 h-12"
-            >
-              Anwenden
-            </Button>
-          </SheetFooter>
+            <SheetFooter className="flex-row gap-2 px-4 pb-4 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={handleResetFilters}
+                className="flex-1 h-12"
+              >
+                Zurücksetzen
+              </Button>
+              <Button
+                onClick={handleApplyFilters}
+                className="flex-1 h-12"
+              >
+                Anwenden
+              </Button>
+            </SheetFooter>
+          </div>
         </SheetContent>
       </Sheet>
     </>
