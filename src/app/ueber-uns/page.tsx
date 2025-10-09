@@ -104,7 +104,7 @@ export default function UeberUnsPage() {
             <div className="relative mx-auto lg:mx-0">
               <div className="relative aspect-[3/4] w-64 lg:w-full overflow-hidden rounded-2xl shadow-xl ring-1 ring-indigo-200/60">
                 <Image
-                  src="/profile-pictures/katherine.jpeg"
+                  src="/profile-pictures/katherine.JPEG"
                   alt="Katherine Kaufmann"
                   fill
                   sizes="(min-width: 1024px) 320px, 256px"
