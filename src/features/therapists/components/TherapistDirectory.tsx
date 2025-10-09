@@ -3,6 +3,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
+import { Badge } from '@/components/ui/badge';
+import { SlidersHorizontal, X } from 'lucide-react';
 import { TherapistCard } from './TherapistCard';
 import { TherapistDetailModal } from './TherapistDetailModal';
 import { ContactModal } from './ContactModal';
@@ -36,6 +39,11 @@ export function TherapistDirectory() {
   const [autoContactTherapist, setAutoContactTherapist] = useState<TherapistData | null>(null);
   const [autoContactOpen, setAutoContactOpen] = useState(false);
   const [autoContactType, setAutoContactType] = useState<'booking' | 'consultation'>('booking');
+  
+  // Mobile filter sheet state
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [draftModality, setDraftModality] = useState<string>('all');
+  const [draftOnlineOnly, setDraftOnlineOnly] = useState<boolean | null>(null);
 
   useEffect(() => {
     async function fetchTherapists() {
@@ -129,6 +137,37 @@ export function TherapistDirectory() {
     });
   }, [therapists, selectedModality, onlineOnly]);
 
+  // Count active filters
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (selectedModality !== 'all') count++;
+    if (onlineOnly !== null) count++;
+    return count;
+  }, [selectedModality, onlineOnly]);
+
+  // Sheet handlers
+  const handleOpenSheet = () => {
+    setDraftModality(selectedModality);
+    setDraftOnlineOnly(onlineOnly);
+    setSheetOpen(true);
+  };
+
+  const handleApplyFilters = () => {
+    setSelectedModality(draftModality);
+    setOnlineOnly(draftOnlineOnly);
+    setSheetOpen(false);
+  };
+
+  const handleResetFilters = () => {
+    setDraftModality('all');
+    setDraftOnlineOnly(null);
+  };
+
+  const handleClearAllFilters = () => {
+    setSelectedModality('all');
+    setOnlineOnly(null);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -139,8 +178,40 @@ export function TherapistDirectory() {
 
   return (
     <>
-      {/* Filters */}
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+      {/* Mobile: Compact filter button */}
+      <div className="mb-4 md:hidden">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleOpenSheet}
+            className="flex-1 justify-between h-11"
+          >
+            <span className="flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4" />
+              Filter
+            </span>
+            {activeFilterCount > 0 && (
+              <Badge variant="default" className="ml-2">
+                {activeFilterCount}
+              </Badge>
+            )}
+          </Button>
+          {activeFilterCount > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleClearAllFilters}
+              aria-label="Alle Filter löschen"
+              className="h-11 w-11"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Desktop: Inline filters */}
+      <div className="mb-8 hidden md:flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
         <div className="flex-1">
           <label className="mb-2 block text-sm font-medium text-gray-700">
             Modalität
@@ -231,6 +302,86 @@ export function TherapistDirectory() {
           verified={true}
         />
       )}
+
+      {/* Mobile filter sheet */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="bottom" className="h-[85vh] flex flex-col">
+          <SheetHeader>
+            <SheetTitle>Filter</SheetTitle>
+            <SheetDescription>
+              Finde die passende Therapeut:in
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto py-6 space-y-6">
+            {/* Modality filter */}
+            <div>
+              <label className="mb-3 block text-sm font-semibold text-gray-900">
+                Modalität
+              </label>
+              <Select value={draftModality} onValueChange={setDraftModality}>
+                <SelectTrigger className="w-full h-12">
+                  <SelectValue placeholder="Alle Modalitäten" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Modalitäten</SelectItem>
+                  {allModalities.map(m => (
+                    <SelectItem key={m} value={m}>
+                      {getModalityLabel(m)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Format filter */}
+            <div>
+              <label className="mb-3 block text-sm font-semibold text-gray-900">
+                Therapieformat
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant={draftOnlineOnly === null ? 'default' : 'outline'}
+                  onClick={() => setDraftOnlineOnly(null)}
+                  className="h-12"
+                >
+                  Alle
+                </Button>
+                <Button
+                  variant={draftOnlineOnly === true ? 'default' : 'outline'}
+                  onClick={() => setDraftOnlineOnly(true)}
+                  className="h-12"
+                >
+                  Online
+                </Button>
+                <Button
+                  variant={draftOnlineOnly === false ? 'default' : 'outline'}
+                  onClick={() => setDraftOnlineOnly(false)}
+                  className="h-12"
+                >
+                  Vor Ort
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <SheetFooter className="flex-row gap-2 pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={handleResetFilters}
+              className="flex-1 h-12"
+            >
+              Zurücksetzen
+            </Button>
+            <Button
+              onClick={handleApplyFilters}
+              className="flex-1 h-12"
+            >
+              Anwenden
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
