@@ -189,8 +189,7 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
         {/* Action buttons */}
         <div className="sticky bottom-0 flex flex-col gap-3 bg-white pt-4 sm:flex-row">
           <Button
-            className="!h-11 min-w-0 flex-1 bg-emerald-600 hover:bg-emerald-700"
-            size="lg"
+            className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
             onClick={() => handleContactClick('booking')}
             disabled={!therapist.accepting_new}
           >
@@ -200,8 +199,7 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
 
           <Button
             variant="outline"
-            size="lg"
-            className="!h-11 min-w-0 flex-1"
+            className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
             onClick={() => handleContactClick('consultation')}
             disabled={!therapist.accepting_new}
           >

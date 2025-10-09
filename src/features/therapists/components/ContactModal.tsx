@@ -72,7 +72,8 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
       const initialReason = (preAuth.defaultReason || '').trim();
       if (initialReason) setReason(initialReason);
-      setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei ${initialReason || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.`);
+      const signature = preAuth.patientName ? `\n\nViele Grüße\n${preAuth.patientName}` : '';
+      setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei ${initialReason || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
       setStep('compose');
     }
   }, [open, preAuth, therapist.first_name, contactType]);
@@ -245,11 +246,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       
       // Generate pre-filled message
       const greeting = `Guten Tag ${therapist.first_name}`;
-      const intent = contactType === 'booking' 
+      const intent = contactType === 'booking'
         ? 'ich möchte gerne einen Termin vereinbaren'
         : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
-      
-      setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei [${reason || 'beschreibe dein Anliegen'}] und fand dein Profil sehr ansprechend.`);
+      const signature = name ? `\n\nViele Grüße\n${name}` : '';
+
+      setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei [${reason || 'beschreibe dein Anliegen'}] und fand dein Profil sehr ansprechend.${signature}`);
       setStep('compose');
       trackEvent('contact_verification_completed', { contact_method: contactMethod });
     } catch (err) {
@@ -612,10 +614,11 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             setReason(e.target.value);
             // Update message preview
             const greeting = `Guten Tag ${therapist.first_name}`;
-            const intent = contactType === 'booking' 
+            const intent = contactType === 'booking'
               ? 'ich möchte gerne einen Termin vereinbaren'
               : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
-            setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei ${e.target.value || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.`);
+            const signature = name ? `\n\nViele Grüße\n${name}` : '';
+            setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei ${e.target.value || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
           }}
           placeholder="z.B. Panikattacken, Überforderung im Alltag, Beziehungsproblemen"
           disabled={loading}
