@@ -211,8 +211,7 @@ export async function POST(req: Request) {
               void sendEmail({
                 to: patientEmail,
                 subject: content.subject,
-                html: content.html || '',
-                text: content.text,
+                html: content.html,
                 context: { kind: 'patient_update_auto', template: 'therapist_rejection', match_id: m.id, patient_id: m.patient_id, therapist_id: m.therapist_id },
               });
             } else {
