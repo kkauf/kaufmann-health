@@ -18,19 +18,21 @@ export function renderLayout(params: { title?: string; contentHtml: string; preh
     <meta charset="utf-8" />
     <title>${escapeHtml(title)}</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
     ${schema ? `\n    <script type="application/ld+json">\n${JSON.stringify(schema, null, 2)}\n    </script>\n    ` : ''}
   </head>
   <body style="margin:0; padding:0; background: linear-gradient(to bottom, #f9fafb 0%, #f3f4f6 100%);">
     ${preheader ? `<div style="display:none; font-size:1px; color:#F9FAFB; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">${escapeHtml(preheader)}</div>` : ''}
     <div style="max-width:640px; margin:0 auto; padding:32px 16px;">
-      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#ffffff; border-radius:16px; overflow:hidden; border:1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#ffffff !important; border-radius:16px; overflow:hidden; border:1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);" bgcolor="#ffffff">
         <tr>
-          <td style="padding:24px 32px; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-bottom:1px solid rgba(226, 232, 240, 0.6);">
+          <td style="padding:24px 32px; background: #f8fafc !important; border-bottom:1px solid rgba(226, 232, 240, 0.6);" bgcolor="#f8fafc">
             <img src="${logoSrc}" alt="Kaufmann Health" height="32" style="display:block; height:32px; width:auto;" />
           </td>
         </tr>
         <tr>
-          <td style="padding:32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height:1.65; color:#334155;">
+          <td style="padding:32px; background:#ffffff !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height:1.65; color:#334155;" bgcolor="#ffffff">
             ${params.contentHtml}
           </td>
         </tr>

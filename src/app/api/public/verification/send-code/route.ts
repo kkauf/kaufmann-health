@@ -13,6 +13,7 @@ import { renderEmailConfirmation } from '@/lib/email/templates/emailConfirmation
 import { sendEmail } from '@/lib/email/client';
 import { randomBytes } from 'crypto';
 import { supabaseServer } from '@/lib/supabase-server';
+import { track } from '@/lib/logger';
 
 interface SendCodeRequest {
   contact: string; // email or phone
@@ -146,63 +147,102 @@ export async function POST(req: NextRequest) {
       // Ensure a person exists for this email so confirmation can succeed.
       // Store the token & timestamp in metadata and include the id in the confirm URL.
       let personId = lead_id || '';
-      try {
-        if (!personId) {
-          const { data: existing, error: selErr } = await supabaseServer
-            .from('people')
-            .select('id, metadata')
-            .eq('email', contact)
-            .limit(1);
-          if (!selErr && existing && existing.length > 0) {
-            personId = existing[0].id as string;
-            const meta = (existing[0].metadata as Record<string, unknown>) || {};
-            meta['confirm_token'] = token;
-            meta['confirm_sent_at'] = new Date().toISOString();
-            await supabaseServer
-              .from('people')
-              .update({ metadata: meta, status: 'email_confirmation_sent' })
-              .eq('id', personId);
-          } else {
-            // Create a minimal patient lead row
-            const { data: inserted, error: insErr } = await supabaseServer
-              .from('people')
-              .insert({
-                email: contact,
-                type: 'patient',
-                status: 'email_confirmation_sent',
-                metadata: {
-                  confirm_token: token,
-                  confirm_sent_at: new Date().toISOString(),
-                },
-              })
-              .select('id')
-              .single();
-            if (!insErr && inserted?.id) {
-              personId = inserted.id as string;
-            }
-          }
-        } else {
-          // Update provided lead_id metadata
-          const { data: existing } = await supabaseServer
-            .from('people')
-            .select('metadata')
-            .eq('id', personId)
-            .single();
-          const meta = (existing?.metadata as Record<string, unknown>) || {};
+      
+      if (!personId) {
+        const { data: existing, error: selErr } = await supabaseServer
+          .from('people')
+          .select('id, metadata')
+          .eq('email', contact)
+          .limit(1);
+        if (!selErr && existing && existing.length > 0) {
+          personId = existing[0].id as string;
+          const meta = (existing[0].metadata as Record<string, unknown>) || {};
           meta['confirm_token'] = token;
           meta['confirm_sent_at'] = new Date().toISOString();
-          await supabaseServer
+          const { error: updateErr } = await supabaseServer
             .from('people')
             .update({ metadata: meta, status: 'email_confirmation_sent' })
             .eq('id', personId);
+          if (updateErr) {
+            void track({
+              type: 'verification_person_update_failed',
+              source: 'api.verification.send-code',
+              props: { contact, error: updateErr.message },
+            });
+            return NextResponse.json(
+              { success: false, error: 'Failed to prepare verification' },
+              { status: 500 }
+            );
+          }
+        } else {
+          // Create a minimal patient lead row
+          const { data: inserted, error: insErr } = await supabaseServer
+            .from('people')
+            .insert({
+              email: contact,
+              type: 'patient',
+              status: 'email_confirmation_sent',
+              metadata: {
+                confirm_token: token,
+                confirm_sent_at: new Date().toISOString(),
+              },
+            })
+            .select('id')
+            .single();
+          if (insErr || !inserted?.id) {
+            void track({
+              type: 'verification_person_insert_failed',
+              source: 'api.verification.send-code',
+              props: { contact, error: insErr?.message || 'no_id' },
+            });
+            return NextResponse.json(
+              { success: false, error: 'Failed to prepare verification' },
+              { status: 500 }
+            );
+          }
+          personId = inserted.id as string;
         }
-      } catch {
-        // Best-effort: if DB ops fail, the link will still render but confirm endpoint will reject.
+      } else {
+        // Update provided lead_id metadata
+        const { data: existing } = await supabaseServer
+          .from('people')
+          .select('metadata')
+          .eq('id', personId)
+          .single();
+        const meta = (existing?.metadata as Record<string, unknown>) || {};
+        meta['confirm_token'] = token;
+        meta['confirm_sent_at'] = new Date().toISOString();
+        const { error: updateErr } = await supabaseServer
+          .from('people')
+          .update({ metadata: meta, status: 'email_confirmation_sent' })
+          .eq('id', personId);
+        if (updateErr) {
+          void track({
+            type: 'verification_person_update_failed',
+            source: 'api.verification.send-code',
+            props: { contact, lead_id, error: updateErr.message },
+          });
+          return NextResponse.json(
+            { success: false, error: 'Failed to prepare verification' },
+            { status: 500 }
+          );
+        }
       }
 
-      if (personId) {
-        confirmUrl = `${confirmUrl}&id=${encodeURIComponent(personId)}`;
+      // Must have personId before sending email
+      if (!personId) {
+        void track({
+          type: 'verification_missing_person_id',
+          source: 'api.verification.send-code',
+          props: { contact, lead_id: lead_id || null },
+        });
+        return NextResponse.json(
+          { success: false, error: 'Failed to prepare verification' },
+          { status: 500 }
+        );
       }
+
+      confirmUrl = `${confirmUrl}&id=${encodeURIComponent(personId)}`;
 
       const emailContent = renderEmailConfirmation({ confirmUrl });
       

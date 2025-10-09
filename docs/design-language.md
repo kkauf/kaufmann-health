@@ -400,6 +400,44 @@ When updating or creating new pages/sections, ensure:
 - [ ] Decorative blur elements add subtle depth to key sections
 - [ ] All animations respect `prefers-reduced-motion`
 
+## Email Design (Transactional)
+
+**CRITICAL: NO DARK BACKGROUNDS IN EMAILS**
+
+- **Never use dark hero sections** (`#2d3748`, `bg-gray-800`, etc.) - breaks brand consistency and accessibility
+- **Always use light, premium gradients** per web design language
+- **Gmail dark mode will auto-convert** light backgrounds to dark unless suppressed
+
+**Gmail Dark Mode Prevention:**
+- Meta tags: `<meta name="color-scheme" content="light" />` and `<meta name="supported-color-schemes" content="light" />`
+- Use `!important` on background colors: `background:#ffffff !important;`
+- Add legacy `bgcolor` attribute: `<td bgcolor="#ffffff">`
+- Already implemented in `src/lib/email/layout.ts`
+
+**Email Section Patterns:**
+
+- **Hero/Highlight sections** (action-oriented):
+  - Background: `linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)` (emerald tint)
+  - Or: `linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)` (stronger emerald)
+  - Border: `1px solid rgba(34, 197, 94, 0.2)` or `rgba(16, 185, 129, 0.3)`
+  - Text: `color:#0f172a` (heading), `color:#166534` or `#064e3b` (body on tinted bg)
+  - Shadow: `0 2px 8px 0 rgba(34, 197, 94, 0.08)`
+
+- **Info/neutral sections**:
+  - Background: `linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)` (slate tint)
+  - Border: `1px solid rgba(226, 232, 240, 0.8)`
+  - Text: `color:#64748b` (body), `color:#475569` (emphasis)
+  - Shadow: `0 2px 4px 0 rgba(100, 116, 139, 0.05)`
+
+- **Urgency/warning sections**:
+  - Background: `linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)` (amber)
+  - Border: `1px solid rgba(251, 191, 36, 0.3)`
+  - Text: `color:#78350f`
+
+- **All sections**: `padding:16px 20px` (min), `border-radius:12px`, inline styles only
+
+**Reference**: All templates in `src/lib/email/templates/` follow this pattern.
+
 ## Notes
 
 - Icons from `lucide-react`, size `h-5 w-5` for body, `h-6 w-6` for emphasis, `h-4 w-4` inside smaller UI
