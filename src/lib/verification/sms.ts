@@ -71,13 +71,15 @@ export async function sendSmsCode(phoneNumber: string): Promise<SendCodeResult> 
 
   // Normalize phone to E.164
   const e164Phone = normalizePhoneNumber(phoneNumber);
+  console.log('[sms] Normalizing phone:', phoneNumber, '→', e164Phone);
   if (!e164Phone) {
     return { success: false, error: 'Invalid German mobile number' };
   }
 
   try {
     const client = twilio(accountSid, authToken);
-    
+
+    console.log('[sms] Sending verification to:', e164Phone);
     const verification = await client.verify.v2
       .services(serviceSid)
       .verifications.create({
