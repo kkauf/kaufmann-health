@@ -73,7 +73,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       const initialReason = (preAuth.defaultReason || '').trim();
       if (initialReason) setReason(initialReason);
       const signature = preAuth.patientName ? `\n\nViele Grüße\n${preAuth.patientName}` : '';
-      setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei ${initialReason || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
+      setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei ${initialReason || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
       setStep('compose');
     }
   }, [open, preAuth, therapist.first_name, contactType]);
@@ -106,7 +106,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             ? 'ich möchte gerne einen Termin vereinbaren'
             : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
           const signature = userName ? `\n\nViele Grüße\n${userName}` : '';
-          setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei [beschreibe dein Anliegen] und fand dein Profil sehr ansprechend.${signature}`);
+          setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei [beschreibe dein Anliegen] und fand dein Profil sehr ansprechend.${signature}`);
 
           setStep('compose');
         }
@@ -264,7 +264,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
       const signature = name ? `\n\nViele Grüße\n${name}` : '';
 
-      setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei [${reason || 'beschreibe dein Anliegen'}] und fand dein Profil sehr ansprechend.${signature}`);
+      setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei [${reason || 'beschreibe dein Anliegen'}] und fand dein Profil sehr ansprechend.${signature}`);
       setStep('compose');
       trackEvent('contact_verification_completed', { contact_method: contactMethod });
     } catch (err) {
@@ -375,6 +375,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   // Handle enter key submission
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey && !loading) {
+      // Don't submit when Enter is pressed in a textarea (allow new lines)
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'TEXTAREA') {
+        return;
+      }
+
       e.preventDefault();
       if (step === 'verify') {
         const canSubmit = name.trim() && (contactMethod === 'email' ? email.trim() : phone.trim());

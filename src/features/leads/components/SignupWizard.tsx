@@ -211,6 +211,32 @@ export default function SignupWizard() {
       }
       const savedStep = Number(localStorage.getItem(LS_KEYS.step) || '1');
       if (savedStep >= 1 && savedStep <= 9) setStep(savedStep);
+
+      // Check for existing verified session (kh_client cookie from EARTH-204)
+      // If user is already verified, prefill contact info (no need to skip steps)
+      fetch('/api/public/session')
+        .then(res => res.ok ? res.json() : null)
+        .then(json => {
+          const session = json?.data;
+          if (session?.verified) {
+            const updates: Partial<WizardData> = {};
+            if (session.name) updates.name = session.name;
+            if (session.contact_method === 'email' && session.contact_value) {
+              updates.email = session.contact_value;
+              updates.contact_method = 'email';
+            } else if (session.contact_method === 'phone' && session.contact_value) {
+              updates.phone_number = session.contact_value;
+              updates.contact_method = 'phone';
+              updates.phone_verified = true;
+            }
+            if (Object.keys(updates).length > 0) {
+              setData(prev => ({ ...prev, ...updates }));
+            }
+          }
+        })
+        .catch(() => {
+          // Ignore session check errors
+        });
       
       // Handle ?experience= param from mid-page conversion (EARTH-209)
       const experienceParam = searchParams?.get('experience');
@@ -633,16 +659,21 @@ export default function SignupWizard() {
             initialized={initialized}
             onChange={saveLocal}
             onNext={async () => {
-              // If phone, send SMS and go to Screen8.5
-              // If email, go directly to submit
+              // If phone and already verified (from existing session), skip verification
               if (data.contact_method === 'phone' && data.phone_number) {
-                try {
-                  const sent = await handleSendSmsCode();
-                  if (sent) safeGoToStep(8.5);
-                  // else: stay on step 8 so user can switch to email or retry
-                } catch (err) {
-                  console.error('Failed to send SMS:', err);
-                  // Could show error to user here
+                if (data.phone_verified) {
+                  // Already verified - submit directly
+                  await handleSubmit();
+                } else {
+                  // Not verified - send SMS and go to verification step
+                  try {
+                    const sent = await handleSendSmsCode();
+                    if (sent) safeGoToStep(8.5);
+                    // else: stay on step 8 so user can switch to email or retry
+                  } catch (err) {
+                    console.error('Failed to send SMS:', err);
+                    // Could show error to user here
+                  }
                 }
               } else {
                 // Email: submit directly (consent implicit on button click)

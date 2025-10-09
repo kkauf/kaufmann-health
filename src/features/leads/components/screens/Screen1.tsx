@@ -5,10 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { getEmailError } from '@/features/leads/lib/validation';
-import { PhoneInput } from 'react-international-phone';
+import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { getVerificationModeClient } from '@/lib/verification/config';
-import 'react-international-phone/style.css';
-import '@/components/phone-input-custom.css';
+import { validatePhone } from '@/lib/verification/usePhoneValidation';
 
 export type ContactMethod = 'email' | 'phone';
 
@@ -96,18 +95,16 @@ export default function Screen1({
 
   const handleSubmit = React.useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (contactMethod === 'email') {
       const err = getEmailError(values.email || '');
       setEmailError(err);
       if (!err) onNext();
     } else {
-      const phone = values.phone_number || '';
-      // react-international-phone gives us E.164 format (e.g., +4915212345678)
-      // German mobile numbers: +49 followed by 10-11 digits = 13-14 chars total
-      const cleaned = phone.replace(/\s+/g, '');
-      if (!phone || cleaned.length < 12 || !cleaned.startsWith('+')) {
-        setPhoneError('Bitte gib eine gültige Handynummer ein.');
+      // Validate and normalize phone
+      const validation = validatePhone(values.phone_number || '');
+      if (!validation.isValid) {
+        setPhoneError(validation.error || 'Bitte gib eine gültige Handynummer ein.');
       } else {
         setPhoneError(null);
         onNext();
@@ -162,27 +159,12 @@ export default function Screen1({
         ) : (
           <>
             <Label htmlFor="phone" className="text-base">Deine Handynummer für die Therapievorschläge</Label>
-            <PhoneInput
-              defaultCountry="de"
+            <VerifiedPhoneInput
               value={values.phone_number || ''}
-              onChange={(phone) => onChange({ phone_number: phone.replace(/\s+/g, '') })}
-              inputClassName={phoneError ? 'border-red-500' : ''}
-              className="w-full"
-              placeholder="+49 176 123 45678"
-              disableDialCodeAndPrefix={true}
-              forceDialCode={false}
-              countrySelectorStyleProps={{
-                buttonClassName: 'phone-country-button',
-                dropdownStyleProps: {
-                  className: 'phone-country-dropdown',
-                  listItemClassName: 'phone-country-item',
-                }
-              }}
+              onChange={(phone) => onChange({ phone_number: phone })}
+              error={phoneError || undefined}
+              helpText="Du bekommst einen SMS-Code zur Bestätigung"
             />
-            {phoneError && (
-              <p className="text-sm text-red-600">{phoneError}</p>
-            )}
-            <p className="text-sm text-muted-foreground">Du bekommst einen SMS-Code zur Bestätigung</p>
           </>
         )}
       </div>

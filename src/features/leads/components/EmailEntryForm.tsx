@@ -16,10 +16,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { track } from '@vercel/analytics';
 import { getVerificationModeClient } from '@/lib/verification/config';
-import { PhoneInput } from 'react-international-phone';
-import 'react-international-phone/style.css';
-import '@/components/phone-input-custom.css';
-import { normalizePhoneNumber } from '@/lib/verification/phone';
+import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
+import { validatePhone } from '@/lib/verification/usePhoneValidation';
 
 // Note: Google Ads conversions are handled at Fragebogen completion (client + server).
 
@@ -122,33 +120,21 @@ export function ContactEntryForm({
     const data = new FormData(form);
     const name = String(data.get('name') || '').trim();
     const email = contactMethod === 'email' ? String(data.get('email') || '').trim().toLowerCase() : '';
-    // Prefer controlled state, but fall back to DOM value in case of library quirks
-    let phoneValue = contactMethod === 'phone' ? phone : '';
-    if (contactMethod === 'phone') {
-      if (!phoneValue || phoneValue === '+49') {
-        const domInput = form.querySelector<HTMLInputElement>('input[type="tel"], input.PhoneInputInput');
-        if (domInput?.value) phoneValue = domInput.value;
-      }
-      // Normalize to E.164 (+4917...)
-      const normalized = normalizePhoneNumber(phoneValue || '');
-      phoneValue = normalized || phoneValue;
-    }
-
     const nextErrors: Record<string, string> = {};
     if (!name) nextErrors.name = 'Bitte gib deinen Namen an.';
-    
+
+    let phoneValue = '';
     if (contactMethod === 'email') {
       if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
         nextErrors.email = 'Bitte gib eine gültige E‑Mail-Adresse ein.';
       }
     } else {
-      // Client-side phone validation aligned with server: must normalize to E.164
-      const normalized = normalizePhoneNumber(phoneValue || '');
-      if (!normalized) {
-        nextErrors.phone = 'Bitte gib eine gültige Handynummer ein.';
+      // Validate and normalize phone
+      const validation = validatePhone(phone, form);
+      if (!validation.isValid || !validation.normalized) {
+        nextErrors.phone = validation.error || 'Bitte gib eine gültige Handynummer ein.';
       } else {
-        // Replace with normalized value for downstream persistence
-        phoneValue = normalized;
+        phoneValue = validation.normalized;
       }
     }
 
@@ -230,28 +216,12 @@ export function ContactEntryForm({
         ) : contactMethod === 'phone' && canUsePhone ? (
           <>
             <Label htmlFor="phone">Handynummer</Label>
-            <PhoneInput
-              defaultCountry="de"
+            <VerifiedPhoneInput
               value={phone}
-              onChange={(phone) => setPhone(phone.replace(/\s+/g, ''))}
-              inputClassName={errors.phone ? 'border-red-500' : ''}
-              className="w-full"
-              placeholder="+49 176 123 45678"
-              inputProps={{
-                name: 'phone_number',
-                autoComplete: 'tel',
-                inputMode: 'tel' as const,
-              }}
-              countrySelectorStyleProps={{
-                buttonClassName: 'phone-country-button',
-                dropdownStyleProps: {
-                  className: 'phone-country-dropdown',
-                  listItemClassName: 'phone-country-item',
-                }
-              }}
+              onChange={setPhone}
+              error={errors.phone}
+              helpText="Du bekommst einen SMS-Code zur Bestätigung"
             />
-            {errors.phone && <p className="text-xs text-red-600">{errors.phone}</p>}
-            <p className="text-xs text-gray-500">Du bekommst einen SMS-Code zur Bestätigung</p>
           </>
         ) : null}
       </div>
