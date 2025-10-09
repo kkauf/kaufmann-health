@@ -25,6 +25,7 @@ export function Actions({
   patientReason,
   contactMethod,
   therapistName,
+  sessionPreference,
 }: {
   uuid: string;
   matchId: string;
@@ -36,6 +37,7 @@ export function Actions({
   patientReason?: string;
   contactMethod?: 'email' | 'phone';
   therapistName?: string;
+  sessionPreference?: string;
 }) {
   const [status, setStatus] = useState(initialStatus);
   const [expired, setExpired] = useState(expiredInitial);
@@ -123,14 +125,49 @@ export function Actions({
     
     let body = `Guten Tag ${firstName},\n\nvielen Dank für deine Nachricht über Kaufmann Health.\n\n`;
     
+    // Determine if online based on sessionPreference
+    const isOnline = sessionPreference?.toLowerCase().includes('online') && !sessionPreference?.toLowerCase().includes('vor ort');
+    const isInPerson = sessionPreference?.toLowerCase().includes('vor ort') && !sessionPreference?.toLowerCase().includes('online');
+    const isBoth = sessionPreference?.toLowerCase().includes('online') && sessionPreference?.toLowerCase().includes('vor ort');
+    
     if (contactType === 'booking') {
-      body += `Gerne können wir einen Termin vereinbaren. Wann passt es dir am besten?\n\n`;
-      body += `[Ihre Praxis-Adresse hier einfügen]\n\n`;
+      body += `Gerne vereinbaren wir einen Termin. Bitte wähle einen der folgenden Zeitslots:\n\n`;
+      body += `Option 1: [Tag, Datum, Uhrzeit]\n`;
+      body += `Option 2: [Tag, Datum, Uhrzeit]\n`;
+      body += `Option 3: [Tag, Datum, Uhrzeit]\n\n`;
+      
+      if (isOnline) {
+        body += `Der Termin findet online statt:\n[Link zum Video-Call / Zoom / Skype]\n\n`;
+      } else if (isInPerson) {
+        body += `Adresse meiner Praxis:\n[Straße, Hausnummer]\n[PLZ Stadt]\n\n`;
+      } else {
+        // Both or unknown - show both options
+        body += `Adresse meiner Praxis:\n[Straße, Hausnummer]\n[PLZ Stadt]\n\nODER für Online-Termin:\n[Link zum Video-Call / Zoom / Skype]\n\n`;
+      }
+      
+      body += `Bitte bestätige deinen Wunschtermin innerhalb von 48 Stunden. Falls ich nichts von dir höre, gebe ich die Slots wieder frei.\n\n`;
     } else if (contactType === 'consultation') {
-      body += `Gerne können wir einen Termin vereinbaren. Wann passt es dir am besten?\n\n`;
-      body += `Das kostenlose Erstgespräch dauert 15 Minuten und dient zum gegenseitigen Kennenlernen.\n\n`;
+      body += `Gerne biete ich dir ein kostenloses 15-Minuten-Erstgespräch an. Bitte wähle einen der folgenden Zeitslots:\n\n`;
+      body += `Option 1: [Tag, Datum, Uhrzeit]\n`;
+      body += `Option 2: [Tag, Datum, Uhrzeit]\n`;
+      body += `Option 3: [Tag, Datum, Uhrzeit]\n\n`;
+      
+      if (isOnline) {
+        body += `Das Gespräch findet online statt:\n[Link zum Video-Call / Zoom / Skype]\n\n`;
+      } else if (isInPerson) {
+        body += `Das Gespräch findet in meiner Praxis statt:\n[Straße, Hausnummer]\n[PLZ Stadt]\n\n`;
+      } else {
+        // Both or unknown
+        body += `Das Gespräch findet statt:\n[Telefonisch ODER per Video-Call ODER in meiner Praxis]\n\nAdresse (falls vor Ort):\n[Straße, Hausnummer]\n[PLZ Stadt]\n\n`;
+      }
+      
+      body += `Bitte bestätige deinen Wunschtermin innerhalb von 48 Stunden.\n\n`;
     } else {
-      body += `Gerne können wir einen Termin vereinbaren. Wann passt es dir am besten?\n\n`;
+      body += `Gerne können wir einen Termin vereinbaren. Bitte wähle einen der folgenden Zeitslots:\n\n`;
+      body += `Option 1: [Tag, Datum, Uhrzeit]\n`;
+      body += `Option 2: [Tag, Datum, Uhrzeit]\n`;
+      body += `Option 3: [Tag, Datum, Uhrzeit]\n\n`;
+      body += `Bitte bestätige innerhalb von 48 Stunden.\n\n`;
     }
     
     body += `Viele Grüße`;
@@ -143,55 +180,123 @@ export function Actions({
 
   if (isFinal) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         {status === 'accepted' ? (
-          <div className="space-y-2">
-            <p className="text-sm">Vielen Dank! Du hast die Anfrage angenommen.</p>
+          <div className="space-y-4">
+            {/* Success banner */}
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-emerald-600">
+                  <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-emerald-900">Anfrage angenommen!</h3>
+                  <p className="text-sm text-emerald-800 mt-1">
+                    Nächster Schritt: Kontaktiere {contact?.name || 'den/die Klient:in'} innerhalb von <strong>24 Stunden</strong>
+                  </p>
+                  {sessionPreference ? (
+                    <p className="text-sm text-emerald-700 mt-2 font-medium">
+                      📍 {sessionPreference}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
             {contact ? (
               <div className="space-y-3">
-                <div className="rounded-md border p-3 text-sm">
-                  <p className="font-medium">Kontaktdaten</p>
-                  {contact.name ? <p>Name: {contact.name}</p> : null}
+                {/* Primary CTA - Email draft or phone */}
+                {contact.email && contactType ? (
+                  <Button asChild size="lg" className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30">
+                    <a href={generateMailto() || '#'}>
+                      E-Mail-Entwurf öffnen →
+                    </a>
+                  </Button>
+                ) : null}
+                {contact.phone && !contact.email ? (
+                  <div className="space-y-3">
+                    <div className="rounded-md bg-blue-50 border border-blue-200 p-4 text-sm">
+                      <p className="font-medium text-blue-900">📱 Klient:in bevorzugt Anruf/SMS</p>
+                      <p className="text-blue-800 mt-1">
+                        Rufe direkt an oder sende eine SMS mit deinen Terminvorschlägen.
+                      </p>
+                    </div>
+                    <Button asChild size="lg" className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700">
+                      <a href={`tel:${contact.phone}`}>
+                        {contact.phone} anrufen →
+                      </a>
+                    </Button>
+                  </div>
+                ) : null}
+
+                {/* Actionable guidance for therapists */}
+                <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm">
+                  <p className="font-semibold text-indigo-900 mb-2">
+                    📋 {contact.email ? 'In deiner E-Mail' : 'Bei Kontakt'} bitte angeben:
+                  </p>
+                  <ul className="space-y-1.5 text-indigo-800">
+                    <li className="flex items-start gap-2">
+                      <span className="text-indigo-600 font-bold">•</span>
+                      <span><strong>3 Terminoptionen</strong> (Tag, Datum, Uhrzeit)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-indigo-600 font-bold">•</span>
+                      <span>
+                        {sessionPreference?.toLowerCase().includes('online') && !sessionPreference?.toLowerCase().includes('vor ort') ? (
+                          <><strong>Online-Meeting-Link</strong> (Zoom, Skype, etc.)</>
+                        ) : sessionPreference?.toLowerCase().includes('vor ort') && !sessionPreference?.toLowerCase().includes('online') ? (
+                          <><strong>Praxisadresse</strong> (Straße, PLZ, Stadt)</>
+                        ) : (
+                          <><strong>Praxisadresse</strong> oder <strong>Online-Meeting-Link</strong></>
+                        )}
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-indigo-600 font-bold">•</span>
+                      <span><strong>Frist:</strong> Klient:in muss innerhalb von 48h bestätigen</span>
+                    </li>
+                  </ul>
+                  {contact.phone && contact.email ? (
+                    <p className="mt-3 pt-3 border-t border-indigo-200 text-indigo-700 text-xs">
+                      💡 <strong>Tipp:</strong> Falls keine E-Mail-Antwort kommt, sende eine SMS an {contact.phone}
+                    </p>
+                  ) : null}
+                </div>
+
+                {/* Contact details card (secondary) */}
+                <div className="rounded-md border border-gray-200 bg-white p-4 text-sm space-y-2">
+                  <p className="font-medium text-gray-900">Kontaktdaten</p>
+                  {contact.name ? <p className="text-gray-700">Name: {contact.name}</p> : null}
                   {contact.email ? (
-                    <p>
-                      E-Mail{' '}
-                      <a className="underline" href={`mailto:${contact.email}`}>
+                    <p className="text-gray-700">
+                      E-Mail:{' '}
+                      <a className="underline text-emerald-600 hover:text-emerald-700" href={`mailto:${contact.email}`}>
                         {contact.email}
                       </a>
                     </p>
                   ) : null}
                   {contact.phone ? (
-                    <p>
-                      Telefon{' '}
-                      <a className="underline" href={`tel:${contact.phone}`}>
+                    <p className="text-gray-700">
+                      Telefon:{' '}
+                      <a className="underline text-emerald-600 hover:text-emerald-700" href={`tel:${contact.phone}`}>
                         {contact.phone}
                       </a>
                     </p>
                   ) : null}
                 </div>
-                {/* EARTH-205: Mailto button for patient-initiated contacts */}
-                {contact.email && contactType ? (
-                  <Button asChild className="w-full bg-emerald-600 hover:bg-emerald-700">
-                    <a href={generateMailto() || '#'}>
-                      E-Mail-Entwurf öffnen
-                    </a>
-                  </Button>
-                ) : null}
-                {contact.phone && !contact.email ? (
-                  <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm">
-                    <p className="font-medium text-amber-900">Patient bevorzugt SMS/Anruf</p>
-                    <p className="text-amber-700 mt-1">
-                      Bitte kontaktiere den/die Klient:in direkt unter der angegebenen Telefonnummer.
-                    </p>
-                  </div>
-                ) : null}
+
+                {/* Privacy reminder */}
+                <div className="rounded-md bg-gray-50 border border-gray-200 p-3 text-xs text-gray-600">
+                  <p>
+                    🔒 Bitte behandle diese Kontaktdaten vertraulich. Antworte innerhalb von <strong>24 Stunden</strong>, um eine gute Erfahrung für den/die Klient:in sicherzustellen.
+                  </p>
+                </div>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">Kontaktdaten werden geladen …</p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Bitte behandle diese Kontaktdaten vertraulich. Kontaktiere den/die Klient:in idealerweise innerhalb von 48&nbsp;Stunden.
-            </p>
           </div>
         ) : (
           <p className="text-sm">Vielen Dank! Du hast die Anfrage abgelehnt.</p>

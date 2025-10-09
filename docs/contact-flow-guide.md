@@ -29,14 +29,52 @@ POST /api/public/contact
 ### Message Templates
 **Booking:**
 ```
-Guten Tag [Name], ich möchte gerne einen Termin vereinbaren. 
-Ich suche Unterstützung bei [reason] und fand dein Profil sehr ansprechend.
+Guten Tag [Name],
+
+vielen Dank für deine Nachricht über Kaufmann Health.
+
+Gerne vereinbaren wir einen Termin. Bitte wähle einen der folgenden Zeitslots:
+
+Option 1: [Tag, Datum, Uhrzeit]
+Option 2: [Tag, Datum, Uhrzeit]
+Option 3: [Tag, Datum, Uhrzeit]
+
+Adresse meiner Praxis:
+[Straße, Hausnummer]
+[PLZ Stadt]
+
+ODER für Online-Termin:
+[Link zum Video-Call / Zoom / Skype]
+
+Bitte bestätige deinen Wunschtermin innerhalb von 48 Stunden. Falls ich nichts von dir höre, gebe ich die Slots wieder frei.
+
+Viele Grüße,
+[therapist_name]
 ```
 
 **Consultation:**
 ```
-Guten Tag [Name], ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren. 
-Ich suche Unterstützung bei [reason] und fand dein Profil sehr ansprechend.
+Guten Tag [Name],
+
+vielen Dank für deine Nachricht über Kaufmann Health.
+
+Gerne biete ich dir ein kostenloses 15-Minuten-Erstgespräch an. Bitte wähle einen der folgenden Zeitslots:
+
+Option 1: [Tag, Datum, Uhrzeit]
+Option 2: [Tag, Datum, Uhrzeit]
+Option 3: [Tag, Datum, Uhrzeit]
+
+Das Gespräch dient zum gegenseitigen Kennenlernen und findet statt:
+[Telefonisch ODER per Video-Call ODER in meiner Praxis]
+
+Adresse (falls vor Ort):
+[Straße, Hausnummer]
+[PLZ Stadt]
+
+Bitte bestätige deinen Wunschtermin innerhalb von 48 Stunden.
+
+Viele Grüße,
+[therapist_name]
 ```
 
 ### Therapist Notification

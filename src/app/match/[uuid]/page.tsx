@@ -240,6 +240,7 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
               patientReason={data.patientReason}
               contactMethod={data.contactMethod}
               therapistName={data.therapistName || undefined}
+              sessionPreference={data.sessionPreference}
             />
           </div>
         </CardContent>
@@ -247,5 +248,4 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
     </div>
   );
 }
-
 

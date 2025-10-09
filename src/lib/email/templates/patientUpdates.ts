@@ -22,7 +22,7 @@ export function renderPatientMatchFound(params: {
   const lines: string[] = [];
   lines.push('<h1 style="color:#0f172a; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Dein:e Therapeut:in wird sich melden</h1>');
   lines.push(`<p style=\"margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569;\">Hallo${patient ? ` ${escapeHtml(patient)}` : ''},</p>`);
-  lines.push('<p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569;">gute Neuigkeiten! Wir haben eine:n passende:n Therapeut:in für dich gefunden.</p>');
+  lines.push('<p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569;">gute Neuigkeiten! Deine Therapeut:in hat deine Anfrage angenommen. Ihr werden nun euren ersten gemeinsamen Termin vereinbaren.</p>');
 
   lines.push('<div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); padding:20px 24px; border-radius:12px; border:1px solid rgba(16, 185, 129, 0.3); margin: 20px 0; box-shadow: 0 2px 8px 0 rgba(16, 185, 129, 0.15);">');
   lines.push(`<p style=\"margin:0 0 8px; font-weight:700; color:#064e3b; font-size:18px;\">${therapist ? escapeHtml(therapist) : 'Dein:e Therapeut:in'}</p>`);
