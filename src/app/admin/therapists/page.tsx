@@ -679,7 +679,7 @@ export default function AdminTherapistsPage() {
                                     if (specFiles) {
                                       Array.from(specFiles).forEach((f) => fd.append('specialization_cert', f));
                                     }
-                                    const res = await fetch(`/api/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
+                                    const res = await fetch(`/api/public/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
                                     const json = await res.json();
                                     if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
                                     setMessage('Dokumente hochgeladen');
@@ -751,7 +751,7 @@ export default function AdminTherapistsPage() {
                                         let res: Response;
                                         if (detail.status === 'pending_verification') {
                                           // Public endpoint stores pending photo; requires no admin auth
-                                          res = await fetch(`/api/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
+                                          res = await fetch(`/api/public/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
                                         } else {
                                           // Admin-only endpoint publishes directly
                                           res = await fetch(`/api/admin/therapists/${detail.id}/photo`, { method: 'POST', body: fd, credentials: 'include' });

@@ -100,7 +100,7 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
         }
       }
 
-      const res = await fetch(`/api/therapists/${therapistId}/profile`, {
+      const res = await fetch(`/api/public/therapists/${therapistId}/profile`, {
         method: 'POST',
         body: form,
       });
@@ -161,11 +161,9 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
 
         {showGender && (
           <div className="space-y-2">
-            <Label htmlFor="gender">Wie möchtest du angeredet werden?</Label>
+            <Label htmlFor="gender">Was ist dein Geschlecht?</Label>
             <select id="gender" name="gender" className="border-input w-full rounded-md border bg-white px-3 py-2 text-sm" value={gender} onChange={(e) => setGender(e.target.value)}>
               <option value="">Bitte wählen</option>
-              <option value="female">Frau</option>
-              <option value="male">Herr</option>
               <option value="female">Weiblich</option>
               <option value="male">Männlich</option>
               <option value="diverse">Divers</option>

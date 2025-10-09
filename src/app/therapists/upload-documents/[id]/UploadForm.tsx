@@ -69,7 +69,7 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
     const formData = new FormData(e.currentTarget);
     setLoading(true);
     try {
-      const res = await fetch(`/api/therapists/${therapistId}/documents`, {
+      const res = await fetch(`/api/public/therapists/${therapistId}/documents`, {
         method: "POST",
         body: formData,
       });
