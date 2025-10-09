@@ -118,7 +118,7 @@ export function TherapistDirectory() {
   }, [therapists]);
 
   const filteredTherapists = useMemo(() => {
-    return therapists.filter(t => {
+    const filtered = therapists.filter(t => {
       // Filter by modality
       if (selectedModality !== 'all' && !t.modalities?.includes(selectedModality)) {
         return false;
@@ -134,6 +134,16 @@ export function TherapistDirectory() {
       }
 
       return true;
+    });
+
+    // Sort: therapists with photos first, then without photos
+    return filtered.sort((a, b) => {
+      const aHasPhoto = !!a.photo_url;
+      const bHasPhoto = !!b.photo_url;
+
+      if (aHasPhoto && !bHasPhoto) return -1;
+      if (!aHasPhoto && bHasPhoto) return 1;
+      return 0;
     });
   }, [therapists, selectedModality, onlineOnly]);
 

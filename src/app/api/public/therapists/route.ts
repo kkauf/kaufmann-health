@@ -23,7 +23,6 @@ export async function GET(request: NextRequest) {
       .from('therapists')
       .select('id, first_name, last_name, city, modalities, session_preferences, accepting_new, photo_url, status, metadata')
       .eq('status', 'verified')
-      .not('photo_url', 'is', null)
       .order('created_at', { ascending: false });
 
     if (error) {
