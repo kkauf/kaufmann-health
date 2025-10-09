@@ -231,13 +231,15 @@ export default function Home() {
         </section>
 
         {/* Therapy Modalities (Education) */}
-        <TherapyModalityExplanations />
+        <div className="mb-14 sm:mb-20 lg:mb-24">
+          <TherapyModalityExplanations />
+        </div>
 
         {/* Therapist Section (Secondary) */}
         {showTherapistSection && (
           <section
             aria-labelledby="therapists"
-            className="mb-4 relative overflow-hidden rounded-3xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-6 sm:p-8 lg:p-10 shadow-lg shadow-indigo-100/30"
+            className="mb-14 sm:mb-20 relative overflow-hidden rounded-3xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-6 sm:p-8 lg:p-10 shadow-lg shadow-indigo-100/30"
           >
             <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(35rem_18rem_at_40%_0%,rgba(99,102,241,0.09),transparent_65%)]" />
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr] lg:items-center">
