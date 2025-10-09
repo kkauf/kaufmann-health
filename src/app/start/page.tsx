@@ -17,7 +17,7 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }): Promise<Metadata> {
   const title = 'Kaufmann Health – Handverlesene Therapeut:innen (Termine in 24h)';
-  const description = 'So viel Arbeit an dir selbst, immer noch kein Fortschritt? Handverlesene Therapeut:innen. Traumasensibel. Termine in 24 Stunden.';
+  const description = 'Therapeuten finden in 24 Stunden. Persönlich ausgewählt für dich. Online oder vor Ort. Ohne Wartezeit.';
   const params = await searchParams;
   const v = (params?.v as string) || undefined;
   const base = buildLandingMetadata({

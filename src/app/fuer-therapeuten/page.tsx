@@ -12,21 +12,21 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "Neue Klient:innen für deine Praxis | Für Therapeut:innen | Kaufmann Health",
   description:
-    "Werde Teil unseres handverlesenen Netzwerks. Du zahlst nur eine Erfolgsgebühr, wenn Klient:innen über unsere Plattform zu dir finden.",
+    "Bewirb dich für unser kuratiertes Netzwerk körperorientierter Therapeut:innen. Erfolgsbasierte Vergütung - Details nach Aufnahme.",
   alternates: { canonical: "/fuer-therapeuten" },
   openGraph: {
     title: "Neue Klient:innen für deine Praxis | Für Therapeut:innen",
     description:
-      "Spezialisiertes, handverlesenes Therapeut:innen-Netzwerk mit erfolgsbasierter Vergütung. Keine Vorabkosten.",
+      "Kuratiertes Therapeut:innen-Netzwerk mit erfolgsbasierter Vergütung. Bewerbung erforderlich.",
   },
 };
 
 const faqItems = [
   {
     id: "fuer-therapeuten-faq-fee",
-    question: "Wie hoch ist die Erfolgsgebühr?",
+    question: "Wie funktioniert die Vergütung?",
     answer:
-      "Für jedes vermittelte Erstgespräch fallen für die ersten 10 Sitzungen jeweils 25% des Sitzungshonorars als Erfolgsgebühr an. Diese Gebühr fällt nur für Klient:innen an, die über unser Netzwerk zu dir finden. Nach 10 Sitzungen gehören die Klient:innen dir – es fallen keine weiteren Gebühren an. Kommt jemand nicht mehr, zahlst du nicht mehr.",
+      "Wir arbeiten erfolgsbasiert – du zahlst nur für tatsächlich vermittelte Klient:innen. Die genauen Konditionen besprechen wir nach erfolgreicher Aufnahme in unser Netzwerk. Keine Vorabkosten, keine Mindestlaufzeit.",
   },
   {
     id: "fuer-therapeuten-faq-who",
@@ -95,7 +95,7 @@ export default function TherapistsPage() {
             audience: { "@type": "Audience", audienceType: "HealthcareProfessional" },
             offers: {
               "@type": "Offer",
-              description: "Erfolgsbasierte Vergütung: 25% der ersten 10 Sitzungen, danach 0%",
+              description: "Kuratiertes Netzwerk mit erfolgsbasierter Vergütung",
             },
           }),
         }}
@@ -108,10 +108,10 @@ export default function TherapistsPage() {
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_50%_0%,rgba(99,102,241,0.1),transparent_70%),radial-gradient(30rem_16rem_at_100%_100%,rgba(14,165,233,0.08),transparent_65%)]" />
         <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-gradient-to-br from-indigo-200/20 to-transparent blur-3xl" />
         <h1 id="hero" className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
-          Neue Klient:innen für deine Praxis
+          Bewirb dich für unser kuratiertes Netzwerk
         </h1>
         <p className="mt-4 sm:mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-gray-700">
-          Werde Teil unseres handverlesenen Netzwerks. Du zahlst nur eine Erfolgsgebühr, wenn Klient:innen über unsere Plattform zu dir finden.
+          Wir suchen ausgewählte Heilpraktiker:innen für Psychotherapie mit Spezialisierung auf körperorientierte Verfahren. Erfolgsbasierte Vergütung – du zahlst nur für tatsächlich vermittelte Klient:innen.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm sm:text-base text-gray-700" aria-label="Vertrauen">
           <span className="inline-flex items-center gap-2">
@@ -138,7 +138,7 @@ export default function TherapistsPage() {
             className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 transition-all duration-200 hover:scale-[1.02]"
           >
             <CtaLink href="#apply-form" eventType="cta_click" eventId="fuer-therapeuten-hero-apply">
-              In Netzwerk aufnehmen lassen →
+              Jetzt bewerben →
             </CtaLink>
           </Button>
         </div>
@@ -192,7 +192,7 @@ export default function TherapistsPage() {
               <TrendingUp className="h-5 w-5" />
             </div>
             <h3 className="mt-4 text-xl font-semibold text-gray-900">Erfolgsbasiert</h3>
-            <p className="mt-2 text-sm leading-relaxed text-gray-600">25% für die ersten 10 Sitzungen</p>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">Details nach Aufnahme</p>
           </div>
           <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 p-5 sm:p-6">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
@@ -200,7 +200,7 @@ export default function TherapistsPage() {
               <Shield className="h-5 w-5" />
             </div>
             <h3 className="mt-4 text-xl font-semibold text-gray-900">Faire Konditionen</h3>
-            <p className="mt-2 text-sm leading-relaxed text-gray-600">Danach 0% – Klient:innen gehören dir</p>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">Transparente Konditionen – keine Überraschungen</p>
           </div>
           <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 p-5 sm:p-6">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
@@ -215,14 +215,14 @@ export default function TherapistsPage() {
 
       {/* How it works */}
       <section aria-labelledby="how" className="mt-14 sm:mt-20 lg:mt-24">
-        <h2 id="how" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">So funktioniert unser Empfehlungsservice</h2>
+        <h2 id="how" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">So funktioniert die Aufnahme</h2>
         <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 md:grid-cols-2">
           <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md p-5 sm:p-6 pt-8">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 rounded-t-xl" />
             <div className="absolute -top-3 -left-3 h-8 w-8 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 text-white flex items-center justify-center text-sm font-bold shadow-lg">1</div>
-            <h3 className="text-lg font-semibold text-gray-900">Kostenlose Aufnahme</h3>
-            <p className="mt-2 text-sm leading-relaxed text-gray-700">Wir prüfen deine Qualifikationen und nehmen dich in unser Netzwerk auf</p>
+            <h3 className="text-lg font-semibold text-gray-900">Bewerbung & Prüfung</h3>
+            <p className="mt-2 text-sm leading-relaxed text-gray-700">Wir prüfen deine Qualifikationen und Spezialisierung sorgfältig</p>
           </div>
           <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md p-5 sm:p-6 pt-8">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
@@ -242,8 +242,8 @@ export default function TherapistsPage() {
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 rounded-t-xl" />
             <div className="absolute -top-3 -left-3 h-8 w-8 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 text-white flex items-center justify-center text-sm font-bold shadow-lg">4</div>
-            <h3 className="text-lg font-semibold text-gray-900">Erfolgsbasierte Gebühr</h3>
-            <p className="mt-2 text-sm leading-relaxed text-gray-700">Nur wenn Klient:innen über unser Netzwerk zu dir finden, zahlst du 25% der ersten 10 Sitzungen</p>
+            <h3 className="text-lg font-semibold text-gray-900">Erfolgsbasierte Vergütung</h3>
+            <p className="mt-2 text-sm leading-relaxed text-gray-700">Du zahlst nur für tatsächlich vermittelte Klient:innen – faire, transparente Konditionen</p>
           </div>
         </div>
       </section>
@@ -308,8 +308,8 @@ export default function TherapistsPage() {
             <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/60 p-3 text-slate-700 shadow-sm w-fit">
               <Shield className="h-5 w-5" />
             </div>
-            <h3 className="mt-4 text-xl font-semibold text-gray-900">Faire Konditionen</h3>
-            <p className="mt-2 text-sm leading-relaxed text-gray-600">Nach 10 Sitzungen gehören Klient:innen komplett dir</p>
+            <h3 className="mt-4 text-xl font-semibold text-gray-900">Flexible Teilnahme</h3>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">Keine Mindestlaufzeit, transparente Bedingungen</p>
           </div>
           <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 p-5 sm:p-6">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
@@ -380,10 +380,10 @@ export default function TherapistsPage() {
           <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-200/30 to-transparent blur-3xl" />
           <div className="pointer-events-none absolute -left-12 -bottom-12 h-48 w-48 rounded-full bg-gradient-to-br from-cyan-200/20 to-transparent blur-3xl" />
           <h2 id="apply" className="text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent leading-tight">
-            Bereit für mehr Sichtbarkeit?
+            Bereit dich zu bewerben?
           </h2>
           <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-700">
-            Werde jetzt Teil unseres handverlesenen Netzwerks für körperorientierte Psychotherapie.
+            Bewirb dich jetzt für unser kuratiertes Netzwerk körperorientierter Therapeut:innen. Wir prüfen jede Bewerbung sorgfältig.
           </p>
           <div className="mt-8 sm:mt-10">
             <TherapistApplicationForm />

@@ -12,13 +12,13 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.kaufmann-health
 
 export const metadata: Metadata = {
   title: "Therapeut:innen-Empfehlung – Sorgfältig geprüfte Therapeut:innen in deiner Nähe | Kaufmann Health",
-  description: "Handverlesene Therapeut:innen-Empfehlungen für körperorientierte Psychotherapie (NARM, Hakomi, Somatic Experiencing). Direkter Kontakt, transparente Auswahl, ohne Wartezeit.",
+  description: "Therapeuten finden in 24 Stunden. Persönlich ausgewählt für dich. Online oder vor Ort. Ohne Wartezeit.",
   alternates: {
     canonical: `${baseUrl}/`,
   },
   openGraph: {
     title: "Finde geprüfte körperorientierte Trauma-Therapeut:innen | Kaufmann Health",
-    description: "Handverlesene Therapeut:innen-Empfehlungen. Persönlich ausgewählt und geprüft – für eine Empfehlung, der du vertrauen kannst.",
+    description: "Therapeuten finden in 24 Stunden. Persönlich ausgewählt für dich. Online oder vor Ort. Ohne Wartezeit.",
     url: `${baseUrl}/`,
     siteName: "Kaufmann Health",
     locale: "de_DE",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Finde geprüfte körperorientierte Trauma-Therapeut:innen",
-    description: "Handverlesene Therapeut:innen-Empfehlungen. Persönlich ausgewählt und geprüft.",
+    description: "Therapeuten finden in 24 Stunden. Persönlich ausgewählt für dich. Online oder vor Ort. Ohne Wartezeit.",
     images: [`${baseUrl}/images/hero.jpg`],
   },
 };
@@ -243,12 +243,10 @@ export default function Home() {
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr] lg:items-center">
               <div>
                 <h2 id="therapists" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
-                  Neue Klienten für deine Praxis
+                  Bewirb dich für unser Therapeuten-Netzwerk
                 </h2>
                 <p className="mt-3 sm:mt-4 text-base sm:text-lg leading-relaxed text-gray-700">
-                  Werde Teil unseres handverlesenen Netzwerks. Du zahlst
-                  nur eine Erfolgsgebühr, wenn Klient:innen über unsere Plattform zu
-                  dir finden.
+                  Wir suchen ausgewählte Heilpraktiker:innen für Psychotherapie mit Spezialisierung auf körperorientierte Verfahren. Erfolgsbasierte Vergütung.
                 </p>
               </div>
               <div className="justify-self-start lg:justify-self-end">
@@ -260,7 +258,7 @@ export default function Home() {
                   className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold shadow-lg shadow-indigo-600/20 hover:shadow-xl hover:shadow-indigo-600/30 transition-all duration-200 hover:scale-[1.02] bg-indigo-600 hover:bg-indigo-700"
                 >
                   <Link href="/fuer-therapeuten">
-                    In Netzwerk aufnehmen lassen →
+                    Mehr erfahren →
                   </Link>
                 </Button>
               </div>

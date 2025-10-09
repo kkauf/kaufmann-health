@@ -21,7 +21,7 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health
 
 export const metadata = async ({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }): Promise<Metadata> => {
   const title = 'Therapeut:innen finden – Heilpraktiker:in für Psychotherapie | Kaufmann Health';
-  const description = 'Handverlesene Heilpraktiker:innen (Psychotherapie). Termine diese Woche. 80–120€ pro Sitzung. 100% diskret ohne Krankenkasse.';
+  const description = 'Therapeuten finden in 24 Stunden. Persönlich ausgewählt für dich. Online Therapie oder Berlin. Ohne Wartezeit.';
   const v = (searchParams?.v as string) || undefined;
   return buildLandingMetadata({
     baseUrl: baseUrl,

@@ -399,12 +399,8 @@ export default function TherapistApplicationForm() {
       <div className="rounded-lg border bg-amber-50 p-4 text-sm">
         <p className="text-gray-800">
           Mit dem Klick auf „Jetzt registrieren“ akzeptierst du unsere{' '}
-          <a href="/therapist-terms" target="_blank" className="underline font-medium">
-            25%-Provisionsvereinbarung
-          </a>{' '}
-          und{' '}
           <a href="/agb" target="_blank" className="underline font-medium">
-            Allgemeinen Geschäftsbedingungen.
+            Allgemeinen Geschäftsbedingungen
           </a>.
         </p>
       </div>
