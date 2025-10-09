@@ -43,6 +43,7 @@ vi.mock('@/lib/supabase-server', () => {
                   const data: any = {};
                   if (columns.includes('name')) data.name = p.name ?? null;
                   if (columns.includes('email')) data.email = p.email ?? null;
+                  if (columns.includes('phone_number')) data.phone_number = p.phone ?? null;
                   if (columns.includes('phone')) data.phone = p.phone ?? null;
                   data.id = p.id;
                   return { data, error: null } as const;
@@ -54,6 +55,7 @@ vi.mock('@/lib/supabase-server', () => {
                   const out: any = { id: p.id };
                   if (columns.includes('name')) out.name = p.name ?? null;
                   if (columns.includes('email')) out.email = p.email ?? null;
+                  if (columns.includes('phone_number')) out.phone_number = p.phone ?? null;
                   if (columns.includes('phone')) out.phone = p.phone ?? null;
                   return out;
                 });

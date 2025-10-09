@@ -31,9 +31,9 @@ POST /api/public/contact
 ```
 Guten Tag [Name],
 
-vielen Dank für deine Nachricht über Kaufmann Health.
+vielen Dank für deine Nachricht über Kaufmann Health. Ich freue mich, von dir zu hören!
 
-Gerne vereinbaren wir einen Termin. Bitte wähle einen der folgenden Zeitslots:
+Gerne vereinbaren wir einen Termin. Ich biete dir folgende Zeitslots an:
 
 Option 1: [Tag, Datum, Uhrzeit]
 Option 2: [Tag, Datum, Uhrzeit]
@@ -46,7 +46,9 @@ Adresse meiner Praxis:
 ODER für Online-Termin:
 [Link zum Video-Call / Zoom / Skype]
 
-Bitte bestätige deinen Wunschtermin innerhalb von 48 Stunden. Falls ich nichts von dir höre, gebe ich die Slots wieder frei.
+Ich reserviere diese Termine für dich für die nächsten 48 Stunden. Da auch andere Klient:innen auf einen Platz warten, wäre ich dir dankbar, wenn du mir bis dahin kurz Bescheid geben könntest, welcher Termin für dich passt – oder ob keiner davon funktioniert, dann finden wir eine andere Lösung.
+
+Für Rückfragen stehe ich dir gerne zur Verfügung.
 
 Viele Grüße,
 [therapist_name]
@@ -56,22 +58,24 @@ Viele Grüße,
 ```
 Guten Tag [Name],
 
-vielen Dank für deine Nachricht über Kaufmann Health.
+vielen Dank für deine Nachricht über Kaufmann Health. Ich freue mich, von dir zu hören!
 
-Gerne biete ich dir ein kostenloses 15-Minuten-Erstgespräch an. Bitte wähle einen der folgenden Zeitslots:
+Gerne biete ich dir ein kostenloses 15-Minuten-Erstgespräch an. Ich biete dir folgende Zeitslots an:
 
 Option 1: [Tag, Datum, Uhrzeit]
 Option 2: [Tag, Datum, Uhrzeit]
 Option 3: [Tag, Datum, Uhrzeit]
 
-Das Gespräch dient zum gegenseitigen Kennenlernen und findet statt:
+Das Gespräch findet statt:
 [Telefonisch ODER per Video-Call ODER in meiner Praxis]
 
 Adresse (falls vor Ort):
 [Straße, Hausnummer]
 [PLZ Stadt]
 
-Bitte bestätige deinen Wunschtermin innerhalb von 48 Stunden.
+Ich reserviere diese Termine für dich für die nächsten 48 Stunden. Da auch andere interessierte Personen auf einen Platz warten, wäre ich dir dankbar, wenn du mir bis dahin kurz Bescheid geben könntest – gerne auch, falls keiner der Termine passt, dann schauen wir gemeinsam nach Alternativen.
+
+Für Rückfragen stehe ich dir gerne zur Verfügung.
 
 Viele Grüße,
 [therapist_name]

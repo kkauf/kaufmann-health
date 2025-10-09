@@ -76,12 +76,12 @@ export async function POST(req: Request) {
       try {
         const { data: patientContact } = await supabaseServer
           .from('people')
-          .select('name, email, phone')
+          .select('name, email, phone_number')
           .eq('id', m.patient_id)
           .single();
         if (patientContact) {
-          const c = patientContact as unknown as { name?: string | null; email?: string | null; phone?: string | null };
-          return { name: c.name ?? null, email: c.email ?? null, phone: c.phone ?? null } as const;
+          const c = patientContact as unknown as { name?: string | null; email?: string | null; phone_number?: string | null };
+          return { name: c.name ?? null, email: c.email ?? null, phone: c.phone_number ?? null } as const;
         }
       } catch (e) {
         // best-effort; ignore errors

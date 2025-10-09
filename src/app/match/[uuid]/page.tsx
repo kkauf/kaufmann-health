@@ -110,16 +110,16 @@ async function getData(uuid: string) {
     try {
       const { data: patientContact } = await supabaseServer
         .from('people')
-        .select('name, email, phone')
+        .select('name, email, phone_number')
         .eq('id', m.patient_id)
         .single();
-      type PatientContactRow = { name?: string | null; email?: string | null; phone?: string | null };
+      type PatientContactRow = { name?: string | null; email?: string | null; phone_number?: string | null };
       const pc = (patientContact as unknown) as PatientContactRow | null;
       if (pc) {
         contact = {
           name: pc.name ?? null,
           email: pc.email ?? null,
-          phone: pc.phone ?? null,
+          phone: pc.phone_number ?? null,
         };
       }
     } catch {}

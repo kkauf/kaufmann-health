@@ -123,7 +123,7 @@ export function Actions({
     const name = contact.name || patientName || 'dort';
     const firstName = name.split(' ')[0] || name;
     
-    let body = `Guten Tag ${firstName},\n\nvielen Dank für deine Nachricht über Kaufmann Health.\n\n`;
+    let body = `Guten Tag ${firstName},\n\nvielen Dank für deine Nachricht über Kaufmann Health. Ich freue mich, von dir zu hören!\n\n`;
     
     // Determine if online based on sessionPreference
     const isOnline = sessionPreference?.toLowerCase().includes('online') && !sessionPreference?.toLowerCase().includes('vor ort');
@@ -131,7 +131,7 @@ export function Actions({
     const isBoth = sessionPreference?.toLowerCase().includes('online') && sessionPreference?.toLowerCase().includes('vor ort');
     
     if (contactType === 'booking') {
-      body += `Gerne vereinbaren wir einen Termin. Bitte wähle einen der folgenden Zeitslots:\n\n`;
+      body += `Gerne vereinbaren wir einen Termin. Ich biete dir folgende Zeitslots an:\n\n`;
       body += `Option 1: [Tag, Datum, Uhrzeit]\n`;
       body += `Option 2: [Tag, Datum, Uhrzeit]\n`;
       body += `Option 3: [Tag, Datum, Uhrzeit]\n\n`;
@@ -145,9 +145,9 @@ export function Actions({
         body += `Adresse meiner Praxis:\n[Straße, Hausnummer]\n[PLZ Stadt]\n\nODER für Online-Termin:\n[Link zum Video-Call / Zoom / Skype]\n\n`;
       }
       
-      body += `Bitte bestätige deinen Wunschtermin innerhalb von 48 Stunden. Falls ich nichts von dir höre, gebe ich die Slots wieder frei.\n\n`;
+      body += `Ich reserviere diese Termine für dich für die nächsten 48 Stunden. Da auch andere Klient:innen auf einen Platz warten, wäre ich dir dankbar, wenn du mir bis dahin kurz Bescheid geben könntest, welcher Termin für dich passt – oder ob keiner davon funktioniert, dann finden wir eine andere Lösung.\n\nFür Rückfragen stehe ich dir gerne zur Verfügung.\n\n`;
     } else if (contactType === 'consultation') {
-      body += `Gerne biete ich dir ein kostenloses 15-Minuten-Erstgespräch an. Bitte wähle einen der folgenden Zeitslots:\n\n`;
+      body += `Gerne biete ich dir ein kostenloses 15-Minuten-Erstgespräch an. Ich biete dir folgende Zeitslots an:\n\n`;
       body += `Option 1: [Tag, Datum, Uhrzeit]\n`;
       body += `Option 2: [Tag, Datum, Uhrzeit]\n`;
       body += `Option 3: [Tag, Datum, Uhrzeit]\n\n`;
@@ -161,13 +161,13 @@ export function Actions({
         body += `Das Gespräch findet statt:\n[Telefonisch ODER per Video-Call ODER in meiner Praxis]\n\nAdresse (falls vor Ort):\n[Straße, Hausnummer]\n[PLZ Stadt]\n\n`;
       }
       
-      body += `Bitte bestätige deinen Wunschtermin innerhalb von 48 Stunden.\n\n`;
+      body += `Ich reserviere diese Termine für dich für die nächsten 48 Stunden. Da auch andere interessierte Personen auf einen Platz warten, wäre ich dir dankbar, wenn du mir bis dahin kurz Bescheid geben könntest – gerne auch, falls keiner der Termine passt, dann schauen wir gemeinsam nach Alternativen.\n\nFür Rückfragen stehe ich dir gerne zur Verfügung.\n\n`;
     } else {
-      body += `Gerne können wir einen Termin vereinbaren. Bitte wähle einen der folgenden Zeitslots:\n\n`;
+      body += `Gerne können wir einen Termin vereinbaren. Ich biete dir folgende Zeitslots an:\n\n`;
       body += `Option 1: [Tag, Datum, Uhrzeit]\n`;
       body += `Option 2: [Tag, Datum, Uhrzeit]\n`;
       body += `Option 3: [Tag, Datum, Uhrzeit]\n\n`;
-      body += `Bitte bestätige innerhalb von 48 Stunden.\n\n`;
+      body += `Ich reserviere diese Termine für dich für 48 Stunden. Bitte gib mir bis dahin kurz Bescheid, welcher passt.\n\nFür Rückfragen stehe ich dir gerne zur Verfügung.\n\n`;
     }
     
     body += `Viele Grüße`;
@@ -255,7 +255,7 @@ export function Actions({
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-indigo-600 font-bold">•</span>
-                      <span><strong>Frist:</strong> Klient:in muss innerhalb von 48h bestätigen</span>
+                      <span><strong>48h-Reservierung:</strong> Empathisch formulieren („Ich reserviere diese Termine für dich…"), Flexibilität anbieten</span>
                     </li>
                   </ul>
                   {contact.phone && contact.email ? (
