@@ -36,55 +36,63 @@ export function renderTherapistNotification(params: TherapistNotificationParams)
   const lines: string[] = [];
   // Header based on type
   if (params.type === 'selection') {
-    lines.push(`<p style=\"margin:0 0 12px;\">Hallo${tName ? ` ${esc(tName)}` : ''},</p>`);
-    lines.push('<div style="background:#10B981; color:white; padding:16px; border-radius:8px; margin: 0 0 16px;">');
-    lines.push('<h2 style="margin:0 0 8px; font-size:20px;">Ein:e Klient:in hat dich ausgewählt</h2>');
-    lines.push('<p style="margin:0;">Bitte sieh dir die Anfrage kurz an und gib deine Rückmeldung.</p>');
+    lines.push('<h1 style="color:#0f172a; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Ein:e Klient:in hat dich ausgewählt</h1>');
+    lines.push(`<p style=\"margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569;\">Hallo${tName ? ` ${esc(tName)}` : ''},</p>`);
+    lines.push('<div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); padding:20px 24px; border-radius:12px; border:1px solid rgba(16, 185, 129, 0.3); margin:0 0 20px; box-shadow: 0 2px 8px 0 rgba(16, 185, 129, 0.15);">');
+    lines.push('<p style="margin:0; font-size:17px; line-height:1.65; color:#064e3b; font-weight:600;">Bitte sieh dir die Anfrage kurz an und gib deine Rückmeldung.</p>');
     lines.push('</div>');
   } else if (params.type === 'reminder') {
-    lines.push(`<p style=\"margin:0 0 12px;\">Hallo${tName ? ` ${esc(tName)}` : ''},</p>`);
-    lines.push('<div style="background:#F59E0B; color:white; padding:16px; border-radius:8px; margin: 0 0 16px;">');
-    lines.push('<h2 style="margin:0 0 8px; font-size:20px;">⚠️ Erinnerung: Bitte Rückmeldung geben</h2>');
-    lines.push('<p style="margin:0;">Eine von Klient:in getroffene Auswahl wartet noch auf deine Antwort.</p>');
+    lines.push('<h1 style="color:#0f172a; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">⚠️ Erinnerung: Bitte Rückmeldung geben</h1>');
+    lines.push(`<p style=\"margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569;\">Hallo${tName ? ` ${esc(tName)}` : ''},</p>`);
+    lines.push('<div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding:20px 24px; border-radius:12px; border:1px solid rgba(251, 191, 36, 0.3); margin:0 0 20px; box-shadow: 0 2px 4px 0 rgba(251, 191, 36, 0.1);">');
+    lines.push('<p style="margin:0; font-size:17px; line-height:1.65; color:#78350f; font-weight:600;">Eine von Klient:in getroffene Auswahl wartet noch auf deine Antwort.</p>');
     lines.push('</div>');
   } else {
     // outreach
-    lines.push(`<p style=\"margin:0 0 12px;\">Hallo${tName ? ` ${esc(tName)}` : ''},</p>`);
-    lines.push('<h2 style="margin:0 0 8px; font-size:20px;">Neue Klientenanfrage</h2>');
+    lines.push('<h1 style="color:#0f172a; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Neue Klientenanfrage</h1>');
+    lines.push(`<p style=\"margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569;\">Hallo${tName ? ` ${esc(tName)}` : ''},</p>`);
     // EARTH-205: Show request type if available
     if (contactType) {
       const requestLabel = contactType === 'booking' ? 'Direktbuchung' : 'Kostenloses Erstgespräch (15 Min)';
-      lines.push(`<p style=\"margin:0 0 8px; font-weight:600; color:#059669;\">${esc(requestLabel)}</p>`);
+      lines.push('<div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); padding:12px 16px; border-radius:8px; border:1px solid rgba(16, 185, 129, 0.3); margin:0 0 16px; display:inline-block;">');
+      lines.push(`<p style=\"margin:0; font-weight:700; color:#064e3b; font-size:15px;\">${esc(requestLabel)}</p>`);
+      lines.push('</div>');
     }
-    lines.push(`<p style=\"margin:0 0 12px;\">Bitte prüfe die Details und gib deine Rückmeldung. Der Link ist aus Sicherheitsgründen nur für ${expiresHours} Stunden gültig.</p>`);
+    lines.push(`<p style=\"margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569;\">Bitte prüfe die Details und gib deine Rückmeldung. Der Link ist aus Sicherheitsgründen nur für ${expiresHours} Stunden gültig.</p>`);
   }
 
   // Minimal, non-PII context
   const details: string[] = [];
-  if (issue) details.push(`<li><strong>Anliegen:</strong> ${esc(issue)}</li>`);
-  if (city) details.push(`<li><strong>Ort:</strong> ${esc(city)}</li>`);
-  if (format) details.push(`<li><strong>Format:</strong> ${format === 'online' ? 'Online' : 'Vor Ort'}</li>`);
+  if (issue) details.push(`<li style="margin:8px 0;"><strong style="font-weight:700; color:#0f172a;">Anliegen:</strong> <span style="color:#475569;">${esc(issue)}</span></li>`);
+  if (city) details.push(`<li style="margin:8px 0;"><strong style="font-weight:700; color:#0f172a;">Ort:</strong> <span style="color:#475569;">${esc(city)}</span></li>`);
+  if (format) details.push(`<li style="margin:8px 0;"><strong style="font-weight:700; color:#0f172a;">Format:</strong> <span style="color:#475569;">${format === 'online' ? 'Online' : 'Vor Ort'}</span></li>`);
   if (details.length) {
-    lines.push('<h3 style="margin:12px 0 8px; font-size:16px;">Anfrage‑Details</h3>');
-    lines.push('<ul style="margin:0 0 12px 16px; padding:0;">');
+    lines.push('<div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding:20px 24px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); margin: 20px 0; box-shadow: 0 2px 4px 0 rgba(100, 116, 139, 0.05);">');
+    lines.push('<h3 style="margin:0 0 12px; color:#0f172a; font-size:18px; font-weight:700;">Anfrage‑Details</h3>');
+    lines.push('<ul style="margin:0 0 0 20px; padding:0; font-size:15px; line-height:1.65;">');
     lines.push(details.join(''));
     lines.push('</ul>');
+    lines.push('</div>');
   }
 
   // EARTH-205: Include patient message if provided
   if (patientMessage) {
-    lines.push('<h3 style="margin:12px 0 8px; font-size:16px;">Nachricht vom Klienten</h3>');
-    lines.push('<div style="background:#F9FAFB; border:1px solid #E5E7EB; border-radius:8px; padding:12px; margin:0 0 12px;">');
-    lines.push(`<p style=\"margin:0; white-space:pre-wrap;\">${esc(patientMessage)}</p>`);
+    lines.push('<div style="margin:20px 0;">');
+    lines.push('<h3 style="margin:0 0 12px; color:#0f172a; font-size:18px; font-weight:700;">Nachricht vom Klienten</h3>');
+    lines.push('<div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border:1px solid rgba(226, 232, 240, 0.8); border-radius:12px; padding:16px 20px; box-shadow: 0 2px 4px 0 rgba(100, 116, 139, 0.05);">');
+    lines.push(`<p style=\"margin:0; white-space:pre-wrap; color:#475569; font-size:15px; line-height:1.65;\">${esc(patientMessage)}</p>`);
+    lines.push('</div>');
     lines.push('</div>');
   }
 
   // CTA
-  lines.push('<div style="margin:20px 0; text-align:center;">');
+  lines.push('<div style="margin:24px 0; text-align:center;">');
   lines.push(renderButton(params.magicUrl, params.type === 'outreach' ? 'Anfrage ansehen' : 'Anfrage ansehen und annehmen'));
   lines.push('</div>');
 
-  lines.push('<p style="color:#6B7280; font-size:12px; margin-top:12px;">Kontaktdaten werden aus Datenschutzgründen erst nach Annahme angezeigt.</p>');
+  lines.push('<div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding:16px 20px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); margin-top:20px;">');
+  lines.push('<p style="color:#64748b; font-size:14px; margin:0; line-height:1.6;">Kontaktdaten werden aus Datenschutzgründen erst nach Annahme angezeigt.</p>');
+  lines.push('</div>');
 
   const title = params.type === 'outreach' ? 'Neue Klientenanfrage' : 'Neue Auswahl durch Klient:in';
   const html = renderLayout({ title, contentHtml: lines.join('') });

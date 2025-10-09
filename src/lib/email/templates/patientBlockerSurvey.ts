@@ -22,25 +22,32 @@ export function renderPatientBlockerSurvey(params: {
 
   const link = (reason: string) => `${BASE_URL}/api/feedback?match=${encodeURIComponent(matchId)}&reason=${encodeURIComponent(reason)}`;
 
-  const choice = (href: string, label: string, style?: string) =>
-    `<a href="${href}" style="display:block; padding:12px; margin:8px 0; background:${style || '#F3F4F6'}; text-decoration:none; color:#111827; border-radius:6px;">${label}</a>`;
+  const choice = (href: string, label: string, isHighlight?: boolean) => {
+    const bgStyle = isHighlight
+      ? 'background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border:1px solid rgba(239, 68, 68, 0.3);'
+      : 'background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border:1px solid rgba(226, 232, 240, 0.8);';
+    const textColor = isHighlight ? '#991b1b' : '#0f172a';
+    return `<a href="${href}" style="display:block; padding:14px 16px; margin:10px 0; ${bgStyle} text-decoration:none; color:${textColor}; border-radius:8px; font-weight:600; font-size:15px; transition: all 0.2s; box-shadow: 0 2px 4px 0 rgba(100, 116, 139, 0.05);">${label}</a>`;
+  };
 
-  const header = `<h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Kurze Frage zu deiner Therapie‑Anfrage</h1>`;
-  const greeting = `<p style="margin:0 0 12px;">Hallo${patient ? ` ${escapeHtml(patient)}` : ''},</p>`;
+  const header = `<h1 style="color:#0f172a; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Kurze Frage zu deiner Therapie‑Anfrage</h1>`;
+  const greeting = `<p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569;">Hallo${patient ? ` ${escapeHtml(patient)}` : ''},</p>`;
   const intro = `
-    <p style="margin:0 0 12px;">Du hast vor einer Woche${therapist ? ` ${escapeHtml(therapist)}` : ''} als Therapeut:in ausgewählt, aber wir sehen, dass noch kein Ersttermin stattgefunden hat.</p>
-    <p style="margin:0 0 8px;"><strong>Was hält dich aktuell davon ab?</strong> (1 Klick genügt)</p>
+    <p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569;">Du hast vor einer Woche${therapist ? ` ${escapeHtml(therapist)}` : ''} als Therapeut:in ausgewählt, aber wir sehen, dass noch kein Ersttermin stattgefunden hat.</p>
+    <p style="margin:0 0 16px; font-size:17px; font-weight:700; color:#0f172a;">Was hält dich aktuell davon ab? (1 Klick genügt)</p>
   `;
 
   const choices = [
     choice(link('scheduling'), '📅 Terminfindung schwierig'),
     choice(link('cost'), '💰 Kosten doch zu hoch'),
     choice(link('changed_mind'), '🤔 Habe es mir anders überlegt'),
-    choice(link('no_contact'), '⚠️ Therapeut:in hat sich nicht gemeldet', '#FEE2E2'),
+    choice(link('no_contact'), '⚠️ Therapeut:in hat sich nicht gemeldet', true),
     choice(link('other'), '✏️ Anderer Grund (bitte antworte auf diese E‑Mail)')
   ].join('');
 
-  const footer = `<p style=\"margin:12px 0 0; color:#6B7280; font-size:12px;\">Deine Rückmeldung hilft uns, den Service für dich zu verbessern.</p>`;
+  const footer = `<div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding:16px 20px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); margin-top:24px;">
+    <p style="color:#64748b; font-size:14px; margin:0; line-height:1.6;">Deine Rückmeldung hilft uns, den Service für dich zu verbessern.</p>
+  </div>`;
 
   const contentHtml = [header, greeting, intro, choices, footer].join('');
 

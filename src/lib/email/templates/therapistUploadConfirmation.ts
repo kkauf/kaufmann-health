@@ -16,20 +16,20 @@ export function renderTherapistUploadConfirmation(params: {
   const name = (params.name || '').trim();
 
   const contentHtml = `
-    <h1 style="color:#1A365D; font-size:22px; margin:0 0 12px;">Profil erhalten – wird geprüft</h1>
-    <p style="margin:0 0 12px;">Hi${name ? ` ${escapeHtml(name)}` : ''},</p>
-    <p style="margin:0 0 12px;">Dein Profil und deine Dokumente sind bei uns eingegangen und werden geprüft.</p>
+    <h1 style="color:#0f172a; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Profil erhalten – wird geprüft</h1>
+    <p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569;">Hi${name ? ` ${escapeHtml(name)}` : ''},</p>
+    <p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569;">Dein Profil und deine Dokumente sind bei uns eingegangen und werden geprüft.</p>
 
-    <div style="background-color:#F9FAFB; padding:16px; border-radius:8px; border:1px solid #E5E7EB; margin: 12px 0;">
-      <p style="margin:0 0 4px;">Erhalten:</p>
-      <ul style="margin:8px 0 0 18px; color:#374151;">
-        <li>✓ Qualifikationsnachweise</li>
-        <li>✓ Profilfoto</li>
-        <li>✓ Therapeutischer Ansatz</li>
+    <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding:20px 24px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); margin: 20px 0; box-shadow: 0 2px 4px 0 rgba(100, 116, 139, 0.05);">
+      <p style="margin:0 0 12px; color:#0f172a; font-size:17px; font-weight:700;">Erhalten:</p>
+      <ul style="margin:0 0 0 20px; color:#475569; font-size:15px; line-height:1.65;">
+        <li style="margin:8px 0;">✓ Qualifikationsnachweise</li>
+        <li style="margin:8px 0;">✓ Profilfoto</li>
+        <li style="margin:8px 0;">✓ Therapeutischer Ansatz</li>
       </ul>
     </div>
 
-    <p style="margin:0 0 12px;">Du hörst binnen 2 Werktagen von uns!</p>
+    <p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569;">Du hörst binnen 2 Werktagen von uns!</p>
   `;
 
   return {
