@@ -119,7 +119,7 @@ export function Actions({
   const generateMailto = () => {
     if (!contact?.email) return null;
     
-    const subject = encodeURIComponent('Re: Ihre Anfrage bei Kaufmann Health');
+    const subject = encodeURIComponent('Re: Deine Anfrage bei Kaufmann Health');
     const name = contact.name || patientName || 'dort';
     const firstName = name.split(' ')[0] || name;
     

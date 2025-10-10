@@ -214,9 +214,9 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Ihre persönlichen Empfehlungen</h1>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Deine persönlichen Empfehlungen</h1>
         <p className="mt-2 text-gray-600">
-          Katherine und Konstantin haben basierend auf Ihrer Anfrage {therapistsWithQuality.length} Therapeut:innen für Sie ausgewählt.
+          Katherine und Konstantin haben basierend auf deiner Anfrage {therapistsWithQuality.length} Therapeut:innen für dich ausgewählt.
         </p>
       </div>
 
@@ -229,11 +229,11 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         <ul className="space-y-2 text-sm text-gray-700">
           <li className="flex items-start gap-2">
             <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-            <span>Wir haben uns Ihrer Anfrage persönlich angenommen.</span>
+            <span>Wir haben uns deiner Anfrage persönlich angenommen.</span>
           </li>
           <li className="flex items-start gap-2">
             <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-            <span>Auf Basis Ihrer Präferenzen ausgewählt (z. B. online oder vor Ort).</span>
+            <span>Auf Basis deiner Präferenzen ausgewählt (z. B. online oder vor Ort).</span>
           </li>
           <li className="flex items-start gap-2">
             <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
@@ -339,20 +339,6 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
                   </p>
                 )}
 
-                {/* Why this recommendation (only for top match) */}
-                {isTopMatch && t.matchQuality.isPerfect && (
-                  <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-xs text-emerald-900">
-                    <p className="font-semibold">Warum diese Empfehlung?</p>
-                    <p className="mt-1">Perfekte Übereinstimmung bei Geschlecht, Ort und Therapiemethode.</p>
-                  </div>
-                )}
-                {isTopMatch && !t.matchQuality.isPerfect && t.matchQuality.reasons.length < therapistsWithQuality[1]?.matchQuality?.reasons?.length && (
-                  <div className="mb-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
-                    <p className="font-semibold">Warum diese Empfehlung?</p>
-                    <p className="mt-1">Beste Übereinstimmung in Ihrer Auswahl.</p>
-                  </div>
-                )}
-
                 {/* Action buttons */}
                 <div className="mt-auto flex flex-col gap-2 pt-4">
                   <Button
@@ -399,7 +385,12 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           open={!!modalFor}
           onClose={() => setModalFor(null)}
           onSuccess={handleSuccess}
-          preAuth={{ uuid, patientName: data?.patient?.name || undefined, defaultReason: data?.patient?.issue || undefined }}
+          preAuth={{
+            uuid,
+            patientName: data?.patient?.name || undefined,
+            defaultReason: data?.patient?.issue || undefined,
+            sessionPreference: data?.patient?.session_preference || undefined,
+          }}
         />
       )}
 
