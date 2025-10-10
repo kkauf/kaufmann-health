@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     }
 
     // Look up patient lead in pre_confirmation - first try exact email match
-    let { data: personRaw } = await supabaseServer
+    const { data: personRaw } = await supabaseServer
       .from('people')
       .select('id,email,status,metadata')
       .eq('email', email)
