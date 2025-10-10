@@ -66,7 +66,7 @@ export function renderTherapistRejection(params: {
   lines.push('<h1 style="color:#0f172a !important; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Update zu Ihrer Anfrage</h1>');
   lines.push(`<p style=\"margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;\">Guten Tag${firstName ? ` ${escapeHtml(firstName)}` : ''},</p>`);
   lines.push('<p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">vielen Dank für Ihr Interesse. Leider kann ich aktuell keine neuen Klienten aufnehmen.</p>');
-  lines.push('<p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">Über Kaufmann Health findest du andere qualifizierte Therapeut:innen:</p>');
+  lines.push('<p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">Über Kaufmann Health finden Sie andere qualifizierte Therapeut:innen:</p>');
 
   lines.push('<div style="margin:24px 0; text-align:center;">');
   lines.push(`<a href="${directoryUrl}" style="display:inline-block; padding:14px 28px; background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; background-image: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; color:#ffffff !important; text-decoration:none; border-radius:8px; font-weight:700; font-size:16px; box-shadow: 0 4px 12px 0 rgba(16, 185, 129, 0.2);">Therapeuten-Verzeichnis ansehen</a>`);
