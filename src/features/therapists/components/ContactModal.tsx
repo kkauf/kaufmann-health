@@ -38,6 +38,8 @@ interface PreAuthParams {
   patientName?: string | null;
   /** Optional default reason to prefill composer */
   defaultReason?: string | null;
+  /** Optional session preference to pre-select format */
+  sessionPreference?: 'online' | 'in_person';
 }
 
 export function ContactModal({ therapist, contactType, open, onClose, onSuccess, preAuth, verified }: ContactModalProps & { preAuth?: PreAuthParams }) {
@@ -74,6 +76,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       if (initialReason) setReason(initialReason);
       const signature = preAuth.patientName ? `\n\nViele Grüße\n${preAuth.patientName}` : '';
       setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei ${initialReason || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
+
+      // Pre-select session format based on patient preferences from wizard
+      if (preAuth.sessionPreference) {
+        setSessionFormat(preAuth.sessionPreference);
+      }
+
       setStep('compose');
     }
   }, [open, preAuth, therapist.first_name, contactType]);
@@ -669,7 +677,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
               variant={sessionFormat === 'online' ? 'default' : 'outline'}
               onClick={() => setSessionFormat('online')}
               disabled={loading}
-              className="flex-1 h-11"
+              className={sessionFormat === 'online' ? 'flex-1 h-11 bg-emerald-600 hover:bg-emerald-700' : 'flex-1 h-11'}
             >
               Online
             </Button>
@@ -678,7 +686,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
               variant={sessionFormat === 'in_person' ? 'default' : 'outline'}
               onClick={() => setSessionFormat('in_person')}
               disabled={loading}
-              className="flex-1 h-11"
+              className={sessionFormat === 'in_person' ? 'flex-1 h-11 bg-emerald-600 hover:bg-emerald-700' : 'flex-1 h-11'}
             >
               Vor Ort
             </Button>
