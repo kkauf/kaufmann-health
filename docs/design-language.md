@@ -402,41 +402,74 @@ When updating or creating new pages/sections, ensure:
 
 ## Email Design (Transactional)
 
-**CRITICAL: NO DARK BACKGROUNDS IN EMAILS**
+**CRITICAL: Force Light Mode to Prevent Dark Mode Rendering Issues**
 
-- **Never use dark hero sections** (`#2d3748`, `bg-gray-800`, etc.) - breaks brand consistency and accessibility
-- **Always use light, premium gradients** per web design language
-- **Gmail dark mode will auto-convert** light backgrounds to dark unless suppressed
+Modern email clients (especially Gmail, Apple Mail) automatically invert colors in dark mode, causing illegible text (dark on dark). We enforce light-only rendering.
 
-**Gmail Dark Mode Prevention:**
-- Meta tags: `<meta name="color-scheme" content="light" />` and `<meta name="supported-color-schemes" content="light" />`
-- Use `!important` on background colors: `background:#ffffff !important;`
-- Add legacy `bgcolor` attribute: `<td bgcolor="#ffffff">`
-- Already implemented in `src/lib/email/layout.ts`
+**Dark Mode Prevention Strategy:**
+
+1. **Meta tags** (in `<head>`):
+   ```html
+   <meta name="color-scheme" content="light only" />
+   <meta name="supported-color-schemes" content="light" />
+   ```
+
+2. **Inline styles with `!important`** on ALL color properties:
+   - `background: #ffffff !important;`
+   - `background: linear-gradient(...) !important;`
+   - `background-image: linear-gradient(...) !important;` (double declaration for Gmail)
+   - `color: #334155 !important;`
+   - Legacy `bgcolor="#ffffff"` attribute on `<table>` and `<td>` as fallback
+
+3. **Minimal CSS** (email clients strip `<style>` tags):
+   ```css
+   * { color-scheme: light only !important; }
+   body { background: #f9fafb !important; }
+   ```
+
+4. **Never rely on CSS media queries** - Gmail strips them completely
 
 **Email Section Patterns:**
 
+All inline styles must include `!important` for colors and backgrounds.
+
 - **Hero/Highlight sections** (action-oriented):
-  - Background: `linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)` (emerald tint)
-  - Or: `linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)` (stronger emerald)
-  - Border: `1px solid rgba(34, 197, 94, 0.2)` or `rgba(16, 185, 129, 0.3)`
-  - Text: `color:#0f172a` (heading), `color:#166534` or `#064e3b` (body on tinted bg)
+  - Background: `background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important; background-image: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important;`
+  - Border: `1px solid rgba(34, 197, 94, 0.2)`
+  - Text: `color:#0f172a !important;` (heading), `color:#166534 !important;` (body on tinted bg)
   - Shadow: `0 2px 8px 0 rgba(34, 197, 94, 0.08)`
 
 - **Info/neutral sections**:
-  - Background: `linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)` (slate tint)
+  - Background: `background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; background-image: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;`
   - Border: `1px solid rgba(226, 232, 240, 0.8)`
-  - Text: `color:#64748b` (body), `color:#475569` (emphasis)
+  - Text: `color:#64748b !important;` (body), `color:#475569 !important;` (emphasis), `color:#0f172a !important;` (headings)
   - Shadow: `0 2px 4px 0 rgba(100, 116, 139, 0.05)`
 
 - **Urgency/warning sections**:
-  - Background: `linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)` (amber)
+  - Background: `background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important; background-image: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;`
   - Border: `1px solid rgba(251, 191, 36, 0.3)`
-  - Text: `color:#78350f`
+  - Text: `color:#78350f !important;`
 
-- **All sections**: `padding:16px 20px` (min), `border-radius:12px`, inline styles only
+- **Buttons**:
+  - Background: `background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;`
+  - Text: `color:#ffffff !important;`
 
-**Reference**: All templates in `src/lib/email/templates/` follow this pattern.
+- **All sections**: 
+  - `padding:16px 20px` (min), `border-radius:12px`
+  - ALL styles inline (no external CSS)
+  - ALWAYS add `!important` to `color`, `background`, and `background-image`
+
+**Implementation Reference:** 
+- Layout: `src/lib/email/layout.ts`
+- Templates: `src/lib/email/templates/*.ts`
+- Components: `src/lib/email/components/*.ts`
+
+**Testing Checklist:**
+- ✅ Gmail web (light & dark mode)
+- ✅ Gmail iOS app (dark mode)
+- ✅ Apple Mail (dark mode)
+- ✅ Outlook web
+- ✅ Outlook desktop (Windows)
 
 ## Notes
 

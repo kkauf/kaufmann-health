@@ -74,7 +74,7 @@ export function renderTherapistPreviewEmail(params: {
   const photoSrc = toProxiedPhotoUrl(params.photo_url);
   const photo = photoSrc
     ? `<img src="${escapeHtml(photoSrc)}" alt="${escapeHtml(params.first_name)} ${escapeHtml(params.last_name)}" width="72" height="72" style="width:72px;height:72px;object-fit:cover;display:block;border-radius:999px;" />`
-    : `<div style="width:72px;height:72px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;border-radius:999px;">${escapeHtml(initials)}</div>`;
+    : `<div style="width:72px;height:72px;color:#fff !important;display:flex;align-items:center;justify-content:center;font-weight:600;border-radius:999px;">${escapeHtml(initials)}</div>`;
   // Build multiple modality badges
   const badgeItems = buildBadgeItems(params.modalities || []);
   const maxBadges = 3;
@@ -82,25 +82,25 @@ export function renderTherapistPreviewEmail(params: {
   const extra = badgeItems.length - shown.length;
   const badgeBase = 'display:inline-block;border-radius:999px;font-size:12px;padding:2px 8px;line-height:1.3;vertical-align:middle;margin:2px 6px 2px 0;';
   const badgesHtml = [
-    ...shown.map((b) => `<span style="${badgeBase}background:${b.color};color:#fff;">${escapeHtml(b.label)}</span>`),
-    ...(extra > 0 ? [`<span style="${badgeBase}background:#e5e7eb;color:#111827;">+${extra}</span>`] : []),
+    ...shown.map((b) => `<span style="${badgeBase}background:${b.color} !important;color:#fff !important;">${escapeHtml(b.label)}</span>`),
+    ...(extra > 0 ? [`<span style="${badgeBase}background:#e5e7eb !important;color:#111827 !important;">+${extra}</span>`] : []),
   ].join("");
 
   const availability = params.accepting_new
-    ? `<span style="color:#16a34a;font-weight:500">✓ Verfügbar</span>`
-    : `<span style="color:#ef4444;font-weight:500">✕ Derzeit keine Kapazität</span>`;
+    ? `<span style="color:#16a34a !important;font-weight:500">✓ Verfügbar</span>`
+    : `<span style="color:#ef4444 !important;font-weight:500">✕ Derzeit keine Kapazität</span>`;
 
   const action = params.actionButtonHtml ? `<div style="margin-top:12px;">${params.actionButtonHtml}</div>` : "";
 
   return [
     `<div style="display:flex;align-items:flex-start;">`,
-    `  <div style="width:72px;height:72px;border-radius:999px;overflow:hidden;background:${avatarColor};flex:0 0 auto;margin-right:12px;border:1px solid #e5e7eb;">${photo}</div>`,
+    `  <div style="width:72px;height:72px;border-radius:999px;overflow:hidden;background:${avatarColor} !important;flex:0 0 auto;margin-right:12px;border:1px solid #e5e7eb;">${photo}</div>`,
     `  <div style="flex:1;min-width:0;">`,
-    `    <div style="font-weight:600;margin-bottom:4px;">${escapeHtml(params.first_name)} ${escapeHtml(params.last_name)}</div>`,
+    `    <div style="font-weight:600;margin-bottom:4px;color:#0f172a !important;">${escapeHtml(params.first_name)} ${escapeHtml(params.last_name)}</div>`,
     `    <div style="margin:0 0 6px 0;">${badgesHtml}</div>`,
-    `    <div style="color:#475569;font-size:14px;margin-bottom:4px;">${escapeHtml(params.city || "")}</div>`,
-    `    <div style="font-size:14px;color:#334155;margin-bottom:8px;">${escapeHtml(approach)}</div>`,
-    `    <div style="font-size:14px;">Neue Klient:innen: ${availability}</div>`,
+    `    <div style="color:#475569 !important;font-size:14px;margin-bottom:4px;">${escapeHtml(params.city || "")}</div>`,
+    `    <div style="font-size:14px;color:#334155 !important;margin-bottom:8px;">${escapeHtml(approach)}</div>`,
+    `    <div style="font-size:14px;color:#334155 !important;">Neue Klient:innen: ${availability}</div>`,
     `    ${action}`,
     `  </div>`,
     `</div>`,
