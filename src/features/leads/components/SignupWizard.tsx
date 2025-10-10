@@ -824,11 +824,15 @@ export default function SignupWizard() {
       // Trigger email confirmation after completion (EARTH-190, EARTH-191)
       // Validate contract before sending (supports both email and phone)
       const sessionPref = data.session_preference;
+      // Trim and normalize contact fields before validation
+      const email = data.email?.trim() || undefined;
+      const phone = data.phone_number?.trim() || undefined;
+      
+      // Only include the contact field matching the selected method
       const submissionPayload = {
         type: 'patient' as const,
-        name: data.name,
-        email: data.email,
-        phone_number: data.phone_number,
+        name: data.name?.trim(),
+        ...(data.contact_method === 'email' ? { email } : { phone_number: phone }),
         contact_method: data.contact_method,
         form_session_id: sessionIdRef.current || undefined,
         confirm_redirect_path: '/fragebogen' as const,
@@ -842,16 +846,7 @@ export default function SignupWizard() {
       };
       const submission = leadSubmissionSchema.safeParse(submissionPayload);
       if (!submission.success) {
-        console.error('[SignupWizard] Validation failed:', {
-          errors: submission.error.flatten(),
-          payload: { ...submissionPayload, email: submissionPayload.email ? '***' : undefined, phone_number: submissionPayload.phone_number ? '***' : undefined }
-        });
-        void trackEvent('form_validation_failed', { 
-          errors: submission.error.flatten().fieldErrors,
-          contact_method: data.contact_method,
-          has_email: !!data.email,
-          has_phone: !!data.phone_number,
-        });
+        console.error('[SignupWizard] Validation failed:', submission.error.flatten());
         setSubmitError('Fehlgeschlagen. Bitte Seite aktualisieren und erneut versuchen.');
         return;
       }
