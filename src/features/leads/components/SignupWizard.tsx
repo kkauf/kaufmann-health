@@ -82,6 +82,12 @@ export default function SignupWizard() {
   const [resendMessage, setResendMessage] = React.useState<string>('');
   const [showResendForm, setShowResendForm] = React.useState(false);
 
+  // Step 9 (phone users): optional email add state
+  const [addEmailOpen, setAddEmailOpen] = React.useState(false);
+  const [addEmail, setAddEmail] = React.useState('');
+  const [addEmailSubmitting, setAddEmailSubmitting] = React.useState(false);
+  const [addEmailMessage, setAddEmailMessage] = React.useState('');
+
   // Analytics helper
   const trackEvent = React.useCallback(async (type: string, properties?: Record<string, unknown>) => {
     try {
@@ -312,9 +318,25 @@ export default function SignupWizard() {
       }
       // If arriving confirmed, we can clear any previous resend message
       if (c === '1' || c === 'success') setResendMessage('');
+
+      // Force step 9 when confirmed via URL (cross-device flow)
+      if (c === '1' || c === 'success') {
+        setStep(9);
+        try { localStorage.setItem(LS_KEYS.step, '9'); } catch {}
+        // Analytics: confirmation success rendered
+        void trackEvent('confirm_success_rendered', { contact_method: 'email' });
+      }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  // Track success render for phone users reaching step 9 (no email confirmation)
+  React.useEffect(() => {
+    if (step === 9 && data.contact_method === 'phone') {
+      void trackEvent('confirm_success_rendered', { contact_method: 'phone' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, data.contact_method]);
 
   // If we have a session id (possibly from URL), try to load remote state once
   React.useEffect(() => {
@@ -711,6 +733,7 @@ export default function SignupWizard() {
         return (() => {
           const confirmParam = searchParams?.get('confirm');
           const isConfirmed = confirmParam === '1' || confirmParam === 'success';
+          const isPhoneUser = data.contact_method === 'phone' && !!data.phone_number;
           if (isConfirmed) {
             return (
               <div className="space-y-4">
@@ -723,7 +746,98 @@ export default function SignupWizard() {
               </div>
             );
           }
-          // Not confirmed yet → show prominent callout with progressive disclosure
+          // Phone users: show success state (SMS verified) + optional email collection
+          if (isPhoneUser) {
+            async function handleAddEmail() {
+              if (addEmailSubmitting) return;
+              const email = (addEmail || '').trim();
+              if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+                setAddEmailMessage('Bitte eine gültige E‑Mail eingeben.');
+                return;
+              }
+              setAddEmailSubmitting(true);
+              setAddEmailMessage('');
+              try {
+                const leadId = (typeof window !== 'undefined' ? localStorage.getItem('leadId') : null) || '';
+                const res = await fetch(`/api/public/leads/${encodeURIComponent(leadId)}/add-email`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email, form_session_id: sessionIdRef.current || undefined }),
+                });
+                const j = await res.json().catch(() => ({}));
+                if (res.status === 409 || j?.error === 'email_in_use') {
+                  setAddEmailMessage('Diese E‑Mail wird bereits verwendet. Bitte eine andere Adresse verwenden.');
+                } else if (!res.ok || j?.error) {
+                  setAddEmailMessage('Speichern fehlgeschlagen. Bitte später erneut versuchen.');
+                } else {
+                  // Success → persist locally for future UX
+                  saveLocal({ email });
+                  try { localStorage.setItem('leadEmail', email); } catch {}
+                  setAddEmailMessage('E‑Mail gespeichert. Danke!');
+                  void trackEvent('optional_email_provided', { step: 9 });
+                }
+              } catch {
+                setAddEmailMessage('Speichern fehlgeschlagen. Bitte später erneut versuchen.');
+              } finally {
+                setAddEmailSubmitting(false);
+              }
+            }
+
+            return (
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">✓ Geschafft! Deine Anfrage ist bei uns</h2>
+                  <p className="text-base leading-relaxed text-gray-700">Du hast deine Handynummer bestätigt. Unser Team prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.</p>
+                  <p className="text-base leading-relaxed text-gray-700">Du bekommst deine Matches innerhalb von 24 Stunden.</p>
+                </div>
+
+                {/* Feature Highlight Panel - Optional email add */}
+                <div className="relative overflow-hidden rounded-2xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-6 sm:p-8 shadow-lg shadow-indigo-100/30">
+                  <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(35rem_18rem_at_40%_0%,rgba(99,102,241,0.09),transparent_65%)]" />
+                  <div className="space-y-3">
+                    <p className="text-base font-semibold text-gray-900">✉️ Optional: E‑Mail hinzufügen</p>
+                    <p className="text-sm leading-relaxed text-gray-700">Therapeut:innen antworten oft per E‑Mail. Wenn du möchtest, kannst du eine E‑Mail-Adresse ergänzen.</p>
+                  </div>
+                </div>
+
+                {!addEmailOpen ? (
+                  <div className="flex justify-center">
+                    <Button 
+                      variant="ghost"
+                      onClick={() => setAddEmailOpen(true)}
+                      className="text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 transition-colors"
+                    >
+                      E‑Mail hinzufügen (optional)
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3 rounded-xl border border-gray-200/60 bg-white/80 p-4 sm:p-5 shadow-sm">
+                    <div className="space-y-3">
+                      <input
+                        type="email"
+                        value={addEmail}
+                        onChange={(e) => setAddEmail(e.target.value)}
+                        placeholder="deine@email.de"
+                        className="h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        aria-label="E‑Mail"
+                      />
+                      <Button 
+                        onClick={handleAddEmail}
+                        disabled={addEmailSubmitting}
+                        className="h-11 w-full text-base"
+                      >
+                        {addEmailSubmitting ? 'Speichere…' : 'E‑Mail speichern'}
+                      </Button>
+                      {addEmailMessage && (
+                        <p className="text-sm text-center text-gray-600" aria-live="polite">{addEmailMessage}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          }
+          // Not confirmed yet → show prominent callout with progressive disclosure (email path)
           async function handleResend() {
             if (resendSubmitting) return;
             const email = (resendEmail || '').trim();

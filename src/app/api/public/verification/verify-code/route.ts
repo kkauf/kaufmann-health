@@ -80,11 +80,12 @@ export async function POST(req: NextRequest) {
           .single<PersonRow>();
 
         if (!fetchErr && person) {
-          // Update metadata with phone_verified flag
+          // Update metadata with phone_verified flag and mark actionable
           const metadata = { ...(person.metadata || {}), phone_verified: true };
           await supabaseServer
             .from('people')
-            .update({ metadata })
+            // Mark as 'new' so phone users proceed without email confirmation
+            .update({ metadata, status: 'new' })
             .eq('id', person.id);
 
           // Fire Google Ads conversion
