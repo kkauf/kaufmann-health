@@ -133,9 +133,13 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /* Focus-visible outline for keyboard navigation only */
+  *:focus-visible {
+    @apply outline-2 outline-ring/50 outline-offset-2;
   }
 }

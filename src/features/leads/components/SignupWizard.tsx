@@ -76,10 +76,11 @@ export default function SignupWizard() {
   const [isOnline, setIsOnline] = React.useState<boolean>(true);
   // Track baseline viewport height to detect keyboard open on mobile (iOS Safari)
   const baseVVHeightRef = React.useRef<number | null>(null);
-  // Inline resend confirmation UX state (step 6)
+  // Inline resend confirmation UX state (step 9)
   const [resendEmail, setResendEmail] = React.useState<string>('');
   const [resendSubmitting, setResendSubmitting] = React.useState(false);
   const [resendMessage, setResendMessage] = React.useState<string>('');
+  const [showResendForm, setShowResendForm] = React.useState(false);
 
   // Analytics helper
   const trackEvent = React.useCallback(async (type: string, properties?: Record<string, unknown>) => {
@@ -722,7 +723,7 @@ export default function SignupWizard() {
               </div>
             );
           }
-          // Not confirmed yet → show callout and inline resend
+          // Not confirmed yet → show prominent callout with progressive disclosure
           async function handleResend() {
             if (resendSubmitting) return;
             const email = (resendEmail || '').trim();
@@ -736,7 +737,10 @@ export default function SignupWizard() {
               await fetch('/api/public/leads/resend-confirmation', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
+                body: JSON.stringify({ 
+                  email,
+                  form_session_id: sessionIdRef.current || undefined,
+                }),
               });
               setResendMessage('E‑Mail versendet. Bitte Posteingang prüfen.');
             } catch {
@@ -746,26 +750,64 @@ export default function SignupWizard() {
             }
           }
           return (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-semibold">✓ Geschafft! Deine Anfrage ist bei uns</h2>
-              <p>Unser Team von Kaufmann Health prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.</p>
-              <p>Du bekommst deine Matches innerhalb von 24 Stunden.</p>
-              <p className="font-medium">Wichtig: Bitte bestätige deine E‑Mail‑Adresse, damit wir dir deine Matches schicken können.</p>
-              <div className="flex flex-wrap items-center gap-3 pt-1">
-                <input
-                  type="email"
-                  value={resendEmail}
-                  onChange={(e) => setResendEmail(e.target.value)}
-                  placeholder="dein.name@example.com"
-                  className="h-10 min-w-[220px] flex-1 rounded border border-gray-300 px-3 py-2"
-                  aria-label="E‑Mail"
-                />
-                <Button className="h-10" onClick={handleResend} disabled={resendSubmitting} aria-disabled={resendSubmitting}>
-                  Bestätigungs‑E‑Mail erneut senden
-                </Button>
-                <span className="text-sm text-muted-foreground" aria-live="polite">{resendMessage}</span>
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">✓ Geschafft! Deine Anfrage ist bei uns</h2>
+                <p className="text-base leading-relaxed text-gray-700">Unser Team von Kaufmann Health prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.</p>
+                <p className="text-base leading-relaxed text-gray-700">Du bekommst deine Matches innerhalb von 24 Stunden.</p>
               </div>
-              <p className="text-sm text-muted-foreground">Keine E‑Mail bekommen? Schau im Spam‑Ordner nach.</p>
+
+              {/* Feature Highlight Panel - Email confirmation callout */}
+              <div className="relative overflow-hidden rounded-2xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-6 sm:p-8 shadow-lg shadow-indigo-100/30">
+                <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(35rem_18rem_at_40%_0%,rgba(99,102,241,0.09),transparent_65%)]" />
+                <div className="space-y-3">
+                  <p className="text-base font-semibold text-gray-900">📧 Wichtig: Bitte bestätige deine E‑Mail‑Adresse</p>
+                  <p className="text-sm leading-relaxed text-gray-700">
+                    Wir haben dir gerade eine Bestätigungs-E-Mail geschickt. Bitte prüfe deinen Posteingang und klicke auf den Link, damit wir dir deine Therapeuten-Empfehlungen zusenden können.
+                  </p>
+                  <p className="text-xs text-gray-600">Tipp: Falls du nichts findest, schau auch im Spam-Ordner nach.</p>
+                </div>
+              </div>
+
+              {/* Progressive disclosure: resend form */}
+              {!showResendForm ? (
+                <div className="flex justify-center">
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => {
+                      setShowResendForm(true);
+                      void trackEvent('resend_form_opened', { step: 9 });
+                    }}
+                    className="text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 transition-colors"
+                  >
+                    E-Mail nicht erhalten?
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3 rounded-xl border border-gray-200/60 bg-white/80 p-4 sm:p-5 shadow-sm">
+                  <p className="text-sm font-medium text-gray-700">E-Mail erneut senden oder Adresse korrigieren:</p>
+                  <div className="space-y-3">
+                    <input
+                      type="email"
+                      value={resendEmail}
+                      onChange={(e) => setResendEmail(e.target.value)}
+                      placeholder="deine@email.de"
+                      className="h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      aria-label="E‑Mail"
+                    />
+                    <Button 
+                      onClick={handleResend} 
+                      disabled={resendSubmitting} 
+                      className="h-11 w-full text-base"
+                    >
+                      {resendSubmitting ? 'Wird gesendet…' : 'Bestätigungs-E-Mail erneut senden'}
+                    </Button>
+                    {resendMessage && (
+                      <p className="text-sm text-center text-gray-600" aria-live="polite">{resendMessage}</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })();

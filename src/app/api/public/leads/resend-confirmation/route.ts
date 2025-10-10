@@ -22,6 +22,7 @@ function getClientIP(headers: Headers) {
 /**
  * POST /api/public/leads/resend-confirmation
  * Purpose: Re-send email confirmation for patients in pre_confirmation state.
+ * Also supports updating email if form_session_id matches and status is still pre_confirmation.
  * Privacy: Always returns 200 with ok=true to avoid user enumeration.
  */
 export async function POST(req: Request) {
@@ -29,9 +30,11 @@ export async function POST(req: Request) {
   const ua = req.headers.get('user-agent') || undefined;
   try {
     let email = '';
+    let formSessionId: string | undefined;
     try {
-      const body = (await req.json()) as { email?: string };
+      const body = (await req.json()) as { email?: string; form_session_id?: string };
       email = sanitize(body.email)?.toLowerCase() || '';
+      formSessionId = typeof body.form_session_id === 'string' ? body.form_session_id : undefined;
     } catch {
       // Ignore parse errors; keep email empty
     }
@@ -57,16 +60,47 @@ export async function POST(req: Request) {
       } catch {}
     }
 
-    // Look up patient lead in pre_confirmation
-    const { data: personRaw } = await supabaseServer
+    // Look up patient lead in pre_confirmation - first try exact email match
+    let { data: personRaw } = await supabaseServer
       .from('people')
-      .select('id,status,metadata')
+      .select('id,email,status,metadata')
       .eq('email', email)
       .eq('type', 'patient')
       .single();
 
-    type PersonRow = { id: string; status: string; metadata?: Record<string, unknown> | null };
-    const person = (personRaw ?? null) as PersonRow | null;
+    type PersonRow = { id: string; email: string; status: string; metadata?: Record<string, unknown> | null };
+    let person = (personRaw ?? null) as PersonRow | null;
+
+    // If no exact match but formSessionId provided, try to find by session and update email
+    if (!person && formSessionId) {
+      const { data: sessionPerson } = await supabaseServer
+        .from('people')
+        .select('id,email,status,metadata')
+        .eq('type', 'patient')
+        .eq('status', 'pre_confirmation')
+        .ilike('metadata->>form_session_id', formSessionId)
+        .single();
+      
+      if (sessionPerson) {
+        person = sessionPerson as PersonRow;
+        // Update email if different (user is correcting their address)
+        if (person.email !== email) {
+          const { error: updateErr } = await supabaseServer
+            .from('people')
+            .update({ email })
+            .eq('id', person.id);
+          if (!updateErr) {
+            person.email = email;
+            void track({
+              type: 'email_updated',
+              level: 'info',
+              source: 'api.leads.resend_confirmation',
+              props: { lead_id: person.id, reason: 'correction' },
+            });
+          }
+        }
+      }
+    }
 
     if (!person || person.status !== 'pre_confirmation') {
       return ok();

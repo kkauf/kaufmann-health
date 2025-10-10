@@ -71,12 +71,14 @@ export default function Screen1({
     } else if (mode === 'sms') {
       defaultMethod = 'phone';
     } else if (mode === 'choice') {
-      // In choice mode, check saved preference only (not device detection)
+      // In choice mode, prefer saved preference, then detect mobile device
       const saved = getSavedContactMethod();
       if (saved) {
         defaultMethod = saved;
+      } else if (isMobileDevice()) {
+        // Default to phone on mobile devices (safe after hydration)
+        defaultMethod = 'phone';
       }
-      // Don't auto-detect device to avoid hydration issues
     }
     
     onChange({ contact_method: defaultMethod });
