@@ -797,6 +797,7 @@ export default function SignupWizard() {
                   <div className="space-y-3">
                     <p className="text-base font-semibold text-gray-900">✉️ Optional: E‑Mail hinzufügen</p>
                     <p className="text-sm leading-relaxed text-gray-700">Therapeut:innen antworten oft per E‑Mail. Wenn du möchtest, kannst du eine E‑Mail-Adresse ergänzen.</p>
+                    <p className="text-xs text-gray-600">Ohne E‑Mail kontaktieren dich Therapeut:innen per SMS oder Anruf.</p>
                   </div>
                 </div>
 

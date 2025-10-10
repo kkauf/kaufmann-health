@@ -8,6 +8,7 @@ import { getEmailError } from '@/features/leads/lib/validation';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { getVerificationModeClient } from '@/lib/verification/config';
 import { validatePhone } from '@/lib/verification/usePhoneValidation';
+import ConsentSection from '@/components/ConsentSection';
 
 export type ContactMethod = 'email' | 'phone';
 
@@ -183,6 +184,8 @@ export default function Screen1({
           </button>
         </div>
       )}
+
+      <ConsentSection actor="patient" className="mt-1" />
 
       <div>
         <Button type="submit" data-testid="wizard-next" className="h-12 w-full text-base" disabled={disabled} aria-disabled={disabled}>
