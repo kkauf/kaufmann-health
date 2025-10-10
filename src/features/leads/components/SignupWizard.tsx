@@ -539,7 +539,7 @@ export default function SignupWizard() {
       if (result.data?.verified) {
         saveLocal({ phone_verified: true });
         void trackEvent('verification_code_verified', { contact_type: 'phone' });
-        safeGoToStep(2);
+        // Don't navigate here - caller will handle submit after verification
         return { success: true };
       }
       
@@ -824,7 +824,7 @@ export default function SignupWizard() {
       // Trigger email confirmation after completion (EARTH-190, EARTH-191)
       // Validate contract before sending (supports both email and phone)
       const sessionPref = data.session_preference;
-      const submission = leadSubmissionSchema.safeParse({
+      const submissionPayload = {
         type: 'patient' as const,
         name: data.name,
         email: data.email,
@@ -839,8 +839,19 @@ export default function SignupWizard() {
           : sessionPref
           ? { session_preference: sessionPref }
           : {}),
-      });
+      };
+      const submission = leadSubmissionSchema.safeParse(submissionPayload);
       if (!submission.success) {
+        console.error('[SignupWizard] Validation failed:', {
+          errors: submission.error.flatten(),
+          payload: { ...submissionPayload, email: submissionPayload.email ? '***' : undefined, phone_number: submissionPayload.phone_number ? '***' : undefined }
+        });
+        void trackEvent('form_validation_failed', { 
+          errors: submission.error.flatten().fieldErrors,
+          contact_method: data.contact_method,
+          has_email: !!data.email,
+          has_phone: !!data.phone_number,
+        });
         setSubmitError('Fehlgeschlagen. Bitte Seite aktualisieren und erneut versuchen.');
         return;
       }
