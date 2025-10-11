@@ -657,6 +657,7 @@ export async function POST(req: Request) {
         consent_share_with_therapists: true,
         consent_share_with_therapists_at: new Date().toISOString(),
         consent_privacy_version: privacyVersion,
+        consent_terms_version: TERMS_VERSION,
       };
       const insertPayload = {
         ...(data.name ? { name: data.name } : {}),
@@ -745,6 +746,7 @@ export async function POST(req: Request) {
               consent_share_with_therapists: true,
               consent_share_with_therapists_at: new Date().toISOString(),
               consent_privacy_version: privacyVersion,
+              consent_terms_version: TERMS_VERSION,
               phone_verified: false, // Reset verification status
             };
             await supabaseServer
@@ -784,6 +786,7 @@ export async function POST(req: Request) {
               consent_share_with_therapists: true,
               consent_share_with_therapists_at: new Date().toISOString(),
               consent_privacy_version: privacyVersion,
+              consent_terms_version: TERMS_VERSION,
             };
             if (isTest) {
               await supabaseServer
@@ -863,6 +866,16 @@ export async function POST(req: Request) {
           requires_confirmation: true,
           is_test: isTest,
           consent_share_with_therapists: consentShare,
+          privacy_version: privacyVersion,
+        },
+      });
+
+      // Record standardized consent capture for patient leads
+      await ServerAnalytics.trackEventFromRequest(req, {
+        type: 'consent_captured',
+        source: 'api.leads',
+        props: {
+          method: contactMethod,
           privacy_version: privacyVersion,
         },
       });

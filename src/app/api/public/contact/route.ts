@@ -15,6 +15,7 @@ import { renderTherapistNotification } from '@/lib/email/templates/therapistNoti
 import { logError, track } from '@/lib/logger';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { PRIVACY_VERSION } from '@/lib/privacy';
+import { TERMS_VERSION } from '@/content/therapist-terms';
 import { BASE_URL } from '@/lib/constants';
 
 const RATE_LIMIT_PER_DAY = 3;
@@ -95,7 +96,7 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    
+
     if (!['booking', 'consultation'].includes(contact_type)) {
       return NextResponse.json(
         { error: 'Ungültiger Kontakttyp' },
@@ -179,11 +180,13 @@ export async function POST(req: Request) {
           type: 'patient',
           name: patient_name,
           status: 'new',
-          privacy_version: PRIVACY_VERSION,
-          consent_share_with_therapists: true,
           metadata: {
             contact_method,
             source: 'directory_contact',
+            consent_share_with_therapists: true,
+            consent_share_with_therapists_at: new Date().toISOString(),
+            consent_privacy_version: PRIVACY_VERSION,
+            consent_terms_version: TERMS_VERSION,
           },
         };
         
@@ -267,6 +270,35 @@ export async function POST(req: Request) {
         { status: 404 }
       );
     }
+    
+    // Ensure consent markers are stored for both new and existing patients (metadata only), now that request is allowed to proceed
+    try {
+      if (patientId) {
+        const { data: existingMetaRow } = await supabase
+          .from('people')
+          .select('metadata')
+          .eq('id', patientId)
+          .single();
+        const existingMeta = (existingMetaRow?.metadata || {}) as Record<string, unknown>;
+        const mergedMeta = {
+          ...existingMeta,
+          consent_share_with_therapists: true,
+          consent_share_with_therapists_at: new Date().toISOString(),
+          consent_privacy_version: PRIVACY_VERSION,
+          consent_terms_version: TERMS_VERSION,
+        };
+        await supabase
+          .from('people')
+          .update({ metadata: mergedMeta })
+          .eq('id', patientId);
+        // Analytics: consent captured via directory contact
+        void track({
+          type: 'consent_captured',
+          source: 'api.public.contact',
+          props: { method: contact_method, privacy_version: PRIVACY_VERSION },
+        });
+      }
+    } catch {}
     
     // Create match record
     const matchMetadata = {
