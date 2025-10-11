@@ -14,6 +14,7 @@ import { getEmailError } from '@/features/leads/lib/validation';
 import Link from 'next/link';
 import { ShieldCheck, Lock, UserCheck } from 'lucide-react';
 import { COOKIES_ENABLED } from '@/lib/config';
+import ConsentSection from '@/components/ConsentSection';
 
 // Re-export for tests to assert version consistency
 export const THERAPIST_TERMS_VERSION = TERMS_VERSION;
@@ -396,14 +397,7 @@ export default function TherapistApplicationForm() {
         </div>
       </div>
 
-      <div className="rounded-lg border bg-amber-50 p-4 text-sm">
-        <p className="text-gray-800">
-          Mit dem Klick auf „Jetzt registrieren“ akzeptierst du unsere{' '}
-          <a href="/agb" target="_blank" className="underline font-medium">
-            Allgemeinen Geschäftsbedingungen
-          </a>.
-        </p>
-      </div>
+      <ConsentSection actor="therapist" compact={false} />
 
       <Button type="submit" disabled={loading}>
         {loading ? 'Registrieren…' : 'Jetzt registrieren'}

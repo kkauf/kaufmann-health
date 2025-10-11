@@ -18,6 +18,7 @@ import { track } from '@vercel/analytics';
 import { getVerificationModeClient } from '@/lib/verification/config';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { validatePhone } from '@/lib/verification/usePhoneValidation';
+import ConsentSection from '@/components/ConsentSection';
 
 // Note: Google Ads conversions are handled at Fragebogen completion (client + server).
 
@@ -247,11 +248,7 @@ export function ContactEntryForm({
         </Button>
       </div>
 
-      <p className="mt-2 text-xs text-gray-600">
-        Mit dem Absenden bestätigst du die{' '}
-        <a href="/datenschutz" className="underline">Datenschutzerklärung</a>{' '}und die{' '}
-        <a href="/agb" className="underline">AGB</a> sowie die Weitergabe deiner Angaben an passende Therapeut:innen zur Kontaktaufnahme.
-      </p>
+      <ConsentSection actor="patient" />
 
       <p className="mt-1 text-xs text-gray-600">
         100% kostenlos & unverbindlich. Deine Daten werden ausschließlich zur Erstellung der Empfehlungen verwendet.

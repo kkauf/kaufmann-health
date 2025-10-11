@@ -11,6 +11,7 @@ import { CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { validatePhone } from '@/lib/verification/usePhoneValidation';
+import ConsentSection from '@/components/ConsentSection';
 
 type ContactType = 'booking' | 'consultation';
 
@@ -719,6 +720,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           <span>{error}</span>
         </div>
       )}
+      <ConsentSection actor="directory" className="-mt-2" />
       
       <div className="flex gap-3 pt-2">
         <Button 
