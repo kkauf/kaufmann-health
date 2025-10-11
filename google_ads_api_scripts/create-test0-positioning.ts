@@ -14,7 +14,7 @@
  * Auto-pauses at €250 via monitor-campaigns.ts
  */
 
-import { writeFileSync } from 'fs';
+import { writeFileSync, mkdirSync } from 'fs';
 import { spawn } from 'child_process';
 import path from 'path';
 import { TEST0_POSITIONING_AB } from './private/campaign-config-test0-positioning';
@@ -28,10 +28,12 @@ console.log('');
 // Convert TypeScript config to JSON array format expected by create-campaigns.ts
 const campaigns = [TEST0_POSITIONING_AB.variantA, TEST0_POSITIONING_AB.variantB];
 
-// Write to temp file
-const tempPath = path.join(__dirname, '.temp-test0-config.json');
-writeFileSync(tempPath, JSON.stringify(campaigns, null, 2));
-console.log(`Config written to: ${tempPath}`);
+// Write config into git-ignored private folder
+const privateDir = path.join(__dirname, 'private');
+try { mkdirSync(privateDir, { recursive: true }); } catch {}
+const configPath = path.join(privateDir, 'test0-positioning.config.json');
+writeFileSync(configPath, JSON.stringify(campaigns, null, 2));
+console.log(`Config written to: ${configPath}`);
 console.log('');
 
 console.log('Campaign Summary:');
@@ -46,7 +48,7 @@ for (const c of campaigns) {
 
 // Forward to unified create script
 const createScriptPath = path.join(__dirname, 'create-campaigns.ts');
-const args = ['--config=' + tempPath];
+const args = ['--config=' + configPath];
 
 const env = {
   ...process.env,
@@ -64,7 +66,7 @@ const proc = spawn('tsx', [createScriptPath, ...args], {
 proc.on('exit', (code) => {
   if (code === 0) {
     console.log('\n✓ Campaign creation completed');
-    console.log(`Note: Temp config at ${tempPath} can be deleted or kept for review`);
+    console.log(`Note: Config stored at ${configPath} (ignored by git)`);
   } else {
     console.error(`\n✗ Campaign creation failed with code ${code}`);
     process.exit(code || 1);
