@@ -38,6 +38,13 @@
 - **Server-side measurement first**: Google Ads Enhanced Conversions (hashed email) run server-side. Minimal client signal fires only after Fragebogen completion and is deduped by lead id.
 - **PII handling**: No PII in `events.properties`. IPs are hashed with `IP_HASH_SALT`.
 
+- **Consent storage (patients)**: API stores consent in `people.metadata`:
+  - `consent_share_with_therapists: true`
+  - `consent_share_with_therapists_at: <ISO timestamp>`
+  - `consent_privacy_version: <string>` (kept in sync with `src/lib/privacy.ts`)
+  - Enforced in `POST /api/public/leads` and standardized in `POST /api/public/contact`.
+- **Consent record (therapists)**: AGB acceptance is recorded in `therapist_contracts` with the current `TERMS_VERSION` (see `src/content/therapist-terms`). The UI shows an acceptance line; the server record is canonical.
+
 ## Admin Session & Scope
 
 - **Login**: `POST /api/admin/login` sets HTTP-only `kh_admin` cookie, 24h expiry, `Path=/admin`.

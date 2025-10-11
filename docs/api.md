@@ -13,6 +13,7 @@
 - __Validation__: emails validated server-side; all strings sanitized (control chars stripped, ~1 KB max). Missing patient consent or privacy version -> 400.
 - __Behavior__:
   - Patients: insert minimal row with `status='pre_confirmation'`, attribution metadata (`campaign_source`, `campaign_variant`), confirmation token + timestamp, and consent footprint. Confirmation email is sent fire-and-forget.
+  - Consent: stores `consent_share_with_therapists=true`, `consent_share_with_therapists_at`, `consent_privacy_version`, and `consent_terms_version` under `people.metadata`. Emits `consent_captured` with `{ method: 'email'|'phone', privacy_version }`.
   - Therapists (JSON): insert `people` row in `therapists` table with `status='pending_verification'`, optional metadata, and enqueue welcome email + internal notification.
   - Multipart therapist submissions are handled inside this route (documents & profile photo go to private storage; metadata merged as pending — see POST `/api/public/therapists/:id/documents`).
   - Google Ads Enhanced Conversions are fired at form completion for patient leads (see `POST /api/public/leads/:id/form-completed`) and at document upload for therapists (`POST /api/public/therapists/:id/documents`).
@@ -101,6 +102,7 @@
   - Checks for existing `kh_client` session cookie. If valid, reuses patient record.
   - If no session: creates or finds patient by contact method, creates session token, sets cookie.
   - Rate limit: max 3 contacts per patient per 24 hours (tracked via `matches` table).
+  - Consent: stores `consent_share_with_therapists=true`, `consent_share_with_therapists_at`, `consent_privacy_version`, and `consent_terms_version` in `people.metadata` for both new and existing patients; emits `consent_captured` with `{ method, privacy_version }`.
   - Creates `match` record with `status='proposed'` and metadata: `{ patient_initiated: true, contact_type, patient_reason, patient_message, contact_method }`.
   - Sends therapist notification email with magic link to `/match/[secure_uuid]` (privacy-first: no PII in email).
   - Emits analytics: `patient_created` (if new), `contact_match_created`, `contact_email_sent`, `contact_rate_limit_hit` (if blocked).
