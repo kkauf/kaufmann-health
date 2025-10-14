@@ -124,11 +124,15 @@ export function TherapistDirectory() {
         return false;
       }
 
-      // Filter by online availability
+      // Filter by online availability (strict)
       if (onlineOnly !== null) {
-        const sessionPrefs = t.session_preferences || [];
-        const hasOnline = Array.isArray(sessionPrefs) && sessionPrefs.includes('online');
-        const hasInPerson = Array.isArray(sessionPrefs) && sessionPrefs.includes('in_person');
+        const raw = Array.isArray(t.session_preferences) ? (t.session_preferences as string[]) : [];
+        const normalized = new Set(
+          raw.map(v => String(v).toLowerCase().replace(/[\s-]+/g, '_'))
+        );
+        const hasEither = normalized.has('either') || normalized.has('both');
+        const hasOnline = normalized.has('online') || hasEither;
+        const hasInPerson = normalized.has('in_person') || normalized.has('inperson') || hasEither;
         if (onlineOnly && !hasOnline) return false;
         if (!onlineOnly && !hasInPerson) return false;
       }

@@ -11,10 +11,16 @@
 import { SignJWT, jwtVerify } from 'jose';
 
 const COOKIE_NAME = 'kh_client';
-const TOKEN_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'fallback-secret-change-in-production'
-);
 const TOKEN_EXPIRY = '30d';
+
+function getTokenSecret(): Uint8Array {
+  const raw = process.env.JWT_SECRET;
+  if (raw && raw.length > 0) return new TextEncoder().encode(raw);
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('[clientSession] JWT_SECRET is not set in production');
+  }
+  return new TextEncoder().encode('dev-only-fallback');
+}
 
 export interface ClientSessionPayload {
   /** Patient ID from people table */
@@ -41,7 +47,7 @@ export async function createClientSessionToken(
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(TOKEN_EXPIRY)
-    .sign(TOKEN_SECRET);
+    .sign(getTokenSecret());
   
   return token;
 }
@@ -53,7 +59,7 @@ export async function verifyClientSessionToken(
   token: string
 ): Promise<ClientSessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, TOKEN_SECRET);
+    const { payload } = await jwtVerify(token, getTokenSecret());
     return payload as unknown as ClientSessionPayload;
   } catch (err) {
     console.error('[clientSession] Token verification failed:', err);

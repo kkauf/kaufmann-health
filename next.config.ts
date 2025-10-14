@@ -8,6 +8,20 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 750, 1080, 1200],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
   },
+  async headers() {
+    return [
+      {
+        source: "/api/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "Content-Security-Policy", value: "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       {

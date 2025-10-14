@@ -71,8 +71,7 @@ export async function GET(req: Request) {
     const cronSecret = process.env.CRON_SECRET;
     const authHeader = req.headers.get('authorization') || '';
     const isAuthBearer = Boolean(cronSecret && authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret);
-    let isCron = Boolean(cronSecret && cronSecretHeader && cronSecretHeader === cronSecret) || isAuthBearer;
-    if (!isCron && req.headers.get('x-vercel-cron')) isCron = true;
+    const isCron = Boolean(cronSecret && cronSecretHeader && cronSecretHeader === cronSecret) || isAuthBearer;
 
     const isAdmin = await assertAdmin(req);
     if (!isAdmin && !isCron) return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });

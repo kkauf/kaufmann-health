@@ -6,6 +6,7 @@ import { sendEmail } from '@/lib/email/client';
 import { renderPatientSelectionEmail } from '@/lib/email/templates/patientSelection';
 import { BASE_URL } from '@/lib/constants';
 import { computeMismatches } from '@/features/leads/lib/match';
+import { sendTransactionalSms } from '@/lib/sms/client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -47,6 +48,35 @@ async function assertAdmin(req: Request): Promise<boolean> {
   }
 }
 
+function isCronAuthorized(req: Request): boolean {
+  const cronSecretHeader = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
+  const cronSecret = process.env.CRON_SECRET;
+  const authHeader = req.headers.get('authorization') || '';
+  const isAuthBearer = Boolean(cronSecret && authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret);
+  let isCron = Boolean(cronSecret && cronSecretHeader && cronSecretHeader === cronSecret) || isAuthBearer;
+  if (!isCron && cronSecret) {
+    try {
+      const u = new URL(req.url);
+      const token = u.searchParams.get('token');
+      if (token && token === cronSecret) isCron = true;
+    } catch {}
+  }
+  return Boolean(isCron);
+}
+
+function sameOrigin(req: Request): boolean {
+  const host = req.headers.get('host') || '';
+  if (!host) return false;
+  const origin = req.headers.get('origin') || '';
+  const referer = req.headers.get('referer') || '';
+  const http = `http://${host}`;
+  const https = `https://${host}`;
+  if (origin === http || origin === https) return true;
+  if (referer.startsWith(http + '/')) return true;
+  if (referer.startsWith(https + '/')) return true;
+  return false;
+}
+
 function hoursAgo(h: number) {
   return new Date(Date.now() - h * 60 * 60 * 1000).toISOString();
 }
@@ -61,14 +91,12 @@ type EmailEventRow = {
 
 async function alreadySentForStage(patient_id: string, stage: string): Promise<boolean> {
   try {
-    // Only relevant for 24h/48h stages (72h stage does not send email)
     if (stage !== '24h' && stage !== '48h') return false;
-    // Look back to the start of the stage window to avoid stale historical matches influencing new ones
     const sinceIso = stage === '24h' ? hoursAgo(48) : hoursAgo(72);
     const { data, error } = await supabaseServer
       .from('events')
       .select('id, created_at, properties')
-      .eq('type', 'email_sent')
+      .in('type', ['email_sent', 'sms_sent'])
       .gte('created_at', sinceIso)
       .order('created_at', { ascending: false })
       .limit(1000);
@@ -98,23 +126,10 @@ export async function GET(req: Request) {
   const startedAt = Date.now();
 
   try {
-    // Auth: allow either admin cookie OR Cron secret
-    const cronSecretHeader = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
-    const cronSecret = process.env.CRON_SECRET;
-    const authHeader = req.headers.get('authorization') || '';
-    const isAuthBearer = Boolean(cronSecret && authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret);
-    let isCron = Boolean(cronSecret && cronSecretHeader && cronSecretHeader === cronSecret) || isAuthBearer;
-    if (!isCron && cronSecret) {
-      try {
-        const u = new URL(req.url);
-        const token = u.searchParams.get('token');
-        if (token && token === cronSecret) isCron = true;
-      } catch {}
-    }
-    if (!isCron && req.headers.get('x-vercel-cron')) isCron = true;
-
+    const isCron = isCronAuthorized(req);
     const isAdmin = await assertAdmin(req);
     if (!isAdmin && !isCron) return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
+    if (isAdmin && !isCron && !sameOrigin(req)) return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 });
 
     const url = new URL(req.url);
     const stage = (url.searchParams.get('stage') || '').toLowerCase(); // '24h' | '48h' | '72h'
@@ -199,15 +214,14 @@ export async function GET(req: Request) {
       // Fetch patient details
       const { data: patientRow } = await supabaseServer
         .from('people')
-        .select('id, name, email, metadata')
+        .select('id, name, email, phone_number, metadata')
         .eq('id', patient_id)
         .single();
-      const patient = (patientRow || null) as { id: string; name?: string | null; email?: string | null; metadata?: PatientMetaServer | null } | null;
+      const patient = (patientRow || null) as { id: string; name?: string | null; email?: string | null; phone_number?: string | null; metadata?: PatientMetaServer | null } | null;
       const to = (patient?.email || '').trim();
-      if (!to) {
-        skippedMissingEmail++;
-        continue;
-      }
+      const phoneNumber = (patient?.phone_number || '').trim();
+      const hasEmail = Boolean(to);
+      const hasPhone = Boolean(phoneNumber);
 
       // Therapist details
       const { data: therapistRows } = await supabaseServer
@@ -312,21 +326,36 @@ export async function GET(req: Request) {
         : 'Ihre persönliche Therapie-Auswahl';
 
       const bannerOverrideHtml = stage === '48h'
-        ? '<div style="background: #FEF3C7; padding: 12px; border-radius: 8px; margin-bottom: 20px;">⏰ <strong>Letzte Chance!</strong><br/>In 4 Stunden vergeben wir diese Termine an andere Klienten.</div>'
+        ? '<div style="background: #FEF3C7; padding: 12px; border-radius: 8px; margin-bottom: 20px;">⏰ <strong>Letzte Chance!</strong><br/>In 4 Stunden vergeben wir diese Termine an andere Klient:innen.</div>'
         : undefined;
 
-      const content = renderPatientSelectionEmail({ patientName: patient?.name || null, items, subjectOverride: subject, bannerOverrideHtml });
+      const matchesUrl = `${BASE_URL}/matches/${secure_uuid}`;
+      const content = renderPatientSelectionEmail({ patientName: patient?.name || null, items, subjectOverride: subject, bannerOverrideHtml, matchesUrl });
 
       try {
-        void track({ type: 'email_attempted', level: 'info', source: 'admin.api.matches.selection_reminders', props: { stage, patient_id } });
-        const emailSent = await sendEmail({ to, subject: content.subject, html: content.html, text: content.text, context: { kind: 'patient_selection_reminder', stage, patient_id } });
-        if (emailSent) {
-          sent++;
+        if (hasEmail) {
+          void track({ type: 'email_attempted', level: 'info', source: 'admin.api.matches.selection_reminders', props: { stage, patient_id } });
+          const emailSent = await sendEmail({ to, subject: content.subject, html: content.html, text: content.text, context: { kind: 'patient_selection_reminder', stage, patient_id } });
+          if (emailSent) {
+            sent++;
+          } else {
+            await logError('admin.api.matches.selection_reminders', new Error('Email send returned false'), { stage: 'send_email_failed', patient_id, email: to }, ip, ua);
+          }
+        } else if (hasPhone && matchesUrl) {
+          const smsBody = `Deine handverlesene Therapeuten-Auswahl ist bereit: ${matchesUrl}`;
+          void track({ type: 'sms_attempted', level: 'info', source: 'admin.api.matches.selection_reminders', props: { kind: 'patient_selection_reminder', stage, patient_id } });
+          const ok = await sendTransactionalSms(phoneNumber, smsBody);
+          if (ok) {
+            void track({ type: 'sms_sent', level: 'info', source: 'admin.api.matches.selection_reminders', props: { kind: 'patient_selection_reminder', stage, patient_id } });
+            sent++;
+          } else {
+            await logError('admin.api.matches.selection_reminders', new Error('SMS send returned false'), { stage: 'send_sms_failed', patient_id }, ip, ua);
+          }
         } else {
-          await logError('admin.api.matches.selection_reminders', new Error('Email send returned false'), { stage: 'send_email_failed', patient_id, email: to }, ip, ua);
+          skippedMissingEmail++;
         }
       } catch (e) {
-        await logError('admin.api.matches.selection_reminders', e, { stage: 'send_email', patient_id }, ip, ua);
+        await logError('admin.api.matches.selection_reminders', e, { stage: 'send_contact', patient_id }, ip, ua);
       }
     }
 

@@ -41,12 +41,14 @@ export default function Screen1({
   values,
   onChange,
   onNext,
+  onBack,
   disabled,
   initialized = false,
 }: {
   values: Screen1Values;
   onChange: (patch: Partial<Screen1Values>) => void;
   onNext: () => void;
+  onBack?: () => void;
   disabled?: boolean;
   initialized?: boolean;
 }) {
@@ -187,8 +189,20 @@ export default function Screen1({
 
       <ConsentSection actor="patient" className="mt-1" />
 
-      <div>
-        <Button type="submit" data-testid="wizard-next" className="h-12 w-full text-base" disabled={disabled} aria-disabled={disabled}>
+      <div className="flex items-center justify-between">
+        {onBack && (
+          <Button
+            variant="secondary"
+            type="button"
+            className="h-12"
+            onClick={onBack}
+            disabled={disabled}
+            aria-disabled={disabled}
+          >
+            Zurück
+          </Button>
+        )}
+        <Button type="submit" data-testid="wizard-next" className="h-12 w-full text-base md:w-auto" disabled={disabled} aria-disabled={disabled}>
           Passende Therapeut:innen finden →
         </Button>
       </div>

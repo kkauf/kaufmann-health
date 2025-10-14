@@ -14,6 +14,7 @@ import { sendEmail } from '@/lib/email/client';
 import { randomBytes } from 'crypto';
 import { supabaseServer } from '@/lib/supabase-server';
 import { track } from '@/lib/logger';
+import { getFixedWindowLimiter, extractIpFromHeaders } from '@/lib/rate-limit';
 
 interface SendCodeRequest {
   contact: string; // email or phone
@@ -32,6 +33,15 @@ export async function POST(req: NextRequest) {
   const ua = req.headers.get('user-agent') || '';
 
   try {
+    const limiter = getFixedWindowLimiter('verification-send-code', 5, 60_000);
+    const { allowed, retryAfterSec } = limiter.check(extractIpFromHeaders(req.headers));
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Rate limited' },
+        { status: 429, headers: { 'Retry-After': String(retryAfterSec) } }
+      );
+    }
+
     const body = (await req.json()) as SendCodeRequest;
     const { contact, contact_type, lead_id, form_session_id, redirect, name } = body;
 

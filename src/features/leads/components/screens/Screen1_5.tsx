@@ -19,11 +19,13 @@ export default function Screen1_5({
   phoneNumber,
   onVerify,
   onResend,
+  onBack,
   disabled,
 }: {
   phoneNumber: string;
   onVerify: (code: string) => Promise<{ success: boolean; error?: string }>;
   onResend: () => Promise<void>;
+  onBack?: () => void;
   disabled?: boolean;
 }) {
   const [code, setCode] = React.useState(['', '', '', '', '', '']);
@@ -176,6 +178,20 @@ export default function Screen1_5({
           {resending ? 'Wird gesendet...' : 'Code erneut senden'}
         </Button>
       </div>
+
+      {onBack && (
+        <div className="pt-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onBack}
+            disabled={disabled || verifying || resending}
+            className="w-full"
+          >
+            Zurück
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

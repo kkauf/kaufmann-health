@@ -20,24 +20,28 @@ export default function NewScreen2_Timeline({
   onNext,
   onBack,
   disabled,
+  suppressAutoAdvance,
 }: {
   values: NewScreen2Values;
   onChange: (patch: Partial<NewScreen2Values>) => void;
   onNext: () => void;
   onBack: () => void;
   disabled?: boolean;
+  suppressAutoAdvance?: boolean;
 }) {
   const [error, setError] = React.useState<string | null>(null);
   const [flashKey, setFlashKey] = React.useState<string | null>(null);
+  const [userInteracted, setUserInteracted] = React.useState(false);
 
   // Auto-advance after selection
   React.useEffect(() => {
     if (disabled || !values.start_timing) return;
+    if (suppressAutoAdvance && !userInteracted) return;
     const timer = setTimeout(() => {
       onNext();
     }, 800);
     return () => clearTimeout(timer);
-  }, [values.start_timing, disabled, onNext]);
+  }, [values.start_timing, disabled, onNext, suppressAutoAdvance, userInteracted]);
 
   function validate() {
     if (!values.start_timing) {
@@ -66,6 +70,7 @@ export default function NewScreen2_Timeline({
               aria-disabled={disabled}
               onClick={() => {
                 setFlashKey(opt);
+                setUserInteracted(true);
                 onChange({ start_timing: opt });
               }}
             >

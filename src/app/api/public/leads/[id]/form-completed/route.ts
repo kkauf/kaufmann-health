@@ -161,6 +161,8 @@ export async function POST(req: Request) {
         if (time_slots) metadata.time_slots = time_slots;
         const methods = maybeArray('methods');
         if (methods) metadata.methods = methods;
+        const modality_matters = maybeBool('modality_matters');
+        if (typeof modality_matters === 'boolean') metadata.modality_matters = modality_matters;
         const additional_info = maybeString('additional_info');
         if (additional_info) metadata.additional_info = additional_info;
       }

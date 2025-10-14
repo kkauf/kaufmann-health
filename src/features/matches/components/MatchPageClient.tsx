@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ContactModal } from '@/features/therapists/components/ContactModal';
 import { TherapistDetailModal } from '@/features/therapists/components/TherapistDetailModal';
 import { Calendar, MessageCircle, MapPin, Video, CheckCircle, Sparkles } from 'lucide-react';
+import { ModalityLogoStrip } from '@/features/landing/components/ModalityLogoStrip';
 import type { TherapistData } from '@/features/therapists/components/TherapistDirectory';
 import { computeMismatches, type PatientMeta } from '@/features/leads/lib/match';
 
@@ -34,6 +35,8 @@ type MatchApiData = {
     session_preferences?: ('online' | 'in_person')[];
     specializations?: string[];
     gender_preference?: 'male' | 'female' | 'no_preference';
+    start_timing?: string;
+    modality_matters?: boolean;
   };
   therapists: TherapistItem[];
 };
@@ -133,11 +136,31 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   useEffect(() => {
     if (data) {
       try {
-        const payload = { type: 'match_page_view', properties: { patient_id: data.patient.name, therapist_count: therapists.length } };
+        const payload = { type: 'match_page_view', properties: { therapist_count: therapists.length } };
         navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
       } catch {}
     }
   }, [data, therapists.length]);
+
+  // Track preferences summary shown (non-PII)
+  useEffect(() => {
+    if (data) {
+      try {
+        const sp = data.patient.session_preferences || (data.patient.session_preference ? [data.patient.session_preference] : []);
+        const payload = {
+          type: 'match_page_preferences_shown',
+          properties: {
+            has_issue: Boolean((data.patient.issue || '').trim()),
+            session_online: Array.isArray(sp) && sp.includes('online'),
+            session_in_person: Array.isArray(sp) && sp.includes('in_person'),
+            urgent: data.patient.start_timing === 'Innerhalb der nächsten Woche',
+            modality_matters: Boolean(data.patient.modality_matters),
+          },
+        };
+        navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+      } catch {}
+    }
+  }, [data]);
 
   const handleOpen = useCallback((t: TherapistItem, type: 'booking' | 'consultation') => {
     setModalFor({ therapist: t, type });
@@ -220,6 +243,35 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         </p>
       </div>
 
+      {/* Preferences summary bar */}
+      {data && (
+        <div className="mb-6 rounded-xl border border-emerald-200/70 bg-emerald-50/50 p-4">
+          <div className="flex items-start gap-2 text-sm text-gray-800">
+            <span className="inline-flex items-center font-semibold text-gray-900"><Sparkles className="mr-1 h-4 w-4 text-emerald-600" />Basierend auf deinen Antworten:</span>
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              {(() => {
+                const chips: string[] = [];
+                const issue = (data.patient.issue || '').trim();
+                if (issue) chips.push(issue);
+                const sp = data.patient.session_preferences || (data.patient.session_preference ? [data.patient.session_preference] : []);
+                if (Array.isArray(sp) && sp.length) {
+                  const online = sp.includes('online');
+                  const inPerson = sp.includes('in_person');
+                  if (online && inPerson) chips.push('Online & Vor Ort');
+                  else if (online) chips.push('Online');
+                  else if (inPerson) chips.push('Vor Ort');
+                }
+                const urgent = data.patient.start_timing === 'Innerhalb der nächsten Woche';
+                if (urgent) chips.push('Schnelle Verfügbarkeit wichtig');
+                return chips.map((c, i) => (
+                  <span key={i} className="text-gray-800">{c}{i < chips.length - 1 ? ' •' : ''}</span>
+                ));
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Trust & Quality Box */}
       <div className="mb-8 rounded-xl border border-slate-200/60 bg-gradient-to-br from-slate-50/80 to-white p-6 shadow-md">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-900">
@@ -239,13 +291,21 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
             <span>Wir prüfen die Qualifikationen der Therapeut:innen gründlich.</span>
           </li>
-          <li className="flex items-start gap-2">
-            <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-            <span>Spezielle Ausbildungen (NARM, Somatic Experiencing, Hakomi, Core Energetics) sind in den farbigen Abzeichen sichtbar.</span>
-          </li>
+          {data?.patient?.modality_matters && (
+            <li className="flex items-start gap-2">
+              <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
+              <span>Spezielle Ausbildungen (NARM, Somatic Experiencing, Hakomi, Core Energetics) sind in den farbigen Abzeichen sichtbar.</span>
+            </li>
+          )}
         </ul>
         <p className="mt-4 font-semibold text-gray-900">Sie können dieser Auswahl guten Gewissens vertrauen.</p>
       </div>
+
+      {data?.patient?.modality_matters && (
+        <div className="mb-8">
+          <ModalityLogoStrip />
+        </div>
+      )}
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {therapistsWithQuality.map((t, idx) => {
@@ -301,8 +361,8 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
                   </div>
                 </div>
 
-                {/* Modalities */}
-                {t.modalities && t.modalities.length > 0 && (
+                {/* Modalities (conditional) */}
+                {data?.patient?.modality_matters && t.modalities && t.modalities.length > 0 && (
                   <div className="mb-3 flex flex-wrap gap-2">
                     {t.modalities.slice(0, 3).map((modality, midx) => {
                       const { label, color } = getModalityDisplay(modality);
@@ -410,7 +470,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             first_name: detailModalTherapist.first_name,
             last_name: detailModalTherapist.last_name,
             photo_url: detailModalTherapist.photo_url,
-            modalities: detailModalTherapist.modalities || [],
+            modalities: data?.patient?.modality_matters ? (detailModalTherapist.modalities || []) : [],
             session_preferences: detailModalTherapist.session_preferences || [],
             approach_text: detailModalTherapist.approach_text || '',
             accepting_new: detailModalTherapist.accepting_new ?? false,

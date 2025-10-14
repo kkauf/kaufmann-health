@@ -87,6 +87,8 @@ export default function SignupWizard() {
   const [addEmail, setAddEmail] = React.useState('');
   const [addEmailSubmitting, setAddEmailSubmitting] = React.useState(false);
   const [addEmailMessage, setAddEmailMessage] = React.useState('');
+  // Suppress auto-advance on screens reached via Back until user interacts
+  const [suppressAutoStep, setSuppressAutoStep] = React.useState<number | null>(null);
 
   // Analytics helper
   const trackEvent = React.useCallback(async (type: string, properties?: Record<string, unknown>) => {
@@ -415,6 +417,9 @@ export default function SignupWizard() {
       const v = Math.max(1, Math.min(9, n));
       prevStepRef.current = current;
       screenStartRef.current = Date.now();
+      // If navigating backward, suppress auto-advance on the target step until user interacts
+      if (n < current) setSuppressAutoStep(n);
+      else setSuppressAutoStep(null);
       try {
         localStorage.setItem(LS_KEYS.step, String(v));
       } catch {}
@@ -586,6 +591,7 @@ export default function SignupWizard() {
             }}
             onChange={saveLocal}
             onNext={() => safeGoToStep(2)}
+            suppressAutoAdvance={suppressAutoStep === 1}
             disabled={navLock || submitting}
           />
         );
@@ -597,6 +603,7 @@ export default function SignupWizard() {
             onChange={saveLocal}
             onBack={() => safeGoToStep(1)}
             onNext={() => safeGoToStep(3)}
+            suppressAutoAdvance={suppressAutoStep === 2}
             disabled={navLock || submitting}
           />
         );
@@ -619,6 +626,7 @@ export default function SignupWizard() {
             onChange={saveLocal}
             onBack={() => safeGoToStep(3)}
             onNext={() => safeGoToStep(5)}
+            suppressAutoAdvance={suppressAutoStep === 4}
             disabled={navLock || submitting}
           />
         );
@@ -633,6 +641,7 @@ export default function SignupWizard() {
             onChange={saveLocal}
             onBack={() => safeGoToStep(4)}
             onNext={() => safeGoToStep(6)}
+            suppressAutoAdvance={suppressAutoStep === 5}
             disabled={navLock || submitting}
           />
         );
@@ -681,6 +690,7 @@ export default function SignupWizard() {
             }}
             initialized={initialized}
             onChange={saveLocal}
+            onBack={() => safeGoToStep(7)}
             onNext={async () => {
               // If phone and already verified (from existing session), skip verification
               if (data.contact_method === 'phone' && data.phone_number) {
@@ -726,6 +736,7 @@ export default function SignupWizard() {
               return result;
             }}
             onResend={async () => { await handleSendSmsCode(); }}
+            onBack={() => safeGoToStep(8)}
             disabled={navLock || submitting}
           />
         );

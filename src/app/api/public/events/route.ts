@@ -1,14 +1,26 @@
 import { parseAttributionFromRequest, ServerAnalytics } from '@/lib/server-analytics';
 import { safeJson } from '@/lib/http';
 import { isLocalhostRequest } from '@/lib/test-mode';
+import { getFixedWindowLimiter, extractIpFromHeaders } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
+
+const eventsLimiter = getFixedWindowLimiter('public-events', 60, 60_000);
 
 /**
  * @endpoint POST /api/events
  */
 export async function POST(req: Request) {
   try {
+    const ip = extractIpFromHeaders(req.headers);
+    const { allowed, retryAfterSec } = eventsLimiter.check(ip);
+    if (!allowed) {
+      return safeJson(
+        { data: null, error: 'Rate limited' },
+        { status: 429, headers: { 'Retry-After': String(retryAfterSec) } }
+      );
+    }
+
     const {
       type,
       id,

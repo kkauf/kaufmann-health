@@ -20,23 +20,27 @@ export default function NewScreen4_Budget({
   onNext,
   onBack,
   disabled,
+  suppressAutoAdvance,
 }: {
   values: NewScreen4Values;
   onChange: (patch: Partial<NewScreen4Values>) => void;
   onNext: () => void;
   onBack: () => void;
   disabled?: boolean;
+  suppressAutoAdvance?: boolean;
 }) {
   const [flashKey, setFlashKey] = React.useState<string | null>(null);
+  const [userInteracted, setUserInteracted] = React.useState(false);
 
   // Auto-advance after selection
   React.useEffect(() => {
     if (disabled || !values.budget) return;
+    if (suppressAutoAdvance && !userInteracted) return;
     const timer = setTimeout(() => {
       onNext();
     }, 800);
     return () => clearTimeout(timer);
-  }, [values.budget, disabled, onNext]);
+  }, [values.budget, disabled, onNext, suppressAutoAdvance, userInteracted]);
   return (
     <div className="space-y-8">
       <div className="space-y-3">
@@ -55,6 +59,7 @@ export default function NewScreen4_Budget({
               aria-disabled={disabled}
               onClick={() => {
                 setFlashKey(opt);
+                setUserInteracted(true);
                 onChange({ budget: opt });
               }}
             >

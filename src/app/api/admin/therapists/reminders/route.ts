@@ -30,6 +30,19 @@ function parseCookie(header?: string | null): Map<string, string> {
   return map;
 }
 
+function sameOrigin(req: Request): boolean {
+  const host = req.headers.get('host') || '';
+  if (!host) return false;
+  const origin = req.headers.get('origin') || '';
+  const referer = req.headers.get('referer') || '';
+  const http = `http://${host}`;
+  const https = `https://${host}`;
+  if (origin === http || origin === https) return true;
+  if (referer.startsWith(http + '/')) return true;
+  if (referer.startsWith(https + '/')) return true;
+  return false;
+}
+
 // --- Helpers for cooldown/cap ---
 
 const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -95,14 +108,14 @@ export async function GET(req: Request) {
         }
       } catch {}
     }
-    // Allow native Vercel Cron header as an auth signal in the platform environment
-    if (!isCron && req.headers.get('x-vercel-cron')) {
-      isCron = true;
-    }
+    
 
     const isAdmin = await assertAdmin(req);
     if (!isAdmin && !isCron) {
       return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
+    }
+    if (isAdmin && !isCron && !sameOrigin(req)) {
+      return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 });
     }
 
     // Read params from query string
@@ -348,14 +361,12 @@ export async function POST(req: Request) {
         }
       } catch {}
     }
-    // Allow native Vercel Cron header as an auth signal in the platform environment
-    if (!isCron && req.headers.get('x-vercel-cron')) {
-      isCron = true;
-    }
-
     const isAdmin = await assertAdmin(req);
     if (!isAdmin && !isCron) {
       return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
+    }
+    if (isAdmin && !isCron && !sameOrigin(req)) {
+      return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
