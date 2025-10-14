@@ -95,6 +95,37 @@ const requireEnv = (key: string): string => {
   return v;
 };
 
+const getBudgetAmountMicros = async (customer: any, budgetRn: string): Promise<number | undefined> => {
+  const rows = await customer.query(`
+    SELECT campaign_budget.resource_name, campaign_budget.amount_micros
+    FROM campaign_budget
+    WHERE campaign_budget.resource_name = '${budgetRn}'
+    LIMIT 1
+  `);
+  const r = rows?.[0];
+  const amt = (r as any)?.campaign_budget?.amount_micros || (r as any)?.campaignBudget?.amountMicros;
+  return typeof amt === 'number' ? amt : undefined;
+};
+
+const ensureBudgetAmount = async (customer: any, budgetRn: string, amountMicros: number, dryRun: boolean) => {
+  const current = await getBudgetAmountMicros(customer, budgetRn).catch(() => undefined);
+  if (current === amountMicros) {
+    console.log(`  • Budget amount unchanged (€${(amountMicros/1_000_000).toFixed(2)}/day)`);
+    return;
+  }
+  if (dryRun) {
+    console.log(`  [DRY] Would update budget amount to €${(amountMicros/1_000_000).toFixed(2)}/day`);
+    return;
+  }
+  await customer.campaignBudgets.update([
+    {
+      resource_name: budgetRn,
+      amount_micros: amountMicros,
+    },
+  ], { partial_failure: true });
+  console.log(`  ✓ Budget updated to €${(amountMicros/1_000_000).toFixed(2)}/day`);
+};
+
 const eurosToMicros = (eur: number): number => {
   return Math.round((eur || 0) * 1_000_000);
 };
@@ -374,6 +405,15 @@ async function addCampaignNegatives(customer: any, campaignRn: string, negatives
 }
 
 async function ensureAdGroup(customer: any, campaignRn: string, name: string, cpcMicros: number, dryRun: boolean): Promise<string> {
+  // Pre-check to avoid duplicate-name error
+  try {
+    const rows: any[] = await customer.query(`SELECT ad_group.resource_name FROM ad_group WHERE ad_group.name = '${name.replace(/'/g, "''")}' AND ad_group.campaign = '${campaignRn}' LIMIT 1`);
+    const existing = rows?.[0]?.ad_group?.resource_name || rows?.[0]?.adGroup?.resourceName;
+    if (existing) {
+      console.log(`  • Ad group exists: ${name}`);
+      return existing as string;
+    }
+  } catch {}
   if (dryRun) {
     console.log(`  [DRY] Would create ad group: ${name} (bid €${(cpcMicros/1_000_000).toFixed(2)})`);
     return `${campaignRn}/adGroups/DRY_${Date.now()}`;
@@ -392,7 +432,8 @@ async function ensureAdGroup(customer: any, campaignRn: string, name: string, cp
     console.log(`  ✓ Ad group: ${name}`);
     return rn as string;
   } catch (e: any) {
-    if (String(e).includes('ALREADY_EXISTS') || String(e).includes('DUPLICATE')) {
+    const s = String(e).toLowerCase();
+    if (s.includes('already exists') || s.includes('already_exists') || s.includes('duplicate')) {
       const rows: any[] = await customer.query(`SELECT ad_group.resource_name FROM ad_group WHERE ad_group.name = '${name.replace(/'/g, "''")}' AND ad_group.campaign = '${campaignRn}' LIMIT 1`);
       const rn = rows?.[0]?.ad_group?.resource_name || rows?.[0]?.adGroup?.resourceName;
       if (!rn) throw e;
@@ -533,6 +574,63 @@ async function main() {
     login_customer_id: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID,
   });
 
+  async function listAssetsByTypes(types: string[]): Promise<{ resourceName: string; type: string; name?: string }[]> {
+    const typeList = types.map((t) => `'${t}'`).join(',');
+    const rows: any[] = await customer.query(`
+      SELECT asset.resource_name, asset.type, asset.name
+      FROM asset
+      WHERE asset.type IN (${typeList})
+    `);
+    return rows.map((r) => {
+      const a = (r as any).asset || (r as any).asset;
+      return {
+        resourceName: a?.resource_name || a?.resourceName,
+        type: a?.type,
+        name: a?.name,
+      } as { resourceName: string; type: string; name?: string };
+    }).filter((a) => !!a.resourceName);
+  }
+
+  async function attachAssetsToCampaign(campaignRn: string, assets: { resourceName: string; type: string; name?: string }[], dryRun: boolean) {
+    // Map AssetType -> AssetFieldType for CampaignAsset
+    const fieldTypeFor: Record<string, number> = {
+      SITELINK: (enums as any).AssetFieldType?.SITELINK ?? enums.AssetFieldType.SITELINK,
+      CALLOUT: (enums as any).AssetFieldType?.CALLOUT ?? enums.AssetFieldType.CALLOUT,
+      STRUCTURED_SNIPPET: (enums as any).AssetFieldType?.STRUCTURED_SNIPPET ?? enums.AssetFieldType.STRUCTURED_SNIPPET,
+    };
+    // Limit counts to sensible defaults
+    const byType: Record<string, { resourceName: string; type: string; name?: string }[]> = {};
+    for (const a of assets) {
+      if (!byType[a.type]) byType[a.type] = [];
+      byType[a.type].push(a);
+    }
+    const limits: Record<string, number> = { SITELINK: 6, CALLOUT: 10, STRUCTURED_SNIPPET: 4 };
+
+    for (const t of Object.keys(byType)) {
+      const selected = byType[t].slice(0, limits[t] || 5);
+      if (selected.length === 0) continue;
+      const fieldType = fieldTypeFor[t];
+      if (dryRun) {
+        console.log(`  [DRY] Would attach ${t} assets (${selected.length}) to campaign`);
+        continue;
+      }
+      try {
+        await customer.campaignAssets.create(
+          selected.map((a) => ({
+            campaign: campaignRn,
+            asset: a.resourceName,
+            field_type: fieldType,
+          })),
+          { partial_failure: true }
+        );
+        console.log(`  ✓ Attached ${t} assets: ${selected.length}`);
+      } catch (e: any) {
+        const msg = JSON.stringify(e?.errors || String(e));
+        console.error(`  ✗ Failed attaching ${t} assets: ${msg}`);
+      }
+    }
+  }
+
   for (const c of filtered) {
     console.log(`\n=== Applying campaign: ${c.name} ===`);
     const budgetName = `${c.name} – Budget`;
@@ -542,6 +640,7 @@ async function main() {
     let budgetRn = await findBudgetByName(customer, budgetName);
     if (budgetRn) {
       console.log(`  ✓ Budget exists: ${budgetRn}`);
+      await ensureBudgetAmount(customer, budgetRn, amountMicros, dryRun || validateOnly);
     } else {
       budgetRn = await createBudget(customer, budgetName, amountMicros, dryRun || validateOnly);
     }
@@ -603,6 +702,33 @@ async function main() {
     }
     await pauseOtherAdGroups(customer, campaignRn as string, allowedNames, dryRun || validateOnly);
     await updateCampaignPresenceAndEcpc(customer, campaignRn as string, dryRun || validateOnly);
+
+    // Update campaign end date to current config (start date update can be restricted once campaign started)
+    if (!dryRun && !validateOnly) {
+      try {
+        await customer.campaigns.update([
+          {
+            resource_name: campaignRn,
+            end_date: c.schedule.end,
+          },
+        ], { partial_failure: true });
+        console.log(`  ✓ Campaign end date set to ${c.schedule.end}`);
+      } catch (e) {
+        console.log('  • Skipped end date update (may be unchanged or restricted)');
+      }
+    }
+
+    // Attach existing assets (sitelinks, callouts, structured snippets)
+    try {
+      const accountAssets = await listAssetsByTypes(['SITELINK', 'CALLOUT', 'STRUCTURED_SNIPPET']);
+      if (accountAssets.length > 0) {
+        await attachAssetsToCampaign(campaignRn as string, accountAssets, dryRun || validateOnly);
+      } else {
+        console.log('  • No existing assets found to attach');
+      }
+    } catch (e) {
+      console.log('  • Skipped asset attachment (query failed or no permissions)');
+    }
   }
 }
 
