@@ -11,10 +11,10 @@ This is a concise, high-signal overview. It complements the detailed `docs/api.m
 
 ## Auth Patterns
 - Admin: `POST /api/admin/login` sets `kh_admin` (HTTP-only, Path=/admin, 24h). Edge middleware protects `/admin/*`.
-- Cron (server-to-server): any of
-  - `x-vercel-cron` header (Vercel Cron)
+- Cron (server-to-server):
   - `x-cron-secret` or `Authorization: Bearer <CRON_SECRET>`
   - `?token=<CRON_SECRET>` (manual runs)
+  - Note: `x-vercel-cron` is not trusted for auth in production (telemetry only)
 
 ## Observability
 - Admin Errors UI: `/admin/errors` (filter by `source`, `type`, `level`).

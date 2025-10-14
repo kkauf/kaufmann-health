@@ -349,13 +349,16 @@ __Notes__:
 ## POST/GET /api/admin/leads/confirmation-reminders (EARTH-190)
 
 - __Purpose__: Send a single 24‑hour follow‑up email to patient leads still in `status='pre_confirmation'`.
-- __Auth__: One of:
-  - Admin session cookie (`kh_admin`), or
-  - Cron secret header `x-cron-secret` (or `Authorization: Bearer <CRON_SECRET>`), or
-  - Vercel platform header `x-vercel-cron` (when invoked by Vercel Cron)
+-## Cron Authentication
+
+- **Accepted mechanisms** for admin cron endpoints (any one):
+  - `x-cron-secret` or `Authorization: Bearer <CRON_SECRET>`
+  - `?token=<CRON_SECRET>` (manual runs)
+- Note: `x-vercel-cron` is not trusted for auth in production (telemetry only).
+- **Example**: see `src/app/api/admin/matches/selection-reminders/route.ts` and `src/app/api/admin/alerts/system/route.ts`.
 - __Methods__:
   - `POST` with JSON body (manual/scripted runs)
-  - `GET` with query params (Vercel Cron)
+  - `GET` with query params (when scheduled via Vercel Cron, include `x-cron-secret`)
 - __Body__ (JSON) or Query Params (GET):
   - `limit?`: number (default 100, max 1000)
 - __Behavior__:
@@ -466,19 +469,27 @@ __Deliverability Note__: We intentionally send only one reminder at 24h to prote
 
 ### POST /api/admin/matches/email
 
-- __Purpose__: Send a patient-facing email related to a specific match (either a templated “match found” message or a custom update). Intended as part of the admin outreach workflow.
+- __Purpose__: Send a patient-facing message related to matching. Templates: “match found”, “custom update”, and “selection”.
 - __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
 - __Request Body__ (JSON):
-  - `id` (uuid, required) — the `matches.id` to reference
-  - `template?` (`'match_found' | 'custom'`, default `'custom'`)
-  - `message?` (string) — only used when `template='custom'`; max 4000 chars
+  - `id` (uuid, required for `match_found` | `custom`) — references `matches.id`
+  - `template?` (`'match_found' | 'custom' | 'selection'`, default `'custom'`)
+  - `message?` (string) — only for `template='custom'`; max 4000 chars
+  - For `selection`:
+    - `patient_id` (uuid, required)
+    - `therapist_ids?` (uuid[]) — optional explicit selection (max 3). If omitted, infers up to 3 current `proposed` matches.
 - __Behavior__:
-  - Loads the match by id and the related patient; verifies patient email exists.
-  - For `template='match_found'`, also loads therapist name and sends a templated confirmation.
-  - Uses the server email client; failures are logged and a 500 is returned.
+  - `match_found`: loads match + therapist name; emails templated confirmation.
+  - `custom`: emails arbitrary update.
+  - `selection`: builds up to 3 recommendations (ranked by mismatch logic) and constructs a magic link `/matches/:uuid`.
+    - Channel selection:
+      - If patient has an email → sends email.
+      - If no email but `phone_number` exists → sends SMS via Twilio Messaging Service (Alpha Sender), text: “Deine handverlesene Therapeuten-Auswahl ist bereit: <link>”.
+      - Emits `email_attempted`/`email_sent` or `sms_attempted`/`sms_sent` accordingly.
 - __Response__:
-  - 200: `{ data: { ok: true }, error: null }`
-  - 400: `{ data: null, error: 'id is required' | 'Invalid JSON' | 'Patient email missing' }`
+  - 200: `{ data: { ok: true }, error: null }` (email path)
+  - 200: `{ data: { ok: true, via: 'sms' }, error: null }` (SMS fallback path)
+  - 400: `{ data: null, error: 'id is required' | 'Invalid JSON' | 'No contact method available' | 'No therapists provided or found for selection' }`
   - 401: `{ data: null, error: 'Unauthorized' }`
   - 404: `{ data: null, error: 'Match not found' }`
   - 500: `{ data: null, error: 'Failed to load entities' | 'Unexpected error' }`
@@ -504,16 +515,15 @@ __Why__: Server-side reminders keep logic and security in the backend (no public
 ## POST/GET /api/admin/therapists/reminders
 
 - __Purpose__: Batch-send profile completion reminders to therapists in `pending_verification`.
-- __Auth__: One of:
+- **Auth**: One of:
   - Admin session cookie (`kh_admin`), or
-  - Cron secret header `x-cron-secret` matching `CRON_SECRET`, or
-  - Vercel platform header `x-vercel-cron` (only present when invoked by Vercel Cron)
-- __Methods__:
+  - Cron secret header `x-cron-secret` matching `CRON_SECRET` (or `Authorization: Bearer <CRON_SECRET>`) 
+- **Methods**:
   - `POST` with JSON body (recommended for manual/scripted runs)
   - `GET` with query params (used by Vercel Cron per `vercel.json`)
-- __Body__ (JSON) or Query Params (GET):
+- **Body** (JSON) or Query Params (GET):
   - `limit?`: number (default 100, max 1000)
-  - `stage?`: Optional label (e.g. "Erinnerung", "Zweite Erinnerung", "Letzte Erinnerung")
+- **Behavior**:
 - __Behavior__:
   - Fetches up to `limit` therapists with `status='pending_verification'`.
   - For each, computes missing items from metadata and sends a reminder if anything is missing.

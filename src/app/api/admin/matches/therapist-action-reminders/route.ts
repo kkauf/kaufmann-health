@@ -38,7 +38,7 @@ function hoursAgo(h: number) {
 
 function isCronAuthorized(req: Request): boolean {
   const vercelCron = req.headers.get('x-vercel-cron');
-  if (vercelCron) return true; // allow Vercel Cron header (tests/preview)
+  if (vercelCron && process.env.NODE_ENV !== 'production') return true;
   const cronSecretHeader = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = req.headers.get('authorization') || '';
