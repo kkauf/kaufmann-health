@@ -10,7 +10,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  const relPath = segments.join('/');
+  const invalid = segments.some((seg) => {
+    if (typeof seg !== 'string') return true;
+    if (!seg || seg.length > 128) return true;
+    if (seg === '.' || seg === '..') return true;
+    if (seg.includes('\\')) return true;
+    return !/^[A-Za-z0-9._-]+$/.test(seg);
+  });
+  if (invalid) return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
+
+  const relPath = segments.map((s) => encodeURIComponent(s)).join('/');
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!supabaseUrl) {
     return NextResponse.json({ error: 'Upstream not configured' }, { status: 500 });

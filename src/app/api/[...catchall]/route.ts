@@ -12,6 +12,23 @@ const CRITICAL_PATTERNS = [
   { pattern: /^\/api\/leads\/[^/]+\/preferences/, name: 'lead_preferences' },
 ];
 
+function sanitizeQuery(req: NextRequest): string | null {
+  try {
+    const u = new URL(req.url);
+    if (!u.search) return null;
+    const sp = u.searchParams;
+    const redacted = new URLSearchParams();
+    const SENSITIVE = new Set(['token', 'email_token', 'id', 'fs']);
+    for (const [k, v] of sp.entries()) {
+      redacted.set(k, SENSITIVE.has(k) ? 'REDACTED' : v);
+    }
+    const s = redacted.toString();
+    return s ? `?${s}` : null;
+  } catch {
+    return null;
+  }
+}
+
 async function handle(req: NextRequest) {
   const pathname = new URL(req.url).pathname;
 
@@ -25,7 +42,7 @@ async function handle(req: NextRequest) {
       new Error(`CRITICAL: 404 on ${criticalMatch.name} endpoint - broken email/magic link`),
       {
         pathname,
-        query: new URL(req.url).search,
+        query: sanitizeQuery(req),
         method: req.method,
         pattern: criticalMatch.name,
         referrer: req.headers.get('referer') || null,
@@ -41,7 +58,7 @@ async function handle(req: NextRequest) {
       new Error(`API route not found: ${pathname}`),
       {
         pathname,
-        query: new URL(req.url).search,
+        query: sanitizeQuery(req),
         method: req.method,
       }
     );

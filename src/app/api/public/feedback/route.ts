@@ -3,6 +3,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { BASE_URL } from '@/lib/constants';
+import { getFixedWindowLimiter, extractIpFromHeaders } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,14 @@ export async function GET(req: Request) {
   const ua = req.headers.get('user-agent') || undefined;
 
   try {
+    const limiter = getFixedWindowLimiter('public-feedback', 30, 60_000);
+    const who = extractIpFromHeaders(req.headers);
+    const { allowed, retryAfterSec } = limiter.check(who);
+    if (!allowed) {
+      const url = `${BASE_URL}/feedback-received?ok=1`;
+      return new NextResponse(null, { status: 302, headers: { Location: url, 'Retry-After': String(retryAfterSec) } });
+    }
+
     const url = new URL(req.url);
     const match_id = (url.searchParams.get('match') || url.searchParams.get('match_id') || '').trim();
     const reasonRaw = (url.searchParams.get('reason') || '').trim().toLowerCase();

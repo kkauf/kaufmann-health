@@ -7,6 +7,7 @@ import { renderPatientCustomUpdate, renderPatientMatchFound } from '@/lib/email/
 import { renderPatientSelectionEmail } from '@/lib/email/templates/patientSelection';
 import { BASE_URL } from '@/lib/constants';
 import { computeMismatches } from '@/features/leads/lib/match';
+import { sendTransactionalSms } from '@/lib/sms/client';
 import type { EmailContent } from '@/lib/email/types';
 
 export const runtime = 'nodejs';
@@ -32,6 +33,20 @@ async function assertAdmin(req: Request): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function sameOrigin(req: Request): boolean {
+  const host = req.headers.get('host') || '';
+  if (!host) return false;
+  const origin = req.headers.get('origin') || '';
+  const referer = req.headers.get('referer') || '';
+  if (!origin && !referer) return true; // allow server-to-server/test requests
+  const http = `http://${host}`;
+  const https = `https://${host}`;
+  if (origin === http || origin === https) return true;
+  if (referer.startsWith(http + '/')) return true;
+  if (referer.startsWith(https + '/')) return true;
+  return false;
 }
 
 type Match = { id: string; patient_id: string; therapist_id: string };
@@ -70,6 +85,9 @@ export async function POST(req: Request) {
   const isAdmin = await assertAdmin(req);
   if (!isAdmin) {
     return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
+  }
+  if (process.env.NODE_ENV === 'production' && !sameOrigin(req)) {
+    return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 });
   }
 
   let body: Body;
@@ -113,7 +131,7 @@ export async function POST(req: Request) {
 
     const { data: patientRow, error: pErr } = await supabaseServer
       .from('people')
-      .select('id, name, email, metadata')
+      .select('id, name, email, phone_number, metadata')
       .eq('id', patient_id)
       .single();
 
@@ -125,11 +143,9 @@ export async function POST(req: Request) {
     const patient = (patientRow || null) as Person | null;
 
     const patientEmail = (patient?.email || '').trim();
+    const patientPhone = (patient as unknown as { phone_number?: string | null })?.phone_number?.trim?.() || '';
     const patientName = (patient?.name || '') || null;
 
-    if (!patientEmail) {
-      return NextResponse.json({ data: null, error: 'Patient email missing' }, { status: 400 });
-    }
 
     let content: EmailContent; // will be set in all template branches
 
@@ -272,8 +288,45 @@ export async function POST(req: Request) {
 
       const matchesUrl = `${BASE_URL}/matches/${secure_uuid}`;
       content = renderPatientSelectionEmail({ patientName, items, matchesUrl });
+
+      // Choose channel: Email preferred; fallback to SMS for phone-only Klient:innen
+      if (!patientEmail && !patientPhone) {
+        return NextResponse.json({ data: null, error: 'No contact method available' }, { status: 400 });
+      }
+
+      if (!patientEmail && patientPhone) {
+        // SMS fallback
+        try {
+          void track({ type: 'sms_attempted', level: 'info', source: 'admin.api.matches.email', props: { template: 'selection', patient_id } });
+          const ok = await sendTransactionalSms(patientPhone, `Deine handverlesene Therapeuten-Auswahl ist bereit: ${matchesUrl}`);
+          if (ok) {
+            void track({ type: 'sms_sent', level: 'info', source: 'admin.api.matches.email', props: { template: 'selection', patient_id } });
+            // Also mark metadata like email path for UI consistency
+            try {
+              const nowIso = new Date().toISOString();
+              const currentMetaRaw = (patient?.metadata ?? null) as unknown;
+              const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+              const currentMeta = isObject(currentMetaRaw) ? currentMetaRaw : {};
+              const nextMeta = { ...currentMeta, selection_email_sent_at: nowIso, selection_email_count: items.length } as Record<string, unknown>;
+              await supabaseServer.from('people').update({ metadata: nextMeta }).eq('id', patient_id);
+            } catch {}
+            return NextResponse.json({ data: { ok: true, via: 'sms' }, error: null }, { status: 200 });
+          } else {
+            await logError('admin.api.matches.email', new Error('SMS send returned false'), { stage: 'send_sms_failed', patient_id });
+            return NextResponse.json({ data: null, error: 'SMS send failed' }, { status: 500 });
+          }
+        } catch (e) {
+          await logError('admin.api.matches.email', e, { stage: 'send_sms_exception', patient_id });
+          return NextResponse.json({ data: null, error: 'SMS exception' }, { status: 500 });
+        }
+      }
     } else {
       return NextResponse.json({ data: null, error: 'Invalid template' }, { status: 400 });
+    }
+
+    // For non-selection templates, email is required
+    if (template !== 'selection' && !patientEmail) {
+      return NextResponse.json({ data: null, error: 'Patient email missing' }, { status: 400 });
     }
 
     // Await (client never throws; logs internally). Keep response predictable.

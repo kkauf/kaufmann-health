@@ -30,6 +30,18 @@
   - `contact_rate_limit_hit` (POST /api/public/matches/:uuid/contact when blocked)
   - Ops: `cron_executed`, `cron_completed`, `cron_failed`, `internal_alert_sent`.
 
+### SMS notifications (EARTH-206)
+- Outbound events
+  - `sms_attempted` — before sending transactional SMS (selection email fallback or reminders)
+  - `sms_sent` — on successful Twilio send
+  - `sms_status` — Twilio delivery status webhook (`/api/internal/sms/status`), includes `status`, masked `to/from`, `message_sid`, optional `error_code`
+- Deduplication for reminders
+  - `alreadySentForStage()` considers both `email_sent` and `sms_sent` within the stage lookback window (24h/48h) to prevent duplicate outreach.
+
+### Match page client events (EARTH-206)
+- `match_page_view` — includes only `therapist_count` (no PII)
+- `match_page_preferences_shown` — non‑PII flags summarizing the preference chips (issue present, online/in_person flags, urgent flag, modality_matters)
+
 ### Email‑first wizard (EARTH‑190)
 - Track per‑screen if needed (`screen_viewed`, `screen_completed`, optional `field_change`).
 - Completion emits `form_completed` (server). Ads fire server Enhanced Conversions and a minimal client gtag conversion.

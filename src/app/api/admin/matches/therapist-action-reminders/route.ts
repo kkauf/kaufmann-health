@@ -36,22 +36,49 @@ function hoursAgo(h: number) {
   return new Date(Date.now() - h * 60 * 60 * 1000).toISOString();
 }
 
+function isCronAuthorized(req: Request): boolean {
+  const vercelCron = req.headers.get('x-vercel-cron');
+  if (vercelCron) return true; // allow Vercel Cron header (tests/preview)
+  const cronSecretHeader = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
+  const cronSecret = process.env.CRON_SECRET;
+  const authHeader = req.headers.get('authorization') || '';
+  const isAuthBearer = Boolean(cronSecret && authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret);
+  let isCron = Boolean(cronSecret && cronSecretHeader && cronSecretHeader === cronSecret) || isAuthBearer;
+  if (!isCron && cronSecret) {
+    try {
+      const u = new URL(req.url);
+      const token = u.searchParams.get('token');
+      if (token && token === cronSecret) isCron = true;
+    } catch {}
+  }
+  return Boolean(isCron);
+}
+
+function sameOrigin(req: Request): boolean {
+  const host = req.headers.get('host') || '';
+  if (!host) return false;
+  const origin = req.headers.get('origin') || '';
+  const referer = req.headers.get('referer') || '';
+  if (!origin && !referer) return true; // allow server-to-server/test requests
+  const http = `http://${host}`;
+  const https = `https://${host}`;
+  if (origin === http || origin === https) return true;
+  if (referer.startsWith(http + '/')) return true;
+  if (referer.startsWith(https + '/')) return true;
+  return false;
+}
+
 export async function GET(req: Request) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   const ua = req.headers.get('user-agent') || undefined;
   const startedAt = Date.now();
 
   try {
-    // Auth: allow either admin cookie OR Cron secret
-    const cronSecretHeader = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
-    const cronSecret = process.env.CRON_SECRET;
-    const authHeader = req.headers.get('authorization') || '';
-    const isAuthBearer = Boolean(cronSecret && authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret);
-    let isCron = Boolean(cronSecret && cronSecretHeader && cronSecretHeader === cronSecret) || isAuthBearer;
-    if (!isCron && req.headers.get('x-vercel-cron')) isCron = true;
-
+    // Auth: allow either admin cookie OR Cron secret (headers or token param)
+    const isCron = isCronAuthorized(req);
     const isAdmin = await assertAdmin(req);
     if (!isAdmin && !isCron) return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
+    if (isAdmin && !isCron && !sameOrigin(req)) return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 });
 
     const url = new URL(req.url);
     const stage = (url.searchParams.get('stage') || '').toLowerCase(); // '20h'

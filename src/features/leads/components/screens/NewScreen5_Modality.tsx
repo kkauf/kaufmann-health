@@ -1,7 +1,6 @@
 "use client";
 
 import React from 'react';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import TherapyModalityExplanations from '@/components/TherapyModalityExplanations';
 

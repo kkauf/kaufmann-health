@@ -31,7 +31,6 @@ async function isCronOrAdmin(req: Request): Promise<boolean> {
         if (token && token === cronSecret) isCron = true;
       } catch {}
     }
-    if (!isCron && req.headers.get('x-vercel-cron')) isCron = true;
     if (isCron) return true;
 
     // Fallback: allow admin cookie access as manual trigger (no import to avoid coupling)
@@ -42,6 +41,35 @@ async function isCronOrAdmin(req: Request): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function isCronAuthorized(req: Request): boolean {
+  const cronSecretHeader = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
+  const cronSecret = process.env.CRON_SECRET;
+  const authHeader = req.headers.get('authorization') || '';
+  const isAuthBearer = Boolean(cronSecret && authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret);
+  let isCron = Boolean(cronSecret && cronSecretHeader && cronSecretHeader === cronSecret) || isAuthBearer;
+  if (!isCron && cronSecret) {
+    try {
+      const u = new URL(req.url);
+      const token = u.searchParams.get('token');
+      if (token && token === cronSecret) isCron = true;
+    } catch {}
+  }
+  return Boolean(isCron);
+}
+
+function sameOrigin(req: Request): boolean {
+  const host = req.headers.get('host') || '';
+  if (!host) return false;
+  const origin = req.headers.get('origin') || '';
+  const referer = req.headers.get('referer') || '';
+  const http = `http://${host}`;
+  const https = `https://${host}`;
+  if (origin === http || origin === https) return true;
+  if (referer.startsWith(http + '/')) return true;
+  if (referer.startsWith(https + '/')) return true;
+  return false;
 }
 
 function hoursAgoISO(hours: number) {
@@ -83,8 +111,15 @@ export async function GET(req: Request) {
   const ua = req.headers.get('user-agent') || undefined;
 
   try {
-    const ok = await isCronOrAdmin(req);
-    if (!ok) return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
+    const okCron = isCronAuthorized(req);
+    let isAdmin = false;
+    try {
+      const { verifySessionToken, ADMIN_SESSION_COOKIE } = await import('@/lib/auth/adminSession');
+      const token = parseCookie(req.headers.get('cookie')).get(ADMIN_SESSION_COOKIE);
+      isAdmin = token ? await verifySessionToken(token) : false;
+    } catch {}
+    if (!okCron && !isAdmin) return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
+    if (isAdmin && !okCron && !sameOrigin(req)) return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 });
 
     const url = new URL(req.url);
     const hoursRaw = url.searchParams.get('hours') || '3';

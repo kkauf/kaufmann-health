@@ -150,6 +150,44 @@ git log --all --full-history --diff-filter=D -- "google_ads_api_scripts/*.json"
 - [ ] Admin cookie scoped to `/admin`; no tracking cookies on public.
 - [ ] Consent Mode v2 honored; Ads linker only after consent.
 - [ ] No PII in analytics events; IPs hashed with salt.
-- [ ] Cron endpoints require `x-vercel-cron` or `CRON_SECRET`.
+- [ ] Cron endpoints require `CRON_SECRET` or verified Vercel signature; never trust `x-vercel-cron` alone.
 - [ ] Secrets set in Vercel env; Node runtime for secret-using routes.
 - [ ] Campaign configs in `private/` folder; no real keywords in public files.
+
+## Security TODOs (internal – remove after mitigation)
+
+- **[High] Cron auth hardening**
+  - Do not accept `x-vercel-cron` as sufficient auth. Require `CRON_SECRET` or verify Vercel signature on all admin cron routes.
+  - Files: `src/app/api/admin/matches/selection-reminders/route.ts`, `src/app/api/admin/leads/confirmation-reminders/route.ts`, `src/app/api/admin/matches/blocker-survey/route.ts`, `src/app/api/admin/ads/monitor/route.ts`.
+
+- **[High] Enforce client JWT secret (no fallback)**
+  - In `src/lib/auth/clientSession.ts`, remove fallback secret and throw in production when `JWT_SECRET` is missing. Add test to ensure failure when unset.
+
+- **[High] Security headers baseline**
+  - Add global headers via middleware or `vercel.json`:
+    - `Content-Security-Policy` (allow only required sources: self, Supabase, gtag/gtm if enabled; disallow inline except for the existing stub or gate with nonces).
+    - `Frame-Options: DENY` (or CSP `frame-ancestors 'none'`).
+    - `Referrer-Policy: strict-origin-when-cross-origin`.
+    - `X-Content-Type-Options: nosniff`.
+    - `Permissions-Policy` (disable camera/mic/geolocation, etc.).
+
+- **[High] Redact tokens from 404 logging**
+  - In `src/app/api/[...catchall]/route.ts`, redact sensitive query params (`token`, `email_token`, `id`, `fs`) before logging; or drop `query` entirely for critical patterns.
+
+- **[Medium] CSRF hardening for admin APIs**
+  - Set admin cookies to `SameSite=Strict` and add Origin/Referer allowlist checks for mutating methods on `/api/admin/*`.
+
+- **[Medium] Rate-limit unauthenticated write endpoints**
+  - Add per-IP fixed-window limits for:
+    - `POST /api/public/events` (e.g., 30/min/IP).
+    - `POST /api/public/form-sessions` and `PATCH /api/public/form-sessions/[id]` (e.g., 60/min/IP, per id lower).
+
+- **[Medium] Image proxy hardening**
+  - Validate `[...path]` segments: reject empty/`..`/backslash segments after decode; cap segment length; continue to only proxy to `${NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/therapist-profiles/*`.
+  - Files: `src/app/api/public/images/therapist-profiles/[...path]/route.ts`, alias in `src/app/api/images/therapist-profiles/[...path]/route.ts`.
+
+- **[Low] Feedback endpoint abuse controls**
+  - `GET /api/public/feedback`: add per-IP throttle and optional HMAC (or require a `secure_uuid` → `match_id` lookup) to reduce spoofed alerts.
+
+- **[Low] Logging guardrail**
+  - In `src/lib/logger.ts`, strip well-known sensitive keys from `properties` (`email`, `phone`, `token`, `email_token`) before persistence, in addition to size truncation.

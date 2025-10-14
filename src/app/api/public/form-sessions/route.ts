@@ -1,11 +1,22 @@
 import { supabaseServer } from '@/lib/supabase-server';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { safeJson } from '@/lib/http';
+import { getFixedWindowLimiter, extractIpFromHeaders } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
+    const ip = extractIpFromHeaders(req.headers);
+    const limiter = getFixedWindowLimiter('form-sessions-create', 20, 60_000);
+    const { allowed, retryAfterSec } = limiter.check(ip);
+    if (!allowed) {
+      return safeJson(
+        { data: null, error: 'Rate limited' },
+        { status: 429, headers: { 'Retry-After': String(retryAfterSec) } }
+      );
+    }
+
     let body: unknown;
     try {
       body = await req.json();

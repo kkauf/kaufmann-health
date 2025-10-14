@@ -11,6 +11,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { maybeFirePatientConversion } from '@/lib/conversion';
 import { logError } from '@/lib/logger';
 import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
+import { getFixedWindowLimiter, extractIpFromHeaders } from '@/lib/rate-limit';
 
 interface VerifyCodeRequest {
   contact: string; // email or phone
@@ -20,6 +21,15 @@ interface VerifyCodeRequest {
 
 export async function POST(req: NextRequest) {
   try {
+    const limiter = getFixedWindowLimiter('verification-verify-code', 10, 60_000);
+    const { allowed, retryAfterSec } = limiter.check(extractIpFromHeaders(req.headers));
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Rate limited' },
+        { status: 429, headers: { 'Retry-After': String(retryAfterSec) } }
+      );
+    }
+
     const body = (await req.json()) as VerifyCodeRequest;
     const { contact, contact_type, code } = body;
 

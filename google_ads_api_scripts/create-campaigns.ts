@@ -180,21 +180,250 @@ const createCampaign = async (customer: any, name: string, budgetResourceName: s
     console.log(`  [DRY] Would create campaign: ${name} (PAUSED)`);
     return `customers/${requireEnv('GOOGLE_ADS_CUSTOMER_ID')}/campaigns/DRY_${Date.now()}`;
   }
-  const res: any = await customer.campaigns.create([
-    {
-      name,
-      status: enums.CampaignStatus.PAUSED,
-      advertising_channel_type: enums.AdvertisingChannelType.SEARCH,
-      campaign_budget: budgetResourceName,
-      start_date: startDate,
-      end_date: endDate,
-    },
-  ]);
+  let res: any;
+  try {
+    res = await customer.campaigns.create([
+      {
+        name,
+        status: enums.CampaignStatus.PAUSED,
+        advertising_channel_type: enums.AdvertisingChannelType.SEARCH,
+        bidding_strategy_type: enums.BiddingStrategyType.MANUAL_CPC,
+        manual_cpc: { enhanced_cpc_enabled: false },
+        network_settings: {
+          target_google_search: true,
+          target_search_network: true,
+          target_content_network: false,
+          target_partner_search_network: false,
+        },
+        contains_eu_political_advertising: (enums as any).EuPoliticalAdvertisingStatus
+          ? (enums as any).EuPoliticalAdvertisingStatus.DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING
+          : 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
+        eu_political_advertising: {
+          status: (enums as any).EuPoliticalAdvertisingStatus
+            ? (enums as any).EuPoliticalAdvertisingStatus.DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING
+            : 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
+        },
+        campaign_budget: budgetResourceName,
+        start_date: startDate,
+        end_date: endDate,
+      },
+    ]);
+  } catch (e: any) {
+    console.error('  ✗ Campaign create failed');
+    try {
+      const details = e?.errors?.map((er: any) => ({
+        code: er?.error_code,
+        message: er?.message,
+        trigger: er?.trigger,
+        location: er?.location,
+      }));
+      console.error('  Details:', JSON.stringify(details, null, 2));
+    } catch {}
+    throw e;
+  }
   const rn = res?.results?.[0]?.resource_name || res?.[0]?.resource_name || res?.resource_name;
   if (!rn) throw new Error('Failed to create campaign (no resource_name)');
   console.log(`  ✓ Campaign created (PAUSED): ${rn}`);
   return rn as string;
 };
+
+async function ensureLanguageGerman(customer: any, campaignRn: string, dryRun: boolean) {
+  const langConst = 'languageConstants/1002';
+  if (dryRun) {
+    console.log(`  [DRY] Would add language criterion: ${langConst}`);
+    return;
+  }
+  try {
+    await customer.campaignCriteria.create(
+      [
+        {
+          campaign: campaignRn,
+          language: { language_constant: langConst },
+        },
+      ],
+      { partial_failure: true }
+    );
+    console.log('  ✓ Language added: DE');
+  } catch (e: any) {
+    if (String(e).includes('ALREADY_EXISTS') || String(e).includes('DUPLICATE')) {
+      console.log('  • Language already set');
+      return;
+    }
+    throw e;
+  }
+}
+
+async function ensureProximityBerlin50km(customer: any, campaignRn: string, dryRun: boolean) {
+  const latMicro = Math.round(52.5200 * 1_000_000);
+  const lngMicro = Math.round(13.4050 * 1_000_000);
+  if (dryRun) {
+    console.log('  [DRY] Would add proximity: Berlin +50km');
+    return;
+  }
+  try {
+    await customer.campaignCriteria.create(
+      [
+        {
+          campaign: campaignRn,
+          proximity: {
+            geo_point: { latitude_in_micro_degrees: latMicro, longitude_in_micro_degrees: lngMicro },
+            radius: 50,
+            radius_units: enums.ProximityRadiusUnits.KILOMETERS,
+          },
+        },
+      ],
+      { partial_failure: true }
+    );
+    console.log('  ✓ Proximity added: Berlin +50km');
+  } catch (e: any) {
+    if (String(e).includes('ALREADY_EXISTS') || String(e).includes('DUPLICATE')) {
+      console.log('  • Proximity already set');
+      return;
+    }
+    throw e;
+  }
+}
+
+async function addCampaignNegatives(customer: any, campaignRn: string, negatives: string[] | undefined, dryRun: boolean) {
+  if (!negatives || negatives.length === 0) return;
+  for (const term of negatives) {
+    if (dryRun) {
+      console.log(`  [DRY] Would add negative KW: "${term}"`);
+      continue;
+    }
+    try {
+      await customer.campaignCriteria.create(
+        [
+          {
+            campaign: campaignRn,
+            negative: true,
+            keyword: { text: term, match_type: enums.KeywordMatchType.PHRASE },
+          },
+        ],
+        { partial_failure: true }
+      );
+      console.log(`  ✓ Negative added: ${term}`);
+    } catch (e: any) {
+      if (String(e).includes('ALREADY_EXISTS') || String(e).includes('DUPLICATE')) {
+        console.log(`  • Negative exists: ${term}`);
+        continue;
+      }
+      console.error('  ✗ Negative failed:', term);
+      console.error('    Details:', e?.errors || String(e));
+    }
+  }
+}
+
+async function ensureAdGroup(customer: any, campaignRn: string, name: string, cpcMicros: number, dryRun: boolean): Promise<string> {
+  if (dryRun) {
+    console.log(`  [DRY] Would create ad group: ${name} (bid €${(cpcMicros/1_000_000).toFixed(2)})`);
+    return `${campaignRn}/adGroups/DRY_${Date.now()}`;
+  }
+  try {
+    const res: any = await customer.adGroups.create([
+      {
+        name,
+        campaign: campaignRn,
+        status: enums.AdGroupStatus.ENABLED,
+        cpc_bid_micros: cpcMicros,
+      },
+    ]);
+    const rn = res?.results?.[0]?.resource_name || res?.[0]?.resource_name;
+    if (!rn) throw new Error('No ad group resource_name');
+    console.log(`  ✓ Ad group: ${name}`);
+    return rn as string;
+  } catch (e: any) {
+    if (String(e).includes('ALREADY_EXISTS') || String(e).includes('DUPLICATE')) {
+      const rows: any[] = await customer.query(`SELECT ad_group.resource_name FROM ad_group WHERE ad_group.name = '${name.replace(/'/g, "''")}' AND ad_group.campaign = '${campaignRn}' LIMIT 1`);
+      const rn = rows?.[0]?.ad_group?.resource_name || rows?.[0]?.adGroup?.resourceName;
+      if (!rn) throw e;
+      console.log(`  • Ad group exists: ${name}`);
+      return rn as string;
+    }
+    throw e;
+  }
+}
+
+async function addKeywords(customer: any, adGroupRn: string, terms: string[], cpcMicros: number, dryRun: boolean) {
+  for (const t of terms) {
+    if (dryRun) {
+      console.log(`    [DRY] Would add KW (phrase): ${t}`);
+      continue;
+    }
+    try {
+      await customer.adGroupCriteria.create(
+        [
+          {
+            ad_group: adGroupRn,
+            status: enums.AdGroupCriterionStatus.ENABLED,
+            cpc_bid_micros: cpcMicros,
+            keyword: { text: t, match_type: enums.KeywordMatchType.PHRASE },
+          },
+        ],
+        { partial_failure: true }
+      );
+      console.log(`    ✓ KW added: ${t}`);
+    } catch (e: any) {
+      if (String(e).includes('ALREADY_EXISTS') || String(e).includes('DUPLICATE')) {
+        console.log(`    • KW exists: ${t}`);
+        continue;
+      }
+      const msg = JSON.stringify(e?.errors || String(e));
+      console.error(`    ✗ KW failed: ${t} :: ${msg}`);
+      // Optionally: collect policy violations for exemption retry
+    }
+  }
+}
+
+function buildFinalUrl(base: string, params?: Record<string, string>) {
+  if (!params || Object.keys(params).length === 0) return base;
+  const url = new URL(base);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
+  return url.toString();
+}
+
+function pickAssets(all: string[] | undefined, max: number): { text: string }[] | undefined {
+  if (!all || all.length === 0) return undefined;
+  return all.slice(0, max).map((t) => ({ text: t }));
+}
+
+async function addRSAs(customer: any, adGroupRn: string, landing: string, headlines: string[] | undefined, descriptions: string[] | undefined, params: Record<string, string> | undefined, count: number, dryRun: boolean) {
+  const h = pickAssets(headlines, 15);
+  const d = pickAssets(descriptions, 4);
+  if (!h || h.length < 3 || !d || d.length < 2) {
+    console.log('    • Skipping RSAs: insufficient assets');
+    return;
+  }
+  const finalUrl = buildFinalUrl(landing, params);
+  for (let i = 0; i < Math.max(1, count); i++) {
+    if (dryRun) {
+      console.log(`    [DRY] Would create RSA #${i + 1} with ${h.length} headlines / ${d.length} descriptions`);
+      continue;
+    }
+    try {
+      await customer.adGroupAds.create(
+        [
+          {
+            ad_group: adGroupRn,
+            status: enums.AdGroupAdStatus.ENABLED,
+            ad: {
+              final_urls: [finalUrl],
+              responsive_search_ad: {
+                headlines: h,
+                descriptions: d,
+              },
+            },
+          },
+        ],
+        { partial_failure: true }
+      );
+      console.log(`    ✓ RSA created #${i + 1}`);
+    } catch (e: any) {
+      const msg = JSON.stringify(e?.errors || String(e));
+      console.error(`    ✗ RSA failed #${i + 1}: ${msg}`);
+    }
+  }
+}
 
 async function main() {
   const { rawJson, campaigns } = loadConfigFromEnvOrArgs();
@@ -254,10 +483,11 @@ async function main() {
 
     // Ensure campaign exists (PAUSED)
     const existing = await findCampaignByName(customer, c.name);
-    if (existing?.resourceName) {
-      console.log(`  ✓ Campaign exists: ${existing.resourceName} (status: ${existing.status})`);
+    let campaignRn = existing?.resourceName as string | undefined;
+    if (campaignRn) {
+      console.log(`  ✓ Campaign exists: ${campaignRn} (status: ${existing?.status})`);
     } else {
-      await createCampaign(
+      campaignRn = await createCampaign(
         customer,
         c.name,
         budgetRn as string,
@@ -265,6 +495,20 @@ async function main() {
         c.schedule.end,
         dryRun || validateOnly
       );
+    }
+
+    await ensureLanguageGerman(customer, campaignRn as string, dryRun || validateOnly);
+    await ensureProximityBerlin50km(customer, campaignRn as string, dryRun || validateOnly);
+    await addCampaignNegatives(customer, campaignRn as string, c.negativeKeywords, dryRun || validateOnly);
+
+    const tiers = Object.entries(c.keywords || {});
+    for (const [tierName, tier] of tiers) {
+      const agName = `${c.name} — ${tierName}`;
+      const cpc = eurosToMicros(tier.maxCpc || 2.0);
+      const adGroupRn = await ensureAdGroup(customer, campaignRn as string, agName, cpc, dryRun || validateOnly);
+      await addKeywords(customer, adGroupRn, tier.terms || [], cpc, dryRun || validateOnly);
+      const rsasPer = c.ads?.rsas_per_adgroup ?? 2;
+      await addRSAs(customer, adGroupRn, c.landing_page, c.headlines, c.descriptions, c.ads?.final_url_params, rsasPer, dryRun || validateOnly);
     }
   }
 }

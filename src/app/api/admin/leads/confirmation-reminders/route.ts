@@ -54,8 +54,19 @@ function isCronAuthorized(req: Request): boolean {
     const token = url.searchParams.get('token');
     if (token && token === cronSecret) return true;
   } catch {}
-  // Native Vercel Cron header
-  if (req.headers.get('x-vercel-cron')) return true;
+  return false;
+}
+
+function sameOrigin(req: Request): boolean {
+  const host = req.headers.get('host') || '';
+  if (!host) return false;
+  const origin = req.headers.get('origin') || '';
+  const referer = req.headers.get('referer') || '';
+  const http = `http://${host}`;
+  const https = `https://${host}`;
+  if (origin === http || origin === https) return true;
+  if (referer.startsWith(http + '/')) return true;
+  if (referer.startsWith(https + '/')) return true;
   return false;
 }
 
@@ -196,6 +207,9 @@ export async function GET(req: Request) {
     if (!isAdmin && !isCron) {
       return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
     }
+    if (isAdmin && !isCron && !sameOrigin(req)) {
+      return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 });
+    }
     const url = new URL(req.url);
     const threshold = parseThreshold(url.searchParams.get('threshold'));
     const limit = Math.max(1, Math.min(Number(url.searchParams.get('limit') || 100), 1000));
@@ -218,6 +232,9 @@ export async function POST(req: Request) {
     const isCron = isCronAuthorized(req);
     if (!isAdmin && !isCron) {
       return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
+    }
+    if (isAdmin && !isCron && !sameOrigin(req)) {
+      return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 });
     }
     const body = await req.json().catch(() => ({}));
     const threshold = parseThreshold(typeof body.threshold === 'string' ? body.threshold : undefined);

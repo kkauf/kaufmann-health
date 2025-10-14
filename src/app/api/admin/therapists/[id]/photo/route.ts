@@ -28,6 +28,19 @@ async function assertAdmin(req: Request): Promise<boolean> {
   }
 }
 
+function sameOrigin(req: Request): boolean {
+  const host = req.headers.get('host') || '';
+  if (!host) return false;
+  const origin = req.headers.get('origin') || '';
+  const referer = req.headers.get('referer') || '';
+  const http = `http://${host}`;
+  const https = `https://${host}`;
+  if (origin === http || origin === https) return true;
+  if (referer.startsWith(http + '/')) return true;
+  if (referer.startsWith(https + '/')) return true;
+  return false;
+}
+
 const ALLOWED_PHOTO_TYPES = new Set(['image/jpeg', 'image/png']);
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
 
@@ -46,6 +59,7 @@ async function fileToBuffer(file: File): Promise<Buffer> {
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const isAdmin = await assertAdmin(req);
   if (!isAdmin) return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
+  if (!sameOrigin(req)) return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 });
 
   const { id } = await ctx.params;
 

@@ -63,7 +63,6 @@ function byteLength(obj: unknown): number {
 function truncateProperties(input: unknown, maxBytes = MAX_PROP_BYTES) {
   const sanitized = shallowSanitize(input);
   if (byteLength(sanitized) <= maxBytes) return sanitized;
-  // Fall back to a compact summary to stay within budget.
   const summary: Record<string, unknown> = { truncated: true };
   if (sanitized && typeof sanitized === 'object' && !Array.isArray(sanitized)) {
     for (const [k, v] of Object.entries(sanitized as Record<string, unknown>)) {
@@ -99,6 +98,29 @@ function normalizeError(err: unknown) {
   return out;
 }
 
+function redactSensitive(input: unknown, depth = 0): unknown {
+  if (input == null) return input;
+  if (typeof input !== 'object') return input;
+  if (Array.isArray(input)) {
+    if (depth >= 3) return input;
+    return input.map((v) => redactSensitive(v, depth + 1));
+  }
+  const S = new Set(['email', 'phone', 'phone_number', 'token', 'email_token', 'contact', 'contact_value']);
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
+    const kl = k.toLowerCase();
+    const shouldRedact = S.has(kl) || kl.endsWith('_token') || kl.includes('token');
+    if (shouldRedact) {
+      out[k] = 'REDACTED';
+    } else if (typeof v === 'object' && v !== null && depth < 2) {
+      out[k] = redactSensitive(v, depth + 1);
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
 async function persistEvent(params: Required<Pick<TrackParams, 'type'>> &
   Pick<TrackParams, 'level' | 'props' | 'ip' | 'ua' | 'source'>) {
   try {
@@ -106,10 +128,12 @@ async function persistEvent(params: Required<Pick<TrackParams, 'type'>> &
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) return; // not configured; no-op
 
+    const mergedProps = { ...(params.props || {}), ...(params.source ? { source: params.source } : {}) };
+    const redacted = redactSensitive(mergedProps);
     const payload = {
       level: (params.level || 'info') as LogLevel,
       type: params.type,
-      properties: truncateProperties({ ...(params.props || {}), ...(params.source ? { source: params.source } : {}) }),
+      properties: truncateProperties(redacted),
       hashed_ip: params.ip ? hashIP(params.ip) : null,
       user_agent: params.ua ? truncateString(params.ua, 255) : null,
       // created_at defaults to now() on DB

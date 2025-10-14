@@ -32,6 +32,19 @@ async function assertAdmin(req: Request): Promise<boolean> {
   }
 }
 
+function sameOrigin(req: Request): boolean {
+  const host = req.headers.get('host') || '';
+  if (!host) return false;
+  const origin = req.headers.get('origin') || '';
+  const referer = req.headers.get('referer') || '';
+  const http = `http://${host}`;
+  const https = `https://${host}`;
+  if (origin === http || origin === https) return true;
+  if (referer.startsWith(http + '/')) return true;
+  if (referer.startsWith(https + '/')) return true;
+  return false;
+}
+
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
 }
@@ -81,6 +94,7 @@ async function getReminderHistory(therapistId: string): Promise<{ count: number;
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const isAdmin = await assertAdmin(req);
   if (!isAdmin) return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
+  if (!sameOrigin(req)) return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 });
 
   const { id } = await ctx.params;
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();

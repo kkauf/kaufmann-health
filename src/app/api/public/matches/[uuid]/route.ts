@@ -57,11 +57,13 @@ export async function GET(req: Request) {
       .eq('id', patientId)
       .single();
 
-    type PatientRow = { name?: string | null; metadata?: { issue?: string; notes?: string; city?: string; session_preference?: 'online'|'in_person'; session_preferences?: ('online'|'in_person')[]; specializations?: string[]; gender_preference?: 'male'|'female'|'no_preference' } | null };
+    type PatientRow = { name?: string | null; metadata?: { issue?: string; notes?: string; city?: string; session_preference?: 'online'|'in_person'; session_preferences?: ('online'|'in_person')[]; specializations?: string[]; gender_preference?: 'male'|'female'|'no_preference'; start_timing?: string; modality_matters?: boolean } | null };
     const p = (patient || null) as PatientRow | null;
     const patientName = (p?.name || '') || null;
     const issue = (p?.metadata?.notes || p?.metadata?.issue || '') || null;
     const sessionPreference = p?.metadata?.session_preference ?? null;
+    const startTiming = typeof p?.metadata?.start_timing === 'string' ? p!.metadata!.start_timing : undefined;
+    const modalityMatters = typeof p?.metadata?.modality_matters === 'boolean' ? p!.metadata!.modality_matters : undefined;
     const patientMeta: PatientMeta = {
       city: p?.metadata?.city,
       session_preference: p?.metadata?.session_preference,
@@ -165,14 +167,16 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       data: {
-        patient: { 
-          name: patientName, 
-          issue, 
+        patient: {
+          name: patientName,
+          issue,
           session_preference: sessionPreference,
           city: patientMeta.city,
           session_preferences: patientMeta.session_preferences,
           specializations: patientMeta.specializations,
           gender_preference: patientMeta.gender_preference,
+          start_timing: startTiming,
+          modality_matters: modalityMatters,
         },
         therapists: list,
       },

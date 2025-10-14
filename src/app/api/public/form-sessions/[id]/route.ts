@@ -1,6 +1,7 @@
 import { supabaseServer } from '@/lib/supabase-server';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { safeJson } from '@/lib/http';
+import { getFixedWindowLimiter, extractIpFromHeaders } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -39,6 +40,18 @@ export async function GET(req: Request) {
 export async function PATCH(req: Request) {
   const id = getIdFromUrl(req.url);
   if (!id) return safeJson({ data: null, error: 'Missing id' }, { status: 400 });
+
+  {
+    const ip = extractIpFromHeaders(req.headers);
+    const limiter = getFixedWindowLimiter('form-sessions-save', 60, 60_000);
+    const { allowed, retryAfterSec } = limiter.check(ip);
+    if (!allowed) {
+      return safeJson(
+        { data: null, error: 'Rate limited' },
+        { status: 429, headers: { 'Retry-After': String(retryAfterSec) } }
+      );
+    }
+  }
 
   let body: unknown;
   try {

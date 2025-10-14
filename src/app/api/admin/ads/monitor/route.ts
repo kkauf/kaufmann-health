@@ -80,7 +80,6 @@ export async function GET(req: Request) {
         if (token && token === cronSecret) isCron = true;
       } catch {}
     }
-    if (!isCron && req.headers.get('x-vercel-cron')) isCron = true;
     if (!isCron) return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
 
     const url = new URL(req.url);
