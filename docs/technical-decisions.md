@@ -170,3 +170,18 @@
   - Therapist receives notification email with magic link to `/match/[uuid]` (EARTH-205).
 - **Consequences**: Fast contact flow; no navigation away from modal; reuses existing verification infrastructure; privacy-first (no PII in therapist email until acceptance).
 - **Links**: `src/features/therapists/components/ContactModal.tsx`, `src/app/api/public/contact/route.ts`, `src/lib/auth/clientSession.ts`.
+
+## Safari Progress Bar Rendering Fix (ADR-013)
+
+- **Why**: Safari WebKit (iOS/macOS) showed green vertical artifacts on `/fragebogen` due to sub-pixel rendering issues with nested `border-radius` during CSS transitions.
+- **Problem**: The `ProgressBar` component had both container and inner element with `rounded-full` class. When the inner progress bar animated with `transition-all duration-200`, Safari's rendering engine failed to perfectly clip the rounded edges, causing the emerald-600 color to "bleed" outside as thin vertical lines at viewport edges. Chrome's Blink engine handled this correctly due to more aggressive overflow clipping optimizations.
+- **Decision**:
+  - Remove redundant `rounded-full` from inner progress bar element in `src/features/leads/components/ProgressBar.tsx`.
+  - Keep `rounded-full overflow-hidden` on container only - the overflow clipping naturally creates rounded appearance for child elements.
+- **Consequences**:
+  - ✅ Eliminates Safari-specific rendering artifacts across desktop and mobile
+  - ✅ Simplifies CSS by removing conflicting border-radius calculations during transitions
+  - ✅ Maintains identical visual appearance (container clips child to rounded shape)
+  - ✅ Defensive CSS pattern that works reliably across all browsers
+- **Key Learning**: When using `overflow: hidden` with `border-radius` on a container, child elements don't need their own `border-radius` - they will be clipped to the container's shape. Redundant border-radius on animated children can cause sub-pixel bleeding in Safari/WebKit.
+- **Links**: `src/features/leads/components/ProgressBar.tsx`.

@@ -37,7 +37,7 @@ export function TherapistMatchCallout() {
               Unsicher, wer wirklich zu dir passt?
             </h2>
             <p className="mt-1 text-sm sm:text-base text-gray-600 leading-relaxed">
-              Ich schaue mir deine Anfrage persönlich an und helfe dir dabei, die richtige Therapeut:in zu dir zu finden.
+              Ich schaue mir deine Anfrage persönlich an und helfe dir dabei, die richtige Therapeut:in für dich zu finden.
             </p>
             <p className="mt-2 text-xs sm:text-sm text-gray-500 italic">
               – Katherine, Gründerin und Therapeutin
