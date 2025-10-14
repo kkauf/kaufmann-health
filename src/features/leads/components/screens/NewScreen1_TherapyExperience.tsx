@@ -35,20 +35,25 @@ export default function NewScreen1_TherapyExperience({
   onChange,
   onNext,
   disabled,
+  suppressAutoAdvance,
 }: {
   values: NewScreen1Values;
   onChange: (patch: Partial<NewScreen1Values>) => void;
   onNext: () => void;
   disabled?: boolean;
+  suppressAutoAdvance?: boolean;
 }) {
   const [error, setError] = React.useState<string | null>(null);
   const [flashKey, setFlashKey] = React.useState<string | null>(null);
+  const [userInteracted, setUserInteracted] = React.useState(false);
 
   const needsType = values.therapy_experience === 'has_experience';
 
   // Auto-advance logic
   React.useEffect(() => {
     if (disabled) return;
+    // Suppress auto-advance if we came from Back until the user interacts on this screen
+    if (suppressAutoAdvance && !userInteracted) return;
     let timer: NodeJS.Timeout;
     
     // Auto-advance if experience is selected and either:
@@ -65,7 +70,7 @@ export default function NewScreen1_TherapyExperience({
     }
     
     return () => clearTimeout(timer);
-  }, [values.therapy_experience, values.therapy_type, disabled, onNext]);
+  }, [values.therapy_experience, values.therapy_type, disabled, onNext, suppressAutoAdvance, userInteracted]);
 
   function validate() {
     if (!values.therapy_experience) {
@@ -94,6 +99,7 @@ export default function NewScreen1_TherapyExperience({
               aria-disabled={disabled}
               onClick={() => {
                 setFlashKey(opt.value);
+                setUserInteracted(true);
                 onChange({ therapy_experience: opt.value });
               }}
             >
@@ -121,6 +127,7 @@ export default function NewScreen1_TherapyExperience({
                 aria-disabled={disabled}
                 onClick={() => {
                   setFlashKey(`type-${opt}`);
+                  setUserInteracted(true);
                   onChange({ therapy_type: opt });
                 }}
               >
