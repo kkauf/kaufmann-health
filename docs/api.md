@@ -563,6 +563,18 @@ __UI Consistency__: Email templates reuse a small, inline-styled therapist previ
   - Intended for use in email HTML so all images load from `BASE_URL`.
 - __Response__: Binary image content.
 
+## POST /api/internal/sms/status
+
+- __Purpose__: Twilio Programmable SMS delivery status callback (EARTH-206).
+- __Auth__: Validates Twilio request signature when `TWILIO_AUTH_TOKEN` is set. If unset (local), accepts without validation.
+- __Content-Type__: `application/x-www-form-urlencoded` (default from Twilio) or JSON.
+- __Behavior__:
+  - Parses status fields like `MessageSid|SmsSid`, `MessageStatus|SmsStatus`, `To`, `From`, optional `ErrorCode`.
+  - Emits `sms_status` analytics with masked phone tails (e.g. `***123456`).
+  - Returns 200 on success and does not leak PII.
+- __Response__:
+  - 200: `{ data: { ok: true }, error: null }`
+  - 401: `{ data: null, error: 'Invalid signature' }` (when signature validation fails)
 
 ## EARTH-125: Patient Selection Flow
 

@@ -26,7 +26,20 @@ console.log(`Mode: ${DRY_RUN ? 'DRY RUN' : 'APPLY'}`);
 console.log('');
 
 // Convert TypeScript config to JSON array format expected by create-campaigns.ts
-const campaigns = [TEST0_POSITIONING_AB.variantA, TEST0_POSITIONING_AB.variantB];
+// Apply Plan B overrides: €25/day for 10 days starting today
+function fmt(d: Date) {
+  const iso = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString();
+  return iso.slice(0, 10);
+}
+const today = new Date();
+const end = new Date(today);
+end.setDate(end.getDate() + 10);
+
+const campaigns = [TEST0_POSITIONING_AB.variantA, TEST0_POSITIONING_AB.variantB].map((c) => ({
+  ...c,
+  budget_euros: 25,
+  schedule: { start: fmt(today), end: fmt(end) },
+}));
 
 // Write config into git-ignored private folder
 const privateDir = path.join(__dirname, 'private');

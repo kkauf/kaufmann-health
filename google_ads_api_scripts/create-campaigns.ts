@@ -34,6 +34,61 @@ if (fs.existsSync(envLocalPath)) {
   dotenv.config();
 }
 
+async function updateCampaignPresenceAndEcpc(customer: any, campaignRn: string, dryRun: boolean) {
+  if (dryRun) {
+    console.log('  [DRY] Would set presence-only geo and ECPC on campaign');
+    return;
+  }
+  try {
+    await customer.campaigns.update(
+      [
+        {
+          resource_name: campaignRn,
+          geo_target_type_setting: {
+            positive_geo_target_type: enums.PositiveGeoTargetType.PRESENCE,
+            negative_geo_target_type: enums.NegativeGeoTargetType.PRESENCE,
+          },
+          manual_cpc: { enhanced_cpc_enabled: true },
+        },
+      ],
+      { partial_failure: true }
+    );
+    console.log('  ✓ Campaign updated: presence-only + ECPC');
+  } catch (e) {
+    console.error('  ✗ Campaign update failed', e);
+  }
+}
+
+async function pauseOtherAdGroups(customer: any, campaignRn: string, allowedNames: Set<string>, dryRun: boolean) {
+  const rows: any[] = await customer.query(`
+    SELECT ad_group.resource_name, ad_group.name, ad_group.status, ad_group.campaign
+    FROM ad_group
+    WHERE ad_group.campaign = '${campaignRn}'
+  `);
+  for (const r of rows) {
+    const ag = (r as any).ad_group || (r as any).adGroup;
+    const name = ag?.name as string;
+    const rn = ag?.resource_name || ag?.resourceName;
+    if (!name || !rn) continue;
+    if (allowedNames.has(name)) continue;
+    if (dryRun) {
+      console.log(`  [DRY] Would pause ad group: ${name}`);
+      continue;
+    }
+    try {
+      await customer.adGroups.update([
+        {
+          resource_name: rn,
+          status: enums.AdGroupStatus.PAUSED,
+        },
+      ], { partial_failure: true });
+      console.log(`  ✓ Paused ad group: ${name}`);
+    } catch (e) {
+      console.error('  ✗ Failed pausing ad group', name, e);
+    }
+  }
+}
+
 const requireEnv = (key: string): string => {
   const v = process.env[key];
   if (!v) throw new Error(`Missing required env: ${key}`);
@@ -188,7 +243,11 @@ const createCampaign = async (customer: any, name: string, budgetResourceName: s
         status: enums.CampaignStatus.PAUSED,
         advertising_channel_type: enums.AdvertisingChannelType.SEARCH,
         bidding_strategy_type: enums.BiddingStrategyType.MANUAL_CPC,
-        manual_cpc: { enhanced_cpc_enabled: false },
+        manual_cpc: { enhanced_cpc_enabled: true },
+        geo_target_type_setting: {
+          positive_geo_target_type: enums.PositiveGeoTargetType.PRESENCE,
+          negative_geo_target_type: enums.NegativeGeoTargetType.PRESENCE,
+        },
         network_settings: {
           target_google_search: true,
           target_search_network: true,
@@ -347,7 +406,7 @@ async function ensureAdGroup(customer: any, campaignRn: string, name: string, cp
 async function addKeywords(customer: any, adGroupRn: string, terms: string[], cpcMicros: number, dryRun: boolean) {
   for (const t of terms) {
     if (dryRun) {
-      console.log(`    [DRY] Would add KW (phrase): ${t}`);
+      console.log(`    [DRY] Would add KW (phrase+exact): ${t}`);
       continue;
     }
     try {
@@ -359,10 +418,16 @@ async function addKeywords(customer: any, adGroupRn: string, terms: string[], cp
             cpc_bid_micros: cpcMicros,
             keyword: { text: t, match_type: enums.KeywordMatchType.PHRASE },
           },
+          {
+            ad_group: adGroupRn,
+            status: enums.AdGroupCriterionStatus.ENABLED,
+            cpc_bid_micros: cpcMicros,
+            keyword: { text: t, match_type: enums.KeywordMatchType.EXACT },
+          },
         ],
         { partial_failure: true }
       );
-      console.log(`    ✓ KW added: ${t}`);
+      console.log(`    ✓ KW added (phrase+exact): ${t}`);
     } catch (e: any) {
       if (String(e).includes('ALREADY_EXISTS') || String(e).includes('DUPLICATE')) {
         console.log(`    • KW exists: ${t}`);
@@ -499,17 +564,45 @@ async function main() {
 
     await ensureLanguageGerman(customer, campaignRn as string, dryRun || validateOnly);
     await ensureProximityBerlin50km(customer, campaignRn as string, dryRun || validateOnly);
-    await addCampaignNegatives(customer, campaignRn as string, c.negativeKeywords, dryRun || validateOnly);
+    const DEFAULT_NEGATIVES = [
+      'training','ausbildung','zertifizierung','zertifikat','kurs','seminar','fortbildung','workshop','lehrgang','schule','studium',
+      'krankenkasse','kostenlos','versicherung','wikipedia','job','stelle','karriere','definition'
+    ];
+    await addCampaignNegatives(
+      customer,
+      campaignRn as string,
+      Array.from(new Set([...(c.negativeKeywords || []), ...DEFAULT_NEGATIVES])),
+      dryRun || validateOnly
+    );
 
-    const tiers = Object.entries(c.keywords || {});
+    // Consolidation: 1 ad group per campaign
+    const isA = c.name.includes('Positioning_Test_A');
+    const allowedTier = isA ? 'bodyTherapy' : 'selfPay';
+    const tiers = Object.entries(c.keywords || {}).filter(([name]) => name === allowedTier);
+    const allowedNames = new Set<string>();
     for (const [tierName, tier] of tiers) {
       const agName = `${c.name} — ${tierName}`;
+      allowedNames.add(agName);
       const cpc = eurosToMicros(tier.maxCpc || 2.0);
       const adGroupRn = await ensureAdGroup(customer, campaignRn as string, agName, cpc, dryRun || validateOnly);
       await addKeywords(customer, adGroupRn, tier.terms || [], cpc, dryRun || validateOnly);
+      // Extra high-intent expansions per variant
+      if (isA && tierName === 'bodyTherapy') {
+        const extraA = ['narm therapie','somatic experiencing','hakomi therapie','körperpsychotherapie'];
+        await addKeywords(customer, adGroupRn, extraA, cpc, dryRun || validateOnly);
+      }
+      if (!isA && tierName === 'selfPay') {
+        const extraB = [
+          'heilpraktiker psychotherapie','heilpraktiker für psychotherapie','psychologischer heilpraktiker',
+          'privat psychotherapeut','privat therapeut','selbstzahler psychotherapeut'
+        ];
+        await addKeywords(customer, adGroupRn, extraB, cpc, dryRun || validateOnly);
+      }
       const rsasPer = c.ads?.rsas_per_adgroup ?? 2;
       await addRSAs(customer, adGroupRn, c.landing_page, c.headlines, c.descriptions, c.ads?.final_url_params, rsasPer, dryRun || validateOnly);
     }
+    await pauseOtherAdGroups(customer, campaignRn as string, allowedNames, dryRun || validateOnly);
+    await updateCampaignPresenceAndEcpc(customer, campaignRn as string, dryRun || validateOnly);
   }
 }
 
