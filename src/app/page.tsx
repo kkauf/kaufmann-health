@@ -50,7 +50,7 @@ export default function Home() {
         {/* Announcement Bar */}
         <div className="mb-8">
           <div className="inline-flex items-center rounded-full border border-emerald-200/60 bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-2 text-xs sm:text-sm font-medium text-emerald-700 shadow-sm">
-            Neu in Berlin, München und Hamburg
+            Neu in Berlin und deutschlandweit Online
           </div>
         </div>
 
