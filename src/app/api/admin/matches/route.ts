@@ -82,7 +82,7 @@ type PersonRow = {
   id: string;
   name?: string | null;
   email?: string | null;
-  phone?: string | null;
+  phone_number?: string | null;
   metadata?: { city?: string; issue?: string } | null;
 };
 
@@ -114,7 +114,7 @@ export async function GET(req: Request) {
     const therapistIds = Array.from(new Set(rows.map((r) => String(r.therapist_id))));
 
     const [{ data: people, error: pErr }, { data: therapists, error: tErr }] = await Promise.all([
-      supabaseServer.from('people').select('id, name, email, phone, metadata').in('id', patientIds),
+      supabaseServer.from('people').select('id, name, email, phone_number, metadata').in('id', patientIds),
       supabaseServer.from('therapists').select('id, first_name, last_name, email, phone').in('id', therapistIds),
     ]);
 
@@ -141,7 +141,7 @@ export async function GET(req: Request) {
         notes: r.notes || '',
         created_at: r.created_at,
         patient: patient
-          ? { id: patient.id, name: patient.name || '', email: patient.email || '', phone: patient.phone || '', city, issue }
+          ? { id: patient.id, name: patient.name || '', email: patient.email || '', phone: patient.phone_number || '', city, issue }
           : { id: r.patient_id, name: '', email: '', phone: '', city, issue },
         therapist: therapist
           ? {

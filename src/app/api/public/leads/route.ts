@@ -736,7 +736,27 @@ export async function POST(req: Request) {
         }
         const existingStatus = existing?.status || null;
         if (existing && existing.id) {
-          if (!isTest && existingStatus && existingStatus !== 'pre_confirmation') {
+          if (contactMethod === 'phone' && existingStatus === 'pre_confirmation' && cookieVerifiedPhone) {
+            const merged: Record<string, unknown> = { ...(existing.metadata || {}), phone_verified: true };
+            await supabaseServer
+              .from('people')
+              .update({
+                status: 'new',
+                metadata: merged,
+                ...(data.name ? { name: data.name } : {}),
+                ...(phoneNumber ? { phone_number: phoneNumber } : {}),
+              })
+              .eq('id', effectiveId);
+            await ServerAnalytics.trackEventFromRequest(req, {
+              type: 'contact_submitted',
+              source: 'api.leads',
+              props: { campaign_source, campaign_variant, requires_confirmation: false, is_test: isTest, contact_method: contactMethod },
+            });
+            return safeJson(
+              { data: { id: existing.id, requiresConfirmation: false }, error: null },
+              { headers: { 'Cache-Control': 'no-store' } },
+            );
+          } else if (!isTest && existingStatus && existingStatus !== 'pre_confirmation') {
             // Already confirmed or other terminal state — don't downgrade or resend; treat as success
             await ServerAnalytics.trackEventFromRequest(req, {
               type: 'contact_submitted',
@@ -784,14 +804,15 @@ export async function POST(req: Request) {
                 .eq('id', effectiveId);
             }
           }
-        } else if (selErr && !getErrorMessage(selErr).includes('schema cache')) {
-          // Only treat as error if not a schema-mismatch handled above
-          console.error('Supabase select existing error (email-only lead):', selErr);
-          void logError('api.leads', selErr, { stage: 'select_existing_email' }, ip, ua);
+        } else if (existing && existing.id) {
+          if (selErr) {
+            console.error('Supabase select existing error (email-only lead):', selErr);
+            void logError('api.leads', selErr, { stage: 'select_existing_email' }, ip, ua);
+          }
         } else {
           // No existing record found, do nothing here; handled by outer logic
         }
-      } else if (insErr && !getErrorMessage(insErr).includes('schema cache')) {
+      } else if (insErr) {
         // Non-schema errors still block to signal real failure
         console.error('Supabase insert error (email-only lead):', insErr);
         void logError('api.leads', insErr, { stage: 'insert_email_only_lead' }, ip, ua);

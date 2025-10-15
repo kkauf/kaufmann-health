@@ -189,12 +189,12 @@ export default function Screen1({
 
       <ConsentSection actor="patient" className="mt-1" />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col-reverse md:flex-row items-stretch md:items-center gap-3">
         {onBack && (
           <Button
             variant="secondary"
             type="button"
-            className="h-12"
+            className="h-12 w-full md:w-auto"
             onClick={onBack}
             disabled={disabled}
             aria-disabled={disabled}
@@ -202,7 +202,13 @@ export default function Screen1({
             Zurück
           </Button>
         )}
-        <Button type="submit" data-testid="wizard-next" className="h-12 w-full text-base md:w-auto" disabled={disabled} aria-disabled={disabled}>
+        <Button
+          type="submit"
+          data-testid="wizard-next"
+          className="h-12 w-full md:w-auto text-base"
+          disabled={disabled}
+          aria-disabled={disabled}
+        >
           Passende Therapeut:innen finden →
         </Button>
       </div>

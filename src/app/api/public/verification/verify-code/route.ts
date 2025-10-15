@@ -122,6 +122,41 @@ export async function POST(req: NextRequest) {
           } catch (cookieErr) {
             await logError('api.verification.verify-code', cookieErr, { stage: 'create_session_cookie' });
           }
+        } else {
+          const { data: inserted, error: insErr } = await supabaseServer
+            .from('people')
+            .insert({
+              type: 'patient',
+              phone_number: contact,
+              status: 'new',
+              metadata: { phone_verified: true, contact_method: 'phone' },
+            })
+            .select('id,name,email')
+            .single<PersonRow>();
+
+          if (!insErr && inserted) {
+            const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined;
+            const ua = req.headers.get('user-agent') || undefined;
+            await maybeFirePatientConversion({
+              patient_id: inserted.id,
+              email: inserted.email || undefined,
+              phone_number: contact,
+              verification_method: 'sms',
+              ip,
+              ua,
+            });
+            try {
+              const token = await createClientSessionToken({
+                patient_id: inserted.id,
+                contact_method: 'phone',
+                contact_value: contact,
+                name: inserted.name || undefined,
+              });
+              sessionCookie = createClientSessionCookie(token);
+            } catch (cookieErr) {
+              await logError('api.verification.verify-code', cookieErr, { stage: 'create_session_cookie' });
+            }
+          }
         }
       } catch (err) {
         // Log but don't fail the verification response

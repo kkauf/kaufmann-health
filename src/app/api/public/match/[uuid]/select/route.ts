@@ -104,12 +104,12 @@ async function handle(req: Request) {
       }
       // Load entities
       const [{ data: patientRow }, { data: therapistRow }] = await Promise.all([
-        supabaseServer.from('people').select('id, name, email, phone, metadata').eq('id', patient_id).single(),
+        supabaseServer.from('people').select('id, name, email, phone_number, metadata').eq('id', patient_id).single(),
         supabaseServer.from('therapists').select('id, first_name, last_name, email, city').eq('id', therapist_id).single(),
       ]);
 
       type PatientMeta = { city?: string; issue?: string; session_preference?: 'online' | 'in_person' };
-      type PatientRow = { id: string; name?: string | null; email?: string | null; phone?: string | null; metadata?: PatientMeta | null };
+      type PatientRow = { id: string; name?: string | null; email?: string | null; phone_number?: string | null; metadata?: PatientMeta | null };
       type TherapistRow = { id: string; first_name?: string | null; last_name?: string | null; email?: string | null; city?: string | null };
 
       const pRow = (patientRow || null) as PatientRow | null;
