@@ -43,7 +43,7 @@ export async function GET(req: Request) {
 
     let query = supabaseServer
       .from('people')
-      .select('id, name, email, phone, type, status, metadata, created_at')
+      .select('id, name, email, phone_number, type, status, metadata, created_at')
       .eq('type', 'patient')
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -61,7 +61,9 @@ export async function GET(req: Request) {
       await logError('admin.api.leads', error, { stage: 'fetch' });
       return NextResponse.json({ data: null, error: 'Failed to fetch leads' }, { status: 500 });
     }
-    let result = (data || []) as Array<{ metadata?: unknown }>;
+    // Map phone_number -> phone for UI backward compatibility
+    type Row = { phone_number?: string | null; metadata?: unknown } & Record<string, unknown>;
+    let result = ((data || []) as Row[]).map((r) => ({ ...r, phone: r.phone_number ?? null }));
     if (sessionPref === 'online' || sessionPref === 'in_person') {
       result = result.filter((p) => {
         const meta = (p?.metadata ?? {}) as { session_preference?: 'online' | 'in_person'; session_preferences?: ('online' | 'in_person')[] };
