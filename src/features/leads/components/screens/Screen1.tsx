@@ -55,6 +55,7 @@ export default function Screen1({
   const mode = getVerificationModeClient();
   const [emailError, setEmailError] = React.useState<string | null>(null);
   const [phoneError, setPhoneError] = React.useState<string | null>(null);
+  const [nameError, setNameError] = React.useState<string | null>(null);
   const [mounted, setMounted] = React.useState(false);
 
   // Initialize contact method on mount (hydration-safe)
@@ -101,6 +102,13 @@ export default function Screen1({
   const handleSubmit = React.useCallback((e: React.FormEvent) => {
     e.preventDefault();
 
+    const trimmedName = (values.name || '').trim();
+    if (!trimmedName) {
+      setNameError('Bitte gib deinen Namen an.');
+      return;
+    }
+    setNameError(null);
+
     if (contactMethod === 'email') {
       const err = getEmailError(values.email || '');
       setEmailError(err);
@@ -131,9 +139,14 @@ export default function Screen1({
           placeholder="Vorname oder Spitzname"
           className="h-11"
           value={values.name}
-          onChange={(e) => onChange({ name: e.target.value })}
+          onChange={(e) => { setNameError(null); onChange({ name: e.target.value }); }}
+          aria-invalid={!!nameError}
+          aria-describedby={nameError ? 'name-error' : undefined}
           aria-label="Wie dürfen wir dich ansprechen?"
         />
+        {nameError && (
+          <p id="name-error" className="text-sm text-red-600">{nameError}</p>
+        )}
         <p className="text-sm text-muted-foreground">Nur dein Vorname reicht</p>
       </div>
 
