@@ -47,6 +47,14 @@ function sameOrigin(req: Request): boolean {
   if (referer.startsWith(https + '/')) return true;
   return false;
 }
+function normalizeId(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  const s = value.trim();
+  return s === 'null' || s === 'undefined' ? '' : s;
+}
+function isUuid(s: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
+}
 
 const ALLOWED_STATUSES = new Set([
   'proposed',
@@ -164,7 +172,8 @@ export async function PATCH(req: Request) {
 
   try {
     const body = await req.json();
-    const id = String(body?.id || '').trim();
+    const idRaw = normalizeId(body?.id);
+    const id = idRaw;
     const status: string | undefined = body?.status ? String(body.status) : undefined;
     const notes: string | undefined = typeof body?.notes === 'string' ? String(body.notes).slice(0, 2000) : undefined;
 
@@ -248,9 +257,13 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const patient_id = String(body?.patient_id || '').trim();
-    const therapist_id_single = typeof body?.therapist_id === 'string' ? String(body.therapist_id).trim() : '';
-    const therapist_ids_array: string[] = Array.isArray(body?.therapist_ids) ? (body.therapist_ids as unknown[]).map((v) => String(v).trim()).filter(Boolean) : [];
+    const patient_id_raw = normalizeId(body?.patient_id);
+    const patient_id = patient_id_raw;
+    const therapist_id_single_raw = normalizeId((body as Record<string, unknown> | null | undefined)?.['therapist_id']);
+    const therapist_id_single = therapist_id_single_raw;
+    const therapist_ids_array: string[] = Array.isArray(body?.therapist_ids)
+      ? (body.therapist_ids as unknown[]).map((v) => normalizeId(v)).filter(Boolean)
+      : [];
     const notes = typeof body?.notes === 'string' ? body.notes.slice(0, 2000) : undefined;
     const suppress_outreach: boolean = Boolean((body as Record<string, unknown> | null | undefined)?.['suppress_outreach']);
 

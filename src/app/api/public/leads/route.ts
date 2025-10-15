@@ -16,6 +16,7 @@ import { handleTherapistLead } from '@/features/leads/lib/handlers';
 import type { LeadPayload } from '@/features/leads/lib/types';
 import { isTestRequest } from '@/lib/test-mode';
 import { safeJson } from '@/lib/http';
+import { getClientSession } from '@/lib/auth/clientSession';
 
 export const runtime = 'nodejs';
 
@@ -575,6 +576,15 @@ export async function POST(req: Request) {
     const confirmRedirectPathRaw = sanitize(payload.confirm_redirect_path as string | undefined);
     const confirmRedirectPath = isSafeRelativePath(confirmRedirectPathRaw) ? confirmRedirectPathRaw : undefined;
 
+    // Detect verified phone via client session cookie (set by verify-code)
+    const clientSession = await getClientSession(req);
+    const cookieVerifiedPhone = Boolean(
+      clientSession &&
+      clientSession.contact_method === 'phone' &&
+      typeof clientSession.contact_value === 'string' &&
+      clientSession.contact_value === (phoneNumber || '')
+    );
+
     // Email-first (double opt-in) flow for patients (EARTH-146/190)
     // Capture consent implicitly via disclaimer + submit action (no checkbox)
 
@@ -654,6 +664,8 @@ export async function POST(req: Request) {
         ...(availability ? { availability } : {}),
         ...(budget ? { budget } : {}),
         ...(genderPreference ? { gender_preference: genderPreference } : {}),
+        ...(contactMethod ? { contact_method: contactMethod } : {}),
+        ...(cookieVerifiedPhone ? { phone_verified: true } : {}),
         consent_share_with_therapists: true,
         consent_share_with_therapists_at: new Date().toISOString(),
         consent_privacy_version: privacyVersion,
@@ -664,7 +676,7 @@ export async function POST(req: Request) {
         ...(email ? { email } : {}),
         ...(phoneNumber ? { phone_number: phoneNumber } : {}),
         type: 'patient' as const,
-        status: 'pre_confirmation' as const,
+        status: cookieVerifiedPhone ? 'new' : 'pre_confirmation',
         campaign_source,
         campaign_variant,
         metadata: baseMetadata,
@@ -691,7 +703,7 @@ export async function POST(req: Request) {
           ...(email ? { email } : {}),
           ...(phoneNumber ? { phone_number: phoneNumber } : {}),
           type: 'patient' as const,
-          status: 'pre_confirmation' as const,
+          status: cookieVerifiedPhone ? 'new' : 'pre_confirmation',
           metadata: insertPayload.metadata,
         };
         const res2 = await attemptInsert(fallbackPayload);
@@ -722,43 +734,9 @@ export async function POST(req: Request) {
           existing = (sel2.data as ExistingPerson) ?? null;
           selErr = sel2.error;
         }
-        if (existing?.id) {
-          effectiveId = existing.id as string;
-          const existingStatus = (existing.status || '') as string;
-          const isPhoneContact = contactMethod === 'phone';
-          const existingMetadata = (existing.metadata || {}) as Record<string, unknown>;
-          const isPhoneVerified = isPhoneContact && existingMetadata.phone_verified === true;
-          
-          // EARTH-191: Allow overwrites for unverified phone leads
-          if (isPhoneContact && existingStatus === 'pre_confirmation' && !isPhoneVerified) {
-            // Unverified phone lead — allow complete overwrite with fresh token
-            const merged: Record<string, unknown> = {
-              confirm_token: confirmToken,
-              confirm_sent_at: new Date().toISOString(),
-              ...(sessionPreference ? { session_preference: sessionPreference } : {}),
-              ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
-              ...(isTest ? { is_test: true } : {}),
-              ...(city ? { city } : {}),
-              ...(issue ? { issue } : {}),
-              ...(availability ? { availability } : {}),
-              ...(budget ? { budget } : {}),
-              ...(genderPreference ? { gender_preference: genderPreference } : {}),
-              consent_share_with_therapists: true,
-              consent_share_with_therapists_at: new Date().toISOString(),
-              consent_privacy_version: privacyVersion,
-              consent_terms_version: TERMS_VERSION,
-              phone_verified: false, // Reset verification status
-            };
-            await supabaseServer
-              .from('people')
-              .update({ 
-                status: 'pre_confirmation', 
-                metadata: merged, 
-                ...(data.name ? { name: data.name } : {}),
-                ...(phoneNumber ? { phone_number: phoneNumber } : {})
-              })
-              .eq('id', effectiveId);
-          } else if (!isTest && existingStatus && existingStatus !== 'pre_confirmation') {
+        const existingStatus = existing?.status || null;
+        if (existing && existing.id) {
+          if (!isTest && existingStatus && existingStatus !== 'pre_confirmation') {
             // Already confirmed or other terminal state — don't downgrade or resend; treat as success
             await ServerAnalytics.trackEventFromRequest(req, {
               type: 'contact_submitted',
@@ -787,11 +765,17 @@ export async function POST(req: Request) {
               consent_share_with_therapists_at: new Date().toISOString(),
               consent_privacy_version: privacyVersion,
               consent_terms_version: TERMS_VERSION,
+              phone_verified: false,
             };
             if (isTest) {
               await supabaseServer
                 .from('people')
-                .update({ status: 'pre_confirmation', metadata: merged, ...(data.name ? { name: data.name } : {}) })
+                .update({ 
+                  status: 'pre_confirmation',
+                  metadata: merged, 
+                  ...(data.name ? { name: data.name } : {}),
+                  ...(phoneNumber ? { phone_number: phoneNumber } : {})
+                })
                 .eq('id', effectiveId);
             } else {
               await supabaseServer
@@ -804,6 +788,8 @@ export async function POST(req: Request) {
           // Only treat as error if not a schema-mismatch handled above
           console.error('Supabase select existing error (email-only lead):', selErr);
           void logError('api.leads', selErr, { stage: 'select_existing_email' }, ip, ua);
+        } else {
+          // No existing record found, do nothing here; handled by outer logic
         }
       } else if (insErr && !getErrorMessage(insErr).includes('schema cache')) {
         // Non-schema errors still block to signal real failure
