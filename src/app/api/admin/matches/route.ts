@@ -111,18 +111,28 @@ export async function GET(req: Request) {
     }
 
     const patientIds = Array.from(
-      new Set(rows.map((r) => normalizeId((r as any).patient_id)).filter((v) => Boolean(v)))
+      new Set(rows.map((r: MatchRow) => normalizeId(r.patient_id)).filter((v) => Boolean(v)))
     );
     const therapistIds = Array.from(
-      new Set(rows.map((r) => normalizeId((r as any).therapist_id)).filter((v) => Boolean(v)))
+      new Set(rows.map((r: MatchRow) => normalizeId(r.therapist_id)).filter((v) => Boolean(v)))
     );
 
-    const peoplePromise = patientIds.length
-      ? supabaseServer.from('people').select('id, name, email, phone_number, metadata').in('id', patientIds)
-      : Promise.resolve({ data: [], error: null } as any);
-    const therapistsPromise = therapistIds.length
-      ? supabaseServer.from('therapists').select('id, first_name, last_name, email, phone').in('id', therapistIds)
-      : Promise.resolve({ data: [], error: null } as any);
+    type PeopleResult = { data: PersonRow[] | null; error: unknown | null };
+    type TherapistBasicRow = { id: string; first_name?: string | null; last_name?: string | null; email?: string | null; phone?: string | null };
+    type TherapistsResult = { data: TherapistBasicRow[] | null; error: unknown | null };
+
+    const peoplePromise: Promise<PeopleResult> = patientIds.length
+      ? (supabaseServer
+          .from('people')
+          .select('id, name, email, phone_number, metadata')
+          .in('id', patientIds) as unknown as Promise<PeopleResult>)
+      : Promise.resolve({ data: [] as PersonRow[], error: null });
+    const therapistsPromise: Promise<TherapistsResult> = therapistIds.length
+      ? (supabaseServer
+          .from('therapists')
+          .select('id, first_name, last_name, email, phone')
+          .in('id', therapistIds) as unknown as Promise<TherapistsResult>)
+      : Promise.resolve({ data: [] as TherapistBasicRow[], error: null });
 
     const [{ data: people, error: pErr }, { data: therapists, error: tErr }] = await Promise.all([
       peoplePromise,
@@ -153,7 +163,7 @@ export async function GET(req: Request) {
         created_at: r.created_at,
         patient: patient
           ? { id: patient.id, name: patient.name || '', email: patient.email || '', phone: patient.phone_number || '', city, issue }
-          : { id: String((r as any).patient_id || ''), name: '', email: '', phone: '', city, issue },
+          : { id: String(r.patient_id || ''), name: '', email: '', phone: '', city, issue },
         therapist: therapist
           ? {
               id: therapist.id,
@@ -161,7 +171,7 @@ export async function GET(req: Request) {
               email: therapist.email || '',
               phone: therapist.phone || '',
             }
-          : { id: String((r as any).therapist_id || ''), name: '', email: '', phone: '' },
+          : { id: String(r.therapist_id || ''), name: '', email: '', phone: '' },
       } as const;
     });
 
