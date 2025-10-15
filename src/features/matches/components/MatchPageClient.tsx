@@ -237,7 +237,14 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Deine persönlichen Empfehlungen</h1>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          {(() => {
+            const name = (data?.patient?.name || '').trim();
+            if (!name) return 'Deine persönlichen Empfehlungen';
+            const first = name.split(/\s+/)[0];
+            return `${first}, deine persönlichen Empfehlungen`;
+          })()}
+        </h1>
         <p className="mt-2 text-gray-600">
           Katherine und Konstantin haben basierend auf deiner Anfrage {therapistsWithQuality.length} Therapeut:innen für dich ausgewählt.
         </p>
@@ -247,22 +254,45 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       {data && (
         <div className="mb-6 rounded-xl border border-emerald-200/70 bg-emerald-50/50 p-4">
           <div className="flex items-start gap-2 text-sm text-gray-800">
-            <span className="inline-flex items-center font-semibold text-gray-900"><Sparkles className="mr-1 h-4 w-4 text-emerald-600" />Basierend auf deinen Antworten:</span>
+            <span className="inline-flex items-center font-semibold text-gray-900"><Sparkles className="mr-1 h-4 w-4 text-emerald-600" />Für deine Auswahl haben wir folgende deiner Kriterien berücksichtigt</span>
             <div className="flex flex-wrap gap-x-3 gap-y-1">
               {(() => {
                 const chips: string[] = [];
                 const issue = (data.patient.issue || '').trim();
                 if (issue) chips.push(issue);
-                const sp = data.patient.session_preferences || (data.patient.session_preference ? [data.patient.session_preference] : []);
-                if (Array.isArray(sp) && sp.length) {
-                  const online = sp.includes('online');
-                  const inPerson = sp.includes('in_person');
-                  if (online && inPerson) chips.push('Online & Vor Ort');
-                  else if (online) chips.push('Online');
-                  else if (inPerson) chips.push('Vor Ort');
+
+                const sps = (data.patient.session_preferences && Array.isArray(data.patient.session_preferences))
+                  ? data.patient.session_preferences
+                  : (data.patient.session_preference ? [data.patient.session_preference] : []);
+                const online = sps.includes('online');
+                const inPerson = sps.includes('in_person');
+                if (online && inPerson) chips.push('Online & Vor Ort');
+                else if (online) chips.push('Online');
+                else if (inPerson) chips.push('Vor Ort');
+
+                const city = (data.patient.city || '').trim();
+                if (city && inPerson) chips.push(city);
+
+                if (data.patient.modality_matters) {
+                  const rawSpecs = (data.patient.specializations || []) as string[];
+                  const labels = rawSpecs.map((s) => getModalityDisplay(String(s)).label);
+                  if (labels.length > 0) {
+                    let summary = labels.slice(0, 2).join(', ');
+                    if (labels.length > 2) summary += ` +${labels.length - 2}`;
+                    chips.push(`Methoden: ${summary}`);
+                  }
+                } else {
+                  chips.push('Methode: von uns empfohlen');
                 }
+
+                const gp = data.patient.gender_preference;
+                if (gp === 'male') chips.push('Therapeut:in: männlich');
+                else if (gp === 'female') chips.push('Therapeut:in: weiblich');
+
                 const urgent = data.patient.start_timing === 'Innerhalb der nächsten Woche';
                 if (urgent) chips.push('Schnelle Verfügbarkeit wichtig');
+                else if ((data.patient.start_timing || '').trim()) chips.push(`Start: ${String(data.patient.start_timing)}`);
+
                 return chips.map((c, i) => (
                   <span key={i} className="text-gray-800">{c}{i < chips.length - 1 ? ' •' : ''}</span>
                 ));
@@ -285,7 +315,38 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           </li>
           <li className="flex items-start gap-2">
             <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-            <span>Auf Basis deiner Präferenzen ausgewählt (z. B. online oder vor Ort).</span>
+            <span>
+              {(() => {
+                const parts: string[] = [];
+                const sps = (data?.patient?.session_preferences && Array.isArray(data.patient.session_preferences))
+                  ? data!.patient!.session_preferences!
+                  : (data?.patient?.session_preference ? [data.patient.session_preference] : []);
+                const online = sps.includes('online');
+                const inPerson = sps.includes('in_person');
+                if (online && inPerson) parts.push('Format: Online & Vor Ort');
+                else if (online) parts.push('Format: Online');
+                else if (inPerson) parts.push('Format: Vor Ort');
+                const city = (data?.patient?.city || '').trim();
+                if (city && inPerson) parts.push(`Stadt: ${city}`);
+                if (data?.patient?.modality_matters) {
+                  const raw = (data.patient.specializations || []) as string[];
+                  const labels = raw.map((s) => getModalityDisplay(String(s)).label);
+                  if (labels.length > 0) {
+                    let summary = labels.slice(0, 2).join(', ');
+                    if (labels.length > 2) summary += ` +${labels.length - 2}`;
+                    parts.push(`Methoden: ${summary}`);
+                  }
+                } else {
+                  parts.push('Methode: von uns empfohlen');
+                }
+                const gp = data?.patient?.gender_preference;
+                if (gp === 'male') parts.push('Therapeut:in: männlich');
+                else if (gp === 'female') parts.push('Therapeut:in: weiblich');
+                const st = (data?.patient?.start_timing || '').trim();
+                if (st && st !== 'Innerhalb der nächsten Woche') parts.push(`Start: ${st}`);
+                return `Passt zu deinen Angaben: ${parts.join(' • ')}`;
+              })()}
+            </span>
           </li>
           <li className="flex items-start gap-2">
             <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
