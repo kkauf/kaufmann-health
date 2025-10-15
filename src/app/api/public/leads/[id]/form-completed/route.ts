@@ -78,6 +78,7 @@ export async function POST(req: Request) {
     const metadata: Record<string, unknown> = { ...(person.metadata || {}) };
     let backfillCs: string | undefined;
     let backfillCv: string | undefined;
+    let backfillName: string | undefined;
 
     // Adopt fields from existing metadata if present (set at email submit)
     // Also stamp completion
@@ -148,6 +149,9 @@ export async function POST(req: Request) {
         const maybeArray = (k: string) => (Array.isArray(d[k]) ? (d[k] as unknown[]) : undefined);
 
         const cityVal = maybeString('city');
+        const nameVal = maybeString('name');
+        const personName = (person as unknown as { name?: string | null }).name;
+        if (!personName && nameVal) backfillName = nameVal;
         if (cityVal) metadata.city = cityVal;
         const sessionPref = maybeString('session_preference');
         if (sessionPref) {
@@ -211,6 +215,7 @@ export async function POST(req: Request) {
 
     // Persist metadata and promote campaign backfills (if any) into first-class columns
     const updatePayload: Record<string, unknown> = { metadata };
+    if (backfillName) updatePayload['name'] = backfillName;
     // Prefer backfill from form session; otherwise, use referrer-derived fallback
     if (backfillCs || refCampaignSource) updatePayload['campaign_source'] = backfillCs || refCampaignSource;
     if (backfillCv || refCampaignVariant) updatePayload['campaign_variant'] = backfillCv || refCampaignVariant;

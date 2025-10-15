@@ -518,6 +518,7 @@ export default function SignupWizard() {
           contact: data.phone_number,
           contact_type: 'phone',
           form_session_id: sessionId || undefined,
+          ...(data.name && data.name.trim() ? { name: data.name.trim() } : {}),
         }),
       });
       const j = await res.json().catch(() => ({}));

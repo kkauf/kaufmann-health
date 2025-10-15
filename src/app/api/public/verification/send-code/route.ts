@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendSmsCode } from '@/lib/verification/sms';
 import { getVerificationMode } from '@/lib/verification/config';
-import { isValidGermanMobile } from '@/lib/verification/phone';
+import { isValidGermanMobile, normalizePhoneNumber } from '@/lib/verification/phone';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { renderEmailConfirmation } from '@/lib/email/templates/emailConfirmation';
 import { sendEmail } from '@/lib/email/client';
@@ -87,11 +87,12 @@ export async function POST(req: NextRequest) {
       // This ensures the name is available when the user verifies and creates a session
       if (name) {
         try {
+          const normalized = normalizePhoneNumber(contact) || contact;
           // Check if person already exists for this phone number
           const { data: existing } = await supabaseServer
             .from('people')
             .select('id, name')
-            .eq('phone_number', contact)
+            .eq('phone_number', normalized)
             .eq('type', 'patient')
             .single();
 
@@ -109,7 +110,7 @@ export async function POST(req: NextRequest) {
               .from('people')
               .insert({
                 type: 'patient',
-                phone_number: contact,
+                phone_number: normalized,
                 email: `temp_${Date.now()}@kaufmann.health`,
                 name,
                 status: 'new',
