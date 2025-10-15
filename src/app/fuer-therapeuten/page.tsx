@@ -254,7 +254,7 @@ export default function TherapistsPage() {
         <ul className="mt-8 sm:mt-10 grid gap-3 sm:gap-4 sm:grid-cols-2">
           <li className="rounded-lg border border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30 p-3 flex items-start gap-3 text-sm shadow-sm hover:shadow-md transition-shadow">
             <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
-            <span className="text-gray-700 font-medium">Heilpraktiker für Psychotherapie oder approbierter Psychotherapeut</span>
+            <span className="text-gray-700 font-medium">Heilpraktiker:in für Psychotherapie oder approbierte:r Psychotherapeut:in</span>
           </li>
           <li className="rounded-lg border border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30 p-3 flex items-start gap-3 text-sm shadow-sm hover:shadow-md transition-shadow">
             <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
@@ -266,11 +266,11 @@ export default function TherapistsPage() {
           </li>
           <li className="rounded-lg border border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30 p-3 flex items-start gap-3 text-sm shadow-sm hover:shadow-md transition-shadow">
             <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
-            <span className="text-gray-700 font-medium">Bereitschaft für Selbstzahler-Klienten</span>
+            <span className="text-gray-700 font-medium">Bereitschaft für Selbstzahler-Klient:innen</span>
           </li>
           <li className="rounded-lg border border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30 p-3 flex items-start gap-3 text-sm shadow-sm hover:shadow-md transition-shadow sm:col-span-2">
             <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
-            <span className="text-gray-700 font-medium">Verfügbarkeit für neue Klienten</span>
+            <span className="text-gray-700 font-medium">Verfügbarkeit für neue Klient:innen</span>
           </li>
         </ul>
       </section>
@@ -316,7 +316,7 @@ export default function TherapistsPage() {
             <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/60 p-3 text-indigo-600 shadow-sm w-fit">
               <Users className="h-5 w-5" />
             </div>
-            <h3 className="mt-4 text-xl font-semibold text-gray-900">Flexible Teilnahme</h3>
+            <h3 className="mt-4 text-xl font-semibold text-gray-900">Jederzeit kündbar</h3>
             <p className="mt-2 text-sm leading-relaxed text-gray-600">Jederzeit kündbar, keine Mindestlaufzeit</p>
           </div>
         </div>
@@ -331,7 +331,7 @@ export default function TherapistsPage() {
             <div className="flex items-start gap-3 rounded-lg border border-emerald-200/60 bg-gradient-to-br from-emerald-50/40 to-white p-4 shadow-sm">
               <ShieldCheck className="mt-0.5 h-6 w-6 text-emerald-600 flex-shrink-0" />
               <div>
-                <p className="font-semibold text-gray-900">Geprüfte Klienten</p>
+                <p className="font-semibold text-gray-900">Geprüfte Klient:innen</p>
                 <p className="mt-1 text-sm leading-relaxed text-gray-600">Anfragen werden vorqualifiziert und zielgerichtet weitergeleitet.</p>
               </div>
             </div>
@@ -358,8 +358,8 @@ export default function TherapistsPage() {
         <h2 id="service" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Unser Service im Detail</h2>
         <div className="mt-6 sm:mt-8 rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6 shadow-sm">
           <p className="max-w-prose text-sm sm:text-base leading-relaxed text-gray-700">
-            Kaufmann Health ist eine Vermittlungsplattform für Heilpraktiker der Psychotherapie.
-            Wir vermitteln qualifizierte Therapeuten an passende Klienten.
+            Kaufmann Health ist eine Vermittlungsplattform für Heilpraktiker:innen für Psychotherapie.
+            Wir vermitteln qualifizierte Therapeut:innen an passende Klient:innen.
             Wir geben keine medizinischen oder therapeutischen Empfehlungen und garantieren keine Behandlungserfolge.
           </p>
         </div>
@@ -380,7 +380,7 @@ export default function TherapistsPage() {
           <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-200/30 to-transparent blur-3xl" />
           <div className="pointer-events-none absolute -left-12 -bottom-12 h-48 w-48 rounded-full bg-gradient-to-br from-cyan-200/20 to-transparent blur-3xl" />
           <h2 id="apply" className="text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent leading-tight">
-            Bereit dich zu bewerben?
+            Bereit, dich zu bewerben?
           </h2>
           <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-700">
             Bewirb dich jetzt für unser kuratiertes Netzwerk körperorientierter Therapeut:innen. Wir prüfen jede Bewerbung sorgfältig.
