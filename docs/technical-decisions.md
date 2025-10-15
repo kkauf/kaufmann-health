@@ -155,9 +155,13 @@
   - Set by: (1) `GET /api/public/leads/confirm` (email), (2) `POST /api/public/verification/verify-code` (SMS).
   - Read by: `GET /api/public/session` → `ContactModal` auto-skips to compose when session valid.
   - Implementation: `src/lib/auth/clientSession.ts` (token create/verify/cookie helpers).
+- **Environment**:
+  - **Required in production**: `JWT_SECRET` (32+ random bytes, generate via `openssl rand -base64 32`).
+  - Development fallback: uses insecure default if missing (safe for local dev only).
+  - Missing in production: throws error preventing session cookie creation; users must re-verify each time.
 - **Consequences**: Verified users skip verification flow on subsequent therapist contacts; cookie scoped to `/` for site-wide access.
 - **Tests**: `tests/earth-204.session-persistence.test.ts` validates cookie set/read across email/SMS paths and redirect preservation.
-- **Links**: `src/app/api/public/session/route.ts`, `src/features/therapists/components/ContactModal.tsx`.
+- **Links**: `src/app/api/public/session/route.ts`, `src/features/therapists/components/ContactModal.tsx`, `.env.example`.
 
 ## Patient-Initiated Contact & Verification (ADR-012)
 

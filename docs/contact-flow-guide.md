@@ -20,6 +20,7 @@
 - **Scope**: `/` (entire site)
 - **Content**: Signed JWT with `{ patient_id, contact_method, contact_value, name }`
 - **Purpose**: Skip re-verification for returning users
+- **Security**: JWT signed with `JWT_SECRET` environment variable (required in production)
 
 ### API Endpoint
 ```bash
