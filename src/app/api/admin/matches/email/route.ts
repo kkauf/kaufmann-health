@@ -143,6 +143,7 @@ export async function POST(req: Request) {
     const patient = (patientRow || null) as Person | null;
 
     const patientEmail = (patient?.email || '').trim();
+    const isTempEmail = patientEmail.startsWith('temp_') && patientEmail.endsWith('@kaufmann.health');
     const patientPhone = (patient as unknown as { phone_number?: string | null })?.phone_number?.trim?.() || '';
     const patientName = (patient?.name || '') || null;
 
@@ -290,11 +291,11 @@ export async function POST(req: Request) {
       content = renderPatientSelectionEmail({ patientName, items, matchesUrl });
 
       // Choose channel: Email preferred; fallback to SMS for phone-only Klient:innen
-      if (!patientEmail && !patientPhone) {
+      if ((!patientEmail || isTempEmail) && !patientPhone) {
         return NextResponse.json({ data: null, error: 'No contact method available' }, { status: 400 });
       }
 
-      if (!patientEmail && patientPhone) {
+      if ((!patientEmail || isTempEmail) && patientPhone) {
         // SMS fallback
         try {
           void track({ type: 'sms_attempted', level: 'info', source: 'admin.api.matches.email', props: { template: 'selection', patient_id } });
@@ -325,7 +326,7 @@ export async function POST(req: Request) {
     }
 
     // For non-selection templates, email is required
-    if (template !== 'selection' && !patientEmail) {
+    if (template !== 'selection' && (!patientEmail || isTempEmail)) {
       return NextResponse.json({ data: null, error: 'Patient email missing' }, { status: 400 });
     }
 

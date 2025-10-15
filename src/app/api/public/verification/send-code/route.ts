@@ -111,7 +111,6 @@ export async function POST(req: NextRequest) {
               .insert({
                 type: 'patient',
                 phone_number: normalized,
-                email: `temp_${Date.now()}@kaufmann.health`,
                 name,
                 status: 'new',
                 metadata: {

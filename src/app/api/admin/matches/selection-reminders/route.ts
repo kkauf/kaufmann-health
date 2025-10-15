@@ -219,8 +219,9 @@ export async function GET(req: Request) {
         .single();
       const patient = (patientRow || null) as { id: string; name?: string | null; email?: string | null; phone_number?: string | null; metadata?: PatientMetaServer | null } | null;
       const to = (patient?.email || '').trim();
+      const isTempEmail = to.startsWith('temp_') && to.endsWith('@kaufmann.health');
       const phoneNumber = (patient?.phone_number || '').trim();
-      const hasEmail = Boolean(to);
+      const hasEmail = Boolean(to) && !isTempEmail;
       const hasPhone = Boolean(phoneNumber);
 
       // Therapist details

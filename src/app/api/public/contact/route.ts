@@ -194,7 +194,7 @@ export async function POST(req: Request) {
           insertData.email = normalizedContact;
         } else {
           insertData.phone_number = normalizedContact;
-          insertData.email = `temp_${Date.now()}@kaufmann.health`; // Temporary email
+          // Do not assign a placeholder email; phone-only patients are valid
         }
         
         const { data: newPatient, error: insertError } = await supabase
