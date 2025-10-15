@@ -980,12 +980,12 @@ export default function SignupWizard() {
       const sessionPref = data.session_preference;
       // Trim and normalize contact fields before validation
       const email = data.email?.trim() || undefined;
-      const phone = data.phone_number?.trim() || undefined;
+      const phone = data.phone_number ? (normalizePhoneNumber(data.phone_number) || undefined) : undefined;
       
       // Only include the contact field matching the selected method
       const submissionPayload = {
         type: 'patient' as const,
-        name: data.name?.trim(),
+        ...(data.name && data.name.trim() ? { name: data.name.trim() } : {}),
         ...(data.contact_method === 'email' ? { email } : { phone_number: phone }),
         contact_method: data.contact_method,
         form_session_id: sessionIdRef.current || undefined,
