@@ -83,7 +83,6 @@ export default function SignupWizard() {
   const [showResendForm, setShowResendForm] = React.useState(false);
 
   // Step 9 (phone users): optional email add state
-  const [addEmailOpen, setAddEmailOpen] = React.useState(false);
   const [addEmail, setAddEmail] = React.useState('');
   const [addEmailSubmitting, setAddEmailSubmitting] = React.useState(false);
   const [addEmailMessage, setAddEmailMessage] = React.useState('');
@@ -805,36 +804,22 @@ export default function SignupWizard() {
                 {/* Feature Highlight Panel - Optional email add */}
                 <div className="relative overflow-hidden rounded-2xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-6 sm:p-8 shadow-lg shadow-indigo-100/30">
                   <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(35rem_18rem_at_40%_0%,rgba(99,102,241,0.09),transparent_65%)]" />
-                  <div className="space-y-3">
-                    <p className="text-base font-semibold text-gray-900">✉️ Optional: E‑Mail hinzufügen</p>
-                    <p className="text-sm leading-relaxed text-gray-700">Therapeut:innen antworten oft per E‑Mail. Wenn du möchtest, kannst du eine E‑Mail-Adresse ergänzen.</p>
-                    <p className="text-xs text-gray-600">Ohne E‑Mail kontaktieren dich Therapeut:innen per SMS oder Anruf.</p>
-                  </div>
-                </div>
-
-                {!addEmailOpen ? (
-                  <div className="flex justify-center">
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={() => setAddEmailOpen(true)}
-                      className="h-12 px-6 text-base font-semibold border-2 hover:bg-gray-50 transition-all duration-200"
-                    >
-                      ✉️ E‑Mail hinzufügen (optional)
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3 rounded-xl border border-gray-200/60 bg-white/80 p-4 sm:p-5 shadow-sm">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <p className="text-base font-semibold text-gray-900">✉️ Optional: E‑Mail hinzufügen</p>
+                      <p className="text-sm leading-relaxed text-gray-700">Therapeut:innen antworten oft per E‑Mail. Wenn du möchtest, kannst du eine E‑Mail-Adresse ergänzen.</p>
+                      <p className="text-xs text-gray-600">Ohne E‑Mail kontaktieren dich Therapeut:innen per SMS oder Anruf.</p>
+                    </div>
                     <div className="space-y-3">
                       <input
                         type="email"
                         value={addEmail}
                         onChange={(e) => setAddEmail(e.target.value)}
                         placeholder="deine@email.de"
-                        className="h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         aria-label="E‑Mail"
                       />
-                      <Button 
+                      <Button
                         onClick={handleAddEmail}
                         disabled={addEmailSubmitting}
                         className="h-11 w-full text-base"
@@ -842,11 +827,11 @@ export default function SignupWizard() {
                         {addEmailSubmitting ? 'Speichere…' : 'E‑Mail speichern'}
                       </Button>
                       {addEmailMessage && (
-                        <p className="text-sm text-center text-gray-600" aria-live="polite">{addEmailMessage}</p>
+                        <p className="text-sm text-center text-gray-700" aria-live="polite">{addEmailMessage}</p>
                       )}
                     </div>
                   </div>
-                )}
+                </div>
               </div>
             );
           }
