@@ -155,8 +155,7 @@ export default function NewScreen5_Modality({
             </div>
 
             {/* Optional explanations below */}
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <p className="text-sm text-muted-foreground mb-4">Mehr über diese Methoden:</p>
+            <div className="mt-4 sm:mt-6 pt-4 sm:pt-5 border-t border-gray-200/60">
               <TherapyModalityExplanations />
             </div>
           </>
