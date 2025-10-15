@@ -111,10 +111,10 @@ export async function GET(req: Request) {
     }
 
     const patientIds = Array.from(
-      new Set(rows.map((r: MatchRow) => normalizeId(r.patient_id)).filter((v) => Boolean(v)))
+      new Set(rows.map((r: MatchRow) => normalizeId(r.patient_id)).filter((v) => !!v))
     );
     const therapistIds = Array.from(
-      new Set(rows.map((r: MatchRow) => normalizeId(r.therapist_id)).filter((v) => Boolean(v)))
+      new Set(rows.map((r: MatchRow) => normalizeId(r.therapist_id)).filter((v) => !!v))
     );
 
     type PeopleResult = { data: PersonRow[] | null; error: unknown | null };

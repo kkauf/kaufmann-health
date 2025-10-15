@@ -57,10 +57,10 @@ export async function GET(req: Request) {
       .eq('id', patientId)
       .single();
 
-    type PatientRow = { name?: string | null; metadata?: { issue?: string; notes?: string; city?: string; session_preference?: 'online'|'in_person'; session_preferences?: ('online'|'in_person')[]; specializations?: string[]; gender_preference?: 'male'|'female'|'no_preference'; start_timing?: string; modality_matters?: boolean } | null };
+    type PatientRow = { name?: string | null; metadata?: { issue?: string; notes?: string; additional_info?: string; city?: string; session_preference?: 'online'|'in_person'; session_preferences?: ('online'|'in_person')[]; specializations?: string[]; gender_preference?: 'male'|'female'|'no_preference'; start_timing?: string; modality_matters?: boolean } | null };
     const p = (patient || null) as PatientRow | null;
     const patientName = (p?.name || '') || null;
-    const issue = (p?.metadata?.notes || p?.metadata?.issue || '') || null;
+    const issue = (p?.metadata?.notes || p?.metadata?.issue || p?.metadata?.additional_info || '') || null;
     const sessionPreference = p?.metadata?.session_preference ?? null;
     const startTiming = typeof p?.metadata?.start_timing === 'string' ? p!.metadata!.start_timing : undefined;
     const modalityMatters = typeof p?.metadata?.modality_matters === 'boolean' ? p!.metadata!.modality_matters : undefined;

@@ -737,7 +737,14 @@ export async function POST(req: Request) {
         const existingStatus = existing?.status || null;
         if (existing && existing.id) {
           if (contactMethod === 'phone' && existingStatus === 'pre_confirmation' && cookieVerifiedPhone) {
-            const merged: Record<string, unknown> = { ...(existing.metadata || {}), phone_verified: true };
+            const merged: Record<string, unknown> = {
+              ...(existing.metadata || {}),
+              phone_verified: true,
+              consent_share_with_therapists: true,
+              consent_share_with_therapists_at: new Date().toISOString(),
+              consent_privacy_version: privacyVersion,
+              consent_terms_version: TERMS_VERSION,
+            };
             if (formSessionId && !('form_session_id' in merged)) merged['form_session_id'] = formSessionId;
             if (contactMethod && !('contact_method' in merged)) merged['contact_method'] = contactMethod;
             await supabaseServer
@@ -773,13 +780,17 @@ export async function POST(req: Request) {
               let metaChanged = false;
               if (formSessionId && !('form_session_id' in meta)) { meta['form_session_id'] = formSessionId; metaChanged = true; }
               if (contactMethod && !('contact_method' in meta)) { meta['contact_method'] = contactMethod; metaChanged = true; }
-              if (metaChanged) updateData.metadata = meta;
-              if (Object.keys(updateData).length > 0) {
-                await supabaseServer.from('people').update(updateData).eq('id', existing.id);
+              if (meta['consent_share_with_therapists'] !== true) { meta['consent_share_with_therapists'] = true; metaChanged = true; }
+              meta['consent_share_with_therapists_at'] = new Date().toISOString(); metaChanged = true;
+              meta['consent_privacy_version'] = privacyVersion; metaChanged = true;
+              meta['consent_terms_version'] = TERMS_VERSION; metaChanged = true;
+              if (metaChanged || Object.keys(updateData).length > 0) {
+                await supabaseServer
+                  .from('people')
+                  .update({ ...(Object.keys(updateData).length ? updateData : {}), ...(metaChanged ? { metadata: meta } : {}) })
+                  .eq('id', existing.id);
               }
-            } catch (e) {
-              void logError('api.leads', e, { stage: 'upsert_existing_confirmed', id: existing.id }, ip, ua);
-            }
+            } catch {}
             await ServerAnalytics.trackEventFromRequest(req, {
               type: 'contact_submitted',
               source: 'api.leads',

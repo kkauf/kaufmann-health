@@ -298,7 +298,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             </li>
           )}
         </ul>
-        <p className="mt-4 font-semibold text-gray-900">Sie können dieser Auswahl guten Gewissens vertrauen.</p>
+        <p className="mt-4 font-semibold text-gray-900">Eine Auswahl, der du vertrauen kannst.</p>
       </div>
 
       {data?.patient?.modality_matters && (

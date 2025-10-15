@@ -317,10 +317,23 @@ const createCampaign = async (customer: any, name: string, budgetResourceName: s
   return rn as string;
 };
 
+async function getLanguageConstant(customer: any, code: string): Promise<string> {
+  const rows: any[] = await customer.query(`
+    SELECT language_constant.resource_name, language_constant.code, language_constant.name
+    FROM language_constant
+    WHERE language_constant.code = '${code.toLowerCase()}'
+    LIMIT 1
+  `);
+  const r = rows?.[0];
+  const rn = (r as any)?.language_constant?.resource_name || (r as any)?.languageConstant?.resourceName;
+  if (!rn) throw new Error(`Language constant not found for code=${code}`);
+  return rn as string;
+}
+
 async function ensureLanguageGerman(customer: any, campaignRn: string, dryRun: boolean) {
-  const langConst = 'languageConstants/1002';
+  const german = dryRun ? 'languageConstants/DE' : await getLanguageConstant(customer, 'de');
   if (dryRun) {
-    console.log(`  [DRY] Would add language criterion: ${langConst}`);
+    console.log(`  [DRY] Would set language to German only`);
     return;
   }
   try {
@@ -328,19 +341,39 @@ async function ensureLanguageGerman(customer: any, campaignRn: string, dryRun: b
       [
         {
           campaign: campaignRn,
-          language: { language_constant: langConst },
+          language: { language_constant: german },
         },
       ],
       { partial_failure: true }
     );
     console.log('  ✓ Language added: DE');
   } catch (e: any) {
-    if (String(e).includes('ALREADY_EXISTS') || String(e).includes('DUPLICATE')) {
+    const s = String(e).toLowerCase();
+    if (s.includes('already exists') || s.includes('duplicate')) {
       console.log('  • Language already set');
-      return;
+    } else {
+      throw e;
     }
-    throw e;
   }
+  // Remove any non-German language criteria
+  try {
+    const rows: any[] = await customer.query(`
+      SELECT campaign_criterion.resource_name, campaign_criterion.language.language_constant
+      FROM campaign_criterion
+      WHERE campaign_criterion.campaign = '${campaignRn}' AND campaign_criterion.type = 'LANGUAGE' 
+    `);
+    const toRemove: string[] = [];
+    for (const row of rows) {
+      const cc = (row as any)?.campaign_criterion || (row as any)?.campaignCriterion;
+      const rn = cc?.resource_name || cc?.resourceName;
+      const lc = cc?.language?.language_constant || cc?.language?.languageConstant;
+      if (rn && lc && lc !== german) toRemove.push(rn);
+    }
+    if (toRemove.length) {
+      await customer.campaignCriteria.remove(toRemove, { partial_failure: true });
+      console.log(`  ✓ Removed non-German language criteria: ${toRemove.length}`);
+    }
+  } catch {}
 }
 
 async function ensureProximityBerlin50km(customer: any, campaignRn: string, dryRun: boolean) {
@@ -597,6 +630,7 @@ async function main() {
       SITELINK: (enums as any).AssetFieldType?.SITELINK ?? enums.AssetFieldType.SITELINK,
       CALLOUT: (enums as any).AssetFieldType?.CALLOUT ?? enums.AssetFieldType.CALLOUT,
       STRUCTURED_SNIPPET: (enums as any).AssetFieldType?.STRUCTURED_SNIPPET ?? enums.AssetFieldType.STRUCTURED_SNIPPET,
+      IMAGE: (enums as any).AssetFieldType?.IMAGE ?? enums.AssetFieldType.IMAGE,
     };
     // Limit counts to sensible defaults
     const byType: Record<string, { resourceName: string; type: string; name?: string }[]> = {};
@@ -604,7 +638,7 @@ async function main() {
       if (!byType[a.type]) byType[a.type] = [];
       byType[a.type].push(a);
     }
-    const limits: Record<string, number> = { SITELINK: 6, CALLOUT: 10, STRUCTURED_SNIPPET: 4 };
+    const limits: Record<string, number> = { SITELINK: 6, CALLOUT: 10, STRUCTURED_SNIPPET: 4, IMAGE: 10 };
 
     for (const t of Object.keys(byType)) {
       const selected = byType[t].slice(0, limits[t] || 5);
@@ -718,9 +752,9 @@ async function main() {
       }
     }
 
-    // Attach existing assets (sitelinks, callouts, structured snippets)
+    // Attach existing assets (sitelinks, callouts, structured snippets, images)
     try {
-      const accountAssets = await listAssetsByTypes(['SITELINK', 'CALLOUT', 'STRUCTURED_SNIPPET']);
+      const accountAssets = await listAssetsByTypes(['SITELINK', 'CALLOUT', 'STRUCTURED_SNIPPET', 'IMAGE']);
       if (accountAssets.length > 0) {
         await attachAssetsToCampaign(campaignRn as string, accountAssets, dryRun || validateOnly);
       } else {
