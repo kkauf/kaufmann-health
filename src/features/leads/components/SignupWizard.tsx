@@ -814,12 +814,13 @@ export default function SignupWizard() {
 
                 {!addEmailOpen ? (
                   <div className="flex justify-center">
-                    <Button 
-                      variant="ghost"
+                    <Button
+                      variant="outline"
+                      size="lg"
                       onClick={() => setAddEmailOpen(true)}
-                      className="text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 transition-colors"
+                      className="h-12 px-6 text-base font-semibold border-2 hover:bg-gray-50 transition-all duration-200"
                     >
-                      E‑Mail hinzufügen (optional)
+                      ✉️ E‑Mail hinzufügen (optional)
                     </Button>
                   </div>
                 ) : (
