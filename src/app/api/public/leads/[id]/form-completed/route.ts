@@ -33,12 +33,20 @@ export async function POST(req: Request) {
   if (!id) return safeJson({ data: null, error: 'Missing id' }, { status: 400 });
 
   try {
-    type Person = { id: string; email?: string | null; type?: string | null; status?: string | null; metadata?: Record<string, unknown> | null };
-    const { data: person, error } = await supabaseServer
-      .from('people')
-      .select('id,email,type,status,metadata')
-      .eq('id', id)
-      .single<Person>();
+    type Person = { id: string; email?: string | null; type?: string | null; status?: string | null; metadata?: Record<string, unknown> | null; campaign_source?: string | null; campaign_variant?: string | null };
+    let person: Person | null = null;
+    let error: unknown = null;
+    try {
+      const res = await supabaseServer
+        .from('people')
+        .select('id,email,type,status,metadata,campaign_source,campaign_variant')
+        .eq('id', id)
+        .single<Person>();
+      person = (res.data as Person) ?? null;
+      error = res.error;
+    } catch (e) {
+      error = e;
+    }
 
     if (error || !person) {
       return safeJson({ data: null, error: 'Not found' }, { status: 404 });
@@ -49,8 +57,27 @@ export async function POST(req: Request) {
 
     const ip = getClientIP(req.headers);
     const ua = req.headers.get('user-agent') || undefined;
+    // Derive a conservative campaign fallback from Referer (mirrors leads route semantics)
+    let refCampaignSource: string | undefined;
+    let refCampaignVariant: 'A' | 'B' | 'C' | undefined;
+    try {
+      const ref = req.headers.get('referer') || '';
+      const u = new URL(ref);
+      const path = u.pathname || '';
+      refCampaignSource = path.includes('/ankommen-in-dir')
+        ? '/ankommen-in-dir'
+        : path.includes('/wieder-lebendig')
+        ? '/wieder-lebendig'
+        : '/therapie-finden';
+      const vMatch = ref.match(/[?&]v=([A-Za-z])/);
+      refCampaignVariant = vMatch
+        ? (vMatch[1].toUpperCase() === 'B' ? 'B' : (vMatch[1].toUpperCase() === 'C' ? 'C' : 'A'))
+        : 'A';
+    } catch {}
 
     const metadata: Record<string, unknown> = { ...(person.metadata || {}) };
+    let backfillCs: string | undefined;
+    let backfillCv: string | undefined;
 
     // Adopt fields from existing metadata if present (set at email submit)
     // Also stamp completion
@@ -102,6 +129,18 @@ export async function POST(req: Request) {
         if (!metadata['form_session_id'] && fsid) metadata['form_session_id'] = fsid;
 
         const d = fsData.data as Record<string, unknown>;
+        // If campaign is missing on person, backfill from form-session attribution snapshot
+        try {
+          const attr = (d['_attr'] as Record<string, unknown> | undefined) || undefined;
+          const cs = typeof d['campaign_source'] === 'string'
+            ? (d['campaign_source'] as string)
+            : (typeof attr?.['campaign_source'] === 'string' ? (attr['campaign_source'] as string) : undefined);
+          const cv = typeof d['campaign_variant'] === 'string'
+            ? (d['campaign_variant'] as string)
+            : (typeof attr?.['campaign_variant'] === 'string' ? (attr['campaign_variant'] as string) : undefined);
+          if (!person.campaign_source && cs) backfillCs = cs;
+          if (!person.campaign_variant && cv) backfillCv = cv;
+        } catch {}
         // Copy a stable subset to people.metadata, mirroring existing patterns and extending with Fragebogen fields
         // Existing possible keys: city, session_preference, gender_preference, budget, etc.
         const maybeString = (k: string) => (typeof d[k] === 'string' ? (d[k] as string).trim() : undefined);
@@ -170,10 +209,15 @@ export async function POST(req: Request) {
       await logError('api.leads.form_completed', e, { stage: 'load_form_session', id, fsid });
     }
 
-    // Persist metadata only (activation handled on confirmation depending on VERIFICATION_MODE)
+    // Persist metadata and promote campaign backfills (if any) into first-class columns
+    const updatePayload: Record<string, unknown> = { metadata };
+    // Prefer backfill from form session; otherwise, use referrer-derived fallback
+    if (backfillCs || refCampaignSource) updatePayload['campaign_source'] = backfillCs || refCampaignSource;
+    if (backfillCv || refCampaignVariant) updatePayload['campaign_variant'] = backfillCv || refCampaignVariant;
+
     const { error: upErr } = await supabaseServer
       .from('people')
-      .update({ metadata })
+      .update(updatePayload)
       .eq('id', id);
     if (upErr) {
       await logError('api.leads.form_completed', upErr, { stage: 'update_metadata', id });

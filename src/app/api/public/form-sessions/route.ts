@@ -1,5 +1,5 @@
 import { supabaseServer } from '@/lib/supabase-server';
-import { ServerAnalytics } from '@/lib/server-analytics';
+import { ServerAnalytics, parseCampaignFromRequest } from '@/lib/server-analytics';
 import { safeJson } from '@/lib/http';
 import { getFixedWindowLimiter, extractIpFromHeaders } from '@/lib/rate-limit';
 
@@ -31,6 +31,20 @@ export async function POST(req: Request) {
     if (!data || typeof data !== 'object' || Array.isArray(data as unknown[])) {
       return safeJson({ data: null, error: 'Invalid data' }, { status: 400 });
     }
+
+    // Ensure attribution snapshot exists (idempotent)
+    try {
+      const obj = data as Record<string, unknown>;
+      if (!obj['_attr']) {
+        const base = parseCampaignFromRequest(req);
+        const ref = req.headers.get('referer') || '';
+        const vMatch = ref.match(/[?&]v=([A-Za-z])/);
+        const vParam = vMatch ? vMatch[1].toUpperCase() : undefined;
+        const campaign_variant = vParam === 'B' ? 'B' : vParam === 'C' ? 'C' : base.campaign_variant;
+        const campaign_source = base.campaign_source;
+        obj['_attr'] = { campaign_source, campaign_variant } as Record<string, unknown>;
+      }
+    } catch {}
 
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 

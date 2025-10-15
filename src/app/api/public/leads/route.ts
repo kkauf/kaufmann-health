@@ -716,21 +716,21 @@ export async function POST(req: Request) {
 
       // Handle unique violation gracefully by looking up existing email or phone
       if ((insErr as { code?: string } | null | undefined)?.code === '23505') {
-        type ExistingPerson = { id: string; status?: string | null; metadata?: Record<string, unknown> | null; campaign_source?: string | null; campaign_variant?: string | null };
+        type ExistingPerson = { id: string; name?: string | null; status?: string | null; metadata?: Record<string, unknown> | null; campaign_source?: string | null; campaign_variant?: string | null };
         const doSelect = async (cols: string) => {
           let query = supabaseServer.from('people').select(cols);
           if (email) query = query.eq('email', email);
           else if (phoneNumber) query = query.eq('phone_number', phoneNumber);
           return query.single<ExistingPerson>();
         };
-        const sel = await doSelect('id,status,metadata,campaign_source,campaign_variant');
+        const sel = await doSelect('id,name,status,metadata,campaign_source,campaign_variant');
         let existing: ExistingPerson | null = (sel.data as ExistingPerson) ?? null;
         let selErr: unknown = sel.error;
         const selMsg = getErrorMessage(sel.error);
         if (selMsg.includes('schema cache')) {
           // Retry without optional columns
           void track({ type: 'leads_schema_mismatch', level: 'warn', source: 'api.leads', ip, ua, props: { stage: 'select_existing_contact', missing: 'campaign_columns' } });
-          const sel2 = await doSelect('id,status,metadata');
+          const sel2 = await doSelect('id,name,status,metadata');
           existing = (sel2.data as ExistingPerson) ?? null;
           selErr = sel2.error;
         }
@@ -738,6 +738,8 @@ export async function POST(req: Request) {
         if (existing && existing.id) {
           if (contactMethod === 'phone' && existingStatus === 'pre_confirmation' && cookieVerifiedPhone) {
             const merged: Record<string, unknown> = { ...(existing.metadata || {}), phone_verified: true };
+            if (formSessionId && !('form_session_id' in merged)) merged['form_session_id'] = formSessionId;
+            if (contactMethod && !('contact_method' in merged)) merged['contact_method'] = contactMethod;
             await supabaseServer
               .from('people')
               .update({
@@ -745,8 +747,10 @@ export async function POST(req: Request) {
                 metadata: merged,
                 ...(data.name ? { name: data.name } : {}),
                 ...(phoneNumber ? { phone_number: phoneNumber } : {}),
+                ...(campaign_source ? { campaign_source } : {}),
+                ...(campaign_variant ? { campaign_variant } : {}),
               })
-              .eq('id', effectiveId);
+              .eq('id', existing.id);
             await ServerAnalytics.trackEventFromRequest(req, {
               type: 'contact_submitted',
               source: 'api.leads',
@@ -757,7 +761,25 @@ export async function POST(req: Request) {
               { headers: { 'Cache-Control': 'no-store' } },
             );
           } else if (!isTest && existingStatus && existingStatus !== 'pre_confirmation') {
-            // Already confirmed or other terminal state — don't downgrade or resend; treat as success
+            // Already confirmed or other terminal state — upsert missing attributes, then treat as success
+            try {
+              const updateData: Record<string, unknown> = {};
+              if (data.name && (!existing.name || existing.name.trim() !== data.name.trim())) {
+                updateData.name = data.name;
+              }
+              if (campaign_source && !existing.campaign_source) updateData.campaign_source = campaign_source;
+              if (campaign_variant && !existing.campaign_variant) updateData.campaign_variant = campaign_variant;
+              const meta: Record<string, unknown> = { ...(existing.metadata || {}) };
+              let metaChanged = false;
+              if (formSessionId && !('form_session_id' in meta)) { meta['form_session_id'] = formSessionId; metaChanged = true; }
+              if (contactMethod && !('contact_method' in meta)) { meta['contact_method'] = contactMethod; metaChanged = true; }
+              if (metaChanged) updateData.metadata = meta;
+              if (Object.keys(updateData).length > 0) {
+                await supabaseServer.from('people').update(updateData).eq('id', existing.id);
+              }
+            } catch (e) {
+              void logError('api.leads', e, { stage: 'upsert_existing_confirmed', id: existing.id }, ip, ua);
+            }
             await ServerAnalytics.trackEventFromRequest(req, {
               type: 'contact_submitted',
               source: 'api.leads',
@@ -796,12 +818,12 @@ export async function POST(req: Request) {
                   ...(data.name ? { name: data.name } : {}),
                   ...(phoneNumber ? { phone_number: phoneNumber } : {})
                 })
-                .eq('id', effectiveId);
+                .eq('id', existing.id);
             } else {
               await supabaseServer
                 .from('people')
                 .update({ metadata: merged, ...(data.name ? { name: data.name } : {}) })
-                .eq('id', effectiveId);
+                .eq('id', existing.id);
             }
           }
         } else if (existing && existing.id) {
