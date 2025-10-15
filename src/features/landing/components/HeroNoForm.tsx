@@ -62,7 +62,7 @@ export function HeroNoForm({
               className="h-14 px-8 text-base sm:text-lg font-semibold shadow-xl shadow-emerald-900/30 hover:shadow-2xl hover:shadow-emerald-900/40 transition-all duration-200 hover:scale-[1.02]"
               data-cta="hero-primary"
             >
-              <CtaLink href={ctaHref} eventType="cta_click" aria-label={ctaLabel}>
+              <CtaLink href={ctaHref} eventType="cta_click" aria-label={ctaLabel} data-cta="hero-primary">
                 {ctaLabel}
               </CtaLink>
             </Button>

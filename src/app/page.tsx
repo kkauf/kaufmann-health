@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import TherapyModalityExplanations from "@/components/TherapyModalityExplanations";
 import { ShieldCheck, Lock, UserCheck } from "lucide-react";
 import { COOKIES_ENABLED } from "@/lib/config";
+import PageAnalytics from "@/components/PageAnalytics";
+import CtaLink from "@/components/CtaLink";
+import { Card } from "@/components/ui/card";
 
 export const revalidate = 3600;
 
@@ -47,6 +49,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white" data-variant={variant}>
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-18">
+        <PageAnalytics qualifier="Home" />
         {/* Announcement Bar */}
         <div className="mb-8">
           <div className="inline-flex items-center rounded-full border border-emerald-200/60 bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-2 text-xs sm:text-sm font-medium text-emerald-700 shadow-sm">
@@ -57,7 +60,7 @@ export default function Home() {
         {/* Hero Section (Patient-Focused) */}
         <section
           aria-labelledby="hero-heading"
-          className="mb-14 sm:mb-20 lg:mb-24 relative overflow-hidden rounded-3xl border border-slate-200/60 shadow-lg shadow-slate-100/50 bg-gradient-to-br from-slate-50/80 via-white to-slate-50/60 p-8 sm:p-10 lg:p-12"
+          className="relative overflow-hidden rounded-3xl border border-slate-200/60 shadow-lg shadow-slate-100/50 bg-gradient-to-br from-slate-50/80 via-white to-slate-50/60 p-8 sm:p-10 lg:p-12"
         >
           <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_50%_0%,rgba(99,102,241,0.1),transparent_70%),radial-gradient(30rem_16rem_at_100%_100%,rgba(14,165,233,0.08),transparent_65%)]" />
           <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-gradient-to-br from-indigo-200/20 to-transparent blur-3xl" />
@@ -79,7 +82,9 @@ export default function Home() {
               data-audience="patients"
               className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 transition-all duration-200 hover:scale-[1.02]"
             >
-              <Link href="/start">Therapeut:innen finden</Link>
+              <CtaLink href="/start" eventType="cta_click" eventId="home-hero-find">
+                Therapeut:innen finden
+              </CtaLink>
             </Button>
             <Button
               size="lg"
@@ -89,7 +94,9 @@ export default function Home() {
               data-audience="therapists"
               className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200"
             >
-              <Link href="/fuer-therapeuten">Für Therapeut:innen</Link>
+              <CtaLink href="/fuer-therapeuten" eventType="cta_click" eventId="home-hero-therapists">
+                Für Therapeut:innen
+              </CtaLink>
             </Button>
           </div>
           <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm sm:text-base text-gray-700" aria-label="Vertrauen">
@@ -112,7 +119,7 @@ export default function Home() {
 
 
         {/* Social Proof */}
-        <section aria-labelledby="social-proof" className="mb-14 sm:mb-20">
+        <section aria-labelledby="social-proof" className="mt-14 sm:mt-20 lg:mt-24">
           <h2 id="social-proof" className="text-sm sm:text-base font-medium text-gray-700">
             Unsere sorgfältig geprüften Therapeut:innen sind zertifiziert in:
           </h2>
@@ -167,71 +174,71 @@ export default function Home() {
         </section>
 
         {/* Features */}
-        <section aria-labelledby="features" className="mb-14 sm:mb-20 lg:mb-24">
+        <section aria-labelledby="features" className="mt-14 sm:mt-20 lg:mt-24">
           <h2 id="features" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
             Was unsere Empfehlungen auszeichnet
           </h2>
           <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 p-5 sm:p-6">
+            <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6">
               <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
-              <h3 className="text-xl font-semibold text-gray-900">Spezialisierte Expertise</h3>
+              <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">Spezialisierte Expertise</h3>
               <p className="mt-3 text-sm leading-relaxed text-gray-600">
                 Ausschließlich körperorientierte Trauma-Therapeut:innen mit
                 nachgewiesener Ausbildung in NARM, Hakomi, Core Energetics oder Somatic
                 Experiencing.
               </p>
-            </div>
-            <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 p-5 sm:p-6">
+            </Card>
+            <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6">
               <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
-              <h3 className="text-xl font-semibold text-gray-900">Persönlich ausgewählte Therapeut:innen‑Empfehlungen</h3>
+              <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">Persönlich ausgewählte Therapeut:innen‑Empfehlungen</h3>
               <p className="mt-3 text-sm leading-relaxed text-gray-600">
                 Wir kennen jede:n Therapeut:in persönlich und wählen basierend auf
                 deinen Bedürfnissen und deren Spezialisierung passende Kandidat:innen aus.
               </p>
-            </div>
-            <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 p-5 sm:p-6">
+            </Card>
+            <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6">
               <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
-              <h3 className="text-xl font-semibold text-gray-900">Gezielte Auswahl</h3>
+              <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">Gezielte Auswahl</h3>
               <p className="mt-3 text-sm leading-relaxed text-gray-600">
                 Du erhältst Kontaktdaten zu 2–3 passenden Therapeut:innen und wählst selbst aus, wen du kontaktieren möchtest. Direkter Kontakt, keine Umwege.
               </p>
-            </div>
+            </Card>
           </div>
         </section>
 
         {/* Trust Promise */}
-        <section aria-labelledby="trust-promise" className="mb-14 sm:mb-20 lg:mb-24">
+        <section aria-labelledby="trust-promise" className="mt-14 sm:mt-20 lg:mt-24">
           <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
             <h2 id="trust-promise" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Unser Vertrauensversprechen</h2>
             <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 sm:grid-cols-3">
-              <div className="flex items-start gap-3 rounded-lg border border-emerald-200/60 bg-gradient-to-br from-emerald-50/40 to-white p-4 shadow-sm">
+              <Card className="flex items-start gap-3 px-5 sm:px-6 border-emerald-200/60 bg-gradient-to-br from-emerald-50/40 to-white">
                 <ShieldCheck className="mt-0.5 h-6 w-6 text-emerald-600 flex-shrink-0" />
                 <div>
-                  <p className="font-semibold text-gray-900">Geprüfte Therapeut:innen</p>
+                  <p className="font-semibold text-gray-900">Geprüfte Profile</p>
                   <p className="mt-1 text-sm leading-relaxed text-gray-600">Qualifikationen und Spezialisierungen werden manuell verifiziert.</p>
                 </div>
-              </div>
-              <div className="flex items-start gap-3 rounded-lg border border-slate-200/60 bg-gradient-to-br from-slate-50/40 to-white p-4 shadow-sm">
+              </Card>
+              <Card className="flex items-start gap-3 px-5 sm:px-6 border-slate-200/60 bg-gradient-to-br from-slate-50/40 to-white">
                 <Lock className="mt-0.5 h-6 w-6 text-slate-700 flex-shrink-0" />
                 <div>
                   <p className="font-semibold text-gray-900">{COOKIES_ENABLED ? 'Datenschutzfreundlich' : 'Keine Cookies'}</p>
                   <p className="mt-1 text-sm leading-relaxed text-gray-600">{COOKIES_ENABLED ? 'Minimales Conversion‑Signal; keine Analytics‑Cookies.' : 'Keine Tracking‑Cookies. DSGVO‑konforme, transparente Prozesse.'}</p>
                 </div>
-              </div>
-              <div className="flex items-start gap-3 rounded-lg border border-indigo-200/60 bg-gradient-to-br from-indigo-50/40 to-white p-4 shadow-sm">
+              </Card>
+              <Card className="flex items-start gap-3 px-5 sm:px-6 border-indigo-200/60 bg-gradient-to-br from-indigo-50/40 to-white">
                 <UserCheck className="mt-0.5 h-6 w-6 text-indigo-600 flex-shrink-0" />
                 <div>
-                  <p className="font-semibold text-gray-900">Kontrolle über deine Daten</p>
+                  <p className="font-semibold text-gray-900">Transparente Datenverarbeitung</p>
                   <p className="mt-1 text-sm leading-relaxed text-gray-600">Nutzung deiner Angaben ausschließlich zur Kontaktaufnahme mit ausgewählten Therapeut:innen.</p>
                 </div>
-              </div>
+              </Card>
             </div>
           </div>
         </section>
 
         {/* Therapy Modalities (Education) */}
-        <div className="mb-14 sm:mb-20 lg:mb-24">
+        <div className="mt-14 sm:mt-20 lg:mt-24">
           <TherapyModalityExplanations />
         </div>
 
@@ -239,7 +246,7 @@ export default function Home() {
         {showTherapistSection && (
           <section
             aria-labelledby="therapists"
-            className="mb-14 sm:mb-20 relative overflow-hidden rounded-3xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-6 sm:p-8 lg:p-10 shadow-lg shadow-indigo-100/30"
+            className="mt-14 sm:mt-20 relative overflow-hidden rounded-3xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-6 sm:p-8 lg:p-10 shadow-lg shadow-indigo-100/30"
           >
             <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(35rem_18rem_at_40%_0%,rgba(99,102,241,0.09),transparent_65%)]" />
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr] lg:items-center">
@@ -259,9 +266,9 @@ export default function Home() {
                   data-audience="therapists"
                   className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold shadow-lg shadow-indigo-600/20 hover:shadow-xl hover:shadow-indigo-600/30 transition-all duration-200 hover:scale-[1.02] bg-indigo-600 hover:bg-indigo-700"
                 >
-                  <Link href="/fuer-therapeuten">
+                  <CtaLink href="/fuer-therapeuten" eventType="cta_click" eventId="home-therapists-cta">
                     Mehr erfahren →
-                  </Link>
+                  </CtaLink>
                 </Button>
               </div>
             </div>

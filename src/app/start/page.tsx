@@ -148,7 +148,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
       {/* Therapist network teaser - MOVED UP for trust-first flow */}
       <section className="mt-10 sm:mt-14">
         <TherapistTeaserSection
-          title="Unser Therapeuten–Netzwerk"
+          title="Unser Therapeuten-Netzwerk"
           subtitle="Persönlich ausgewählte Spezialist:innen"
           limit={3}
         />
@@ -156,6 +156,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
           <CtaLink
             href="/therapeuten"
             eventType="cta_click"
+            eventId="start-therapist-teaser-view-all"
             data-cta="view-all-therapists"
             className="inline-flex items-center gap-2 rounded-lg bg-white border-2 border-teal-600 px-6 sm:px-8 py-3 sm:py-3.5 text-base sm:text-lg font-semibold text-teal-700 shadow-md hover:bg-teal-600 hover:text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2"
           >
@@ -173,7 +174,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
 
       <FinalCtaSection
         heading="Bereit für den ersten Schritt?"
-        subtitle="Fülle unseren 5–Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten–Vorschläge."
+        subtitle="Fülle unseren 5-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten-Vorschläge."
         buttonLabel="Jetzt Therapeut:in finden"
         targetId="/fragebogen"
         align="center"

@@ -1,6 +1,8 @@
 import Image from "next/image";
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import PageAnalytics from "@/components/PageAnalytics";
 import FaqAccordion from "@/components/FaqAccordion";
 import TherapistApplicationForm from "@/features/leads/components/TherapistApplicationForm";
 import { CheckCircle2, Target, Users, Clock, Shield, TrendingUp, ShieldCheck, Lock, UserCheck } from "lucide-react";
@@ -69,6 +71,7 @@ const faqItems = [
 export default function TherapistsPage() {
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
+      <PageAnalytics qualifier="Fuer-Therapeuten" />
       <script
         type="application/ld+json"
         suppressHydrationWarning
@@ -178,38 +181,38 @@ export default function TherapistsPage() {
       <section aria-labelledby="solution" className="mt-14 sm:mt-20 lg:mt-24">
         <h2 id="solution" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Unser Empfehlungsservice</h2>
         <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 p-5 sm:p-6">
+          <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
             <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/60 p-3 text-indigo-600 shadow-sm w-fit">
               <Target className="h-5 w-5" />
             </div>
             <h3 className="mt-4 text-xl font-semibold text-gray-900">Spezialisiertes Netzwerk</h3>
             <p className="mt-2 text-sm leading-relaxed text-gray-600">Fokus auf körperorientierte Verfahren</p>
-          </div>
-          <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 p-5 sm:p-6">
+          </Card>
+          <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
             <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 p-3 text-emerald-600 shadow-sm w-fit">
               <TrendingUp className="h-5 w-5" />
             </div>
             <h3 className="mt-4 text-xl font-semibold text-gray-900">Erfolgsbasiert</h3>
             <p className="mt-2 text-sm leading-relaxed text-gray-600">Details nach Aufnahme</p>
-          </div>
-          <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 p-5 sm:p-6">
+          </Card>
+          <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
             <div className="rounded-xl bg-gradient-to-br from-sky-50 to-sky-100/60 p-3 text-sky-600 shadow-sm w-fit">
               <Shield className="h-5 w-5" />
             </div>
             <h3 className="mt-4 text-xl font-semibold text-gray-900">Faire Konditionen</h3>
             <p className="mt-2 text-sm leading-relaxed text-gray-600">Transparente Konditionen – keine Überraschungen</p>
-          </div>
-          <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 p-5 sm:p-6">
+          </Card>
+          <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
             <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/60 p-3 text-slate-700 shadow-sm w-fit">
               <Users className="h-5 w-5" />
             </div>
             <h3 className="mt-4 text-xl font-semibold text-gray-900">Flexibel</h3>
             <p className="mt-2 text-sm leading-relaxed text-gray-600">Jederzeit kündbar</p>
-          </div>
+          </Card>
         </div>
       </section>
 
@@ -279,46 +282,46 @@ export default function TherapistsPage() {
       <section aria-labelledby="benefits" className="mt-14 sm:mt-20 lg:mt-24">
         <h2 id="benefits" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Deine Vorteile</h2>
         <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 p-5 sm:p-6">
+          <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
             <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 p-3 text-emerald-600 shadow-sm w-fit">
               <TrendingUp className="h-5 w-5" />
             </div>
             <h3 className="mt-4 text-xl font-semibold text-gray-900">Keine Vorabkosten</h3>
             <p className="mt-2 text-sm leading-relaxed text-gray-600">Du zahlst nur bei Erfolg</p>
-          </div>
-          <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 p-5 sm:p-6">
+          </Card>
+          <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
             <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/60 p-3 text-indigo-600 shadow-sm w-fit">
               <Target className="h-5 w-5" />
             </div>
             <h3 className="mt-4 text-xl font-semibold text-gray-900">Zielgerichtete Sichtbarkeit</h3>
             <p className="mt-2 text-sm leading-relaxed text-gray-600">Alle Anfragen kommen von vorinteressierten Selbstzahlern</p>
-          </div>
-          <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 p-5 sm:p-6">
+          </Card>
+          <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
             <div className="rounded-xl bg-gradient-to-br from-sky-50 to-sky-100/60 p-3 text-sky-600 shadow-sm w-fit">
               <Clock className="h-5 w-5" />
             </div>
             <h3 className="mt-4 text-xl font-semibold text-gray-900">Zeitersparnis</h3>
             <p className="mt-2 text-sm leading-relaxed text-gray-600">Kein Marketing, keine Kaltakquise notwendig</p>
-          </div>
-          <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 p-5 sm:p-6">
+          </Card>
+          <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
             <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/60 p-3 text-slate-700 shadow-sm w-fit">
               <Shield className="h-5 w-5" />
             </div>
             <h3 className="mt-4 text-xl font-semibold text-gray-900">Flexible Teilnahme</h3>
             <p className="mt-2 text-sm leading-relaxed text-gray-600">Keine Mindestlaufzeit, transparente Bedingungen</p>
-          </div>
-          <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 p-5 sm:p-6">
+          </Card>
+          <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
             <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/60 p-3 text-indigo-600 shadow-sm w-fit">
               <Users className="h-5 w-5" />
             </div>
             <h3 className="mt-4 text-xl font-semibold text-gray-900">Jederzeit kündbar</h3>
             <p className="mt-2 text-sm leading-relaxed text-gray-600">Jederzeit kündbar, keine Mindestlaufzeit</p>
-          </div>
+          </Card>
         </div>
       </section>
 

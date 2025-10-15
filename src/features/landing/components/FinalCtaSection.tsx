@@ -68,7 +68,7 @@ export function FinalCtaSection({
             data-cta="final-primary"
             className="h-14 px-8 text-base sm:text-lg font-semibold shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 transition-all duration-200 hover:scale-[1.02]"
           >
-            <CtaLink href={targetId} eventType="cta_click" aria-label={buttonLabel}>
+            <CtaLink href={targetId} eventType="cta_click" aria-label={buttonLabel} data-cta="final-primary">
               {buttonLabel}
             </CtaLink>
           </Button>

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import PageAnalytics from "@/components/PageAnalytics";
+import CtaLink from "@/components/CtaLink";
 import { Heart, Users, Shield, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
     "Lernt Katherine und Konstantin kennen – ein familiengeführtes Team aus Therapie-Expertise und Tech-Erfahrung, das Menschen mit körperorientierten Therapeut:innen verbindet.",
   openGraph: {
     title: "Über uns – Katherine & Konstantin | Kaufmann Health",
-    description: "Familiengeführte Therapeuten-Vermittlung mit persönlicher Kuration und Trauma-Expertise.",
+    description: "Familiengeführte Therapeut:innen‑Empfehlung mit persönlicher Kuration und Trauma‑Expertise.",
     url: "https://kaufmann-health.de/ueber-uns",
     siteName: "Kaufmann Health",
     locale: "de_DE",
@@ -25,6 +26,7 @@ export const metadata: Metadata = {
 export default function UeberUnsPage() {
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
+      <PageAnalytics qualifier="Ueber-Uns" />
       {/* Hero Section */}
       <section
         aria-labelledby="about-hero"
@@ -55,11 +57,11 @@ export default function UeberUnsPage() {
             Gemeinsam verbinden wir Menschen mit den richtigen Therapeut:innen – persönlich statt algorithmisch.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg" className="h-12 px-8 text-base font-semibold shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 transition-all duration-200 hover:scale-[1.02]">
-              <Link href="/start">Therapeut:in finden</Link>
+            <Button asChild size="lg" className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 transition-all duration-200 hover:scale-[1.02]">
+              <CtaLink href="/start" eventType="cta_click" eventId="ueber-uns-hero-find">Therapeut:in finden</CtaLink>
             </Button>
-            <Button asChild variant="outline" size="lg" className="h-12 px-8 text-base font-semibold border-2 hover:bg-gray-50 transition-all duration-200">
-              <Link href="/fuer-therapeuten">Für Therapeut:innen</Link>
+            <Button asChild variant="outline" size="lg" className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200">
+              <CtaLink href="/fuer-therapeuten" eventType="cta_click" eventId="ueber-uns-hero-therapists">Für Therapeut:innen</CtaLink>
             </Button>
           </div>
         </div>
@@ -320,8 +322,8 @@ export default function UeberUnsPage() {
               persönlich ausgewählte Therapeuten-Vorschläge.
             </p>
             <div className="mt-8">
-              <Button asChild size="lg" className="h-14 px-8 text-base sm:text-lg font-semibold shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 transition-all duration-200 hover:scale-[1.02]">
-                <Link href="/fragebogen">Jetzt Therapeut:in finden</Link>
+              <Button asChild size="lg" className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 transition-all duration-200 hover:scale-[1.02]">
+                <CtaLink href="/fragebogen" eventType="cta_click" eventId="ueber-uns-final-cta">Jetzt Therapeut:in finden</CtaLink>
               </Button>
             </div>
           </div>
