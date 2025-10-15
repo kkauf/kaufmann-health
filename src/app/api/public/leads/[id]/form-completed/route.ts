@@ -204,10 +204,16 @@ export async function POST(req: Request) {
         if (time_slots) metadata.time_slots = time_slots;
         const methods = maybeArray('methods');
         if (methods) metadata.methods = methods;
+        if (methods && !(metadata as Record<string, unknown>).specializations) {
+          (metadata as Record<string, unknown>).specializations = methods;
+        }
         const modality_matters = maybeBool('modality_matters');
         if (typeof modality_matters === 'boolean') metadata.modality_matters = modality_matters;
         const additional_info = maybeString('additional_info');
         if (additional_info) metadata.additional_info = additional_info;
+        if (additional_info && !(metadata as Record<string, unknown>).issue) {
+          (metadata as Record<string, unknown>).issue = additional_info;
+        }
       }
     } catch (e) {
       await logError('api.leads.form_completed', e, { stage: 'load_form_session', id, fsid });

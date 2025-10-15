@@ -24,9 +24,13 @@ export async function sendTransactionalSms(to: string, body: string): Promise<bo
 
   try {
     const client = twilio(accountSid, authToken);
-    const paramsBase = messagingServiceSid
-      ? { to, body, messagingServiceSid }
-      : { to, body, from: fromNumber as string };
+    const isUS = /^\+1\d{10}$/.test(to);
+    const useFromForUS = isUS && !!fromNumber;
+    const paramsBase = useFromForUS
+      ? { to, body, from: fromNumber as string }
+      : (messagingServiceSid
+          ? { to, body, messagingServiceSid }
+          : { to, body, from: fromNumber as string });
     const params: Parameters<typeof client.messages.create>[0] = (
       statusCallback
         ? { ...paramsBase, statusCallback }

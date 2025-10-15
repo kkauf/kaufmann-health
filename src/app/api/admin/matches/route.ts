@@ -110,12 +110,23 @@ export async function GET(req: Request) {
       return NextResponse.json({ data: [], error: null }, { status: 200 });
     }
 
-    const patientIds = Array.from(new Set(rows.map((r) => String(r.patient_id))));
-    const therapistIds = Array.from(new Set(rows.map((r) => String(r.therapist_id))));
+    const patientIds = Array.from(
+      new Set(rows.map((r) => normalizeId((r as any).patient_id)).filter((v) => Boolean(v)))
+    );
+    const therapistIds = Array.from(
+      new Set(rows.map((r) => normalizeId((r as any).therapist_id)).filter((v) => Boolean(v)))
+    );
+
+    const peoplePromise = patientIds.length
+      ? supabaseServer.from('people').select('id, name, email, phone_number, metadata').in('id', patientIds)
+      : Promise.resolve({ data: [], error: null } as any);
+    const therapistsPromise = therapistIds.length
+      ? supabaseServer.from('therapists').select('id, first_name, last_name, email, phone').in('id', therapistIds)
+      : Promise.resolve({ data: [], error: null } as any);
 
     const [{ data: people, error: pErr }, { data: therapists, error: tErr }] = await Promise.all([
-      supabaseServer.from('people').select('id, name, email, phone_number, metadata').in('id', patientIds),
-      supabaseServer.from('therapists').select('id, first_name, last_name, email, phone').in('id', therapistIds),
+      peoplePromise,
+      therapistsPromise,
     ]);
 
     if (pErr || tErr) {
@@ -142,7 +153,7 @@ export async function GET(req: Request) {
         created_at: r.created_at,
         patient: patient
           ? { id: patient.id, name: patient.name || '', email: patient.email || '', phone: patient.phone_number || '', city, issue }
-          : { id: r.patient_id, name: '', email: '', phone: '', city, issue },
+          : { id: String((r as any).patient_id || ''), name: '', email: '', phone: '', city, issue },
         therapist: therapist
           ? {
               id: therapist.id,
@@ -150,7 +161,7 @@ export async function GET(req: Request) {
               email: therapist.email || '',
               phone: therapist.phone || '',
             }
-          : { id: r.therapist_id, name: '', email: '', phone: '' },
+          : { id: String((r as any).therapist_id || ''), name: '', email: '', phone: '' },
       } as const;
     });
 
