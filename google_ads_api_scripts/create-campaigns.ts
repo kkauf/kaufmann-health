@@ -626,6 +626,33 @@ function sanitizePathPart(s?: string): string | undefined {
   return clip(cleaned, 15);
 }
 
+function preflightWarnNegativeConflicts(c: CampaignConfig, negatives: string[], failOnConflict: boolean) {
+  try {
+    const positives = Object.values(c.keywords || {})
+      .flatMap((t: any) => (Array.isArray(t?.terms) ? t.terms : []))
+      .filter(Boolean) as string[];
+    const conflicts: Array<{ negative: string; positive: string }> = [];
+    const posLc = positives.map((p) => String(p).toLowerCase());
+    const negLc = negatives.map((n) => String(n).toLowerCase());
+    for (const n of negLc) {
+      const nTrim = n.trim();
+      if (!nTrim) continue;
+      for (const p of posLc) {
+        if (p.includes(nTrim)) {
+          conflicts.push({ negative: nTrim, positive: p });
+        }
+      }
+    }
+    if (conflicts.length) {
+      console.log(`  Warning: ${conflicts.length} negative/positive conflicts in ${c.name}`);
+      for (const x of conflicts.slice(0, 5)) {
+        console.log(`    - '${x.negative}' vs '${x.positive}'`);
+      }
+      if (failOnConflict) throw new Error('FAIL_ON_CONFLICT=true: negative/positive conflicts detected');
+    }
+  } catch {}
+}
+
 async function addRSAs(
   customer: any,
   adGroupRn: string,
@@ -786,6 +813,57 @@ async function main() {
     }
   }
 
+  // Ad-group sitelink helpers (scoped to main to use 'customer')
+  async function listSitelinkAssets(): Promise<{ resourceName: string; name?: string; linkText?: string }[]> {
+    const rows: any[] = await customer.query(`
+      SELECT asset.resource_name, asset.name, asset.sitelink_asset.link_text
+      FROM asset
+      WHERE asset.type = 'SITELINK'
+    `);
+    return rows.map((r) => {
+      const a = (r as any).asset || (r as any).asset;
+      return {
+        resourceName: a?.resource_name || a?.resourceName,
+        name: a?.name,
+        linkText: a?.sitelink_asset?.link_text || a?.sitelinkAsset?.linkText,
+      } as { resourceName: string; name?: string; linkText?: string };
+    }).filter((a) => !!a.resourceName);
+  }
+
+  async function getSitelinkRNsByNamesOrText(names: string[]): Promise<string[]> {
+    const all = await listSitelinkAssets();
+    const want = new Set(names.map((n) => (n || '').trim().toLowerCase()).filter(Boolean));
+    const out: string[] = [];
+    for (const a of all) {
+      const nm = (a.name || '').trim().toLowerCase();
+      const lt = (a.linkText || '').trim().toLowerCase();
+      if (want.has(nm) || want.has(lt)) out.push(a.resourceName);
+    }
+    return Array.from(new Set(out));
+  }
+
+  async function attachSitelinksToAdGroup(adGroupRn: string, sitelinkRNs: string[], dryRun: boolean) {
+    if (!sitelinkRNs.length) return;
+    if (dryRun) {
+      console.log(`    [DRY] Would attach ${sitelinkRNs.length} sitelinks to ad group`);
+      return;
+    }
+    try {
+      await customer.adGroupAssets.create(
+        sitelinkRNs.map((rn) => ({
+          ad_group: adGroupRn,
+          asset: rn,
+          field_type: (enums as any).AssetFieldType?.SITELINK ?? enums.AssetFieldType.SITELINK,
+        })),
+        { partial_failure: true }
+      );
+      console.log(`    ✓ Attached sitelinks to ad group: ${sitelinkRNs.length}`);
+    } catch (e: any) {
+      const msg = JSON.stringify(e?.errors || String(e));
+      console.error(`    ✗ Failed attaching ad-group sitelinks: ${msg}`);
+    }
+  }
+
   for (const c of filtered) {
     console.log(`\n=== Applying campaign: ${c.name} ===`);
     const budgetName = `${c.name} – Budget`;
@@ -835,13 +913,28 @@ async function main() {
     await ensureLanguageGerman(customer, campaignRn as string, dryRun || validateOnly);
     await ensureProximityBerlin50km(customer, campaignRn as string, dryRun || validateOnly);
     const DEFAULT_NEGATIVES = [
-      'training','ausbildung','zertifizierung','zertifikat','kurs','seminar','fortbildung','workshop','lehrgang','schule','studium',
-      'krankenkasse','kostenlos','versicherung','wikipedia','job','stelle','karriere','definition'
+      'mit krankenkasse',
+      'krankenkasse übernimmt',
+      'krankenkasse zahlt',
+      'kostenübernahme',
+      'kassenleistung',
+      'kassenzulassung',
+      'kostenlos','versicherung','wikipedia','job','stelle','karriere','definition',
+      'training','ausbildung','zertifizierung','zertifikat','kurs','seminar','fortbildung','workshop','lehrgang','schule','studium'
     ];
+    const negMerged = Array.from(new Set([...(c.negativeKeywords || []), ...DEFAULT_NEGATIVES]));
+    const posLc = Object.values(c.keywords || {})
+      .flatMap((t: any) => (Array.isArray(t?.terms) ? t.terms : []))
+      .map((p) => String(p).toLowerCase());
+    const dropGeneric = posLc.some((p) => p.includes('ohne krankenkasse') || p.includes('krankenkasse'));
+    const negEffective = dropGeneric ? negMerged.filter((n) => n.toLowerCase().trim() !== 'krankenkasse') : negMerged;
+    if (dropGeneric) console.log("  • Auto-removed conflicting negative: 'krankenkasse'");
+    const failOnConflict = process.env.FAIL_ON_CONFLICT === 'true';
+    preflightWarnNegativeConflicts(c, negEffective, failOnConflict);
     await addCampaignNegatives(
       customer,
       campaignRn as string,
-      Array.from(new Set([...(c.negativeKeywords || []), ...DEFAULT_NEGATIVES])),
+      negEffective,
       dryRun || validateOnly
     );
 
@@ -881,6 +974,22 @@ async function main() {
         c.ads?.path1,
         c.ads?.path2
       );
+      // Attach sitelinks at ad-group level if specified in private templates
+      try {
+        const t = templates?.[c.name] as any;
+        const agAssets = t?.ad_group_assets;
+        let slNames: string[] | undefined;
+        if (agAssets) {
+          // Support both full ad group name and tierName keys
+          slNames = agAssets[agName]?.sitelinks || agAssets[tierName]?.sitelinks;
+        }
+        if (Array.isArray(slNames) && slNames.length) {
+          const rns = await getSitelinkRNsByNamesOrText(slNames);
+          await attachSitelinksToAdGroup(adGroupRn, rns, dryRun || validateOnly);
+        }
+      } catch (e) {
+        console.log('    • Skipped ad-group sitelinks (no mapping or query failed)');
+      }
       // Ensure at least one RSA exists — add fallbacks if none
       const fallbackH = isA
         ? [
@@ -924,7 +1033,11 @@ async function main() {
 
     // Attach existing assets (sitelinks, callouts, structured snippets, images)
     try {
-      const accountAssets = await listAssetsByTypes(['SITELINK', 'CALLOUT', 'STRUCTURED_SNIPPET', 'IMAGE']);
+      const hasAdGroupSitelinks = !!(templates && templates[c.name] && (templates[c.name] as any).ad_group_assets);
+      const typesToAttach = hasAdGroupSitelinks
+        ? ['CALLOUT', 'STRUCTURED_SNIPPET', 'IMAGE']
+        : ['SITELINK', 'CALLOUT', 'STRUCTURED_SNIPPET', 'IMAGE'];
+      const accountAssets = await listAssetsByTypes(typesToAttach);
       if (accountAssets.length > 0) {
         await attachAssetsToCampaign(campaignRn as string, accountAssets, dryRun || validateOnly);
       } else {
