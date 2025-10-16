@@ -34,6 +34,51 @@ if (fs.existsSync(envLocalPath)) {
   dotenv.config();
 }
 
+function loadPrivateAdTemplates(): Record<string, { headlines?: string[]; descriptions?: string[]; path1?: string; path2?: string }> | undefined {
+  const candidates = ['ad-templates.local.json', 'ad-templates.json'];
+  for (const fname of candidates) {
+    try {
+      const p = path.join(__dirname, 'private', fname);
+      if (!fs.existsSync(p)) continue;
+      const raw = readFileSync(p, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch {}
+  }
+  return undefined;
+}
+
+async function listAdGroupAds(customer: any, adGroupRn: string): Promise<string[]> {
+  const rows: any[] = await customer.query(`
+    SELECT ad_group_ad.resource_name, ad_group_ad.status
+    FROM ad_group_ad
+    WHERE ad_group_ad.ad_group = '${adGroupRn}'
+  `);
+  return rows.map((r) => (r as any)?.ad_group_ad?.resource_name || (r as any)?.adGroupAd?.resourceName).filter(Boolean);
+}
+
+async function ensureAtLeastOneRSA(
+  customer: any,
+  adGroupRn: string,
+  landing: string,
+  params: Record<string, string> | undefined,
+  fallbackH: string[],
+  fallbackD: string[],
+  dryRun: boolean
+) {
+  const ads = await listAdGroupAds(customer, adGroupRn);
+  if (ads.length > 0) {
+    console.log(`    • AdGroup has ${ads.length} ads`);
+    return;
+  }
+  console.log('    • No ads found — creating fallback RSAs');
+  await addRSAs(customer, adGroupRn, landing, fallbackH, fallbackD, params, 2, dryRun);
+  // Re-check after short delay for eventual consistency
+  await new Promise((r) => setTimeout(r, 1000));
+  const after = await listAdGroupAds(customer, adGroupRn);
+  console.log(`    • AdGroup ads after create: ${after.length}`);
+}
+
 async function updateCampaignPresenceAndEcpc(customer: any, campaignRn: string, dryRun: boolean) {
   if (dryRun) {
     console.log('  [DRY] Would set presence-only geo and ECPC on campaign');
@@ -126,6 +171,19 @@ const ensureBudgetAmount = async (customer: any, budgetRn: string, amountMicros:
   console.log(`  ✓ Budget updated to €${(amountMicros/1_000_000).toFixed(2)}/day`);
 };
 
+// Read the budget currently attached to a campaign
+const getCampaignBudgetRn = async (customer: any, campaignRn: string): Promise<string | undefined> => {
+  const rows: any[] = await customer.query(`
+    SELECT campaign.campaign_budget
+    FROM campaign
+    WHERE campaign.resource_name = '${campaignRn}'
+    LIMIT 1
+  `);
+  const r = rows?.[0];
+  const rn = (r as any)?.campaign?.campaign_budget || (r as any)?.campaign?.campaignBudget;
+  return rn as string | undefined;
+};
+
 const eurosToMicros = (eur: number): number => {
   return Math.round((eur || 0) * 1_000_000);
 };
@@ -147,6 +205,8 @@ export type CampaignConfig = {
     final_url_params?: Record<string, string>;
     pinning_rules?: { price_regex?: string; privacy_phrase?: string };
     rsas_per_adgroup?: number;
+    path1?: string;
+    path2?: string;
   };
   sitelinks?: Array<{ text: string; url: string }>;
   selective_optimization_conversion_name?: string;
@@ -526,9 +586,60 @@ function pickAssets(all: string[] | undefined, max: number): { text: string }[] 
   return all.slice(0, max).map((t) => ({ text: t }));
 }
 
-async function addRSAs(customer: any, adGroupRn: string, landing: string, headlines: string[] | undefined, descriptions: string[] | undefined, params: Record<string, string> | undefined, count: number, dryRun: boolean) {
-  const h = pickAssets(headlines, 15);
-  const d = pickAssets(descriptions, 4);
+function normalizeText(s: string): string {
+  return (s || '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+–\s+/g, ' – ')
+    .trim();
+}
+
+function clip(s: string, max: number): string {
+  if (s.length <= max) return s;
+  // Try cutting at last space before max to avoid mid-word cuts
+  const sub = s.slice(0, max);
+  const lastSpace = sub.lastIndexOf(' ');
+  return (lastSpace > 10 ? sub.slice(0, lastSpace) : sub).trim();
+}
+
+function sanitizeAdInputs(headlines?: string[], descriptions?: string[]): { H?: { text: string }[]; D?: { text: string }[] } {
+  if (!headlines || !descriptions) return {};
+  const seenH = new Set<string>();
+  const H = headlines
+    .map((x) => clip(normalizeText(x), 30))
+    .filter((x) => x.length > 0)
+    .filter((x) => (seenH.has(x) ? false : (seenH.add(x), true)))
+    .slice(0, 15)
+    .map((text) => ({ text }));
+  const seenD = new Set<string>();
+  const D = descriptions
+    .map((x) => clip(normalizeText(x), 90))
+    .filter((x) => x.length > 0)
+    .filter((x) => (seenD.has(x) ? false : (seenD.add(x), true)))
+    .slice(0, 4)
+    .map((text) => ({ text }));
+  return { H, D };
+}
+
+function sanitizePathPart(s?: string): string | undefined {
+  if (!s) return undefined;
+  const cleaned = normalizeText(s).replace(/\//g, '-');
+  return clip(cleaned, 15);
+}
+
+async function addRSAs(
+  customer: any,
+  adGroupRn: string,
+  landing: string,
+  headlines: string[] | undefined,
+  descriptions: string[] | undefined,
+  params: Record<string, string> | undefined,
+  count: number,
+  dryRun: boolean,
+  path1?: string,
+  path2?: string
+) {
+  const { H, D } = sanitizeAdInputs(headlines, descriptions);
+  const h = H; const d = D;
   if (!h || h.length < 3 || !d || d.length < 2) {
     console.log('    • Skipping RSAs: insufficient assets');
     return;
@@ -540,6 +651,14 @@ async function addRSAs(customer: any, adGroupRn: string, landing: string, headli
       continue;
     }
     try {
+      const rsa: any = {
+        headlines: h,
+        descriptions: d,
+      };
+      const p1 = sanitizePathPart(path1);
+      const p2 = sanitizePathPart(path2);
+      if (p1) rsa.path1 = p1;
+      if (p2) rsa.path2 = p2;
       await customer.adGroupAds.create(
         [
           {
@@ -547,10 +666,7 @@ async function addRSAs(customer: any, adGroupRn: string, landing: string, headli
             status: enums.AdGroupAdStatus.ENABLED,
             ad: {
               final_urls: [finalUrl],
-              responsive_search_ad: {
-                headlines: h,
-                descriptions: d,
-              },
+              responsive_search_ad: rsa,
             },
           },
         ],
@@ -626,11 +742,11 @@ async function main() {
 
   async function attachAssetsToCampaign(campaignRn: string, assets: { resourceName: string; type: string; name?: string }[], dryRun: boolean) {
     // Map AssetType -> AssetFieldType for CampaignAsset
-    const fieldTypeFor: Record<string, number> = {
+    const fieldTypeFor: Record<string, number | undefined> = {
       SITELINK: (enums as any).AssetFieldType?.SITELINK ?? enums.AssetFieldType.SITELINK,
       CALLOUT: (enums as any).AssetFieldType?.CALLOUT ?? enums.AssetFieldType.CALLOUT,
       STRUCTURED_SNIPPET: (enums as any).AssetFieldType?.STRUCTURED_SNIPPET ?? enums.AssetFieldType.STRUCTURED_SNIPPET,
-      IMAGE: (enums as any).AssetFieldType?.IMAGE ?? enums.AssetFieldType.IMAGE,
+      IMAGE: (enums as any).AssetFieldType?.IMAGE,
     };
     // Limit counts to sensible defaults
     const byType: Record<string, { resourceName: string; type: string; name?: string }[]> = {};
@@ -644,6 +760,11 @@ async function main() {
       const selected = byType[t].slice(0, limits[t] || 5);
       if (selected.length === 0) continue;
       const fieldType = fieldTypeFor[t];
+      if (typeof fieldType !== 'number') {
+        // Skip unsupported field types (e.g., IMAGE not available in this library version)
+        console.log(`  • Skipping unsupported asset field type for ${t}`);
+        continue;
+      }
       if (dryRun) {
         console.log(`  [DRY] Would attach ${t} assets (${selected.length}) to campaign`);
         continue;
@@ -684,6 +805,11 @@ async function main() {
     let campaignRn = existing?.resourceName as string | undefined;
     if (campaignRn) {
       console.log(`  ✓ Campaign exists: ${campaignRn} (status: ${existing?.status})`);
+      // Ensure the campaign's currently attached budget is updated to desired amount
+      const attachedBudgetRn = await getCampaignBudgetRn(customer, campaignRn);
+      if (attachedBudgetRn) {
+        await ensureBudgetAmount(customer, attachedBudgetRn, amountMicros, dryRun || validateOnly);
+      }
     } else {
       campaignRn = await createCampaign(
         customer,
@@ -693,6 +819,17 @@ async function main() {
         c.schedule.end,
         dryRun || validateOnly
       );
+    }
+
+    // Merge private ad templates if present
+    const templates = loadPrivateAdTemplates();
+    if (templates && templates[c.name]) {
+      const t = templates[c.name];
+      (c as any).headlines = (c.headlines && c.headlines.length ? c.headlines : t.headlines) as string[] | undefined;
+      (c as any).descriptions = (c.descriptions && c.descriptions.length ? c.descriptions : t.descriptions) as string[] | undefined;
+      (c as any).ads = c.ads || {};
+      if (t.path1 && !c.ads?.path1) (c as any).ads.path1 = t.path1;
+      if (t.path2 && !c.ads?.path2) (c as any).ads.path2 = t.path2;
     }
 
     await ensureLanguageGerman(customer, campaignRn as string, dryRun || validateOnly);
@@ -732,7 +869,40 @@ async function main() {
         await addKeywords(customer, adGroupRn, extraB, cpc, dryRun || validateOnly);
       }
       const rsasPer = c.ads?.rsas_per_adgroup ?? 2;
-      await addRSAs(customer, adGroupRn, c.landing_page, c.headlines, c.descriptions, c.ads?.final_url_params, rsasPer, dryRun || validateOnly);
+      await addRSAs(
+        customer,
+        adGroupRn,
+        c.landing_page,
+        c.headlines,
+        c.descriptions,
+        c.ads?.final_url_params,
+        rsasPer,
+        dryRun || validateOnly,
+        c.ads?.path1,
+        c.ads?.path2
+      );
+      // Ensure at least one RSA exists — add fallbacks if none
+      const fallbackH = isA
+        ? [
+            'Körperorientierte Therapie',
+            'NARM & Somatic Experiencing',
+            'Schnelle Termine Privat'
+          ]
+        : [
+            'Therapie ohne Krankenkasse',
+            'Schnelle Termine in Berlin',
+            'Privat & Selbstzahler'
+          ];
+      const fallbackD = isA
+        ? [
+            'Körperorientierte Methoden: NARM, SE. Individuelle Begleitung in Berlin.',
+            'Kurzfristige Termine, vertraulich & privat.'
+          ]
+        : [
+            'Privat/Selbstzahler, kurze Wartezeiten in Berlin.',
+            'Passende Therapeut:innen zeitnah finden.'
+          ];
+      await ensureAtLeastOneRSA(customer, adGroupRn, c.landing_page, c.ads?.final_url_params, fallbackH, fallbackD, dryRun || validateOnly);
     }
     await pauseOtherAdGroups(customer, campaignRn as string, allowedNames, dryRun || validateOnly);
     await updateCampaignPresenceAndEcpc(customer, campaignRn as string, dryRun || validateOnly);
