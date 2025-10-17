@@ -728,3 +728,93 @@ campaignStats: Array<{
 campaignByDay: Array<{
   day: string;                  // 'YYYY-MM-DD' (UTC buckets)
   campaign_source: string;
+  campaign_variant: string;
+  leads: number;
+  confirmed: number;
+  confirmation_rate: number;
+}>
+```
+
+### Page Traffic & Wizard/Directory Tracking (EARTH-215)
+
+With EARTH-215, the admin stats endpoint was completely rebuilt to focus on actionable tracking insights. All previously broken queries were removed. The endpoint now returns clean, tested data for page traffic, questionnaire funnel analysis (steps 1-9), and directory engagement.
+
+**Query Parameters:**
+- `days` (default `30`, max `90`): Window for aggregating events
+
+**Response Structure:**
+
+```typescript
+{
+  data: {
+    totals: {
+      therapists: number;        // Total registered therapists (excluding tests)
+      clients: number;           // Total registered patients (excluding tests)
+      matches: number;           // Total matches created
+    };
+    pageTraffic: {
+      top: Array<{
+        page_path: string;       // e.g. '/therapeuten', '/fragebogen'
+        sessions: number;        // Unique sessions (by session_id)
+      }>;                        // Top 10 pages, sorted by sessions desc
+      daily: Array<{
+        day: string;             // 'YYYY-MM-DD' (UTC)
+        page_path: string;
+        sessions: number;
+      }>;                        // Daily breakdown for top 10 pages only
+    };
+    wizardFunnel: {
+      page_views: number;        // Unique sessions with any page_view
+      steps: Record<number, number>; // step 1-9 => unique sessions
+      form_completed: number;    // people.metadata.form_completed_at count
+      start_rate: number;        // (step1 / page_views) * 100
+    };
+    wizardDropoffs: Array<{
+      step: number;              // Transition from step k → k+1
+      from: number;              // Sessions at step k
+      to: number;                // Sessions at step k+1
+      drop: number;              // from - to
+      drop_rate: number;         // (drop / from) * 100
+    }>;                          // 8 rows (steps 1→2 through 8→9)
+    wizardAvgTime: Array<{
+      step: number;              // 1-9
+      avg_ms: number;            // Mean duration_ms from screen_completed events
+    }>;
+    abandonFieldsTop: Array<{
+      field: string;             // Field name from field_abandonment events
+      count: number;             // Number of abandonment occurrences
+    }>;                          // Top 15, sorted by count desc
+    directory: {
+      views: number;             // Unique sessions viewing /therapeuten
+      helpClicks: number;        // cta_click with id='therapeuten-callout-fragebogen'
+      navClicks: number;         // "Alle Therapeuten ansehen" clicks across site
+                                 // (id='alle-therapeuten' OR source='alle-therapeuten' OR href ends '/therapeuten')
+      contactOpened: number;     // contact_modal_opened on /therapeuten (referrer contains '/therapeuten')
+      contactSent: number;       // contact_message_sent on /therapeuten
+    };
+  };
+  error: null;
+}
+```
+
+**Key Design Decisions:**
+- All aggregations use `session_id` for deduplication (unique sessions, not raw events)
+- Wizard steps 1-9 tracked via `screen_viewed` events with `properties.step`
+- Abandoned fields aggregated from `field_abandonment` events with `properties.fields` array
+- Directory engagement focused on actionable metrics: questionnaire vs directory usage, help clicks, contact funnel
+- Nav clicks ("Alle Therapeuten ansehen") tracked across the entire site for insights into directory discovery patterns
+
+**Event Dependencies:**
+- `page_view` with `properties.page_path` (PR1: PageAnalytics updated)
+- `screen_viewed` with `properties.step` (1-9)
+- `screen_completed` with `properties.step` and `properties.duration_ms`
+- `field_abandonment` with `properties.fields` (array)
+- `cta_click` with `properties.id`, `properties.source`, `properties.href` (PR1: CtaLink updated)
+- `contact_modal_opened` and `contact_message_sent` with `properties.referrer`
+
+**Testing:**
+- Comprehensive unit tests in `tests/admin.api.stats.tracking.test.ts` (15 passing tests)
+- Tests cover aggregation logic, deduplication, dropoff calculations, and rate computations
+
+**Ads Readiness:**
+PR4 (ads readiness summary) was intentionally skipped per EARTH-215 implementation plan.

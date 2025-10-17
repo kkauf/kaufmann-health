@@ -1,16 +1,20 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ContactModal } from '@/features/therapists/components/ContactModal';
 import { TherapistDetailModal } from '@/features/therapists/components/TherapistDetailModal';
-import { Calendar, MessageCircle, MapPin, Video, CheckCircle, Sparkles } from 'lucide-react';
-import { ModalityLogoStrip } from '@/features/landing/components/ModalityLogoStrip';
+import { TherapistCard } from '@/features/therapists/components/TherapistCard';
+import { CheckCircle, Sparkles } from 'lucide-react';
 import type { TherapistData } from '@/features/therapists/components/TherapistDirectory';
 import { computeMismatches, type PatientMeta } from '@/features/leads/lib/match';
+import CtaLink from '@/components/CtaLink';
+
+const TherapyModalityExplanations = dynamic(() => import('@/components/TherapyModalityExplanations'), {
+  ssr: true,
+});
 
 type TherapistItem = {
   id: string;
@@ -63,22 +67,6 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   const [loading, setLoading] = useState(true);
   const [modalFor, setModalFor] = useState<{ therapist: TherapistItem; type: 'booking' | 'consultation' } | null>(null);
   const [detailModalTherapist, setDetailModalTherapist] = useState<TherapistItem | null>(null);
-
-  const initials = (t: TherapistItem) => `${t.first_name?.[0] || ''}${t.last_name?.[0] || ''}`.toUpperCase();
-  const avatarColor = (t: TherapistItem) => `hsl(${Math.abs(hashCode(t.id)) % 360}, 70%, 50%)`;
-  function hashCode(s: string) {
-    let h = 0;
-    for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
-    return h;
-  }
-  const fmtDate = (iso: string) => {
-    try {
-      const d = new Date(iso);
-      return d.toLocaleDateString('de-DE');
-    } catch {
-      return iso;
-    }
-  };
 
   useEffect(() => {
     let cancelled = false;
@@ -180,7 +168,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-10">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
         <div className="text-gray-600">Lade Empfehlungen…</div>
       </div>
     );
@@ -189,7 +177,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   if (error) {
     const expired = error?.toLowerCase().includes('expired');
     return (
-      <div className="mx-auto max-w-xl px-4 py-10">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
         <Card>
           <CardHeader>
             <CardTitle>{expired ? 'Link abgelaufen' : 'Nicht gefunden'}</CardTitle>
@@ -205,7 +193,9 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
                 <a href="/therapie-finden">Neue Empfehlungen anfordern</a>
               </Button>
               <Button variant="outline" asChild>
-                <a href="/therapeuten" data-cta="alle-therapeuten">Alle Therapeuten ansehen</a>
+                <CtaLink href="/therapeuten" eventType="cta_click" eventId="alle-therapeuten" data-cta="alle-therapeuten">
+                  Alle Therapeuten ansehen
+                </CtaLink>
               </Button>
             </div>
           </CardContent>
@@ -216,7 +206,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
 
   if (!therapists.length) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-10">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
         <Card>
           <CardHeader>
             <CardTitle>Keine Empfehlungen verfügbar</CardTitle>
@@ -225,7 +215,9 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             <p className="text-sm text-muted-foreground">Keine passende Person? Schau dir unser vollständiges Verzeichnis an.</p>
             <div className="mt-4">
               <Button asChild>
-                <a href="/therapeuten" data-cta="alle-therapeuten">Alle Therapeuten ansehen</a>
+                <CtaLink href="/therapeuten" eventType="cta_click" eventId="alle-therapeuten" data-cta="alle-therapeuten">
+                  Alle Therapeuten ansehen
+                </CtaLink>
               </Button>
             </div>
           </CardContent>
@@ -235,7 +227,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           {(() => {
@@ -250,54 +242,55 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         </p>
       </div>
 
-      {/* Preferences summary bar */}
+      {/* Preferences summary box */}
       {data && (
-        <div className="mb-6 rounded-xl border border-emerald-200/70 bg-emerald-50/50 p-4">
-          <div className="flex items-start gap-2 text-sm text-gray-800">
-            <span className="inline-flex items-center font-semibold text-gray-900"><Sparkles className="mr-1 h-4 w-4 text-emerald-600" />Für deine Auswahl haben wir folgende deiner Kriterien berücksichtigt</span>
-            <div className="flex flex-wrap gap-x-3 gap-y-1">
-              {(() => {
-                const chips: string[] = [];
-                const issue = (data.patient.issue || '').trim();
-                if (issue) chips.push(issue);
+        <div className="mb-8 rounded-xl border border-emerald-200/60 bg-gradient-to-br from-emerald-50/80 to-white p-6 shadow-md">
+          <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-gray-900">
+            <Sparkles className="h-5 w-5 text-emerald-600" />
+            Deine Kriterien
+          </h3>
+          <div className="flex flex-wrap gap-2 text-sm text-gray-700">
+            {(() => {
+              const chips: string[] = [];
+              const issue = (data.patient.issue || '').trim();
+              if (issue) chips.push(issue);
 
-                const sps = (data.patient.session_preferences && Array.isArray(data.patient.session_preferences))
-                  ? data.patient.session_preferences
-                  : (data.patient.session_preference ? [data.patient.session_preference] : []);
-                const online = sps.includes('online');
-                const inPerson = sps.includes('in_person');
-                if (online && inPerson) chips.push('Online & Vor Ort');
-                else if (online) chips.push('Online');
-                else if (inPerson) chips.push('Vor Ort');
+              const sps = (data.patient.session_preferences && Array.isArray(data.patient.session_preferences))
+                ? data.patient.session_preferences
+                : (data.patient.session_preference ? [data.patient.session_preference] : []);
+              const online = sps.includes('online');
+              const inPerson = sps.includes('in_person');
+              if (online && inPerson) chips.push('Online & Vor Ort');
+              else if (online) chips.push('Online');
+              else if (inPerson) chips.push('Vor Ort');
 
-                const city = (data.patient.city || '').trim();
-                if (city && inPerson) chips.push(city);
+              const city = (data.patient.city || '').trim();
+              if (city && inPerson) chips.push(city);
 
-                if (data.patient.modality_matters) {
-                  const rawSpecs = (data.patient.specializations || []) as string[];
-                  const labels = rawSpecs.map((s) => getModalityDisplay(String(s)).label);
-                  if (labels.length > 0) {
-                    let summary = labels.slice(0, 2).join(', ');
-                    if (labels.length > 2) summary += ` +${labels.length - 2}`;
-                    chips.push(`Methoden: ${summary}`);
-                  }
-                } else {
-                  chips.push('Methode: von uns empfohlen');
+              if (data.patient.modality_matters) {
+                const rawSpecs = (data.patient.specializations || []) as string[];
+                const labels = rawSpecs.map((s) => getModalityDisplay(String(s)).label);
+                if (labels.length > 0) {
+                  let summary = labels.slice(0, 2).join(', ');
+                  if (labels.length > 2) summary += ` +${labels.length - 2}`;
+                  chips.push(`Methoden: ${summary}`);
                 }
+              } else {
+                chips.push('Methode: von uns empfohlen');
+              }
 
-                const gp = data.patient.gender_preference;
-                if (gp === 'male') chips.push('Therapeut:in: männlich');
-                else if (gp === 'female') chips.push('Therapeut:in: weiblich');
+              const gp = data.patient.gender_preference;
+              if (gp === 'male') chips.push('Therapeut:in: männlich');
+              else if (gp === 'female') chips.push('Therapeut:in: weiblich');
 
-                const urgent = data.patient.start_timing === 'Innerhalb der nächsten Woche';
-                if (urgent) chips.push('Schnelle Verfügbarkeit wichtig');
-                else if ((data.patient.start_timing || '').trim()) chips.push(`Start: ${String(data.patient.start_timing)}`);
+              const urgent = data.patient.start_timing === 'Innerhalb der nächsten Woche';
+              if (urgent) chips.push('Schnelle Verfügbarkeit wichtig');
+              else if ((data.patient.start_timing || '').trim()) chips.push(`Start: ${String(data.patient.start_timing)}`);
 
-                return chips.map((c, i) => (
-                  <span key={i} className="text-gray-800">{c}{i < chips.length - 1 ? ' •' : ''}</span>
-                ));
-              })()}
-            </div>
+              return chips.map((c, i) => (
+                <span key={i} className="text-gray-800">{c}{i < chips.length - 1 ? ' •' : ''}</span>
+              ));
+            })()}
           </div>
         </div>
       )}
@@ -315,38 +308,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           </li>
           <li className="flex items-start gap-2">
             <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-            <span>
-              {(() => {
-                const parts: string[] = [];
-                const sps = (data?.patient?.session_preferences && Array.isArray(data.patient.session_preferences))
-                  ? data!.patient!.session_preferences!
-                  : (data?.patient?.session_preference ? [data.patient.session_preference] : []);
-                const online = sps.includes('online');
-                const inPerson = sps.includes('in_person');
-                if (online && inPerson) parts.push('Format: Online & Vor Ort');
-                else if (online) parts.push('Format: Online');
-                else if (inPerson) parts.push('Format: Vor Ort');
-                const city = (data?.patient?.city || '').trim();
-                if (city && inPerson) parts.push(`Stadt: ${city}`);
-                if (data?.patient?.modality_matters) {
-                  const raw = (data.patient.specializations || []) as string[];
-                  const labels = raw.map((s) => getModalityDisplay(String(s)).label);
-                  if (labels.length > 0) {
-                    let summary = labels.slice(0, 2).join(', ');
-                    if (labels.length > 2) summary += ` +${labels.length - 2}`;
-                    parts.push(`Methoden: ${summary}`);
-                  }
-                } else {
-                  parts.push('Methode: von uns empfohlen');
-                }
-                const gp = data?.patient?.gender_preference;
-                if (gp === 'male') parts.push('Therapeut:in: männlich');
-                else if (gp === 'female') parts.push('Therapeut:in: weiblich');
-                const st = (data?.patient?.start_timing || '').trim();
-                if (st && st !== 'Innerhalb der nächsten Woche') parts.push(`Start: ${st}`);
-                return `Passt zu deinen Angaben: ${parts.join(' • ')}`;
-              })()}
-            </span>
+            <span>Die Auswahl basiert auf deinen individuellen Präferenzen und Bedürfnissen.</span>
           </li>
           <li className="flex items-start gap-2">
             <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
@@ -362,138 +324,36 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         <p className="mt-4 font-semibold text-gray-900">Eine Auswahl, der du vertrauen kannst.</p>
       </div>
 
-      {data?.patient?.modality_matters && (
-        <div className="mb-8">
-          <ModalityLogoStrip />
-        </div>
-      )}
-
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {therapistsWithQuality.map((t, idx) => {
-          const sessionPrefs = t.session_preferences || [];
-          const offersOnline = Array.isArray(sessionPrefs) && sessionPrefs.includes('online');
           const isTopMatch = idx === 0 || t.matchQuality.isPerfect;
-          
+
+          // Convert TherapistItem to TherapistData for the card component
+          const therapistData: TherapistData = {
+            id: t.id,
+            first_name: t.first_name,
+            last_name: t.last_name,
+            photo_url: t.photo_url || undefined,
+            city: t.city || '',
+            accepting_new: t.accepting_new ?? true,
+            modalities: t.modalities || [],
+            session_preferences: t.session_preferences || [],
+            approach_text: t.approach_text || '',
+          };
+
           return (
-            <Card key={t.id} className="group relative flex h-full flex-col overflow-hidden transition-shadow hover:shadow-lg">
-              <CardContent className="flex flex-1 flex-col p-4 sm:p-6">
-                {/* Header with avatar and name */}
-                <div className="mb-4 flex items-start gap-4">
-                  <Avatar className="h-20 w-20 ring-2 ring-gray-100">
-                    {t.photo_url ? (
-                      <AvatarImage src={t.photo_url} alt={`${t.first_name} ${t.last_name}`} />
-                    ) : (
-                      <AvatarFallback style={{ backgroundColor: avatarColor(t) }} className="text-xl font-semibold text-white">
-                        {initials(t)}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
-
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {t.first_name} {t.last_name}
-                    </h3>
-
-                    {/* Match quality badge */}
-                    {isTopMatch && (
-                      <Badge className="mt-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                        {t.matchQuality.isPerfect ? '⭐ Perfekte Übereinstimmung' : 'Top-Empfehlung'}
-                      </Badge>
-                    )}
-
-                    {/* Availability badge */}
-                    {!isTopMatch && (
-                      <div className="mt-1">
-                        {t.accepting_new ? (
-                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                            Verfügbar
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
-                            Keine Kapazität
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-
-                    {t.contacted_at && (
-                      <div className="mt-1 text-xs text-emerald-700">Bereits kontaktiert am {fmtDate(t.contacted_at)}</div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Modalities (conditional) */}
-                {data?.patient?.modality_matters && t.modalities && t.modalities.length > 0 && (
-                  <div className="mb-3 flex flex-wrap gap-2">
-                    {t.modalities.slice(0, 3).map((modality, midx) => {
-                      const { label, color } = getModalityDisplay(modality);
-                      return (
-                        <Badge key={midx} className={`${color} text-white hover:opacity-90`}>
-                          {label}
-                        </Badge>
-                      );
-                    })}
-                    {t.modalities.length > 3 && (
-                      <Badge variant="secondary">+{t.modalities.length - 3}</Badge>
-                    )}
-                  </div>
-                )}
-
-                {/* Location and format info */}
-                <div className="mb-4 space-y-2 text-sm text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    <span>{t.city || ''}</span>
-                    {offersOnline && (
-                      <Badge variant="secondary" className="ml-1 gap-1 bg-sky-50 text-sky-700 hover:bg-sky-100">
-                        <Video className="h-3 w-3" />
-                        Online
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-
-                {/* Approach text preview */}
-                {t.approach_text && (
-                  <p className="mb-4 line-clamp-3 text-sm text-gray-700">
-                    {t.approach_text}
-                  </p>
-                )}
-
-                {/* Action buttons */}
-                <div className="mt-auto flex flex-col gap-2 pt-4">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setDetailModalTherapist(t)}
-                  >
-                    Profil ansehen
-                  </Button>
-
-                  <Button
-                    size="lg"
-                    className="w-full bg-emerald-600 hover:bg-emerald-700"
-                    onClick={() => handleOpen(t, 'booking')}
-                    disabled={t.accepting_new === false}
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {t.contacted_at ? 'Erneut kontaktieren' : 'Therapeut:in buchen'}
-                  </Button>
-
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full text-sm"
-                    onClick={() => handleOpen(t, 'consultation')}
-                    disabled={t.accepting_new === false}
-                  >
-                    <MessageCircle className="mr-2 h-4 w-4 shrink-0" />
-                    <span className="truncate">Kostenloses Erstgespräch (15 min)</span>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <TherapistCard
+              key={t.id}
+              therapist={therapistData}
+              onViewDetails={() => setDetailModalTherapist(t)}
+              showModalities={data?.patient?.modality_matters ?? false}
+              matchBadge={isTopMatch ? {
+                text: t.matchQuality.isPerfect ? '⭐ Perfekte Übereinstimmung' : 'Top-Empfehlung',
+                className: 'mt-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
+              } : null}
+              contactedAt={t.contacted_at || null}
+              onContactClick={(type) => handleOpen(t, type)}
+            />
           );
         })}
       </div>
@@ -519,9 +379,16 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       <div className="mt-10 rounded-xl border border-gray-200/60 bg-slate-50/60 p-6 text-center">
         <p className="text-sm text-gray-600">Keine passende Person dabei?</p>
         <Button variant="outline" asChild className="mt-3">
-          <a href="/therapeuten" data-cta="alle-therapeuten">Alle Therapeuten ansehen</a>
+          <CtaLink href="/therapeuten" eventType="cta_click" eventId="alle-therapeuten" data-cta="alle-therapeuten">
+            Alle Therapeuten ansehen
+          </CtaLink>
         </Button>
       </div>
+
+      {/* Modality explanations */}
+      {data?.patient?.modality_matters && (
+        <TherapyModalityExplanations />
+      )}
 
       {/* Detail modal */}
       {detailModalTherapist && (
