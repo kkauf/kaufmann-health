@@ -313,8 +313,8 @@ export async function GET(req: Request) {
       await logError('admin.api.stats', e, { stage: 'optional_datasets' });
     }
 
-    let pageTraffic: { top: Array<{ page_path: string; sessions: number }>; daily: Array<{ day: string; page_path: string; sessions: number }> } = { top: [], daily: [] };
-    let directory: { views: number; helpClicks: number; contactOpened: number; contactSent: number } = { views: 0, helpClicks: 0, contactOpened: 0, contactSent: 0 };
+    const pageTraffic: { top: Array<{ page_path: string; sessions: number }>; daily: Array<{ day: string; page_path: string; sessions: number }> } = { top: [], daily: [] };
+    const directory: { views: number; helpClicks: number; contactOpened: number; contactSent: number } = { views: 0, helpClicks: 0, contactOpened: 0, contactSent: 0 };
     try {
       const { data: pvRows } = await supabaseServer
         .from('events')
@@ -387,19 +387,19 @@ export async function GET(req: Request) {
 
       const { data: contactRows } = await supabaseServer
         .from('events')
-        .select('properties')
+        .select('type, properties')
         .in('type', ['contact_modal_opened', 'contact_message_sent'])
         .gte('created_at', sinceIso)
         .limit(20000);
       const openedSessions = new Set<string>();
       const sentSessions = new Set<string>();
-      for (const row of (contactRows || []) as Array<{ properties?: Record<string, unknown> }>) {
+      for (const row of (contactRows || []) as Array<{ type?: string; properties?: Record<string, unknown> }>) {
         try {
           const props = (row.properties || {}) as Record<string, unknown>;
           const ref = String((props['referrer'] as string | undefined) || '').toLowerCase();
           const sid = String((props['session_id'] as string | undefined) || '').trim();
           if (!ref.includes('/therapeuten') || !sid) continue;
-          const t = String((props['type'] as string | undefined) || '').toLowerCase();
+          const t = String(row.type || '').toLowerCase();
           if (t === 'contact_modal_opened') openedSessions.add(sid);
           if (t === 'contact_message_sent') sentSessions.add(sid);
         } catch {}
@@ -410,10 +410,16 @@ export async function GET(req: Request) {
 
     // --- Pre-signup: Wizard funnel + FAQ engagement ---
     const preSignup: {
-      wizardFunnel: { page_views: number; step1: number; step2: number; step3: number; step4: number; step5: number; form_completed: number; start_rate: number };
+      wizardFunnel: { page_views: number; step1: number; step2: number; step3: number; step4: number; step5: number; step6: number; step7: number; step8: number; step9: number; form_completed: number; start_rate: number };
+      wizardDropoffs: Array<{ step: number; from: number; to: number; drop: number; drop_rate: number }>;
+      wizardAvgTime: Array<{ step: number; avg_ms: number }>;
+      abandonFieldsTop: Array<{ field: string; count: number }>;
       faqClicks: Array<{ title: string; count: number }>;
     } = {
-      wizardFunnel: { page_views: 0, step1: 0, step2: 0, step3: 0, step4: 0, step5: 0, form_completed: 0, start_rate: 0 },
+      wizardFunnel: { page_views: 0, step1: 0, step2: 0, step3: 0, step4: 0, step5: 0, step6: 0, step7: 0, step8: 0, step9: 0, form_completed: 0, start_rate: 0 },
+      wizardDropoffs: [],
+      wizardAvgTime: [],
+      abandonFieldsTop: [],
       faqClicks: [],
     };
     try {
@@ -425,23 +431,24 @@ export async function GET(req: Request) {
         .gte('created_at', sinceIso)
         .limit(20000);
       if (!stepErr && Array.isArray(stepEvents)) {
-        const sessionsByStep = {
+        const sessionsByStep: Record<number, Set<string>> = {
           1: new Set<string>(),
           2: new Set<string>(),
           3: new Set<string>(),
           4: new Set<string>(),
           5: new Set<string>(),
-        } as const;
+          6: new Set<string>(),
+          7: new Set<string>(),
+          8: new Set<string>(),
+          9: new Set<string>(),
+        };
         for (const row of stepEvents as Array<{ properties?: Record<string, unknown> }>) {
           try {
             const props = (row.properties || {}) as Record<string, unknown>;
             const sid = String((props['session_id'] as string | undefined) || '').trim();
-            const stepRaw = String((props['step'] as string | number | undefined) ?? '');
-            const stepNum = Number(stepRaw);
-            if (sid && [1, 2, 3, 4, 5].includes(stepNum)) {
-              // @ts-expect-error narrowed by includes
-              sessionsByStep[stepNum].add(sid);
-            }
+            const stepVal = Number(String((props['step'] as string | number | undefined) ?? ''));
+            const stepNum = Number.isFinite(stepVal) ? Math.floor(stepVal) : NaN;
+            if (sid && stepNum >= 1 && stepNum <= 9) sessionsByStep[stepNum].add(sid);
           } catch {}
         }
         preSignup.wizardFunnel.step1 = sessionsByStep[1].size;
@@ -449,6 +456,20 @@ export async function GET(req: Request) {
         preSignup.wizardFunnel.step3 = sessionsByStep[3].size;
         preSignup.wizardFunnel.step4 = sessionsByStep[4].size;
         preSignup.wizardFunnel.step5 = sessionsByStep[5].size;
+        preSignup.wizardFunnel.step6 = sessionsByStep[6].size;
+        preSignup.wizardFunnel.step7 = sessionsByStep[7].size;
+        preSignup.wizardFunnel.step8 = sessionsByStep[8].size;
+        preSignup.wizardFunnel.step9 = sessionsByStep[9].size;
+
+        const dropoffs: Array<{ step: number; from: number; to: number; drop: number; drop_rate: number }> = [];
+        for (let k = 1; k <= 8; k++) {
+          const from = sessionsByStep[k].size;
+          const to = sessionsByStep[k + 1].size;
+          const drop = Math.max(0, from - to);
+          const drop_rate = from > 0 ? Math.round((drop / from) * 1000) / 10 : 0;
+          dropoffs.push({ step: k, from, to, drop, drop_rate });
+        }
+        preSignup.wizardDropoffs = dropoffs;
       }
 
       // Page views: unique sessions with page_view in window
@@ -468,6 +489,62 @@ export async function GET(req: Request) {
           } catch {}
         }
         preSignup.wizardFunnel.page_views = pvSessions.size;
+      } catch {}
+
+      // Average time per step from screen_completed
+      try {
+        const { data: completedRows } = await supabaseServer
+          .from('events')
+          .select('properties')
+          .eq('type', 'screen_completed')
+          .gte('created_at', sinceIso)
+          .limit(20000);
+        const timeAgg: Record<number, { sum: number; n: number }> = {};
+        for (let i = 1; i <= 9; i++) timeAgg[i] = { sum: 0, n: 0 };
+        for (const row of (completedRows || []) as Array<{ properties?: Record<string, unknown> }>) {
+          try {
+            const props = (row.properties || {}) as Record<string, unknown>;
+            const stepVal = Number(String((props['step'] as string | number | undefined) ?? ''));
+            const stepNum = Number.isFinite(stepVal) ? Math.floor(stepVal) : NaN;
+            const dur = Number(String((props['duration_ms'] as string | number | undefined) ?? ''));
+            if (stepNum >= 1 && stepNum <= 9 && Number.isFinite(dur) && dur >= 0) {
+              timeAgg[stepNum].sum += dur;
+              timeAgg[stepNum].n += 1;
+            }
+          } catch {}
+        }
+        preSignup.wizardAvgTime = Array.from({ length: 9 }, (_, i) => {
+          const step = i + 1;
+          const agg = timeAgg[step];
+          const avg = agg.n > 0 ? Math.round(agg.sum / agg.n) : 0;
+          return { step, avg_ms: avg };
+        });
+      } catch {}
+
+      // Top abandoned fields
+      try {
+        const { data: abandonRows } = await supabaseServer
+          .from('events')
+          .select('properties')
+          .eq('type', 'field_abandonment')
+          .gte('created_at', sinceIso)
+          .limit(20000);
+        const counts = new Map<string, number>();
+        for (const row of (abandonRows || []) as Array<{ properties?: Record<string, unknown> }>) {
+          try {
+            const props = (row.properties || {}) as Record<string, unknown>;
+            const fields = Array.isArray((props['fields'] as unknown)) ? ((props['fields'] as unknown[]) as string[]) : [];
+            for (const f of fields) {
+              const key = String(f || '').trim();
+              if (!key) continue;
+              counts.set(key, (counts.get(key) || 0) + 1);
+            }
+          } catch {}
+        }
+        preSignup.abandonFieldsTop = Array.from(counts.entries())
+          .map(([field, count]) => ({ field, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 15);
       } catch {}
 
       // Form completed: count via people.metadata.form_completed_at within window (patients only, exclude tests)

@@ -205,7 +205,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
                 <a href="/therapie-finden">Neue Empfehlungen anfordern</a>
               </Button>
               <Button variant="outline" asChild>
-                <a href="/therapeuten">Alle Therapeuten ansehen</a>
+                <a href="/therapeuten" data-cta="alle-therapeuten">Alle Therapeuten ansehen</a>
               </Button>
             </div>
           </CardContent>
@@ -225,7 +225,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             <p className="text-sm text-muted-foreground">Keine passende Person? Schau dir unser vollständiges Verzeichnis an.</p>
             <div className="mt-4">
               <Button asChild>
-                <a href="/therapeuten">Alle Therapeuten ansehen</a>
+                <a href="/therapeuten" data-cta="alle-therapeuten">Alle Therapeuten ansehen</a>
               </Button>
             </div>
           </CardContent>
@@ -519,7 +519,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       <div className="mt-10 rounded-xl border border-gray-200/60 bg-slate-50/60 p-6 text-center">
         <p className="text-sm text-gray-600">Keine passende Person dabei?</p>
         <Button variant="outline" asChild className="mt-3">
-          <a href="/therapeuten">Alle Therapeuten ansehen</a>
+          <a href="/therapeuten" data-cta="alle-therapeuten">Alle Therapeuten ansehen</a>
         </Button>
       </div>
 
