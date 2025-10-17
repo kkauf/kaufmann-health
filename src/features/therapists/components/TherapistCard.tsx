@@ -5,13 +5,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, Calendar, MessageCircle } from 'lucide-react';
+import { MapPin, Video, Calendar, MessageCircle, User } from 'lucide-react';
 import type { TherapistData } from './TherapistDirectory';
 import { ContactModal } from './ContactModal';
 
 interface TherapistCardProps {
   therapist: TherapistData;
   onViewDetails: () => void;
+  // Optional match-specific props
+  showModalities?: boolean; // Control whether to show modality badges (default: true)
+  matchBadge?: { text: string; className?: string } | null; // Optional badge for top matches
+  contactedAt?: string | null; // ISO date string if therapist was already contacted
+  onContactClick?: (type: 'booking' | 'consultation') => void; // Custom contact handler
 }
 
 function getInitials(firstName: string, lastName: string) {
@@ -42,21 +47,50 @@ function getModalityDisplay(m: string): { label: string; color: string } {
   return MODALITY_MAP[normalized] || { label: m, color: 'bg-slate-700' };
 }
 
-export function TherapistCard({ therapist, onViewDetails }: TherapistCardProps) {
+export function TherapistCard({
+  therapist,
+  onViewDetails,
+  showModalities = true,
+  matchBadge = null,
+  contactedAt = null,
+  onContactClick: customContactHandler,
+}: TherapistCardProps) {
   const [imageError, setImageError] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [contactType, setContactType] = useState<'booking' | 'consultation'>('booking');
-  
+
   const photoSrc = therapist.photo_url && !imageError ? therapist.photo_url : undefined;
   const initials = getInitials(therapist.first_name, therapist.last_name);
   const avatarColor = `hsl(${hashCode(therapist.id) % 360}, 70%, 50%)`;
 
   const sessionPrefs = therapist.session_preferences || [];
-  const offersOnline = Array.isArray(sessionPrefs) && sessionPrefs.includes('online');
-  
+
+  // Normalize session preferences to handle various formats
+  const normalizedPrefs = new Set(
+    (Array.isArray(sessionPrefs) ? sessionPrefs : []).map(v =>
+      String(v).toLowerCase().replace(/[\s-]+/g, '_')
+    )
+  );
+  const hasEither = normalizedPrefs.has('either') || normalizedPrefs.has('both');
+  const offersOnline = normalizedPrefs.has('online') || hasEither;
+  const offersInPerson = normalizedPrefs.has('in_person') || normalizedPrefs.has('inperson') || hasEither;
+
   const handleContactClick = (type: 'booking' | 'consultation') => {
-    setContactType(type);
-    setContactModalOpen(true);
+    if (customContactHandler) {
+      customContactHandler(type);
+    } else {
+      setContactType(type);
+      setContactModalOpen(true);
+    }
+  };
+
+  const fmtDate = (iso: string) => {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString('de-DE');
+    } catch {
+      return iso;
+    }
   };
 
   return (
@@ -83,23 +117,37 @@ export function TherapistCard({ therapist, onViewDetails }: TherapistCardProps) 
               {therapist.first_name} {therapist.last_name}
             </h3>
 
-            {/* Availability badge */}
-            <div className="mt-1">
-              {therapist.accepting_new ? (
-                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                  Verfügbar
-                </Badge>
-              ) : (
-                <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
-                  Keine Kapazität
-                </Badge>
-              )}
-            </div>
+            {/* Match quality badge (takes priority if provided) */}
+            {matchBadge ? (
+              <Badge className={matchBadge.className || "mt-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100"}>
+                {matchBadge.text}
+              </Badge>
+            ) : (
+              /* Availability badge */
+              <div className="mt-1">
+                {therapist.accepting_new ? (
+                  <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                    Verfügbar
+                  </Badge>
+                ) : (
+                  <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+                    Keine Kapazität
+                  </Badge>
+                )}
+              </div>
+            )}
+
+            {/* Contacted date */}
+            {contactedAt && (
+              <div className="mt-1 text-xs text-emerald-700">
+                Bereits kontaktiert am {fmtDate(contactedAt)}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Modalities */}
-        {therapist.modalities && therapist.modalities.length > 0 && (
+        {/* Modalities (conditional based on showModalities prop) */}
+        {showModalities && therapist.modalities && therapist.modalities.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
             {therapist.modalities.slice(0, 3).map((modality, idx) => {
               const { label, color } = getModalityDisplay(modality);
@@ -125,13 +173,23 @@ export function TherapistCard({ therapist, onViewDetails }: TherapistCardProps) 
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4" />
             <span>{therapist.city}</span>
-            {offersOnline && (
-              <Badge variant="secondary" className="ml-1 gap-1 bg-sky-50 text-sky-700 hover:bg-sky-100">
-                <Video className="h-3 w-3" />
-                Online
-              </Badge>
-            )}
           </div>
+          {(offersOnline || offersInPerson) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {offersOnline && (
+                <Badge variant="secondary" className="gap-1 bg-sky-50 text-sky-700 hover:bg-sky-100">
+                  <Video className="h-3 w-3" />
+                  Online-Therapie
+                </Badge>
+              )}
+              {offersInPerson && (
+                <Badge variant="secondary" className="gap-1 bg-slate-50 text-slate-700 hover:bg-slate-100">
+                  <User className="h-3 w-3" />
+                  Vor-Ort-Therapie
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Approach text preview */}
@@ -159,7 +217,7 @@ export function TherapistCard({ therapist, onViewDetails }: TherapistCardProps) 
             disabled={!therapist.accepting_new}
           >
             <Calendar className="mr-2 h-4 w-4" />
-            Therapeut:in buchen
+            {contactedAt ? 'Erneut kontaktieren' : 'Therapeut:in buchen'}
           </Button>
 
           <Button

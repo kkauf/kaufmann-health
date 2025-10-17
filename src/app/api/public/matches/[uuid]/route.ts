@@ -133,6 +133,7 @@ export async function GET(req: Request) {
       photo_url?: string | null;
       city?: string | null;
       modalities?: string[] | null;
+      session_preferences?: string[] | null;
       accepting_new?: boolean | null;
       approach_text?: string | null;
       metadata?: { session_preferences?: string[] | null; profile?: { approach_text?: string }; [k: string]: unknown } | null;
@@ -141,7 +142,7 @@ export async function GET(req: Request) {
     if (therapistIds.length > 0) {
       const { data: trows } = await supabaseServer
         .from('therapists')
-        .select('id, first_name, last_name, gender, photo_url, city, modalities, accepting_new, approach_text, metadata')
+        .select('id, first_name, last_name, gender, photo_url, city, modalities, session_preferences, accepting_new, approach_text, metadata')
         .in('id', therapistIds);
       if (Array.isArray(trows)) therapists = trows as TherapistRow[];
     }
@@ -161,7 +162,7 @@ export async function GET(req: Request) {
         id: t.id,
         gender: t.gender || undefined,
         city: t.city || undefined,
-        session_preferences: Array.isArray(t.metadata?.session_preferences) ? t.metadata?.session_preferences : [],
+        session_preferences: Array.isArray(t.session_preferences) ? t.session_preferences : (Array.isArray(t.metadata?.session_preferences) ? t.metadata?.session_preferences : []),
         modalities: Array.isArray(t.modalities) ? t.modalities : [],
       };
       const mm = computeMismatches(patientMeta, tRow);
@@ -181,7 +182,7 @@ export async function GET(req: Request) {
       accepting_new: Boolean(t.accepting_new),
       contacted_at: contactedById.get(t.id) || null,
       modalities: Array.isArray(t.modalities) ? t.modalities : [],
-      session_preferences: Array.isArray(t.metadata?.session_preferences) ? t.metadata?.session_preferences : [],
+      session_preferences: Array.isArray(t.session_preferences) ? t.session_preferences : (Array.isArray(t.metadata?.session_preferences) ? t.metadata?.session_preferences : []),
       approach_text: t.approach_text || t.metadata?.profile?.approach_text || '',
       gender: t.gender || undefined,
     }));
