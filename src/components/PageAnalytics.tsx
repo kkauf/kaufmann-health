@@ -17,8 +17,7 @@ export default function PageAnalytics({ qualifier }: { qualifier?: string } = {}
       const id = buildEventId(
         typeof window !== "undefined" ? window.location.pathname : "",
         "page",
-        "view",
-        qualifier
+        "view"
       );
       const pagePath = typeof window !== "undefined" ? window.location.pathname : "";
       const payload = {
