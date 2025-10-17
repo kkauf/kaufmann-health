@@ -27,7 +27,6 @@ type StatsData = {
     drop: number;
     drop_rate: number;
   }>;
-  wizardAvgTime: Array<{ step: number; avg_ms: number }>;
   abandonFieldsTop: Array<{ field: string; count: number }>;
   directory: {
     views: number;
@@ -35,6 +34,16 @@ type StatsData = {
     navClicks: number;
     contactOpened: number;
     contactSent: number;
+  };
+  journeyAnalysis: {
+    fragebogen_only: number;
+    therapeuten_only: number;
+    both_fragebogen_first: number;
+    both_therapeuten_first: number;
+    neither: number;
+    total_sessions: number;
+    questionnaire_preference_rate: number;
+    directory_to_questionnaire_rate: number;
   };
 };
 
@@ -158,15 +167,19 @@ export default function AdminStats() {
         </CardContent>
       </Card>
 
-      {/* Wizard Funnel Overview */}
+      {/* Wizard Funnel + Dropoffs (Combined) */}
       <Card>
         <CardHeader>
-          <CardTitle>Fragebogen-Funnel</CardTitle>
+          <CardTitle>Fragebogen-Funnel & Abbrüche</CardTitle>
           <CardDescription>
-            Progression durch den 9-Schritte Questionnaire
+            Progression durch den 9-Schritte Questionnaire + Drop-off Analyse
             <br />
-            <span className="text-xs">
-              Completed = Kontaktdaten eingegeben (Schritt 8/9 abgeschlossen)
+            <span className="text-xs text-emerald-700 font-medium">
+              ✓ Cohort-based funnel: Tracks same sessions through all steps sequentially
+            </span>
+            <br />
+            <span className="text-xs text-muted-foreground">
+              Completed = Form submitted (form_completed event from sessions that reached step 9)
             </span>
           </CardDescription>
         </CardHeader>
@@ -174,19 +187,30 @@ export default function AdminStats() {
           {!data?.wizardFunnel ? (
             <div className="text-sm text-muted-foreground">Keine Daten</div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-6">
+              {/* Data quality indicators */}
+              {data.wizardFunnel.page_views === 0 && data.wizardFunnel.steps[1] > 0 && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800">
+                  <strong>⚠ Data inconsistency:</strong> Step 1 shows {data.wizardFunnel.steps[1]} sessions but page views = 0.
+                  This indicates missing page_view events or mismatched session IDs.
+                </div>
+              )}
+
+              {/* Summary metrics */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                 <div>
                   <div className="text-muted-foreground">Page Views</div>
-                  <div className="text-2xl font-semibold">{data.wizardFunnel.page_views}</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.wizardFunnel.page_views}</div>
+                  <div className="text-xs text-muted-foreground">Unique sessions on /fragebogen</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Started (Step 1)</div>
-                  <div className="text-2xl font-semibold">{data.wizardFunnel.steps[1] || 0}</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.wizardFunnel.steps[1] || 0}</div>
+                  <div className="text-xs text-muted-foreground">Viewed all steps 1-1</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Completed</div>
-                  <div className="text-2xl font-semibold">{data.wizardFunnel.form_completed}</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.wizardFunnel.form_completed}</div>
                   <div className="text-xs text-muted-foreground mt-1">
                     Completion Rate:{' '}
                     {data.wizardFunnel.steps[1] > 0
@@ -196,123 +220,150 @@ export default function AdminStats() {
                 </div>
                 <div>
                   <div className="text-muted-foreground">Start Rate</div>
-                  <div className="text-2xl font-semibold">{data.wizardFunnel.start_rate}%</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.wizardFunnel.start_rate}%</div>
+                  <div className="text-xs text-muted-foreground">Step 1 / Page Views</div>
                 </div>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-muted-foreground">
-                      <th className="py-1 pr-3">Step</th>
-                      <th className="py-1 pr-3">Sessions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Array.from({ length: 9 }, (_, i) => i + 1).map((step) => (
-                      <tr key={step} className="border-t">
-                        <td className="py-1 pr-3">Step {step}</td>
-                        <td className="py-1 pr-3 tabular-nums">{data.wizardFunnel.steps[step] || 0}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+
+              {/* Funnel visualization */}
+              <div className="space-y-1">
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Funnel Progression</h4>
+                {(() => {
+                  const step1Count = data.wizardFunnel.steps[1] || 1;
+
+                  return (
+                    <>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((step) => {
+                        const count = data.wizardFunnel.steps[step] || 0;
+                        const widthPct = (count / step1Count) * 100;
+                        const retentionRate = step > 1 ? pct(count, data.wizardFunnel.steps[step - 1] || 1) : 100;
+
+                        const stepLabels: Record<number, string> = {
+                          1: 'Therapieerfahrung',
+                          2: 'Zeitplan',
+                          3: 'Anliegen',
+                          4: 'Budget',
+                          5: 'Modalität',
+                          6: 'Ort & Format',
+                          7: 'Präferenzen',
+                          8: 'Kontaktdaten',
+                          9: 'Bestätigung',
+                        };
+
+                        return (
+                          <div key={step} className="flex items-center gap-2 text-xs">
+                            <div className="w-16 text-right text-muted-foreground">Step {step}</div>
+                            <div className="flex-1 bg-gray-100 rounded-sm h-6 relative overflow-hidden">
+                              <div
+                                className="bg-emerald-500 h-full transition-all duration-300 flex items-center px-2"
+                                style={{ width: `${widthPct}%` }}
+                              >
+                                {widthPct > 15 && (
+                                  <span className="text-white font-medium text-xs tabular-nums">{count}</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="w-32 text-left">
+                              <div className="font-medium tabular-nums">{count} ({pct(count, step1Count)}%)</div>
+                            </div>
+                            <div className="w-40 text-left text-muted-foreground">{stepLabels[step]}</div>
+                            {step > 1 && (
+                              <div className="w-20 text-right tabular-nums text-muted-foreground">
+                                {retentionRate}% kept
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {/* Final completion bar */}
+                      <div className="flex items-center gap-2 text-xs pt-2 border-t">
+                        <div className="w-16 text-right text-muted-foreground font-medium">Complete</div>
+                        <div className="flex-1 bg-gray-100 rounded-sm h-6 relative overflow-hidden">
+                          <div
+                            className="bg-blue-600 h-full transition-all duration-300 flex items-center px-2"
+                            style={{ width: `${(data.wizardFunnel.form_completed / step1Count) * 100}%` }}
+                          >
+                            {((data.wizardFunnel.form_completed / step1Count) * 100) > 15 && (
+                              <span className="text-white font-medium text-xs tabular-nums">{data.wizardFunnel.form_completed}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="w-32 text-left">
+                          <div className="font-semibold tabular-nums text-blue-700">
+                            {data.wizardFunnel.form_completed} ({pct(data.wizardFunnel.form_completed, step1Count)}%)
+                          </div>
+                        </div>
+                        <div className="w-40 text-left text-blue-700 font-medium">Form Submitted</div>
+                        <div className="w-20 text-right tabular-nums text-blue-700 font-medium">
+                          {pct(data.wizardFunnel.form_completed, data.wizardFunnel.steps[9] || 1)}% from Step 9
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Wizard Dropoffs */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Fragebogen-Abbrüche</CardTitle>
-          <CardDescription>Schritt-zu-Schritt Drop-off Analyse</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!data?.wizardDropoffs?.length ? (
-            <div className="text-sm text-muted-foreground">Keine Daten</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-muted-foreground">
-                    <th className="py-1 pr-3">Schritt</th>
-                    <th className="py-1 pr-3">Inhalt</th>
-                    <th className="py-1 pr-3">Von</th>
-                    <th className="py-1 pr-3">Zu</th>
-                    <th className="py-1 pr-3">Drop</th>
-                    <th className="py-1 pr-3">Drop Rate</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.wizardDropoffs.map((d) => {
-                    const stepLabels: Record<number, string> = {
-                      1: 'Therapieerfahrung',
-                      2: 'Zeitplan',
-                      3: 'Anliegen',
-                      4: 'Budget',
-                      5: 'Modalität',
-                      6: 'Ort & Format',
-                      7: 'Präferenzen',
-                      8: 'Kontaktdaten',
-                    };
-                    return (
-                      <tr key={d.step} className="border-t">
-                        <td className="py-1 pr-3 font-medium">
-                          {d.step} → {d.step + 1}
-                        </td>
-                        <td className="py-1 pr-3 text-muted-foreground text-xs">
-                          {stepLabels[d.step] || '—'}
-                        </td>
-                        <td className="py-1 pr-3 tabular-nums">{d.from}</td>
-                        <td className="py-1 pr-3 tabular-nums">{d.to}</td>
-                        <td className="py-1 pr-3 tabular-nums">{d.drop}</td>
-                        <td className="py-1 pr-3 tabular-nums">
-                          <span className={d.drop_rate > 50 ? 'text-red-600 font-semibold' : d.drop_rate < 0 ? 'text-emerald-600' : ''}>
-                            {d.drop_rate}%
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              {/* Dropoffs table */}
+              {data.wizardDropoffs && data.wizardDropoffs.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">Step-by-Step Dropoff Analysis</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-muted-foreground">
+                          <th className="py-1 pr-3">Schritt</th>
+                          <th className="py-1 pr-3">Inhalt</th>
+                          <th className="py-1 pr-3 text-right">Von</th>
+                          <th className="py-1 pr-3 text-right">Zu</th>
+                          <th className="py-1 pr-3 text-right">Drop</th>
+                          <th className="py-1 pr-3 text-right">Drop Rate</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.wizardDropoffs.map((d) => {
+                          const stepLabels: Record<number, string> = {
+                            1: 'Therapieerfahrung',
+                            2: 'Zeitplan',
+                            3: 'Anliegen',
+                            4: 'Budget',
+                            5: 'Modalität',
+                            6: 'Ort & Format',
+                            7: 'Präferenzen',
+                            8: 'Kontaktdaten',
+                          };
+                          const isHighDrop = d.drop_rate > 50;
+                          const isMediumDrop = d.drop_rate > 30 && d.drop_rate <= 50;
 
-      {/* Wizard Average Time */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Durchschnittliche Zeit pro Schritt</CardTitle>
-          <CardDescription>Zeit in Millisekunden</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!data?.wizardAvgTime?.length ? (
-            <div className="text-sm text-muted-foreground">Keine Daten</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-muted-foreground">
-                    <th className="py-1 pr-3">Step</th>
-                    <th className="py-1 pr-3">Ø Zeit (ms)</th>
-                    <th className="py-1 pr-3">Ø Zeit (sec)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.wizardAvgTime.map((t) => (
-                    <tr key={t.step} className="border-t">
-                      <td className="py-1 pr-3">Step {t.step}</td>
-                      <td className="py-1 pr-3 tabular-nums">{t.avg_ms}</td>
-                      <td className="py-1 pr-3 tabular-nums text-muted-foreground">
-                        {Math.round(t.avg_ms / 100) / 10}s
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          return (
+                            <tr key={d.step} className="border-t hover:bg-gray-50">
+                              <td className="py-2 pr-3 font-medium">
+                                {d.step} → {d.step + 1}
+                              </td>
+                              <td className="py-2 pr-3 text-muted-foreground text-xs">
+                                {stepLabels[d.step] || '—'}
+                              </td>
+                              <td className="py-2 pr-3 text-right tabular-nums">{d.from}</td>
+                              <td className="py-2 pr-3 text-right tabular-nums">{d.to}</td>
+                              <td className="py-2 pr-3 text-right tabular-nums">{d.drop}</td>
+                              <td className="py-2 pr-3 text-right tabular-nums">
+                                <span className={
+                                  isHighDrop
+                                    ? 'text-red-600 font-semibold'
+                                    : isMediumDrop
+                                    ? 'text-amber-600 font-medium'
+                                    : 'text-gray-700'
+                                }>
+                                  {d.drop_rate}%
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -345,6 +396,97 @@ export default function AdminStats() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Journey Analysis */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Fragebogen vs. Therapeuten Journey</CardTitle>
+          <CardDescription>
+            Wie entscheiden sich Besucher: Fragebogen oder Verzeichnis?
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!data?.journeyAnalysis ? (
+            <div className="text-sm text-muted-foreground">Keine Daten</div>
+          ) : (
+            <div className="space-y-4">
+              {/* Key insights */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
+                <div>
+                  <div className="text-sm text-muted-foreground">Fragebogen-Präferenz</div>
+                  <div className="text-3xl font-semibold text-emerald-700">
+                    {data.journeyAnalysis.questionnaire_preference_rate}%
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Besucher bevorzugen Fragebogen über Verzeichnis
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Verzeichnis → Fragebogen</div>
+                  <div className="text-3xl font-semibold text-blue-700">
+                    {data.journeyAnalysis.directory_to_questionnaire_rate}%
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Verzeichnis-Besucher gehen danach zum Fragebogen
+                  </div>
+                </div>
+              </div>
+
+              {/* Detailed breakdown */}
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Journey-Verteilung ({data.journeyAnalysis.total_sessions} Sessions)</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-2 bg-emerald-50 rounded">
+                    <span className="text-sm">🎯 Nur Fragebogen</span>
+                    <div className="text-right">
+                      <span className="font-semibold tabular-nums">{data.journeyAnalysis.fragebogen_only}</span>
+                      <span className="text-xs text-muted-foreground ml-2">
+                        ({pct(data.journeyAnalysis.fragebogen_only, data.journeyAnalysis.total_sessions)}%)
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-2 bg-blue-50 rounded">
+                    <span className="text-sm">📋 Nur Verzeichnis</span>
+                    <div className="text-right">
+                      <span className="font-semibold tabular-nums">{data.journeyAnalysis.therapeuten_only}</span>
+                      <span className="text-xs text-muted-foreground ml-2">
+                        ({pct(data.journeyAnalysis.therapeuten_only, data.journeyAnalysis.total_sessions)}%)
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-2 bg-green-50 rounded">
+                    <span className="text-sm">🎯→📋 Fragebogen, dann Verzeichnis</span>
+                    <div className="text-right">
+                      <span className="font-semibold tabular-nums">{data.journeyAnalysis.both_fragebogen_first}</span>
+                      <span className="text-xs text-muted-foreground ml-2">
+                        ({pct(data.journeyAnalysis.both_fragebogen_first, data.journeyAnalysis.total_sessions)}%)
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-2 bg-cyan-50 rounded">
+                    <span className="text-sm">📋→🎯 Verzeichnis, dann Fragebogen</span>
+                    <div className="text-right">
+                      <span className="font-semibold tabular-nums">{data.journeyAnalysis.both_therapeuten_first}</span>
+                      <span className="text-xs text-muted-foreground ml-2">
+                        ({pct(data.journeyAnalysis.both_therapeuten_first, data.journeyAnalysis.total_sessions)}%)
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-2 bg-gray-100 rounded">
+                    <span className="text-sm text-muted-foreground">🏠 Andere Seiten nur</span>
+                    <div className="text-right">
+                      <span className="font-semibold tabular-nums text-muted-foreground">{data.journeyAnalysis.neither}</span>
+                      <span className="text-xs text-muted-foreground ml-2">
+                        ({pct(data.journeyAnalysis.neither, data.journeyAnalysis.total_sessions)}%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>

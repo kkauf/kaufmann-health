@@ -59,7 +59,6 @@ type StatsResponse = {
     drop: number;
     drop_rate: number;
   }>;
-  wizardAvgTime: Array<{ step: number; avg_ms: number }>;
   abandonFieldsTop: Array<{ field: string; count: number }>;
   directory: {
     views: number;
@@ -67,6 +66,16 @@ type StatsResponse = {
     navClicks: number;
     contactOpened: number;
     contactSent: number;
+  };
+  journeyAnalysis: {
+    fragebogen_only: number;
+    therapeuten_only: number;
+    both_fragebogen_first: number;
+    both_therapeuten_first: number;
+    neither: number;
+    total_sessions: number;
+    questionnaire_preference_rate: number;
+    directory_to_questionnaire_rate: number;
   };
 };
 
@@ -172,6 +181,8 @@ export async function GET(req: Request) {
     }
 
     // === WIZARD FUNNEL (Steps 1-9) ===
+    // PROPER COHORT-BASED FUNNEL ANALYSIS
+    // Best practice: Track the SAME sessions moving sequentially through steps
     const wizardFunnel: StatsResponse['wizardFunnel'] = {
       page_views: 0,
       steps: {},
@@ -179,11 +190,10 @@ export async function GET(req: Request) {
       start_rate: 0,
     };
     const wizardDropoffs: StatsResponse['wizardDropoffs'] = [];
-    let wizardAvgTime: StatsResponse['wizardAvgTime'] = [];
     let abandonFieldsTop: StatsResponse['abandonFieldsTop'] = [];
 
     try {
-      // Step views: unique sessions per step (1-9)
+      // STEP 1: Get all screen_viewed events and build session progression map
       const { data: stepEvents } = await supabaseServer
         .from('events')
         .select('properties')
@@ -191,8 +201,8 @@ export async function GET(req: Request) {
         .gte('created_at', sinceIso)
         .limit(20000);
 
-      const sessionsByStep: Record<number, Set<string>> = {};
-      for (let i = 1; i <= 9; i++) sessionsByStep[i] = new Set<string>();
+      // Map: session_id -> Set of steps viewed
+      const sessionStepMap = new Map<string, Set<number>>();
 
       for (const row of (stepEvents || []) as Array<{ properties?: Record<string, unknown> }>) {
         try {
@@ -200,58 +210,40 @@ export async function GET(req: Request) {
           const sid = String((props['session_id'] as string | undefined) || '').trim();
           const stepVal = Number(String((props['step'] as string | number | undefined) ?? ''));
           const stepNum = Number.isFinite(stepVal) ? Math.floor(stepVal) : NaN;
+
           if (sid && stepNum >= 1 && stepNum <= 9) {
-            sessionsByStep[stepNum].add(sid);
+            if (!sessionStepMap.has(sid)) {
+              sessionStepMap.set(sid, new Set<number>());
+            }
+            sessionStepMap.get(sid)!.add(stepNum);
           }
         } catch {}
       }
 
-      wizardFunnel.steps = Object.fromEntries(
-        Object.entries(sessionsByStep).map(([k, v]) => [Number(k), v.size])
-      );
+      // STEP 2: Calculate cohort sizes using sequential filtering
+      // A session "reached step N" if it viewed step N AND all previous steps (1...N-1)
+      const cohortByStep: Record<number, Set<string>> = {};
 
-      // Dropoffs between consecutive steps
-      // Note: drop can be negative (indicating increase/return users)
-      for (let k = 1; k <= 8; k++) {
-        const from = sessionsByStep[k].size;
-        const to = sessionsByStep[k + 1].size;
-        const drop = from - to; // Can be negative if more users at step k+1
-        const drop_rate = from > 0 ? Math.round((drop / from) * 1000) / 10 : 0;
-        wizardDropoffs.push({ step: k, from, to, drop, drop_rate });
-      }
+      for (let step = 1; step <= 9; step++) {
+        cohortByStep[step] = new Set<string>();
 
-      // Average time per step (from screen_completed events)
-      const { data: completedRows } = await supabaseServer
-        .from('events')
-        .select('properties')
-        .eq('type', 'screen_completed')
-        .gte('created_at', sinceIso)
-        .limit(20000);
-
-      const timeAgg: Record<number, { sum: number; n: number }> = {};
-      for (let i = 1; i <= 9; i++) timeAgg[i] = { sum: 0, n: 0 };
-
-      for (const row of (completedRows || []) as Array<{ properties?: Record<string, unknown> }>) {
-        try {
-          const props = (row.properties || {}) as Record<string, unknown>;
-          const stepVal = Number(String((props['step'] as string | number | undefined) ?? ''));
-          const stepNum = Number.isFinite(stepVal) ? Math.floor(stepVal) : NaN;
-          const dur = Number(String((props['duration_ms'] as string | number | undefined) ?? ''));
-          if (stepNum >= 1 && stepNum <= 9 && Number.isFinite(dur) && dur >= 0) {
-            timeAgg[stepNum].sum += dur;
-            timeAgg[stepNum].n += 1;
+        for (const [sid, stepsViewed] of sessionStepMap.entries()) {
+          // Check if session reached this step AND all previous steps
+          let reachedStep = true;
+          for (let requiredStep = 1; requiredStep <= step; requiredStep++) {
+            if (!stepsViewed.has(requiredStep)) {
+              reachedStep = false;
+              break;
+            }
           }
-        } catch {}
+
+          if (reachedStep) {
+            cohortByStep[step].add(sid);
+          }
+        }
       }
 
-      wizardAvgTime = Array.from({ length: 9 }, (_, i) => {
-        const step = i + 1;
-        const agg = timeAgg[step];
-        const avg = agg.n > 0 ? Math.round(agg.sum / agg.n) : 0;
-        return { step, avg_ms: avg };
-      });
-
-      // Page views (unique sessions with page_view event)
+      // STEP 3: Get page views for start rate calculation
       const { data: pvEvents } = await supabaseServer
         .from('events')
         .select('properties')
@@ -264,30 +256,61 @@ export async function GET(req: Request) {
         try {
           const props = (row.properties || {}) as Record<string, unknown>;
           const sid = String((props['session_id'] as string | undefined) || '').trim();
-          if (sid) pvSessions.add(sid);
+          const path = String((props['page_path'] as string | undefined) || '').trim();
+          if (sid && path === '/fragebogen') pvSessions.add(sid);
         } catch {}
       }
       wizardFunnel.page_views = pvSessions.size;
 
-      // Form completed (via people.metadata.form_completed_at)
-      // Note: Only counts patients with form_completed_at timestamp in window
-      const completedRes = await supabaseServer
-        .from('people')
-        .select('id', { count: 'exact', head: true })
-        .eq('type', 'patient')
-        .gte('metadata->>form_completed_at', sinceIso);
-      
-      if (completedRes.error) {
-        await logError('admin.api.stats', completedRes.error, { stage: 'wizard_form_completed' });
+      // STEP 4: Get form completions and match to sessions
+      // Form completions are tracked via form_completed events in the events table
+      const { data: completedEvents } = await supabaseServer
+        .from('events')
+        .select('properties')
+        .eq('type', 'form_completed')
+        .gte('created_at', sinceIso)
+        .limit(20000);
+
+      const completedSessions = new Set<string>();
+      for (const row of (completedEvents || []) as Array<{ properties?: Record<string, unknown> }>) {
+        try {
+          const props = (row.properties || {}) as Record<string, unknown>;
+          const sid = String((props['session_id'] as string | undefined) || '').trim();
+          if (sid) completedSessions.add(sid);
+        } catch {}
       }
-      wizardFunnel.form_completed = completedRes.error ? 0 : (completedRes.count || 0);
 
-      // Start rate: step1 / page_views
-      const step1 = sessionsByStep[1].size;
+      // Only count completions from sessions that reached step 9
+      const step9Sessions = cohortByStep[9] || new Set<string>();
+      let validCompletions = 0;
+      for (const sid of completedSessions) {
+        if (step9Sessions.has(sid)) {
+          validCompletions++;
+        }
+      }
+      wizardFunnel.form_completed = validCompletions;
+
+      // STEP 5: Build funnel metrics
+      wizardFunnel.steps = Object.fromEntries(
+        Object.entries(cohortByStep).map(([k, v]) => [Number(k), v.size])
+      );
+
+      // Calculate start rate: sessions that reached step 1 / page views
+      const step1Count = cohortByStep[1]?.size || 0;
       wizardFunnel.start_rate =
-        wizardFunnel.page_views > 0 ? Math.round((step1 / wizardFunnel.page_views) * 1000) / 10 : 0;
+        wizardFunnel.page_views > 0 ? Math.round((step1Count / wizardFunnel.page_views) * 1000) / 10 : 0;
 
-      // Top abandoned fields
+      // STEP 6: Calculate dropoffs between consecutive steps
+      // Dropoffs are now guaranteed to be non-negative (cohorts only shrink)
+      for (let k = 1; k <= 8; k++) {
+        const from = cohortByStep[k]?.size || 0;
+        const to = cohortByStep[k + 1]?.size || 0;
+        const drop = from - to;
+        const drop_rate = from > 0 ? Math.round((drop / from) * 1000) / 10 : 0;
+        wizardDropoffs.push({ step: k, from, to, drop, drop_rate });
+      }
+
+      // STEP 7: Top abandoned fields (unchanged - this is independent)
       const { data: abandonRows } = await supabaseServer
         .from('events')
         .select('properties')
@@ -345,7 +368,7 @@ export async function GET(req: Request) {
       }
       directory.views = dirViewSessions.size;
 
-      // Help clicks: cta_click with id=therapeuten-callout-fragebogen
+      // Help clicks: cta_click with id=therapeuten-callout-fragebogen FROM /therapeuten page
       const { data: ctaRows } = await supabaseServer
         .from('events')
         .select('properties')
@@ -365,9 +388,10 @@ export async function GET(req: Request) {
           const id = String((props['id'] as string | undefined) || '').toLowerCase();
           const source = String((props['source'] as string | undefined) || '').toLowerCase();
           const href = String((props['href'] as string | undefined) || '').toLowerCase();
+          const pagePath = String((props['page_path'] as string | undefined) || '').toLowerCase();
 
-          // Help clicks
-          if (id === 'therapeuten-callout-fragebogen') {
+          // Help clicks: only from /therapeuten page
+          if (id === 'therapeuten-callout-fragebogen' && pagePath === '/therapeuten') {
             helpSessions.add(sid);
           }
 
@@ -411,14 +435,97 @@ export async function GET(req: Request) {
       await logError('admin.api.stats', e, { stage: 'directory' });
     }
 
+    // === JOURNEY ANALYSIS (Fragebogen vs. Therapeuten) ===
+    const journeyAnalysis: StatsResponse['journeyAnalysis'] = {
+      fragebogen_only: 0,
+      therapeuten_only: 0,
+      both_fragebogen_first: 0,
+      both_therapeuten_first: 0,
+      neither: 0,
+      total_sessions: 0,
+      questionnaire_preference_rate: 0,
+      directory_to_questionnaire_rate: 0,
+    };
+
+    try {
+      // Get all page_view events and group by session
+      const { data: allPvRows } = await supabaseServer
+        .from('events')
+        .select('created_at, properties')
+        .eq('type', 'page_view')
+        .gte('created_at', sinceIso)
+        .order('created_at', { ascending: true })
+        .limit(50000);
+
+      // Map session_id -> array of {timestamp, path}
+      const sessionPaths = new Map<string, Array<{ ts: string; path: string }>>();
+
+      for (const row of (allPvRows || []) as Array<{ created_at?: string; properties?: Record<string, unknown> }>) {
+        try {
+          const props = (row.properties || {}) as Record<string, unknown>;
+          const sid = String((props['session_id'] as string | undefined) || '').trim();
+          const path = String((props['page_path'] as string | undefined) || '').trim();
+          const ts = String(row.created_at || '');
+          if (!sid || !path || !ts) continue;
+
+          if (!sessionPaths.has(sid)) sessionPaths.set(sid, []);
+          sessionPaths.get(sid)!.push({ ts, path });
+        } catch {}
+      }
+
+      // Analyze each session's journey
+      for (const [sid, visits] of sessionPaths.entries()) {
+        const paths = visits.map(v => v.path);
+        const hasFrage = paths.includes('/fragebogen');
+        const hasTher = paths.includes('/therapeuten');
+
+        if (!hasFrage && !hasTher) {
+          journeyAnalysis.neither++;
+        } else if (hasFrage && !hasTher) {
+          journeyAnalysis.fragebogen_only++;
+        } else if (hasTher && !hasFrage) {
+          journeyAnalysis.therapeuten_only++;
+        } else {
+          // Both: determine which came first
+          const firstFrage = visits.find(v => v.path === '/fragebogen');
+          const firstTher = visits.find(v => v.path === '/therapeuten');
+          if (firstFrage && firstTher) {
+            if (firstFrage.ts < firstTher.ts) {
+              journeyAnalysis.both_fragebogen_first++;
+            } else {
+              journeyAnalysis.both_therapeuten_first++;
+            }
+          }
+        }
+      }
+
+      journeyAnalysis.total_sessions = sessionPaths.size;
+
+      // Calculate rates
+      const qTotal = journeyAnalysis.fragebogen_only + journeyAnalysis.both_fragebogen_first;
+      const tTotal = journeyAnalysis.therapeuten_only + journeyAnalysis.both_therapeuten_first;
+      const engaged = qTotal + tTotal; // Sessions that visited at least one key page
+
+      journeyAnalysis.questionnaire_preference_rate =
+        engaged > 0 ? Math.round((qTotal / engaged) * 1000) / 10 : 0;
+
+      const startedWithDirectory = journeyAnalysis.therapeuten_only + journeyAnalysis.both_therapeuten_first;
+      journeyAnalysis.directory_to_questionnaire_rate =
+        startedWithDirectory > 0
+          ? Math.round((journeyAnalysis.both_therapeuten_first / startedWithDirectory) * 1000) / 10
+          : 0;
+    } catch (e) {
+      await logError('admin.api.stats', e, { stage: 'journey_analysis' });
+    }
+
     const data: StatsResponse = {
       totals,
       pageTraffic,
       wizardFunnel,
       wizardDropoffs,
-      wizardAvgTime,
       abandonFieldsTop,
       directory,
+      journeyAnalysis,
     };
 
     return NextResponse.json({ data, error: null }, { status: 200 });

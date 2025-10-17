@@ -576,6 +576,79 @@ __UI Consistency__: Email templates reuse a small, inline-styled therapist previ
   - 200: `{ data: { ok: true }, error: null }`
   - 401: `{ data: null, error: 'Invalid signature' }` (when signature validation fails)
 
+## GET /api/admin/stats (EARTH-215)
+
+- __Purpose__: Admin analytics dashboard showing funnel metrics, page traffic, and user journey analysis.
+- __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
+- __Query Params__:
+  - `days?` (number, optional) — Time window in days (default: 30, min: 1, max: 90).
+- __Behavior__:
+  - Queries `events` table for analytics data within the specified time window.
+  - **Wizard Funnel** uses proper cohort-based tracking:
+    - Tracks the SAME sessions moving sequentially through steps 1-9.
+    - A session "reached step N" if it viewed ALL steps 1 through N (inclusive).
+    - This ensures funnel integrity: each step count is always ≤ previous step.
+    - Drop rates are guaranteed to be non-negative.
+    - Form completions are matched to sessions that reached step 9.
+  - **Page Traffic**: Top 10 pages by unique sessions + daily time series.
+  - **Journey Analysis**: Categorizes sessions by whether they visited /fragebogen, /therapeuten, both, or neither.
+  - **Directory Engagement**: Tracks help clicks, contact modals, and message sends from /therapeuten.
+  - **Abandoned Fields**: Top 15 fields where users drop off.
+- __Response__:
+  - 200: `{ data: StatsResponse, error: null }`
+  - 401: `{ data: null, error: 'Unauthorized' }`
+  - 500: `{ data: null, error: 'Unexpected error' }`
+- __StatsResponse Schema__:
+  ```typescript
+  {
+    totals: { therapists: number; clients: number; matches: number };
+    pageTraffic: {
+      top: Array<{ page_path: string; sessions: number }>;
+      daily: Array<{ day: string; page_path: string; sessions: number }>;
+    };
+    wizardFunnel: {
+      page_views: number;              // Unique sessions that viewed /fragebogen
+      steps: Record<1-9, number>;      // Cohort size at each step (sequential filtering)
+      form_completed: number;          // Sessions that completed AND reached step 9
+      start_rate: number;              // (step 1 / page_views) * 100
+    };
+    wizardDropoffs: Array<{
+      step: number;                    // Transition from step N to N+1
+      from: number;                    // Cohort size at step N
+      to: number;                      // Cohort size at step N+1 (always ≤ from)
+      drop: number;                    // from - to (always ≥ 0)
+      drop_rate: number;               // (drop / from) * 100
+    }>;
+    abandonFieldsTop: Array<{ field: string; count: number }>;
+    directory: {
+      views: number;                   // Unique sessions on /therapeuten
+      helpClicks: number;              // Clicks on questionnaire CTA from /therapeuten
+      navClicks: number;               // "Alle Therapeuten ansehen" clicks site-wide
+      contactOpened: number;           // Contact modal opens on /therapeuten
+      contactSent: number;             // Messages sent via contact modal
+    };
+    journeyAnalysis: {
+      fragebogen_only: number;
+      therapeuten_only: number;
+      both_fragebogen_first: number;
+      both_therapeuten_first: number;
+      neither: number;
+      total_sessions: number;
+      questionnaire_preference_rate: number;
+      directory_to_questionnaire_rate: number;
+    };
+  }
+  ```
+- __Implementation Notes__:
+  - **Funnel Best Practice**: Uses cohort-based sequential filtering instead of independent step counts.
+  - **Why This Matters**: Previous implementation counted ANY session at each step, leading to negative drop rates when users jumped to later steps. The corrected approach ensures mathematical integrity and accurate conversion metrics.
+  - **Event Types Used**:
+    - `page_view` with `properties.page_path` for page traffic and wizard entry
+    - `screen_viewed` with `properties.step` (1-9) for wizard progression
+    - `form_completed` with `properties.session_id` for completion tracking
+    - `field_abandonment` with `properties.fields` for abandonment analysis
+    - `cta_click`, `contact_modal_opened`, `contact_message_sent` for directory engagement
+
 ## EARTH-125: Patient Selection Flow
 
 ### POST/GET /api/match/:uuid/select
@@ -748,9 +821,9 @@ With EARTH-215, the admin stats endpoint was completely rebuilt to focus on acti
 {
   data: {
     totals: {
-      therapists: number;        // Total registered therapists (excluding tests)
-      clients: number;           // Total registered patients (excluding tests)
-      matches: number;           // Total matches created
+      therapists: number;        // Total registered therapists (all-time)
+      clients: number;           // Total registered patients (all-time)
+      matches: number;           // Total matches created (all-time)
     };
     pageTraffic: {
       top: Array<{
@@ -764,7 +837,7 @@ With EARTH-215, the admin stats endpoint was completely rebuilt to focus on acti
       }>;                        // Daily breakdown for top 10 pages only
     };
     wizardFunnel: {
-      page_views: number;        // Unique sessions with any page_view
+      page_views: number;        // Unique sessions viewing /fragebogen (questionnaire page)
       steps: Record<number, number>; // step 1-9 => unique sessions
       form_completed: number;    // people.metadata.form_completed_at count
       start_rate: number;        // (step1 / page_views) * 100
@@ -773,24 +846,32 @@ With EARTH-215, the admin stats endpoint was completely rebuilt to focus on acti
       step: number;              // Transition from step k → k+1
       from: number;              // Sessions at step k
       to: number;                // Sessions at step k+1
-      drop: number;              // from - to
-      drop_rate: number;         // (drop / from) * 100
+      drop: number;              // from - to (can be negative if sessions increase)
+      drop_rate: number;         // (drop / from) * 100 (can be negative)
     }>;                          // 8 rows (steps 1→2 through 8→9)
-    wizardAvgTime: Array<{
-      step: number;              // 1-9
-      avg_ms: number;            // Mean duration_ms from screen_completed events
-    }>;
     abandonFieldsTop: Array<{
       field: string;             // Field name from field_abandonment events
       count: number;             // Number of abandonment occurrences
     }>;                          // Top 15, sorted by count desc
     directory: {
       views: number;             // Unique sessions viewing /therapeuten
-      helpClicks: number;        // cta_click with id='therapeuten-callout-fragebogen'
+      helpClicks: number;        // cta_click with id='therapeuten-callout-fragebogen' FROM /therapeuten page
       navClicks: number;         // "Alle Therapeuten ansehen" clicks across site
                                  // (id='alle-therapeuten' OR source='alle-therapeuten' OR href ends '/therapeuten')
       contactOpened: number;     // contact_modal_opened on /therapeuten (referrer contains '/therapeuten')
       contactSent: number;       // contact_message_sent on /therapeuten
+    };
+    journeyAnalysis: {
+      fragebogen_only: number;              // Sessions viewing only /fragebogen
+      therapeuten_only: number;             // Sessions viewing only /therapeuten
+      both_fragebogen_first: number;        // Visited /fragebogen first, then /therapeuten
+      both_therapeuten_first: number;       // Visited /therapeuten first, then /fragebogen
+      neither: number;                      // Sessions not visiting either key page
+      total_sessions: number;               // Total unique sessions analyzed
+      questionnaire_preference_rate: number; // % of engaged users preferring questionnaire
+                                            // (fragebogen_only + both_fragebogen_first) / (all engaged)
+      directory_to_questionnaire_rate: number; // % of directory starters who went to questionnaire
+                                            // both_therapeuten_first / (therapeuten_only + both_therapeuten_first)
     };
   };
   error: null;
@@ -798,11 +879,15 @@ With EARTH-215, the admin stats endpoint was completely rebuilt to focus on acti
 ```
 
 **Key Design Decisions:**
-- All aggregations use `session_id` for deduplication (unique sessions, not raw events)
-- Wizard steps 1-9 tracked via `screen_viewed` events with `properties.step`
-- Abandoned fields aggregated from `field_abandonment` events with `properties.fields` array
-- Directory engagement focused on actionable metrics: questionnaire vs directory usage, help clicks, contact funnel
-- Nav clicks ("Alle Therapeuten ansehen") tracked across the entire site for insights into directory discovery patterns
+- **Session-based deduplication**: All aggregations use `session_id` for unique sessions (not raw event counts)
+- **Page traffic consistency**: `wizardFunnel.page_views` counts only `/fragebogen` sessions to match Page Traffic logic (not all page_view events)
+- **Wizard tracking**: Steps 1-9 tracked via `screen_viewed` events with `properties.step`
+- **Negative dropoffs allowed**: When more sessions appear at later steps (returning users, multi-device), dropoff can be negative
+- **Average time removed**: Multi-day session gaps caused skewed averages; removed entirely (dropoff rates more actionable)
+- **Directory help clicks scoped**: Only counts clicks from `/therapeuten` page using `properties.page_path` filter to prevent inflation from other pages
+- **Abandoned fields**: Aggregated from `field_abandonment` events with `properties.fields` array
+- **Totals are all-time**: Not filtered by time window; show lifetime therapists, clients, and matches
+- **Journey analysis**: Tracks user preference between questionnaire (/fragebogen) vs directory (/therapeuten) by analyzing page_view sequences per session, determining first-visited page for users who visit both
 
 **Event Dependencies:**
 - `page_view` with `properties.page_path` (PR1: PageAnalytics updated)
