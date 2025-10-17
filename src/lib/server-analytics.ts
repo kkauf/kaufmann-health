@@ -81,6 +81,13 @@ export async function trackEventFromRequest(
     session_id?: string;
   },
 ): Promise<void> {
+  // Skip noisy cron monitoring events in production (only log failures)
+  if (process.env.NODE_ENV === 'production') {
+    if (['cron_executed', 'cron_completed'].includes(input.type)) {
+      if (!input.props?.error) return;
+    }
+  }
+
   const ip = getClientIP(req.headers);
   const ua = req.headers.get('user-agent') || undefined;
   const attr = parseAttributionFromRequest(req);
