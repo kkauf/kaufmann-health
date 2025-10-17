@@ -765,7 +765,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader className="pb-4">
           <DialogTitle className="text-xl font-bold">
             {step === 'verify' && 'Anmelden um zu senden'}

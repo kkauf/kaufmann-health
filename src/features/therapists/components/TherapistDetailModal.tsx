@@ -72,7 +72,7 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-h-[85vh] w-[calc(100%-2rem)] max-w-3xl overflow-x-hidden overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="max-h-[85vh] overflow-x-hidden overflow-y-auto p-4 sm:p-6 md:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="sr-only">
             Profil von {therapist.first_name} {therapist.last_name}
