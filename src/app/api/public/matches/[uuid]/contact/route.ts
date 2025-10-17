@@ -16,6 +16,14 @@ function hoursSince(iso: string | null | undefined): number | null {
   return (Date.now() - t) / (1000 * 60 * 60);
 }
 
+function extractMessage(err: unknown): string | null {
+  if (typeof err === 'object' && err !== null) {
+    const msg = (err as { message?: unknown }).message;
+    return typeof msg === 'string' ? msg : null;
+  }
+  return null;
+}
+
 async function checkRateLimitByMatches(patientId: string): Promise<{ allowed: boolean; count: number }> {
   // Allow disabling rate limit for local testing
   if (process.env.RESEND_DISABLE_IDEMPOTENCY === 'true') {
@@ -75,11 +83,30 @@ export async function POST(req: Request) {
     }
 
     // Resolve reference match to get patient context and TTL (30 days)
-    const { data: ref, error: refErr } = await supabaseServer
-      .from('matches')
-      .select('id, created_at, patient_id')
-      .eq('secure_uuid', uuid)
-      .single();
+    let ref: unknown | null = null;
+    let refErr: unknown | null = null;
+    {
+      const res = await supabaseServer
+        .from('matches')
+        .select('id, created_at, patient_id')
+        .eq('secure_uuid', uuid)
+        .single();
+      ref = res.data as unknown;
+      refErr = res.error as unknown;
+    }
+    const msg = extractMessage(refErr);
+    if (msg && /Cannot coerce the result to a single JSON object/i.test(msg)) {
+      const fallback = await supabaseServer
+        .from('matches')
+        .select('id, created_at, patient_id')
+        .eq('secure_uuid', uuid)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (Array.isArray(fallback.data) && fallback.data.length > 0) {
+        ref = fallback.data[0] as unknown;
+        refErr = null;
+      }
+    }
     if (refErr || !ref) {
       await logError('api.public.matches.contact', refErr || 'not_found', { stage: 'load_ref', uuid });
       return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });

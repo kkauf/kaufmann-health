@@ -20,7 +20,14 @@ export default function PageAnalytics({ qualifier }: { qualifier?: string } = {}
         "view",
         qualifier
       );
-      const payload = { type: "page_view", id, title: id, ...attrs };
+      const pagePath = typeof window !== "undefined" ? window.location.pathname : "";
+      const payload = {
+        type: "page_view",
+        id,
+        title: id,
+        ...attrs,
+        properties: { page_path: pagePath, qualifier },
+      };
       fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -49,10 +56,17 @@ export default function PageAnalytics({ qualifier }: { qualifier?: string } = {}
               "scroll",
               `${t}`
             );
+            const pagePath = typeof window !== "undefined" ? window.location.pathname : "";
             fetch("/api/events", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ type: "scroll_depth", id, title: `${t}%`, ...attrs }),
+              body: JSON.stringify({
+                type: "scroll_depth",
+                id,
+                title: `${t}%`,
+                ...attrs,
+                properties: { page_path: pagePath, depth: t },
+              }),
               keepalive: true,
             }).catch(() => {});
           }
@@ -81,10 +95,17 @@ export default function PageAnalytics({ qualifier }: { qualifier?: string } = {}
         );
         const attrs = getAttribution();
         const title = (anchor.textContent || '').trim() || id;
+        const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
         fetch('/api/events', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'cta_click', id, title, href: anchor.href, ...attrs }),
+          body: JSON.stringify({
+            type: 'cta_click',
+            id,
+            title,
+            ...attrs,
+            properties: { page_path: pagePath, source, href: anchor.href },
+          }),
           keepalive: true,
         }).catch(() => {});
       } catch {}

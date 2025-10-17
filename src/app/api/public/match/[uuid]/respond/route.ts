@@ -15,6 +15,14 @@ function hoursSince(iso: string | null | undefined): number | null {
   return (Date.now() - t) / (1000 * 60 * 60);
 }
 
+function extractMessage(err: unknown): string | null {
+  if (typeof err === 'object' && err !== null) {
+    const msg = (err as { message?: unknown }).message;
+    return typeof msg === 'string' ? msg : null;
+  }
+  return null;
+}
+
 export async function POST(req: Request) {
   const { pathname, searchParams } = (() => {
     try {
@@ -38,11 +46,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ data: null, error: 'Invalid action' }, { status: 400 });
     }
 
-    const { data: match, error: matchErr } = await supabaseServer
-      .from('matches')
-      .select('id, status, created_at, patient_id, therapist_id, metadata')
-      .eq('secure_uuid', uuid)
-      .single();
+    let match: unknown | null = null;
+    let matchErr: unknown | null = null;
+    {
+      const res = await supabaseServer
+        .from('matches')
+        .select('id, status, created_at, patient_id, therapist_id, metadata')
+        .eq('secure_uuid', uuid)
+        .single();
+      match = res.data as unknown;
+      matchErr = res.error as unknown;
+    }
+    const msg = extractMessage(matchErr);
+    if (msg && /Cannot coerce the result to a single JSON object/i.test(msg)) {
+      const fb = await supabaseServer
+        .from('matches')
+        .select('id, status, created_at, patient_id, therapist_id, metadata')
+        .eq('secure_uuid', uuid)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (Array.isArray(fb.data) && fb.data.length > 0) {
+        match = fb.data[0] as unknown;
+        matchErr = null;
+      }
+    }
 
     if (matchErr || !match) {
       await logError('api.match.respond', matchErr || 'not_found', { stage: 'load_match', uuid });

@@ -39,12 +39,38 @@ async function handle(req: Request) {
       return NextResponse.json({ data: null, error: 'therapist is required' }, { status: 400 });
     }
 
-    // Load reference match by secure_uuid to obtain patient_id
-    const { data: refMatch, error: refErr } = await supabaseServer
-      .from('matches')
-      .select('id, patient_id')
-      .eq('secure_uuid', uuid)
-      .single();
+    function extractMessage(err: unknown): string | null {
+      if (typeof err === 'object' && err !== null) {
+        const msg = (err as { message?: unknown }).message;
+        return typeof msg === 'string' ? msg : null;
+      }
+      return null;
+    }
+
+    let refMatch: unknown | null = null;
+    let refErr: unknown | null = null;
+    {
+      const res = await supabaseServer
+        .from('matches')
+        .select('id, patient_id')
+        .eq('secure_uuid', uuid)
+        .single();
+      refMatch = res.data as unknown;
+      refErr = res.error as unknown;
+    }
+    const msg = extractMessage(refErr);
+    if (msg && /Cannot coerce the result to a single JSON object/i.test(msg)) {
+      const fb = await supabaseServer
+        .from('matches')
+        .select('id, patient_id')
+        .eq('secure_uuid', uuid)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (Array.isArray(fb.data) && fb.data.length > 0) {
+        refMatch = fb.data[0] as unknown;
+        refErr = null;
+      }
+    }
     if (refErr || !refMatch) {
       await logError('api.match.select', refErr || 'not_found', { stage: 'load_ref_match', uuid });
       if (isGet) return NextResponse.redirect(`${BASE_URL}/auswahl-bestaetigt?error=not_found`);

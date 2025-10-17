@@ -313,6 +313,101 @@ export async function GET(req: Request) {
       await logError('admin.api.stats', e, { stage: 'optional_datasets' });
     }
 
+    let pageTraffic: { top: Array<{ page_path: string; sessions: number }>; daily: Array<{ day: string; page_path: string; sessions: number }> } = { top: [], daily: [] };
+    let directory: { views: number; helpClicks: number; contactOpened: number; contactSent: number } = { views: 0, helpClicks: 0, contactOpened: 0, contactSent: 0 };
+    try {
+      const { data: pvRows } = await supabaseServer
+        .from('events')
+        .select('created_at, properties')
+        .eq('type', 'page_view')
+        .gte('created_at', sinceIso)
+        .limit(50000);
+      const sessionsByPath = new Map<string, Set<string>>();
+      const sessionsByDayPath = new Map<string, Set<string>>();
+      const parsePath = (ref?: string): string => {
+        try {
+          if (!ref) return '';
+          const u = new URL(ref);
+          return u.pathname || '';
+        } catch {
+          return '';
+        }
+      };
+      for (const row of (pvRows || []) as Array<{ created_at?: string; properties?: Record<string, unknown> }>) {
+        try {
+          const props = (row.properties || {}) as Record<string, unknown>;
+          const sidRaw = String((props['session_id'] as string | undefined) || '').trim();
+          if (!sidRaw) continue;
+          let path = String((props['page_path'] as string | undefined) || '').trim();
+          if (!path) path = parsePath(String((props['referrer'] as string | undefined) || ''));
+          if (!path) continue;
+          if (!sessionsByPath.has(path)) sessionsByPath.set(path, new Set<string>());
+          sessionsByPath.get(path)!.add(sidRaw);
+          const day = toDayKey(row.created_at as string);
+          const key = `${day}__${path}`;
+          if (!sessionsByDayPath.has(key)) sessionsByDayPath.set(key, new Set<string>());
+          sessionsByDayPath.get(key)!.add(sidRaw);
+        } catch {}
+      }
+      const topArr = Array.from(sessionsByPath.entries())
+        .map(([page_path, set]) => ({ page_path, sessions: set.size }))
+        .sort((a, b) => b.sessions - a.sessions)
+        .slice(0, 10);
+      pageTraffic.top = topArr;
+      const topSet = new Set(topArr.map((x) => x.page_path));
+      const dailyArr = Array.from(sessionsByDayPath.entries())
+        .map(([k, set]) => {
+          const [day, page_path] = k.split('__');
+          return { day, page_path, sessions: set.size };
+        })
+        .filter((r) => topSet.has(r.page_path))
+        .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : a.page_path.localeCompare(b.page_path)));
+      pageTraffic.daily = dailyArr;
+
+      const dirViews = sessionsByPath.get('/therapeuten');
+      directory.views = dirViews ? dirViews.size : 0;
+
+      const { data: helpRows } = await supabaseServer
+        .from('events')
+        .select('properties')
+        .eq('type', 'cta_click')
+        .gte('created_at', sinceIso)
+        .limit(20000);
+      const helpSessions = new Set<string>();
+      for (const row of (helpRows || []) as Array<{ properties?: Record<string, unknown> }>) {
+        try {
+          const props = (row.properties || {}) as Record<string, unknown>;
+          const id = String((props['id'] as string | undefined) || '').trim();
+          if (id !== 'therapeuten-callout-fragebogen') continue;
+          const sid = String((props['session_id'] as string | undefined) || '').trim();
+          if (sid) helpSessions.add(sid);
+        } catch {}
+      }
+      directory.helpClicks = helpSessions.size;
+
+      const { data: contactRows } = await supabaseServer
+        .from('events')
+        .select('properties')
+        .in('type', ['contact_modal_opened', 'contact_message_sent'])
+        .gte('created_at', sinceIso)
+        .limit(20000);
+      const openedSessions = new Set<string>();
+      const sentSessions = new Set<string>();
+      for (const row of (contactRows || []) as Array<{ properties?: Record<string, unknown> }>) {
+        try {
+          const props = (row.properties || {}) as Record<string, unknown>;
+          const ref = String((props['referrer'] as string | undefined) || '').toLowerCase();
+          const sid = String((props['session_id'] as string | undefined) || '').trim();
+          if (!ref.includes('/therapeuten') || !sid) continue;
+          const t = String((props['type'] as string | undefined) || '').toLowerCase();
+          if (t === 'contact_modal_opened') openedSessions.add(sid);
+          if (t === 'contact_message_sent') sentSessions.add(sid);
+        } catch {}
+      }
+      directory.contactOpened = openedSessions.size;
+      directory.contactSent = sentSessions.size;
+    } catch {}
+
     // --- Pre-signup: Wizard funnel + FAQ engagement ---
     const preSignup: {
       wizardFunnel: { page_views: number; step1: number; step2: number; step3: number; step4: number; step5: number; form_completed: number; start_rate: number };
@@ -615,6 +710,8 @@ export async function GET(req: Request) {
       campaignByDay,
       preSignup,
       postSignup,
+      pageTraffic,
+      directory,
       blockers: {
         last30Days: {
           total: blockersTotal,
