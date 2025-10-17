@@ -159,9 +159,9 @@ export function ContactEntryForm({
           ...(defaultSessionPreference ? { session_preference: defaultSessionPreference } : {}),
         } as Record<string, unknown>;
         window.localStorage.setItem(LS_KEY, JSON.stringify(merged));
-        // Jump directly to relevant step on wizard: 1.5 for phone, 2 for email
-        const nextStep = contactMethod === 'phone' ? '1.5' : '2';
-        window.localStorage.setItem(LS_STEP, nextStep);
+        // Start at step 1 (Therapieerfahrung) for consistent funnel tracking
+        // Contact info is pre-filled from localStorage, wizard will auto-advance
+        window.localStorage.removeItem(LS_STEP); // Clear any stale step override
       } catch {}
 
       // Navigate to the Fragebogen, preserving variant (?v=) if present
