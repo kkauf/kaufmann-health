@@ -6,7 +6,6 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import WhatToExpectSection from "@/components/WhatToExpectSection";
 import RevealContainer from "@/components/RevealContainer";
 import FaqAccordion from "@/components/FaqAccordion";
-import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import ExitIntentModal from "@/components/ExitIntentModal";
 import { Activity, Euro, Clock, UserCheck, MessageCircle, PhoneCall } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -459,7 +458,6 @@ export default async function WiederLebendigPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
-      <FloatingWhatsApp />
       <ExitIntentModal />
     </div>
   );

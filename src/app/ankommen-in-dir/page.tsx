@@ -4,7 +4,6 @@ import WhatToExpectSection from "@/components/WhatToExpectSection";
 import FaqAccordion from "@/components/FaqAccordion";
 import { LandingHero } from "@/features/landing/components/LandingHero";
 import { TherapistTeaserSection } from "@/features/landing/components/TherapistTeaserSection";
-import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import ExitIntentModal from "@/components/ExitIntentModal";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -314,7 +313,6 @@ export default async function AnkommenInDirPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
-      <FloatingWhatsApp />
       <ExitIntentModal />
     </div>
   );

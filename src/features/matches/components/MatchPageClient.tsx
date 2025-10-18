@@ -11,6 +11,7 @@ import { CheckCircle, Sparkles } from 'lucide-react';
 import type { TherapistData } from '@/features/therapists/components/TherapistDirectory';
 import { computeMismatches, type PatientMeta } from '@/features/leads/lib/match';
 import CtaLink from '@/components/CtaLink';
+import FloatingWhatsApp from '@/components/FloatingWhatsApp';
 
 const TherapyModalityExplanations = dynamic(() => import('@/components/TherapyModalityExplanations'), {
   ssr: true,
@@ -408,6 +409,8 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           onClose={() => setDetailModalTherapist(null)}
         />
       )}
+
+      <FloatingWhatsApp />
     </div>
   );
 }

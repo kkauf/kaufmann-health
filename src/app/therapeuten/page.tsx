@@ -3,6 +3,7 @@ import PageAnalytics from '@/components/PageAnalytics';
 import { TherapistDirectory } from '@/features/therapists/components/TherapistDirectory';
 import { TherapistMatchCallout } from '@/features/therapists/components/TherapistMatchCallout';
 import { buildLandingMetadata } from '@/lib/seo';
+import FloatingWhatsApp from '@/components/FloatingWhatsApp';
 
 export const revalidate = 3600;
 
@@ -20,21 +21,24 @@ export const metadata: Metadata = {
 
 export default function TherapeutenPage() {
   return (
-    <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
-      <PageAnalytics qualifier="Therapeuten-Directory" />
+    <>
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
+        <PageAnalytics qualifier="Therapeuten-Directory" />
 
-      <section aria-labelledby="directory-heading" className="mb-8">
-        <h1 id="directory-heading" className="text-3xl font-bold tracking-tight sm:text-4xl">
-          Unsere Therapeut:innen
-        </h1>
-        <p className="mt-2 text-lg text-gray-600">
-          Persönlich ausgewählte Spezialist:innen für körperorientierte Psychotherapie
-        </p>
-      </section>
+        <section aria-labelledby="directory-heading" className="mb-8">
+          <h1 id="directory-heading" className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Unsere Therapeut:innen
+          </h1>
+          <p className="mt-2 text-lg text-gray-600">
+            Persönlich ausgewählte Spezialist:innen für körperorientierte Psychotherapie
+          </p>
+        </section>
 
-      <TherapistMatchCallout />
+        <TherapistMatchCallout />
 
-      <TherapistDirectory />
-    </main>
+        <TherapistDirectory />
+      </main>
+      <FloatingWhatsApp />
+    </>
   );
 }

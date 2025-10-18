@@ -1,6 +1,7 @@
 import { supabaseServer } from '@/lib/supabase-server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Actions } from './Actions';
+import FloatingWhatsApp from '@/components/FloatingWhatsApp';
 
 function hoursSince(iso: string | null | undefined): number | null {
   if (!iso) return null;
@@ -155,26 +156,30 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
 
   if (!data) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-10">
-        <Card>
-          <CardHeader>
-            <CardTitle>Anfrage nicht gefunden</CardTitle>
-            <CardDescription>
-              Der Link ist ungültig oder wurde bereits verwendet.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
+      <>
+        <div className="mx-auto max-w-xl px-4 py-10">
+          <Card>
+            <CardHeader>
+              <CardTitle>Anfrage nicht gefunden</CardTitle>
+              <CardDescription>
+                Der Link ist ungültig oder wurde bereits verwendet.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+        <FloatingWhatsApp />
+      </>
     );
   }
 
   const subtitleParts = [data.city, data.issue].filter(Boolean);
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-10">
-      <Card>
-        <CardHeader>
-          <CardTitle>Neue Klientenanfrage</CardTitle>
+    <>
+      <div className="mx-auto max-w-xl px-4 py-10">
+        <Card>
+          <CardHeader>
+            <CardTitle>Neue Klientenanfrage</CardTitle>
           {subtitleParts.length ? (
             <CardDescription>{subtitleParts.join(' · ')}</CardDescription>
           ) : null}
@@ -252,6 +257,8 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
         </CardContent>
       </Card>
     </div>
+    <FloatingWhatsApp />
+    </>
   );
 }
 
