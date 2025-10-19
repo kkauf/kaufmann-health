@@ -51,13 +51,22 @@ export default function AdminStats() {
   const [data, setData] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [days, setDays] = useState(30);
+  const [days, setDays] = useState(7);
 
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/stats?days=${days}`, { credentials: 'include' });
+      // Opt-in: support funnel-only since=YYYY-MM-DD
+      let sinceParam = '';
+      try {
+        if (typeof window !== 'undefined') {
+          const sp = new URLSearchParams(window.location.search);
+          const s = sp.get('since');
+          if (s) sinceParam = `&since=${encodeURIComponent(s)}`;
+        }
+      } catch {}
+      const res = await fetch(`/api/admin/stats?days=${days}${sinceParam}` , { credentials: 'include' });
       if (!res.ok) throw new Error(`Load failed (${res.status})`);
       const json = await res.json();
       setData((json?.data || null) as StatsData | null);

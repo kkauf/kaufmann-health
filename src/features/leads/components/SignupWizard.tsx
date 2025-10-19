@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { leadSubmissionSchema } from '@/lib/contracts';
 import { PRIVACY_VERSION } from '@/lib/privacy';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
+import { getOrCreateSessionId } from '@/lib/attribution';
 
 const LS_KEYS = {
   data: 'kh_wizard_data',
@@ -68,6 +69,7 @@ export default function SignupWizard() {
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const lastSyncedRef = React.useRef<string>('');
   const sessionIdRef = React.useRef<string | null>(null);
+  const webSessionIdRef = React.useRef<string | null>(null);
   const [sessionId, setSessionId] = React.useState<string | null>(null);
   const loadedForSession = React.useRef<string | null>(null);
   const screenStartRef = React.useRef<number>(Date.now());
@@ -88,14 +90,26 @@ export default function SignupWizard() {
   const [addEmailMessage, setAddEmailMessage] = React.useState('');
   // Suppress auto-advance on screens reached via Back until user interacts
   const [suppressAutoStep, setSuppressAutoStep] = React.useState<number | null>(null);
+  const lastTrackedStepRef = React.useRef<number | null>(null);
+
+  // Ensure a stable web analytics session id exists before any events
+  React.useEffect(() => {
+    try {
+      webSessionIdRef.current = getOrCreateSessionId() || null;
+    } catch {
+      webSessionIdRef.current = null;
+    }
+  }, []);
 
   // Analytics helper
   const trackEvent = React.useCallback(async (type: string, properties?: Record<string, unknown>) => {
     try {
+      const sid = webSessionIdRef.current || getOrCreateSessionId() || undefined;
+      if (!sid) return;
       const payload = {
         type,
-        session_id: sessionIdRef.current || undefined,
-        properties: properties || {},
+        session_id: sid,
+        properties: { ...(properties || {}), form_session_id: sessionIdRef.current || undefined },
       };
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' })) ||
         (await fetch('/api/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }));
@@ -456,8 +470,10 @@ export default function SignupWizard() {
     [goToStep, navLock],
   );
 
-  // Fire screen_viewed on step changes
+  // Fire screen_viewed on step changes (de-duplicated)
   React.useEffect(() => {
+    if (lastTrackedStepRef.current === step) return;
+    lastTrackedStepRef.current = step;
     void trackEvent('screen_viewed', { step });
   }, [step, trackEvent]);
 

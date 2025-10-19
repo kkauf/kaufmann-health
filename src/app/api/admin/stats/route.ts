@@ -95,6 +95,20 @@ export async function GET(req: Request) {
     const today = startOfDayUTC(new Date());
     const sinceIso = new Date(today.getTime() - (days - 1) * 24 * 60 * 60 * 1000).toISOString();
 
+    // Optional funnel-only override (?since=YYYY-MM-DD) to filter wizard funnel data
+    const sinceParam = url.searchParams.get('since');
+    let funnelSinceIso = sinceIso;
+    if (sinceParam) {
+      try {
+        // Accept YYYY-MM-DD or ISO; clamp to not be in the future
+        const d = new Date(sinceParam);
+        if (!Number.isNaN(d.getTime())) {
+          const dUtc = startOfDayUTC(d);
+          funnelSinceIso = (dUtc > today ? today : dUtc).toISOString();
+        }
+      } catch {}
+    }
+
     // === TOTALS ===
     // Note: Queries ALL records (not filtered by time window) to show lifetime totals
     // Test filter: only exclude if metadata.is_test explicitly = 'true' (allow NULL/missing)
@@ -144,6 +158,9 @@ export async function GET(req: Request) {
       for (const row of (pvRows || []) as Array<{ created_at?: string; properties?: Record<string, unknown> }>) {
         try {
           const props = (row.properties || {}) as Record<string, unknown>;
+          // Skip local/test traffic
+          const isTest = String((props['is_test'] as unknown) ?? '').toLowerCase() === 'true';
+          if (isTest) continue;
           const sid = String((props['session_id'] as string | undefined) || '').trim();
           const path = String((props['page_path'] as string | undefined) || '').trim();
           if (!sid || !path) continue;
@@ -198,7 +215,7 @@ export async function GET(req: Request) {
         .from('events')
         .select('properties')
         .eq('type', 'screen_viewed')
-        .gte('created_at', sinceIso)
+        .gte('created_at', funnelSinceIso)
         .limit(20000);
 
       // Map: session_id -> Set of steps viewed
@@ -207,6 +224,8 @@ export async function GET(req: Request) {
       for (const row of (stepEvents || []) as Array<{ properties?: Record<string, unknown> }>) {
         try {
           const props = (row.properties || {}) as Record<string, unknown>;
+          const isTest = String((props['is_test'] as unknown) ?? '').toLowerCase() === 'true';
+          if (isTest) continue;
           const sid = String((props['session_id'] as string | undefined) || '').trim();
           const stepVal = Number(String((props['step'] as string | number | undefined) ?? ''));
           const stepNum = Number.isFinite(stepVal) ? Math.floor(stepVal) : NaN;
@@ -248,13 +267,15 @@ export async function GET(req: Request) {
         .from('events')
         .select('properties')
         .eq('type', 'page_view')
-        .gte('created_at', sinceIso)
+        .gte('created_at', funnelSinceIso)
         .limit(50000);
 
       const pvSessions = new Set<string>();
       for (const row of (pvEvents || []) as Array<{ properties?: Record<string, unknown> }>) {
         try {
           const props = (row.properties || {}) as Record<string, unknown>;
+          const isTest = String((props['is_test'] as unknown) ?? '').toLowerCase() === 'true';
+          if (isTest) continue;
           const sid = String((props['session_id'] as string | undefined) || '').trim();
           const path = String((props['page_path'] as string | undefined) || '').trim();
           if (sid && path === '/fragebogen') pvSessions.add(sid);
@@ -268,7 +289,7 @@ export async function GET(req: Request) {
         .from('events')
         .select('properties')
         .eq('type', 'form_completed')
-        .gte('created_at', sinceIso)
+        .gte('created_at', funnelSinceIso)
         .limit(20000);
 
       const completedSessions = new Set<string>();
@@ -295,10 +316,13 @@ export async function GET(req: Request) {
         Object.entries(cohortByStep).map(([k, v]) => [Number(k), v.size])
       );
 
-      // Calculate start rate: sessions that reached step 1 / page views
-      const step1Count = cohortByStep[1]?.size || 0;
-      wizardFunnel.start_rate =
-        wizardFunnel.page_views > 0 ? Math.round((step1Count / wizardFunnel.page_views) * 1000) / 10 : 0;
+      // Calculate start rate based on intersection of page_view sessions and step1 sessions
+      const step1Sessions = cohortByStep[1] || new Set<string>();
+      let startedFromPageViews = 0;
+      for (const sid of step1Sessions) {
+        if (pvSessions.has(sid)) startedFromPageViews++;
+      }
+      wizardFunnel.start_rate = pvSessions.size > 0 ? Math.round((startedFromPageViews / pvSessions.size) * 1000) / 10 : 0;
 
       // STEP 6: Calculate dropoffs between consecutive steps
       // Dropoffs are now guaranteed to be non-negative (cohorts only shrink)
@@ -361,6 +385,8 @@ export async function GET(req: Request) {
       for (const row of (dirPvRows || []) as Array<{ properties?: Record<string, unknown> }>) {
         try {
           const props = (row.properties || {}) as Record<string, unknown>;
+          const isTest = String((props['is_test'] as unknown) ?? '').toLowerCase() === 'true';
+          if (isTest) continue;
           const sid = String((props['session_id'] as string | undefined) || '').trim();
           const path = String((props['page_path'] as string | undefined) || '').trim();
           if (sid && path === '/therapeuten') dirViewSessions.add(sid);
@@ -382,6 +408,8 @@ export async function GET(req: Request) {
       for (const row of (ctaRows || []) as Array<{ properties?: Record<string, unknown> }>) {
         try {
           const props = (row.properties || {}) as Record<string, unknown>;
+          const isTest = String((props['is_test'] as unknown) ?? '').toLowerCase() === 'true';
+          if (isTest) continue;
           const sid = String((props['session_id'] as string | undefined) || '').trim();
           if (!sid) continue;
 
@@ -419,6 +447,8 @@ export async function GET(req: Request) {
       for (const row of (contactRows || []) as Array<{ type?: string; properties?: Record<string, unknown> }>) {
         try {
           const props = (row.properties || {}) as Record<string, unknown>;
+          const isTest = String((props['is_test'] as unknown) ?? '').toLowerCase() === 'true';
+          if (isTest) continue;
           const ref = String((props['referrer'] as string | undefined) || '').toLowerCase();
           const sid = String((props['session_id'] as string | undefined) || '').trim();
           if (!ref.includes('/therapeuten') || !sid) continue;
