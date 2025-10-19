@@ -1044,6 +1044,10 @@ async function main() {
           'privat psychotherapeut','privat therapeut','selbstzahler psychotherapeut'
         ];
         await addKeywords(customer, adGroupRn, extraB, cpc, dryRun || validateOnly);
+        const allTermsB = [ ...(tier.terms || []), ...extraB ];
+        const overridesB: Record<string, number> = {};
+        for (const t of allTermsB) overridesB[String(t).toLowerCase()] = cpc;
+        await ensureKeywordBids(customer, adGroupRn, overridesB, dryRun || validateOnly);
       }
       const rsasPer = c.ads?.rsas_per_adgroup ?? 2;
       await addRSAs(
