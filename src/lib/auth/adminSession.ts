@@ -54,15 +54,30 @@ export async function verifySessionToken(token: string): Promise<boolean> {
   try {
     const secret = assertEnv();
     const [expStr, sig] = token.split('.');
-    if (!expStr || !sig) return false;
+    if (!expStr || !sig) {
+      console.log('[verifySessionToken] Invalid token format');
+      return false;
+    }
     const exp = Number(expStr);
-    if (!Number.isFinite(exp)) return false;
+    if (!Number.isFinite(exp)) {
+      console.log('[verifySessionToken] Invalid expiry');
+      return false;
+    }
     const nowSec = Math.floor(Date.now() / 1000);
-    if (exp < nowSec) return false; // expired
+    if (exp < nowSec) {
+      const age = Math.floor((nowSec - exp) / 3600);
+      console.log('[verifySessionToken] Token expired', age, 'hours ago');
+      return false;
+    }
     const payload = `exp=${exp}`;
     const expected = await hmac(payload, secret);
-    return timingSafeEqual(sig, expected);
-  } catch {
+    const valid = timingSafeEqual(sig, expected);
+    if (!valid) {
+      console.log('[verifySessionToken] Signature mismatch - ADMIN_PASSWORD may have changed');
+    }
+    return valid;
+  } catch (e) {
+    console.log('[verifySessionToken] Exception:', e);
     return false;
   }
 }
