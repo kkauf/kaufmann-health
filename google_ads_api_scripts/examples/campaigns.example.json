@@ -24,7 +24,10 @@
       }
     },
     "negativeKeywords": [
-      "krankenkasse",
+      "mit krankenkasse",
+      "krankenkasse übernimmt",
+      "krankenkasse zahlt",
+      "kostenübernahme",
       "kassenleistung",
       "psychotherapie ausbildung",
       "studium",
@@ -63,7 +66,7 @@
         ]
       }
     },
-    "negativeKeywords": ["krankenkasse", "kassenleistung", "jobs", "ausbildung"],
+    "negativeKeywords": ["mit krankenkasse", "krankenkasse übernimmt", "krankenkasse zahlt", "kostenübernahme", "kassenleistung", "jobs", "ausbildung"],
     "ads": {
       "final_url_params": { "v": "C" },
       "headlines": [

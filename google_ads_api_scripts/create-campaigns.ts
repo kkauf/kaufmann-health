@@ -34,6 +34,68 @@ if (fs.existsSync(envLocalPath)) {
   dotenv.config();
 }
 
+async function ensureAdGroupBid(customer: any, adGroupRn: string, desiredCpcMicros: number, dryRun: boolean) {
+  try {
+    const rows: any[] = await customer.query(`
+      SELECT ad_group.resource_name, ad_group.cpc_bid_micros
+      FROM ad_group
+      WHERE ad_group.resource_name = '${adGroupRn}'
+      LIMIT 1
+    `);
+    const current = rows?.[0]?.ad_group?.cpc_bid_micros || rows?.[0]?.adGroup?.cpcBidMicros;
+    if (typeof current === 'number' && current === desiredCpcMicros) return;
+  } catch {}
+  if (dryRun) {
+    console.log(`    [DRY] Would set ad group CPC to €${(desiredCpcMicros/1_000_000).toFixed(2)}`);
+    return;
+  }
+  try {
+    await customer.adGroups.update([
+      { resource_name: adGroupRn, cpc_bid_micros: desiredCpcMicros }
+    ], { partial_failure: true });
+    console.log(`    ✓ Ad group CPC updated to €${(desiredCpcMicros/1_000_000).toFixed(2)}`);
+  } catch (e) {
+    console.log('    • Skipped CPC update (may be unchanged or restricted)');
+  }
+}
+
+async function ensureKeywordBids(
+  customer: any,
+  adGroupRn: string,
+  overrides: Record<string, number>,
+  dryRun: boolean
+) {
+  if (!overrides || Object.keys(overrides).length === 0) return;
+  const rows: any[] = await customer.query(`
+    SELECT ad_group_criterion.resource_name, ad_group_criterion.keyword.text, ad_group_criterion.cpc_bid_micros
+    FROM ad_group_criterion
+    WHERE ad_group_criterion.ad_group = '${adGroupRn}' AND ad_group_criterion.type = 'KEYWORD'
+  `);
+  const updates: any[] = [];
+  for (const r of rows) {
+    const agc = (r as any).ad_group_criterion || (r as any).adGroupCriterion;
+    const rn = agc?.resource_name || agc?.resourceName;
+    const text = (agc?.keyword?.text || '').toString().toLowerCase().trim();
+    if (!rn || !text) continue;
+    const desired = overrides[text];
+    if (typeof desired === 'number') {
+      const current = agc?.cpc_bid_micros || agc?.cpcBidMicros;
+      if (current !== desired) updates.push({ resource_name: rn, cpc_bid_micros: desired });
+    }
+  }
+  if (updates.length === 0) return;
+  if (dryRun) {
+    console.log(`    [DRY] Would update ${updates.length} keyword bids in ad group`);
+    return;
+  }
+  try {
+    await customer.adGroupCriteria.update(updates, { partial_failure: true });
+    console.log(`    ✓ Updated keyword bids: ${updates.length}`);
+  } catch (e) {
+    console.log('    • Skipped keyword bid updates (may be restricted)');
+  }
+}
+
 function loadPrivateAdTemplates(): Record<string, { headlines?: string[]; descriptions?: string[]; path1?: string; path2?: string }> | undefined {
   const candidates = ['ad-templates.local.json', 'ad-templates.json'];
   for (const fname of candidates) {
@@ -910,6 +972,25 @@ async function main() {
       if (t.path2 && !c.ads?.path2) (c as any).ads.path2 = t.path2;
     }
 
+    const boostA = [
+      'Körperpsychotherapie Berlin',
+      'Traumatherapie Berlin',
+      'Körperorientierte Psychotherapie',
+      'Somatic Experiencing Berlin'
+    ];
+    const boostB = [
+      'Therapie ohne Wartezeit Berlin',
+      'Therapieplatz sofort verfügbar'
+    ];
+    if (c.name.includes('Positioning_Test_A')) {
+      const merged = [ ...(c.headlines || []), ...boostA ];
+      (c as any).headlines = Array.from(new Set(merged));
+    }
+    if (c.name.includes('Positioning_Test_B')) {
+      const merged = [ ...(c.headlines || []), ...boostB ];
+      (c as any).headlines = Array.from(new Set(merged));
+    }
+
     await ensureLanguageGerman(customer, campaignRn as string, dryRun || validateOnly);
     await ensureProximityBerlin50km(customer, campaignRn as string, dryRun || validateOnly);
     const DEFAULT_NEGATIVES = [
@@ -948,10 +1029,13 @@ async function main() {
       allowedNames.add(agName);
       const cpc = eurosToMicros(tier.maxCpc || 2.0);
       const adGroupRn = await ensureAdGroup(customer, campaignRn as string, agName, cpc, dryRun || validateOnly);
+      if (process.env.ENFORCE_ADGROUP_BIDS === 'true') {
+        await ensureAdGroupBid(customer, adGroupRn, cpc, dryRun || validateOnly);
+      }
       await addKeywords(customer, adGroupRn, tier.terms || [], cpc, dryRun || validateOnly);
       // Extra high-intent expansions per variant
       if (isA && tierName === 'bodyTherapy') {
-        const extraA = ['narm therapie','somatic experiencing','hakomi therapie','körperpsychotherapie'];
+        const extraA = ['narm therapie','somatic experiencing','hakomi therapie','core energetics','körperpsychotherapie','körperpsychotherapie berlin'];
         await addKeywords(customer, adGroupRn, extraA, cpc, dryRun || validateOnly);
       }
       if (!isA && tierName === 'selfPay') {
@@ -1012,6 +1096,10 @@ async function main() {
             'Passende Therapeut:innen zeitnah finden.'
           ];
       await ensureAtLeastOneRSA(customer, adGroupRn, c.landing_page, c.ads?.final_url_params, fallbackH, fallbackD, dryRun || validateOnly);
+      if (isA) {
+        const kwOverrides: Record<string, number> = { 'körperpsychotherapie': eurosToMicros(5.0) };
+        await ensureKeywordBids(customer, adGroupRn, kwOverrides, dryRun || validateOnly);
+      }
     }
     await pauseOtherAdGroups(customer, campaignRn as string, allowedNames, dryRun || validateOnly);
     await updateCampaignPresenceAndEcpc(customer, campaignRn as string, dryRun || validateOnly);
