@@ -26,8 +26,10 @@ export async function middleware(req: NextRequest) {
   }
 
   const token = req.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+  
   if (!token) {
-    console.log('[middleware] No admin cookie found for', pathname);
+    const allCookies = req.cookies.getAll?.().map(c => c.name) || [];
+    console.log('[middleware]', pathname, '- No kh_admin cookie. All cookies:', allCookies);
     const url = req.nextUrl.clone();
     url.pathname = '/admin/login';
     url.searchParams.set('next', pathname);
@@ -36,7 +38,9 @@ export async function middleware(req: NextRequest) {
   
   const valid = await verifySessionToken(token);
   if (!valid) {
-    console.log('[middleware] Token validation failed for', pathname, 'token:', token.substring(0, 20) + '...');
+    const tokenExp = parseInt(token.split('.')[0]);
+    const isExpired = !isNaN(tokenExp) && tokenExp < Math.floor(Date.now() / 1000);
+    console.log('[middleware]', pathname, '- Token INVALID. Expired?', isExpired);
     const url = req.nextUrl.clone();
     url.pathname = '/admin/login';
     url.searchParams.set('next', pathname);

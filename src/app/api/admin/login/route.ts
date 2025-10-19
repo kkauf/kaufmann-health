@@ -51,24 +51,36 @@ export async function POST(req: Request) {
 
     const exp = Math.floor(Date.now() / 1000) + ADMIN_SESSION_MAX_AGE_SEC;
     const token = await createSessionToken(exp);
+    
+    console.log('[admin login] Created token with expiry:', new Date(exp * 1000).toISOString());
 
     const res = NextResponse.json({ data: { ok: true, redirect: next }, error: null }, { status: 200 });
     
-    // Set cookies manually via Set-Cookie header to ensure Expires is properly serialized
-    const secureAttr = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-    const sameSiteAttr = '; SameSite=Lax';
-    const expiresStr = new Date(Date.now() + ADMIN_SESSION_MAX_AGE_SEC * 1000).toUTCString();
+    // Set cookies with standard attribute order: name=value; Domain; Path; Expires; Max-Age; Secure; HttpOnly; SameSite
+    // Chrome requires this order for proper persistence
+    const isProduction = process.env.NODE_ENV === 'production';
+    const domain = isProduction ? 'kaufmann-health.de' : undefined;
+    const expiresDate = new Date(Date.now() + ADMIN_SESSION_MAX_AGE_SEC * 1000);
+    const expiresStr = expiresDate.toUTCString();
+    
+    const buildCookie = (path: string) => {
+      const parts = [
+        `${ADMIN_SESSION_COOKIE}=${encodeURIComponent(token)}`,
+        ...(domain ? [`Domain=${domain}`] : []),
+        `Path=${path}`,
+        `Expires=${expiresStr}`,
+        `Max-Age=${ADMIN_SESSION_MAX_AGE_SEC}`,
+        ...(isProduction ? ['Secure'] : []),
+        'HttpOnly',
+        'SameSite=Lax',
+      ];
+      return parts.join('; ');
+    };
     
     // Cookie for /admin pages
-    res.headers.append(
-      'Set-Cookie',
-      `${ADMIN_SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/admin; HttpOnly${sameSiteAttr}${secureAttr}; Max-Age=${ADMIN_SESSION_MAX_AGE_SEC}; Expires=${expiresStr}`,
-    );
+    res.headers.append('Set-Cookie', buildCookie('/admin'));
     // Cookie for /api/admin endpoints (client-side fetches)
-    res.headers.append(
-      'Set-Cookie',
-      `${ADMIN_SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/api/admin; HttpOnly${sameSiteAttr}${secureAttr}; Max-Age=${ADMIN_SESSION_MAX_AGE_SEC}; Expires=${expiresStr}`,
-    );
+    res.headers.append('Set-Cookie', buildCookie('/api/admin'));
     await track({ type: 'admin_login_success', props: { }, ua, ip, source: 'api.admin.login' });
     return res;
   } catch (err) {
