@@ -53,25 +53,22 @@ export async function POST(req: Request) {
     const token = await createSessionToken(exp);
 
     const res = NextResponse.json({ data: { ok: true, redirect: next }, error: null }, { status: 200 });
-    res.cookies.set(ADMIN_SESSION_COOKIE, token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/admin',
-      maxAge: ADMIN_SESSION_MAX_AGE_SEC, // seconds
-      expires: new Date(Date.now() + ADMIN_SESSION_MAX_AGE_SEC * 1000),
-    });
-    // Also scope a copy to /api/admin so client-side requests to admin APIs include the cookie
-    // This keeps the public site cookie-free while allowing admin UI fetches to authenticate.
-    {
-      const secureAttr = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-      const sameSiteAttr = '; SameSite=Lax';
-      const expiresStr = new Date(Date.now() + ADMIN_SESSION_MAX_AGE_SEC * 1000).toUTCString();
-      res.headers.append(
-        'Set-Cookie',
-        `${ADMIN_SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/api/admin; HttpOnly${sameSiteAttr}${secureAttr}; Max-Age=${ADMIN_SESSION_MAX_AGE_SEC}; Expires=${expiresStr}`,
-      );
-    }
+    
+    // Set cookies manually via Set-Cookie header to ensure Expires is properly serialized
+    const secureAttr = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    const sameSiteAttr = '; SameSite=Lax';
+    const expiresStr = new Date(Date.now() + ADMIN_SESSION_MAX_AGE_SEC * 1000).toUTCString();
+    
+    // Cookie for /admin pages
+    res.headers.append(
+      'Set-Cookie',
+      `${ADMIN_SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/admin; HttpOnly${sameSiteAttr}${secureAttr}; Max-Age=${ADMIN_SESSION_MAX_AGE_SEC}; Expires=${expiresStr}`,
+    );
+    // Cookie for /api/admin endpoints (client-side fetches)
+    res.headers.append(
+      'Set-Cookie',
+      `${ADMIN_SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/api/admin; HttpOnly${sameSiteAttr}${secureAttr}; Max-Age=${ADMIN_SESSION_MAX_AGE_SEC}; Expires=${expiresStr}`,
+    );
     await track({ type: 'admin_login_success', props: { }, ua, ip, source: 'api.admin.login' });
     return res;
   } catch (err) {
