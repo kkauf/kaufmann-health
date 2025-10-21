@@ -334,6 +334,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       const endpoint = isPreAuth
         ? `/api/public/matches/${encodeURIComponent(preAuth!.uuid)}/contact`
         : '/api/public/contact';
+      const attrsForConv = getAttribution();
       const payload = isPreAuth
         ? {
             therapist_id: therapist.id,
@@ -352,6 +353,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             patient_reason: reason,
             patient_message: message,
             session_format: sessionFormat || undefined,
+            session_id: attrsForConv.session_id,
           };
       const res = await fetch(endpoint, {
         method: 'POST',

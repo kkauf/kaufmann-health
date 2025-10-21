@@ -30,6 +30,7 @@ interface ContactRequestBody {
   patient_reason: string;
   patient_message?: string;
   session_format?: 'online' | 'in_person';
+  session_id?: string;
 }
 
 /**
@@ -323,7 +324,7 @@ export async function POST(req: Request) {
     if (matchError || !match) {
       throw new Error(`Failed to create match: ${matchError?.message}`);
     }
-    
+
     void track({
       type: 'contact_match_created',
       source: 'api.public.contact',
@@ -333,8 +334,31 @@ export async function POST(req: Request) {
         patient_id: patientId,
         contact_type,
         is_new_patient: isNewPatient,
+        session_id: body.session_id,
       },
     });
+
+    // Log a dedicated conversion event for directory contact, including session attribution
+    try {
+      let conversion_path: string | undefined;
+      try {
+        const ref = req.headers.get('referer') || '';
+        if (ref) conversion_path = new URL(ref).pathname;
+      } catch {}
+      void track({
+        type: 'directory_contact_conversion',
+        source: 'api.public.contact',
+        props: {
+          match_id: match.id,
+          therapist_id: therapist.id,
+          patient_id: patientId,
+          contact_type,
+          contact_method,
+          session_id: body.session_id,
+          conversion_path: conversion_path || '/therapeuten',
+        },
+      });
+    } catch {}
     
     // Send notification email to therapist (EARTH-205: include message and contact type)
     try {
