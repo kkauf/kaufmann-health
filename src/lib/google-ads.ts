@@ -227,9 +227,9 @@ export class GoogleAdsTracker {
     try {
       if (!this.validateConversionData(data)) return;
 
-      const ids: UserIdentifier = {};
-      if (data.email) ids.hashed_email = this.hashEmail(data.email);
-      if (data.phoneNumber) ids.hashed_phone_number = this.hashPhone(data.phoneNumber);
+      const identifiers: UserIdentifier[] = [];
+      if (data.email) identifiers.push({ hashed_email: this.hashEmail(data.email) });
+      if (data.phoneNumber) identifiers.push({ hashed_phone_number: this.hashPhone(data.phoneNumber) });
 
       const enhanced: EnhancedConversion = {
         conversion_action: data.conversionAction,
@@ -237,7 +237,7 @@ export class GoogleAdsTracker {
         conversion_value: data.conversionValue,
         currency: data.currency || 'EUR',
         order_id: data.orderId,
-        user_identifiers: [ids],
+        user_identifiers: identifiers,
       };
 
       await this.uploadEnhancedConversions([enhanced]);
