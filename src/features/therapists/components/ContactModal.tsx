@@ -12,6 +12,7 @@ import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { validatePhone } from '@/lib/verification/usePhoneValidation';
 import ConsentSection from '@/components/ConsentSection';
+import { getAttribution } from '@/lib/attribution';
 
 type ContactType = 'booking' | 'consultation';
 
@@ -133,7 +134,9 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   useEffect(() => {
     if (open) {
       try {
-        const payload = { type: 'contact_modal_opened', properties: { therapist_id: therapist.id, contact_type: contactType } };
+        const attrs = getAttribution();
+        const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
+        const payload = { type: 'contact_modal_opened', ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id, contact_type: contactType } };
         navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
       } catch {}
     }
@@ -142,13 +145,18 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   // Track events
   const trackEvent = useCallback((type: string, props?: Record<string, unknown>) => {
     try {
-      const payload = { type, properties: { therapist_id: therapist.id, contact_type: contactType, ...props } };
+      const attrs = getAttribution();
+      const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
+      const payload = { type, ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id, contact_type: contactType, ...props } };
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
     } catch {}
   }, [therapist.id, contactType]);
   
   // Reset modal state
   const handleClose = useCallback(() => {
+    try {
+      trackEvent('contact_modal_closed', { step });
+    } catch {}
     setStep('verify');
     setError(null);
     setName('');
@@ -188,6 +196,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       contact = validation.normalized;
     }
     
+    try { trackEvent('contact_verification_started', { contact_method: contactMethod }); } catch {}
     setLoading(true);
     
     try {

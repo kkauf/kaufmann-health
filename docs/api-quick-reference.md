@@ -49,7 +49,7 @@ This is a concise, high-signal overview. It complements the detailed `docs/api.m
 - Matching
   - `POST /api/admin/matches` → create 1–3 proposed matches; emails enqueued; logs business opportunities on mismatch
   - `POST /api/admin/matches/email` → patient-facing emails (match found/custom)
-  - Selection reminders (cron): `GET /api/admin/matches/selection-reminders?stage=24h|48h|72h`
+  - Selection reminders (cron): `GET /api/admin/matches/selection-reminders?stage=day5|day14`
   - Therapist action reminders (cron): `GET /api/admin/matches/therapist-action-reminders?stage=20h`
 - Stats & Errors
   - `GET /api/admin/stats` → totals + 7-day trends + campaign stats

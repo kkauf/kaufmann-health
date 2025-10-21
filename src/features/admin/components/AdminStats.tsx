@@ -34,6 +34,19 @@ type StatsData = {
     navClicks: number;
     contactOpened: number;
     contactSent: number;
+    profileViewsSessions?: number;
+    profileViewsTotal?: number;
+    profilesPerSessionAvg?: number;
+    ctaBookingSessions?: number;
+    ctaConsultSessions?: number;
+    verifyStartedPhoneSessions?: number;
+    verifyStartedEmailSessions?: number;
+    verifyCompletedPhoneSessions?: number;
+    verifyCompletedEmailSessions?: number;
+    openToVerifyRate?: number;
+    verifyToSendRate?: number;
+    openToSendRate?: number;
+    closeByStep?: Array<{ step: string; count: number }>;
   };
   journeyAnalysis: {
     fragebogen_only: number;
@@ -576,6 +589,84 @@ export default function AdminStats() {
                   </span>
                 </div>
               </div>
+
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground">Profile Sessions</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.directory.profileViewsSessions ?? 0}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Profile Views</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.directory.profileViewsTotal ?? 0}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Profiles/Session</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.directory.profilesPerSessionAvg ?? 0}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Booking CTAs</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.directory.ctaBookingSessions ?? 0}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Erstgespräch CTAs</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.directory.ctaConsultSessions ?? 0}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Verify Started (Phone)</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.directory.verifyStartedPhoneSessions ?? 0}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Verify Started (Email)</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.directory.verifyStartedEmailSessions ?? 0}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Verify Completed (Phone)</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.directory.verifyCompletedPhoneSessions ?? 0}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Verify Completed (Email)</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.directory.verifyCompletedEmailSessions ?? 0}</div>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground">Open → Verify</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.directory.openToVerifyRate ?? 0}%</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Verify → Send</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.directory.verifyToSendRate ?? 0}%</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Open → Send</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.directory.openToSendRate ?? 0}%</div>
+                </div>
+              </div>
+
+              {data.directory.closeByStep && data.directory.closeByStep.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-2">Abbruch nach Schritt</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-muted-foreground">
+                          <th className="py-1 pr-3">Schritt</th>
+                          <th className="py-1 pr-3 text-right">Anzahl</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.directory.closeByStep.map((r: { step: string; count: number }) => (
+                          <tr key={r.step} className="border-t">
+                            <td className="py-1 pr-3 font-mono text-xs">{r.step}</td>
+                            <td className="py-1 pr-3 text-right tabular-nums">{r.count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

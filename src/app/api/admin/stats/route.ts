@@ -51,6 +51,8 @@ type StatsResponse = {
     steps: Record<number, number>; // step number => unique sessions
     form_completed: number;
     start_rate: number;
+    sms_verification_views?: number; // step 8.5 unique sessions
+    form_completed_lenient?: number; // cross-session tolerant completion count
   };
   wizardDropoffs: Array<{
     step: number;
@@ -66,6 +68,19 @@ type StatsResponse = {
     navClicks: number;
     contactOpened: number;
     contactSent: number;
+    profileViewsSessions?: number;
+    profileViewsTotal?: number;
+    profilesPerSessionAvg?: number;
+    ctaBookingSessions?: number;
+    ctaConsultSessions?: number;
+    verifyStartedPhoneSessions?: number;
+    verifyStartedEmailSessions?: number;
+    verifyCompletedPhoneSessions?: number;
+    verifyCompletedEmailSessions?: number;
+    openToVerifyRate?: number;
+    verifyToSendRate?: number;
+    openToSendRate?: number;
+    closeByStep?: Array<{ step: string; count: number }>;
   };
   journeyAnalysis: {
     fragebogen_only: number;
@@ -205,6 +220,8 @@ export async function GET(req: Request) {
       steps: {},
       form_completed: 0,
       start_rate: 0,
+      sms_verification_views: 0,
+      form_completed_lenient: 0,
     };
     const wizardDropoffs: StatsResponse['wizardDropoffs'] = [];
     let abandonFieldsTop: StatsResponse['abandonFieldsTop'] = [];
@@ -220,6 +237,8 @@ export async function GET(req: Request) {
 
       // Map: session_id -> Set of steps viewed
       const sessionStepMap = new Map<string, Set<number>>();
+      // Track 8.5 (SMS verification) separately
+      const step85Sessions = new Set<string>();
 
       for (const row of (stepEvents || []) as Array<{ properties?: Record<string, unknown> }>) {
         try {
@@ -227,8 +246,16 @@ export async function GET(req: Request) {
           const isTest = String((props['is_test'] as unknown) ?? '').toLowerCase() === 'true';
           if (isTest) continue;
           const sid = String((props['session_id'] as string | undefined) || '').trim();
-          const stepVal = Number(String((props['step'] as string | number | undefined) ?? ''));
+          const stepRaw = (props['step'] as unknown);
+          const stepVal = Number(String(stepRaw ?? ''));
           const stepNum = Number.isFinite(stepVal) ? Math.floor(stepVal) : NaN;
+
+          if (sid) {
+            // Capture 8.5 views
+            if (Number.isFinite(stepVal) && stepVal >= 8.5 && stepVal < 9) {
+              step85Sessions.add(sid);
+            }
+          }
 
           if (sid && stepNum >= 1 && stepNum <= 9) {
             if (!sessionStepMap.has(sid)) {
@@ -293,11 +320,15 @@ export async function GET(req: Request) {
         .limit(20000);
 
       const completedSessions = new Set<string>();
+      const completionKeys = new Set<string>(); // lenient unique keys: fs:<id> or sid:<id>
       for (const row of (completedEvents || []) as Array<{ properties?: Record<string, unknown> }>) {
         try {
           const props = (row.properties || {}) as Record<string, unknown>;
           const sid = String((props['session_id'] as string | undefined) || '').trim();
+          const fsid = String((props['form_session_id'] as string | undefined) || '').trim();
           if (sid) completedSessions.add(sid);
+          if (fsid) completionKeys.add(`fs:${fsid}`);
+          else if (sid) completionKeys.add(`sid:${sid}`);
         } catch {}
       }
 
@@ -310,6 +341,8 @@ export async function GET(req: Request) {
         }
       }
       wizardFunnel.form_completed = validCompletions;
+      wizardFunnel.sms_verification_views = step85Sessions.size;
+      wizardFunnel.form_completed_lenient = completionKeys.size;
 
       // STEP 5: Build funnel metrics
       wizardFunnel.steps = Object.fromEntries(
@@ -337,17 +370,50 @@ export async function GET(req: Request) {
       // STEP 7: Top abandoned fields (unchanged - this is independent)
       const { data: abandonRows } = await supabaseServer
         .from('events')
-        .select('properties')
+        .select('created_at, properties')
         .eq('type', 'field_abandonment')
         .gte('created_at', sinceIso)
         .limit(20000);
 
+      // Build a map of verification_code_verified per session to filter transitional phone_verified abandons
+      const { data: verifyRows } = await supabaseServer
+        .from('events')
+        .select('created_at, properties')
+        .eq('type', 'verification_code_verified')
+        .gte('created_at', sinceIso)
+        .limit(20000);
+
+      const verifiedBySession = new Map<string, string[]>();
+      for (const row of (verifyRows || []) as Array<{ created_at?: string; properties?: Record<string, unknown> }>) {
+        try {
+          const props = (row.properties || {}) as Record<string, unknown>;
+          const ct = String((props['contact_type'] as string | undefined) || '').toLowerCase();
+          if (ct !== 'phone') continue;
+          const sid = String((props['session_id'] as string | undefined) || '').trim();
+          const ts = String(row.created_at || '');
+          if (!sid || !ts) continue;
+          if (!verifiedBySession.has(sid)) verifiedBySession.set(sid, []);
+          verifiedBySession.get(sid)!.push(ts);
+        } catch {}
+      }
+
       const fieldCounts = new Map<string, number>();
-      for (const row of (abandonRows || []) as Array<{ properties?: Record<string, unknown> }>) {
+      for (const row of (abandonRows || []) as Array<{ created_at?: string; properties?: Record<string, unknown> }>) {
         try {
           const props = (row.properties || {}) as Record<string, unknown>;
           const fields = Array.isArray((props['fields'] as unknown)) ? ((props['fields'] as unknown[]) as string[]) : [];
-          for (const f of fields) {
+          // Filter transitional 'phone_verified' abandons when same session verified code around the same time (±2h)
+          const sid = String((props['session_id'] as string | undefined) || '').trim();
+          const at = row.created_at ? Date.parse(String(row.created_at)) : NaN;
+          let fieldsToCount = fields;
+          if (sid && fields.includes('phone_verified') && !Number.isNaN(at)) {
+            const verTs = (verifiedBySession.get(sid) || []).map((s) => Date.parse(s)).filter((n) => !Number.isNaN(n));
+            const hasNearbyVerify = verTs.some((t) => Math.abs(t - at) <= 2 * 60 * 60 * 1000);
+            if (hasNearbyVerify) {
+              fieldsToCount = fields.filter((f) => f !== 'phone_verified');
+            }
+          }
+          for (const f of fieldsToCount) {
             const key = String(f || '').trim();
             if (!key) continue;
             fieldCounts.set(key, (fieldCounts.get(key) || 0) + 1);
@@ -433,34 +499,98 @@ export async function GET(req: Request) {
       directory.helpClicks = helpSessions.size;
       directory.navClicks = navSessions.size;
 
-      // Contact engagement: modal opened and message sent on /therapeuten
-      const { data: contactRows } = await supabaseServer
+      // Engagement events on /therapeuten: contact, profile, cta, verification
+      const { data: engagementRows } = await supabaseServer
         .from('events')
         .select('type, properties')
-        .in('type', ['contact_modal_opened', 'contact_message_sent'])
+        .in('type', [
+          'contact_modal_opened',
+          'contact_message_sent',
+          'profile_modal_opened',
+          'contact_cta_clicked',
+          'contact_verification_started',
+          'contact_verification_completed',
+          'contact_modal_closed',
+        ])
         .gte('created_at', sinceIso)
-        .limit(20000);
+        .limit(50000);
 
       const openedSessions = new Set<string>();
       const sentSessions = new Set<string>();
+      const profileViewSessions = new Set<string>();
+      let profileViewTotal = 0;
+      const ctaBookingSessions = new Set<string>();
+      const ctaConsultSessions = new Set<string>();
+      const verifyStartedPhone = new Set<string>();
+      const verifyStartedEmail = new Set<string>();
+      const verifyCompletedPhone = new Set<string>();
+      const verifyCompletedEmail = new Set<string>();
 
-      for (const row of (contactRows || []) as Array<{ type?: string; properties?: Record<string, unknown> }>) {
+      const closeByStepMap = new Map<string, number>();
+      for (const row of (engagementRows || []) as Array<{ type?: string; properties?: Record<string, unknown> }>) {
         try {
           const props = (row.properties || {}) as Record<string, unknown>;
           const isTest = String((props['is_test'] as unknown) ?? '').toLowerCase() === 'true';
           if (isTest) continue;
-          const ref = String((props['referrer'] as string | undefined) || '').toLowerCase();
           const sid = String((props['session_id'] as string | undefined) || '').trim();
-          if (!ref.includes('/therapeuten') || !sid) continue;
+          if (!sid) continue;
+          const pagePath = String((props['page_path'] as string | undefined) || '').toLowerCase();
+          const ref = String((props['referrer'] as string | undefined) || '').toLowerCase();
+          const onDirectory = pagePath === '/therapeuten' || ref.includes('/therapeuten');
+          if (!onDirectory) continue;
 
           const t = String(row.type || '').toLowerCase();
-          if (t === 'contact_modal_opened') openedSessions.add(sid);
-          if (t === 'contact_message_sent') sentSessions.add(sid);
+          if (t === 'contact_modal_opened') {
+            openedSessions.add(sid);
+          } else if (t === 'contact_message_sent') {
+            sentSessions.add(sid);
+          } else if (t === 'profile_modal_opened') {
+            profileViewSessions.add(sid);
+            profileViewTotal++;
+          } else if (t === 'contact_cta_clicked') {
+            const ct = String((props['contact_type'] as string | undefined) || '').toLowerCase();
+            if (ct === 'booking') ctaBookingSessions.add(sid);
+            else if (ct === 'consultation') ctaConsultSessions.add(sid);
+          } else if (t === 'contact_verification_started') {
+            const m = String((props['contact_method'] as string | undefined) || '').toLowerCase();
+            if (m === 'phone') verifyStartedPhone.add(sid);
+            else if (m === 'email') verifyStartedEmail.add(sid);
+          } else if (t === 'contact_verification_completed') {
+            const m = String((props['contact_method'] as string | undefined) || '').toLowerCase();
+            if (m === 'phone') verifyCompletedPhone.add(sid);
+            else if (m === 'email') verifyCompletedEmail.add(sid);
+          } else if (t === 'contact_modal_closed') {
+            const step = String((props['step'] as string | undefined) || 'unknown').toLowerCase();
+            const key = step || 'unknown';
+            closeByStepMap.set(key, (closeByStepMap.get(key) || 0) + 1);
+          }
         } catch {}
       }
 
       directory.contactOpened = openedSessions.size;
       directory.contactSent = sentSessions.size;
+      directory.profileViewsSessions = profileViewSessions.size;
+      directory.profileViewsTotal = profileViewTotal;
+      directory.profilesPerSessionAvg = profileViewSessions.size > 0 ? Math.round((profileViewTotal / profileViewSessions.size) * 10) / 10 : 0;
+      directory.ctaBookingSessions = ctaBookingSessions.size;
+      directory.ctaConsultSessions = ctaConsultSessions.size;
+      directory.verifyStartedPhoneSessions = verifyStartedPhone.size;
+      directory.verifyStartedEmailSessions = verifyStartedEmail.size;
+      directory.verifyCompletedPhoneSessions = verifyCompletedPhone.size;
+      directory.verifyCompletedEmailSessions = verifyCompletedEmail.size;
+      directory.closeByStep = Array.from(closeByStepMap.entries())
+        .map(([step, count]) => ({ step, count }))
+        .sort((a, b) => b.count - a.count);
+
+      // Derived rates
+      const verifiedSessions = new Set<string>([...verifyCompletedPhone, ...verifyCompletedEmail]);
+      const openedAndVerified = new Set<string>([...verifiedSessions].filter((s) => openedSessions.has(s)));
+      const verifiedAndSent = new Set<string>([...sentSessions].filter((s) => verifiedSessions.has(s)));
+      const openedAndSent = new Set<string>([...sentSessions].filter((s) => openedSessions.has(s)));
+
+      directory.openToVerifyRate = openedSessions.size > 0 ? Math.round((openedAndVerified.size / openedSessions.size) * 1000) / 10 : 0;
+      directory.verifyToSendRate = verifiedSessions.size > 0 ? Math.round((verifiedAndSent.size / verifiedSessions.size) * 1000) / 10 : 0;
+      directory.openToSendRate = openedSessions.size > 0 ? Math.round((openedAndSent.size / openedSessions.size) * 1000) / 10 : 0;
     } catch (e) {
       await logError('admin.api.stats', e, { stage: 'directory' });
     }

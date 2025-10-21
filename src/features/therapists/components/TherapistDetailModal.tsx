@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MapPin, Video, User, Calendar, MessageCircle, Globe } from 'lucide-react';
 import type { TherapistData } from './TherapistDirectory';
 import { ContactModal } from './ContactModal';
+import { getAttribution } from '@/lib/attribution';
 
 interface TherapistDetailModalProps {
   therapist: TherapistData;
@@ -66,9 +67,26 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
   const yearsExperience = profile?.years_experience;
   
   const handleContactClick = (type: 'booking' | 'consultation') => {
+    try {
+      const attrs = getAttribution();
+      const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
+      const payload = { type: 'contact_cta_clicked', ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id, contact_type: type } };
+      navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+    } catch {}
     setContactType(type);
     setContactModalOpen(true);
   };
+
+  useEffect(() => {
+    if (open) {
+      try {
+        const attrs = getAttribution();
+        const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
+        const payload = { type: 'profile_modal_opened', ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id } };
+        navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+      } catch {}
+    }
+  }, [open, therapist.id]);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

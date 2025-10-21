@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MapPin, Video, Calendar, MessageCircle, User } from 'lucide-react';
 import type { TherapistData } from './TherapistDirectory';
 import { ContactModal } from './ContactModal';
+import { getAttribution } from '@/lib/attribution';
 
 interface TherapistCardProps {
   therapist: TherapistData;
@@ -76,6 +77,12 @@ export function TherapistCard({
   const offersInPerson = normalizedPrefs.has('in_person') || normalizedPrefs.has('inperson') || hasEither;
 
   const handleContactClick = (type: 'booking' | 'consultation') => {
+    try {
+      const attrs = getAttribution();
+      const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
+      const payload = { type: 'contact_cta_clicked', ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id, contact_type: type } };
+      navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+    } catch {}
     if (customContactHandler) {
       customContactHandler(type);
     } else {
@@ -205,7 +212,15 @@ export function TherapistCard({
             size="lg"
             variant="outline"
             className="w-full"
-            onClick={onViewDetails}
+            onClick={() => {
+              try {
+                const attrs = getAttribution();
+                const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
+                const payload = { type: 'profile_cta_clicked', ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id } };
+                navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+              } catch {}
+              onViewDetails();
+            }}
           >
             Profil ansehen
           </Button>

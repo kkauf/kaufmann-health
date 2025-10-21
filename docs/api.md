@@ -687,18 +687,18 @@ __UI Consistency__: Email templates reuse a small, inline-styled therapist previ
 
 ### GET /api/admin/matches/selection-reminders
 
-- Purpose: Vercel Cron-driven follow-up sequence if no selection was made yet.
+- Purpose: Gentle follow-up sequence if no action has been taken yet after the initial selection email.
 - Auth: Admin cookie or Cron secret (`x-cron-secret` / `Authorization: Bearer`), or Vercel platform header `x-vercel-cron`, or `?token=<CRON_SECRET>`.
 - Query Params:
-  - `stage`: `24h` | `48h` | `72h`
+  - `stage`: `day5` | `day14`
 - Behavior:
-  - Aggregates recent `status='proposed'` matches by patient.
+  - Aggregates recent `status='proposed'` matches by patient within the time window for the stage (5–6 days, 14–15 days).
   - Skips patients who already have any `status='patient_selected'` match.
-  - For `24h` and `48h`, sends the selection email again (48h version uses a stronger urgency banner).
-  - For `72h`, marks analytics event `patient_unresponsive` (no status change) and skips emailing.
-  - De-duplicates per stage: before sending, checks `public.events` for an `email_sent` with `kind='patient_selection_reminder'` and matching `stage` and `patient_id` within the stage window. Prevents accidental double-sends on manual/cron re-runs.
+  - Skips when any match for the patient has `metadata.patient_initiated=true` (client already contacted from `/matches`).
+  - Sends a supportive reminder with an invitation to reply directly for help; no urgency language.
+  - De-duplicates per stage and globally within 24h: checks `public.events` for `email_sent`/`sms_sent` with `kind='patient_selection_reminder'` to avoid duplicate sends on retries and to ensure we never send two reminders on the same day.
 - Responses:
-  - 200: `{ data: { processed, sent, marked, skipped_already_selected, skipped_missing_email, skipped_no_secure_uuid, skipped_duplicate_stage }, error: null }`
+  - 200: `{ data: { processed, sent, marked, skipped_already_selected, skipped_already_contacted, skipped_missing_email, skipped_no_secure_uuid, skipped_duplicate_stage, skipped_recent_reminder }, error: null }`
   - 401/500 on failure.
 
 ### Cron Configuration
