@@ -149,7 +149,7 @@ export function renderPatientSelectionEmail(params: {
     : undefined;
 
   return {
-    subject: params.subjectOverride || 'Deine handverlesene Auswahl – Termine in den nächsten 7 Tagen (bitte innerhalb von 48 Std. wählen)',
-    html: renderLayout({ title: 'Therapie-Auswahl', contentHtml, preheader: 'Deine handverlesene Auswahl ist da – bitte innerhalb von 48 Std. wählen.', schema }),
+    subject: params.subjectOverride || 'Deine handverlesene Auswahl – Termine verfügbar',
+    html: renderLayout({ title: 'Therapie-Auswahl', contentHtml, preheader: 'Deine handverlesene Auswahl ist da – antworte gern bei Fragen, wir helfen dir weiter.', schema }),
   };
 }

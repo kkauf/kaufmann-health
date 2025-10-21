@@ -63,7 +63,7 @@ vi.mock('@/lib/supabase-server', () => {
                     data: [
                       {
                         id: 'e-1',
-                        properties: { kind: 'patient_selection_reminder', stage: '24h', patient_id: 'p-1' },
+                        properties: { kind: 'patient_selection_reminder', stage: 'day5', patient_id: 'p-1' },
                       },
                     ],
                     error: null,
@@ -123,7 +123,7 @@ beforeEach(() => {
 describe('/api/admin/matches/selection-reminders GET duplicate stage using sms_sent', () => {
   it('skips sending when an sms_sent exists for the stage window', async () => {
     const { GET } = await import('@/app/api/admin/matches/selection-reminders/route');
-    const res = await GET(makeGet('http://localhost/api/admin/matches/selection-reminders?stage=24h'));
+    const res = await GET(makeGet('http://localhost/api/admin/matches/selection-reminders?stage=day5'));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json?.data?.skipped_duplicate_stage).toBeGreaterThanOrEqual(1);

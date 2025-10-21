@@ -636,6 +636,7 @@ export async function POST(req: Request) {
       // Campaign inference from referrer
       const campaign = parseCampaignFromRequest(req);
       const campaign_source = campaign.campaign_source;
+      const landing_page = campaign.landing_page;
       // Ensure variant prefers Referer (?v=) even if URL parsing is quirky in test env
       const refStr = req.headers.get('referer') || '';
       const vMatch = refStr.match(/[?&]v=([A-Za-z])/);
@@ -666,6 +667,7 @@ export async function POST(req: Request) {
         ...(genderPreference ? { gender_preference: genderPreference } : {}),
         ...(contactMethod ? { contact_method: contactMethod } : {}),
         ...(cookieVerifiedPhone ? { phone_verified: true } : {}),
+        ...(landing_page ? { landing_page } : {}),
         consent_share_with_therapists: true,
         consent_share_with_therapists_at: new Date().toISOString(),
         consent_privacy_version: privacyVersion,

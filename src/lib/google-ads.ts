@@ -1,13 +1,18 @@
 import { createHash } from 'crypto';
 import { logError, track } from '@/lib/logger';
 
+function normalizePhone(phone: string): string {
+  return phone.replace(/\D+/g, '');
+}
+
 // Google Ads Enhanced Conversions (server-side) minimal wrapper.
 // - Uses OAuth2 refresh token flow to obtain access tokens
 // - Uploads hashed user identifiers and conversion attributes via ConversionUploadService
 // - Falls back to no-op with internal event logging when not configured
 
 export type ConversionData = {
-  email: string;
+  email?: string;
+  phoneNumber?: string;
   conversionAction: string; // alias or full resource name
   conversionValue: number; // in major currency units (e.g., EUR)
   orderId?: string;
@@ -16,7 +21,8 @@ export type ConversionData = {
 };
 
 export type UserIdentifier = {
-  hashed_email: string; // SHA-256 lower hex of normalized email
+  hashed_email?: string;
+  hashed_phone_number?: string;
 };
 
 export type EnhancedConversion = {
@@ -194,14 +200,17 @@ export class GoogleAdsTracker {
       currencyCode: ec.currency,
       ...(ec.order_id ? { orderId: ec.order_id } : {}),
       userIdentifiers: ec.user_identifiers.map((u) => ({
-        hashedEmail: u.hashed_email,
+        ...(u.hashed_email ? { hashedEmail: u.hashed_email } : {}),
+        ...(u.hashed_phone_number ? { hashedPhoneNumber: u.hashed_phone_number } : {}),
         userIdentifierSource: 'FIRST_PARTY',
       })),
     } as const;
   }
 
   validateConversionData(data: ConversionData): boolean {
-    if (!data?.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email)) return false;
+    const hasEmail = !!(data?.email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email));
+    const hasPhone = !!(data?.phoneNumber && normalizePhone(data.phoneNumber).length >= 8);
+    if (!hasEmail && !hasPhone) return false;
     if (!data?.conversionAction || typeof data.conversionValue !== 'number') return false;
     return true;
   }
@@ -210,9 +219,17 @@ export class GoogleAdsTracker {
     return sha256LowerHex(normalizeEmail(email));
   }
 
+  hashPhone(phone: string): string {
+    return sha256LowerHex(normalizePhone(phone));
+  }
+
   async trackConversion(data: ConversionData): Promise<void> {
     try {
       if (!this.validateConversionData(data)) return;
+
+      const ids: UserIdentifier = {};
+      if (data.email) ids.hashed_email = this.hashEmail(data.email);
+      if (data.phoneNumber) ids.hashed_phone_number = this.hashPhone(data.phoneNumber);
 
       const enhanced: EnhancedConversion = {
         conversion_action: data.conversionAction,
@@ -220,7 +237,7 @@ export class GoogleAdsTracker {
         conversion_value: data.conversionValue,
         currency: data.currency || 'EUR',
         order_id: data.orderId,
-        user_identifiers: [{ hashed_email: this.hashEmail(data.email) }],
+        user_identifiers: [ids],
       };
 
       await this.uploadEnhancedConversions([enhanced]);

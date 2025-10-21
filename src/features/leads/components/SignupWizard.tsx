@@ -436,7 +436,8 @@ export default function SignupWizard() {
       try {
         localStorage.setItem(LS_KEYS.step, String(v));
       } catch {}
-      // Scroll to top on navigation (avoid smooth scroll when virtual keyboard is open)
+      lastTrackedStepRef.current = v;
+      void trackEvent('screen_viewed', { step: v });
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const vv = (window as any).visualViewport as { height: number } | undefined;
@@ -522,6 +523,38 @@ export default function SignupWizard() {
     }, 30000);
     return () => clearInterval(interval);
   }, [data, step]);
+
+  const earlyFsCreatedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!initialized) return;
+    if (earlyFsCreatedRef.current) return;
+    if (sessionIdRef.current) {
+      earlyFsCreatedRef.current = true;
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const payload = {
+          data: { step, _bootstrap: true },
+          email: data.email || undefined,
+        };
+        const res = await fetch('/api/public/form-sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const j = await res.json().catch(() => ({}));
+        if (res.ok && j?.data?.id) {
+          sessionIdRef.current = j.data.id as string;
+          try {
+            localStorage.setItem(LS_KEYS.sessionId, sessionIdRef.current);
+          } catch {}
+        }
+      } catch {}
+      earlyFsCreatedRef.current = true;
+    }, 300);
+    return () => clearTimeout(t);
+  }, [initialized, step, data.email]);
 
   // SMS code sending and verification handlers
   const handleSendSmsCode = React.useCallback(async (): Promise<boolean> => {
@@ -1022,9 +1055,10 @@ export default function SignupWizard() {
         return;
       }
 
+      const sidHeader = webSessionIdRef.current || getOrCreateSessionId() || undefined;
       const res = await fetch('/api/public/leads', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(sidHeader ? { 'X-Session-Id': sidHeader } : {}) },
         body: JSON.stringify(submission.data),
       });
       const j = await res.json().catch(() => ({}));
@@ -1042,7 +1076,10 @@ export default function SignupWizard() {
       // Server conversions: mark form completed
       if (leadId) {
         try {
-          await fetch(`/api/public/leads/${encodeURIComponent(leadId)}/form-completed`, { method: 'POST' });
+          await fetch(`/api/public/leads/${encodeURIComponent(leadId)}/form-completed`, {
+            method: 'POST',
+            headers: { ...(sidHeader ? { 'X-Session-Id': sidHeader } : {}) },
+          });
         } catch {}
       }
 

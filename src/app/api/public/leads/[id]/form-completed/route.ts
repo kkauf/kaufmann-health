@@ -33,6 +33,7 @@ export async function POST(req: Request) {
   if (!id) return safeJson({ data: null, error: 'Missing id' }, { status: 400 });
 
   try {
+    const sessionIdHeader = req.headers.get('x-session-id') || undefined;
     type Person = { id: string; email?: string | null; type?: string | null; status?: string | null; metadata?: Record<string, unknown> | null; campaign_source?: string | null; campaign_variant?: string | null };
     let person: Person | null = null;
     let error: unknown = null;
@@ -240,23 +241,27 @@ export async function POST(req: Request) {
       await ServerAnalytics.trackEventFromRequest(req, {
         type: 'form_completed',
         source: 'api.leads.form_completed',
-        props: { id },
+        session_id: sessionIdHeader,
+        props: { id, form_session_id: (typeof metadata['form_session_id'] === 'string' ? (metadata['form_session_id'] as string) : undefined) },
       });
     } catch {}
 
     // Server-side Enhanced Conversions (EARTH-204)
-    // Note: Conversion will only fire if contact is verified (email OR SMS)
-    // Deduplication handled by maybeFirePatientConversion
+    // Only fire when the lead is already verified/actionable
+    // (status is 'email_confirmed' or 'new'). Deduplication handled by maybeFirePatientConversion.
     try {
-      const ip = getClientIP(req.headers);
-      const ua = req.headers.get('user-agent') || undefined;
-      await maybeFirePatientConversion({
-        patient_id: id,
-        email: person.email || undefined,
-        verification_method: 'email', // form completion implies email flow (legacy)
-        ip,
-        ua,
-      });
+      const status = (person.status || '').toLowerCase();
+      if (status === 'email_confirmed' || status === 'new') {
+        const ip = getClientIP(req.headers);
+        const ua = req.headers.get('user-agent') || undefined;
+        await maybeFirePatientConversion({
+          patient_id: id,
+          email: person.email || undefined,
+          verification_method: 'email', // form completion implies email flow (legacy)
+          ip,
+          ua,
+        });
+      }
     } catch (e) {
       await logError('api.leads.form_completed', e, { stage: 'google_ads_conversion', id });
     }

@@ -32,7 +32,8 @@ export function parseAttributionFromRequest(req: Request): ServerAttribution {
 
 export function parseCampaignFromRequest(req: Request): {
   campaign_source?: string;
-  campaign_variant?: 'A' | 'B';
+  campaign_variant?: 'A' | 'B' | 'C';
+  landing_page?: string;
 } {
   const ref = req.headers.get('referer') || '';
   let pathname: string | undefined;
@@ -40,8 +41,8 @@ export function parseCampaignFromRequest(req: Request): {
   try {
     const u = new URL(ref);
     pathname = u.pathname || undefined;
-    // Check for new variant param (Test #0: Positioning A/B)
-    variantParam = u.searchParams.get('variant') || undefined;
+    const vParam = u.searchParams.get('v') || undefined;
+    variantParam = (u.searchParams.get('variant') || vParam || undefined) || undefined;
   } catch {
     pathname = undefined;
   }
@@ -55,18 +56,20 @@ export function parseCampaignFromRequest(req: Request): {
     ? '/wieder-lebendig'
     : '/therapie-finden';
 
-  // Map variant parameter to A/B
-  // - For /start: variant=body-oriented → A, variant=ready-now → B
-  // - For legacy pages: no variant support (default A)
-  let variant: 'A' | 'B' = 'A';
-  if (src === '/start' && variantParam) {
+  let variant: 'A' | 'B' | 'C' = 'A';
+  if (variantParam) {
     const normalized = variantParam.toLowerCase();
-    variant = normalized === 'ready-now' ? 'B' : 'A';
+    if (normalized.length === 1 && /[abc]/i.test(normalized)) {
+      variant = (normalized.toUpperCase() as 'A' | 'B' | 'C');
+    } else if (src === '/start') {
+      variant = normalized === 'ready-now' ? 'B' : 'A';
+    }
   }
 
   return {
     campaign_source: src,
     campaign_variant: variant,
+    landing_page: pathname,
   };
 }
 

@@ -26,6 +26,7 @@ export async function GET(req: Request) {
     }
   })();
   try {
+    const sessionIdHeader = req.headers.get('x-session-id') || undefined;
     const url = new URL(req.url);
     const token = url.searchParams.get('token') || '';
     const id = url.searchParams.get('id') || '';
@@ -155,10 +156,12 @@ export async function GET(req: Request) {
       await ServerAnalytics.trackEventFromRequest(req, {
         type: 'email_confirmed',
         source: 'api.leads.confirm',
+        session_id: sessionIdHeader,
         props: {
           campaign_source: person.campaign_source || null,
           campaign_variant: person.campaign_variant || null,
           elapsed_seconds: elapsed,
+          form_session_id: fs || undefined,
         },
       });
     } catch {}

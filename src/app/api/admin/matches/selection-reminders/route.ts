@@ -81,6 +81,14 @@ function hoursAgo(h: number) {
   return new Date(Date.now() - h * 60 * 60 * 1000).toISOString();
 }
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+function hasPatientInitiated(v: unknown): v is { patient_initiated?: boolean } {
+  return isRecord(v) && 'patient_initiated' in v;
+}
+
 // Email events table rows (properties is the canonical column; props kept for test mocks)
 type EmailEventRow = {
   id: string;
@@ -245,6 +253,23 @@ export async function GET(req: Request) {
       const phoneNumber = (patient?.phone_number || '').trim();
       const hasEmail = Boolean(to) && !isTempEmail;
       const hasPhone = Boolean(phoneNumber);
+
+      // Skip if the patient has already contacted any therapist from the matches page
+      try {
+        const { data: contactedRows } = await supabaseServer
+          .from('matches')
+          .select('id, metadata')
+          .eq('patient_id', patient_id)
+          .limit(1000);
+        const contacted = ((contactedRows as Array<{ metadata?: unknown }> | null) || []).some((r) => {
+          const md = r?.metadata;
+          return hasPatientInitiated(md) && md.patient_initiated === true;
+        });
+        if (contacted) {
+          skippedAlreadyContacted++;
+          continue;
+        }
+      } catch {}
 
       // Therapist details
       const { data: therapistRows } = await supabaseServer

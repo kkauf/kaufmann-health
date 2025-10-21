@@ -10,11 +10,12 @@ import { randomUUID } from 'crypto';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Single-stage reminder at 24h
-const THRESHOLDS = { '24h': 24 * 60 * 60 * 1000 } as const;
+// Reminder thresholds: 24h (default) and optional 72h final reminder
+const THRESHOLDS = { '24h': 24 * 60 * 60 * 1000, '72h': 72 * 60 * 60 * 1000 } as const;
 
-function parseThreshold(_input?: string | null): keyof typeof THRESHOLDS {
-  return '24h';
+function parseThreshold(input?: string | null): keyof typeof THRESHOLDS {
+  const t = (input || '').trim();
+  return (t === '72h' ? '72h' : '24h');
 }
 
 // --- Auth helpers aligned with therapist reminders ---
@@ -97,8 +98,8 @@ async function alreadyReminded(leadId: string, stage: string): Promise<boolean> 
 async function processBatch(thresholdKey: keyof typeof THRESHOLDS, limit: number, req: Request) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   const ua = req.headers.get('user-agent') || undefined;
-  const thresholdMs = THRESHOLDS['24h'];
-  const stage = 'patient_confirmation_reminder_24h';
+  const thresholdMs = THRESHOLDS[thresholdKey];
+  const stage = thresholdKey === '72h' ? 'patient_confirmation_reminder_72h' : 'patient_confirmation_reminder_24h';
   const now = Date.now();
 
   // Fetch pre_confirmation patients with confirm_sent_at older than threshold
