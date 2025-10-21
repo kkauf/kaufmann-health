@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 import { sendSmsCode } from '@/lib/verification/sms';
+import { Webhook as SvixWebhook } from 'svix';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -61,18 +62,49 @@ export async function POST(req: Request) {
   const ua = req.headers.get('user-agent') || undefined;
 
   try {
-    // Shared-secret verification via query token OR headers (x-cron-secret / Authorization: Bearer)
-    const secret = process.env.CRON_SECRET || '';
-    const token = getQueryParam(req, 'token');
-    const header = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
-    const authHeader = req.headers.get('authorization') || '';
-    const isAuthBearer = Boolean(authHeader.startsWith('Bearer ') && authHeader.slice(7) === secret);
-    const authorized = Boolean(secret && (token === secret || header === secret || isAuthBearer));
-    if (!authorized) {
-      return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
+    // Read raw body for signature verification
+    const rawBody = await req.text();
+    let payload: unknown = {};
+    // Attempt Resend/Svix signature verification first if signing secret is configured
+    const signingSecret = process.env.EMAIL_WEBHOOK_SIGNING_SECRET || process.env.RESEND_WEBHOOK_SIGNING_SECRET || '';
+    const svixId = req.headers.get('svix-id') || '';
+    const svixTs = req.headers.get('svix-timestamp') || '';
+    const svixSig = req.headers.get('svix-signature') || '';
+    let signatureVerified = false;
+    if (signingSecret && svixId && svixTs && svixSig) {
+      try {
+        const wh = new SvixWebhook(signingSecret);
+        // verify returns the parsed JSON payload
+        payload = wh.verify(rawBody, {
+          'svix-id': svixId,
+          'svix-timestamp': svixTs,
+          'svix-signature': svixSig,
+        });
+        signatureVerified = true;
+      } catch (e) {
+        // fall through to shared-secret auth
+      }
     }
 
-    const payload = await req.json().catch(() => ({}));
+    // If signature not verified, allow shared-secret verification via query/header as fallback
+    if (!signatureVerified) {
+      const secret = process.env.CRON_SECRET || '';
+      const token = getQueryParam(req, 'token');
+      const header = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
+      const authHeader = req.headers.get('authorization') || '';
+      const isAuthBearer = Boolean(authHeader.startsWith('Bearer ') && authHeader.slice(7) === secret);
+      const authorized = Boolean(secret && (token === secret || header === secret || isAuthBearer));
+      if (!authorized) {
+        return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
+      }
+      // parse JSON after shared-secret auth
+      try {
+        payload = rawBody ? JSON.parse(rawBody) : {};
+      } catch {
+        payload = {};
+      }
+    }
+
     const evt = extractEvent(payload) || 'unknown';
     const email = extractEmail(payload);
     const reason = extractReason(payload) || '';
