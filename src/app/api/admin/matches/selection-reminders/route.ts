@@ -211,7 +211,7 @@ export async function GET(req: Request) {
     let sent = 0;
     const marked = 0;
     let skippedAlreadySelected = 0;
-    const skippedAlreadyContacted = 0;
+    let skippedAlreadyContacted = 0;
     let skippedMissingEmail = 0;
     let skippedNoSecureUuid = 0;
     let skippedDuplicateStage = 0;
