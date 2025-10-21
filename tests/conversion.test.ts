@@ -65,7 +65,7 @@ describe('maybeFirePatientConversion', () => {
     });
   });
 
-  it('should fire conversion for SMS-verified patient with email fallback', async () => {
+  it('should fire conversion for SMS-verified patient with email fallback (email and phone allowed)', async () => {
     const person = {
       id: 'patient-456',
       email: 'sms-user@example.com',
@@ -83,12 +83,14 @@ describe('maybeFirePatientConversion', () => {
     });
 
     expect(result.fired).toBe(true);
-    expect(googleAdsTracker.trackConversion).toHaveBeenCalledWith({
-      email: 'sms-user@example.com',
-      conversionAction: 'client_registration',
-      conversionValue: 10,
-      orderId: 'patient-456',
-    });
+    expect(googleAdsTracker.trackConversion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'sms-user@example.com',
+        conversionAction: 'client_registration',
+        conversionValue: 10,
+        orderId: 'patient-456',
+      }),
+    );
   });
 
   it('should not fire conversion if already fired (deduplication)', async () => {
@@ -155,7 +157,7 @@ describe('maybeFirePatientConversion', () => {
     expect(googleAdsTracker.trackConversion).not.toHaveBeenCalled();
   });
 
-  it('should not fire conversion if no email available (phone-only)', async () => {
+  it('should fire conversion if no email available (phone-only) using phone identifier', async () => {
     const person = {
       id: 'phone-only-patient',
       phone_number: '+4917612345678',
@@ -170,9 +172,15 @@ describe('maybeFirePatientConversion', () => {
       verification_method: 'sms',
     });
 
-    expect(result.fired).toBe(false);
-    expect(result.reason).toBe('no_email');
-    expect(googleAdsTracker.trackConversion).not.toHaveBeenCalled();
+    expect(result.fired).toBe(true);
+    expect(googleAdsTracker.trackConversion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phoneNumber: '+4917612345678',
+        conversionAction: 'client_registration',
+        conversionValue: 10,
+        orderId: 'phone-only-patient',
+      }),
+    );
   });
 
   it('should handle database errors gracefully', async () => {

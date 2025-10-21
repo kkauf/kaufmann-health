@@ -89,7 +89,7 @@ describe('Google Ads conversions', () => {
     expect(trackConversion).not.toHaveBeenCalled();
   });
 
-  it('fires client_registration conversion on form completion (Fragebogen)', async () => {
+  it('fires client_registration conversion on form completion only when verified', async () => {
     // Mock people row for preferences route to include email
     vi.doMock('@/lib/supabase-server', () => {
       const api: any = {
@@ -97,7 +97,7 @@ describe('Google Ads conversions', () => {
           if (table === 'people') {
             return {
               select: (_sel?: string) => ({
-                eq: (_col?: string, _val?: string) => ({ single: async () => ({ data: { id: 'lead-xyz', email: 'patient@example.com', type: 'patient', metadata: {} }, error: null }) }),
+                eq: (_col?: string, _val?: string) => ({ single: async () => ({ data: { id: 'lead-xyz', email: 'patient@example.com', type: 'patient', status: 'email_confirmed', metadata: {} }, error: null }) }),
               }),
               update: (_payload: any) => ({ eq: (_col?: string, _val?: string) => ({ data: null, error: null }) }),
             };

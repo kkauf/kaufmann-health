@@ -91,8 +91,9 @@ type EmailEventRow = {
 
 async function alreadySentForStage(patient_id: string, stage: string): Promise<boolean> {
   try {
-    if (stage !== '24h' && stage !== '48h') return false;
-    const sinceIso = stage === '24h' ? hoursAgo(48) : hoursAgo(72);
+    if (stage !== 'day5' && stage !== 'day14') return false;
+    // Look back far enough to catch any earlier send for this stage
+    const sinceIso = hoursAgo(24 * 30);
     const { data, error } = await supabaseServer
       .from('events')
       .select('id, created_at, properties')
@@ -120,6 +121,36 @@ async function alreadySentForStage(patient_id: string, stage: string): Promise<b
   }
 }
 
+// Ensure we never send two reminders (of any stage) within 24h
+async function alreadySentRecently(patient_id: string, hours = 24): Promise<boolean> {
+  try {
+    const sinceIso = hoursAgo(hours);
+    const { data, error } = await supabaseServer
+      .from('events')
+      .select('id, created_at, properties')
+      .in('type', ['email_sent', 'sms_sent'])
+      .gte('created_at', sinceIso)
+      .order('created_at', { ascending: false })
+      .limit(1000);
+    if (error) return false;
+    const arr = (data as EmailEventRow[] | null) || [];
+    for (const e of arr) {
+      const p = (e.properties && typeof e.properties === 'object'
+        ? e.properties
+        : e.props && typeof e.props === 'object'
+        ? e.props
+        : null) as Record<string, unknown> | null;
+      if (!p) continue;
+      const kind = typeof p['kind'] === 'string' ? (p['kind'] as string) : '';
+      const pid = typeof p['patient_id'] === 'string' ? (p['patient_id'] as string) : '';
+      if (kind === 'patient_selection_reminder' && pid === patient_id) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(req: Request) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   const ua = req.headers.get('user-agent') || undefined;
@@ -132,21 +163,20 @@ export async function GET(req: Request) {
     if (isAdmin && !isCron && !sameOrigin(req)) return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 });
 
     const url = new URL(req.url);
-    const stage = (url.searchParams.get('stage') || '').toLowerCase(); // '24h' | '48h' | '72h'
+    const stage = (url.searchParams.get('stage') || '').toLowerCase(); // 'day5' | 'day14'
 
     // Define windows
     const nowIso = new Date().toISOString();
     let fromIso: string | undefined;
     let toIso: string | undefined;
-    if (stage === '24h') {
-      fromIso = hoursAgo(48); // <=48h ago
-      toIso = hoursAgo(24);   // >24h ago
-    } else if (stage === '48h') {
-      fromIso = hoursAgo(72);
-      toIso = hoursAgo(48);
-    } else if (stage === '72h') {
-      fromIso = undefined;
-      toIso = hoursAgo(72);
+    if (stage === 'day5') {
+      // Between 5 and 6 days since proposal
+      fromIso = hoursAgo(24 * 6);
+      toIso = hoursAgo(24 * 5);
+    } else if (stage === 'day14') {
+      // Between 14 and 15 days since proposal
+      fromIso = hoursAgo(24 * 15);
+      toIso = hoursAgo(24 * 14);
     }
 
     void track({ type: 'cron_executed', level: 'info', source: 'admin.api.matches.selection_reminders', props: { stage }, ip, ua });
@@ -179,11 +209,13 @@ export async function GET(req: Request) {
 
     let processed = 0;
     let sent = 0;
-    let marked = 0;
+    const marked = 0;
     let skippedAlreadySelected = 0;
+    const skippedAlreadyContacted = 0;
     let skippedMissingEmail = 0;
     let skippedNoSecureUuid = 0;
     let skippedDuplicateStage = 0;
+    let skippedRecentReminder = 0;
 
     for (const [patient_id, therapistIdsSet] of byPatient) {
       processed++;
@@ -202,16 +234,6 @@ export async function GET(req: Request) {
           continue;
         }
       } catch {}
-
-      if (stage === '72h') {
-        // Mark as unresponsive (observability only due to allowed status constraints)
-        void track({ type: 'patient_unresponsive', level: 'info', source: 'admin.api.matches.selection_reminders', props: { patient_id } });
-        marked++;
-        continue;
-      }
-
-      // Compose selection email
-      // Fetch patient details
       const { data: patientRow } = await supabaseServer
         .from('people')
         .select('id, name, email, phone_number, metadata')
@@ -267,6 +289,12 @@ export async function GET(req: Request) {
         skippedDuplicateStage++;
         continue;
       }
+      // Global throttle: never send two reminders to the same patient within 24h
+      const recent = await alreadySentRecently(patient_id, 24);
+      if (recent) {
+        skippedRecentReminder++;
+        continue;
+      }
 
       const pMeta: PatientMetaServer = ((): PatientMetaServer => {
         const raw = (patient?.metadata || null) as PatientMetaServer | null;
@@ -320,15 +348,17 @@ export async function GET(req: Request) {
         };
       });
 
-      const subject = stage === '24h'
-        ? '3 Therapeuten haben diese Woche noch Termine frei (Auswahl innerhalb 48 Stunden)'
-        : stage === '48h'
-        ? 'Letzte Chance – Ihre Therapieplätze verfallen heute'
+      const subject = stage === 'day5'
+        ? 'Brauchst du Unterstützung bei der Auswahl?'
+        : stage === 'day14'
+        ? 'Wie können wir dich weiter unterstützen?'
         : 'Ihre persönliche Therapie-Auswahl';
 
-      const bannerOverrideHtml = stage === '48h'
-        ? '<div style="background: #FEF3C7; padding: 12px; border-radius: 8px; margin-bottom: 20px;">⏰ <strong>Letzte Chance!</strong><br/>In 4 Stunden vergeben wir diese Termine an andere Klient:innen.</div>'
-        : undefined;
+      const bannerOverrideHtml = (
+        '<div style="background: #EEF2FF; padding: 12px; border-radius: 8px; margin-bottom: 20px;">' +
+        'Wir sind für dich da. Wenn du dir noch unsicher bist, antworte einfach auf diese E‑Mail – wir helfen dir gern bei der Auswahl.' +
+        '</div>'
+      );
 
       const matchesUrl = `${BASE_URL}/matches/${secure_uuid}`;
       const content = renderPatientSelectionEmail({ patientName: patient?.name || null, items, subjectOverride: subject, bannerOverrideHtml, matchesUrl });
@@ -343,7 +373,7 @@ export async function GET(req: Request) {
             await logError('admin.api.matches.selection_reminders', new Error('Email send returned false'), { stage: 'send_email_failed', patient_id, email: to }, ip, ua);
           }
         } else if (hasPhone && matchesUrl) {
-          const smsBody = `Deine handverlesene Therapeuten-Auswahl ist bereit: ${matchesUrl}`;
+          const smsBody = `Deine Therapeuten-Empfehlungen sind weiterhin für dich da. Wenn du Unterstützung brauchst, melde dich gern. Auswahl ansehen: ${matchesUrl}`;
           void track({ type: 'sms_attempted', level: 'info', source: 'admin.api.matches.selection_reminders', props: { kind: 'patient_selection_reminder', stage, patient_id } });
           const ok = await sendTransactionalSms(phoneNumber, smsBody);
           if (ok) {
@@ -360,9 +390,9 @@ export async function GET(req: Request) {
       }
     }
 
-    void track({ type: 'cron_completed', level: 'info', source: 'admin.api.matches.selection_reminders', props: { stage, processed, sent, marked, skipped_already_selected: skippedAlreadySelected, skipped_missing_email: skippedMissingEmail, skipped_no_secure_uuid: skippedNoSecureUuid, skipped_duplicate_stage: skippedDuplicateStage, duration_ms: Date.now() - startedAt }, ip, ua });
+    void track({ type: 'cron_completed', level: 'info', source: 'admin.api.matches.selection_reminders', props: { stage, processed, sent, marked, skipped_already_selected: skippedAlreadySelected, skipped_already_contacted: skippedAlreadyContacted, skipped_missing_email: skippedMissingEmail, skipped_no_secure_uuid: skippedNoSecureUuid, skipped_duplicate_stage: skippedDuplicateStage, skipped_recent_reminder: skippedRecentReminder, duration_ms: Date.now() - startedAt }, ip, ua });
 
-    return NextResponse.json({ data: { processed, sent, marked, skipped_already_selected: skippedAlreadySelected, skipped_missing_email: skippedMissingEmail, skipped_no_secure_uuid: skippedNoSecureUuid, skipped_duplicate_stage: skippedDuplicateStage }, error: null }, { status: 200 });
+    return NextResponse.json({ data: { processed, sent, marked, skipped_already_selected: skippedAlreadySelected, skipped_already_contacted: skippedAlreadyContacted, skipped_missing_email: skippedMissingEmail, skipped_no_secure_uuid: skippedNoSecureUuid, skipped_duplicate_stage: skippedDuplicateStage, skipped_recent_reminder: skippedRecentReminder }, error: null }, { status: 200 });
   } catch (e) {
     await logError('admin.api.matches.selection_reminders', e, { stage: 'exception' }, ip, ua);
     void track({ type: 'cron_failed', level: 'error', source: 'admin.api.matches.selection_reminders' });

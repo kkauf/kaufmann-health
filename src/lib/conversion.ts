@@ -66,10 +66,10 @@ export async function maybeFirePatientConversion(ctx: ConversionContext): Promis
       return { fired: false, reason: 'already_fired' };
     }
 
-    // Determine email to use for Enhanced Conversion
+    // Determine identifiers to use for Enhanced Conversion (email and/or phone)
     const emailForConversion = ctx.email || person.email || '';
-    if (!emailForConversion) {
-      // Phone-only leads: cannot fire Enhanced Conversion (requires email)
+    const phoneForConversion = ctx.phone_number || person.phone_number || '';
+    if (!emailForConversion && !phoneForConversion) {
       await track({
         type: 'conversion_skipped',
         level: 'info',
@@ -78,16 +78,17 @@ export async function maybeFirePatientConversion(ctx: ConversionContext): Promis
         ua: ctx.ua,
         props: {
           patient_id: ctx.patient_id,
-          reason: 'no_email',
+          reason: 'no_identifier',
           verification_method: ctx.verification_method,
         },
       });
-      return { fired: false, reason: 'no_email' };
+      return { fired: false, reason: 'no_identifier' };
     }
 
-    // Fire server-side Enhanced Conversion
+    // Fire server-side Enhanced Conversion with available identifiers
     await googleAdsTracker.trackConversion({
-      email: emailForConversion,
+      ...(emailForConversion ? { email: emailForConversion } : {}),
+      ...(phoneForConversion ? { phoneNumber: phoneForConversion } : {}),
       conversionAction: 'client_registration',
       conversionValue: 10,
       orderId: ctx.patient_id,
