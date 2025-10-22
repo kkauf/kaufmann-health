@@ -51,6 +51,7 @@ type StatsResponse = {
     steps: Record<number, number>; // step number => unique sessions
     form_completed: number;
     start_rate: number;
+    started_count?: number; // intersection of page_view sessions and step1
     sms_verification_views?: number; // step 8.5 unique sessions
     form_completed_lenient?: number; // cross-session tolerant completion count
   };
@@ -108,7 +109,7 @@ export async function GET(req: Request) {
     if (days > 90) days = 90;
 
     const today = startOfDayUTC(new Date());
-    const sinceIso = new Date(today.getTime() - (days - 1) * 24 * 60 * 60 * 1000).toISOString();
+    let sinceIso = new Date(today.getTime() - (days - 1) * 24 * 60 * 60 * 1000).toISOString();
 
     // Optional funnel-only override (?since=YYYY-MM-DD) to filter wizard funnel data
     const sinceParam = url.searchParams.get('since');
@@ -122,6 +123,34 @@ export async function GET(req: Request) {
           funnelSinceIso = (dUtc > today ? today : dUtc).toISOString();
         }
       } catch {}
+    }
+
+    // Global cutoff support: param override or hard default
+    // - If ?cutoff is provided, use it
+    // - Otherwise apply hard default cutoff of 2025-10-21 (ignore 2025-10-20 and earlier)
+    const cutoffParam = url.searchParams.get('cutoff');
+    let effectiveCutoffIso: string | null = null;
+    if (cutoffParam) {
+      try {
+        const d = new Date(cutoffParam);
+        if (!Number.isNaN(d.getTime())) {
+          const dUtc = startOfDayUTC(d);
+          effectiveCutoffIso = (dUtc > today ? today : dUtc).toISOString();
+        }
+      } catch {}
+    } else {
+      try {
+        const dUtc = startOfDayUTC(new Date('2025-10-21'));
+        effectiveCutoffIso = (dUtc > today ? today : dUtc).toISOString();
+      } catch {}
+    }
+    if (effectiveCutoffIso) {
+      // Use the later of (existing sinceIso, effectiveCutoffIso)
+      sinceIso = effectiveCutoffIso > sinceIso ? effectiveCutoffIso : sinceIso;
+      // If funnel since not explicitly overridden, align it as well
+      if (!sinceParam) {
+        funnelSinceIso = effectiveCutoffIso > funnelSinceIso ? effectiveCutoffIso : funnelSinceIso;
+      }
     }
 
     // === TOTALS ===
@@ -356,6 +385,7 @@ export async function GET(req: Request) {
         if (pvSessions.has(sid)) startedFromPageViews++;
       }
       wizardFunnel.start_rate = pvSessions.size > 0 ? Math.round((startedFromPageViews / pvSessions.size) * 1000) / 10 : 0;
+      wizardFunnel.started_count = startedFromPageViews;
 
       // STEP 6: Calculate dropoffs between consecutive steps
       // Dropoffs are now guaranteed to be non-negative (cohorts only shrink)

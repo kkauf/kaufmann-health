@@ -19,6 +19,7 @@ type StatsData = {
     steps: Record<number, number>;
     form_completed: number;
     start_rate: number;
+    started_count?: number;
   };
   wizardDropoffs: Array<{
     step: number;
@@ -70,16 +71,19 @@ export default function AdminStats() {
     setLoading(true);
     setError(null);
     try {
-      // Opt-in: support funnel-only since=YYYY-MM-DD
+      // Opt-in: support funnel-only since=YYYY-MM-DD and global cutoff=YYYY-MM-DD
       let sinceParam = '';
+      let cutoffParam = '';
       try {
         if (typeof window !== 'undefined') {
           const sp = new URLSearchParams(window.location.search);
           const s = sp.get('since');
           if (s) sinceParam = `&since=${encodeURIComponent(s)}`;
+          const c = sp.get('cutoff');
+          if (c) cutoffParam = `&cutoff=${encodeURIComponent(c)}`;
         }
       } catch {}
-      const res = await fetch(`/api/admin/stats?days=${days}${sinceParam}` , { credentials: 'include' });
+      const res = await fetch(`/api/admin/stats?days=${days}${sinceParam}${cutoffParam}` , { credentials: 'include' });
       if (!res.ok) throw new Error(`Load failed (${res.status})`);
       const json = await res.json();
       setData((json?.data || null) as StatsData | null);
@@ -227,16 +231,19 @@ export default function AdminStats() {
                 </div>
                 <div>
                   <div className="text-muted-foreground">Started (Step 1)</div>
-                  <div className="text-2xl font-semibold tabular-nums">{data.wizardFunnel.steps[1] || 0}</div>
-                  <div className="text-xs text-muted-foreground">Viewed all steps 1-1</div>
+                  <div className="text-2xl font-semibold tabular-nums">{(data.wizardFunnel.started_count ?? data.wizardFunnel.steps[1]) || 0}</div>
+                  <div className="text-xs text-muted-foreground">Page View ∩ Step 1</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Completed</div>
                   <div className="text-2xl font-semibold tabular-nums">{data.wizardFunnel.form_completed}</div>
                   <div className="text-xs text-muted-foreground mt-1">
                     Completion Rate:{' '}
-                    {data.wizardFunnel.steps[1] > 0
-                      ? pct(data.wizardFunnel.form_completed, data.wizardFunnel.steps[1])
+                    {(data.wizardFunnel.started_count ?? data.wizardFunnel.steps[1]) > 0
+                      ? pct(
+                          data.wizardFunnel.form_completed,
+                          (data.wizardFunnel.started_count ?? data.wizardFunnel.steps[1])
+                        )
                       : 0}%
                   </div>
                 </div>
