@@ -105,7 +105,7 @@ function redactSensitive(input: unknown, depth = 0): unknown {
     if (depth >= 3) return input;
     return input.map((v) => redactSensitive(v, depth + 1));
   }
-  const S = new Set(['email', 'phone', 'phone_number', 'token', 'email_token', 'contact', 'contact_value']);
+  const S = new Set(['email', 'phone', 'phone_number', 'name', 'token', 'email_token', 'contact', 'contact_value']);
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
     const kl = k.toLowerCase();

@@ -59,6 +59,24 @@ type StatsData = {
     questionnaire_preference_rate: number;
     directory_to_questionnaire_rate: number;
   };
+  questionnaireInsights: {
+    contactMethod: Array<{ option: string; count: number }>;
+    sessionPreference: Array<{ option: string; count: number }>;
+    onlineOk: Array<{ option: string; count: number }>;
+    modalityMatters: Array<{ option: string; count: number }>;
+    startTiming: Array<{ option: string; count: number }>;
+    budgetBuckets: Array<{ option: string; count: number }>;
+    therapyExperience: Array<{ option: string; count: number }>;
+    gender: Array<{ option: string; count: number }>;
+    methodsTop: Array<{ option: string; count: number }>;
+    totalSessions: number;
+  };
+  wizardSegments: {
+    bySessionPreference: Array<{ option: string; started: number; completed: number; completion_rate: number }>;
+    byOnlineOk: Array<{ option: string; started: number; completed: number; completion_rate: number }>;
+    byStartTiming: Array<{ option: string; started: number; completed: number; completion_rate: number }>;
+    byBudgetBucket: Array<{ option: string; started: number; completed: number; completion_rate: number }>;
+  };
 };
 
 export default function AdminStats() {
@@ -160,6 +178,66 @@ export default function AdminStats() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Segmented Funnel */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Segmented Funnel</CardTitle>
+          <CardDescription>Completion rates by key preferences</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!data?.wizardSegments ? (
+            <div className="text-sm text-muted-foreground">Keine Daten</div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-sm">
+              {(() => {
+                const block = (
+                  title: string,
+                  items: Array<{ option: string; started: number; completed: number; completion_rate: number }>
+                ) => (
+                  <div key={title}>
+                    <div className="font-medium mb-2">{title}</div>
+                    {!items?.length ? (
+                      <div className="text-sm text-muted-foreground">—</div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-muted-foreground">
+                              <th className="py-1 pr-3">Option</th>
+                              <th className="py-1 pr-3 text-right">Started</th>
+                              <th className="py-1 pr-3 text-right">Completed</th>
+                              <th className="py-1 pr-3 text-right">Rate</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {items.slice(0, 10).map((r) => (
+                              <tr key={`${title}-${r.option}`} className="border-t">
+                                <td className="py-1 pr-3 font-mono text-xs">{r.option}</td>
+                                <td className="py-1 pr-3 text-right tabular-nums">{r.started}</td>
+                                <td className="py-1 pr-3 text-right tabular-nums">{r.completed}</td>
+                                <td className="py-1 pr-3 text-right tabular-nums">{r.completion_rate}%</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+                return (
+                  <>
+                    {block('Sitzungspräferenz', data.wizardSegments.bySessionPreference)}
+                    {block('Online OK', data.wizardSegments.byOnlineOk)}
+                    {block('Startzeit', data.wizardSegments.byStartTiming)}
+                    {block('Budget', data.wizardSegments.byBudgetBucket)}
+                  </>
+                );
+              })()}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Page Traffic */}
       <Card>
@@ -674,6 +752,78 @@ export default function AdminStats() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Questionnaire Insights */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Questionnaire Insights</CardTitle>
+          <CardDescription>Aggregated preferences from Fragebogen (last {days} days)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!data?.questionnaireInsights ? (
+            <div className="text-sm text-muted-foreground">Keine Daten</div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">Total sessions</div>
+                <div className="text-2xl font-semibold tabular-nums">{data.questionnaireInsights.totalSessions}</div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {(() => {
+                  const block = (title: string, items: Array<{ option: string; count: number }>) => (
+                    <div key={title}>
+                      <div className="text-sm font-medium mb-2">{title}</div>
+                      {!items?.length ? (
+                        <div className="text-sm text-muted-foreground">—</div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="text-left text-muted-foreground">
+                                <th className="py-1 pr-3">Option</th>
+                                <th className="py-1 pr-3 text-right">Count</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {items.slice(0, 10).map((r) => (
+                                <tr key={`${title}-${r.option}`} className="border-t">
+                                  <td className="py-1 pr-3 font-mono text-xs">{r.option}</td>
+                                  <td className="py-1 pr-3 text-right tabular-nums">{r.count}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                  return (
+                    <>
+                      {block('Kontaktmethode', data.questionnaireInsights.contactMethod)}
+                      {block('Sitzungspräferenz', data.questionnaireInsights.sessionPreference)}
+                      {block('Online OK', data.questionnaireInsights.onlineOk)}
+                      {block('Modalität wichtig', data.questionnaireInsights.modalityMatters)}
+                      {block('Startzeit', data.questionnaireInsights.startTiming)}
+                      {block('Budget', data.questionnaireInsights.budgetBuckets)}
+                      {block('Therapieerfahrung', data.questionnaireInsights.therapyExperience)}
+                      {block('Geschlecht', data.questionnaireInsights.gender)}
+                      {block('Methoden (Top)', data.questionnaireInsights.methodsTop)}
+                    </>
+                  );
+                })()}
+              </div>
+              <div className="pt-2">
+                <a
+                  href={`/api/admin/stats/questionnaire.csv?days=${days}`}
+                  className="inline-flex items-center rounded-md border px-3 py-1 text-sm hover:bg-gray-50"
+                >
+                  CSV exportieren
+                </a>
+              </div>
             </div>
           )}
         </CardContent>

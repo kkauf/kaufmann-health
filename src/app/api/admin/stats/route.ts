@@ -93,6 +93,24 @@ type StatsResponse = {
     questionnaire_preference_rate: number;
     directory_to_questionnaire_rate: number;
   };
+  questionnaireInsights: {
+    contactMethod: Array<{ option: string; count: number }>;
+    sessionPreference: Array<{ option: string; count: number }>;
+    onlineOk: Array<{ option: string; count: number }>;
+    modalityMatters: Array<{ option: string; count: number }>;
+    startTiming: Array<{ option: string; count: number }>;
+    budgetBuckets: Array<{ option: string; count: number }>;
+    therapyExperience: Array<{ option: string; count: number }>;
+    gender: Array<{ option: string; count: number }>;
+    methodsTop: Array<{ option: string; count: number }>;
+    totalSessions: number;
+  };
+  wizardSegments: {
+    bySessionPreference: Array<{ option: string; started: number; completed: number; completion_rate: number }>;
+    byOnlineOk: Array<{ option: string; started: number; completed: number; completion_rate: number }>;
+    byStartTiming: Array<{ option: string; started: number; completed: number; completion_rate: number }>;
+    byBudgetBucket: Array<{ option: string; started: number; completed: number; completion_rate: number }>;
+  };
 };
 
 export async function GET(req: Request) {
@@ -266,6 +284,7 @@ export async function GET(req: Request) {
 
       // Map: session_id -> Set of steps viewed
       const sessionStepMap = new Map<string, Set<number>>();
+      const sessionToFs = new Map<string, string>();
       // Track 8.5 (SMS verification) separately
       const step85Sessions = new Set<string>();
 
@@ -278,11 +297,15 @@ export async function GET(req: Request) {
           const stepRaw = (props['step'] as unknown);
           const stepVal = Number(String(stepRaw ?? ''));
           const stepNum = Number.isFinite(stepVal) ? Math.floor(stepVal) : NaN;
+          const fsid = String((props['form_session_id'] as string | undefined) || '').trim();
 
           if (sid) {
             // Capture 8.5 views
             if (Number.isFinite(stepVal) && stepVal >= 8.5 && stepVal < 9) {
               step85Sessions.add(sid);
+            }
+            if (fsid) {
+              if (!sessionToFs.has(sid)) sessionToFs.set(sid, fsid);
             }
           }
 
@@ -344,7 +367,7 @@ export async function GET(req: Request) {
       const { data: completedEvents } = await supabaseServer
         .from('events')
         .select('properties')
-        .eq('type', 'form_completed')
+        .in('type', ['form_completed', 'fragebogen_completed'])
         .gte('created_at', funnelSinceIso)
         .limit(20000);
 
@@ -455,6 +478,96 @@ export async function GET(req: Request) {
         .map(([field, count]) => ({ field, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 15);
+      // === SEGMENTED FUNNEL RATES ===
+      const startedSessionsSet = new Set<string>();
+      for (const sid of (cohortByStep[1] || new Set<string>()) as Set<string>) {
+        if (pvSessions.has(sid)) startedSessionsSet.add(sid);
+      }
+      const completedProperSet = new Set<string>();
+      for (const sid of completedSessions) {
+        if ((cohortByStep[9] || new Set<string>()).has(sid)) completedProperSet.add(sid);
+      }
+
+      const fsIds = Array.from(new Set(Array.from(sessionToFs.values()).filter((v) => !!v)));
+      const fsDataById = new Map<string, Record<string, unknown>>();
+      if (fsIds.length > 0) {
+        const chunks: Array<string[]> = [];
+        for (let i = 0; i < fsIds.length; i += 1000) chunks.push(fsIds.slice(i, i + 1000));
+        const results = await Promise.all(
+          chunks.map((ids) =>
+            supabaseServer
+              .from('form_sessions')
+              .select('id, data')
+              .in('id', ids)
+          )
+        );
+        for (const r of results) {
+          for (const row of ((r.data as Array<{ id: string; data: unknown }>) || [])) {
+            fsDataById.set(row.id, (row.data || {}) as Record<string, unknown>);
+          }
+        }
+      }
+
+      const normalizeBudget = (raw?: string | null): string => {
+        const s = (raw || '').toLowerCase().trim();
+        if (!s) return 'unknown';
+        if (s.includes('flex')) return 'flexible';
+        if (s.includes('unter') || s.includes('<') || s.includes('bis 80')) return '<80';
+        if (s.includes('80') && s.includes('100')) return '80-100';
+        if (s.includes('100') && s.includes('120')) return '100-120';
+        if (s.includes('über') || s.includes('>') || s.includes('120')) return '>120';
+        return 'unknown';
+      };
+
+      const seg = {
+        bySessionPreference: [] as Array<{ option: string; started: number; completed: number; completion_rate: number }>,
+        byOnlineOk: [] as Array<{ option: string; started: number; completed: number; completion_rate: number }>,
+        byStartTiming: [] as Array<{ option: string; started: number; completed: number; completion_rate: number }>,
+        byBudgetBucket: [] as Array<{ option: string; started: number; completed: number; completion_rate: number }>,
+      };
+
+      const compute = (getter: (d?: Record<string, unknown>) => string) => {
+        const started = new Map<string, number>();
+        const completed = new Map<string, number>();
+        const getOpt = (sid: string) => {
+          const fsid = sessionToFs.get(sid) || '';
+          const d = fsid ? fsDataById.get(fsid) : undefined;
+          const val = getter(d);
+          return val ? String(val) : 'unknown';
+        };
+        for (const sid of startedSessionsSet) {
+          const opt = getOpt(sid);
+          started.set(opt, (started.get(opt) || 0) + 1);
+        }
+        for (const sid of completedProperSet) {
+          const opt = getOpt(sid);
+          completed.set(opt, (completed.get(opt) || 0) + 1);
+        }
+        const arr = Array.from(started.entries()).map(([option, s]) => {
+          const c = completed.get(option) || 0;
+          const r = s > 0 ? Math.round((c / s) * 1000) / 10 : 0;
+          return { option, started: s, completed: c, completion_rate: r };
+        });
+        arr.sort((a, b) => b.started - a.started);
+        return arr;
+      };
+
+      const getSp = (d?: Record<string, unknown>) => String(((d?.['session_preference'] as string | undefined) || '').trim() || 'unknown');
+      const getOk = (d?: Record<string, unknown>) => {
+        const v = d?.['online_ok'];
+        return typeof v === 'boolean' ? (v ? 'true' : 'false') : 'unknown';
+      };
+      const getSt = (d?: Record<string, unknown>) => String(((d?.['start_timing'] as string | undefined) || '').trim() || 'unknown');
+      const getBb = (d?: Record<string, unknown>) => normalizeBudget((d?.['budget'] as string | undefined) || undefined);
+
+      const wizardSegments = {
+        bySessionPreference: compute(getSp),
+        byOnlineOk: compute(getOk),
+        byStartTiming: compute(getSt),
+        byBudgetBucket: compute(getBb),
+      };
+      // expose segments by attaching to closure scope for later response
+      (wizardFunnel as unknown as { _segments?: unknown })._segments = wizardSegments;
     } catch (e) {
       await logError('admin.api.stats', e, { stage: 'wizard_funnel' });
     }
@@ -708,6 +821,106 @@ export async function GET(req: Request) {
       await logError('admin.api.stats', e, { stage: 'journey_analysis' });
     }
 
+    // === QUESTIONNAIRE INSIGHTS (form_sessions) ===
+    const questionnaireInsights: StatsResponse['questionnaireInsights'] = {
+      contactMethod: [],
+      sessionPreference: [],
+      onlineOk: [],
+      modalityMatters: [],
+      startTiming: [],
+      budgetBuckets: [],
+      therapyExperience: [],
+      gender: [],
+      methodsTop: [],
+      totalSessions: 0,
+    };
+
+    try {
+      // Fetch recent form_sessions and aggregate client-side to keep portability
+      const { data: fsRows } = await supabaseServer
+        .from('form_sessions')
+        .select('data, updated_at')
+        .gte('updated_at', sinceIso)
+        .order('updated_at', { ascending: false })
+        .limit(50000);
+
+      const cm = new Map<string, number>();
+      const sp = new Map<string, number>();
+      const ok = new Map<string, number>();
+      const mm = new Map<string, number>();
+      const st = new Map<string, number>();
+      const bb = new Map<string, number>();
+      const te = new Map<string, number>();
+      const gd = new Map<string, number>();
+      const mt = new Map<string, number>();
+
+      const add = (map: Map<string, number>, key?: string | null) => {
+        const k = (key || '').trim();
+        if (!k) return;
+        map.set(k, (map.get(k) || 0) + 1);
+      };
+      const normalizeBudget = (raw?: string | null): string => {
+        const s = (raw || '').toLowerCase().trim();
+        if (!s) return 'unknown';
+        if (s.includes('flex')) return 'flexible';
+        if (s.includes('unter') || s.includes('<') || s.includes('bis 80')) return '<80';
+        if (s.includes('80') && s.includes('100')) return '80-100';
+        if (s.includes('100') && s.includes('120')) return '100-120';
+        if (s.includes('über') || s.includes('>') || s.includes('120')) return '>120';
+        return 'unknown';
+      };
+
+      let total = 0;
+      for (const row of (fsRows || []) as Array<{ data?: unknown }>) {
+        try {
+          const d = (row.data || {}) as Record<string, unknown>;
+          const name = String((d['name'] as string | undefined) || '').toLowerCase();
+          if (name.includes('konstantin')) continue; // filter test
+          total++;
+
+          add(cm, (d['contact_method'] as string | undefined) || undefined);
+          add(sp, (d['session_preference'] as string | undefined) || undefined);
+          add(ok, typeof d['online_ok'] === 'boolean' ? ((d['online_ok'] as boolean) ? 'true' : 'false') : undefined);
+          add(mm, typeof d['modality_matters'] === 'boolean' ? ((d['modality_matters'] as boolean) ? 'true' : 'false') : undefined);
+          add(st, (d['start_timing'] as string | undefined) || undefined);
+          add(bb, normalizeBudget((d['budget'] as string | undefined) || undefined));
+          add(te, (d['therapy_experience'] as string | undefined) || undefined);
+          add(gd, (d['gender'] as string | undefined) || undefined);
+
+          const methods = Array.isArray(d['methods']) ? (d['methods'] as unknown[]) : [];
+          for (const m of methods) {
+            const v = String(m || '').trim();
+            if (!v) continue;
+            mt.set(v, (mt.get(v) || 0) + 1);
+          }
+        } catch {}
+      }
+
+      const toArr = (map: Map<string, number>) => Array.from(map.entries())
+        .map(([option, count]) => ({ option, count }))
+        .sort((a, b) => b.count - a.count);
+
+      questionnaireInsights.contactMethod = toArr(cm);
+      questionnaireInsights.sessionPreference = toArr(sp);
+      questionnaireInsights.onlineOk = toArr(ok);
+      questionnaireInsights.modalityMatters = toArr(mm);
+      questionnaireInsights.startTiming = toArr(st);
+      questionnaireInsights.budgetBuckets = toArr(bb);
+      questionnaireInsights.therapyExperience = toArr(te);
+      questionnaireInsights.gender = toArr(gd);
+      questionnaireInsights.methodsTop = toArr(mt).slice(0, 15);
+      questionnaireInsights.totalSessions = total;
+    } catch (e) {
+      await logError('admin.api.stats', e, { stage: 'questionnaire_insights' });
+    }
+
+    const segments = ((wizardFunnel as unknown as { _segments?: unknown })._segments as StatsResponse['wizardSegments']) || {
+      bySessionPreference: [],
+      byOnlineOk: [],
+      byStartTiming: [],
+      byBudgetBucket: [],
+    };
+
     const data: StatsResponse = {
       totals,
       pageTraffic,
@@ -716,6 +929,8 @@ export async function GET(req: Request) {
       abandonFieldsTop,
       directory,
       journeyAnalysis,
+      questionnaireInsights,
+      wizardSegments: segments,
     };
 
     return NextResponse.json({ data, error: null }, { status: 200 });
