@@ -381,6 +381,7 @@ export async function GET(req: Request) {
           if (sid) completedSessions.add(sid);
           if (fsid) completionKeys.add(`fs:${fsid}`);
           else if (sid) completionKeys.add(`sid:${sid}`);
+          if (sid && fsid && !sessionToFs.has(sid)) sessionToFs.set(sid, fsid);
         } catch {}
       }
 
@@ -443,10 +444,12 @@ export async function GET(req: Request) {
           const ct = String((props['contact_type'] as string | undefined) || '').toLowerCase();
           if (ct !== 'phone') continue;
           const sid = String((props['session_id'] as string | undefined) || '').trim();
+          const fsid = String((props['form_session_id'] as string | undefined) || '').trim();
           const ts = String(row.created_at || '');
           if (!sid || !ts) continue;
           if (!verifiedBySession.has(sid)) verifiedBySession.set(sid, []);
           verifiedBySession.get(sid)!.push(ts);
+          if (sid && fsid && !sessionToFs.has(sid)) sessionToFs.set(sid, fsid);
         } catch {}
       }
 
@@ -455,8 +458,10 @@ export async function GET(req: Request) {
         try {
           const props = (row.properties || {}) as Record<string, unknown>;
           const fields = Array.isArray((props['fields'] as unknown)) ? ((props['fields'] as unknown[]) as string[]) : [];
-          // Filter transitional 'phone_verified' abandons when same session verified code around the same time (±2h)
           const sid = String((props['session_id'] as string | undefined) || '').trim();
+          const fsidFromAbandon = String((props['form_session_id'] as string | undefined) || '').trim();
+          if (sid && fsidFromAbandon && !sessionToFs.has(sid)) sessionToFs.set(sid, fsidFromAbandon);
+          // Filter transitional 'phone_verified' abandons when same session verified code around the same time (±2h)
           const at = row.created_at ? Date.parse(String(row.created_at)) : NaN;
           let fieldsToCount = fields;
           if (sid && fields.includes('phone_verified') && !Number.isNaN(at)) {
@@ -555,7 +560,11 @@ export async function GET(req: Request) {
       const getSp = (d?: Record<string, unknown>) => String(((d?.['session_preference'] as string | undefined) || '').trim() || 'unknown');
       const getOk = (d?: Record<string, unknown>) => {
         const v = d?.['online_ok'];
-        return typeof v === 'boolean' ? (v ? 'true' : 'false') : 'unknown';
+        if (typeof v === 'boolean') return v ? 'true' : 'false';
+        const pref = String(((d?.['session_preference'] as string | undefined) || '').toLowerCase().trim());
+        if (pref === 'online' || pref === 'either') return 'true';
+        if (pref === 'in_person') return 'false';
+        return 'unknown';
       };
       const getSt = (d?: Record<string, unknown>) => String(((d?.['start_timing'] as string | undefined) || '').trim() || 'unknown');
       const getBb = (d?: Record<string, unknown>) => normalizeBudget((d?.['budget'] as string | undefined) || undefined);
@@ -880,7 +889,17 @@ export async function GET(req: Request) {
 
           add(cm, (d['contact_method'] as string | undefined) || undefined);
           add(sp, (d['session_preference'] as string | undefined) || undefined);
-          add(ok, typeof d['online_ok'] === 'boolean' ? ((d['online_ok'] as boolean) ? 'true' : 'false') : undefined);
+          // Derive onlineOk from session_preference when boolean is absent
+          let okVal: string | undefined;
+          if (typeof d['online_ok'] === 'boolean') {
+            okVal = (d['online_ok'] as boolean) ? 'true' : 'false';
+          } else {
+            const pref = String((d['session_preference'] as string | undefined) || '').toLowerCase().trim();
+            if (pref === 'online' || pref === 'either') okVal = 'true';
+            else if (pref === 'in_person') okVal = 'false';
+            else okVal = 'unknown';
+          }
+          add(ok, okVal);
           add(mm, typeof d['modality_matters'] === 'boolean' ? ((d['modality_matters'] as boolean) ? 'true' : 'false') : undefined);
           add(st, (d['start_timing'] as string | undefined) || undefined);
           add(bb, normalizeBudget((d['budget'] as string | undefined) || undefined));

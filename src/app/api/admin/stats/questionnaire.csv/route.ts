@@ -89,7 +89,16 @@ export async function GET(req: Request) {
         total++;
         add(cm, (d['contact_method'] as string | undefined) || undefined);
         add(sp, (d['session_preference'] as string | undefined) || undefined);
-        add(ok, typeof d['online_ok'] === 'boolean' ? ((d['online_ok'] as boolean) ? 'true' : 'false') : undefined);
+        let okVal: string | undefined;
+        if (typeof d['online_ok'] === 'boolean') {
+          okVal = (d['online_ok'] as boolean) ? 'true' : 'false';
+        } else {
+          const pref = String((d['session_preference'] as string | undefined) || '').toLowerCase().trim();
+          if (pref === 'online' || pref === 'either') okVal = 'true';
+          else if (pref === 'in_person') okVal = 'false';
+          else okVal = 'unknown';
+        }
+        add(ok, okVal);
         add(mm, typeof d['modality_matters'] === 'boolean' ? ((d['modality_matters'] as boolean) ? 'true' : 'false') : undefined);
         add(st, (d['start_timing'] as string | undefined) || undefined);
         add(bb, normalizeBudget((d['budget'] as string | undefined) || undefined));
