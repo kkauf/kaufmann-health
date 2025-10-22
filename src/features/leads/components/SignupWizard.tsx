@@ -91,6 +91,9 @@ export default function SignupWizard() {
   // Suppress auto-advance on screens reached via Back until user interacts
   const [suppressAutoStep, setSuppressAutoStep] = React.useState<number | null>(null);
   const lastTrackedStepRef = React.useRef<number | null>(null);
+  // Campaign overrides captured on client (source/variant)
+  const campaignSourceOverrideRef = React.useRef<string | null>(null);
+  const campaignVariantOverrideRef = React.useRef<string | null>(null);
 
   // Ensure a stable web analytics session id exists before any events
   React.useEffect(() => {
@@ -304,6 +307,32 @@ export default function SignupWizard() {
         baseVVHeightRef.current = vv?.height || null;
       } catch {}
       // Mark initialization complete only after attempting to load saved state
+      // Capture campaign source/variant from URL or referrer
+      try {
+        let src: string | null = null;
+        let variant: string | undefined = undefined;
+        const vParam = searchParams?.get('variant') || searchParams?.get('v') || undefined;
+        if (vParam) {
+          src = '/start';
+          variant = vParam;
+        }
+        // Fallback to document.referrer (was on /start before /fragebogen)
+        try {
+          const ref = (typeof document !== 'undefined' ? document.referrer : '') || '';
+          if (!src && ref.includes('/start')) {
+            src = '/start';
+            try {
+              const u = new URL(ref);
+              const vp = u.searchParams.get('variant') || u.searchParams.get('v') || undefined;
+              variant = vp || variant;
+            } catch {}
+          }
+        } catch {}
+        if (src) campaignSourceOverrideRef.current = src;
+        if (variant) campaignVariantOverrideRef.current = variant;
+      } catch {}
+      
+      // Mark initialization complete only after attempting to load saved state
       setInitialized(true);
       // Cleanup
       return () => {
@@ -488,10 +517,15 @@ export default function SignupWizard() {
       lastSyncedRef.current = json;
       setSaving(true);
       try {
+        const cs = campaignSourceOverrideRef.current || undefined;
+        const cv = campaignVariantOverrideRef.current || undefined;
         const payload = {
           data: {
             ...data,
             step,
+            ...(cs || cv
+              ? { _attr: { ...(cs ? { campaign_source: cs } : {}), ...(cv ? { campaign_variant: cv } : {}) } }
+              : {}),
           },
           email: data.email || undefined,
         };
@@ -534,14 +568,23 @@ export default function SignupWizard() {
     }
     const t = setTimeout(async () => {
       try {
-        const payload = {
-          data: { step, _bootstrap: true },
+        const fsPayload = {
+          data: {
+            step,
+            _bootstrap: true,
+            ...((campaignSourceOverrideRef.current || campaignVariantOverrideRef.current)
+              ? { _attr: {
+                  ...(campaignSourceOverrideRef.current ? { campaign_source: campaignSourceOverrideRef.current } : {}),
+                  ...(campaignVariantOverrideRef.current ? { campaign_variant: campaignVariantOverrideRef.current } : {}),
+                } }
+              : {}),
+          },
           email: data.email || undefined,
         };
         const res = await fetch('/api/public/form-sessions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(fsPayload),
         });
         const j = await res.json().catch(() => ({}));
         if (res.ok && j?.data?.id) {
@@ -1056,9 +1099,13 @@ export default function SignupWizard() {
       }
 
       const sidHeader = webSessionIdRef.current || getOrCreateSessionId() || undefined;
+      const leadHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (sidHeader) leadHeaders['X-Session-Id'] = sidHeader;
+      if (campaignSourceOverrideRef.current) leadHeaders['X-Campaign-Source-Override'] = campaignSourceOverrideRef.current;
+      if (campaignVariantOverrideRef.current) leadHeaders['X-Campaign-Variant-Override'] = campaignVariantOverrideRef.current;
       const res = await fetch('/api/public/leads', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(sidHeader ? { 'X-Session-Id': sidHeader } : {}) },
+        headers: leadHeaders,
         body: JSON.stringify(submission.data),
       });
       const j = await res.json().catch(() => ({}));
@@ -1076,9 +1123,11 @@ export default function SignupWizard() {
       // Server conversions: mark form completed
       if (leadId) {
         try {
+          const fcHeaders: Record<string, string> = {};
+          if (sidHeader) fcHeaders['X-Session-Id'] = sidHeader;
           await fetch(`/api/public/leads/${encodeURIComponent(leadId)}/form-completed`, {
             method: 'POST',
-            headers: { ...(sidHeader ? { 'X-Session-Id': sidHeader } : {}) },
+            headers: fcHeaders,
           });
         } catch {}
       }

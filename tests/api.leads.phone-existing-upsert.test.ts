@@ -76,7 +76,7 @@ describe('POST /api/public/leads (phone) upserts missing attributes for existing
     expect(capturedUpdate).toBeTruthy();
     expect(capturedUpdate.name).toBe('John Doe');
     expect(capturedUpdate.campaign_source).toBe('/ankommen-in-dir');
-    expect(capturedUpdate.campaign_variant).toBe('C');
+    expect(capturedUpdate.campaign_variant).toBe('c');
     const meta = capturedUpdate.metadata as Record<string, unknown> | undefined;
     expect(meta).toBeTruthy();
     expect(meta!['form_session_id']).toBe('fs-1');

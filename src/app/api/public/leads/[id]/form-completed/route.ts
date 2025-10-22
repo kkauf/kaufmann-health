@@ -60,20 +60,22 @@ export async function POST(req: Request) {
     const ua = req.headers.get('user-agent') || undefined;
     // Derive a conservative campaign fallback from Referer (mirrors leads route semantics)
     let refCampaignSource: string | undefined;
-    let refCampaignVariant: 'A' | 'B' | 'C' | undefined;
+    let refCampaignVariant: string | undefined;
     try {
       const ref = req.headers.get('referer') || '';
       const u = new URL(ref);
       const path = u.pathname || '';
-      refCampaignSource = path.includes('/ankommen-in-dir')
+      refCampaignSource = path.includes('/start')
+        ? '/start'
+        : path.includes('/ankommen-in-dir')
         ? '/ankommen-in-dir'
         : path.includes('/wieder-lebendig')
         ? '/wieder-lebendig'
+        : path.includes('/fragebogen')
+        ? '/fragebogen'
         : '/therapie-finden';
-      const vMatch = ref.match(/[?&]v=([A-Za-z])/);
-      refCampaignVariant = vMatch
-        ? (vMatch[1].toUpperCase() === 'B' ? 'B' : (vMatch[1].toUpperCase() === 'C' ? 'C' : 'A'))
-        : 'A';
+      const vParam = u.searchParams.get('variant') || u.searchParams.get('v') || undefined;
+      refCampaignVariant = vParam || undefined;
     } catch {}
 
     const metadata: Record<string, unknown> = { ...(person.metadata || {}) };

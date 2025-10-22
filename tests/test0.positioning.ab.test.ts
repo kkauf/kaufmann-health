@@ -7,7 +7,7 @@ describe('Test #0: Positioning A/B Attribution', () => {
   });
 
   describe('parseCampaignFromRequest', () => {
-    it('should parse variant=body-oriented as A from /start', () => {
+    it('should parse variant=body-oriented as body-oriented from /start', () => {
       const req = new Request('https://api.example.com/api/public/leads', {
         headers: {
           referer: 'https://www.kaufmann-health.de/start?variant=body-oriented',
@@ -17,10 +17,10 @@ describe('Test #0: Positioning A/B Attribution', () => {
       const { campaign_source, campaign_variant } = ServerAnalytics.parseCampaignFromRequest(req);
 
       expect(campaign_source).toBe('/start');
-      expect(campaign_variant).toBe('A');
+      expect(campaign_variant).toBe('body-oriented');
     });
 
-    it('should parse variant=ready-now as B from /start', () => {
+    it('should parse variant=ready-now as ready-now from /start', () => {
       const req = new Request('https://api.example.com/api/public/leads', {
         headers: {
           referer: 'https://www.kaufmann-health.de/start?variant=ready-now',
@@ -30,10 +30,10 @@ describe('Test #0: Positioning A/B Attribution', () => {
       const { campaign_source, campaign_variant } = ServerAnalytics.parseCampaignFromRequest(req);
 
       expect(campaign_source).toBe('/start');
-      expect(campaign_variant).toBe('B');
+      expect(campaign_variant).toBe('ready-now');
     });
 
-    it('should default to variant A when no variant param on /start', () => {
+    it('should leave variant undefined when no variant param on /start', () => {
       const req = new Request('https://api.example.com/api/public/leads', {
         headers: {
           referer: 'https://www.kaufmann-health.de/start',
@@ -43,7 +43,7 @@ describe('Test #0: Positioning A/B Attribution', () => {
       const { campaign_source, campaign_variant } = ServerAnalytics.parseCampaignFromRequest(req);
 
       expect(campaign_source).toBe('/start');
-      expect(campaign_variant).toBe('A');
+      expect(campaign_variant).toBeUndefined();
     });
 
     it('should be case-insensitive for variant param', () => {
@@ -55,7 +55,7 @@ describe('Test #0: Positioning A/B Attribution', () => {
 
       const { campaign_source, campaign_variant } = ServerAnalytics.parseCampaignFromRequest(req);
 
-      expect(campaign_variant).toBe('B');
+      expect(campaign_variant).toBe('ready-now');
     });
 
     it('should handle variant=Body-Oriented (mixed case)', () => {
@@ -67,10 +67,10 @@ describe('Test #0: Positioning A/B Attribution', () => {
 
       const { campaign_source, campaign_variant } = ServerAnalytics.parseCampaignFromRequest(req);
 
-      expect(campaign_variant).toBe('A');
+      expect(campaign_variant).toBe('body-oriented');
     });
 
-    it('should ignore variant param on non-/start pages', () => {
+    it('should retain variant even on non-/start pages (no mapping)', () => {
       const req = new Request('https://api.example.com/api/public/leads', {
         headers: {
           referer: 'https://www.kaufmann-health.de/therapie-finden?variant=ready-now',
@@ -80,7 +80,7 @@ describe('Test #0: Positioning A/B Attribution', () => {
       const { campaign_source, campaign_variant } = ServerAnalytics.parseCampaignFromRequest(req);
 
       expect(campaign_source).toBe('/therapie-finden');
-      expect(campaign_variant).toBe('A'); // variant param ignored, default A
+      expect(campaign_variant).toBe('ready-now');
     });
 
     it('should parse /ankommen-in-dir without variant support', () => {
@@ -93,7 +93,7 @@ describe('Test #0: Positioning A/B Attribution', () => {
       const { campaign_source, campaign_variant } = ServerAnalytics.parseCampaignFromRequest(req);
 
       expect(campaign_source).toBe('/ankommen-in-dir');
-      expect(campaign_variant).toBe('A');
+      expect(campaign_variant).toBeUndefined();
     });
 
     it('should parse /wieder-lebendig without variant support', () => {
@@ -106,7 +106,7 @@ describe('Test #0: Positioning A/B Attribution', () => {
       const { campaign_source, campaign_variant } = ServerAnalytics.parseCampaignFromRequest(req);
 
       expect(campaign_source).toBe('/wieder-lebendig');
-      expect(campaign_variant).toBe('A');
+      expect(campaign_variant).toBeUndefined();
     });
   });
 

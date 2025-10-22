@@ -58,7 +58,7 @@ export default function NewScreen5_Modality({
     <div className="space-y-8">
       <div className="space-y-4">
         <div className="space-y-2">
-          <p className="font-medium">Ist dir die Therapiemethode deines Therapeuten wichtig?</p>
+          <p className="font-medium">Möchtest du selbst über die Therapiemethode deines Therapeuten entscheiden?</p>
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"

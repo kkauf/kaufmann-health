@@ -32,7 +32,7 @@ export function parseAttributionFromRequest(req: Request): ServerAttribution {
 
 export function parseCampaignFromRequest(req: Request): {
   campaign_source?: string;
-  campaign_variant?: 'A' | 'B' | 'C';
+  campaign_variant?: string;
   landing_page?: string;
 } {
   const ref = req.headers.get('referer') || '';
@@ -41,8 +41,8 @@ export function parseCampaignFromRequest(req: Request): {
   try {
     const u = new URL(ref);
     pathname = u.pathname || undefined;
-    const vParam = u.searchParams.get('v') || undefined;
-    variantParam = (u.searchParams.get('variant') || vParam || undefined) || undefined;
+    // Prefer explicit 'variant' parameter; fallback to 'v' if present
+    variantParam = u.searchParams.get('variant') || u.searchParams.get('v') || undefined;
   } catch {
     pathname = undefined;
   }
@@ -54,17 +54,12 @@ export function parseCampaignFromRequest(req: Request): {
     ? '/ankommen-in-dir'
     : pathname?.includes('/wieder-lebendig')
     ? '/wieder-lebendig'
+    : pathname?.includes('/fragebogen')
+    ? '/fragebogen'
     : '/therapie-finden';
 
-  let variant: 'A' | 'B' | 'C' = 'A';
-  if (variantParam) {
-    const normalized = variantParam.toLowerCase();
-    if (normalized.length === 1 && /[abc]/i.test(normalized)) {
-      variant = (normalized.toUpperCase() as 'A' | 'B' | 'C');
-    } else if (src === '/start') {
-      variant = normalized === 'ready-now' ? 'B' : 'A';
-    }
-  }
+  // Variant: normalized lower-case string from ?variant= (or ?v= fallback). No forced mapping.
+  const variant = variantParam ? variantParam.toLowerCase() : undefined;
 
   return {
     campaign_source: src,

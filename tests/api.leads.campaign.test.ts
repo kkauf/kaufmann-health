@@ -83,14 +83,14 @@ describe('Campaign attribution', () => {
     expect(json.data.requiresConfirmation).toBe(true);
     expect(lastInsertPayload).toBeTruthy();
     expect(lastInsertPayload.campaign_source).toBe('/wieder-lebendig');
-    expect(lastInsertPayload.campaign_variant).toBe('B');
+    expect(lastInsertPayload.campaign_variant).toBe('b');
     // landing_page no longer persisted
 
     // Event should include campaign props
     const ev = trackedEvents.find(e => e?.type === 'email_submitted');
     expect(ev).toBeTruthy();
     expect(ev.props.campaign_source).toBe('/wieder-lebendig');
-    expect(ev.props.campaign_variant).toBe('B');
+    expect(ev.props.campaign_variant).toBe('b');
     // landing_page no longer included in events
   });
 

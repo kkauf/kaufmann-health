@@ -633,16 +633,19 @@ export async function POST(req: Request) {
         );
       }
       const isTest = isTestRequest(req, email);
-      // Campaign inference from referrer
+      // Campaign inference from referrer with client override support
       const campaign = parseCampaignFromRequest(req);
-      const campaign_source = campaign.campaign_source;
+      let campaign_source: string | undefined = campaign.campaign_source;
       const landing_page = campaign.landing_page;
-      // Ensure variant prefers Referer (?v=) even if URL parsing is quirky in test env
-      const refStr = req.headers.get('referer') || '';
-      const vMatch = refStr.match(/[?&]v=([A-Za-z])/);
-      const campaign_variant = vMatch
-        ? ((vMatch[1].toUpperCase() === 'B') ? 'B' : (vMatch[1].toUpperCase() === 'C' ? 'C' : 'A'))
-        : campaign.campaign_variant;
+      // Variant: free-form string from ?variant= (or ?v=) if present
+      let campaign_variant: string | undefined = campaign.campaign_variant || undefined;
+      // Header overrides from client (SignupWizard)
+      try {
+        const csOver = req.headers.get('x-campaign-source-override') || undefined;
+        const cvOver = req.headers.get('x-campaign-variant-override') || undefined;
+        if (csOver) campaign_source = csOver;
+        if (cvOver) campaign_variant = cvOver;
+      } catch {}
 
       // Prepare confirmation token up-front so we can store it at insert time
       const confirmToken = randomUUID();

@@ -37,10 +37,7 @@ export async function POST(req: Request) {
       const obj = data as Record<string, unknown>;
       if (!obj['_attr']) {
         const base = parseCampaignFromRequest(req);
-        const ref = req.headers.get('referer') || '';
-        const vMatch = ref.match(/[?&]v=([A-Za-z])/);
-        const vParam = vMatch ? vMatch[1].toUpperCase() : undefined;
-        const campaign_variant = vParam === 'B' ? 'B' : vParam === 'C' ? 'C' : base.campaign_variant;
+        const campaign_variant = base.campaign_variant;
         const campaign_source = base.campaign_source;
         obj['_attr'] = { campaign_source, campaign_variant } as Record<string, unknown>;
       }
