@@ -165,7 +165,6 @@ export async function POST(req: Request) {
             // Both are acceptable → store as array and omit single preference
             (metadata as Record<string, unknown>).session_preferences = ['online', 'in_person'];
             if ('session_preference' in metadata) delete (metadata as Record<string, unknown>)['session_preference'];
-            (metadata as Record<string, unknown>).online_ok = true;
           }
         }
         // If an explicit array is present, prefer it (defensive)
@@ -180,8 +179,6 @@ export async function POST(req: Request) {
         if (therapy_type) metadata.therapy_type = therapy_type;
         const what_missing = maybeArray('what_missing');
         if (what_missing) metadata.what_missing = what_missing;
-        const online_ok = maybeBool('online_ok');
-        if (typeof online_ok === 'boolean') metadata.online_ok = online_ok;
         const budget = maybeString('budget');
         if (budget) metadata.budget = budget;
         const privacy_preference = maybeString('privacy_preference');
@@ -190,7 +187,6 @@ export async function POST(req: Request) {
         // Gender mapping: Wizard may store human-friendly strings; preserve raw and map to legacy key if clear
         const gender = maybeString('gender');
         if (gender) {
-          metadata.gender = gender;
           const g = gender.toLowerCase();
           if (g.includes('mann')) metadata.gender_preference = 'male';
           else if (g.includes('frau')) metadata.gender_preference = 'female';
@@ -204,14 +200,12 @@ export async function POST(req: Request) {
         const time_slots = maybeArray('time_slots');
         if (time_slots) metadata.time_slots = time_slots;
         const methods = maybeArray('methods');
-        if (methods) metadata.methods = methods;
-        if (methods && !(metadata as Record<string, unknown>).specializations) {
+        if (methods) {
           (metadata as Record<string, unknown>).specializations = methods;
         }
         const modality_matters = maybeBool('modality_matters');
         if (typeof modality_matters === 'boolean') metadata.modality_matters = modality_matters;
         const additional_info = maybeString('additional_info');
-        if (additional_info) metadata.additional_info = additional_info;
         if (additional_info && !(metadata as Record<string, unknown>).issue) {
           (metadata as Record<string, unknown>).issue = additional_info;
         }
@@ -236,13 +230,23 @@ export async function POST(req: Request) {
       return safeJson({ data: null, error: 'Failed to update' }, { status: 500 });
     }
 
-    // Track server analytics: form_completed
+    // Track server analytics: form_completed (legacy) and fragebogen_completed (new canonical name)
     try {
+      const commonProps = {
+        id,
+        form_session_id: (typeof metadata['form_session_id'] === 'string' ? (metadata['form_session_id'] as string) : undefined),
+      } as const;
       await ServerAnalytics.trackEventFromRequest(req, {
         type: 'form_completed',
         source: 'api.leads.form_completed',
         session_id: sessionIdHeader,
-        props: { id, form_session_id: (typeof metadata['form_session_id'] === 'string' ? (metadata['form_session_id'] as string) : undefined) },
+        props: commonProps,
+      });
+      await ServerAnalytics.trackEventFromRequest(req, {
+        type: 'fragebogen_completed',
+        source: 'api.leads.form_completed',
+        session_id: sessionIdHeader,
+        props: commonProps,
       });
     } catch {}
 
@@ -268,6 +272,7 @@ export async function POST(req: Request) {
 
     // Internal log for ops
     void track({ type: 'form_completed', level: 'info', source: 'api.leads', props: { lead_id: id } });
+    void track({ type: 'fragebogen_completed', level: 'info', source: 'api.leads', props: { lead_id: id } });
 
     return safeJson({ data: { ok: true }, error: null });
   } catch (e) {
