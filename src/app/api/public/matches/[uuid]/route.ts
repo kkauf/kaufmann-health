@@ -51,7 +51,8 @@ export async function GET(req: Request) {
       refErr = res.error as unknown;
     }
     const msg = extractMessage(refErr);
-    if (msg && /Cannot coerce the result to a single JSON object/i.test(msg)) {
+    const needsFallback = Boolean(refErr || !ref || (msg && /Cannot coerce the result to a single JSON object/i.test(msg)));
+    if (needsFallback) {
       const fallback = await supabaseServer
         .from('matches')
         .select('id, created_at, patient_id')
