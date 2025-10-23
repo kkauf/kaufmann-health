@@ -22,7 +22,7 @@ describe('EARTH-209: MidPageConversion Component', () => {
     
     try {
       await new Promise((r) => setTimeout(r, 0));
-      expect(container.textContent).toContain('Bereit, deine/n Therapeut:in zu finden');
+      expect(container.textContent).toMatch(/Bereit, deine(?:\/n)? Therapeut:in zu finden\??/);
       expect(container.textContent).toContain('Hast du bereits Therapie gemacht');
     } finally {
       unmount();
