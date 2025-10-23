@@ -41,7 +41,7 @@ export function ConsentSection({
       <>
         Mit dem Absenden bestätigst du die{' '}
         <a href="/datenschutz" className="underline">Datenschutzerklärung</a>{' '}und die{' '}
-        <a href="/agb" className="underline">AGB</a> sowie die Weitergabe deiner Angaben an passende Therapeut:innen zur Kontaktaufnahme.
+        <a href="/agb" className="underline">AGB</a> sowie die Weitergabe deiner Angaben an von dir augewählte Therapeut:innen zur Kontaktaufnahme.
       </>
     );
   })();

@@ -2,12 +2,15 @@
 /**
  * Export keyword performance and RSA asset-combination price-serving shares to CSV.
  *
- * Produces:
- *  - keyword_raw.csv           Raw keyword clicks/impressions/cost per campaign/ad group/keyword/match_type
- *  - ad_price_share.csv        Per-ad click shares where the "price" headline served (pinned vs unpinned vs none)
- *  - adgroup_price_share.csv   Ad-group aggregated price-serving shares (weighted by ad clicks)
- *  - keyword_adjusted.csv      Keyword clicks split into estimated buckets: price_pinned / price_unpinned / no_price
- *  - asset_headline_perf.csv   Account-level HEADLINE asset performance with text (for context)
+ * Produces (all filenames prefixed with export date YYYYMMDD_):
+ *  - YYYYMMDD_keyword_raw.csv           Raw keyword clicks/impressions/cost per campaign/ad group/keyword/match_type
+ *  - YYYYMMDD_keyword_adjusted.csv      Keyword clicks split into estimated buckets: price_pinned / price_unpinned / no_price
+ *  - YYYYMMDD_keyword_perf.csv          Keyword performance with CTR/CPC/Conversions/CPL
+ *  - YYYYMMDD_ad_price_share.csv        Per-ad click shares where the "price" headline served (pinned vs unpinned vs none)
+ *  - YYYYMMDD_adgroup_price_share.csv   Ad-group aggregated price-serving shares (weighted by ad clicks)
+ *  - YYYYMMDD_asset_headline_perf.csv   Account-level HEADLINE asset performance with text (for context)
+ *  - YYYYMMDD_asset_description_perf.csv Account-level DESCRIPTION asset performance with text
+ *  - YYYYMMDD_asset_sitelink_perf.csv   Account-level SITELINK asset performance with link text
  *
  * Defaults:
  *  - since: 2025-09-01 (account time zone)
@@ -40,6 +43,10 @@ function requireEnv(key: string): string {
 function toYyyymmdd(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+}
+
+function toYyyymmddCompact(d: Date): string {
+  return toYyyymmdd(d).replace(/-/g, '');
 }
 
 function eurosFromMicros(micros?: number): number {
@@ -182,7 +189,8 @@ async function queryAllAssets(customer: any): Promise<{ assets: PriceAsset[]; te
       asset.resource_name,
       asset.type,
       asset.name,
-      asset.text_asset.text
+      asset.text_asset.text,
+      asset.sitelink_asset.link_text
     FROM asset
   `);
   const assets: PriceAsset[] = [];
@@ -191,10 +199,13 @@ async function queryAllAssets(customer: any): Promise<{ assets: PriceAsset[]; te
     const rn = getField<string>(r, ['asset.resource_name', 'asset.resourceName']);
     const type = getField<string>(r, ['asset.type', 'asset.type_']);
     const text = getField<string>(r, ['asset.text_asset.text', 'asset.textAsset.text']);
-    if (rn && typeof text === 'string' && text.length > 0) {
-      textByResource.set(rn, text);
+    const sitelink = getField<string>(r, ['asset.sitelink_asset.link_text', 'asset.sitelinkAsset.linkText']);
+    if (rn) {
+      // Prefer text asset content; fallback to sitelink text for SITELINK assets
+      const chosen = typeof text === 'string' && text.length > 0 ? text : (typeof sitelink === 'string' ? sitelink : '');
+      if (chosen) textByResource.set(rn, chosen);
       // GA v21 returns asset.type = 'TEXT' for RSA text assets. Older code used 'TEXT_ASSET'. Accept both.
-      if (type === 'TEXT' || type === 'TEXT_ASSET' || type === undefined || type === null) {
+      if ((type === 'TEXT' || type === 'TEXT_ASSET' || type === undefined || type === null) && typeof text === 'string' && text.length > 0) {
         assets.push({ resourceName: rn, text });
       }
     }
@@ -403,6 +414,7 @@ async function exportData() {
   const outDir = typeof args.outDir === 'string' ? args.outDir : path.join('google_ads_api_scripts', 'private', 'exports');
   const pricePatternStr = typeof args.priceRegex === 'string' ? args.priceRegex : '80\\s*[–-]\\s*120\\s*€\\s*pro\\s*Sitzung';
   const priceRegex = new RegExp(pricePatternStr, 'i');
+  const exportDatePrefix = (typeof args.until === 'string' ? args.until : toYyyymmdd(new Date())).replace(/-/g, '');
 
   console.log('=== Export Keyword & Asset Performance ===');
   console.log('Params:', { since, until, nameLike: nameLike || '(all campaigns)', priceRegex: priceRegex.source, outDir });
@@ -483,7 +495,8 @@ async function exportData() {
       ad_group_criterion.status,
       metrics.clicks,
       metrics.impressions,
-      metrics.cost_micros
+      metrics.cost_micros,
+      metrics.conversions
     FROM keyword_view
     WHERE campaign.advertising_channel_type = 'SEARCH'
       AND segments.date BETWEEN '${since}' AND '${until}'
@@ -493,7 +506,7 @@ async function exportData() {
   // Write CSVs
   console.log('\nWriting CSVs…');
   // CSV 1: keyword_raw.csv
-  const keywordRawPath = path.join(outDir, 'keyword_raw.csv');
+  const keywordRawPath = path.join(outDir, `${exportDatePrefix}_keyword_raw.csv`);
   const kwRawHeaders = [
     'campaign_id', 'campaign_name', 'ad_group_id', 'ad_group_name',
     'keyword_id', 'keyword_text', 'match_type', 'status',
@@ -533,8 +546,41 @@ async function exportData() {
   }
   writeCsv(keywordRawPath, kwRawHeaders, kwRawRows);
 
+  // CSV 1b: keyword_perf.csv (CTR/CPC/Conversions/CPL)
+  const keywordPerfPath = path.join(outDir, `${exportDatePrefix}_keyword_perf.csv`);
+  const kwPerfHeaders = [
+    'campaign_id', 'campaign_name', 'ad_group_id', 'ad_group_name',
+    'keyword_id', 'keyword_text', 'match_type', 'status',
+    'clicks', 'impressions', 'ctr', 'cost_eur', 'avg_cpc_eur', 'conversions', 'cpl_eur', 'date_range'
+  ];
+  const kwPerfRows: any[] = [];
+  for (const r of keywordRows) {
+    const campaignId = String(getField<any>(r, ['campaign.id']));
+    const campaignName = String(getField<any>(r, ['campaign.name']) || '');
+    const adGroupId = String(getField<any>(r, ['ad_group.id', 'adGroup.id']));
+    const adGroupName = String(getField<any>(r, ['ad_group.name', 'adGroup.name']) || '');
+    const keywordId = String(getField<any>(r, ['ad_group_criterion.criterion_id']));
+    const keywordText = String(getField<any>(r, ['ad_group_criterion.keyword.text']) || '');
+    const matchType = String(getField<any>(r, ['ad_group_criterion.keyword.match_type']) || '');
+    const status = String(getField<any>(r, ['ad_group_criterion.status']) || '');
+    const clicks = Number(getField<any>(r, ['metrics.clicks']) || 0);
+    const impressions = Number(getField<any>(r, ['metrics.impressions']) || 0);
+    const costMicros = Number(getField<any>(r, ['metrics.cost_micros']) || 0);
+    const conversions = Number(getField<any>(r, ['metrics.conversions']) || 0);
+    const cost = eurosFromMicros(costMicros);
+    const ctr = impressions > 0 ? Math.round((clicks / impressions) * 10000) / 100 : 0; // percent
+    const cpc = clicks > 0 ? Math.round((cost / clicks) * 100) / 100 : 0;
+    const cpl = conversions > 0 ? Math.round((cost / conversions) * 100) / 100 : '';
+    kwPerfRows.push([
+      campaignId, campaignName, adGroupId, adGroupName,
+      keywordId, keywordText, matchType, status,
+      clicks, impressions, ctr, cost, cpc, conversions, cpl, `${since}..${until}`
+    ]);
+  }
+  writeCsv(keywordPerfPath, kwPerfHeaders, kwPerfRows);
+
   // CSV 2: ad_price_share.csv (per ad)
-  const adPricePath = path.join(outDir, 'ad_price_share.csv');
+  const adPricePath = path.join(outDir, `${exportDatePrefix}_ad_price_share.csv`);
   const adHeaders = [
     'campaign_id', 'ad_group_id', 'ad_id',
     'clicks_total', 'clicks_price_present', 'clicks_price_pinned', 'clicks_price_unpinned',
@@ -556,7 +602,7 @@ async function exportData() {
   writeCsv(adPricePath, adHeaders, adRows);
 
   // CSV 3: adgroup_price_share.csv
-  const aggPath = path.join(outDir, 'adgroup_price_share.csv');
+  const aggPath = path.join(outDir, `${exportDatePrefix}_adgroup_price_share.csv`);
   const agHeaders = [
     'campaign_id', 'ad_group_id', 'clicks_total', 'clicks_price_present', 'clicks_price_pinned', 'clicks_price_unpinned',
     'share_price_present', 'share_price_pinned', 'share_price_unpinned', 'share_no_price', 'date_range'
@@ -576,7 +622,7 @@ async function exportData() {
   writeCsv(aggPath, agHeaders, agRows);
 
   // CSV 4: keyword_adjusted.csv (apply ad-group shares)
-  const keywordAdjustedPath = path.join(outDir, 'keyword_adjusted.csv');
+  const keywordAdjustedPath = path.join(outDir, `${exportDatePrefix}_keyword_adjusted.csv`);
   const kwAdjHeaders = [
     'campaign_id', 'campaign_name', 'ad_group_id', 'ad_group_name',
     'keyword_id', 'keyword_text', 'match_type', 'status',
@@ -627,7 +673,7 @@ async function exportData() {
   // Need text lookup for assets
   const allAssets = await queryAllAssets(customer);
 
-  const assetPerfPath = path.join(outDir, 'asset_headline_perf.csv');
+  const assetPerfPath = path.join(outDir, `${exportDatePrefix}_asset_headline_perf.csv`);
   const assetHeaders = ['asset_resource_name', 'field_type', 'text', 'is_price', 'clicks', 'impressions', 'cost_eur', 'date_range'];
   const assetRows: any[] = [];
   for (const r of assetPerfRows) {
@@ -643,12 +689,69 @@ async function exportData() {
   }
   writeCsv(assetPerfPath, assetHeaders, assetRows);
 
+  // CSV 6: asset_description_perf.csv
+  const descRows: any[] = await customer.query(`
+    SELECT
+      ad_group_ad_asset_view.field_type,
+      ad_group_ad_asset_view.asset,
+      metrics.impressions,
+      metrics.clicks,
+      metrics.cost_micros
+    FROM ad_group_ad_asset_view
+    WHERE ad_group_ad_asset_view.field_type = 'DESCRIPTION'
+      AND campaign.advertising_channel_type = 'SEARCH'
+      AND segments.date BETWEEN '${since}' AND '${until}'
+      ${nameClause}
+  `);
+  const assetDescPath = path.join(outDir, `${exportDatePrefix}_asset_description_perf.csv`);
+  const assetDescRows: any[] = [];
+  for (const r of descRows) {
+    const rn = String(getField<any>(r, ['ad_group_ad_asset_view.asset', 'adGroupAdAssetView.asset']) || '');
+    if (!rn) continue;
+    const clicks = Number(getField<any>(r, ['metrics.clicks']) || 0);
+    const impressions = Number(getField<any>(r, ['metrics.impressions']) || 0);
+    const costMicros = Number(getField<any>(r, ['metrics.cost_micros']) || 0);
+    const text = allAssets.textByResource.get(rn) || '';
+    assetDescRows.push([rn, 'DESCRIPTION', text, 0, clicks, impressions, eurosFromMicros(costMicros), `${since}..${until}`]);
+  }
+  writeCsv(assetDescPath, assetHeaders, assetDescRows);
+
+  // CSV 7: asset_sitelink_perf.csv
+  const sitelinkRows: any[] = await customer.query(`
+    SELECT
+      ad_group_ad_asset_view.field_type,
+      ad_group_ad_asset_view.asset,
+      metrics.impressions,
+      metrics.clicks,
+      metrics.cost_micros
+    FROM ad_group_ad_asset_view
+    WHERE ad_group_ad_asset_view.field_type = 'SITELINK'
+      AND campaign.advertising_channel_type = 'SEARCH'
+      AND segments.date BETWEEN '${since}' AND '${until}'
+      ${nameClause}
+  `);
+  const assetSitelinkPath = path.join(outDir, `${exportDatePrefix}_asset_sitelink_perf.csv`);
+  const assetSitelinkRows: any[] = [];
+  for (const r of sitelinkRows) {
+    const rn = String(getField<any>(r, ['ad_group_ad_asset_view.asset', 'adGroupAdAssetView.asset']) || '');
+    if (!rn) continue;
+    const clicks = Number(getField<any>(r, ['metrics.clicks']) || 0);
+    const impressions = Number(getField<any>(r, ['metrics.impressions']) || 0);
+    const costMicros = Number(getField<any>(r, ['metrics.cost_micros']) || 0);
+    const text = allAssets.textByResource.get(rn) || '';
+    assetSitelinkRows.push([rn, 'SITELINK', text, 0, clicks, impressions, eurosFromMicros(costMicros), `${since}..${until}`]);
+  }
+  writeCsv(assetSitelinkPath, assetHeaders, assetSitelinkRows);
+
   console.log('\n✅ Export complete. Files:', {
     keyword_raw: keywordRawPath,
+    keyword_perf: keywordPerfPath,
     ad_price_share: adPricePath,
     adgroup_price_share: aggPath,
     keyword_adjusted: keywordAdjustedPath,
     asset_headline_perf: assetPerfPath,
+    asset_description_perf: assetDescPath,
+    asset_sitelink_perf: assetSitelinkPath,
   });
 }
 

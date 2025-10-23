@@ -39,7 +39,7 @@ export function MidPageConversion({ className }: MidPageConversionProps) {
           id="midpage-conversion-heading"
           className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900"
         >
-          Bereit, deine/n Therapeut:in zu finden?
+          Bereit, deine Therapeut:in zu finden?
         </h2>
 
         {/* Question */}

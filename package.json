@@ -24,6 +24,7 @@
     "ads:monitor:test0": "tsx google_ads_api_scripts/monitor-campaigns.ts --nameLike=Positioning_Test --minSpendNoConv=250",
     "ads:monitor:test0:apply": "tsx google_ads_api_scripts/monitor-campaigns.ts --nameLike=Positioning_Test --minSpendNoConv=250 --apply",
     "ads:export:perf": "tsx google_ads_api_scripts/export-keyword-asset-performance.ts",
+    "ads:export:core": "tsx google_ads_api_scripts/export-core-reports.ts",
     "spam:test": "tsx scripts/send-spam-test.ts",
     "smoke": "tsx scripts/smoke-test.ts",
     "smoke:local": "tsx scripts/smoke-test.ts --base-url=http://localhost:3000",
