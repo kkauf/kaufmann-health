@@ -784,6 +784,7 @@ export default function SignupWizard() {
             onChange={saveLocal}
             onBack={() => safeGoToStep(7)}
             onNext={async () => {
+              void trackEvent('submit_clicked', { step: 8, contact_method: data.contact_method });
               // If phone and already verified (from existing session), skip verification
               if (data.contact_method === 'phone' && data.phone_number) {
                 if (data.phone_verified) {
@@ -1134,6 +1135,11 @@ export default function SignupWizard() {
 
       // Client conversions (deduped)
       try { fireGoogleAdsClientConversion(leadId); } catch {}
+
+      {
+        const currentStep2 = data.contact_method === 'phone' ? 8.5 : 8;
+        void trackEvent('submit_succeeded', { step: currentStep2, contact_method: data.contact_method });
+      }
 
       void trackEvent('form_completed', { steps: 8 }); // 8 main steps (9 with SMS)
       // Go to final confirmation screen (step 9)

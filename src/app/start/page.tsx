@@ -53,7 +53,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
       subtitle: 'Erfahrene Körpertherapeut:innen, die wirklich verfügbar sind. Handverlesen, traumasensibel, in Berlin oder online.',
     },
     process: {
-      tagline: 'Keine Algorithmen. Keine Wartelisten. Nur persönliche Empfehlungen.',
+      tagline: 'Keine Wartelisten. Persönlich ausgewählte Vorschläge in <24h. Deine Daten bleiben privat.',
     },
     faqs: [
       {
@@ -81,7 +81,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
       subtitle: 'Kein monatelanges Warten. Keine Kassentherapie. Nur handverlesene Therapeut:innen, die sofort verfügbar sind – in Berlin oder online.',
     },
     process: {
-      tagline: 'Keine Wartelisten. Keine Bürokratie. Einfach starten.',
+      tagline: 'Keine Wartelisten. Vorschläge in <24h. Deine Daten bleiben privat.',
     },
     faqs: [
       {
@@ -122,7 +122,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
 
       {/* Process timeline (mobile‑first) */}
       <ProcessTimeline
-        tagline={copy.process.tagline}
+        tagline="Bis zu 3 passende Therapeut:innen-Vorschläge in <24h. Deine Daten bleiben privat. Du entscheidest, wie du kontaktiert werden möchtest."
         items={[
           {
             icon: <MessageCircle className="h-5 w-5" />,
@@ -140,7 +140,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
             icon: <PhoneCall className="h-5 w-5" />,
             title: 'Du entscheidest',
             caption: 'Direkter Kontakt',
-            bullets: ['Wunschtherapeut:in wählen und direkt Termin vereinbaren'],
+            bullets: ['Wunschtherapeut:in wählen und direkt Termin vereinbaren', 'Vorschläge per E‑Mail oder SMS – du entscheidest'],
           },
         ]}
       />

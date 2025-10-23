@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { Clock, ShieldCheck, Check } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -131,7 +132,16 @@ export default function Screen1({
       onSubmit={handleSubmit}
     >
       <div className="space-y-2">
-        <Label htmlFor="name" className="text-base">Wie dürfen wir dich ansprechen?</Label>
+        <h2 className="text-xl font-semibold">Fast geschafft!</h2>
+        <p>Katherine und Konstantin prüfen deine Anfrage persönlich.</p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm font-medium text-gray-700">
+          <span className="inline-flex items-center gap-2"><Clock className="h-4 w-4 text-emerald-600" /><span>Vorschläge in &lt;24h</span></span>
+          <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /><span>Du entscheidest</span></span>
+          <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-indigo-600" /><span>Daten bleiben privat</span></span>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="name" className="text-base">Dein Name</Label>
         <Input
           id="name"
           type="text"
@@ -147,14 +157,44 @@ export default function Screen1({
         {nameError && (
           <p id="name-error" className="text-sm text-red-600">{nameError}</p>
         )}
-        <p className="text-sm text-muted-foreground">Nur dein Vorname reicht</p>
       </div>
 
+      <p className="text-sm text-muted-foreground">Um dir deine Vorschläge zusenden zu können, benötigen wir noch Kontaktdaten von dir.</p>
+
       {/* Contact field - email or phone based on mode */}
+      {canSwitchMethod && mounted && (
+        <div className="mt-1">
+          <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => { saveContactMethod('email'); onChange({ contact_method: 'email' }); setEmailError(null); setPhoneError(null); }}
+              className={
+                "px-3 py-1.5 text-sm rounded-md transition-colors " +
+                (contactMethod === 'email' ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-50")
+              }
+              aria-pressed={contactMethod === 'email'}
+            >
+              E‑Mail
+            </button>
+            <button
+              type="button"
+              onClick={() => { saveContactMethod('phone'); onChange({ contact_method: 'phone' }); setEmailError(null); setPhoneError(null); }}
+              className={
+                "ml-1 px-3 py-1.5 text-sm rounded-md transition-colors " +
+                (contactMethod === 'phone' ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-50")
+              }
+              aria-pressed={contactMethod === 'phone'}
+            >
+              SMS
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-2">
         {contactMethod === 'email' ? (
           <>
-            <Label htmlFor="email" className="text-base">Deine E-Mail für die Therapievorschläge</Label>
+            <Label htmlFor="email" className="text-base">E‑Mail für deine Therapievorschläge</Label>
             <Input
               id="email"
               type="email"
@@ -172,33 +212,22 @@ export default function Screen1({
             {emailError && (
               <p id="email-error" className="text-sm text-red-600">{emailError}</p>
             )}
-            <p className="text-sm text-muted-foreground">Wir schicken dir passende Therapeut:innen</p>
           </>
         ) : (
           <>
-            <Label htmlFor="phone" className="text-base">Deine Handynummer für die Therapievorschläge</Label>
+            <Label htmlFor="phone" className="text-base">Handynummer für deine Therapievorschläge</Label>
             <VerifiedPhoneInput
               value={values.phone_number || ''}
               onChange={(phone) => onChange({ phone_number: phone })}
               error={phoneError || undefined}
               helpText="Du bekommst einen SMS-Code zur Bestätigung"
             />
+            
           </>
         )}
       </div>
 
-      {/* Switch contact method link (choice mode only) */}
-      {canSwitchMethod && mounted && (
-        <div className="text-center -mt-2">
-          <button
-            type="button"
-            onClick={handleSwitch}
-            className="text-sm text-gray-500 hover:text-gray-700 underline transition-colors"
-          >
-            {contactMethod === 'phone' ? 'Stattdessen Email verwenden' : 'Stattdessen Handynummer verwenden'}
-          </button>
-        </div>
-      )}
+      
 
       <ConsentSection actor="patient" className="mt-1" />
 
