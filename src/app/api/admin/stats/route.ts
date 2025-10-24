@@ -888,7 +888,9 @@ export async function GET(req: Request) {
           total++;
 
           add(cm, (d['contact_method'] as string | undefined) || undefined);
-          add(sp, (d['session_preference'] as string | undefined) || undefined);
+          // Count missing session_preference as "unknown" to match wizard funnel behavior
+          const spVal = (d['session_preference'] as string | undefined) || undefined;
+          add(sp, spVal || 'unknown');
           // Derive onlineOk from session_preference when boolean is absent
           let okVal: string | undefined;
           if (typeof d['online_ok'] === 'boolean') {
