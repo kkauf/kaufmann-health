@@ -93,6 +93,28 @@ type StatsResponse = {
     questionnaire_preference_rate: number;
     directory_to_questionnaire_rate: number;
   };
+  conversionFunnel: {
+    total_leads: number;
+    email_only: number;
+    phone_only: number;
+    email_confirmed: number;
+    phone_verified: number;
+    converted_to_new: number;
+    email_confirmation_rate: number; // % of email_only that are email_confirmed
+    phone_verification_rate: number; // % of phone_only that are phone_verified
+    overall_activation_rate: number; // % of total_leads that became status=new
+  };
+  matchFunnel: {
+    total_matches: number;
+    therapist_contacted: number;
+    therapist_responded: number;
+    patient_selected: number;
+    accepted: number;
+    declined: number;
+    response_rate: number;   // responded / contacted
+    acceptance_rate: number; // accepted / responded
+    overall_conversion: number; // accepted / total
+  };
   questionnaireInsights: {
     contactMethod: Array<{ option: string; count: number }>;
     sessionPreference: Array<{ option: string; count: number }>;
@@ -747,6 +769,108 @@ export async function GET(req: Request) {
       await logError('admin.api.stats', e, { stage: 'directory' });
     }
 
+    // === CONVERSION FUNNEL (Email & Phone) ===
+    const conversionFunnel: StatsResponse['conversionFunnel'] = {
+      total_leads: 0,
+      email_only: 0,
+      phone_only: 0,
+      email_confirmed: 0,
+      phone_verified: 0,
+      converted_to_new: 0,
+      email_confirmation_rate: 0,
+      phone_verification_rate: 0,
+      overall_activation_rate: 0,
+    };
+    try {
+      type PersonRow = {
+        id: string;
+        email?: string | null;
+        phone_number?: string | null;
+        status?: string | null;
+        created_at?: string | null;
+        metadata?: Record<string, unknown> | null;
+      };
+      const { data: peopleRows } = await supabaseServer
+        .from('people')
+        .select('id, email, phone_number, status, created_at, metadata')
+        .eq('type', 'patient')
+        .gte('created_at', sinceIso)
+        .limit(50000);
+
+      const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 1000) / 10 : 0);
+
+      for (const row of (peopleRows || []) as PersonRow[]) {
+        try {
+          conversionFunnel.total_leads++;
+          const email = (row.email || '').trim();
+          const phone = (row.phone_number || '').trim();
+          const status = (row.status || '').toLowerCase();
+          const meta = (row.metadata || {}) as Record<string, unknown>;
+          const cmRaw = String((meta['contact_method'] as string | undefined) || '').toLowerCase();
+          const isEmailOnly = cmRaw === 'email' || (!!email && !phone);
+          const isPhoneOnly = cmRaw === 'phone' || (!!phone && !email);
+          if (isEmailOnly) conversionFunnel.email_only++;
+          if (isPhoneOnly) conversionFunnel.phone_only++;
+          if (status === 'email_confirmed') conversionFunnel.email_confirmed++;
+          if (status === 'new') conversionFunnel.converted_to_new++;
+          const phoneVerified = meta && typeof meta['phone_verified'] === 'boolean' ? (meta['phone_verified'] as boolean) : false;
+          if (phoneVerified) conversionFunnel.phone_verified++;
+        } catch {}
+      }
+
+      conversionFunnel.email_confirmation_rate = pct(conversionFunnel.email_confirmed, conversionFunnel.email_only);
+      conversionFunnel.phone_verification_rate = pct(conversionFunnel.phone_verified, conversionFunnel.phone_only);
+      conversionFunnel.overall_activation_rate = pct(conversionFunnel.converted_to_new, conversionFunnel.total_leads);
+    } catch (e) {
+      await logError('admin.api.stats', e, { stage: 'conversion_funnel' });
+    }
+
+    // === MATCH FUNNEL ===
+    const matchFunnel: StatsResponse['matchFunnel'] = {
+      total_matches: 0,
+      therapist_contacted: 0,
+      therapist_responded: 0,
+      patient_selected: 0,
+      accepted: 0,
+      declined: 0,
+      response_rate: 0,
+      acceptance_rate: 0,
+      overall_conversion: 0,
+    };
+    try {
+      type MatchRow = { id: string; status?: string | null; created_at?: string | null };
+      const { data: matchRows } = await supabaseServer
+        .from('matches')
+        .select('id, status, created_at')
+        .gte('created_at', sinceIso)
+        .limit(50000);
+
+      const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 1000) / 10 : 0);
+      const contactedSet = new Set<string>(['therapist_contacted','therapist_responded','patient_selected','accepted','declined','session_booked','completed','failed']);
+      const respondedSet = new Set<string>(['therapist_responded','patient_selected','accepted','declined','session_booked','completed','failed']);
+      const selectedSet = new Set<string>(['patient_selected','accepted','declined','session_booked','completed','failed']);
+      const acceptedSet = new Set<string>(['accepted','session_booked','completed']);
+      const declinedSet = new Set<string>(['declined']);
+
+      for (const row of (matchRows || []) as MatchRow[]) {
+        try {
+          const s = String((row.status || '').toLowerCase());
+          matchFunnel.total_matches++;
+          if (contactedSet.has(s)) matchFunnel.therapist_contacted++;
+          if (respondedSet.has(s)) matchFunnel.therapist_responded++;
+          if (selectedSet.has(s)) matchFunnel.patient_selected++;
+          if (acceptedSet.has(s)) matchFunnel.accepted++;
+          if (declinedSet.has(s)) matchFunnel.declined++;
+        } catch {}
+      }
+
+      matchFunnel.response_rate = pct(matchFunnel.therapist_responded, matchFunnel.therapist_contacted);
+      matchFunnel.acceptance_rate = pct(matchFunnel.accepted, matchFunnel.therapist_responded);
+      matchFunnel.overall_conversion = pct(matchFunnel.accepted, matchFunnel.total_matches);
+    } catch (e) {
+      await logError('admin.api.stats', e, { stage: 'match_funnel' });
+    }
+
     // === JOURNEY ANALYSIS (Fragebogen vs. Therapeuten) ===
     const journeyAnalysis: StatsResponse['journeyAnalysis'] = {
       fragebogen_only: 0,
@@ -950,6 +1074,8 @@ export async function GET(req: Request) {
       abandonFieldsTop,
       directory,
       journeyAnalysis,
+      conversionFunnel,
+      matchFunnel,
       questionnaireInsights,
       wizardSegments: segments,
     };

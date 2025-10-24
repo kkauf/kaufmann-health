@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { FunnelCard } from './FunnelCard';
 import { Button } from '@/components/ui/button';
 
 type StatsData = {
@@ -58,6 +59,28 @@ type StatsData = {
     total_sessions: number;
     questionnaire_preference_rate: number;
     directory_to_questionnaire_rate: number;
+  };
+  conversionFunnel?: {
+    total_leads: number;
+    email_only: number;
+    phone_only: number;
+    email_confirmed: number;
+    phone_verified: number;
+    converted_to_new: number;
+    email_confirmation_rate: number;
+    phone_verification_rate: number;
+    overall_activation_rate: number;
+  };
+  matchFunnel?: {
+    total_matches: number;
+    therapist_contacted: number;
+    therapist_responded: number;
+    patient_selected: number;
+    accepted: number;
+    declined: number;
+    response_rate: number;
+    acceptance_rate: number;
+    overall_conversion: number;
   };
   questionnaireInsights: {
     contactMethod: Array<{ option: string; count: number }>;
@@ -178,6 +201,40 @@ export default function AdminStats() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Lead Conversion Funnel */}
+      {data?.conversionFunnel && (
+        <FunnelCard
+          title="Lead Conversion Funnel"
+          description="Email & SMS verification → Activation"
+          totalLabel="Total Leads"
+          totalCount={data.conversionFunnel.total_leads}
+          items={[
+            { label: 'Email Only', count: data.conversionFunnel.email_only, percentage: data.conversionFunnel.email_confirmation_rate, color: 'emerald', emoji: '✉️' },
+            { label: 'Email Confirmed', count: data.conversionFunnel.email_confirmed, color: 'emerald' },
+            { label: 'Phone Only', count: data.conversionFunnel.phone_only, percentage: data.conversionFunnel.phone_verification_rate, color: 'blue', emoji: '📱' },
+            { label: 'Phone Verified', count: data.conversionFunnel.phone_verified, color: 'blue' },
+            { label: 'Activated (status=new)', count: data.conversionFunnel.converted_to_new, percentage: data.conversionFunnel.overall_activation_rate, color: 'green', emoji: '✅' },
+          ]}
+        />
+      )}
+
+      {/* Match Conversion Funnel */}
+      {data?.matchFunnel && (
+        <FunnelCard
+          title="Match Conversion Funnel"
+          description="Therapist responses & patient selections"
+          totalLabel="Total Matches"
+          totalCount={data.matchFunnel.total_matches}
+          items={[
+            { label: 'Therapist Contacted', count: data.matchFunnel.therapist_contacted, color: 'cyan' },
+            { label: 'Therapist Responded', count: data.matchFunnel.therapist_responded, percentage: data.matchFunnel.response_rate, color: 'emerald' },
+            { label: 'Patient Selected', count: data.matchFunnel.patient_selected, color: 'blue' },
+            { label: 'Accepted', count: data.matchFunnel.accepted, percentage: data.matchFunnel.acceptance_rate, color: 'green', emoji: '🎉' },
+            { label: 'Declined', count: data.matchFunnel.declined, color: 'amber' },
+          ]}
+        />
+      )}
 
       {/* Page Traffic */}
       <Card>
@@ -350,103 +407,101 @@ export default function AdminStats() {
                 })()}
               </div>
 
-              {/* Dropoffs table */}
-              {data.wizardDropoffs && data.wizardDropoffs.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">Step-by-Step Dropoff Analysis</h4>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-muted-foreground">
-                          <th className="py-1 pr-3">Schritt</th>
-                          <th className="py-1 pr-3">Inhalt</th>
-                          <th className="py-1 pr-3 text-right">Von</th>
-                          <th className="py-1 pr-3 text-right">Zu</th>
-                          <th className="py-1 pr-3 text-right">Drop</th>
-                          <th className="py-1 pr-3 text-right">Drop Rate</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.wizardDropoffs.map((d) => {
-                          const stepLabels: Record<number, string> = {
-                            1: 'Therapieerfahrung',
-                            2: 'Zeitplan',
-                            3: 'Anliegen',
-                            4: 'Budget',
-                            5: 'Modalität',
-                            6: 'Ort & Format',
-                            7: 'Präferenzen',
-                            8: 'Kontaktdaten',
-                          };
-                          const isHighDrop = d.drop_rate > 50;
-                          const isMediumDrop = d.drop_rate > 30 && d.drop_rate <= 50;
-
-                          return (
-                            <tr key={d.step} className="border-t hover:bg-gray-50">
-                              <td className="py-2 pr-3 font-medium">
-                                {d.step} → {d.step + 1}
-                              </td>
-                              <td className="py-2 pr-3 text-muted-foreground text-xs">
-                                {stepLabels[d.step] || '—'}
-                              </td>
-                              <td className="py-2 pr-3 text-right tabular-nums">{d.from}</td>
-                              <td className="py-2 pr-3 text-right tabular-nums">{d.to}</td>
-                              <td className="py-2 pr-3 text-right tabular-nums">{d.drop}</td>
-                              <td className="py-2 pr-3 text-right tabular-nums">
-                                <span className={
-                                  isHighDrop
-                                    ? 'text-red-600 font-semibold'
-                                    : isMediumDrop
-                                    ? 'text-amber-600 font-medium'
-                                    : 'text-gray-700'
-                                }>
-                                  {d.drop_rate}%
-                                </span>
-                              </td>
+              {/* Dropoffs + Abandoned Fields (collapsible) */}
+              <details className="mt-4">
+                <summary className="cursor-pointer text-sm text-muted-foreground">Details: Dropoffs & Abgebrochene Felder</summary>
+                <div className="mt-2 space-y-4">
+                  {data.wizardDropoffs && data.wizardDropoffs.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-muted-foreground">Step-by-Step Dropoff Analysis</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-muted-foreground">
+                              <th className="py-1 pr-3">Schritt</th>
+                              <th className="py-1 pr-3">Inhalt</th>
+                              <th className="py-1 pr-3 text-right">Von</th>
+                              <th className="py-1 pr-3 text-right">Zu</th>
+                              <th className="py-1 pr-3 text-right">Drop</th>
+                              <th className="py-1 pr-3 text-right">Drop Rate</th>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                          </thead>
+                          <tbody>
+                            {data.wizardDropoffs.map((d) => {
+                              const stepLabels: Record<number, string> = {
+                                1: 'Therapieerfahrung',
+                                2: 'Zeitplan',
+                                3: 'Anliegen',
+                                4: 'Budget',
+                                5: 'Modalität',
+                                6: 'Ort & Format',
+                                7: 'Präferenzen',
+                                8: 'Kontaktdaten',
+                              };
+                              const isHighDrop = d.drop_rate > 50;
+                              const isMediumDrop = d.drop_rate > 30 && d.drop_rate <= 50;
+
+                              return (
+                                <tr key={d.step} className="border-t hover:bg-gray-50">
+                                  <td className="py-2 pr-3 font-medium">
+                                    {d.step} → {d.step + 1}
+                                  </td>
+                                  <td className="py-2 pr-3 text-muted-foreground text-xs">
+                                    {stepLabels[d.step] || '—'}
+                                  </td>
+                                  <td className="py-2 pr-3 text-right tabular-nums">{d.from}</td>
+                                  <td className="py-2 pr-3 text-right tabular-nums">{d.to}</td>
+                                  <td className="py-2 pr-3 text-right tabular-nums">{d.drop}</td>
+                                  <td className="py-2 pr-3 text-right tabular-nums">
+                                    <span className={
+                                      isHighDrop
+                                        ? 'text-red-600 font-semibold'
+                                        : isMediumDrop
+                                        ? 'text-amber-600 font-medium'
+                                        : 'text-gray-700'
+                                    }>
+                                      {d.drop_rate}%
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                  {data.abandonFieldsTop && data.abandonFieldsTop.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-muted-foreground">Abgebrochene Felder</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-muted-foreground">
+                              <th className="py-1 pr-3">Feld</th>
+                              <th className="py-1 pr-3 text-right">Anzahl</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {data.abandonFieldsTop.map((f) => (
+                              <tr key={f.field} className="border-t">
+                                <td className="py-1 pr-3 font-mono text-xs">{f.field}</td>
+                                <td className="py-1 pr-3 text-right tabular-nums">{f.count}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </details>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Abandoned Fields */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Abgebrochene Felder</CardTitle>
-          <CardDescription>Top Felder, bei denen Nutzer abbrechen</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!data?.abandonFieldsTop?.length ? (
-            <div className="text-sm text-muted-foreground">Keine Daten</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-muted-foreground">
-                    <th className="py-1 pr-3">Feld</th>
-                    <th className="py-1 pr-3">Anzahl</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.abandonFieldsTop.map((f) => (
-                    <tr key={f.field} className="border-t">
-                      <td className="py-1 pr-3 font-mono text-xs">{f.field}</td>
-                      <td className="py-1 pr-3 tabular-nums">{f.count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Abandoned Fields merged above */}
 
       {/* Journey Analysis */}
       <Card>
@@ -461,28 +516,6 @@ export default function AdminStats() {
             <div className="text-sm text-muted-foreground">Keine Daten</div>
           ) : (
             <div className="space-y-4">
-              {/* Key insights */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
-                <div>
-                  <div className="text-sm text-muted-foreground">Fragebogen-Präferenz</div>
-                  <div className="text-3xl font-semibold text-emerald-700">
-                    {data.journeyAnalysis.questionnaire_preference_rate}%
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Besucher bevorzugen Fragebogen über Verzeichnis
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Verzeichnis → Fragebogen</div>
-                  <div className="text-3xl font-semibold text-blue-700">
-                    {data.journeyAnalysis.directory_to_questionnaire_rate}%
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Verzeichnis-Besucher gehen danach zum Fragebogen
-                  </div>
-                </div>
-              </div>
-
               {/* Detailed breakdown */}
               <div className="space-y-2">
                 <h4 className="font-medium text-sm">Journey-Verteilung ({data.journeyAnalysis.total_sessions} Sessions)</h4>
