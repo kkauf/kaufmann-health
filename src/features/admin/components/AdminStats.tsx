@@ -228,7 +228,6 @@ export default function AdminStats() {
                 return (
                   <>
                     {block('Sitzungspräferenz', data.wizardSegments.bySessionPreference)}
-                    {block('Online OK', data.wizardSegments.byOnlineOk)}
                     {block('Startzeit', data.wizardSegments.byStartTiming)}
                     {block('Budget', data.wizardSegments.byBudgetBucket)}
                   </>
@@ -805,11 +804,10 @@ export default function AdminStats() {
                     <>
                       {block('Kontaktmethode', data.questionnaireInsights.contactMethod)}
                       {block('Sitzungspräferenz', data.questionnaireInsights.sessionPreference)}
-                      {block('Online OK', data.questionnaireInsights.onlineOk)}
+                      {block('Therapieerfahrung', data.questionnaireInsights.therapyExperience)}
                       {block('Modalität wichtig', data.questionnaireInsights.modalityMatters)}
                       {block('Startzeit', data.questionnaireInsights.startTiming)}
                       {block('Budget', data.questionnaireInsights.budgetBuckets)}
-                      {block('Therapieerfahrung', data.questionnaireInsights.therapyExperience)}
                       {block('Geschlecht', data.questionnaireInsights.gender)}
                       {block('Methoden (Top)', data.questionnaireInsights.methodsTop)}
                     </>
