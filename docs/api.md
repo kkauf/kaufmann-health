@@ -578,10 +578,12 @@ __UI Consistency__: Email templates reuse a small, inline-styled therapist previ
 
 ## GET /api/admin/stats (EARTH-215)
 
-- __Purpose__: Admin analytics dashboard showing funnel metrics, page traffic, and user journey analysis.
+- __Purpose__: Admin analytics dashboard showing funnel metrics, page traffic, conversion to activation (email & SMS), match conversion, and user journey analysis.
 - __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
 - __Query Params__:
-  - `days?` (number, optional) — Time window in days (default: 30, min: 1, max: 90).
+  - `days?` (number, optional) — Time window in days (default: 30, min: 1, max: 90)
+  - `since?` (ISO date or `YYYY-MM-DD`, optional) — Overrides the funnel/event window start for wizard/engagement analysis
+  - `cutoff?` (ISO date or `YYYY-MM-DD`, optional) — Global lower bound to ignore earlier data (useful for methodology changes); if not provided, a safe default cutoff is applied by the server
 - __Behavior__:
   - Queries `events` table for analytics data within the specified time window.
   - **Wizard Funnel** uses proper cohort-based tracking:
@@ -591,9 +593,15 @@ __UI Consistency__: Email templates reuse a small, inline-styled therapist previ
     - Drop rates are guaranteed to be non-negative.
     - Form completions are matched to sessions that reached step 9.
   - **Page Traffic**: Top 10 pages by unique sessions + daily time series.
-  - **Journey Analysis**: Categorizes sessions by whether they visited /fragebogen, /therapeuten, both, or neither.
+  - **Journey Analysis**: Categorizes sessions by whether they visited /fragebogen, /therapeuten, both, or neither. UI simplified to distribution only.
   - **Directory Engagement**: Tracks help clicks, contact modals, and message sends from /therapeuten.
   - **Abandoned Fields**: Top 15 fields where users drop off.
+  - **Conversion Funnel (Lead Activation)**: Derives totals and rates from `people(type='patient')` using `status` and `metadata`:
+    - `email_only`, `email_confirmed`, confirmation rate
+    - `phone_only`, `phone_verified` (from metadata), verification rate
+    - `converted_to_new` (activation), overall activation rate
+  - **Match Conversion Funnel**: Aggregates `matches.status` into contacted → responded → selected → accepted/declined and rates.
+  - Removed low-signal UI blocks: “Segmented Funnel”, “Online OK”. “Abgebrochene Felder” merged under Wizard Funnel as a collapsible section.
 - __Response__:
   - 200: `{ data: StatsResponse, error: null }`
   - 401: `{ data: null, error: 'Unauthorized' }`
@@ -636,6 +644,28 @@ __UI Consistency__: Email templates reuse a small, inline-styled therapist previ
       total_sessions: number;
       questionnaire_preference_rate: number;
       directory_to_questionnaire_rate: number;
+    };
+    conversionFunnel: {
+      total_leads: number;
+      email_only: number;
+      phone_only: number;
+      email_confirmed: number;
+      phone_verified: number;
+      converted_to_new: number;
+      email_confirmation_rate: number; // % of email_only
+      phone_verification_rate: number; // % of phone_only
+      overall_activation_rate: number; // % of total_leads
+    };
+    matchFunnel: {
+      total_matches: number;
+      therapist_contacted: number;
+      therapist_responded: number;
+      patient_selected: number;
+      accepted: number;
+      declined: number;
+      response_rate: number;   // responded / contacted * 100
+      acceptance_rate: number; // accepted / responded * 100
+      overall_conversion: number; // accepted / total_matches * 100
     };
   }
   ```
