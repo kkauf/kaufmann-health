@@ -179,65 +179,6 @@ export default function AdminStats() {
         </Card>
       </div>
 
-      {/* Segmented Funnel */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Segmented Funnel</CardTitle>
-          <CardDescription>Completion rates by key preferences</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!data?.wizardSegments ? (
-            <div className="text-sm text-muted-foreground">Keine Daten</div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-sm">
-              {(() => {
-                const block = (
-                  title: string,
-                  items: Array<{ option: string; started: number; completed: number; completion_rate: number }>
-                ) => (
-                  <div key={title}>
-                    <div className="font-medium mb-2">{title}</div>
-                    {!items?.length ? (
-                      <div className="text-sm text-muted-foreground">—</div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="text-left text-muted-foreground">
-                              <th className="py-1 pr-3">Option</th>
-                              <th className="py-1 pr-3 text-right">Started</th>
-                              <th className="py-1 pr-3 text-right">Completed</th>
-                              <th className="py-1 pr-3 text-right">Rate</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {items.slice(0, 10).map((r) => (
-                              <tr key={`${title}-${r.option}`} className="border-t">
-                                <td className="py-1 pr-3 font-mono text-xs">{r.option}</td>
-                                <td className="py-1 pr-3 text-right tabular-nums">{r.started}</td>
-                                <td className="py-1 pr-3 text-right tabular-nums">{r.completed}</td>
-                                <td className="py-1 pr-3 text-right tabular-nums">{r.completion_rate}%</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                );
-                return (
-                  <>
-                    {block('Sitzungspräferenz', data.wizardSegments.bySessionPreference)}
-                    {block('Startzeit', data.wizardSegments.byStartTiming)}
-                    {block('Budget', data.wizardSegments.byBudgetBucket)}
-                  </>
-                );
-              })()}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Page Traffic */}
       <Card>
         <CardHeader>
