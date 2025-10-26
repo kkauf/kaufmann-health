@@ -13,9 +13,7 @@
     { "path": "/api/admin/leads/confirmation-reminders?threshold=72h&limit=200", "schedule": "30 9 * * *" },
     { "path": "/api/admin/leads/conversions/backfill?limit=200", "schedule": "15 * * * *" },
     { "path": "/api/admin/alerts/system?minutes=15", "schedule": "*/15 * * * *" },
-    { "path": "/api/admin/alerts/new-leads?hours=3", "schedule": "0 13 * * *" },
-    { "path": "/api/admin/alerts/new-leads?hours=3", "schedule": "0 16 * * *" },
-    { "path": "/api/admin/alerts/new-leads?hours=3", "schedule": "0 19 * * *" }
+    { "path": "/api/admin/alerts/new-leads?hours=3", "schedule": "0 */3 * * *" }
   ],
   "functions": {
     "app/therapie-finden/page.tsx": {

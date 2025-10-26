@@ -665,16 +665,20 @@ function clip(s: string, max: number): string {
 
 function sanitizeAdInputs(headlines?: string[], descriptions?: string[]): { H?: { text: string }[]; D?: { text: string }[] } {
   if (!headlines || !descriptions) return {};
+  const normH = headlines.map((x) => normalizeText(x));
+  const tooLongH = normH.find((x) => x.length > 30);
+  if (tooLongH) throw new Error(`Headline exceeds 30 characters: "${tooLongH}"`);
   const seenH = new Set<string>();
-  const H = headlines
-    .map((x) => clip(normalizeText(x), 30))
+  const H = normH
     .filter((x) => x.length > 0)
     .filter((x) => (seenH.has(x) ? false : (seenH.add(x), true)))
     .slice(0, 15)
     .map((text) => ({ text }));
+  const normD = descriptions.map((x) => normalizeText(x));
+  const tooLongD = normD.find((x) => x.length > 90);
+  if (tooLongD) throw new Error(`Description exceeds 90 characters: "${tooLongD}"`);
   const seenD = new Set<string>();
-  const D = descriptions
-    .map((x) => clip(normalizeText(x), 90))
+  const D = normD
     .filter((x) => x.length > 0)
     .filter((x) => (seenD.has(x) ? false : (seenD.add(x), true)))
     .slice(0, 4)

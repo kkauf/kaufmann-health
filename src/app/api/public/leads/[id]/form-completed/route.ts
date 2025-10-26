@@ -229,9 +229,6 @@ export async function POST(req: Request) {
     // Prefer backfill from form session; otherwise, use referrer-derived fallback
     if (backfillCs || refCampaignSource) updatePayload['campaign_source'] = backfillCs || refCampaignSource;
     if (backfillCv || refCampaignVariant) updatePayload['campaign_variant'] = backfillCv || refCampaignVariant;
-    // If the lead already confirmed email, questionnaire completion makes it actionable → promote to 'new'
-    const shouldPromoteToNew = (person.status || '').toLowerCase() === 'email_confirmed';
-    if (shouldPromoteToNew) updatePayload['status'] = 'new';
 
     const { error: upErr } = await supabaseServer
       .from('people')

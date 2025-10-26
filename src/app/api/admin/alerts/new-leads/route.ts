@@ -139,8 +139,17 @@ export async function GET(req: Request) {
         .select(selectCols)
         .eq('type', 'patient')
         .eq('status', 'new')
-        .gt('updated_at', sinceIso)
-        .order('updated_at', { ascending: true })
+        // Consider either updated_at/created_at or key metadata timestamps within the window
+        .or(
+          [
+            `updated_at.gt.${sinceIso}`,
+            `created_at.gt.${sinceIso}`,
+            `metadata->>email_confirmed_at.gt.${sinceIso}`,
+            `metadata->>confirmed_at.gt.${sinceIso}`,
+            `metadata->>form_completed_at.gt.${sinceIso}`,
+          ].join(',')
+        )
+        .order('created_at', { ascending: true })
         .limit(500);
 
       if (res.error) {
