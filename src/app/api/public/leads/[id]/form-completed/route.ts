@@ -144,6 +144,13 @@ export async function POST(req: Request) {
             : (typeof attr?.['campaign_variant'] === 'string' ? (attr['campaign_variant'] as string) : undefined);
           if (!person.campaign_source && cs) backfillCs = cs;
           if (!person.campaign_variant && cv) backfillCv = cv;
+          try {
+            const existingCs = (person.campaign_source || '').toLowerCase();
+            if (existingCs === '/fragebogen') {
+              if (cs === '/start') backfillCs = '/start';
+              else if (!cs && refCampaignSource === '/start') backfillCs = '/start';
+            }
+          } catch {}
         } catch {}
         // Copy a stable subset to people.metadata, mirroring existing patterns and extending with Fragebogen fields
         // Existing possible keys: city, session_preference, gender_preference, budget, etc.
@@ -222,6 +229,9 @@ export async function POST(req: Request) {
     // Prefer backfill from form session; otherwise, use referrer-derived fallback
     if (backfillCs || refCampaignSource) updatePayload['campaign_source'] = backfillCs || refCampaignSource;
     if (backfillCv || refCampaignVariant) updatePayload['campaign_variant'] = backfillCv || refCampaignVariant;
+    // If the lead already confirmed email, questionnaire completion makes it actionable → promote to 'new'
+    const shouldPromoteToNew = (person.status || '').toLowerCase() === 'email_confirmed';
+    if (shouldPromoteToNew) updatePayload['status'] = 'new';
 
     const { error: upErr } = await supabaseServer
       .from('people')
