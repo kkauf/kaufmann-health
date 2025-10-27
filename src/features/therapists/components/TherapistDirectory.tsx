@@ -65,6 +65,18 @@ export function TherapistDirectory() {
     fetchTherapists();
   }, []);
 
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      const raw = (url.searchParams.get('format') || '').toLowerCase();
+      if (raw === 'online') setOnlineOnly(true);
+      else if (raw === 'inperson' || raw === 'in-person' || raw === 'vor-ort' || raw === 'vorort') setOnlineOnly(false);
+      else if (raw === 'unsure' || raw === 'all' || raw === 'alle') setOnlineOnly(null);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   // When therapists are loaded, check query params and auto-open the ContactModal in compose step.
   // We rely on EARTH-204 cookie to treat the user as verified when returning via magic link.
   useEffect(() => {

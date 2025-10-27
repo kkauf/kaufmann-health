@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Loader2, AlertCircle, Shield, Lock, FileCheck } from 'lucide-react';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { validatePhone } from '@/lib/verification/usePhoneValidation';
@@ -417,7 +417,8 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const renderVerifyStep = () => (
     <div className="space-y-5" onKeyDown={handleKeyDown}>
       <p className="text-sm leading-relaxed text-gray-600">
-        Um {therapistName} zu kontaktieren, verifiziere dich kurz.
+        Um {therapistName} zu kontaktieren, verifiziere dich kurz. So schützen wir Therapeut:innen vor Spam
+        und stellen sicher, dass dir zuverlässig geantwortet werden kann. Danach schreibst und sendest du deine Nachricht.
       </p>
       
       <div className="space-y-2">
@@ -511,6 +512,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       </div>
       
       <p className="text-xs text-gray-500 text-center leading-relaxed">
+        Deine Angaben werden ausschließlich für diese Kontaktaufnahme genutzt – privat & DSGVO‑konform.
         Mit dem Absenden stimmst du unserer <a href="/datenschutz" className="underline hover:text-gray-700">Datenschutzerklärung</a> zu.
       </p>
     </div>
@@ -732,6 +734,22 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         </div>
       )}
       <ConsentSection actor="directory" className="-mt-2" />
+      <p className="mt-2 text-xs sm:text-sm text-gray-600 leading-relaxed flex flex-wrap items-center gap-3">
+        <span className="inline-flex items-center gap-1.5">
+          <Shield className="h-3.5 w-3.5 text-emerald-600" />
+          <span>DSGVO‑konform</span>
+        </span>
+        <span className="text-gray-300">•</span>
+        <span className="inline-flex items-center gap-1.5">
+          <Lock className="h-3.5 w-3.5 text-emerald-600" />
+          <span>SSL‑verschlüsselt</span>
+        </span>
+        <span className="text-gray-300">•</span>
+        <span className="inline-flex items-center gap-1.5">
+          <FileCheck className="h-3.5 w-3.5 text-emerald-600" />
+          <span>Privat – keine Krankenkassenakte</span>
+        </span>
+      </p>
       
       <div className="flex gap-3 pt-2">
         <Button 

@@ -3,7 +3,7 @@
 import React from 'react';
 import CtaLink from '@/components/CtaLink';
 import { cn } from '@/lib/utils';
-import { Clock } from 'lucide-react';
+import { Clock, MessageCircle } from 'lucide-react';
 
 export interface MidPageConversionProps {
   className?: string;
@@ -15,6 +15,12 @@ const EXPERIENCE_OPTIONS = [
   { value: 'yes', label: 'Ja, bereits Erfahrung', query: 'experience=yes' },
   { value: 'no', label: 'Nein, erste Therapie', query: 'experience=no' },
   { value: 'unsure', label: 'Bin mir unsicher', query: 'experience=unsure' },
+] as const;
+
+const FORMAT_OPTIONS = [
+  { value: 'online', label: 'Online', query: 'format=online' },
+  { value: 'inperson', label: 'Vor Ort', query: 'format=inperson' },
+  { value: 'unsure', label: 'Bin mir unsicher', query: 'format=unsure' },
 ] as const;
 
 export function MidPageConversion({ className, targetBasePath = '/fragebogen' }: MidPageConversionProps) {
@@ -34,14 +40,16 @@ export function MidPageConversion({ className, targetBasePath = '/fragebogen' }:
 
         {/* Question */}
         <p className="mt-4 sm:mt-5 text-lg sm:text-xl text-gray-700">
-          Hast du bereits Therapie gemacht?
+          {targetBasePath === '/therapeuten'
+            ? 'Welches Therapieformat passt am besten zu dir?'
+            : 'Hast du bereits Therapie gemacht?'}
         </p>
 
         {/* Answer buttons - desktop: horizontal, mobile: stacked */}
         <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-2xl mx-auto">
-          {EXPERIENCE_OPTIONS.map((option) => {
+          {(targetBasePath === '/therapeuten' ? FORMAT_OPTIONS : EXPERIENCE_OPTIONS).map((option) => {
             const isDirectory = targetBasePath === '/therapeuten';
-            const href = isDirectory ? '/therapeuten' : `${targetBasePath}?${option.query}`;
+            const href = isDirectory ? `/therapeuten?${option.query}` : `${targetBasePath}?${option.query}`;
             return (
               <CtaLink
                 key={option.value}
@@ -56,10 +64,19 @@ export function MidPageConversion({ className, targetBasePath = '/fragebogen' }:
           })}
         </div>
 
-        {/* Time indicator */}
+        {/* Time/indicator */}
         <div className="mt-5 sm:mt-6 flex items-center justify-center gap-2 text-sm sm:text-base text-gray-600">
-          <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
-          <span>5-Minuten Fragebogen</span>
+          {targetBasePath === '/therapeuten' ? (
+            <>
+              <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
+              <span>Antwort in &lt;24h</span>
+            </>
+          ) : (
+            <>
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
+              <span>5-Minuten Fragebogen</span>
+            </>
+          )}
         </div>
       </div>
     </section>

@@ -9,7 +9,7 @@ import { FoundersValuesSection } from '@/features/landing/components/FoundersVal
 import { TherapistTeaserSection } from '@/features/landing/components/TherapistTeaserSection';
 import { FinalCtaSection } from '@/features/landing/components/FinalCtaSection';
 import { buildLandingMetadata, buildFaqJsonLd, buildLocalBusinessJsonLd } from '@/lib/seo';
-import { MessageCircle, UserCheck, PhoneCall, Shield, Lock, FileCheck } from 'lucide-react';
+import { MessageCircle, UserCheck, PhoneCall, Shield, Lock, FileCheck, TextSearch, Search } from 'lucide-react';
 
 export const revalidate = 3600;
 
@@ -117,7 +117,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
   const timelineItems = isBrowse
     ? [
         {
-          icon: <UserCheck className="h-5 w-5" />,
+          icon: <Search className="h-5 w-5" />,
           title: 'Therapeut:innen entdecken',
           caption: 'Filtern & stöbern',
           bullets: ['Verzeichnis nach Stadt, Online-Format und Modalität filtern'],
@@ -164,7 +164,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
       <HeroNoForm
         title={copy.hero.title}
         subtitle={copy.hero.subtitle}
-        ctaLabel="Jetzt Therapeut:in finden"
+        ctaLabel={isBrowse ? 'Jetzt Therapeut:in finden – direkt Kontakt aufnehmen' : 'Jetzt Therapeut:in finden'}
         ctaHref={isBrowse ? '/therapeuten' : '/fragebogen'}
         backgroundSrc="/images/hero.jpg"
       />
@@ -217,8 +217,10 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
 
       <FinalCtaSection
         heading="Bereit für den ersten Schritt?"
-        subtitle="Fülle unseren 5-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten-Vorschläge."
-        buttonLabel="Jetzt Therapeut:in finden"
+        subtitle={isBrowse
+          ? 'Stöbere im Verzeichnis. Profil ansehen und direkt Kontakt aufnehmen – Antwort in <24h.'
+          : 'Fülle unseren 5-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten-Vorschläge.'}
+        buttonLabel={isBrowse ? 'Jetzt Therapeut:in finden – direkt Kontakt aufnehmen' : 'Jetzt Therapeut:in finden'}
         targetId={isBrowse ? '/therapeuten' : '/fragebogen'}
         align="center"
         variant="tinted"

@@ -406,7 +406,7 @@ const createCampaign = async (customer: any, name: string, budgetResourceName: s
         status: enums.CampaignStatus.PAUSED,
         advertising_channel_type: enums.AdvertisingChannelType.SEARCH,
         bidding_strategy_type: enums.BiddingStrategyType.MANUAL_CPC,
-        manual_cpc: { enhanced_cpc_enabled: true },
+        manual_cpc: {},
         geo_target_type_setting: {
           positive_geo_target_type: enums.PositiveGeoTargetType.PRESENCE,
           negative_geo_target_type: enums.NegativeGeoTargetType.PRESENCE,
@@ -677,19 +677,37 @@ function clip(s: string, max: number): string {
 function sanitizeAdInputs(headlines?: string[], descriptions?: string[]): { H?: { text: string }[]; D?: { text: string }[] } {
   if (!headlines || !descriptions) return {};
   const normH = headlines.map((x) => normalizeText(x));
-  const tooLongH = normH.find((x) => x.length > 30);
-  if (tooLongH) throw new Error(`Headline exceeds 30 characters: "${tooLongH}"`);
+  let clippedHCount = 0;
+  const normHClipped = normH.map((x) => {
+    if (x.length > 30) {
+      clippedHCount++;
+      return clip(x, 30);
+    }
+    return x;
+  });
+  if (clippedHCount > 0) {
+    console.warn(`  • Clipped ${clippedHCount} headline(s) to 30 chars`);
+  }
   const seenH = new Set<string>();
-  const H = normH
+  const H = normHClipped
     .filter((x) => x.length > 0)
     .filter((x) => (seenH.has(x) ? false : (seenH.add(x), true)))
     .slice(0, 15)
     .map((text) => ({ text }));
   const normD = descriptions.map((x) => normalizeText(x));
-  const tooLongD = normD.find((x) => x.length > 90);
-  if (tooLongD) throw new Error(`Description exceeds 90 characters: "${tooLongD}"`);
+  let clippedDCount = 0;
+  const normDClipped = normD.map((x) => {
+    if (x.length > 90) {
+      clippedDCount++;
+      return clip(x, 90);
+    }
+    return x;
+  });
+  if (clippedDCount > 0) {
+    console.warn(`  • Clipped ${clippedDCount} description(s) to 90 chars`);
+  }
   const seenD = new Set<string>();
-  const D = normD
+  const D = normDClipped
     .filter((x) => x.length > 0)
     .filter((x) => (seenD.has(x) ? false : (seenD.add(x), true)))
     .slice(0, 4)
@@ -1034,10 +1052,18 @@ async function main() {
       dryRun || validateOnly
     );
 
-    // Consolidation: 1 ad group per campaign
+    // Ad group selection
+    // - Positioning_Test_A/B (legacy): one primary tier (A: bodyTherapy, B: selfPay)
+    // - BrowseVsSubmit (Test 1): CONSOLIDATE to single tier 'bodyTherapy'
     const isA = c.name.includes('Positioning_Test_A');
-    const allowedTier = isA ? 'bodyTherapy' : 'selfPay';
-    const tiers = Object.entries(c.keywords || {}).filter(([name]) => name === allowedTier);
+    const isBrowseVsSubmit = c.name.includes('BrowseVsSubmit');
+    const primaryTier = isBrowseVsSubmit ? 'bodyTherapy' : (isA ? 'bodyTherapy' : 'selfPay');
+    let tiers = Object.entries(c.keywords || {}).filter(([name]) => name === primaryTier);
+    if (tiers.length === 0) {
+      // Fallback: if the desired tier doesn't exist, take the first available
+      const all = Object.entries(c.keywords || {});
+      tiers = all.slice(0, 1);
+    }
     const allowedNames = new Set<string>();
     for (const [tierName, tier] of tiers) {
       const agName = `${c.name} — ${tierName}`;
