@@ -7,27 +7,17 @@ import { Clock } from 'lucide-react';
 
 export interface MidPageConversionProps {
   className?: string;
+  /** Base path for CTA targets. Default '/fragebogen'. For Test 1 browse, pass '/therapeuten'. */
+  targetBasePath?: string;
 }
 
 const EXPERIENCE_OPTIONS = [
-  {
-    value: 'yes',
-    label: 'Ja, bereits Erfahrung',
-    href: '/fragebogen?experience=yes',
-  },
-  {
-    value: 'no',
-    label: 'Nein, erste Therapie',
-    href: '/fragebogen?experience=no',
-  },
-  {
-    value: 'unsure',
-    label: 'Bin mir unsicher',
-    href: '/fragebogen?experience=unsure',
-  },
+  { value: 'yes', label: 'Ja, bereits Erfahrung', query: 'experience=yes' },
+  { value: 'no', label: 'Nein, erste Therapie', query: 'experience=no' },
+  { value: 'unsure', label: 'Bin mir unsicher', query: 'experience=unsure' },
 ] as const;
 
-export function MidPageConversion({ className }: MidPageConversionProps) {
+export function MidPageConversion({ className, targetBasePath = '/fragebogen' }: MidPageConversionProps) {
   return (
     <section
       aria-labelledby="midpage-conversion-heading"
@@ -49,17 +39,21 @@ export function MidPageConversion({ className }: MidPageConversionProps) {
 
         {/* Answer buttons - desktop: horizontal, mobile: stacked */}
         <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-2xl mx-auto">
-          {EXPERIENCE_OPTIONS.map((option) => (
-            <CtaLink
-              key={option.value}
-              href={option.href}
-              eventType="cta_click"
-              data-cta={`midpage-conversion-${option.value}`}
-              className="group relative flex items-center justify-center min-h-[44px] sm:min-h-[48px] px-6 py-3 rounded-xl border-2 border-teal-600 bg-white text-teal-700 font-semibold text-base sm:text-lg shadow-md hover:bg-teal-600 hover:text-white hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2"
-            >
-              {option.label}
-            </CtaLink>
-          ))}
+          {EXPERIENCE_OPTIONS.map((option) => {
+            const isDirectory = targetBasePath === '/therapeuten';
+            const href = isDirectory ? '/therapeuten' : `${targetBasePath}?${option.query}`;
+            return (
+              <CtaLink
+                key={option.value}
+                href={href}
+                eventType="cta_click"
+                data-cta={`midpage-conversion-${option.value}`}
+                className="group relative flex items-center justify-center min-h-[44px] sm:min-h-[48px] px-6 py-3 rounded-xl border-2 border-teal-600 bg-white text-teal-700 font-semibold text-base sm:text-lg shadow-md hover:bg-teal-600 hover:text-white hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2"
+              >
+                {option.label}
+              </CtaLink>
+            );
+          })}
         </div>
 
         {/* Time indicator */}

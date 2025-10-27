@@ -11,6 +11,21 @@ export default function PageAnalytics({ qualifier }: { qualifier?: string } = {}
   });
 
   useEffect(() => {
+    const getVariant = (): string | undefined => {
+      try {
+        const sp = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+        const fromUrl = (sp.get('variant') || sp.get('v') || '').toLowerCase() || undefined;
+        if (fromUrl) {
+          try { window.localStorage?.setItem('test1_variant', fromUrl); } catch {}
+          return fromUrl;
+        }
+        if (typeof window !== 'undefined') {
+          const ls = window.localStorage?.getItem('test1_variant');
+          return ls || undefined;
+        }
+      } catch {}
+      return undefined;
+    };
     // Page view on mount
     try {
       const attrs = getAttribution();
@@ -25,7 +40,7 @@ export default function PageAnalytics({ qualifier }: { qualifier?: string } = {}
         id,
         title: id,
         ...attrs,
-        properties: { page_path: pagePath, qualifier },
+        properties: { page_path: pagePath, qualifier, variant: getVariant() },
       };
       fetch("/api/events", {
         method: "POST",
@@ -64,7 +79,7 @@ export default function PageAnalytics({ qualifier }: { qualifier?: string } = {}
                 id,
                 title: `${t}%`,
                 ...attrs,
-                properties: { page_path: pagePath, depth: t },
+                properties: { page_path: pagePath, depth: t, variant: getVariant() },
               }),
               keepalive: true,
             }).catch(() => {});

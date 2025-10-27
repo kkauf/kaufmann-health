@@ -17,6 +17,8 @@ import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { PRIVACY_VERSION } from '@/lib/privacy';
 import { TERMS_VERSION } from '@/content/therapist-terms';
 import { BASE_URL } from '@/lib/constants';
+import { ServerAnalytics } from '@/lib/server-analytics';
+import { maybeFirePatientConversion } from '@/lib/conversion';
 
 const RATE_LIMIT_PER_DAY = 3;
 
@@ -81,6 +83,8 @@ export async function POST(req: Request) {
       patient_message,
       session_format,
     } = body;
+    // Parse campaign details from referer (Test 1: control|browse from /start)
+    const { campaign_source, campaign_variant, landing_page } = ServerAnalytics.parseCampaignFromRequest(req);
     
     // Validation
     if (!therapist_id || !contact_type || !patient_name || !contact_method || !patient_reason) {
@@ -181,6 +185,9 @@ export async function POST(req: Request) {
           type: 'patient',
           name: patient_name,
           status: 'new',
+          campaign_source: campaign_source || '/start',
+          campaign_variant: (campaign_variant || undefined) as string | undefined,
+          landing_page: landing_page || undefined,
           metadata: {
             contact_method,
             source: 'directory_contact',
@@ -335,6 +342,9 @@ export async function POST(req: Request) {
         contact_type,
         is_new_patient: isNewPatient,
         session_id: body.session_id,
+        campaign_source: campaign_source || '/start',
+        campaign_variant: campaign_variant || undefined,
+        landing_page: landing_page || undefined,
       },
     });
 
@@ -356,7 +366,26 @@ export async function POST(req: Request) {
           contact_method,
           session_id: body.session_id,
           conversion_path: conversion_path || '/therapeuten',
+          campaign_source: campaign_source || '/start',
+          campaign_variant: campaign_variant || undefined,
+          landing_page: landing_page || undefined,
         },
+      });
+    } catch {}
+
+    // Fire Enhanced Conversion (idempotent via maybeFirePatientConversion)
+    try {
+      const ipAddr = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined;
+      const ua = req.headers.get('user-agent') || undefined;
+      const emailForConv = contact_method === 'email' ? (patient_email || undefined) : undefined;
+      const phoneForConv = contact_method === 'phone' ? (normalizePhoneNumber(patient_phone || '') || patient_phone || undefined) : undefined;
+      await maybeFirePatientConversion({
+        patient_id: patientId,
+        email: emailForConv,
+        phone_number: phoneForConv,
+        verification_method: contact_method === 'email' ? 'email' : 'sms',
+        ip: ipAddr,
+        ua,
       });
     } catch {}
     

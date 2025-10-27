@@ -9,7 +9,7 @@ import { FoundersValuesSection } from '@/features/landing/components/FoundersVal
 import { TherapistTeaserSection } from '@/features/landing/components/TherapistTeaserSection';
 import { FinalCtaSection } from '@/features/landing/components/FinalCtaSection';
 import { buildLandingMetadata, buildFaqJsonLd, buildLocalBusinessJsonLd } from '@/lib/seo';
-import { MessageCircle, UserCheck, PhoneCall } from 'lucide-react';
+import { MessageCircle, UserCheck, PhoneCall, Shield, Lock, FileCheck } from 'lucide-react';
 
 export const revalidate = 3600;
 
@@ -45,6 +45,9 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 export default async function StartPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const params = await searchParams;
   const variant = normalizeVariant(params?.variant);
+  // Test 1 (Browse vs Submit): decide CTA routing from raw variant param without changing copy
+  const rawVariant = typeof (params?.variant) === 'string' ? (params!.variant as string).toLowerCase() : '';
+  const isBrowse = rawVariant === 'browse';
   
   // Variant A: Body-Oriented Specialist
   const bodyOrientedCopy = {
@@ -107,6 +110,52 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
   const faqSchema = buildFaqJsonLd(faqs.map(({ question, answer }) => ({ question, answer })));
   const businessSchema = buildLocalBusinessJsonLd({ baseUrl, path: '/start', areaServed: { type: 'Country', name: 'Deutschland', addressCountry: 'DE' } });
 
+  // Variant-specific timeline ("So funktioniert") for Test 1
+  const timelineTagline = isBrowse
+    ? 'Verzeichnis durchsuchen. Profil ansehen. Direkt Kontakt aufnehmen – privat und ohne Wartezeit.'
+    : 'Bis zu 3 passende Therapeut:innen-Vorschläge in <24h. Deine Daten bleiben privat. Du entscheidest, wie du kontaktiert werden möchtest.';
+  const timelineItems = isBrowse
+    ? [
+        {
+          icon: <UserCheck className="h-5 w-5" />,
+          title: 'Therapeut:innen entdecken',
+          caption: 'Filtern & stöbern',
+          bullets: ['Verzeichnis nach Stadt, Online-Format und Modalität filtern'],
+        },
+        {
+          icon: <UserCheck className="h-5 w-5" />,
+          title: 'Profil ansehen',
+          caption: 'Details & Passung',
+          bullets: ['Verfügbarkeit, Modalitäten und Ansatz prüfen'],
+        },
+        {
+          icon: <MessageCircle className="h-5 w-5" />,
+          title: 'Kontakt aufnehmen',
+          caption: 'Direkter Kontakt',
+          bullets: ['Kurz verifizieren, Nachricht senden', 'Antwort in <24h'],
+        },
+      ]
+    : [
+        {
+          icon: <MessageCircle className="h-5 w-5" />,
+          title: 'Deine Präferenzen',
+          caption: '5 Minuten',
+          bullets: [' Du sagst uns, was dir wichtig ist'],
+        },
+        {
+          icon: <UserCheck className="h-5 w-5" />,
+          title: 'Unsere persönliche Auswahl',
+          caption: '24 Stunden',
+          bullets: ['Bis zu 3 passende Profile, von uns handverlesen'],
+        },
+        {
+          icon: <PhoneCall className="h-5 w-5" />,
+          title: 'Du entscheidest',
+          caption: 'Direkter Kontakt',
+          bullets: ['Wunschtherapeut:in wählen und direkt Termin vereinbaren', 'Vorschläge per E‑Mail oder SMS – du entscheidest'],
+        },
+      ];
+
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
       <PageAnalytics qualifier={`LP-Start-${variant}`} />
@@ -116,34 +165,28 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
         title={copy.hero.title}
         subtitle={copy.hero.subtitle}
         ctaLabel="Jetzt Therapeut:in finden"
-        ctaHref="/fragebogen"
+        ctaHref={isBrowse ? '/therapeuten' : '/fragebogen'}
         backgroundSrc="/images/hero.jpg"
       />
 
       {/* Process timeline (mobile‑first) */}
-      <ProcessTimeline
-        tagline="Bis zu 3 passende Therapeut:innen-Vorschläge in <24h. Deine Daten bleiben privat. Du entscheidest, wie du kontaktiert werden möchtest."
-        items={[
-          {
-            icon: <MessageCircle className="h-5 w-5" />,
-            title: 'Deine Präferenzen',
-            caption: '5 Minuten',
-            bullets: [' Du sagst uns, was dir wichtig ist'],
-          },
-          {
-            icon: <UserCheck className="h-5 w-5" />,
-            title: 'Unsere persönliche Auswahl',
-            caption: '24 Stunden',
-            bullets: ['Bis zu 3 passende Profile, von uns handverlesen'],
-          },
-          {
-            icon: <PhoneCall className="h-5 w-5" />,
-            title: 'Du entscheidest',
-            caption: 'Direkter Kontakt',
-            bullets: ['Wunschtherapeut:in wählen und direkt Termin vereinbaren', 'Vorschläge per E‑Mail oder SMS – du entscheidest'],
-          },
-        ]}
-      />
+      <ProcessTimeline tagline={timelineTagline} items={timelineItems} />
+      <p className="mt-6 sm:mt-7 text-sm sm:text-base text-gray-700 leading-relaxed flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+        <span className="inline-flex items-center gap-2">
+          <Shield className="h-4 w-4 text-emerald-600" />
+          <span>DSGVO-konform</span>
+        </span>
+        <span className="text-gray-400">•</span>
+        <span className="inline-flex items-center gap-2">
+          <Lock className="h-4 w-4 text-emerald-600" />
+          <span>SSL-verschlüsselt</span>
+        </span>
+        <span className="text-gray-400">•</span>
+        <span className="inline-flex items-center gap-2">
+          <FileCheck className="h-4 w-4 text-emerald-600" />
+          <span>Therapie ohne Krankenkassen-Eintrag</span>
+        </span>
+      </p>
 
       {/* Therapist network teaser - MOVED UP for trust-first flow */}
       <section className="mt-10 sm:mt-14">
@@ -170,13 +213,13 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
       <FoundersValuesSection imageSrc="/profile-pictures/katherine and konstantin.PNG" />
 
       {/* Mid-page conversion: simplified matching path only - EARTH-209 */}
-      <MidPageConversion />
+      <MidPageConversion targetBasePath={isBrowse ? '/therapeuten' : '/fragebogen'} />
 
       <FinalCtaSection
         heading="Bereit für den ersten Schritt?"
         subtitle="Fülle unseren 5-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten-Vorschläge."
         buttonLabel="Jetzt Therapeut:in finden"
-        targetId="/fragebogen"
+        targetId={isBrowse ? '/therapeuten' : '/fragebogen'}
         align="center"
         variant="tinted"
         showAvailabilityNote={false}

@@ -126,8 +126,14 @@ async function ensureAtLeastOneRSA(
   params: Record<string, string> | undefined,
   fallbackH: string[],
   fallbackD: string[],
-  dryRun: boolean
+  dryRun: boolean,
+  path1?: string,
+  path2?: string
 ) {
+  if (dryRun || /\/DRY_/.test(adGroupRn)) {
+    console.log('    [DRY] Would ensure at least one RSA (skip check)');
+    return;
+  }
   const ads = await listAdGroupAds(customer, adGroupRn);
   if (ads.length > 0) {
     console.log(`    • AdGroup has ${ads.length} ads`);
@@ -167,6 +173,10 @@ async function updateCampaignPresenceAndEcpc(customer: any, campaignRn: string, 
 }
 
 async function pauseOtherAdGroups(customer: any, campaignRn: string, allowedNames: Set<string>, dryRun: boolean) {
+  if (dryRun || /\/DRY_/.test(campaignRn)) {
+    console.log('  [DRY] Would pause other ad groups in campaign (skip)');
+    return;
+  }
   const rows: any[] = await customer.query(`
     SELECT ad_group.resource_name, ad_group.name, ad_group.status, ad_group.campaign
     FROM ad_group
@@ -560,6 +570,11 @@ async function addCampaignNegatives(customer: any, campaignRn: string, negatives
 }
 
 async function ensureAdGroup(customer: any, campaignRn: string, name: string, cpcMicros: number, dryRun: boolean): Promise<string> {
+  // In DRY mode (or when using a fake DRY_* campaign resource), skip API queries and return a placeholder
+  if (dryRun || /\/DRY_/.test(campaignRn)) {
+    console.log(`  [DRY] Would create ad group: ${name} (bid €${(cpcMicros/1_000_000).toFixed(2)})`);
+    return `${campaignRn}/adGroups/DRY_${Date.now()}`;
+  }
   // Pre-check to avoid duplicate-name error
   try {
     const rows: any[] = await customer.query(`SELECT ad_group.resource_name FROM ad_group WHERE ad_group.name = '${name.replace(/'/g, "''")}' AND ad_group.campaign = '${campaignRn}' LIMIT 1`);
@@ -569,10 +584,6 @@ async function ensureAdGroup(customer: any, campaignRn: string, name: string, cp
       return existing as string;
     }
   } catch {}
-  if (dryRun) {
-    console.log(`  [DRY] Would create ad group: ${name} (bid €${(cpcMicros/1_000_000).toFixed(2)})`);
-    return `${campaignRn}/adGroups/DRY_${Date.now()}`;
-  }
   try {
     const res: any = await customer.adGroups.create([
       {

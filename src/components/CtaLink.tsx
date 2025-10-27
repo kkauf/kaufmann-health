@@ -20,12 +20,26 @@ const CtaLink = React.forwardRef<HTMLAnchorElement, CtaLinkProps>(
           const attrs = getAttribution();
           const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
           const href = (e.currentTarget as HTMLAnchorElement).href;
+          const variant = (() => {
+            try {
+              const sp = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+              const v = (sp.get('variant') || sp.get('v') || '').toLowerCase() || undefined;
+              if (v) {
+                try { window.localStorage?.setItem('test1_variant', v); } catch {}
+                return v;
+              }
+              if (typeof window !== 'undefined') {
+                return window.localStorage?.getItem('test1_variant') || undefined;
+              }
+            } catch {}
+            return undefined;
+          })();
           const payload = {
             type: eventType,
             id: builtId,
             title: builtId,
             ...attrs,
-            properties: { page_path: pagePath, source, href },
+            properties: { page_path: pagePath, source, href, variant },
           };
           // Prefer sendBeacon when available
           if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {

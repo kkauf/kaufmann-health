@@ -4,6 +4,7 @@ import { TherapistDirectory } from '@/features/therapists/components/TherapistDi
 import { TherapistMatchCallout } from '@/features/therapists/components/TherapistMatchCallout';
 import { buildLandingMetadata } from '@/lib/seo';
 import FloatingWhatsApp from '@/components/FloatingWhatsApp';
+import DirectoryAnalytics from '@/features/therapists/components/DirectoryAnalytics';
 
 export const revalidate = 3600;
 
@@ -24,6 +25,7 @@ export default function TherapeutenPage() {
     <>
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
         <PageAnalytics qualifier="Therapeuten-Directory" />
+        <DirectoryAnalytics />
 
         <section aria-labelledby="directory-heading" className="mb-8">
           <h1 id="directory-heading" className="text-3xl font-bold tracking-tight sm:text-4xl">
