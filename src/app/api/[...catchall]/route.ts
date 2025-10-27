@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logError } from '@/lib/logger';
+import { getFixedWindowLimiter, extractIpFromHeaders } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// Rate limit for API discovery protection (10 requests per minute per IP)
+const ATTACK_LIMITER = getFixedWindowLimiter('api_404_protection', 10, 60000);
 
 // Critical API patterns that should NEVER 404 - these indicate broken email links or production issues
 const CRITICAL_PATTERNS = [
@@ -31,6 +35,19 @@ function sanitizeQuery(req: NextRequest): string | null {
 
 async function handle(req: NextRequest) {
   const pathname = new URL(req.url).pathname;
+  const ip = extractIpFromHeaders(req.headers);
+
+  // Apply rate limiting for API discovery protection
+  const rateLimit = ATTACK_LIMITER.check(ip);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded' },
+      { 
+        status: 429, 
+        headers: { 'Retry-After': rateLimit.retryAfterSec.toString() } 
+      }
+    );
+  }
 
   // Check if this is a critical endpoint that should never 404
   const criticalMatch = CRITICAL_PATTERNS.find(({ pattern }) => pattern.test(pathname));
@@ -47,6 +64,7 @@ async function handle(req: NextRequest) {
         pattern: criticalMatch.name,
         referrer: req.headers.get('referer') || null,
         userAgent: req.headers.get('user-agent')?.slice(0, 200) || null,
+        ip,
         severity: 'CRITICAL',
         impact: 'Business flow broken - users cannot complete action',
       }
@@ -60,6 +78,8 @@ async function handle(req: NextRequest) {
         pathname,
         query: sanitizeQuery(req),
         method: req.method,
+        ip,
+        userAgent: req.headers.get('user-agent')?.slice(0, 200) || null,
       }
     );
   }

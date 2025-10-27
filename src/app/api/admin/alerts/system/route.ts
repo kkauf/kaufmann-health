@@ -155,6 +155,7 @@ export async function GET(req: Request) {
     const sinceIso = minutesAgoISO(minutes);
 
     // Fetch error-level and explicit cron failures in the window
+    // Exclude automated attack patterns (api.404) which are mostly reconnaissance probes
     let query = supabaseServer
       .from('events')
       .select('id, type, level, properties, created_at')
@@ -162,10 +163,11 @@ export async function GET(req: Request) {
       .order('created_at', { ascending: true })
       .limit(1000);
 
-    // level=error OR type=cron_failed
+    // level=error OR type=cron_failed, BUT exclude automated attack noise
     // Supabase .or uses a CSV of filters
     // eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
-    query = query.or('level.eq.error,type.eq.cron_failed');
+    query = query.or('level.eq.error,type.eq.cron_failed')
+      .not('properties->>source', 'in', '["api.404"]');
 
     const { data, error } = await query;
     if (error) {
