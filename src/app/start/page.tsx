@@ -4,7 +4,6 @@ import PageAnalytics from '@/components/PageAnalytics';
 import CtaLink from '@/components/CtaLink';
 import { HeroNoForm } from '@/features/landing/components/HeroNoForm';
 import { ProcessTimeline } from '@/features/landing/components/ProcessTimeline';
-import { MidPageConversion } from '@/features/landing/components/MidPageConversion';
 import { FoundersValuesSection } from '@/features/landing/components/FoundersValuesSection';
 import { TherapistTeaserSection } from '@/features/landing/components/TherapistTeaserSection';
 import { FinalCtaSection } from '@/features/landing/components/FinalCtaSection';
@@ -53,7 +52,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
   const bodyOrientedCopy = {
     hero: {
       title: 'Wenn der Kopf nicht weiterkommt, hilft der Körper',
-      subtitle: 'Erfahrene Körpertherapeut:innen, die wirklich verfügbar sind. Handverlesen, traumasensibel, in Berlin oder online.',
+      subtitle: 'Erfahrene Körpertherapeut:innen, die wirklich verfügbar sind. Handverlesen, somatisch orientiert, in Berlin oder online.',
     },
     process: {
       tagline: 'Keine Wartelisten. Persönlich ausgewählte Vorschläge in <24h. Deine Daten bleiben privat.',
@@ -212,19 +211,18 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
       {/* Founders + values - MOVED UP for credibility before conversion */}
       <FoundersValuesSection imageSrc="/profile-pictures/katherine and konstantin.PNG" />
 
-      {/* Mid-page conversion: simplified matching path only - EARTH-209 */}
-      <MidPageConversion targetBasePath={isBrowse ? '/therapeuten' : '/fragebogen'} />
-
       <FinalCtaSection
         heading="Bereit für den ersten Schritt?"
         subtitle={isBrowse
-          ? 'Stöbere im Verzeichnis. Profil ansehen und direkt Kontakt aufnehmen – Antwort in <24h.'
+          ? 'Stöbere im Verzeichnis. Profil ansehen und direkt Kontakt aufnehmen.'
           : 'Fülle unseren 5-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten-Vorschläge.'}
         buttonLabel={isBrowse ? 'Jetzt Therapeut:in finden – direkt Kontakt aufnehmen' : 'Jetzt Therapeut:in finden'}
         targetId={isBrowse ? '/therapeuten' : '/fragebogen'}
         align="center"
         variant="tinted"
         showAvailabilityNote={false}
+        withEntryOptions={true}
+        targetBasePath={isBrowse ? '/therapeuten' : '/fragebogen'}
       />
 
       {/* FAQ */}

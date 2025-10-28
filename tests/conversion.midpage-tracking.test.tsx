@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { MidPageConversion } from '@/features/landing/components/MidPageConversion';
+import { FinalCtaSection } from '@/features/landing/components/FinalCtaSection';
 
 function render(ui: React.ReactElement) {
   const container = document.createElement('div');
@@ -12,17 +12,17 @@ function render(ui: React.ReactElement) {
   return { container, unmount: () => root.unmount() };
 }
 
-describe('EARTH-209: MidPageConversion Component', () => {
+describe('FinalCtaSection entry options (midpage analytics continuity)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('renders the section with correct heading and question', async () => {
-    const { container, unmount } = render(<MidPageConversion />);
+  it('renders the CTA with correct heading and question', async () => {
+    const { container, unmount } = render(<FinalCtaSection withEntryOptions />);
     
     try {
       await new Promise((r) => setTimeout(r, 0));
-      expect(container.textContent).toMatch(/Bereit, deine(?:\/n)? Therapeut:in zu finden\??/);
+      expect(container.textContent).toMatch(/Bereit für den ersten Schritt\?/);
       expect(container.textContent).toContain('Hast du bereits Therapie gemacht');
     } finally {
       unmount();
@@ -30,7 +30,7 @@ describe('EARTH-209: MidPageConversion Component', () => {
   });
 
   it('renders all three experience answer buttons with correct labels', async () => {
-    const { container, unmount } = render(<MidPageConversion />);
+    const { container, unmount } = render(<FinalCtaSection withEntryOptions />);
     
     try {
       await new Promise((r) => setTimeout(r, 0));
@@ -43,7 +43,7 @@ describe('EARTH-209: MidPageConversion Component', () => {
   });
 
   it('answer buttons link to questionnaire with correct experience params', async () => {
-    const { container, unmount } = render(<MidPageConversion />);
+    const { container, unmount } = render(<FinalCtaSection withEntryOptions />);
     
     try {
       await new Promise((r) => setTimeout(r, 0));
@@ -60,7 +60,7 @@ describe('EARTH-209: MidPageConversion Component', () => {
   });
 
   it('displays time indicator', async () => {
-    const { container, unmount } = render(<MidPageConversion />);
+    const { container, unmount } = render(<FinalCtaSection withEntryOptions />);
     
     try {
       await new Promise((r) => setTimeout(r, 0));
@@ -70,8 +70,8 @@ describe('EARTH-209: MidPageConversion Component', () => {
     }
   });
 
-  it('does not include directory link (moved to therapist section)', async () => {
-    const { container, unmount } = render(<MidPageConversion />);
+  it('does not include directory link (questionnaire variant)', async () => {
+    const { container, unmount } = render(<FinalCtaSection withEntryOptions />);
     
     try {
       await new Promise((r) => setTimeout(r, 0));
@@ -84,7 +84,7 @@ describe('EARTH-209: MidPageConversion Component', () => {
   });
 
   it('applies custom className when provided', async () => {
-    const { container, unmount } = render(<MidPageConversion className="custom-test-class" />);
+    const { container, unmount } = render(<FinalCtaSection withEntryOptions className="custom-test-class" />);
     
     try {
       await new Promise((r) => setTimeout(r, 0));

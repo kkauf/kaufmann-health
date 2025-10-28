@@ -63,55 +63,54 @@ function TrustSignals() {
 
 function WhatIsKoerpertherapie() {
   return (
-    <section aria-labelledby="what-kt-heading" className="mt-12 sm:mt-16">
+    <section aria-labelledby="what-kt-heading" className="mt-14 sm:mt-20 lg:mt-24">
       <RevealContainer>
-        <div className="relative rounded-2xl border bg-white p-6 sm:p-8 opacity-0 translate-y-2 transition-all duration-500" data-reveal>
-          <h2 id="what-kt-heading" className="text-2xl font-semibold">Was ist Körpertherapie?</h2>
-          <p className="mt-3 max-w-3xl text-gray-700 leading-relaxed">
+        <div className="relative overflow-hidden rounded-3xl border border-slate-200/60 shadow-lg shadow-slate-100/50 bg-gradient-to-br from-slate-50/80 via-white to-slate-50/60 p-8 sm:p-10 lg:p-12 opacity-0 translate-y-2 transition-all duration-500" data-reveal>
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_50%_0%,rgba(99,102,241,0.1),transparent_70%),radial-gradient(30rem_16rem_at_100%_100%,rgba(14,165,233,0.08),transparent_65%)]" />
+          <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-gradient-to-br from-indigo-200/20 to-transparent blur-3xl" />
+          <h2 id="what-kt-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Was ist Körpertherapie?</h2>
+          <p className="mt-4 sm:mt-6 max-w-3xl text-base sm:text-lg leading-relaxed text-gray-700">
             Körpertherapie (körperorientierte Therapie) bezieht den Körper aktiv in die therapeutische Arbeit ein: 
             Wahrnehmung, Atmung, Haltung, Orientierung im Raum und natürliche Schutzreaktionen. Das Ziel ist nicht 
             &bdquo;mehr funktionieren&ldquo;, sondern <strong>echte Regulation und mehr Wahlfreiheit im Alltag</strong>.
           </p>
-          <p className="mt-3 max-w-3xl text-gray-700 leading-relaxed">
+          <p className="mt-3 sm:mt-4 max-w-3xl text-base sm:text-lg leading-relaxed text-gray-700">
             Anders als reine Gesprächstherapie arbeitet Körpertherapie mit dem, was im Körper spürbar ist – 
             und nutzt dies als direkten Zugang zu unbewussten Mustern und traumatischen Erfahrungen.
           </p>
           
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            <Card className="shadow-sm opacity-0 translate-y-2 transition-all duration-500" data-reveal style={{ transitionDelay: '0ms' }}>
-              <CardHeader className="flex flex-row items-center gap-3">
-                <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600"><Brain className="h-5 w-5" /></div>
-                <CardTitle className="text-base">Körperbasiert</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  Interozeption (inneres Spüren), Erdung, Orientierung. Der Körper zeigt, was sicher ist – Schritt für Schritt.
-                </p>
-              </CardContent>
+          <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-3">
+            <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6 opacity-0 translate-y-2" data-reveal style={{ transitionDelay: '0ms' }}>
+              <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
+              <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/60 p-3 text-indigo-600 shadow-sm w-fit">
+                <Brain className="h-5 w-5" />
+              </div>
+              <h3 className="mt-4 text-xl sm:text-2xl font-semibold text-gray-900">Körperbasiert</h3>
+              <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                Interozeption (inneres Spüren), Erdung, Orientierung. Der Körper zeigt, was sicher ist – Schritt für Schritt.
+              </p>
             </Card>
             
-            <Card className="shadow-sm opacity-0 translate-y-2 transition-all duration-500" data-reveal style={{ transitionDelay: '60ms' }}>
-              <CardHeader className="flex flex-row items-center gap-3">
-                <div className="rounded-xl bg-sky-50 p-2 text-sky-600"><Activity className="h-5 w-5" /></div>
-                <CardTitle className="text-base">Sanfte Regulation</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  Sanftes Auf‑ und Abregeln (Titration &amp; Pendulation) statt Überforderung. Keine Retraumatisierung.
-                </p>
-              </CardContent>
+            <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6 opacity-0 translate-y-2" data-reveal style={{ transitionDelay: '60ms' }}>
+              <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
+              <div className="rounded-xl bg-gradient-to-br from-sky-50 to-sky-100/60 p-3 text-sky-600 shadow-sm w-fit">
+                <Activity className="h-5 w-5" />
+              </div>
+              <h3 className="mt-4 text-xl sm:text-2xl font-semibold text-gray-900">Sanfte Regulation</h3>
+              <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                Sanftes Auf‑ und Abregeln (Titration &amp; Pendulation) statt Überforderung. Keine Retraumatisierung.
+              </p>
             </Card>
             
-            <Card className="shadow-sm opacity-0 translate-y-2 transition-all duration-500" data-reveal style={{ transitionDelay: '120ms' }}>
-              <CardHeader className="flex flex-row items-center gap-3">
-                <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600"><ShieldCheck className="h-5 w-5" /></div>
-                <CardTitle className="text-base">Sicher & evidenzbasiert</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  Professionell, medizin-adjazent. Keine Esoterik – gut erklärbar und alltagsnah.
-                </p>
-              </CardContent>
+            <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6 opacity-0 translate-y-2" data-reveal style={{ transitionDelay: '120ms' }}>
+              <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
+              <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 p-3 text-emerald-600 shadow-sm w-fit">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <h3 className="mt-4 text-xl sm:text-2xl font-semibold text-gray-900">Sicher & evidenzbasiert</h3>
+              <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                Professionell, medizin-adjazent. Keine Esoterik – gut erklärbar und alltagsnah.
+              </p>
             </Card>
           </div>
         </div>
@@ -132,30 +131,31 @@ function ForWhom() {
   ];
 
   return (
-    <section aria-labelledby="forwho-heading" className="mt-12 sm:mt-16">
+    <section aria-labelledby="forwho-heading" className="mt-14 sm:mt-20 lg:mt-24">
       <RevealContainer>
-        <div className="relative rounded-2xl border bg-gradient-to-br from-slate-50 to-indigo-50/30 p-6 sm:p-8 opacity-0 translate-y-2 transition-all duration-500" data-reveal>
-          <div className="flex items-start gap-3 mb-4">
-            <div className="rounded-xl bg-indigo-100 p-2.5 text-indigo-600">
+        <div className="relative overflow-hidden rounded-3xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-8 sm:p-10 lg:p-12 shadow-lg shadow-indigo-100/30 opacity-0 translate-y-2 transition-all duration-500" data-reveal>
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(35rem_18rem_at_40%_0%,rgba(99,102,241,0.09),transparent_65%)]" />
+          <div className="flex items-start gap-4 mb-6">
+            <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/60 p-3 text-indigo-600 shadow-sm">
               <Users className="h-6 w-6" />
             </div>
             <div>
-              <h2 id="forwho-heading" className="text-2xl font-semibold">Für wen ist Körpertherapie geeignet?</h2>
-              <p className="mt-2 text-gray-600">Körpertherapie ist besonders hilfreich, wenn:</p>
+              <h2 id="forwho-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Für wen ist Körpertherapie geeignet?</h2>
+              <p className="mt-2 text-base sm:text-lg leading-relaxed text-gray-600">Körpertherapie ist besonders hilfreich, wenn:</p>
             </div>
           </div>
           
-          <ul className="mt-6 space-y-3 max-w-3xl">
+          <ul className="mt-8 sm:mt-10 space-y-3 sm:space-y-4 max-w-3xl">
             {situations.map((sit, i) => (
-              <li key={i} className="flex items-start gap-3 opacity-0 translate-y-2 transition-all duration-500" data-reveal style={{ transitionDelay: `${i * 40}ms` }}>
+              <li key={i} className="rounded-lg border border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30 p-3 flex items-start gap-3 text-sm shadow-sm hover:shadow-md transition-shadow opacity-0 translate-y-2 transition-all duration-500" data-reveal style={{ transitionDelay: `${i * 40}ms` }}>
                 <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                <span className="text-gray-700 leading-relaxed">{sit}</span>
+                <span className="text-gray-700 font-medium leading-relaxed">{sit}</span>
               </li>
             ))}
           </ul>
 
-          <div className="mt-6 rounded-lg bg-white/60 backdrop-blur-sm border border-indigo-100 p-4">
-            <p className="text-sm text-gray-700 leading-relaxed">
+          <div className="mt-8 rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md p-5 sm:p-6">
+            <p className="text-sm sm:text-base leading-relaxed text-gray-700">
               <strong>Wichtig:</strong> Körpertherapie ersetzt keine medizinische oder psychiatrische Behandlung bei akuten Krisen. 
               Sie ergänzt diese jedoch ideal und arbeitet dort, wo Worte allein nicht ausreichen.
             </p>
@@ -186,29 +186,31 @@ function HowItWorks() {
   ];
   
   return (
-    <section aria-labelledby="how-heading" className="mt-12 sm:mt-16">
+    <section aria-labelledby="how-heading" className="mt-14 sm:mt-20 lg:mt-24">
       <RevealContainer>
-        <div className="relative rounded-2xl border bg-white p-6 sm:p-8 opacity-0 translate-y-2 transition-all duration-500" data-reveal>
-          <h2 id="how-heading" className="text-2xl font-semibold">So funktioniert Körpertherapie</h2>
-          <p className="mt-2 text-gray-600 max-w-3xl">Körpertherapie folgt einem sicheren, erprobten Prozess:</p>
+        <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10 opacity-0 translate-y-2 transition-all duration-500" data-reveal>
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
+          <h2 id="how-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">So funktioniert Körpertherapie</h2>
+          <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-600 max-w-3xl">Körpertherapie folgt einem sicheren, erprobten Prozess:</p>
           
-          <div className="mt-6 grid gap-6 sm:grid-cols-3">
+          <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-3">
             {steps.map((s, i) => (
-              <Card key={i} className="shadow-sm opacity-0 translate-y-2 transition-all duration-500" data-reveal style={{ transitionDelay: `${i * 60}ms` }}>
-                <CardHeader className="flex flex-row items-center gap-3">
-                  <div className="rounded-xl bg-slate-100 p-2 text-slate-700">{s.icon}</div>
-                  <CardTitle className="text-base">{s.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-700 leading-relaxed">{s.desc}</p>
-                </CardContent>
+              <Card key={i} className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6 opacity-0 translate-y-2" data-reveal style={{ transitionDelay: `${i * 60}ms` }}>
+                <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 rounded-t-xl" />
+                <div className="absolute -top-3 -left-3 h-8 w-8 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 text-white flex items-center justify-center text-sm font-bold shadow-lg">{i + 1}</div>
+                <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/60 p-3 text-slate-700 shadow-sm w-fit pt-6 mt-4">
+                  {s.icon}
+                </div>
+                <h3 className="mt-4 text-xl font-semibold text-gray-900">{s.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-gray-600">{s.desc}</p>
               </Card>
             ))}
           </div>
 
-          <div className="mt-6 rounded-lg bg-slate-50 border border-slate-200 p-4">
-            <h3 className="font-medium text-slate-900 mb-2">Was passiert in einer Sitzung?</h3>
-            <p className="text-sm text-gray-700 leading-relaxed">
+          <div className="mt-8 rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Was passiert in einer Sitzung?</h3>
+            <p className="text-sm sm:text-base leading-relaxed text-gray-700">
               Eine typische Sitzung (50–90 Min.) beginnt mit Ankommen und Orientierung, dann arbeiten wir sanft mit dem, 
               was im Körper spürbar ist. Es gibt kein &bdquo;Durcharbeiten&ldquo; von Trauma, sondern ein behutsames Begleiten natürlicher 
               Prozesse. Sie bestimmen das Tempo.
@@ -291,12 +293,13 @@ export default async function KoerpertherapiePage() {
 
         <WhatIsKoerpertherapie />
 
-        <section aria-labelledby="diff-heading" className="mt-12 sm:mt-16">
+        <section aria-labelledby="diff-heading" className="mt-14 sm:mt-20 lg:mt-24">
           <RevealContainer>
-            <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-6 sm:p-8 opacity-0 translate-y-2 transition-all duration-500" data-reveal>
-              <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(36rem_16rem_at_110%_10%,rgba(99,102,241,0.08),transparent_60%),radial-gradient(28rem_14rem_at_-10%_90%,rgba(14,165,233,0.08),transparent_60%)]" />
-              <h2 id="diff-heading" className="text-2xl font-semibold">Gespräch vs. Körper: Der Unterschied</h2>
-              <p className="mt-2 text-gray-600 max-w-3xl">
+            <div className="relative overflow-hidden rounded-3xl border border-slate-200/60 shadow-lg shadow-slate-100/50 bg-gradient-to-br from-slate-50/80 via-white to-slate-50/60 p-8 sm:p-10 lg:p-12 opacity-0 translate-y-2 transition-all duration-500" data-reveal>
+              <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_50%_0%,rgba(99,102,241,0.1),transparent_70%),radial-gradient(30rem_16rem_at_100%_100%,rgba(14,165,233,0.08),transparent_65%)]" />
+              <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-gradient-to-br from-indigo-200/20 to-transparent blur-3xl" />
+              <h2 id="diff-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Gespräch vs. Körper: Der Unterschied</h2>
+              <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-600 max-w-3xl">
                 Beide Ansätze sind wertvoll &ndash; und ergänzen sich ideal:
               </p>
               <MethodComparison
@@ -315,7 +318,7 @@ export default async function KoerpertherapiePage() {
                   "Nervensystem-basierte Integration"
                 ]}
               />
-              <p className="mt-4 text-sm text-gray-600 max-w-3xl">
+              <p className="mt-6 text-sm sm:text-base leading-relaxed text-gray-600 max-w-3xl">
                 Körpertherapie arbeitet dort, wo Trauma und Stress <strong>im Nervensystem gespeichert</strong> sind &ndash; 
                 oft jenseits der Reichweite von Worten allein.
               </p>
@@ -327,38 +330,39 @@ export default async function KoerpertherapiePage() {
 
         <HowItWorks />
 
-        <section aria-labelledby="evidence-heading" className="mt-12 sm:mt-16">
+        <section aria-labelledby="evidence-heading" className="mt-14 sm:mt-20 lg:mt-24">
           <RevealContainer>
-            <div className="relative rounded-2xl border bg-white p-6 sm:p-8 opacity-0 translate-y-2 transition-all duration-500" data-reveal>
-              <div className="flex items-start gap-3 mb-4">
-                <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
-                  <Sparkles className="h-5 w-5" />
+            <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10 opacity-0 translate-y-2 transition-all duration-500" data-reveal>
+              <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
+              <div className="flex items-start gap-4 mb-6">
+                <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 p-3 text-emerald-600 shadow-sm">
+                  <Sparkles className="h-6 w-6" />
                 </div>
                 <div>
-                  <h2 id="evidence-heading" className="text-2xl font-semibold">Wissenschaftliche Grundlage</h2>
-                  <p className="mt-2 text-gray-600 max-w-3xl">
+                  <h2 id="evidence-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Wissenschaftliche Grundlage</h2>
+                  <p className="mt-2 text-base sm:text-lg leading-relaxed text-gray-600 max-w-3xl">
                     Körpertherapie ist keine &bdquo;Alternativmedizin&ldquo;, sondern stützt sich auf evidenzbasiert erforschte Verfahren.
                   </p>
                 </div>
               </div>
               
-              <div className="space-y-4 mt-6">
-                <div className="rounded-lg bg-slate-50 border border-slate-200 p-4">
-                  <h3 className="font-medium text-slate-900 mb-2">Beispiel: Somatic Experiencing (SE)</h3>
-                  <p className="text-sm text-gray-700 leading-relaxed mb-3">
+              <div className="space-y-4 sm:space-y-6 mt-8 sm:mt-10">
+                <div className="rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Beispiel: Somatic Experiencing (SE)</h3>
+                  <p className="text-sm sm:text-base leading-relaxed text-gray-700 mb-4">
                     Eine der bekanntesten körpertherapeutischen Methoden, entwickelt von Dr. Peter Levine. 
                     SE wurde in mehreren randomisierten kontrollierten Studien (RCTs) untersucht:
                   </p>
-                  <ul className="space-y-2 text-sm text-gray-700">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <ul className="space-y-3 text-sm sm:text-base text-gray-700">
+                    <li className="flex items-start gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
                       <span>
                         <strong>Brom et al. (2017):</strong> RCT zu PTBS-Behandlung mit SE – signifikante Verbesserung der Symptome. 
                         <a className="ml-1 underline text-indigo-600" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5518443/" target="_blank" rel="noopener noreferrer">Volltext (PMC)</a>
                       </span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <li className="flex items-start gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
                       <span>
                         <strong>Heller et al. (2021):</strong> Übersichtsarbeit zur Wirksamkeit von SE mit Analyse der Schlüsselfaktoren. 
                         <a className="ml-1 underline text-indigo-600" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8276649/" target="_blank" rel="noopener noreferrer">Volltext (PMC)</a>
@@ -367,9 +371,9 @@ export default async function KoerpertherapiePage() {
                   </ul>
                 </div>
 
-                <div className="rounded-lg bg-indigo-50 border border-indigo-100 p-4">
-                  <h3 className="font-medium text-slate-900 mb-2">Neurowissenschaftliche Basis</h3>
-                  <p className="text-sm text-gray-700 leading-relaxed">
+                <div className="rounded-xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-5 sm:p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Neurowissenschaftliche Basis</h3>
+                  <p className="text-sm sm:text-base leading-relaxed text-gray-700">
                     Moderne Hirnforschung zeigt: Traumatische Erfahrungen werden im Nervensystem (limbisches System, Hirnstamm) 
                     gespeichert – oft ohne bewusste Erinnerung. Körpertherapie nutzt diesen direkten Zugang zum autonomen 
                     Nervensystem, um festgehaltene Reaktionen zu lösen.
@@ -384,11 +388,11 @@ export default async function KoerpertherapiePage() {
 
         <RelatedTreatments currentSlug="koerpertherapie" />
 
-        <section aria-labelledby="faq-heading" className="mt-12 sm:mt-16">
+        <section aria-labelledby="faq-heading" className="mt-14 sm:mt-20 lg:mt-24">
           <RevealContainer>
             <div className="opacity-0 translate-y-2 transition-all duration-500" data-reveal>
-              <h2 id="faq-heading" className="text-2xl font-semibold">Häufige Fragen</h2>
-              <div className="mt-4">
+              <h2 id="faq-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Häufige Fragen</h2>
+              <div className="mt-6 sm:mt-8">
                 <FaqAccordion items={faqs} />
               </div>
             </div>
