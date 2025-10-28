@@ -4,6 +4,7 @@
 import * as React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CalendarCheck2, HeartHandshake, Shell, Wind, Target } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
@@ -47,12 +48,11 @@ function toTitleCase(s: string): string {
     .join(' ');
 }
 
-const MODALITY_MAP: Record<string, { label: string; color: string }> = {
-  // Set 1 — Brand-leaning (solid)
-  'narm': { label: 'NARM', color: '#0f766e' },
-  'somatic-experiencing': { label: 'Somatic Experiencing', color: '#d97706' },
-  'hakomi': { label: 'Hakomi', color: '#047857' },
-  'core-energetics': { label: 'Core Energetics', color: '#a21caf' },
+const MODALITY_MAP: Record<string, { label: string; cls: string; Icon: React.ElementType }> = {
+  'narm': { label: 'NARM', cls: 'border-teal-200 bg-teal-50 text-teal-800 hover:border-teal-300 hover:bg-teal-100', Icon: HeartHandshake },
+  'somatic-experiencing': { label: 'Somatic Experiencing', cls: 'border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-300 hover:bg-amber-100', Icon: Shell },
+  'hakomi': { label: 'Hakomi', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100', Icon: Wind },
+  'core-energetics': { label: 'Core Energetics', cls: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 hover:border-fuchsia-300 hover:bg-fuchsia-100', Icon: Target },
 };
 
 export function TherapistPreview({ therapist, actionButton, variant = "web", className }: TherapistPreviewProps) {
@@ -61,15 +61,16 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
 
   const initials = React.useMemo(() => getInitials(therapist.first_name, therapist.last_name), [therapist.first_name, therapist.last_name]);
   const avatarColor = React.useMemo(() => `hsl(${hashCode(therapist.id) % 360}, 70%, 50%)`, [therapist.id]);
-  // Build badge items with brand colors and correct casing
+  // Build badge items with shared classes and icons
   const badgeItems = React.useMemo(() => {
     const list = Array.isArray(therapist.modalities) ? therapist.modalities : [];
     const items = list.map((m, i) => {
       const slug = normalizeModality(String(m));
       const conf = MODALITY_MAP[slug];
       const label = conf ? conf.label : toTitleCase(String(m));
-      const color = conf ? conf.color : "#0f172a"; // default deep slate
-      return { key: `${slug}-${i}`, label, color };
+      const cls = conf ? conf.cls : 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100';
+      const Icon = conf ? conf.Icon : Target;
+      return { key: `${slug}-${i}`, label, cls, Icon };
     });
     // Deduplicate by label to avoid repeats
     const seen = new Set<string>();
@@ -82,6 +83,30 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
   }, [therapist.modalities]);
 
   if (variant === "email") {
+    // Build simple color-based badges for email rendering (inline styles only)
+    const EMAIL_COLOR_MAP: Record<string, { label: string; color: string }> = {
+      'narm': { label: 'NARM', color: '#0f766e' },
+      'somatic-experiencing': { label: 'Somatic Experiencing', color: '#d97706' },
+      'hakomi': { label: 'Hakomi', color: '#047857' },
+      'core-energetics': { label: 'Core Energetics', color: '#a21caf' },
+    };
+    const emailBadgeItems = (() => {
+      const list = Array.isArray(therapist.modalities) ? therapist.modalities : [];
+      const items = list.map((m, i) => {
+        const slug = normalizeModality(String(m));
+        const conf = EMAIL_COLOR_MAP[slug];
+        const label = conf ? conf.label : toTitleCase(String(m));
+        const color = conf ? conf.color : '#0f172a';
+        return { key: `${slug}-${i}`, label, color };
+      });
+      const seen = new Set<string>();
+      return items.filter((it) => {
+        const k = it.label.toLowerCase();
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+    })();
     // Inline-styled markup suitable for email HTML (no Tailwind)
     return (
       <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
@@ -104,8 +129,8 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
             <div style={{ fontWeight: 600 }}>{therapist.first_name} {therapist.last_name}</div>
             {(() => {
               const max = 3;
-              const shown = badgeItems.slice(0, max);
-              const extra = badgeItems.length - shown.length;
+              const shown = emailBadgeItems.slice(0, max);
+              const extra = emailBadgeItems.length - shown.length;
               return (
                 <>
                   {shown.map((b) => (
@@ -158,21 +183,37 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
           <div className="min-w-0 flex-1 flex flex-col">
             {/* Name */}
             <div className={cn("truncate font-semibold", isAdmin ? "text-sm" : "text-base")}>{therapist.first_name} {therapist.last_name}</div>
-            {/* Badges on separate row for consistent vertical rhythm */}
-            <div className={cn("mt-1 flex items-center gap-2 flex-wrap", isAdmin ? "gap-2" : "gap-2")}> 
+            <div className={cn("mt-1")}> 
               {(() => {
                 const max = isAdmin ? 2 : 3;
                 const shown = badgeItems.slice(0, max);
                 const extra = badgeItems.length - shown.length;
                 return (
-                  <>
-                    {shown.map((b) => (
-                      <Badge key={b.key} className={cn(isAdmin ? "text-[10px] px-1.5 py-0" : "px-2 py-0.5 text-[11px] tracking-wide", "border-transparent text-white")} style={{ backgroundColor: b.color }}>{b.label}</Badge>
-                    ))}
-                    {extra > 0 && (
-                      <Badge variant="secondary" className={cn(isAdmin ? "text-[10px] px-1.5 py-0" : "px-2 py-0.5 text-[11px]")}>+{extra}</Badge>
-                    )}
-                  </>
+                  <div className="relative -mx-1">
+                    <div className="min-h-[24px] overflow-x-auto whitespace-nowrap px-1 [scrollbar-width:none] [-ms-overflow-style:none]" aria-label="Modalitäten">
+                      <div className="inline-flex gap-2">
+                        {shown.map((b) => (
+                          <Badge
+                            key={b.key}
+                            variant="outline"
+                            className={cn(
+                              isAdmin ? "text-[10px] px-1.5 py-0" : "px-2 py-0.5 text-[11px]",
+                              "rounded-full gap-1.5 shadow-sm transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md active:shadow-sm active:translate-y-0",
+                              b.cls,
+                            )}
+                          >
+                            <b.Icon className={cn(isAdmin ? "h-2.5 w-2.5" : "h-3 w-3", "opacity-90")} />
+                            {b.label}
+                          </Badge>
+                        ))}
+                        {extra > 0 && (
+                          <Badge variant="secondary" className={cn(isAdmin ? "text-[10px] px-1.5 py-0" : "px-2 py-0.5 text-[11px]")}>+{extra}</Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="pointer-events-none absolute left-0 top-0 h-full w-4 bg-gradient-to-r from-white to-transparent"></div>
+                    <div className="pointer-events-none absolute right-0 top-0 h-full w-4 bg-gradient-to-l from-white to-transparent"></div>
+                  </div>
                 );
               })()}
             </div>
@@ -218,13 +259,14 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
             {/* Bottom area pinned: availability + optional action */}
             <div className="mt-auto pt-2">
               {!isAdmin && (
-                <div className={cn("", isAdmin ? "text-xs" : "text-sm")}
-                     aria-label={therapist.accepting_new ? "Neue Klient:innen: Verfügbar" : "Neue Klient:innen: Keine Kapazität"}
-                >
-                  Neue Klient:innen: {therapist.accepting_new ? (
-                    <span className="text-emerald-600 font-medium">✓ Verfügbar</span>
+                <div>
+                  {therapist.accepting_new ? (
+                    <Badge className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                      <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>Verfügbar</span>
+                    </Badge>
                   ) : (
-                    <span className="text-red-500 font-medium">✕ Derzeit keine Kapazität</span>
+                    <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Keine Kapazität</Badge>
                   )}
                 </div>
               )}

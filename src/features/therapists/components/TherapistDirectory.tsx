@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { SlidersHorizontal, X, ShieldCheck } from 'lucide-react';
 import { TherapistCard } from './TherapistCard';
+import { getAttribution } from '@/lib/attribution';
 import { TherapistDetailModal } from './TherapistDetailModal';
 import { ContactModal } from './ContactModal';
 
@@ -35,6 +37,8 @@ export function TherapistDirectory() {
   const [selectedModality, setSelectedModality] = useState<string>('all');
   const [onlineOnly, setOnlineOnly] = useState<boolean | null>(null);
   const [selectedTherapist, setSelectedTherapist] = useState<TherapistData | null>(null);
+  // Pagination: show first 5, reveal more on demand
+  const [visibleCount, setVisibleCount] = useState<number>(5);
   // Auto contact (EARTH-204): when returning from email magic link with redirect
   const [autoContactTherapist, setAutoContactTherapist] = useState<TherapistData | null>(null);
   const [autoContactOpen, setAutoContactOpen] = useState(false);
@@ -163,6 +167,20 @@ export function TherapistDirectory() {
     });
   }, [therapists, selectedModality, onlineOnly]);
 
+  const visibleTherapists = useMemo(() => filteredTherapists.slice(0, Math.max(0, visibleCount)), [filteredTherapists, visibleCount]);
+  const hasMore = filteredTherapists.length > visibleCount;
+
+  const handleLoadMore = () => {
+    try {
+      const attrs = getAttribution();
+      const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
+      const payload = { type: 'directory_load_more_clicked', ...attrs, properties: { page_path: pagePath, total: filteredTherapists.length, visible_before: visibleCount } };
+      navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+    } catch {}
+    // Reveal all remaining in one step (simple behavior for now)
+    setVisibleCount(filteredTherapists.length);
+  };
+
   // Count active filters
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -239,8 +257,8 @@ export function TherapistDirectory() {
         </div>
       </div>
 
-      {/* Desktop: Inline filters */}
-      <div className="mb-8 hidden md:flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
+      {/* Desktop: Inline filters (sticky) */}
+      <div className="mb-8 hidden md:flex flex-col gap-4 md:flex-row md:items-center md:gap-6 md:sticky md:top-0 md:z-20 md:bg-white/95 md:backdrop-blur supports-[backdrop-filter]:md:bg-white/70 md:py-3 md:border-b">
         <div className="flex-1">
           <label className="mb-2 block text-sm font-medium text-gray-700">
             Modalität
@@ -290,21 +308,47 @@ export function TherapistDirectory() {
         </div>
       </div>
 
-      {/* Results count */}
-      <div className="mb-4 text-sm text-gray-600">
-        {filteredTherapists.length} {filteredTherapists.length === 1 ? 'Therapeut:in' : 'Therapeut:innen'} gefunden
+      {/* Results header: count + compact trust note */}
+      <div className="mb-4 flex flex-col items-start justify-between gap-2 text-sm text-gray-700 sm:flex-row sm:items-center">
+        <div>
+          {filteredTherapists.length} {filteredTherapists.length === 1 ? 'Therapeut:in' : 'Therapeut:innen'} gefunden
+        </div>
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-800">
+          <ShieldCheck className="h-3.5 w-3.5 text-emerald-700" />
+          <span className="leading-none">Alle Profile verifiziert</span>
+          <span className="sr-only">– Qualifikation & Lizenzen geprüft</span>
+        </div>
       </div>
 
       {/* Therapist grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredTherapists.map(therapist => (
+      <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+        {visibleTherapists.map(therapist => (
           <TherapistCard
             key={therapist.id}
             therapist={therapist}
             onViewDetails={() => setSelectedTherapist(therapist)}
           />
         ))}
+        {/* Desktop/Tablet: Load more tile occupies a grid cell */}
+        {hasMore && (
+          <Card className="hidden md:flex h-full items-center justify-center border-dashed">
+            <CardContent className="flex w-full items-center justify-center p-6">
+              <Button size="lg" variant="outline" className="h-12 px-6 text-base font-semibold" onClick={handleLoadMore}>
+                Mehr anzeigen
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      {/* Mobile: compact load more below grid (smaller than a full card) */}
+      {hasMore && (
+        <div className="mt-4 md:hidden">
+          <Button variant="outline" className="w-full h-10 text-sm" onClick={handleLoadMore}>
+            Mehr anzeigen
+          </Button>
+        </div>
+      )}
 
       {filteredTherapists.length === 0 && (
         <div className="py-12 text-center text-gray-600">

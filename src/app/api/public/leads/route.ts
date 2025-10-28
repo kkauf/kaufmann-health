@@ -567,6 +567,7 @@ export async function POST(req: Request) {
     const consentShare = Boolean(payload.consent_share_with_therapists);
     const privacyVersion = sanitize(payload.privacy_version);
     const specializations = normalizeSpecializations(payload.specializations ?? []);
+    // Therapist profile fields (qualification/experience/website) not processed in JSON path
     // Optional gender preference (patient)
     const genderPrefRaw = sanitize(payload.gender_preference as string | undefined);
     const genderPreference: 'male' | 'female' | 'no_preference' | undefined =
@@ -941,6 +942,7 @@ export async function POST(req: Request) {
           sessionPreferences,
           specializations,
           session_id: session_id || undefined,
+          // No additional profile fields forwarded in this path
         },
       );
     }

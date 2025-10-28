@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type React from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, User, Calendar, MessageCircle, Globe } from 'lucide-react';
+import { MapPin, Video, User, Calendar, MessageCircle, Globe, ShieldCheck, HeartHandshake, Shell, Wind, Target, CalendarCheck2 } from 'lucide-react';
 import type { TherapistData } from './TherapistDirectory';
 import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
@@ -33,20 +34,20 @@ function hashCode(s: string) {
   return Math.abs(h);
 }
 
-const MODALITY_MAP: Record<string, { label: string; color: string }> = {
-  'narm': { label: 'NARM', color: 'bg-teal-700' },
-  'somatic-experiencing': { label: 'Somatic Experiencing', color: 'bg-orange-600' },
-  'hakomi': { label: 'Hakomi', color: 'bg-emerald-700' },
-  'core-energetics': { label: 'Core Energetics', color: 'bg-fuchsia-700' },
+const MODALITY_MAP: Record<string, { label: string; cls: string; Icon: React.ElementType }> = {
+  'narm': { label: 'NARM', cls: 'border-teal-200 bg-teal-50 text-teal-800 hover:border-teal-300 hover:bg-teal-100', Icon: HeartHandshake },
+  'somatic-experiencing': { label: 'Somatic Experiencing', cls: 'border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-300 hover:bg-amber-100', Icon: Shell },
+  'hakomi': { label: 'Hakomi', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100', Icon: Wind },
+  'core-energetics': { label: 'Core Energetics', cls: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 hover:border-fuchsia-300 hover:bg-fuchsia-100', Icon: Target },
 };
 
 function normalizeModality(m: string): string {
   return m.toLowerCase().replace(/\s+/g, '-');
 }
 
-function getModalityDisplay(m: string): { label: string; color: string } {
+function getModalityDisplay(m: string): { label: string; cls: string; Icon: React.ElementType } {
   const normalized = normalizeModality(m);
-  return MODALITY_MAP[normalized] || { label: m, color: 'bg-slate-700' };
+  return MODALITY_MAP[normalized] || { label: m, cls: 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100', Icon: Target };
 }
 
 export function TherapistDetailModal({ therapist, open, onClose }: TherapistDetailModalProps) {
@@ -118,16 +119,19 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
               {therapist.first_name} {therapist.last_name}
             </h2>
 
-            {/* Availability */}
-            <div className="mt-2">
+            {/* Trust + Availability */}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Verifiziert
+              </Badge>
               {therapist.accepting_new ? (
-                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                  Neue Klient:innen: Verfügbar
+                <Badge className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                  <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Verfügbar</span>
                 </Badge>
               ) : (
-                <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
-                  Derzeit keine Kapazität
-                </Badge>
+                <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Keine Kapazität</Badge>
               )}
             </div>
 
@@ -139,18 +143,18 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
               </div>
 
               {(offersOnline || offersInPerson) && (
-                <div className="flex items-center justify-center gap-3 sm:justify-start">
+                <div className="flex items-center justify-center gap-2 sm:justify-start">
                   {offersOnline && (
-                    <div className="flex items-center gap-1">
-                      <Video className="h-4 w-4" />
-                      <span>Online-Therapie</span>
-                    </div>
+                    <Badge variant="secondary" className="gap-1 bg-sky-50 text-sky-700 hover:bg-sky-100">
+                      <Video className="h-3 w-3" />
+                      Online-Therapie
+                    </Badge>
                   )}
                   {offersInPerson && (
-                    <div className="flex items-center gap-1">
-                      <User className="h-4 w-4" />
-                      <span>Vor-Ort-Therapie</span>
-                    </div>
+                    <Badge variant="secondary" className="gap-1 bg-slate-50 text-slate-700 hover:bg-slate-100">
+                      <User className="h-3 w-3" />
+                      Vor-Ort-Therapie
+                    </Badge>
                   )}
                 </div>
               )}
@@ -178,12 +182,14 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
             <h3 className="mb-3 text-lg font-semibold text-gray-900">Modalitäten</h3>
             <div className="flex flex-wrap gap-2">
               {therapist.modalities.map((modality, idx) => {
-                const { label, color } = getModalityDisplay(modality);
+                const { label, cls, Icon } = getModalityDisplay(modality);
                 return (
                   <Badge
                     key={idx}
-                    className={`${color} text-white hover:opacity-90`}
+                    variant="outline"
+                    className={`rounded-full gap-1.5 shadow-sm ${cls} transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md active:shadow-sm active:translate-y-0`}
                   >
+                    <Icon className="h-3 w-3 opacity-90" />
                     {label}
                   </Badge>
                 );

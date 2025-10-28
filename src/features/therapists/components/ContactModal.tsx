@@ -2,12 +2,13 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CheckCircle2, Loader2, AlertCircle, Shield, Lock, FileCheck } from 'lucide-react';
+import { CheckCircle2, Loader2, AlertCircle, Shield, Lock, FileCheck, ShieldCheck } from 'lucide-react';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { validatePhone } from '@/lib/verification/usePhoneValidation';
@@ -650,9 +651,15 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         </Avatar>
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-gray-900">{therapistName}</p>
-          <p className="text-sm text-gray-600">
-            {contactType === 'booking' ? 'Termin vereinbaren' : 'Erstgespräch (15 Min)'}
-          </p>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <p className="text-gray-600">
+              {contactType === 'booking' ? 'Termin vereinbaren' : 'Erstgespräch (15 Min)'}
+            </p>
+            <Badge variant="outline" title="Profil geprüft: Qualifikation & Lizenzen verifiziert" className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Verifiziert
+            </Badge>
+          </div>
         </div>
       </div>
       

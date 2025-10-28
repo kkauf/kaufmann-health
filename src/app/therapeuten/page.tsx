@@ -23,22 +23,25 @@ export const metadata: Metadata = {
 export default function TherapeutenPage() {
   return (
     <>
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
         <PageAnalytics qualifier="Therapeuten-Directory" />
         <DirectoryAnalytics />
 
-        <section aria-labelledby="directory-heading" className="mb-8">
-          <h1 id="directory-heading" className="text-3xl font-bold tracking-tight sm:text-4xl">
+        <section aria-labelledby="directory-heading" className="mb-4">
+          <h1 id="directory-heading" className="text-2xl font-bold tracking-tight sm:text-3xl">
             Unsere Therapeut:innen
           </h1>
-          <p className="mt-2 text-lg text-gray-600">
+          <p className="mt-1 text-base text-gray-600">
             Persönlich ausgewählte Spezialist:innen für körperorientierte Psychotherapie
           </p>
         </section>
-
-        <TherapistMatchCallout />
-
+        
         <TherapistDirectory />
+
+        {/* Moved below results to reduce header height */}
+        <div className="mt-10">
+          <TherapistMatchCallout />
+        </div>
       </main>
       <FloatingWhatsApp />
     </>

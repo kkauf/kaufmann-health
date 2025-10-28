@@ -36,16 +36,16 @@ export default function Header() {
 
   const NavLinks = ({ onClick }: { onClick?: () => void }) => (
     <>
-      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150" href="/therapeuten">
+      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150 whitespace-nowrap" href="/therapeuten">
         Unsere Therapeuten
       </Link>
-      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150" href="/start">
+      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150 whitespace-nowrap" href="/start">
         Für Klient:innen
       </Link>
-      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150" href="/fuer-therapeuten">
+      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150 whitespace-nowrap" href="/fuer-therapeuten">
         Für Therapeut:innen
       </Link>
-      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150" href="/ueber-uns">
+      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150 whitespace-nowrap" href="/ueber-uns">
         Über uns
       </Link>
     </>
@@ -71,7 +71,7 @@ export default function Header() {
           {/* Desktop nav */}
           <nav
             aria-label="Hauptnavigation"
-            className="hidden items-center gap-8 text-sm font-medium text-gray-700 md:flex"
+            className="hidden items-center gap-8 text-sm font-medium text-gray-700 lg:flex"
           >
             <NavLinks />
             <Button asChild size="sm" className="ml-3 h-10 px-5 text-sm font-semibold shadow-md hover:shadow-lg transition-all duration-200">
@@ -80,7 +80,7 @@ export default function Header() {
           </nav>
 
           {/* Mobile menu button */}
-          <div className="md:hidden">
+          <div className="lg:hidden">
             <Button
               variant="ghost"
               size="icon"

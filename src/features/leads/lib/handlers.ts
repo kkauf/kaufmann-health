@@ -30,6 +30,9 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
   const last_name = fullName ? fullName.replace(/^\S+\s*/, '').trim() || null : null;
   const modalities = specializations;
 
+  // Build metadata (test-only marker)
+  const meta: Record<string, unknown> = isTest ? { is_test: true } : {};
+
   const { data: ins, error: err } = await supabaseServer
     .from('therapists')
     .insert({
@@ -41,7 +44,7 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
       session_preferences: sessionPreferences,
       modalities,
       status: 'pending_verification',
-      ...(isTest ? { metadata: { is_test: true } as Record<string, unknown> } : {}),
+      ...(Object.keys(meta).length ? { metadata: meta } : {}),
     })
     .select('id')
     .single();

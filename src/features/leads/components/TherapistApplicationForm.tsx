@@ -131,6 +131,8 @@ export default function TherapistApplicationForm() {
 
     // Build JSON payload (EARTH-71)
     const sid = getOrCreateSessionId();
+    // TODO(frontend-first): The following profile fields are included for future persistence.
+    // For now, focus is on frontend trust signals; backend use can be finalized later.
     const payload = {
       type: 'therapist',
       name: (form.get('name')?.toString() || '').trim() || undefined,
@@ -140,6 +142,9 @@ export default function TherapistApplicationForm() {
       city: (form.get('city')?.toString() || '').trim() || undefined,
       session_preferences,
       specializations,
+      qualification: qualification || undefined,
+      experience: experience || undefined,
+      website: website || undefined,
       session_id: sid || undefined,
     };
 
