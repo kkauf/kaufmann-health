@@ -610,10 +610,30 @@ async function ensureAdGroup(customer: any, campaignRn: string, name: string, cp
   }
 }
 
-async function addKeywords(customer: any, adGroupRn: string, terms: string[], cpcMicros: number, dryRun: boolean) {
+function parseHighCpcTerms(): string[] {
+  const raw = (process.env.HIGH_CPC_TERMS || '').trim();
+  if (!raw) return [];
+  return raw.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+}
+
+function eurosToMicrosFloat(eur: number): number {
+  return Math.round((eur || 0) * 1_000_000);
+}
+
+function computeCpcMicrosForTerm(term: string, tierMaxCpcEur: number): number {
+  const highs = parseHighCpcTerms();
+  const t = term.toLowerCase();
+  const isHigh = highs.some((h) => t.includes(h));
+  const highEur = Number(process.env.HIGH_CPC_EUR) || tierMaxCpcEur || 5.0;
+  const lowEur = Number(process.env.LOW_CPC_EUR) || 2.5;
+  return eurosToMicrosFloat(isHigh ? highEur : lowEur);
+}
+
+async function addKeywords(customer: any, adGroupRn: string, terms: string[], tierMaxCpcEur: number, dryRun: boolean) {
   for (const t of terms) {
+    const cpcMicros = computeCpcMicrosForTerm(t, tierMaxCpcEur);
     if (dryRun) {
-      console.log(`    [DRY] Would add KW (phrase+exact): ${t}`);
+      console.log(`    [DRY] Would add KW (phrase+exact): ${t} @ ${Math.round(cpcMicros / 1_000_000 * 100) / 100}€`);
       continue;
     }
     try {
@@ -643,6 +663,39 @@ async function addKeywords(customer: any, adGroupRn: string, terms: string[], cp
       const msg = JSON.stringify(e?.errors || String(e));
       console.error(`    ✗ KW failed: ${t} :: ${msg}`);
       // Optionally: collect policy violations for exemption retry
+    }
+  }
+}
+
+async function ensureKeywordBidsForAdGroup(customer: any, adGroupRn: string, terms: string[], tierMaxCpcEur: number, dryRun: boolean) {
+  if (dryRun) {
+    console.log('  [DRY] Would ensure per-term CPC bids for existing keywords');
+    return;
+  }
+  const rows: any[] = await customer.query(`
+    SELECT ad_group_criterion.resource_name, ad_group_criterion.keyword.text, ad_group_criterion.keyword.match_type, ad_group_criterion.cpc_bid_micros
+    FROM ad_group_criterion
+    WHERE ad_group_criterion.ad_group = '${adGroupRn}'
+      AND ad_group_criterion.type = 'KEYWORD'
+  `);
+  const toUpdate: any[] = [];
+  for (const r of rows) {
+    const c = (r as any).ad_group_criterion || (r as any).adGroupCriterion;
+    const text = c?.keyword?.text as string | undefined;
+    const rn = c?.resource_name || c?.resourceName;
+    if (!text || !rn) continue;
+    // Only adjust for the terms we manage in this run
+    if (!terms.some((t) => t.toLowerCase() === text.toLowerCase())) continue;
+    const desired = computeCpcMicrosForTerm(text, tierMaxCpcEur);
+    if (typeof c?.cpc_bid_micros === 'number' && c.cpc_bid_micros === desired) continue;
+    toUpdate.push({ resource_name: rn, cpc_bid_micros: desired });
+  }
+  if (toUpdate.length) {
+    try {
+      await customer.adGroupCriteria.update(toUpdate, { partial_failure: true });
+      console.log(`  ✓ Updated ${toUpdate.length} keyword bid(s)`);
+    } catch (e) {
+      console.error('  ✗ Failed updating keyword bids', e);
     }
   }
 }
@@ -1073,7 +1126,8 @@ async function main() {
       if (process.env.ENFORCE_ADGROUP_BIDS === 'true') {
         await ensureAdGroupBid(customer, adGroupRn, cpc, dryRun || validateOnly);
       }
-      await addKeywords(customer, adGroupRn, tier.terms || [], cpc, dryRun || validateOnly);
+      await addKeywords(customer, adGroupRn, tier.terms || [], (tier.maxCpc || 2.0), dryRun || validateOnly);
+      await ensureKeywordBidsForAdGroup(customer, adGroupRn, tier.terms || [], (tier.maxCpc || 2.0), dryRun || validateOnly);
       // Extra high-intent expansions per variant
       if (isA && tierName === 'bodyTherapy') {
         const extraA = ['narm therapie','somatic experiencing','hakomi therapie','core energetics','körperpsychotherapie','körperpsychotherapie berlin'];
@@ -1149,9 +1203,21 @@ async function main() {
     await pauseOtherAdGroups(customer, campaignRn as string, allowedNames, dryRun || validateOnly);
     await updateCampaignPresenceAndEcpc(customer, campaignRn as string, dryRun || validateOnly);
 
-    // Update campaign end date to current config (start date update can be restricted once campaign started)
+    // Update campaign dates: bring start_date forward to today if still pending; keep end date per config
     if (!dryRun && !validateOnly) {
       try {
+        const todayIso = new Date().toISOString().slice(0, 10);
+        try {
+          await customer.campaigns.update([
+            {
+              resource_name: campaignRn,
+              start_date: todayIso,
+            },
+          ], { partial_failure: true });
+          console.log(`  ✓ Campaign start date set to ${todayIso}`);
+        } catch (e) {
+          console.log('  • Skipped start date update (may be unchanged or restricted)');
+        }
         await customer.campaigns.update([
           {
             resource_name: campaignRn,
@@ -1160,7 +1226,7 @@ async function main() {
         ], { partial_failure: true });
         console.log(`  ✓ Campaign end date set to ${c.schedule.end}`);
       } catch (e) {
-        console.log('  • Skipped end date update (may be unchanged or restricted)');
+        console.log('  • Skipped date updates (may be unchanged or restricted)');
       }
     }
 
