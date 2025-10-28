@@ -28,7 +28,7 @@ export const wizardCopy = {
       'Ich verstehe alles, aber kann es nicht ändern',
       'Möchte mit Körperempfindungen arbeiten',
       'Brauche einen anderen Ansatz',
-      'Suche traumasensible Begleitung',
+      'Suche somatische Begleitung',
       'Andere Gründe',
     ] as const,
     next: 'Weiter →',

@@ -14,7 +14,7 @@ export function HeroNoForm({
   valueProps = [
     '✓ Handverlesene Therapeuten',
     '✓ Termine in 24 Stunden',
-    '✓ Traumasensibel',
+    '✓ Somatische Therapie',
     '✓ Vor Ort in Berlin oder online',
   ],
 }: {
