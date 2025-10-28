@@ -5,7 +5,7 @@ import CtaLink from "@/components/CtaLink";
 import { Shield, Lock, FileCheck, Clock, MessageCircle } from "lucide-react";
 
 export function FinalCtaSection({
-  heading = "Der erste Schritt",
+  heading = "Bereit für den ersten Schritt?",
   subtitle,
   quote,
   buttonLabel = "Passende Therapeut:innen finden",
