@@ -31,7 +31,7 @@ export function renderPatientMatchFound(params: {
   }
   lines.push('</div>');
 
-  lines.push('<p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;">Der/die Therapeut:in wird dich in der Regel innerhalb von 24&nbsp;Stunden kontaktieren. Falls du in dieser Zeit nichts hörst, antworte gerne auf diese E‑Mail, dann kümmern wir uns sofort darum.</p>');
+  lines.push('<p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;">Der/die Therapeut:in wird sich bei dir melden, um den ersten Termin zu vereinbaren. Falls du Fragen hast, antworte gerne auf diese E‑Mail.</p>');
 
   lines.push('<div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; background-image: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; padding:16px 20px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); margin-top:20px;">');
   lines.push('<p style="color:#64748b !important; font-size:14px; margin:0; line-height:1.6;">Du kannst jederzeit auf diese Nachricht antworten, falls du Ergänzungen oder Fragen hast.</p>');

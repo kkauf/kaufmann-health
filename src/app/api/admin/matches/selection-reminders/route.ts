@@ -377,7 +377,7 @@ export async function GET(req: Request) {
         ? 'Brauchst du Unterstützung bei der Auswahl?'
         : stage === 'day14'
         ? 'Wie können wir dich weiter unterstützen?'
-        : 'Ihre persönliche Therapie-Auswahl';
+        : 'Deine sorgfältig ausgewählten Therapeuten-Empfehlungen';
 
       const bannerOverrideHtml = (
         '<div style="background: #EEF2FF; padding: 12px; border-radius: 8px; margin-bottom: 20px;">' +

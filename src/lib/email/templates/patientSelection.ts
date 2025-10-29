@@ -34,10 +34,10 @@ export function renderPatientSelectionEmail(params: {
   const name = (params.patientName || '').trim();
   const items = Array.isArray(params.items) ? params.items : [];
  
-  // Gentle urgency notice (shown after cards by default, can be overridden by admin)
-  const urgencyBox = params.bannerOverrideHtml ?? `
-    <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important; background-image: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important; padding:16px 20px; border-radius:12px; border:1px solid rgba(251, 191, 36, 0.3); margin-top:24px; box-shadow: 0 2px 4px 0 rgba(251, 191, 36, 0.1);">
-      <p style="margin:0; font-size:15px; line-height:1.6; color:#78350f !important;"><strong style="font-weight:700; color:#78350f !important;">💡 Tipp:</strong> Diese Therapeut:innen haben begrenzte Kapazitäten. Wir empfehlen, sich zeitnah zu melden, um einen Termin in den nächsten 7 Tagen zu sichern.</p>
+  // Quality assurance notice (shown after cards by default, can be overridden by admin)
+  const qualityBox = params.bannerOverrideHtml ?? `
+    <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important; background-image: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important; padding:16px 20px; border-radius:12px; border:1px solid rgba(34, 197, 94, 0.3); margin-top:24px; box-shadow: 0 2px 4px 0 rgba(34, 197, 94, 0.1);">
+      <p style="margin:0; font-size:15px; line-height:1.6; color:#14532d !important;"><strong style="font-weight:700; color:#14532d !important;">✓ Qualitätsversprechen:</strong> Jede:r Therapeut:in in dieser Auswahl wurde von uns persönlich geprüft – Qualifikationen, Fortbildungen und aktuelle Verfügbarkeit sind verifiziert.</p>
     </div>
   `;
  
@@ -69,13 +69,13 @@ export function renderPatientSelectionEmail(params: {
         <li style="margin:8px 0; color:#475569 !important;">Wir prüfen die Qualifikationen der Therapeut:innen gründlich (Ausbildung, zertifizierte Fortbildungen, Erfahrung, aktuelle Verfügbarkeit).</li>
         <li style="margin:8px 0; color:#475569 !important;">Spezielle Ausbildungen für Körpertherapie sind in den farbigen Abzeichen sichtbar (z.&nbsp;B. NARM, Somatic Experiencing, Hakomi, Core Energetics).</li>
       </ul>
-      <p style="margin:16px 0 0; color:#0f172a !important; font-weight:600;">Du kannst dieser Auswahl guten Gewissens vertrauen.</p>
+      <p style="margin:16px 0 0; color:#0f172a !important; font-weight:600;">Sorgfältig geprüfte Profile – persönlich für dich ausgewählt.</p>
     </div>
   `;
  
-  // Availability framing (7 days)
-  const availabilityLine = `
-    <p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">Folgende Therapeut:innen haben freie Kapazitäten innerhalb der kommenden 7 Tage.</p>
+  // Quality matching framing
+  const matchingLine = `
+    <p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">Folgende Therapeut:innen haben wir sorgfältig auf Basis deiner Präferenzen ausgewählt.</p>
   `;
 
   const cardsHtml = items
@@ -130,7 +130,7 @@ export function renderPatientSelectionEmail(params: {
   `;
  
   // Only show cards if no matchesUrl (backward compatibility)
-  const cardsSection = params.matchesUrl ? '' : [availabilityLine, cardsHtml, actionGuidance, urgencyBox].join('\n');
+  const cardsSection = params.matchesUrl ? '' : [matchingLine, cardsHtml, actionGuidance, qualityBox].join('\n');
   const contentHtml = [header, greetingHtml, matchesCta, trustBox, cardsSection, modalitiesHtml, closingHtml].join('\n');
 
   const actionTarget = items[0]?.selectUrl;
@@ -149,7 +149,7 @@ export function renderPatientSelectionEmail(params: {
     : undefined;
 
   return {
-    subject: params.subjectOverride || 'Deine handverlesene Auswahl – Termine verfügbar',
+    subject: params.subjectOverride || 'Deine handverlesene Therapeuten-Auswahl',
     html: renderLayout({ title: 'Therapie-Auswahl', contentHtml, preheader: 'Deine handverlesene Auswahl ist da – antworte gern bei Fragen, wir helfen dir weiter.', schema }),
   };
 }

@@ -28,13 +28,13 @@ export function renderPatientConfirmation(params: {
   const contentHtml = `
     <h1 style="color:#0f172a !important; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Deine Anfrage ist eingegangen</h1>
     <p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;">Hallo${name ? ` ${escapeHtml(name)}` : ''},</p>
-    <p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">vielen Dank für deine Anfrage bei Kaufmann Health. Wir haben deine Angaben erhalten und melden uns <strong style="color:#0f172a !important;">innerhalb von 24&nbsp;Stunden</strong> mit den nächsten Schritten.</p>
+    <p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">vielen Dank für deine Anfrage bei Kaufmann Health. Wir prüfen deine Anfrage sorgfältig und wählen passende Therapeut:innen aus unserem handverlesenen Netzwerk aus.</p>
     ${detailsHtml}
     <div style="background:#ffffff !important; padding:20px 24px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 2px 4px 0 rgba(100, 116, 139, 0.05);">
       <h3 style="margin:0 0 16px; color:#0f172a !important; font-size:18px; font-weight:700;">Wie geht es weiter?</h3>
       <ol style="margin:0 0 0 20px; padding:0; font-size:15px; color:#475569 !important; line-height:1.65;">
         <li style="margin:0 0 12px;">Wir prüfen deine Anfrage und wählen passende Profile aus unserem handverlesenen Netzwerk sorgfältig geprüfter Therapeuten.</li>
-        <li style="margin:0 0 12px;">Du erhältst in der Regel innerhalb von 24&nbsp;Stunden eine Rückmeldung per E‑Mail.</li>
+        <li style="margin:0 0 12px;">Du erhältst eine persönlich kuratierte Auswahl per E‑Mail.</li>
         <li style="margin:0;">Bei Rückfragen melden wir uns direkt bei dir. Antworte gerne auf diese E‑Mail.</li>
       </ol>
       <div style="text-align:center; margin-top:20px;">${renderButton(BASE_URL + '/therapie-finden', 'Mehr zur Therapeuten-Empfehlung')}</div>
