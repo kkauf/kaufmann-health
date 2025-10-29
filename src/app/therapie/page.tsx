@@ -1,115 +1,118 @@
 import type { Metadata } from "next";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import FaqAccordion from "@/components/FaqAccordion";
-import { LandingHero } from "@/features/landing/components/LandingHero";
-import { PrivacySelfPaySection } from "@/features/landing/components/PrivacySelfPaySection";
-import MethodComparison from "@/features/landing/components/MethodComparison";
-import FinalCtaSection from "@/features/landing/components/FinalCtaSection";
-import RelatedTreatments from "@/features/therapy/components/RelatedTreatments";
-import { Activity, Brain, ShieldCheck, HeartPulse, ArrowLeftRight, Compass, Users, Sparkles, CheckCircle2 } from "lucide-react";
+import TherapyModalityExplanations from "@/components/TherapyModalityExplanations";
+import { FinalCtaSection } from "@/features/landing/components/FinalCtaSection";
+import { TherapistTeaserSection } from "@/features/landing/components/TherapistTeaserSection";
+import { Brain, Heart, Users, CheckCircle2, Shield } from "lucide-react";
 import RevealContainer from "@/components/RevealContainer";
 
 export const revalidate = 3600;
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.kaufmann-health.de";
 
-export const metadata = async ({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }): Promise<Metadata> => {
-  const variant = (searchParams?.v as string)?.toUpperCase();
-  const isTestVariant = variant === 'B' || variant === 'C';
-  const title = "Körpertherapie | Wissenschaftlich fundierte körperorientierte Therapie";
-  const description = "Körpertherapie: Wissenschaftlich fundiert, professionell und ohne Esoterik. Erfahren Sie, wie körperorientierte Therapie bei Trauma, Stress und emotionalen Blockaden helfen kann.";
-  return {
-    title,
-    description,
-    alternates: { canonical: `${baseUrl}/therapie` },
-    robots: isTestVariant ? { index: false, follow: false } : { index: true, follow: true },
-    openGraph: {
-      title,
-      description,
-      url: `${baseUrl}/therapie`,
-      siteName: "Kaufmann Health",
-      locale: "de_DE",
-      type: "website",
-      images: [
-        { url: `${baseUrl}/images/hero.jpg`, width: 1200, height: 630, alt: "Kaufmann Health – Körpertherapie" },
-      ],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [`${baseUrl}/images/hero.jpg`],
-    },
-  };
+export const metadata: Metadata = {
+  title: "Körperorientierte Therapie (Somatische Therapie) Berlin | NARM, SE, Hakomi",
+  description: "Körperorientierte Therapie (somatische Therapie) in Berlin & online: NARM, Somatic Experiencing, Hakomi, Core Energetics. Wissenschaftlich fundiert für Trauma, Stress & emotionale Blockaden.",
+  alternates: { canonical: `${baseUrl}/therapie` },
+  robots: { index: true, follow: true },
+  openGraph: {
+    title: "Körperorientierte Therapie (Somatische Therapie) Berlin | NARM, SE, Hakomi",
+    description: "Körperorientierte Therapie (somatische Therapie) in Berlin & online: NARM, Somatic Experiencing, Hakomi, Core Energetics. Wissenschaftlich fundiert.",
+    url: `${baseUrl}/therapie`,
+    siteName: "Kaufmann Health",
+    locale: "de_DE",
+    type: "website",
+    images: [
+      { url: `${baseUrl}/images/hero.jpg`, width: 1200, height: 630, alt: "Kaufmann Health – Körperorientierte Therapie" },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Körperorientierte Therapie (Somatische Therapie) Berlin | NARM, SE, Hakomi",
+    description: "Körperorientierte Therapie (somatische Therapie) in Berlin & online: NARM, Somatic Experiencing, Hakomi, Core Energetics. Wissenschaftlich fundiert.",
+    images: [`${baseUrl}/images/hero.jpg`],
+  },
 };
 
-function TrustSignals() {
-  const signals = [
-    { icon: <ShieldCheck className="h-5 w-5" />, text: "Wissenschaftlich fundiert" },
-    { icon: <CheckCircle2 className="h-5 w-5" />, text: "Professionell & seriös" },
-    { icon: <Brain className="h-5 w-5" />, text: "Keine Esoterik" },
-  ];
+function HeroSection() {
   return (
-    <div className="mt-6 flex flex-wrap gap-4 justify-center sm:justify-start">
-      {signals.map((sig, i) => (
-        <div key={i} className="flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-50 to-sky-50 px-4 py-2 text-sm font-medium text-slate-700">
-          <div className="text-indigo-600">{sig.icon}</div>
-          {sig.text}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function WhatIsKoerpertherapie() {
-  return (
-    <section aria-labelledby="what-kt-heading" className="mt-14 sm:mt-20 lg:mt-24">
+    <section aria-labelledby="hero-heading" className="">
       <RevealContainer>
         <div className="relative overflow-hidden rounded-3xl border border-slate-200/60 shadow-lg shadow-slate-100/50 bg-gradient-to-br from-slate-50/80 via-white to-slate-50/60 p-8 sm:p-10 lg:p-12 opacity-0 translate-y-2 transition-all duration-500" data-reveal>
           <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_50%_0%,rgba(99,102,241,0.1),transparent_70%),radial-gradient(30rem_16rem_at_100%_100%,rgba(14,165,233,0.08),transparent_65%)]" />
           <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-gradient-to-br from-indigo-200/20 to-transparent blur-3xl" />
-          <h2 id="what-kt-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Was ist Körpertherapie?</h2>
-          <p className="mt-4 sm:mt-6 max-w-3xl text-base sm:text-lg leading-relaxed text-gray-700">
-            Körpertherapie (körperorientierte Therapie) bezieht den Körper aktiv in die therapeutische Arbeit ein: 
-            Wahrnehmung, Atmung, Haltung, Orientierung im Raum und natürliche Schutzreaktionen. Das Ziel ist nicht 
-            &bdquo;mehr funktionieren&ldquo;, sondern <strong>echte Regulation und mehr Wahlfreiheit im Alltag</strong>.
-          </p>
-          <p className="mt-3 sm:mt-4 max-w-3xl text-base sm:text-lg leading-relaxed text-gray-700">
-            Anders als reine Gesprächstherapie arbeitet Körpertherapie mit dem, was im Körper spürbar ist – 
-            und nutzt dies als direkten Zugang zu unbewussten Mustern und traumatischen Erfahrungen.
+          
+          <h1 id="hero-heading" className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight text-gray-900">
+            Körperorientierte Therapie
+          </h1>
+          <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-700">
+            Körperorientierte Therapie (auch somatische Therapie genannt) arbeitet dort, wo Trauma und Stress im Nervensystem gespeichert sind – wissenschaftlich fundiert, professionell und ohne Esoterik.
           </p>
           
-          <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-3">
-            <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6 opacity-0 translate-y-2" data-reveal style={{ transitionDelay: '0ms' }}>
+          <div className="mt-6 flex flex-wrap gap-4">
+            <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-2 text-sm font-medium text-slate-700">
+              <Shield className="h-5 w-5 text-emerald-600" />
+              Wissenschaftlich fundiert
+            </div>
+            <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-50 to-sky-50 px-4 py-2 text-sm font-medium text-slate-700">
+              <Brain className="h-5 w-5 text-indigo-600" />
+              Keine Esoterik
+            </div>
+          </div>
+        </div>
+      </RevealContainer>
+    </section>
+  );
+}
+
+function WhatIsBodyTherapy() {
+  return (
+    <section aria-labelledby="what-heading" className="mt-14 sm:mt-20 lg:mt-24">
+      <RevealContainer>
+        <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10 opacity-0 translate-y-2 transition-all duration-500" data-reveal>
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
+          
+          <h2 id="what-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
+            Was ist körperorientierte Therapie?
+          </h2>
+          <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-700">
+            Körperorientierte Therapie (auch <strong>somatische Therapie</strong> genannt) arbeitet mit dem, was im Körper spürbar ist: 
+            Atmung, Haltung, Anspannung, innere Empfindungen. Statt nur über Probleme zu sprechen, wird Veränderung 
+            <strong> direkt im Nervensystem erlebt und verankert</strong>.
+          </p>
+          
+          <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 sm:grid-cols-3">
+            <Card className="relative bg-white/80 backdrop-blur-sm shadow-md p-5 sm:p-6 opacity-0 translate-y-2" data-reveal style={{ transitionDelay: '0ms' }}>
+              <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
+              <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 p-3 text-emerald-600 shadow-sm w-fit">
+                <Heart className="h-5 w-5" />
+              </div>
+              <h3 className="mt-4 text-lg sm:text-xl font-semibold text-gray-900">Direkt & wirksam</h3>
+              <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                Veränderung wird im Körper erlebt und im Nervensystem verankert.
+              </p>
+            </Card>
+            
+            <Card className="relative bg-white/80 backdrop-blur-sm shadow-md p-5 sm:p-6 opacity-0 translate-y-2" data-reveal style={{ transitionDelay: '60ms' }}>
               <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
               <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/60 p-3 text-indigo-600 shadow-sm w-fit">
                 <Brain className="h-5 w-5" />
               </div>
-              <h3 className="mt-4 text-xl sm:text-2xl font-semibold text-gray-900">Körperbasiert</h3>
+              <h3 className="mt-4 text-lg sm:text-xl font-semibold text-gray-900">Sanft & sicher</h3>
               <p className="mt-2 text-sm leading-relaxed text-gray-600">
-                Interozeption (inneres Spüren), Erdung, Orientierung. Der Körper zeigt, was sicher ist – Schritt für Schritt.
+                Behutsames Arbeiten in kleinen Schritten. Sicheres Begleiten natürlicher Prozesse.
               </p>
             </Card>
             
-            <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6 opacity-0 translate-y-2" data-reveal style={{ transitionDelay: '60ms' }}>
+            <Card className="relative bg-white/80 backdrop-blur-sm shadow-md p-5 sm:p-6 opacity-0 translate-y-2" data-reveal style={{ transitionDelay: '120ms' }}>
               <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
               <div className="rounded-xl bg-gradient-to-br from-sky-50 to-sky-100/60 p-3 text-sky-600 shadow-sm w-fit">
-                <Activity className="h-5 w-5" />
+                <Shield className="h-5 w-5" />
               </div>
-              <h3 className="mt-4 text-xl sm:text-2xl font-semibold text-gray-900">Sanfte Regulation</h3>
+              <h3 className="mt-4 text-lg sm:text-xl font-semibold text-gray-900">Wissenschaftlich fundiert</h3>
               <p className="mt-2 text-sm leading-relaxed text-gray-600">
-                Sanftes Auf‑ und Abregeln (Titration &amp; Pendulation) statt Überforderung. Keine Retraumatisierung.
-              </p>
-            </Card>
-            
-            <Card className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6 opacity-0 translate-y-2" data-reveal style={{ transitionDelay: '120ms' }}>
-              <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
-              <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 p-3 text-emerald-600 shadow-sm w-fit">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-              <h3 className="mt-4 text-xl sm:text-2xl font-semibold text-gray-900">Sicher & evidenzbasiert</h3>
-              <p className="mt-2 text-sm leading-relaxed text-gray-600">
-                Professionell, medizin-adjazent. Keine Esoterik – gut erklärbar und alltagsnah.
+                Evidenzbasierte Methoden. In RCT-Studien untersucht. Keine Esoterik.
               </p>
             </Card>
           </div>
@@ -121,13 +124,10 @@ function WhatIsKoerpertherapie() {
 
 function ForWhom() {
   const situations = [
-    "Sie fühlen sich innerlich taub oder wie abgeschnitten",
-    "Ständige innere Anspannung, die sich nicht durch Gespräche löst",
-    "Trauma-Erfahrungen (Unfall, Verlust, Gewalt)",
-    "Chronische Schmerzen ohne klare körperliche Ursache",
-    "Panikattacken oder überwältigende Emotionen",
-    "Das Gefühl, im eigenen Körper nicht zu Hause zu sein",
-    "Sie möchten mehr als nur über Probleme sprechen",
+    "Trauma und belastende Erfahrungen",
+    "Chronischer Stress und innere Anspannung",
+    "Emotionale Blockaden und Taubheit",
+    "Wenn Gesprächstherapie allein nicht ausreicht",
   ];
 
   return (
@@ -140,80 +140,24 @@ function ForWhom() {
               <Users className="h-6 w-6" />
             </div>
             <div>
-              <h2 id="forwho-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Für wen ist Körpertherapie geeignet?</h2>
-              <p className="mt-2 text-base sm:text-lg leading-relaxed text-gray-600">Körpertherapie ist besonders hilfreich, wenn:</p>
+              <h2 id="forwho-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Für wen ist körperorientierte Therapie geeignet?</h2>
+              <p className="mt-2 text-base sm:text-lg leading-relaxed text-gray-600">Besonders hilfreich bei:</p>
             </div>
           </div>
           
-          <ul className="mt-8 sm:mt-10 space-y-3 sm:space-y-4 max-w-3xl">
+          <div className="mt-6 sm:mt-8 grid gap-3 sm:gap-4 sm:grid-cols-2">
             {situations.map((sit, i) => (
-              <li key={i} className="rounded-lg border border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30 p-3 flex items-start gap-3 text-sm shadow-sm hover:shadow-md transition-shadow opacity-0 translate-y-2 transition-all duration-500" data-reveal style={{ transitionDelay: `${i * 40}ms` }}>
+              <div key={i} className="rounded-lg border border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30 p-3 sm:p-4 flex items-start gap-3 text-sm shadow-sm hover:shadow-md transition-shadow opacity-0 translate-y-2 transition-all duration-500" data-reveal style={{ transitionDelay: `${i * 40}ms` }}>
                 <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
                 <span className="text-gray-700 font-medium leading-relaxed">{sit}</span>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
 
           <div className="mt-8 rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md p-5 sm:p-6">
             <p className="text-sm sm:text-base leading-relaxed text-gray-700">
-              <strong>Wichtig:</strong> Körpertherapie ersetzt keine medizinische oder psychiatrische Behandlung bei akuten Krisen. 
-              Sie ergänzt diese jedoch ideal und arbeitet dort, wo Worte allein nicht ausreichen.
-            </p>
-          </div>
-        </div>
-      </RevealContainer>
-    </section>
-  );
-}
-
-function HowItWorks() {
-  const steps = [
-    { 
-      icon: <Compass className="h-5 w-5" />, 
-      title: "Orientierung & Ressourcen", 
-      desc: "Sichere Basis schaffen: Erdung, Atem, Blick, Halt – ohne zu überfordern. Sie lernen, im Hier und Jetzt anzukommen." 
-    },
-    { 
-      icon: <ArrowLeftRight className="h-5 w-5" />, 
-      title: "Titration & Pendulation", 
-      desc: "In kleinen Dosen spüren und entladen – zwischen Aktivierung und Ruhe wechseln. So bleibt der Prozess jederzeit sicher." 
-    },
-    { 
-      icon: <HeartPulse className="h-5 w-5" />, 
-      title: "Integration", 
-      desc: "Neue Regulation verankern – mehr Wahlfreiheit im Alltag. Veränderung wird nicht nur gedacht, sondern im Körper erlebt." 
-    },
-  ];
-  
-  return (
-    <section aria-labelledby="how-heading" className="mt-14 sm:mt-20 lg:mt-24">
-      <RevealContainer>
-        <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10 opacity-0 translate-y-2 transition-all duration-500" data-reveal>
-          <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
-          <h2 id="how-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">So funktioniert Körpertherapie</h2>
-          <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-600 max-w-3xl">Körpertherapie folgt einem sicheren, erprobten Prozess:</p>
-          
-          <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-3">
-            {steps.map((s, i) => (
-              <Card key={i} className="relative bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 px-5 sm:px-6 opacity-0 translate-y-2" data-reveal style={{ transitionDelay: `${i * 60}ms` }}>
-                <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
-                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 rounded-t-xl" />
-                <div className="absolute -top-3 -left-3 h-8 w-8 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 text-white flex items-center justify-center text-sm font-bold shadow-lg">{i + 1}</div>
-                <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/60 p-3 text-slate-700 shadow-sm w-fit pt-6 mt-4">
-                  {s.icon}
-                </div>
-                <h3 className="mt-4 text-xl font-semibold text-gray-900">{s.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-gray-600">{s.desc}</p>
-              </Card>
-            ))}
-          </div>
-
-          <div className="mt-8 rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Was passiert in einer Sitzung?</h3>
-            <p className="text-sm sm:text-base leading-relaxed text-gray-700">
-              Eine typische Sitzung (50–90 Min.) beginnt mit Ankommen und Orientierung, dann arbeiten wir sanft mit dem, 
-              was im Körper spürbar ist. Es gibt kein &bdquo;Durcharbeiten&ldquo; von Trauma, sondern ein behutsames Begleiten natürlicher 
-              Prozesse. Sie bestimmen das Tempo.
+              <strong>Wichtig:</strong> Körperorientierte Therapie ersetzt keine medizinische oder psychiatrische Behandlung bei akuten Krisen. 
+              Sie ergänzt diese jedoch ideal.
             </p>
           </div>
         </div>
@@ -225,19 +169,14 @@ function HowItWorks() {
 export default async function KoerpertherapiePage() {
   const faqs = [
     { 
-      id: "seriös", 
-      question: "Ist Körpertherapie seriös oder esoterisch?", 
-      answer: "Körpertherapie arbeitet mit gut erklärbaren, biologischen Mechanismen: Atmung, Orientierung, Schutzreflexe, Nervensystem-Regulation. Methoden wie Somatic Experiencing sind wissenschaftlich erforscht (z.B. RCT-Studien zu PTBS-Behandlung). Wir nutzen eine ruhige, professionelle Gestaltung und arbeiten evidenzbasiert – ohne Esoterik." 
-    },
-    { 
       id: "unterschied", 
       question: "Was ist der Unterschied zur Gesprächstherapie?", 
-      answer: "Gespräche helfen zu verstehen und einzuordnen. Körpertherapie ergänzt dies um das direkte Spüren und Regulieren im Körper. So wird Veränderung nicht nur gedacht, sondern im Nervensystem erlebt und verankert. Beide Ansätze können sich hervorragend ergänzen." 
+      answer: "Gespräche helfen zu verstehen und einzuordnen. Körperorientierte Therapie ergänzt dies um das direkte Spüren und Regulieren im Körper. So wird Veränderung nicht nur gedacht, sondern im Nervensystem erlebt und verankert. Beide Ansätze können sich hervorragend ergänzen." 
     },
     { 
-      id: "wann-geeignet", 
-      question: "Wann ist Körpertherapie besonders geeignet?", 
-      answer: "Besonders hilfreich bei Trauma, chronischem Stress, Panik, somatischen Beschwerden ohne klare Ursache, emotionalen Blockaden oder wenn Gesprächstherapie allein nicht ausreicht. Auch präventiv zur Stress-Regulation sehr wertvoll." 
+      id: "kosten", 
+      question: "Was kostet eine Sitzung?", 
+      answer: "In der Regel 80–120€ pro 50–60 Minuten, je nach Therapeut:in. Selbstzahlung bedeutet: keine Wartezeit, volle Flexibilität, und deine Daten bleiben privat." 
     },
     { 
       id: "anzahl", 
@@ -245,28 +184,23 @@ export default async function KoerpertherapiePage() {
       answer: "Sehr individuell. Viele Menschen spüren erste Veränderungen nach 6–10 Sitzungen. Bei komplexen Themen entsprechend länger. Das Tempo und die Tiefe bestimmen Sie – es gibt keine Verpflichtung zu einem bestimmten Umfang." 
     },
     { 
-      id: "berührung", 
-      question: "Wird man bei Körpertherapie berührt?", 
-      answer: "Das ist methodenabhängig und immer optional. Bei manchen Ansätzen kann achtsame, therapeutische Berührung hilfreich sein – aber nur mit Ihrer expliziten Zustimmung. Viele körpertherapeutische Prozesse funktionieren auch komplett ohne Berührung." 
+      id: "termine", 
+      question: "Wie schnell bekomme ich Termine?", 
+      answer: "Du erhältst handverlesene Vorschläge meist innerhalb weniger Stunden – Termine sind in der Regel noch diese Woche möglich." 
     },
     { 
       id: "kasse", 
       question: "Übernimmt die Krankenkasse die Kosten?", 
-      answer: "In der Regel nein. Die meisten körpertherapeutischen Verfahren werden nicht von gesetzlichen Krankenkassen übernommen. Private Kassen erstatten teilweise, abhängig vom Tarif und der Qualifikation der behandelnden Person. Wir arbeiten bewusst ohne Krankenkasse: keine Diagnosen in Ihrer Akte, hohe Vertraulichkeit und flexible Termine." 
+      answer: "In der Regel nein. Die meisten körpertherapeutischen Verfahren werden nicht von gesetzlichen Krankenkassen übernommen. Wir arbeiten bewusst ohne Krankenkasse: keine Diagnosen in Ihrer Akte, hohe Vertraulichkeit und flexible Termine." 
     },
-    {
-      id: "methoden",
-      question: "Welche körpertherapeutischen Methoden gibt es?",
-      answer: "Zu den bekanntesten gehören Somatic Experiencing (SE), NARM (NeuroAffektives Beziehungsmodell), Hakomi, Core Energetics und sensorimotorische Psychotherapie. Jede hat eigene Schwerpunkte – unsere Therapeut:innen helfen Ihnen, die passende Methode zu finden."
-    }
   ];
 
   const therapySchema = {
     "@context": "https://schema.org",
     "@type": "MedicalTherapy",
-    name: "Körpertherapie (körperorientierte Therapie)",
+    name: "Körperorientierte Therapie (Somatische Therapie)",
     url: `${baseUrl}/therapie`,
-    description: "Körperorientierte Therapie zur Verbesserung der Selbstregulation durch Orientierung, Interozeption, Titration und Pendulation. Wissenschaftlich fundiert und ohne Esoterik.",
+    description: "Körperorientierte Therapie (somatische Therapie) mit Methoden wie NARM, Somatic Experiencing, Hakomi und Core Energetics zur Behandlung von Trauma, Stress und emotionalen Blockaden. Wissenschaftlich fundiert und ohne Esoterik.",
     sameAs: [
       "https://de.wikipedia.org/wiki/K%C3%B6rperpsychotherapie",
       "https://traumahealing.org/se-research-and-articles/"
@@ -275,119 +209,46 @@ export default async function KoerpertherapiePage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <main className="mx-auto max-w-7xl px-4 py-10 sm:py-14">
-        <LandingHero
-          title="Körpertherapie – wenn Worte allein nicht reichen"
-          subtitle={
-            <span>
-              Wissenschaftlich fundierte körperorientierte Therapie für Trauma, Stress und emotionale Blockaden. 
-              <span className="block mt-2 text-base">Professionell, seriös und ohne Esoterik.</span>
-            </span>
-          }
-          defaultSessionPreference="in_person"
-          analyticsQualifier="koerpertherapie"
-          formDataCta="koerpertherapie-page-signup"
-        />
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
+        
+        <HeroSection />
 
-        <TrustSignals />
+        <WhatIsBodyTherapy />
 
-        <WhatIsKoerpertherapie />
+        {/* Modality explanations */}
+        <TherapyModalityExplanations />
 
-        <section aria-labelledby="diff-heading" className="mt-14 sm:mt-20 lg:mt-24">
-          <RevealContainer>
-            <div className="relative overflow-hidden rounded-3xl border border-slate-200/60 shadow-lg shadow-slate-100/50 bg-gradient-to-br from-slate-50/80 via-white to-slate-50/60 p-8 sm:p-10 lg:p-12 opacity-0 translate-y-2 transition-all duration-500" data-reveal>
-              <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_50%_0%,rgba(99,102,241,0.1),transparent_70%),radial-gradient(30rem_16rem_at_100%_100%,rgba(14,165,233,0.08),transparent_65%)]" />
-              <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-gradient-to-br from-indigo-200/20 to-transparent blur-3xl" />
-              <h2 id="diff-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Gespräch vs. Körper: Der Unterschied</h2>
-              <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-600 max-w-3xl">
-                Beide Ansätze sind wertvoll &ndash; und ergänzen sich ideal:
-              </p>
-              <MethodComparison
-                leftTitle="Gesprächstherapie"
-                rightTitle="+ Körperorientierte Verfahren"
-                leftItems={[
-                  "Verstehen & Einordnung",
-                  "Muster, Gedanken, Biografie",
-                  "Sprache als Hauptwerkzeug",
-                  "Kognitive Umstrukturierung"
-                ]}
-                rightItems={[
-                  "Spüren & Regulieren",
-                  "Körperreaktionen, Haltung, Atem",
-                  "Erlebte Veränderung im Moment",
-                  "Nervensystem-basierte Integration"
-                ]}
-              />
-              <p className="mt-6 text-sm sm:text-base leading-relaxed text-gray-600 max-w-3xl">
-                Körpertherapie arbeitet dort, wo Trauma und Stress <strong>im Nervensystem gespeichert</strong> sind &ndash; 
-                oft jenseits der Reichweite von Worten allein.
-              </p>
-            </div>
-          </RevealContainer>
+        {/* Therapist showcase - SEO + trust */}
+        <section className="mt-14 sm:mt-20 lg:mt-24">
+          <TherapistTeaserSection
+            title="Unsere Therapeut:innen für körperorientierte Therapie"
+            subtitle="Spezialist:innen für NARM, Somatic Experiencing, Hakomi & Core Energetics"
+            limit={3}
+            showViewAllButton={true}
+            viewAllButtonText="Alle Therapeut:innen ansehen"
+            viewAllButtonHref="/therapeuten"
+          />
         </section>
 
+        {/* For whom section */}
         <ForWhom />
 
-        <HowItWorks />
+        {/* CTA - moved before FAQ */}
+        <div className="mt-14 sm:mt-20 lg:mt-24">
+          <FinalCtaSection 
+            heading="Bereit für den ersten Schritt?" 
+            subtitle="Fülle unseren 5-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten-Vorschläge."
+            buttonLabel="Jetzt Therapeut:in finden"
+            targetId="/fragebogen"
+            align="center"
+            variant="tinted"
+            showAvailabilityNote={false}
+            withEntryOptions={true}
+            targetBasePath="/fragebogen"
+          />
+        </div>
 
-        <section aria-labelledby="evidence-heading" className="mt-14 sm:mt-20 lg:mt-24">
-          <RevealContainer>
-            <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10 opacity-0 translate-y-2 transition-all duration-500" data-reveal>
-              <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
-              <div className="flex items-start gap-4 mb-6">
-                <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 p-3 text-emerald-600 shadow-sm">
-                  <Sparkles className="h-6 w-6" />
-                </div>
-                <div>
-                  <h2 id="evidence-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Wissenschaftliche Grundlage</h2>
-                  <p className="mt-2 text-base sm:text-lg leading-relaxed text-gray-600 max-w-3xl">
-                    Körpertherapie ist keine &bdquo;Alternativmedizin&ldquo;, sondern stützt sich auf evidenzbasiert erforschte Verfahren.
-                  </p>
-                </div>
-              </div>
-              
-              <div className="space-y-4 sm:space-y-6 mt-8 sm:mt-10">
-                <div className="rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Beispiel: Somatic Experiencing (SE)</h3>
-                  <p className="text-sm sm:text-base leading-relaxed text-gray-700 mb-4">
-                    Eine der bekanntesten körpertherapeutischen Methoden, entwickelt von Dr. Peter Levine. 
-                    SE wurde in mehreren randomisierten kontrollierten Studien (RCTs) untersucht:
-                  </p>
-                  <ul className="space-y-3 text-sm sm:text-base text-gray-700">
-                    <li className="flex items-start gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                      <span>
-                        <strong>Brom et al. (2017):</strong> RCT zu PTBS-Behandlung mit SE – signifikante Verbesserung der Symptome. 
-                        <a className="ml-1 underline text-indigo-600" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5518443/" target="_blank" rel="noopener noreferrer">Volltext (PMC)</a>
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                      <span>
-                        <strong>Heller et al. (2021):</strong> Übersichtsarbeit zur Wirksamkeit von SE mit Analyse der Schlüsselfaktoren. 
-                        <a className="ml-1 underline text-indigo-600" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8276649/" target="_blank" rel="noopener noreferrer">Volltext (PMC)</a>
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="rounded-xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-5 sm:p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Neurowissenschaftliche Basis</h3>
-                  <p className="text-sm sm:text-base leading-relaxed text-gray-700">
-                    Moderne Hirnforschung zeigt: Traumatische Erfahrungen werden im Nervensystem (limbisches System, Hirnstamm) 
-                    gespeichert – oft ohne bewusste Erinnerung. Körpertherapie nutzt diesen direkten Zugang zum autonomen 
-                    Nervensystem, um festgehaltene Reaktionen zu lösen.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </RevealContainer>
-        </section>
-
-        <PrivacySelfPaySection />
-
-        <RelatedTreatments currentSlug="koerpertherapie" />
-
+        {/* FAQ */}
         <section aria-labelledby="faq-heading" className="mt-14 sm:mt-20 lg:mt-24">
           <RevealContainer>
             <div className="opacity-0 translate-y-2 transition-all duration-500" data-reveal>
@@ -398,11 +259,6 @@ export default async function KoerpertherapiePage() {
             </div>
           </RevealContainer>
         </section>
-
-        <FinalCtaSection 
-          heading="Bereit für körperorientierte Therapie?" 
-          subtitle="Finden Sie eine:n qualifizierte:n Therapeut:in für Körpertherapie – wissenschaftlich fundiert und professionell begleitet."
-        />
       </main>
 
       {/* JSON-LD Schema */}

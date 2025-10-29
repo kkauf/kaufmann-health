@@ -74,6 +74,11 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
         answer: 'Du füllst einen kurzen Fragebogen aus (5 Minuten). Wir senden dir innerhalb von 24 Stunden bis zu 3 passende Profile – du entscheidest und buchst direkt.',
       },
       {
+        id: 'termine',
+        question: 'Wie schnell bekomme ich Termine?',
+        answer: 'Du erhältst handverlesene Vorschläge meist innerhalb weniger Stunden – Termine sind in der Regel noch diese Woche möglich.',
+      },
+      {
         id: 'prices',
         question: 'Was kostet eine Sitzung?',
         answer: 'In der Regel 80–120€ pro 50–60 Minuten – flexibel nach Therapeut:in. Keine Kassenabrechnung, dafür sofort verfügbar und ohne Diagnose in der Kassenakte.',
@@ -100,6 +105,11 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
         id: 'how-it-works',
         question: 'Wie funktioniert die Vermittlung?',
         answer: 'Du füllst einen 5-Minuten-Fragebogen aus. Innerhalb von 24 Stunden senden wir dir bis zu 3 passende Therapeut:innen-Profile. Du wählst deinen Favoriten und buchst direkt einen Termin.',
+      },
+      {
+        id: 'termine',
+        question: 'Wie schnell bekomme ich Termine?',
+        answer: 'Du erhältst handverlesene Vorschläge meist innerhalb weniger Stunden – Termine sind in der Regel noch diese Woche möglich.',
       },
       {
         id: 'prices',

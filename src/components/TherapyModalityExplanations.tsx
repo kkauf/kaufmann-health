@@ -12,7 +12,7 @@ export default function TherapyModalityExplanations() {
         <h2 id="modalities" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
           Körperorientierte Therapieverfahren erklärt
         </h2>
-        <p className="mt-4 sm:mt-6 max-w-3xl text-base sm:text-lg leading-relaxed text-gray-700">
+        <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-700">
           Vier bewährte Ansätze, die direkt mit dem Nervensystem arbeiten. Kurz erklärt, damit Sie die passende
           Herangehensweise finden.
         </p>

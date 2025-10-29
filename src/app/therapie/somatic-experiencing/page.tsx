@@ -1,36 +1,38 @@
 import type { Metadata } from "next";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import FaqAccordion from "@/components/FaqAccordion";
-import { LandingHero } from "@/features/landing/components/LandingHero";
-import { PrivacySelfPaySection } from "@/features/landing/components/PrivacySelfPaySection";
-import FinalCtaSection from "@/features/landing/components/FinalCtaSection";
-import { Activity, Brain, ShieldCheck } from "lucide-react";
-import RelatedTreatments from "@/features/therapy/components/RelatedTreatments";
+import { FinalCtaSection } from "@/features/landing/components/FinalCtaSection";
+import { TherapistTeaserSection } from "@/features/landing/components/TherapistTeaserSection";
+import { Activity, Brain, ShieldCheck, CheckCircle2 } from "lucide-react";
 import RevealContainer from "@/components/RevealContainer";
+import { MODALITIES } from "@/features/therapies/modalityConfig";
+import { HeroNoForm } from "@/features/landing/components/HeroNoForm";
 
 export const revalidate = 3600;
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.kaufmann-health.de";
 
+const modalityConfig = MODALITIES['somatic-experiencing'];
+
 export const metadata = async ({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }): Promise<Metadata> => {
   const variant = (searchParams?.v as string)?.toUpperCase();
   const isTestVariant = variant === 'B' || variant === 'C';
-  const title = "Somatic Experiencing (SE)® | Traumatherapie nach Peter Levine | Berlin";
-  const description = "Somatic Experiencing löst Trauma über das Nervensystem – sanft, sicher, evidenzbasiert. Finde zertifizierte SE‑Therapeut:innen.";
+  const title = modalityConfig.metaTitle;
+  const description = modalityConfig.metaDescription;
   return {
     title,
     description,
-    alternates: { canonical: `${baseUrl}/therapie/somatic-experiencing` },
+    alternates: { canonical: `${baseUrl}/therapie/${modalityConfig.slug}` },
     robots: isTestVariant ? { index: false, follow: false } : { index: true, follow: true },
     openGraph: {
       title,
       description,
-      url: `${baseUrl}/therapie/somatic-experiencing`,
+      url: `${baseUrl}/therapie/${modalityConfig.slug}`,
       siteName: "Kaufmann Health",
       locale: "de_DE",
       type: "website",
       images: [
-        { url: `${baseUrl}/images/hero.jpg`, width: 1200, height: 630, alt: "Kaufmann Health – Somatic Experiencing" },
+        { url: `${baseUrl}/images/hero.jpg`, width: 1200, height: 630, alt: `Kaufmann Health – ${modalityConfig.name}` },
       ],
     },
     twitter: {
@@ -99,13 +101,10 @@ export default async function SomaticExperiencingPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <main className="mx-auto max-w-7xl px-4 py-10 sm:py-14">
-        <LandingHero
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
+        <HeroNoForm
           title="Somatic Experiencing: Trauma lösen über das Nervensystem"
-          subtitle={<span>Die wissenschaftlich fundierte Methode von Dr. Peter Levine – sanft, sicher und ohne Retraumatisierung.</span>}
-          defaultSessionPreference="in_person"
-          analyticsQualifier="se"
-          formDataCta="se-page-signup"
+          subtitle="Die wissenschaftlich fundierte Methode von Dr. Peter Levine – sanft, sicher und ohne Retraumatisierung"
         />
 
         <section aria-labelledby="what-se-heading" className="mt-14 sm:mt-20 lg:mt-24">
@@ -153,44 +152,23 @@ export default async function SomaticExperiencingPage() {
         <section aria-labelledby="suitability-heading" className="mt-14 sm:mt-20 lg:mt-24">
           <div className="relative overflow-hidden rounded-3xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-8 sm:p-10 lg:p-12 shadow-lg shadow-indigo-100/30">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(35rem_18rem_at_40%_0%,rgba(99,102,241,0.09),transparent_65%)]" />
-            <h2 id="suitability-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Für wen ist SE geeignet?</h2>
-            <div className="mt-6 grid gap-6 sm:grid-cols-2">
-              <div className="rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
-                <h3 className="font-semibold text-gray-900">Schocktrauma</h3>
-                <ul className="mt-3 ml-4 list-disc space-y-2 text-sm sm:text-base text-gray-700">
-                  <li>Unfälle (insb. Verkehr)</li>
-                  <li>Stürze und Verletzungen</li>
-                  <li>Medizinische Eingriffe/Operationen</li>
-                  <li>Überfälle und Gewalt</li>
-                  <li>Naturkatastrophen</li>
-                </ul>
-              </div>
-              <div className="rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
-                <h3 className="font-semibold text-gray-900">Entwicklungstrauma</h3>
-                <ul className="mt-3 ml-4 list-disc space-y-2 text-sm sm:text-base text-gray-700">
-                  <li>Frühe Vernachlässigung (ergänzend zu NARM)</li>
-                  <li>Geburtstrauma</li>
-                  <li>Frühe medizinische Traumata</li>
-                </ul>
-              </div>
-            </div>
-            <div className="mt-6">
-              <h3 className="font-semibold text-gray-900">Symptomkomplexe</h3>
-              <ul className="mt-3 ml-4 list-disc space-y-2 text-sm sm:text-base text-gray-700">
-                <li>PTBS, Panikattacken</li>
-                <li>Chronische Schmerzen, Fibromyalgie</li>
-                <li>Chronisches Erschöpfungssyndrom</li>
-                <li>Schlafstörungen, Dissoziation</li>
-              </ul>
-            </div>
-            <div className="mt-6">
-              <h3 className="font-semibold text-gray-900">Besondere Stärken von SE</h3>
-              <ul className="mt-3 ml-4 list-disc space-y-2 text-sm sm:text-base text-gray-700">
-                <li><strong>Keine Retraumatisierung:</strong> Durch Titration immer im sicheren Bereich</li>
-                <li><strong>Ohne Geschichte:</strong> Trauma muss nicht verbal erzählt werden</li>
-                <li><strong>Körperliche Symptome:</strong> Besonders wirksam bei somatischen Beschwerden</li>
-                <li><strong>Schnelle Stabilisierung:</strong> Oft rasche Verbesserung der Selbstregulation</li>
-              </ul>
+            <h2 id="suitability-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Für wen ist SE besonders geeignet?</h2>
+            <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-700">Besonders hilfreich bei:</p>
+
+            <div className="mt-6 sm:mt-8 grid gap-3 sm:gap-4 sm:grid-cols-2">
+              {[
+                'Schocktrauma (Unfälle, Überfälle, Naturkatastrophen)',
+                'PTBS und Panikattacken',
+                'Chronische Schmerzen und Fibromyalgie',
+                'Frühe medizinische Traumata und Geburtstrauma',
+                'Schlafstörungen und Dissoziation',
+                'Chronisches Erschöpfungssyndrom',
+              ].map((text, i) => (
+                <div key={i} className="rounded-lg border border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30 p-3 sm:p-4 flex items-start gap-3 text-sm shadow-sm hover:shadow-md transition-shadow">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-700 font-medium leading-relaxed">{text}</span>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -239,37 +217,38 @@ export default async function SomaticExperiencingPage() {
           </div>
         </section>
 
-        {/* Training */}
-        <section aria-labelledby="training-heading" className="mt-14 sm:mt-20 lg:mt-24">
+        {/* Wissenschaftlicher Hintergrund */}
+        <section aria-labelledby="scientific-basis-heading" className="mt-14 sm:mt-20 lg:mt-24">
           <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
-            <h2 id="training-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Die SE‑Ausbildung: Höchste Standards</h2>
-            <div className="mt-6 grid gap-6 sm:grid-cols-2">
-              <div className="rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6 shadow-sm">
-                <h3 className="font-semibold text-gray-900">Struktur</h3>
-                <ul className="mt-3 ml-4 list-disc space-y-2 text-sm sm:text-base text-gray-700">
-                  <li>Beginner I–II (je 4 Tage)</li>
-                  <li>Intermediate I–III (je 4 Tage)</li>
-                  <li>Advanced I–III (je 4 Tage)</li>
-                  <li>18 Übungsgruppentreffen</li>
-                  <li>12 Einzelsitzungen eigene SE‑Erfahrung</li>
-                  <li>6 Supervisionssitzungen</li>
-                </ul>
-              </div>
-              <div className="rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6 shadow-sm">
-                <h3 className="font-semibold text-gray-900">Anbieter & Zertifizierung</h3>
-                <ul className="mt-3 ml-4 list-disc space-y-2 text-sm sm:text-base text-gray-700">
-                  <li>Somatic Experiencing Deutschland e.V. (<a className="underline text-indigo-600" href="https://somatic-experiencing.de" target="_blank" rel="noopener noreferrer">somatic-experiencing.de</a>)</li>
-                  <li>Zertifizierung durch SE International</li>
-                  <li>Geschützte Bezeichnung „SEP“ (SE Practitioner)</li>
-                  <li>Kontinuierliche Fortbildung erforderlich</li>
-                </ul>
-              </div>
-            </div>
+            <h2 id="scientific-basis-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Wissenschaftlicher Hintergrund</h2>
+            
+            <h3 className="mt-6 text-xl font-semibold text-gray-900">Theoretische Fundierung</h3>
+            <p className="mt-4 text-base sm:text-lg leading-relaxed text-gray-700">
+              Somatic Experiencing integriert verschiedene wissenschaftlich fundierte Ansätze:
+            </p>
+            <ul className="mt-3 ml-4 list-disc space-y-2 text-sm sm:text-base text-gray-700">
+              <li><strong>Polyvagal-Theorie</strong> (Stephen Porges): Das autonome Nervensystem als soziales Engagementsystem</li>
+              <li><strong>Traumaforschung</strong> (Bessel van der Kolk): Der Körper erinnert – somatische Speicherung von Trauma</li>
+              <li><strong>Neuroplastizität</strong>: Das Nervensystem kann neue, sichere Muster lernen</li>
+              <li><strong>Ethologie</strong>: Tiermodelle zeigen natürliche Trauma-Entladung</li>
+              <li><strong>Körperpsychotherapie</strong>: Integration von Reich, Lowen und modernem Traumawissen</li>
+            </ul>
+
+            <h3 className="mt-8 text-xl font-semibold text-gray-900">Aktuelle Evidenzlage</h3>
+            <p className="mt-4 text-sm sm:text-base text-gray-700">
+              <strong>Transparenzhinweis:</strong> SE ist gut etabliert in der Praxis, die Forschungslage wächst kontinuierlich.
+            </p>
+            <ul className="mt-3 ml-4 list-disc space-y-2 text-sm sm:text-base text-gray-700">
+              <li>RCT-Studie (Brom et al., 2017): Signifikante Reduktion von PTBS-Symptomen</li>
+              <li>Studie zu chronischen Rückenschmerzen (Andersen et al., 2017): Verbesserung bei komorbider PTBS</li>
+              <li>Verschiedene Fallstudien zeigen Wirksamkeit bei Schocktrauma und somatischen Beschwerden</li>
+              <li>SE ist von der International Society for Traumatic Stress Studies (ISTSS) als emerging treatment anerkannt</li>
+            </ul>
           </div>
         </section>
 
-        {/* Exercise */}
+        {/* Exercise - keeping as it's unique SE content */}
         <section aria-labelledby="exercise-heading" className="mt-14 sm:mt-20 lg:mt-24">
           <div className="relative overflow-hidden rounded-3xl border border-emerald-200/50 bg-gradient-to-br from-emerald-50/60 via-teal-50/40 to-green-50/30 p-8 sm:p-10 lg:p-12 shadow-lg shadow-emerald-100/30">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(35rem_18rem_at_40%_0%,rgba(16,185,129,0.09),transparent_65%)]" />
@@ -339,36 +318,17 @@ export default async function SomaticExperiencingPage() {
         {/* Principles grid (visual summary) */}
         <PrinciplesGrid />
 
-        <PrivacySelfPaySection />
-
-        {/* Related treatments (exclude current) */}
-        <RelatedTreatments currentSlug="somatic-experiencing" />
-
-        {/* Wissenschaftliche Quellen */}
-        <section aria-labelledby="sources-heading" className="mt-14 sm:mt-20 lg:mt-24">
-          <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10">
-            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
-            <h2 id="sources-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Wissenschaftliche Quellen</h2>
-            <ul className="mt-6 ml-4 list-disc space-y-3 text-sm sm:text-base text-gray-700">
-              <li>Brom, D. et al. (2017). Somatic Experiencing for PTSD – randomized controlled outcome study. <em>Journal of Traumatic Stress, 30</em>(3).</li>
-              <li>Andersen, T. E. et al. (2017). Brief SE für chronische Rückenschmerzen mit komorbider PTBS. <em>European Journal of Psychotraumatology, 8</em>(1).</li>
-              <li>Levine, P. A. (2010). <em>In an Unspoken Voice</em>. North Atlantic Books.</li>
-              <li>Porges, S. W. (2011). <em>The Polyvagal Theory</em>. W. W. Norton.</li>
-            </ul>
-          </div>
-        </section>
-
-        {/* Weiterführende Links */}
-        <section aria-labelledby="links-heading" className="mt-14 sm:mt-20 lg:mt-24">
-          <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10">
-            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
-            <h2 id="links-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Weiterführende Links</h2>
-            <ul className="mt-6 ml-4 list-disc space-y-3 text-sm sm:text-base text-gray-700">
-              <li><a className="underline text-indigo-600" href="https://traumahealing.org" target="_blank" rel="noopener noreferrer">SE International</a></li>
-              <li><a className="underline text-indigo-600" href="https://somatic-experiencing.de" target="_blank" rel="noopener noreferrer">Somatic Experiencing Deutschland e.V.</a></li>
-              <li><a className="underline text-indigo-600" href="https://www.peterllevine.com" target="_blank" rel="noopener noreferrer">Dr. Peter Levine – Bücher & Ressourcen</a></li>
-            </ul>
-          </div>
+        {/* Therapist showcase for this modality */}
+        <section className="mt-14 sm:mt-20 lg:mt-24">
+          <TherapistTeaserSection
+            title={modalityConfig.therapistSectionTitle}
+            subtitle={modalityConfig.therapistSectionSubtitle}
+            filters={modalityConfig.therapistFilter}
+            limit={3}
+            showViewAllButton={true}
+            viewAllButtonText="Alle Therapeut:innen ansehen"
+            viewAllButtonHref={`/therapeuten${modalityConfig.directoryFilterParams}`}
+          />
         </section>
 
         <section aria-labelledby="faq-heading" className="mt-14 sm:mt-20 lg:mt-24">
@@ -382,11 +342,19 @@ export default async function SomaticExperiencingPage() {
           </RevealContainer>
         </section>
 
-        <FinalCtaSection
-          heading="Bereit für Nervensystem‑Regulation?"
-          subtitle="SE ist die evidenzbasierte Wahl für Traumaheilung über den Körper. Unsere zertifizierten SE‑Praktiker:innen haben die komplette 3‑jährige Ausbildung absolviert."
-          buttonLabel="Jetzt Therapeut:in finden"
-        />
+        <div className="mt-14 sm:mt-20 lg:mt-24">
+          <FinalCtaSection
+            heading="Bereit für den ersten Schritt?"
+            subtitle="Fülle unseren 5-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Somatic Experiencing Therapeuten-Vorschläge."
+            buttonLabel="Jetzt Therapeut:in finden"
+            targetId="/fragebogen"
+            align="center"
+            variant="tinted"
+            showAvailabilityNote={false}
+            withEntryOptions={true}
+            targetBasePath="/fragebogen"
+          />
+        </div>
       </main>
 
       {/* JSON-LD Schema */}
