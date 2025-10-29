@@ -24,6 +24,7 @@ export type MismatchResult = {
 export function normalizeSpec(v: string): string {
   return String(v)
     .trim()
+    .replace(/\s*\([^)]*\)/g, '') // Remove parenthetical text like "(Entwicklungstrauma)"
     .toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[–—−]/g, '-')
