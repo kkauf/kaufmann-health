@@ -10,14 +10,20 @@ export async function TherapistTeaserSection({
   limit = 3,
   randomize = true,
   className,
+  showViewAllButton = false,
+  viewAllButtonText = "Alle Therapeut:innen ansehen",
+  viewAllButtonHref = "/therapeuten",
 }: {
   title?: string;
   subtitle?: string;
   ids?: string[];
-  filters?: { city?: string; accepting_new?: boolean };
+  filters?: { city?: string; accepting_new?: boolean; modalities?: string[] };
   limit?: number;
   randomize?: boolean;
   className?: string;
+  showViewAllButton?: boolean;
+  viewAllButtonText?: string;
+  viewAllButtonHref?: string;
 }) {
   // Fetch therapists on the server
   const data = ids && ids.length > 0
@@ -42,6 +48,9 @@ export async function TherapistTeaserSection({
       title={title}
       subtitle={subtitle}
       className={className}
+      showViewAllButton={showViewAllButton}
+      viewAllButtonText={viewAllButtonText}
+      viewAllButtonHref={viewAllButtonHref}
     />
   );
 }

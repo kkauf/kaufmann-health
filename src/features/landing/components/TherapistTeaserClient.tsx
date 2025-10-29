@@ -1,20 +1,29 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import TherapistPreview, { type Therapist } from "@/components/TherapistPreview";
 import { TherapistDetailModal } from '@/features/therapists/components/TherapistDetailModal';
 import type { TherapistData } from '@/features/therapists/components/TherapistDirectory';
+import { Button } from '@/components/ui/button';
+import { ArrowRight } from 'lucide-react';
 
 export function TherapistTeaserClient({
   therapists,
   title,
   subtitle,
   className,
+  showViewAllButton = false,
+  viewAllButtonText = "Alle Therapeut:innen ansehen",
+  viewAllButtonHref = "/therapeuten",
 }: {
   therapists: Therapist[];
   title: string;
   subtitle?: string;
   className?: string;
+  showViewAllButton?: boolean;
+  viewAllButtonText?: string;
+  viewAllButtonHref?: string;
 }) {
   const [selectedTherapist, setSelectedTherapist] = useState<TherapistData | null>(null);
   const [scrollTarget, setScrollTarget] = useState<string | undefined>(undefined);
@@ -64,6 +73,17 @@ export function TherapistTeaserClient({
             </div>
           ))}
         </div>
+        
+        {showViewAllButton && (
+          <div className="mt-8 sm:mt-10 flex justify-center">
+            <Button asChild size="lg" variant="outline" className="group">
+              <Link href={viewAllButtonHref}>
+                {viewAllButtonText}
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </Button>
+          </div>
+        )}
       </section>
 
       {/* Detail modal */}

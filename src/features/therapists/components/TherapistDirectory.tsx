@@ -72,10 +72,19 @@ export function TherapistDirectory() {
   useEffect(() => {
     try {
       const url = new URL(window.location.href);
-      const raw = (url.searchParams.get('format') || '').toLowerCase();
-      if (raw === 'online') setOnlineOnly(true);
-      else if (raw === 'inperson' || raw === 'in-person' || raw === 'vor-ort' || raw === 'vorort') setOnlineOnly(false);
-      else if (raw === 'unsure' || raw === 'all' || raw === 'alle') setOnlineOnly(null);
+      // format prefilter
+      const rawFormat = (url.searchParams.get('format') || '').toLowerCase();
+      if (rawFormat === 'online') setOnlineOnly(true);
+      else if (rawFormat === 'inperson' || rawFormat === 'in-person' || rawFormat === 'vor-ort' || rawFormat === 'vorort') setOnlineOnly(false);
+      else if (rawFormat === 'unsure' || rawFormat === 'all' || rawFormat === 'alle') setOnlineOnly(null);
+
+      // modality prefilter
+      const rawModality = url.searchParams.get('modality');
+      if (rawModality) {
+        const norm = normalizeModality(rawModality);
+        setSelectedModality(norm);
+        setDraftModality(norm);
+      }
     } catch {
       // ignore
     }
@@ -155,7 +164,7 @@ export function TherapistDirectory() {
   const filteredTherapists = useMemo(() => {
     const filtered = therapists.filter(t => {
       // Filter by modality
-      if (selectedModality !== 'all' && !t.modalities?.includes(selectedModality)) {
+      if (selectedModality !== 'all' && !t.modalities?.some(m => normalizeModality(m) === selectedModality)) {
         return false;
       }
 
@@ -308,14 +317,14 @@ export function TherapistDirectory() {
                   const key = normalizeModality(m);
                   const conf = MODALITY_STYLE[key] || { cls: 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100', Icon: Target, label: m };
                   const Icon = conf.Icon;
-                  const selected = selectedModality === m;
+                  const selected = selectedModality === key;
                   return (
                     <Badge
                       key={m}
                       role="button"
                       tabIndex={0}
-                      onClick={() => setSelectedModality(m)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedModality(m); }}
+                      onClick={() => setSelectedModality(key)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedModality(key); }}
                       variant="outline"
                       className={cn(
                         'h-11 px-4 py-2.5 text-sm font-medium rounded-full cursor-pointer gap-2 shadow-sm hover:shadow-md transition',

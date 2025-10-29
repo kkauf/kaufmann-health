@@ -54,6 +54,7 @@ export async function getTherapistsByIds(ids: string[]): Promise<AppTherapist[]>
 export async function getTherapistsForLanding(options?: {
   city?: string;
   accepting_new?: boolean;
+  modalities?: string[];
   limit?: number;
 }): Promise<AppTherapist[]> {
   let query = supabaseServer
@@ -68,9 +69,9 @@ export async function getTherapistsForLanding(options?: {
   if (typeof options?.accepting_new === 'boolean') {
     query = query.eq('accepting_new', options.accepting_new);
   }
-  if (options?.limit && options.limit > 0) {
-    query = query.limit(options.limit);
-  }
+  const limit = options?.limit && options.limit > 0 ? options.limit : 3;
+  const poolLimit = options?.modalities && options.modalities.length > 0 ? Math.max(limit * 5, 20) : limit;
+  query = query.limit(poolLimit);
 
   const { data, error } = await query;
   if (error) {
@@ -78,5 +79,11 @@ export async function getTherapistsForLanding(options?: {
     return [];
   }
   const rows = (data as TherapistRow[] | null) || [];
-  return rows.map(mapTherapistRow);
+  const mapped = rows.map(mapTherapistRow);
+  if (options?.modalities && options.modalities.length > 0) {
+    const wanted = new Set(options.modalities.map(m => String(m).toLowerCase().replace(/\s+/g, '-')));
+    const filtered = mapped.filter(t => Array.isArray(t.modalities) && t.modalities.some(m => wanted.has(String(m).toLowerCase().replace(/\s+/g, '-'))));
+    return filtered.slice(0, limit);
+  }
+  return mapped.slice(0, limit);
 }

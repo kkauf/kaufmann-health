@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import FaqAccordion from "@/components/FaqAccordion";
+import { LandingHero } from "@/features/landing/components/LandingHero";
+import { PrivacySelfPaySection } from "@/features/landing/components/PrivacySelfPaySection";
 import { FinalCtaSection } from "@/features/landing/components/FinalCtaSection";
 import { TherapistTeaserSection } from "@/features/landing/components/TherapistTeaserSection";
-import { Heart, Users, Brain, CheckCircle2 } from "lucide-react";
+import { Heart, Users, Brain } from "lucide-react";
+import RelatedTreatments from "@/features/therapy/components/RelatedTreatments";
 import RevealContainer from "@/components/RevealContainer";
 import { MODALITIES } from "@/features/therapies/modalityConfig";
-import { HeroNoForm } from "@/features/landing/components/HeroNoForm";
 
 export const revalidate = 3600;
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.kaufmann-health.de";
 
-const modalityConfig = MODALITIES.narm;
+const modalityConfig = MODALITIES.hakomi;
 
 export const metadata = async ({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }): Promise<Metadata> => {
   const variant = (searchParams?.v as string)?.toUpperCase();
@@ -88,38 +90,39 @@ export default async function NarmPage() {
   const therapySchema = {
     "@context": "https://schema.org",
     "@type": "MedicalTherapy",
-    name: "NARM Therapie (NeuroAffektives Beziehungsmodell)",
-    alternateName: "NARM",
-    url: `${baseUrl}/therapie/narm`,
-    description: "Ressourcenorientierter, körperbasierter Ansatz zur Heilung von Entwicklungstrauma",
-    mainEntityOfPage: `${baseUrl}/therapie/narm`,
+    name: "Hakomi Therapie",
+    alternateName: "Hakomi-Methode",
+    url: `${baseUrl}/therapie/hakomi`,
+    description: "Achtsamkeitsbasierte körperorientierte Psychotherapie zur Transformation unbewusster Überzeugungen",
+    mainEntityOfPage: `${baseUrl}/therapie/hakomi`,
   } as const;
 
   return (
     <div className="min-h-screen bg-white">
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
-        <HeroNoForm
-          title="NARM: Entwicklungstrauma heilen, ohne in die Vergangenheit zu gehen"
-          subtitle="Das NeuroAffektive Beziehungsmodell arbeitet mit dem, was jetzt ist – für Menschen, die funktionieren, aber nicht wirklich leben"
+      <main className="mx-auto max-w-7xl px-4 py-10 sm:py-14">
+        <LandingHero
+          title="Hakomi: Achtsamkeitsbasierte Körpertherapie"
+          subtitle={<span>Unbewusste Überzeugungen sanft erkunden und transformieren – mit Achtsamkeit, Gewaltlosigkeit und Loving Presence</span>}
+          formDataCta="hakomi-page-signup"
         />
 
         <section aria-labelledby="what-narm-heading" className="mt-14 sm:mt-20 lg:mt-24">
           <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
-            <h2 id="what-narm-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Was ist NARM?</h2>
-            <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-700 max-w-4xl xl:max-w-5xl">
-              Das NeuroAffektive Beziehungsmodell (NARM™) ist ein ressourcenorientierter, körperbasierter Ansatz zur Heilung von Entwicklungstrauma, entwickelt von Dr. Laurence Heller. Als ehemaliger Gestalt-Therapeut und Somatic Experiencing Trainer vereinte Heller somatische und psychodynamische Ansätze zu einer einzigartigen Methode.
+            <h2 id="what-hakomi-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Was ist Hakomi?</h2>
+            <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-700">
+              Die Hakomi-Methode ist eine achtsamkeitsbasierte, körperorientierte Psychotherapie, entwickelt von Ron Kurtz in den 1970er Jahren. Der Name „Hakomi“ stammt aus der Hopi-Sprache und bedeutet: „Wie stehst du in Beziehung zu diesen vielen Welten?“
             </p>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg leading-relaxed text-gray-700 max-w-4xl xl:max-w-5xl">
-              <strong>Der revolutionäre Ansatz:</strong> NARM arbeitet nicht mit der Trauma-Geschichte, sondern mit den gegenwärtigen Auswirkungen auf Ihre Selbstregulation und Identität. Statt zu fragen &ldquo;Was ist Ihnen passiert?&rdquo;, fragt NARM: &ldquo;Wie organisieren Sie Ihre Erfahrung jetzt?&rdquo;
+            <p className="mt-3 sm:mt-4 text-base sm:text-lg leading-relaxed text-gray-700">
+              <strong>Der einzigartige Ansatz:</strong> Hakomi nutzt Achtsamkeit als Forschungswerkzeug. In einem Zustand entspannter innerer Aufmerksamkeit werden unbewusste Überzeugungen direkt erfahrbar – oft in Form von Körperempfindungen, Bildern oder spontanen Erinnerungen.
             </p>
             <blockquote className="mt-6 rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6 shadow-sm">
               <p className="text-sm sm:text-base leading-relaxed text-gray-700 italic">
-                &bdquo;Es geht nicht darum, die Vergangenheit zu verändern – es geht darum, wie die Vergangenheit Ihre Gegenwart formt.&ldquo; – Dr. Laurence Heller
+                &bdquo;Verändere das Bild, und du veränderst das Gefühl. Verändere das Gefühl, und du veränderst das Verhalten.&ldquo; – Ron Kurtz
               </p>
             </blockquote>
             <p className="mt-4 text-sm sm:text-base text-gray-700">
-              Mehr Informationen bei <a href="https://drlaurenceheller.com/de/" className="underline text-indigo-600" target="_blank" rel="noopener noreferrer">Dr. Laurence Heller</a>.
+              Mehr bei <a href="https://hakomi.de/" className="underline text-indigo-600" target="_blank" rel="noopener noreferrer">Hakomi Deutschland</a>.
             </p>
           </div>
         </section>
@@ -132,67 +135,57 @@ export default async function NarmPage() {
             <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-700">
               NARM identifiziert fünf Kernbedürfnisse, die für gesunde Entwicklung essentiell sind. Werden diese früh frustriert, entwickeln wir adaptive Überlebensstrategien, die uns später einschränken:
             </p>
+            
+            <div className="mt-8 sm:mt-10 space-y-6 sm:space-y-8">
+              <div className="rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900">1. Kontakt (Prä- und perinatal)</h3>
+                <div className="mt-3 sm:mt-4 space-y-2 text-sm sm:text-base text-gray-700">
+                  <p><strong>Kernbedürfnis:</strong> In Kontakt sein mit sich selbst und anderen</p>
+                  <p><strong>Wenn frustriert:</strong> &bdquo;Ich existiere nicht wirklich&ldquo;</p>
+                  <p><strong>Adaptive Strategie:</strong> Rückzug, Dissoziation, Leben im Kopf</p>
+                  <p><strong>Körperlich:</strong> Schwache Erdung, fragmentiertes Körpergefühl</p>
+                </div>
+              </div>
 
-            <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              <Card className="relative bg-white/80 backdrop-blur-sm shadow-md">
-                <CardContent className="p-5 sm:p-6">
-                  <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">1. Kontakt (Prä- und perinatal)</h3>
-                  <ul className="mt-2 ml-4 list-disc space-y-1.5 text-sm sm:text-base text-gray-700">
-                    <li><strong>Kernbedürfnis:</strong> In Kontakt sein mit sich selbst und anderen</li>
-                    <li><strong>Wenn frustriert:</strong> „Ich existiere nicht wirklich"</li>
-                    <li><strong>Adaptive Strategie:</strong> Rückzug, Dissoziation, Leben im Kopf</li>
-                    <li><strong>Körperlich:</strong> Schwache Erdung, fragmentiertes Körpergefühl</li>
-                  </ul>
-                </CardContent>
-              </Card>
+              <div className="rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900">2. Einstimmung (0-6 Monate)</h3>
+                <div className="mt-3 sm:mt-4 space-y-2 text-sm sm:text-base text-gray-700">
+                  <p><strong>Kernbedürfnis:</strong> Physische und emotionale Bedürfnisse erfüllt bekommen</p>
+                  <p><strong>Wenn frustriert:</strong> &bdquo;Meine Bedürfnisse zählen nicht&ldquo;</p>
+                  <p><strong>Adaptive Strategie:</strong> Bedürfnislosigkeit, Abhängigkeit oder extreme Unabhängigkeit</p>
+                  <p><strong>Körperlich:</strong> Probleme mit Hunger, Sättigung, Selbstfürsorge</p>
+                </div>
+              </div>
 
-              <Card className="relative bg-white/80 backdrop-blur-sm shadow-md">
-                <CardContent className="p-5 sm:p-6">
-                  <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">2. Einstimmung (0–6 Monate)</h3>
-                  <ul className="mt-2 ml-4 list-disc space-y-1.5 text-sm sm:text-base text-gray-700">
-                    <li><strong>Kernbedürfnis:</strong> Physische und emotionale Bedürfnisse erfüllt bekommen</li>
-                    <li><strong>Wenn frustriert:</strong> „Meine Bedürfnisse zählen nicht"</li>
-                    <li><strong>Adaptive Strategie:</strong> Bedürfnislosigkeit, Abhängigkeit oder extreme Unabhängigkeit</li>
-                    <li><strong>Körperlich:</strong> Themen mit Hunger, Sättigung, Selbstfürsorge</li>
-                  </ul>
-                </CardContent>
-              </Card>
+              <div className="rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900">3. Vertrauen (6-18 Monate)</h3>
+                <div className="mt-3 sm:mt-4 space-y-2 text-sm sm:text-base text-gray-700">
+                  <p><strong>Kernbedürfnis:</strong> Gesunde Abhängigkeit und Vertrauen</p>
+                  <p><strong>Wenn frustriert:</strong> &bdquo;Ich kann niemandem trauen&ldquo;</p>
+                  <p><strong>Adaptive Strategie:</strong> Kontrolle, Manipulation oder Unterwerfung</p>
+                  <p><strong>Körperlich:</strong> Chronische Muskelspannung, Hypervigilanz</p>
+                </div>
+              </div>
 
-              <Card className="relative bg-white/80 backdrop-blur-sm shadow-md">
-                <CardContent className="p-5 sm:p-6">
-                  <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">3. Vertrauen (6–18 Monate)</h3>
-                  <ul className="mt-2 ml-4 list-disc space-y-1.5 text-sm sm:text-base text-gray-700">
-                    <li><strong>Kernbedürfnis:</strong> Gesunde Abhängigkeit und Vertrauen</li>
-                    <li><strong>Wenn frustriert:</strong> „Ich kann niemandem trauen"</li>
-                    <li><strong>Adaptive Strategie:</strong> Kontrolle, Manipulation oder Unterwerfung</li>
-                    <li><strong>Körperlich:</strong> Chronische Muskelspannung, Hypervigilanz</li>
-                  </ul>
-                </CardContent>
-              </Card>
+              <div className="rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900">4. Autonomie (18 Monate - 3 Jahre)</h3>
+                <div className="mt-3 sm:mt-4 space-y-2 text-sm sm:text-base text-gray-700">
+                  <p><strong>Kernbedürfnis:</strong> Eigenen Willen ausdrücken ohne Liebesverlust</p>
+                  <p><strong>Wenn frustriert:</strong> &bdquo;Ich darf nicht ich selbst sein&ldquo;</p>
+                  <p><strong>Adaptive Strategie:</strong> Überanpassung, passive Aggression</p>
+                  <p><strong>Körperlich:</strong> Gehaltene Wut im Körper, chronische Verspannungen</p>
+                </div>
+              </div>
 
-              <Card className="relative bg-white/80 backdrop-blur-sm shadow-md">
-                <CardContent className="p-5 sm:p-6">
-                  <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">4. Autonomie (18 Monate – 3 Jahre)</h3>
-                  <ul className="mt-2 ml-4 list-disc space-y-1.5 text-sm sm:text-base text-gray-700">
-                    <li><strong>Kernbedürfnis:</strong> Eigenen Willen ausdrücken ohne Liebesverlust</li>
-                    <li><strong>Wenn frustriert:</strong> „Ich darf nicht ich selbst sein"</li>
-                    <li><strong>Adaptive Strategie:</strong> Überanpassung, passive Aggression</li>
-                    <li><strong>Körperlich:</strong> Gehaltene Wut im Körper, chronische Verspannungen</li>
-                  </ul>
-                </CardContent>
-              </Card>
-
-              <Card className="relative bg-white/80 backdrop-blur-sm shadow-md">
-                <CardContent className="p-5 sm:p-6">
-                  <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">5. Liebe/Sexualität (3–6 Jahre & Pubertät)</h3>
-                  <ul className="mt-2 ml-4 list-disc space-y-1.5 text-sm sm:text-base text-gray-700">
-                    <li><strong>Kernbedürfnis:</strong> Offenes, liebevolles Herz mit integrierter Sexualität</li>
-                    <li><strong>Wenn frustriert:</strong> „Ich kann nicht gleichzeitig lieben und begehren"</li>
-                    <li><strong>Adaptive Strategie:</strong> Spaltung zwischen Herz und Sexualität</li>
-                    <li><strong>Körperlich:</strong> Trennung zwischen oberem und unterem Körper</li>
-                  </ul>
-                </CardContent>
-              </Card>
+              <div className="rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900">5. Liebe/Sexualität (3-6 Jahre und Pubertät)</h3>
+                <div className="mt-3 sm:mt-4 space-y-2 text-sm sm:text-base text-gray-700">
+                  <p><strong>Kernbedürfnis:</strong> Offenes, liebevolles Herz mit integrierter Sexualität</p>
+                  <p><strong>Wenn frustriert:</strong> &bdquo;Ich kann nicht gleichzeitig lieben und begehren&ldquo;</p>
+                  <p><strong>Adaptive Strategie:</strong> Spaltung zwischen Herz und Sexualität</p>
+                  <p><strong>Körperlich:</strong> Trennung zwischen oberem und unterem Körper</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -237,30 +230,38 @@ export default async function NarmPage() {
           </div>
         </section>
 
-        {/* NARM-Prozess entfernt */}
+        {/* NARM-Prozess */}
+        <section aria-labelledby="process-heading" className="mt-14 sm:mt-20 lg:mt-24">
+          <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10">
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
+            <h2 id="process-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Der NARM-Prozess: Sanft und tiefgreifend</h2>
+            <h3 className="mt-6 text-xl font-semibold text-gray-900">Eine typische NARM-Sitzung</h3>
+            <ol className="mt-4 ml-4 list-decimal space-y-3 text-sm sm:text-base text-gray-700">
+              <li><strong>Ankommen im Jetzt</strong> (5–10 Min.): Was ist gerade präsent? Körperliche Empfindungen wahrnehmen</li>
+              <li><strong>Erkundung der Organisation</strong> (20–30 Min.): Wie organisieren Sie diese Erfahrung? Welche alten Muster werden sichtbar?</li>
+              <li><strong>Somatische Begleitung</strong> (10–15 Min.): Verfolgen von Körperempfindungen, Unterstützung der Selbstregulation</li>
+              <li><strong>Reflexion und Integration</strong> (10–15 Min.): Was wird möglich, wenn das alte Muster sich löst? Verankerung neuer Erfahrungen</li>
+            </ol>
+            <p className="mt-4 text-sm sm:text-base text-gray-700"><strong>Wichtig:</strong> Sie müssen Ihre Kindheit nicht detailliert aufarbeiten. NARM arbeitet mit dem, was jetzt lebendig ist.</p>
+          </div>
+        </section>
 
         {/* Für wen ist NARM besonders geeignet? */}
         <section aria-labelledby="suitability-heading" className="mt-14 sm:mt-20 lg:mt-24">
           <div className="relative overflow-hidden rounded-3xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-8 sm:p-10 lg:p-12 shadow-lg shadow-indigo-100/30">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(35rem_18rem_at_40%_0%,rgba(99,102,241,0.09),transparent_65%)]" />
             <h2 id="suitability-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Für wen ist NARM besonders geeignet?</h2>
-            <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-700">Besonders hilfreich bei:</p>
-
-            <div className="mt-6 sm:mt-8 grid gap-3 sm:gap-4 sm:grid-cols-2">
-              {[
-                'Sie sind nach außen erfolgreich, fühlen sich innerlich aber leer',
-                'Beziehungen sind schwierig – zu nah oder zu distanziert',
-                'Chronische Selbstkritik und das Gefühl „nicht gut genug“ zu sein',
-                'Das Leben fühlt sich an wie eine Performance, nicht authentisch',
-                'Emotionale Dysregulation trotz kognitiven Verstehens',
-                'Psychosomatische Beschwerden ohne medizinische Ursache',
-              ].map((text, i) => (
-                <div key={i} className="rounded-lg border border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30 p-3 sm:p-4 flex items-start gap-3 text-sm shadow-sm hover:shadow-md transition-shadow">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-700 font-medium leading-relaxed">{text}</span>
-                </div>
-              ))}
-            </div>
+            <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-700">
+              NARM ist ideal für &bdquo;hochfunktionale&ldquo; Menschen mit Entwicklungstrauma:
+            </p>
+            <ul className="mt-6 ml-4 space-y-3 text-sm sm:text-base text-gray-700">
+              <li>✓ Sie sind nach außen erfolgreich, fühlen sich innerlich aber leer</li>
+              <li>✓ Beziehungen sind schwierig – zu nah oder zu distanziert</li>
+              <li>✓ Chronische Selbstkritik und das Gefühl &bdquo;nicht gut genug&ldquo; zu sein</li>
+              <li>✓ Das Leben fühlt sich an wie eine Performance, nicht authentisch</li>
+              <li>✓ Emotionale Dysregulation trotz kognitiven Verstehens</li>
+              <li>✓ Psychosomatische Beschwerden ohne medizinische Ursache</li>
+            </ul>
           </div>
         </section>
 
@@ -298,7 +299,40 @@ export default async function NarmPage() {
           </div>
         </section>
 
-        {/* NARM-Ausbildung entfernt */}
+        {/* NARM-Ausbildung */}
+        <section aria-labelledby="training-heading" className="mt-14 sm:mt-20 lg:mt-24">
+          <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10">
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
+            <h2 id="training-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">NARM-Ausbildung in Deutschland</h2>
+            <p className="mt-4 text-base sm:text-lg leading-relaxed text-gray-700">
+              Die 3-jährige NARM-Ausbildung (720 Stunden) wird angeboten von:
+            </p>
+            
+            <div className="mt-6 space-y-6">
+              <div className="rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900">UTA Akademie Köln</h3>
+                <ul className="mt-3 ml-4 list-disc space-y-2 text-sm sm:text-base text-gray-700">
+                  <li>4 Module à 5 Tage pro Jahr</li>
+                  <li>Direkte Supervision durch Senior-Trainer</li>
+                  <li><a href="https://uta-akademie.de" className="underline text-indigo-600" target="_blank" rel="noopener noreferrer">www.uta-akademie.de</a></li>
+                </ul>
+              </div>
+
+              <div className="rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900">NARM Training Institute</h3>
+                <ul className="mt-3 ml-4 list-disc space-y-2 text-sm sm:text-base text-gray-700">
+                  <li>Internationale Ausbildungen</li>
+                  <li>Online- und Präsenzmodule</li>
+                  <li><a href="https://narmtraining.com" className="underline text-indigo-600" target="_blank" rel="noopener noreferrer">www.narmtraining.com</a></li>
+                </ul>
+              </div>
+            </div>
+            
+            <p className="mt-6 text-sm sm:text-base text-gray-700">
+              <strong>Voraussetzung:</strong> Psychotherapeutische oder beratende Grundausbildung
+            </p>
+          </div>
+        </section>
 
         {/* Principles grid (visual summary) */}
         <PrinciplesGrid />
@@ -316,21 +350,24 @@ export default async function NarmPage() {
           />
         </section>
 
-        
+        <PrivacySelfPaySection />
 
-        <div className="mt-14 sm:mt-20 lg:mt-24">
-          <FinalCtaSection
-            heading="Bereit für den ersten Schritt?"
-            subtitle="Fülle unseren 5-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte NARM-Therapeuten-Vorschläge."
-            buttonLabel="Jetzt Therapeut:in finden"
-            targetId="/fragebogen"
-            align="center"
-            variant="tinted"
-            showAvailabilityNote={false}
-            withEntryOptions={true}
-            targetBasePath="/fragebogen"
-          />
-        </div>
+        {/* Related treatments (exclude current) */}
+        <RelatedTreatments currentSlug="hakomi" />
+
+
+        {/* Weiterführende Links */}
+        <section aria-labelledby="links-heading" className="mt-14 sm:mt-20 lg:mt-24">
+          <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10">
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
+            <h2 id="links-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Weiterführende Links</h2>
+            <ul className="mt-6 ml-4 list-disc space-y-3 text-sm sm:text-base text-gray-700">
+              <li><a className="underline text-indigo-600" href="https://drlaurenceheller.com/de/" target="_blank" rel="noopener noreferrer">NARM auf Deutsch – Laurence Heller</a></li>
+              <li><a className="underline text-indigo-600" href="https://www.kosel.de/buecher/entwicklungstrauma-heilen" target="_blank" rel="noopener noreferrer">Buch: „Entwicklungstrauma heilen“ – Heller & LaPierre</a></li>
+              <li>Andere Methoden: <a className="underline text-indigo-600" href="/therapie/somatic-experiencing">Somatic Experiencing</a></li>
+            </ul>
+          </div>
+        </section>
 
         <section aria-labelledby="faq-heading" className="mt-14 sm:mt-20 lg:mt-24">
           <RevealContainer>
@@ -342,6 +379,20 @@ export default async function NarmPage() {
             </div>
           </RevealContainer>
         </section>
+
+        <div className="mt-14 sm:mt-20 lg:mt-24">
+          <FinalCtaSection
+            heading="Bereit für den ersten Schritt?"
+            subtitle="Fülle unseren 5-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Hakomi-Therapeuten-Vorschläge."
+            buttonLabel="Jetzt Therapeut:in finden"
+            targetId="/fragebogen"
+            align="center"
+            variant="tinted"
+            showAvailabilityNote={false}
+            withEntryOptions={true}
+            targetBasePath="/fragebogen"
+          />
+        </div>
       </main>
 
       {/* JSON-LD Schema */}
