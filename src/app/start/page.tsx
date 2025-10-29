@@ -213,6 +213,9 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
         </div>
       </section>
 
+      {/* Modality explanations */}
+      <TherapyModalityExplanations />
+
       {/* Founders + values - MOVED UP for credibility before conversion */}
       <FoundersValuesSection imageSrc="/profile-pictures/katherine and konstantin.PNG" />
 

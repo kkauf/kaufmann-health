@@ -125,10 +125,6 @@ export default function TherapyModalityExplanations() {
             </a>
           </div>
         </div>
-        
-        <small className="mt-6 block text-xs sm:text-sm text-gray-500">
-          Kurzbeschreibungen dienen der Information und ersetzen keine individuelle therapeutische Beratung.
-        </small>
       </div>
     </section>
   );

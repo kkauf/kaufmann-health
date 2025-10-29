@@ -387,7 +387,7 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
 
             {/* Mobile hint */}
             <div className="mt-2 text-center text-xs text-slate-500 sm:hidden">
-              Tippen irgendwo, um zu schließen
+              Tippe um zu schließen.
             </div>
           </div>
         </div>,
