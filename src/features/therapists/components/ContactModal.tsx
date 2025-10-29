@@ -63,6 +63,9 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const [sessionFormat, setSessionFormat] = useState<'online' | 'in_person' | ''>(''); // Required for booking
   // Track whether the user has a verified session in this modal lifecycle
   const [isVerified, setIsVerified] = useState<boolean>(false);
+  // Email confirm return handling
+  const [restoredDraft, setRestoredDraft] = useState<boolean>(false);
+  const [autoSendAttempted, setAutoSendAttempted] = useState<boolean>(false);
   
   const therapistName = `${therapist.first_name} ${therapist.last_name}`;
   const initials = `${therapist.first_name[0]}${therapist.last_name[0]}`.toUpperCase();
@@ -133,7 +136,37 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     };
   }, [open, preAuth, therapist.first_name, contactType]);
 
-  // (Removed redundant effect that referenced undefined `verified`)
+  // If parent indicates verified (email confirm return), reflect in local state
+  useEffect(() => {
+    if (open && !preAuth && verified) {
+      setIsVerified(true);
+    }
+  }, [open, preAuth, verified]);
+
+  // Restore compose draft after email confirm return
+  useEffect(() => {
+    if (!open || preAuth || restoredDraft) return;
+    try {
+      const raw = sessionStorage.getItem('kh_dir_contact_draft');
+      if (!raw) return;
+      const d = JSON.parse(raw) as {
+        therapist_id: string;
+        contact_type: 'booking' | 'consultation';
+        reason?: string;
+        message?: string;
+        session_format?: 'online' | 'in_person';
+      };
+      if (d.therapist_id !== therapist.id || d.contact_type !== contactType) return;
+      if (d.reason) setReason(d.reason);
+      if (d.session_format) setSessionFormat(d.session_format);
+      if (d.message) {
+        setMessage(d.message);
+      }
+      setRestoredDraft(true);
+    } catch {}
+  }, [open, preAuth, therapist.id, contactType, restoredDraft]);
+
+  
 
   // Track modal open
   useEffect(() => {
@@ -172,6 +205,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     setMessage('');
     setSessionFormat('');
     setIsVerified(false);
+    try { sessionStorage.removeItem('kh_dir_contact_draft'); } catch {}
     onClose();
   }, [onClose]);
   
@@ -224,6 +258,17 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         } catch {
           redirectPath = `/therapeuten?contact=compose&tid=${therapist.id}&type=${contactType}`;
         }
+        // Persist compose draft for restore after email confirm return
+        try {
+          const draft = {
+            therapist_id: therapist.id,
+            contact_type: contactType,
+            reason,
+            message,
+            session_format: sessionFormat || undefined,
+          };
+          sessionStorage.setItem('kh_dir_contact_draft', JSON.stringify(draft));
+        } catch {}
       }
 
       const res = await fetch('/api/public/verification/send-code', {
@@ -258,8 +303,9 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   
   // Send message
   const handleSendMessage = useCallback(async () => {
-    if (!reason.trim()) {
-      setError('Bitte beschreibe dein Anliegen');
+    // Require either reason OR message (not both)
+    if (!reason.trim() && !message.trim()) {
+      setError('Bitte beschreibe dein Anliegen oder schreibe eine Nachricht');
       return;
     }
 
@@ -334,6 +380,8 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       }
       
       setStep('success');
+      // Clear draft on success
+      try { sessionStorage.removeItem('kh_dir_contact_draft'); } catch {}
       if (!preAuth) {
         trackEvent('contact_message_sent');
       } else {
@@ -354,6 +402,17 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       setLoading(false);
     }
   }, [therapist.id, contactType, name, email, phone, contactMethod, reason, message, sessionFormat, trackEvent, onSuccess, handleClose, preAuth]);
+  
+  // Auto-send once verified and draft restored (email confirm return path)
+  useEffect(() => {
+    if (!open || preAuth) return;
+    if (isVerified && restoredDraft && !autoSendAttempted) {
+      setAutoSendAttempted(true);
+      (async () => {
+        try { await handleSendMessage(); } catch {}
+      })();
+    }
+  }, [open, preAuth, isVerified, restoredDraft, autoSendAttempted, handleSendMessage]);
   
   // Verify code
   const handleVerifyCode = useCallback(async () => {
@@ -785,7 +844,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         {isVerified || preAuth ? (
           <Button
             onClick={handleSendMessage}
-            disabled={loading || !reason.trim() || (contactType === 'booking' && !sessionFormat)}
+            disabled={loading || (!reason.trim() && !message.trim()) || (contactType === 'booking' && !sessionFormat)}
             className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Nachricht senden'}
@@ -793,7 +852,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         ) : (
           <Button
             onClick={() => setStep('verify')}
-            disabled={loading || !reason.trim() || (contactType === 'booking' && !sessionFormat)}
+            disabled={loading || (!reason.trim() && !message.trim()) || (contactType === 'booking' && !sessionFormat)}
             className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Weiter'}

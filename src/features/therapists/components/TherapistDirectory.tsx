@@ -119,6 +119,36 @@ export function TherapistDirectory() {
     }
   }, [loading, therapists]);
 
+  // Fallback: if returning from email confirmation without explicit contact params,
+  // try to restore draft and auto-open the compose modal (verified session already set by confirm endpoint)
+  useEffect(() => {
+    if (loading) return;
+    try {
+      const url = new URL(window.location.href);
+      const confirm = url.searchParams.get('confirm');
+      if (confirm === '1' && !url.searchParams.get('contact')) {
+        const raw = sessionStorage.getItem('kh_dir_contact_draft');
+        if (raw) {
+          const d = JSON.parse(raw) as { therapist_id: string; contact_type?: 'booking' | 'consultation' };
+          const th = therapists.find(x => x.id === d.therapist_id) || null;
+          if (th) {
+            setAutoContactTherapist(th);
+            setAutoContactType(d.contact_type || 'booking');
+            setAutoContactOpen(true);
+          }
+        }
+        // Clean URL so we don't repeat on navigation
+        url.searchParams.delete('confirm');
+        url.searchParams.delete('id');
+        url.searchParams.delete('fs');
+        const cleaned = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ''}${url.hash}`;
+        window.history.replaceState({}, '', cleaned);
+      }
+    } catch {
+      // ignore
+    }
+  }, [loading, therapists]);
+
   const normalizeModality = (m: string): string => {
     return m.toLowerCase().replace(/\s+/g, '-');
   };
