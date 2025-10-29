@@ -11,11 +11,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, User, Calendar, MessageCircle, Globe, ShieldCheck, HeartHandshake, Shell, Wind, Target, CalendarCheck2, X } from 'lucide-react';
+import { MapPin, Video, User, Calendar, MessageCircle, Globe, ShieldCheck, CalendarCheck2, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { TherapistData } from './TherapistDirectory';
 import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
+import { getModalityInfo } from '@/lib/modalities';
 
 interface TherapistDetailModalProps {
   therapist: TherapistData;
@@ -33,22 +34,6 @@ function hashCode(s: string) {
     h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
   }
   return Math.abs(h);
-}
-
-const MODALITY_MAP: Record<string, { label: string; cls: string; Icon: React.ElementType }> = {
-  'narm': { label: 'NARM', cls: 'border-teal-200 bg-teal-50 text-teal-800 hover:border-teal-300 hover:bg-teal-100', Icon: HeartHandshake },
-  'somatic-experiencing': { label: 'Somatic Experiencing', cls: 'border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-300 hover:bg-amber-100', Icon: Shell },
-  'hakomi': { label: 'Hakomi', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100', Icon: Wind },
-  'core-energetics': { label: 'Core Energetics', cls: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 hover:border-fuchsia-300 hover:bg-fuchsia-100', Icon: Target },
-};
-
-function normalizeModality(m: string): string {
-  return m.toLowerCase().replace(/\s+/g, '-');
-}
-
-function getModalityDisplay(m: string): { label: string; cls: string; Icon: React.ElementType } {
-  const normalized = normalizeModality(m);
-  return MODALITY_MAP[normalized] || { label: m, cls: 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100', Icon: Target };
 }
 
 export function TherapistDetailModal({ therapist, open, onClose }: TherapistDetailModalProps) {
@@ -261,15 +246,31 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
             <h3 className="mb-3 text-lg font-semibold text-gray-900">Modalitäten</h3>
             <div className="flex flex-wrap gap-2">
               {therapist.modalities.map((modality, idx) => {
-                const { label, cls, Icon } = getModalityDisplay(modality);
+                const modalityInfo = getModalityInfo(modality);
+                const scrollToDescription = () => {
+                  const element = document.getElementById(`modality-${modalityInfo.id}`);
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                };
                 return (
                   <Badge
                     key={idx}
                     variant="outline"
-                    className={`rounded-full gap-1.5 shadow-sm ${cls} transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md active:shadow-sm active:translate-y-0`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={scrollToDescription}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        scrollToDescription();
+                      }
+                    }}
+                    className={`rounded-full gap-1.5 shadow-sm cursor-pointer ${modalityInfo.cls} transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md active:shadow-sm active:translate-y-0`}
+                    aria-label={`Zur Beschreibung von ${modalityInfo.label} springen`}
                   >
-                    <Icon className="h-3 w-3 opacity-90" />
-                    {label}
+                    <modalityInfo.Icon className="h-3 w-3 opacity-90" />
+                    {modalityInfo.label}
                   </Badge>
                 );
               })}
@@ -285,6 +286,43 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
               {therapist.approach_text.split('\n').map((paragraph, idx) => (
                 paragraph.trim() && <p key={idx} className="mb-3 break-words">{paragraph}</p>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Modality Descriptions */}
+        {therapist.modalities && therapist.modalities.length > 0 && (
+          <div className="border-b pb-6">
+            <h3 className="mb-4 text-lg font-semibold text-gray-900">Über die Modalitäten</h3>
+            <div className="space-y-5">
+              {therapist.modalities.map((modality, idx) => {
+                const modalityInfo = getModalityInfo(modality);
+                if (!modalityInfo.description) return null;
+                return (
+                  <div
+                    key={idx}
+                    id={`modality-${modalityInfo.id}`}
+                    className="scroll-mt-4 rounded-xl border border-gray-200/60 bg-gradient-to-br from-white to-gray-50/30 p-4 shadow-sm"
+                  >
+                    <div className="flex items-start gap-3 mb-2">
+                      <div className={`shrink-0 rounded-lg bg-gradient-to-br p-2.5 shadow-sm ${modalityInfo.cls.replace('hover:border-', 'border-').replace('hover:bg-', 'bg-')}`}>
+                        <modalityInfo.Icon className="h-5 w-5" aria-hidden />
+                      </div>
+                      <div>
+                        <h4 className="text-base font-semibold text-gray-900">{modalityInfo.label}</h4>
+                        {modalityInfo.subtitle && (
+                          <p className="text-sm font-medium mt-0.5" style={{ color: modalityInfo.cls.match(/text-(\w+)-\d+/)?.[0].replace('text-', '') || 'inherit' }}>
+                            {modalityInfo.subtitle}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-sm leading-relaxed text-gray-600">
+                      {modalityInfo.description}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -315,13 +353,7 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
       {/* Image viewer (card-like, tap-to-close anywhere via portal) */}
       {mounted && imageViewerOpen && photoSrc && createPortal(
         <div
-          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-900/30 backdrop-blur-[2px] animate-in fade-in duration-150 cursor-zoom-out"
-          onClick={closeViewer}
-          onPointerUp={closeViewer}
-          onPointerDown={closeViewer}
-          onPointerDownCapture={closeViewer}
-          onMouseDown={closeViewer}
-          onTouchStart={closeViewer}
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/30 backdrop-blur-[2px] animate-in fade-in duration-150 cursor-zoom-out"
           role="dialog"
           aria-modal="true"
           aria-label="Vergrößertes Profilbild"
@@ -329,32 +361,19 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
           {/* Close button */}
           <button
             onClick={closeViewer}
-            className="absolute top-4 right-4 z-[10000] rounded-full bg-white shadow-md p-2 text-slate-700 transition hover:shadow-lg hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            className="absolute top-4 right-4 rounded-full bg-white shadow-md p-2 text-slate-700 transition hover:shadow-lg hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-400"
             aria-label="Schließen"
           >
             <X className="h-5 w-5" />
           </button>
 
           {/* Card container */}
-          <div
-            className="relative w-[min(92vw,560px)] sm:w-[min(85vw,680px)] max-h-[85vh] rounded-2xl bg-white p-3 sm:p-4 shadow-2xl ring-1 ring-black/5 animate-in zoom-in-95 duration-200 flex flex-col cursor-zoom-out overflow-hidden"
-            onClick={closeViewer}
-            onPointerUp={closeViewer}
-            onPointerDown={closeViewer}
-            onMouseDown={closeViewer}
-            onTouchStart={closeViewer}
-            tabIndex={0}
-          >
+          <div className="relative w-[min(92vw,560px)] sm:w-[min(85vw,680px)] max-h-[85vh] rounded-2xl bg-white p-3 sm:p-4 shadow-2xl ring-1 ring-black/5 animate-in zoom-in-95 duration-200 flex flex-col overflow-hidden">
             <div className="flex-1 flex items-center justify-center overflow-hidden">
               <img
                 src={photoSrc}
                 alt={`${therapist.first_name} ${therapist.last_name}`}
-                className="max-h-[70vh] w-auto max-w-full rounded-xl object-contain cursor-zoom-out"
-                onClick={closeViewer}
-                onPointerUp={closeViewer}
-                onPointerDown={closeViewer}
-                onMouseDown={closeViewer}
-                onTouchStart={closeViewer}
+                className="max-h-[70vh] w-auto max-w-full rounded-xl object-contain"
                 draggable={false}
               />
             </div>

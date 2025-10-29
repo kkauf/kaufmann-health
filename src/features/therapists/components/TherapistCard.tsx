@@ -6,10 +6,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, Calendar, MessageCircle, User, ShieldCheck, HeartHandshake, Waves, Leaf, Target, Shell, Wind, CalendarCheck2, ChevronRight } from 'lucide-react';
+import { MapPin, Video, Calendar, MessageCircle, User, ShieldCheck, CalendarCheck2, ChevronRight } from 'lucide-react';
 import type { TherapistData } from './TherapistDirectory';
 import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
+import { getModalityInfo } from '@/lib/modalities';
 
 interface TherapistCardProps {
   therapist: TherapistData;
@@ -33,22 +34,6 @@ function hashCode(s: string) {
   return Math.abs(h);
 }
 
-const MODALITY_MAP: Record<string, { label: string; cls: string; Icon: React.ElementType }> = {
-  // Brand-forward, soft chips with micro-icons
-  'narm': { label: 'NARM', cls: 'border-teal-200 bg-teal-50 text-teal-800 hover:border-teal-300 hover:bg-teal-100', Icon: HeartHandshake },
-  'somatic-experiencing': { label: 'Somatic Experiencing', cls: 'border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-300 hover:bg-amber-100', Icon: Shell },
-  'hakomi': { label: 'Hakomi', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100', Icon: Wind},
-  'core-energetics': { label: 'Core Energetics', cls: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 hover:border-fuchsia-300 hover:bg-fuchsia-100', Icon: Target },
-};
-
-function normalizeModality(m: string): string {
-  return m.toLowerCase().replace(/\s+/g, '-');
-}
-
-function getModalityDisplay(m: string): { label: string; cls: string; Icon: React.ElementType } {
-  const normalized = normalizeModality(m);
-  return MODALITY_MAP[normalized] || { label: m, cls: 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100', Icon: Target };
-}
 
 export function TherapistCard({
   therapist,
@@ -197,15 +182,36 @@ export function TherapistCard({
               >
                 <div className="inline-flex gap-2">
                   {therapist.modalities.slice(0, 3).map((modality, idx) => {
-                    const { label, cls, Icon } = getModalityDisplay(modality);
+                    const modalityInfo = getModalityInfo(modality);
+                    const handleModalityClick = (e: React.MouseEvent | React.KeyboardEvent) => {
+                      e.stopPropagation();
+                      openDetails();
+                      // Small delay to allow modal to open before scrolling
+                      setTimeout(() => {
+                        const element = document.getElementById(`modality-${modalityInfo.id}`);
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }, 300);
+                    };
                     return (
                       <Badge
                         key={idx}
                         variant="outline"
-                        className={`rounded-full gap-1.5 shadow-sm ${cls} transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md active:shadow-sm active:translate-y-0`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={handleModalityClick}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleModalityClick(e);
+                          }
+                        }}
+                        className={`rounded-full gap-1.5 shadow-sm cursor-pointer ${modalityInfo.cls} transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md active:shadow-sm active:translate-y-0`}
+                        aria-label={`Profil öffnen und zu ${modalityInfo.label} springen`}
                       >
-                        <Icon className="h-3 w-3 opacity-90" />
-                        {label}
+                        <modalityInfo.Icon className="h-3 w-3 opacity-90" />
+                        {modalityInfo.label}
                       </Badge>
                     );
                   })}

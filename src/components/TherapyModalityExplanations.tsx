@@ -1,35 +1,8 @@
 'use client';
-import React, { useState } from 'react';
-import Image from 'next/image';
-import { ExternalLink } from 'lucide-react';
+import React from 'react';
+import { ExternalLink, HeartHandshake, Shell, Wind, Target } from 'lucide-react';
 
 export default function TherapyModalityExplanations() {
-  function Logo({ src, alt, fallback }: { src: string; alt: string; fallback: string }) {
-    const [failed, setFailed] = useState(false);
-    return (
-      <div className="flex items-center gap-3">
-        {!failed ? (
-          <Image
-            src={src}
-            alt={alt}
-            width={96}
-            height={32}
-            loading="lazy"
-            sizes="(max-width: 640px) 25vw, 96px"
-            placeholder="blur"
-            blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII="
-            className="h-6 w-auto object-contain opacity-80"
-            onError={() => setFailed(true)}
-          />
-        ) : (
-          <div className="h-7 w-16 shrink-0 rounded-lg border border-slate-200/60 bg-gradient-to-br from-slate-50 to-slate-100/60 text-slate-700 grid place-items-center text-xs font-medium shadow-sm">
-            {fallback}
-          </div>
-        )}
-        <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">{alt}</h3>
-      </div>
-    );
-  }
   return (
     <section aria-labelledby="modalities" className="mt-14 sm:mt-20 lg:mt-24">
       <div className="relative overflow-hidden rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10">
@@ -45,10 +18,18 @@ export default function TherapyModalityExplanations() {
         </p>
         
         <div className="mt-8 sm:mt-10 grid grid-cols-1 gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-2 lg:grid-cols-2">
-          <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 p-5 sm:p-6 h-full flex flex-col">
-            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
-            <Logo src="/logos/Modalities/NARM.png" alt="NARM (Neuroaffektives Beziehungsmodell)" fallback="NARM" />
-            <p className="mt-3 sm:mt-4 text-sm sm:text-base leading-relaxed text-gray-600 break-words">
+          <div className="relative rounded-xl border border-teal-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 p-5 sm:p-6 h-full flex flex-col">
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-teal-50/30 rounded-xl" />
+            <div className="flex items-start gap-4">
+              <div className="shrink-0 rounded-xl bg-gradient-to-br from-teal-50 to-teal-100/60 p-3 text-teal-600 shadow-sm">
+                <HeartHandshake className="h-6 w-6" aria-hidden />
+              </div>
+              <div>
+                <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">NARM</h3>
+                <p className="text-sm text-teal-700 font-medium mt-0.5">Neuroaffektives Beziehungsmodell</p>
+              </div>
+            </div>
+            <p className="mt-4 text-sm sm:text-base leading-relaxed text-gray-600">
               NARM fokussiert auf Entwicklungstraumata und die Fähigkeit zur Selbstregulation. Der Ansatz verbindet
               achtsame Körperwahrnehmung mit der Arbeit an Mustern in Beziehungen – ohne re-traumatisierende
               Detailschilderungen.
@@ -57,7 +38,7 @@ export default function TherapyModalityExplanations() {
               href="https://narmtraining.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors duration-150"
+              className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-teal-600 hover:text-teal-700 transition-colors duration-150"
               aria-label="Mehr über NARM erfahren (öffnet in neuem Tab)"
             >
               Mehr erfahren
@@ -65,10 +46,18 @@ export default function TherapyModalityExplanations() {
             </a>
           </div>
           
-          <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 p-5 sm:p-6 h-full flex flex-col">
-            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
-            <Logo src="/logos/Modalities/Somatic-Experiencing.png" alt="Somatic Experiencing (SE)" fallback="SE" />
-            <p className="mt-3 sm:mt-4 text-sm sm:text-base leading-relaxed text-gray-600 break-words">
+          <div className="relative rounded-xl border border-amber-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 p-5 sm:p-6 h-full flex flex-col">
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-amber-50/30 rounded-xl" />
+            <div className="flex items-start gap-4">
+              <div className="shrink-0 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/60 p-3 text-amber-600 shadow-sm">
+                <Shell className="h-6 w-6" aria-hidden />
+              </div>
+              <div>
+                <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">Somatic Experiencing</h3>
+                <p className="text-sm text-amber-700 font-medium mt-0.5">(SE)</p>
+              </div>
+            </div>
+            <p className="mt-4 text-sm sm:text-base leading-relaxed text-gray-600">
               SE arbeitet mit der natürlichen Stressreaktion des Körpers. Durch fein dosierte Annäherung an belastende
               Empfindungen wird das Nervensystem behutsam entladen, sodass festgehaltene Energie wieder in Fluss kommt.
             </p>
@@ -76,7 +65,7 @@ export default function TherapyModalityExplanations() {
               href="https://traumahealing.org/"
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors duration-150"
+              className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-amber-600 hover:text-amber-700 transition-colors duration-150"
               aria-label="Mehr über Somatic Experiencing erfahren (öffnet in neuem Tab)"
             >
               Mehr erfahren
@@ -84,10 +73,17 @@ export default function TherapyModalityExplanations() {
             </a>
           </div>
           
-          <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 p-5 sm:p-6 h-full flex flex-col">
-            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
-            <Logo src="/logos/Modalities/Hakomi.png" alt="Hakomi" fallback="Hakomi" />
-            <p className="mt-3 sm:mt-4 text-sm sm:text-base leading-relaxed text-gray-600 break-words">
+          <div className="relative rounded-xl border border-emerald-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 p-5 sm:p-6 h-full flex flex-col">
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-emerald-50/30 rounded-xl" />
+            <div className="flex items-start gap-4">
+              <div className="shrink-0 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 p-3 text-emerald-600 shadow-sm">
+                <Wind className="h-6 w-6" aria-hidden />
+              </div>
+              <div>
+                <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">Hakomi</h3>
+              </div>
+            </div>
+            <p className="mt-4 text-sm sm:text-base leading-relaxed text-gray-600">
               Hakomi ist eine achtsamkeitsbasierte Methode, die unbewusste Muster über den Körper erfahrbar macht.
               In respektvoller, langsamer Arbeit entstehen neue Erfahrungen, die alte Überzeugungen sanft verändern.
             </p>
@@ -95,7 +91,7 @@ export default function TherapyModalityExplanations() {
               href="https://hakomi.de/"
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors duration-150"
+              className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors duration-150"
               aria-label="Mehr über Hakomi erfahren (öffnet in neuem Tab)"
             >
               Mehr erfahren
@@ -103,10 +99,17 @@ export default function TherapyModalityExplanations() {
             </a>
           </div>
           
-          <div className="relative rounded-xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 p-5 sm:p-6 h-full flex flex-col">
-            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
-            <Logo src="/logos/Modalities/Core-Energetics.png" alt="Core Energetics" fallback="CE" />
-            <p className="mt-3 sm:mt-4 text-sm sm:text-base leading-relaxed text-gray-600 break-words">
+          <div className="relative rounded-xl border border-fuchsia-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 p-5 sm:p-6 h-full flex flex-col">
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-fuchsia-50/30 rounded-xl" />
+            <div className="flex items-start gap-4">
+              <div className="shrink-0 rounded-xl bg-gradient-to-br from-fuchsia-50 to-fuchsia-100/60 p-3 text-fuchsia-600 shadow-sm">
+                <Target className="h-6 w-6" aria-hidden />
+              </div>
+              <div>
+                <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">Core Energetics</h3>
+              </div>
+            </div>
+            <p className="mt-4 text-sm sm:text-base leading-relaxed text-gray-600">
               Core Energetics verbindet körperliche Ausdrucksarbeit mit emotionaler Integration. Über Haltung, Atmung und
               Bewegung werden festgehaltene Spannungen gelöst und Lebendigkeit sowie Kontaktfähigkeit gestärkt.
             </p>
@@ -114,7 +117,7 @@ export default function TherapyModalityExplanations() {
               href="https://coreenergetics.nl/en/core-energetics/"
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors duration-150"
+              className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-fuchsia-600 hover:text-fuchsia-700 transition-colors duration-150"
               aria-label="Mehr über Core Energetics erfahren (öffnet in neuem Tab)"
             >
               Mehr erfahren

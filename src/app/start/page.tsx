@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import FaqAccordion from '@/components/FaqAccordion';
 import PageAnalytics from '@/components/PageAnalytics';
 import CtaLink from '@/components/CtaLink';
+import TherapyModalityExplanations from '@/components/TherapyModalityExplanations';
 import { HeroNoForm } from '@/features/landing/components/HeroNoForm';
 import { ProcessTimeline } from '@/features/landing/components/ProcessTimeline';
 import { FoundersValuesSection } from '@/features/landing/components/FoundersValuesSection';
