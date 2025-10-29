@@ -35,11 +35,9 @@ export default function TherapyModalityExplanations() {
               Detailschilderungen.
             </p>
             <a
-              href="https://narmtraining.com/"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/therapie/narm"
               className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-teal-600 hover:text-teal-700 transition-colors duration-150"
-              aria-label="Mehr über NARM erfahren (öffnet in neuem Tab)"
+              aria-label="Mehr über NARM erfahren"
             >
               Mehr erfahren
               <ExternalLink className="h-4 w-4" aria-hidden />

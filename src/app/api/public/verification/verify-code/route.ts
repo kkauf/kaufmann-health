@@ -90,13 +90,63 @@ export async function POST(req: NextRequest) {
           .single<PersonRow>();
 
         if (!fetchErr && person) {
+          // Extract draft_contact if present (therapist directory flow)
+          const draftContact = person.metadata?.draft_contact as Record<string, unknown> | undefined;
+          
           // Update metadata with phone_verified flag and mark actionable
-          const metadata = { ...(person.metadata || {}), phone_verified: true };
+          const metadata: Record<string, unknown> = { ...(person.metadata || {}), phone_verified: true };
+          delete metadata.draft_contact; // Clear draft after extraction
+          
           await supabaseServer
             .from('people')
             // Mark as 'new' so phone users proceed without email confirmation
             .update({ metadata, status: 'new' })
             .eq('id', person.id);
+
+          // Process draft contact if present
+          if (draftContact) {
+            try {
+              const therapistId = typeof draftContact.therapist_id === 'string' ? draftContact.therapist_id : null;
+              const contactType = (draftContact.contact_type === 'booking' || draftContact.contact_type === 'consultation') ? draftContact.contact_type : 'booking';
+              const patientReason = typeof draftContact.patient_reason === 'string' ? draftContact.patient_reason : '';
+              const patientMessage = typeof draftContact.patient_message === 'string' ? draftContact.patient_message : '';
+              const sessionFormat = (draftContact.session_format === 'online' || draftContact.session_format === 'in_person') ? draftContact.session_format : undefined;
+
+              if (therapistId && (patientReason || patientMessage)) {
+                const origin = new URL(req.url).origin;
+                const contactPayload = {
+                  therapist_id: therapistId,
+                  contact_type: contactType,
+                  patient_name: person.name || '',
+                  patient_phone: contact,
+                  contact_method: 'phone' as const,
+                  patient_reason: patientReason,
+                  patient_message: patientMessage,
+                  session_format: sessionFormat,
+                };
+
+                const contactRes = await fetch(`${origin}/api/public/contact`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-forwarded-for': req.headers.get('x-forwarded-for') || '',
+                    'user-agent': req.headers.get('user-agent') || '',
+                  },
+                  body: JSON.stringify(contactPayload),
+                });
+
+                if (!contactRes.ok) {
+                  await logError('api.verification.verify-code', new Error('Draft contact creation failed'), {
+                    stage: 'draft_contact',
+                    status: contactRes.status,
+                    therapistId,
+                  });
+                }
+              }
+            } catch (err) {
+              await logError('api.verification.verify-code', err, { stage: 'draft_contact_processing' });
+            }
+          }
 
           // Fire Google Ads conversion
           const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined;

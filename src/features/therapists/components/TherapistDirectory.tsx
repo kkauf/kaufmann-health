@@ -119,40 +119,8 @@ export function TherapistDirectory() {
     }
   }, [loading, therapists]);
 
-  // Fallback: if returning from email confirmation without explicit contact params,
-  // try to restore draft and auto-open the compose modal (verified session already set by confirm endpoint)
-  useEffect(() => {
-    if (loading) return;
-    try {
-      const url = new URL(window.location.href);
-      const confirm = url.searchParams.get('confirm');
-      const hasContact = url.searchParams.get('contact');
-      console.log('[TherapistDirectory] Checking for email confirm return:', { confirm, hasContact });
-      if (confirm === '1' && !hasContact) {
-        const raw = sessionStorage.getItem('kh_dir_contact_draft');
-        console.log('[TherapistDirectory] Draft in storage:', raw);
-        if (raw) {
-          const d = JSON.parse(raw) as { therapist_id: string; contact_type?: 'booking' | 'consultation' };
-          const th = therapists.find(x => x.id === d.therapist_id) || null;
-          console.log('[TherapistDirectory] Found therapist:', { therapistId: d.therapist_id, found: !!th });
-          if (th) {
-            setAutoContactTherapist(th);
-            setAutoContactType(d.contact_type || 'booking');
-            setAutoContactOpen(true);
-            console.log('[TherapistDirectory] Auto-opening ContactModal');
-          }
-        }
-        // Clean URL so we don't repeat on navigation
-        url.searchParams.delete('confirm');
-        url.searchParams.delete('id');
-        url.searchParams.delete('fs');
-        const cleaned = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ''}${url.hash}`;
-        window.history.replaceState({}, '', cleaned);
-      }
-    } catch (e) {
-      console.error('[TherapistDirectory] Email confirm fallback error:', e);
-    }
-  }, [loading, therapists]);
+  // Note: Draft contact is now processed server-side on email/SMS verification
+  // No client-side fallback needed - server creates match automatically
 
   const normalizeModality = (m: string): string => {
     return m.toLowerCase().replace(/\s+/g, '-');

@@ -134,6 +134,12 @@ export async function GET(req: Request) {
     newMetadata['confirmed_at'] = nowIso;
     newMetadata['email_confirmed_at'] = nowIso;
 
+    // Extract draft_contact if present (therapist directory flow)
+    const draftContact = newMetadata['draft_contact'] as Record<string, unknown> | undefined;
+    if (draftContact) {
+      delete newMetadata['draft_contact']; // Clear draft after extraction
+    }
+
     // If the questionnaire was completed already, the lead is actionable: mark as 'new'.
     // Otherwise, keep the transitional 'email_confirmed' status.
     const formCompletedAt = typeof newMetadata['form_completed_at'] === 'string' ? (newMetadata['form_completed_at'] as string) : undefined;
@@ -180,6 +186,52 @@ export async function GET(req: Request) {
     } catch {}
 
     // Enhanced Conversions handled by maybeFirePatientConversion above
+
+    // Process draft contact if present (therapist directory flow)
+    if (draftContact) {
+      try {
+        const therapistId = typeof draftContact.therapist_id === 'string' ? draftContact.therapist_id : null;
+        const contactType = (draftContact.contact_type === 'booking' || draftContact.contact_type === 'consultation') ? draftContact.contact_type : 'booking';
+        const patientReason = typeof draftContact.patient_reason === 'string' ? draftContact.patient_reason : '';
+        const patientMessage = typeof draftContact.patient_message === 'string' ? draftContact.patient_message : '';
+        const sessionFormat = (draftContact.session_format === 'online' || draftContact.session_format === 'in_person') ? draftContact.session_format : undefined;
+
+        if (therapistId && (patientReason || patientMessage)) {
+          // Create match via internal contact endpoint logic
+          const contactPayload = {
+            therapist_id: therapistId,
+            contact_type: contactType,
+            patient_name: person.name || '',
+            patient_email: person.email,
+            contact_method: 'email' as const,
+            patient_reason: patientReason,
+            patient_message: patientMessage,
+            session_format: sessionFormat,
+          };
+
+          // Call internal contact API
+          const contactRes = await fetch(`${origin}/api/public/contact`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-forwarded-for': req.headers.get('x-forwarded-for') || '',
+              'user-agent': req.headers.get('user-agent') || '',
+            },
+            body: JSON.stringify(contactPayload),
+          });
+
+          if (!contactRes.ok) {
+            await logError('api.leads.confirm', new Error('Draft contact creation failed'), {
+              stage: 'draft_contact',
+              status: contactRes.status,
+              therapistId,
+            });
+          }
+        }
+      } catch (err) {
+        await logError('api.leads.confirm', err, { stage: 'draft_contact_processing' });
+      }
+    }
 
     // Success → set client session cookie (EARTH-204)
     try {

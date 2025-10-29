@@ -26,6 +26,14 @@ interface SendCodeRequest {
   redirect?: string;
   // Optional patient name for therapist directory contact flow (used for both email and SMS)
   name?: string;
+  // Optional draft contact data to store before verification (therapist directory flow)
+  draft_contact?: {
+    therapist_id: string;
+    contact_type: 'booking' | 'consultation';
+    patient_reason: string;
+    patient_message: string;
+    session_format?: 'online' | 'in_person';
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -43,7 +51,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = (await req.json()) as SendCodeRequest;
-    const { contact, contact_type, lead_id, form_session_id, redirect, name } = body;
+    const { contact, contact_type, lead_id, form_session_id, redirect, name, draft_contact } = body;
 
     if (!contact || !contact_type) {
       return NextResponse.json(
@@ -106,6 +114,14 @@ export async function POST(req: NextRequest) {
             }
           } else {
             // Create new person record with phone and name
+            const metadata: Record<string, unknown> = {
+              contact_method: 'phone',
+              source: 'directory_contact',
+            };
+            // Store draft contact data if provided (therapist directory flow)
+            if (draft_contact) {
+              metadata.draft_contact = draft_contact;
+            }
             await supabaseServer
               .from('people')
               .insert({
@@ -113,10 +129,7 @@ export async function POST(req: NextRequest) {
                 phone_number: normalized,
                 name,
                 status: 'new',
-                metadata: {
-                  contact_method: 'phone',
-                  source: 'directory_contact',
-                },
+                metadata,
               });
           }
         } catch (err) {
@@ -260,14 +273,19 @@ export async function POST(req: NextRequest) {
           }
         } else {
           // Create a minimal patient lead row
+          const metadata: Record<string, unknown> = {
+            confirm_token: token,
+            confirm_sent_at: new Date().toISOString(),
+          };
+          // Store draft contact data if provided (therapist directory flow)
+          if (draft_contact) {
+            metadata.draft_contact = draft_contact;
+          }
           const insertData: Record<string, unknown> = {
             email: contact,
             type: 'patient',
             status: 'email_confirmation_sent',
-            metadata: {
-              confirm_token: token,
-              confirm_sent_at: new Date().toISOString(),
-            },
+            metadata,
           };
           // Include name if provided (from therapist directory contact flow)
           if (name) {
@@ -301,6 +319,10 @@ export async function POST(req: NextRequest) {
         const meta = (existing?.metadata as Record<string, unknown>) || {};
         meta['confirm_token'] = token;
         meta['confirm_sent_at'] = new Date().toISOString();
+        // Store draft contact data if provided (therapist directory flow)
+        if (draft_contact) {
+          meta['draft_contact'] = draft_contact;
+        }
 
         // Prepare update data: always update metadata and status
         const updateData: Record<string, unknown> = {
