@@ -70,7 +70,7 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
       const label = conf ? conf.label : toTitleCase(String(m));
       const cls = conf ? conf.cls : 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100';
       const Icon = conf ? conf.Icon : Target;
-      return { key: `${slug}-${i}`, label, cls, Icon };
+      return { key: `${slug}-${i}`, label, cls, Icon, modalityId: `modality-${slug}` };
     });
     // Deduplicate by label to avoid repeats
     const seen = new Set<string>();
@@ -196,6 +196,7 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
                           <Badge
                             key={b.key}
                             variant="outline"
+                            data-modality-id={b.modalityId}
                             className={cn(
                               isAdmin ? "text-[10px] px-1.5 py-0" : "px-2 py-0.5 text-[11px]",
                               "rounded-full gap-1.5 shadow-sm transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md active:shadow-sm active:translate-y-0",

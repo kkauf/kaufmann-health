@@ -22,6 +22,7 @@ interface TherapistDetailModalProps {
   therapist: TherapistData;
   open: boolean;
   onClose: () => void;
+  initialScrollTarget?: string;
 }
 
 function getInitials(firstName: string, lastName: string) {
@@ -36,7 +37,7 @@ function hashCode(s: string) {
   return Math.abs(h);
 }
 
-export function TherapistDetailModal({ therapist, open, onClose }: TherapistDetailModalProps) {
+export function TherapistDetailModal({ therapist, open, onClose, initialScrollTarget }: TherapistDetailModalProps) {
   const [imageError, setImageError] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [contactType, setContactType] = useState<'booking' | 'consultation'>('booking');
@@ -78,8 +79,18 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
         const payload = { type: 'profile_modal_opened', ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id } };
         navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
       } catch {}
+      
+      // Scroll to initial target if provided
+      if (initialScrollTarget) {
+        setTimeout(() => {
+          const element = document.getElementById(initialScrollTarget);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+      }
     }
-  }, [open, therapist.id]);
+  }, [open, therapist.id, initialScrollTarget]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -328,7 +339,7 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
         )}
 
         {/* Action buttons */}
-        <div className="sticky bottom-0 flex flex-col gap-3 bg-white pt-4 sm:flex-row">
+        <div className="sticky bottom-0 flex flex-col gap-3 pt-4 sm:flex-row">
           <Button
             className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
             onClick={() => handleContactClick('booking')}

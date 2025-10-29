@@ -58,7 +58,7 @@ export default function NewScreen5_Modality({
     <div className="space-y-8">
       <div className="space-y-4">
         <div className="space-y-2">
-          <p className="font-medium">Möchtest du selbst über die Therapiemethode deines Therapeuten entscheiden?</p>
+          <p className="font-medium">Weißt du welche Therapiemethode du bevorzugst?</p>
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
@@ -109,7 +109,7 @@ export default function NewScreen5_Modality({
         {values.modality_matters === true && (
           <>
             <div className="space-y-2">
-              <p className="font-medium">Welche Methoden interessieren dich? (Mehrfachauswahl möglich)</p>
+              <p className="font-medium">Mit welcher Methode soll deine Therapeut:in arbeiten? (Mehrfachauswahl möglich)</p>
               <div className="grid gap-2">
                 {METHODS.map((opt) => {
                   const selected = (values.methods || []).includes(opt);

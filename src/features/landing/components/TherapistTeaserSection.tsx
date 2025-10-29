@@ -1,5 +1,6 @@
-import TherapistPreview from "@/components/TherapistPreview";
+import TherapistPreview, { type Therapist } from "@/components/TherapistPreview";
 import { getTherapistsByIds, getTherapistsForLanding } from "../lib/therapists";
+import { TherapistTeaserClient } from './TherapistTeaserClient';
 
 export async function TherapistTeaserSection({
   title = "Deine Expert:innen",
@@ -18,15 +19,16 @@ export async function TherapistTeaserSection({
   randomize?: boolean;
   className?: string;
 }) {
-  const therapists = ids && ids.length > 0
+  // Fetch therapists on the server
+  const data = ids && ids.length > 0
     ? await getTherapistsByIds(ids)
     : await getTherapistsForLanding({ ...filters, limit });
-
+  
   const displayed = (() => {
-    if (ids && ids.length > 0) return therapists.slice(0, limit);
-    if (!randomize) return therapists.slice(0, limit);
-    const copy = [...therapists];
-    // Fisher–Yates shuffle for stable randomization on each render
+    if (ids && ids.length > 0) return data.slice(0, limit);
+    if (!randomize) return data.slice(0, limit);
+    const copy = [...data];
+    // Fisher–Yates shuffle
     for (let i = copy.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [copy[i], copy[j]] = [copy[j], copy[i]];
@@ -35,15 +37,12 @@ export async function TherapistTeaserSection({
   })();
 
   return (
-    <section aria-labelledby="trust-previews" className={(className ? className + " " : "") + "mt-14 sm:mt-20 lg:mt-24"}>
-      <h2 id="trust-previews" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">{title}</h2>
-      {subtitle ? <p className="mt-4 max-w-2xl text-base sm:text-lg leading-relaxed text-gray-700">{subtitle}</p> : null}
-      <div className="mt-8 sm:mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
-        {displayed.map((t) => (
-          <TherapistPreview key={t.id} therapist={t} />
-        ))}
-      </div>
-    </section>
+    <TherapistTeaserClient
+      therapists={displayed}
+      title={title}
+      subtitle={subtitle}
+      className={className}
+    />
   );
 }
 

@@ -85,6 +85,14 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       }
     }
 
+    // Extract document metadata
+    const documents = isObject((metadata as Record<string, unknown>).documents)
+      ? ((metadata as Record<string, unknown>).documents as Record<string, unknown>)
+      : {};
+    const hasLicense = typeof documents.license === 'string' && documents.license.length > 0;
+    const specialization = isObject(documents.specialization) ? (documents.specialization as Record<string, unknown>) : {};
+    const hasSpecialization = Object.keys(specialization).length > 0;
+
     const name = [row.first_name || '', row.last_name || ''].join(' ').trim() || null;
     return NextResponse.json({
       data: {
@@ -98,6 +106,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           photo_pending_url,
           approach_text: approachText,
           photo_url: (row as Record<string, unknown>).photo_url || undefined,
+        },
+        documents: {
+          has_license: hasLicense,
+          has_specialization: hasSpecialization,
         },
       },
       error: null,

@@ -52,6 +52,10 @@ type TherapistDetail = {
     approach_text?: string;
     photo_url?: string;
   };
+  documents: {
+    has_license: boolean;
+    has_specialization: boolean;
+  };
 };
 
 function formatDate(iso?: string | null) {
@@ -85,6 +89,7 @@ export default function AdminTherapistsPage() {
   const [approachText, setApproachText] = useState("");
   const [updating, setUpdating] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [approvePhoto, setApprovePhoto] = useState(false);
   const [page, setPage] = useState<number>(1);
   const pageSize = 20;
 
@@ -176,6 +181,7 @@ export default function AdminTherapistsPage() {
     setDetailError(null);
     setNotes("");
     setApproachText("");
+    setApprovePhoto(false);
     try {
       const res = await fetch(`/api/admin/therapists/${id}`, { credentials: "include", cache: "no-store" });
       const json = await res.json();
@@ -198,6 +204,7 @@ export default function AdminTherapistsPage() {
     setApproachText("");
     setMessage(null);
     setDetailError(null);
+    setApprovePhoto(false);
   }, []);
 
   // Improve modal UX: Esc to close and prevent background scroll while open
@@ -229,6 +236,10 @@ export default function AdminTherapistsPage() {
       const body: UpdatePayload = { status: newStatus };
       if (notes.trim()) body.verification_notes = notes.trim();
       if (approachText.trim()) body.approach_text = approachText.trim();
+      // Auto-approve photo if checkbox is checked and there's a pending photo
+      if (approvePhoto && detail?.profile.photo_pending_url) {
+        body.approve_profile = true;
+      }
       const res = await fetch(`/api/admin/therapists/${openId}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
@@ -240,6 +251,8 @@ export default function AdminTherapistsPage() {
       setMessage(newStatus === "verified" ? "Therapeut verifiziert" : "Therapeut abgelehnt");
       // Refresh list row
       await fetchTherapists();
+      // Close modal after successful verification
+      setTimeout(closeDetail, 1500);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
       setMessage(msg);
@@ -342,10 +355,6 @@ export default function AdminTherapistsPage() {
   return (
     <main className="min-h-screen p-6 space-y-6">
       <h1 className="text-2xl font-semibold">Therapeuten-Verifizierung</h1>
-
-      {message && (
-        <p className="text-sm text-emerald-700" role="status">{message}</p>
-      )}
 
       <section className="border rounded-md p-4">
         <div className="flex flex-wrap gap-3 mb-3 items-end">
@@ -572,196 +581,119 @@ export default function AdminTherapistsPage() {
               <button className="text-sm underline" onClick={closeDetail} title="Esc zum Schließen">Schließen</button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-6">
               {detailLoading && <p className="text-sm text-gray-600">Laden…</p>}
               {detailError && <p className="text-sm text-red-600">{detailError}</p>}
 
               {detail && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div className="space-y-3">
-                    <div className="mb-2">
-                      <div className="font-medium">{detail.name || "—"}</div>
-                      <div className="text-sm text-gray-600">{detail.email || "—"}</div>
-                      <div className="text-sm text-gray-600">{detail.city || "—"}</div>
-                      <div className="text-xs text-gray-500">Status: {detail.status}</div>
+                <div className="space-y-6">
+                  {/* Header with therapist info and approval checklist */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="text-xl font-semibold text-gray-900">{detail.name || "—"}</h3>
+                        <div className="text-sm text-gray-600 mt-1">{detail.email || "—"}</div>
+                        <div className="text-sm text-gray-600">{detail.city || "—"}</div>
+                      </div>
+                      <Badge 
+                        variant={detail.status === "verified" ? "default" : "secondary"}
+                        className={detail.status === "rejected" ? "bg-red-600 text-white border-transparent" : undefined}
+                      >
+                        {detail.status === "verified" ? "Verifiziert" : detail.status === "rejected" ? "Abgelehnt" : "Ausstehend"}
+                      </Badge>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="approach">Therapie-Ansatz (max 500 Zeichen)</Label>
-                      <textarea
-                        id="approach"
-                        rows={4}
-                        className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg/input/30 w-full rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-                        value={approachText}
-                        onChange={(e) => setApproachText(e.target.value)}
-                        maxLength={500}
-                      />
-                      <div className="text-xs text-gray-500">{approachText.length} / 500</div>
-                    </div>
-
-                    <details className="mt-2 rounded-md border bg-gray-50 open:bg-white">
-                      <summary className="cursor-pointer px-3 py-2 text-sm font-medium">Notizen (nur intern)</summary>
-                      <div className="p-3 pt-1">
-                        <Label htmlFor="notes" className="sr-only">Notizen (nur intern)</Label>
-                        <textarea
-                          id="notes"
-                          rows={3}
-                          className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg/input/30 w-full rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-                          placeholder="Begründung bei Ablehnung oder Hinweise"
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                        />
-                      </div>
-                    </details>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <div className="mb-2">
-                        <div className="font-medium">Unterlagen</div>
-                      </div>
-                      {/* License document viewer */}
-                      <div className="mb-3">
-                        <div className="text-sm text-gray-700 mb-1">Lizenz</div>
-                        <div className="border rounded-md overflow-hidden">
-                          <iframe
-                            title="Lizenz"
-                            src={`/api/admin/therapists/${detail.id}/documents/license`}
-                            className="w-full h-[360px]"
-                          />
-                        </div>
-                        <div className="mt-1">
-                          <a
-                            className="text-xs underline text-blue-700"
-                            href={`/api/admin/therapists/${detail.id}/documents/license`}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Herunterladen
-                          </a>
-                        </div>
-                        {/* Admin upload controls for documents */}
-                        {detail.status === "pending_verification" ? (
-                          <details className="mt-3 rounded-md border bg-gray-50 open:bg-white">
-                          <summary className="cursor-pointer px-3 py-2 text-sm font-medium">Dateien hochladen (optional)</summary>
-                          <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <Label htmlFor="licenseFile">Lizenz hochladen (PDF/JPG/PNG)</Label>
-                              <input
-                                id="licenseFile"
-                                type="file"
-                                accept="application/pdf,image/jpeg,image/png"
-                                onChange={(e) => setLicenseFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label htmlFor="specFiles">Spezialisierung (optional, mehrere)</Label>
-                              <input
-                                id="specFiles"
-                                type="file"
-                                accept="application/pdf,image/jpeg,image/png"
-                                multiple
-                                onChange={(e) => setSpecFiles(e.target.files)}
-                              />
-                            </div>
-                            <div className="md:col-span-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={updating || (!licenseFile && (!specFiles || specFiles.length === 0))}
-                                onClick={async () => {
-                                  if (!detail?.id) return;
-                                  try {
-                                    setUpdating(true);
-                                    setMessage(null);
-                                    const fd = new FormData();
-                                    if (licenseFile) fd.append('psychotherapy_license', licenseFile);
-                                    if (specFiles) {
-                                      Array.from(specFiles).forEach((f) => fd.append('specialization_cert', f));
-                                    }
-                                    const res = await fetch(`/api/public/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
-                                    const json = await res.json();
-                                    if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
-                                    setMessage('Dokumente hochgeladen');
-                                    setLicenseFile(null);
-                                    setSpecFiles(null);
-                                    await openDetail(detail.id);
-                                  } catch (e) {
-                                    const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
-                                    setMessage(msg);
-                                  } finally {
-                                    setUpdating(false);
-                                  }
-                                }}
-                              >
-                                Dokumente hochladen
-                              </Button>
-                            </div>
-                          </div>
-                          </details>
-                        ) : (
-                          <p className="mt-2 text-xs text-gray-500">
-                            Dokument-Uploads sind nur im Status <strong>Ausstehend</strong> möglich.
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Profile Photo (pending/public) */}
-                      <div className="mb-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="text-sm text-gray-700">Profilfoto</div>
-                          {detail.profile.photo_pending_url && (
-                            <Button size="sm" variant="secondary" disabled={updating} onClick={approveProfilePhoto}>Profil-Foto freigeben</Button>
+                    {/* Approval Checklist */}
+                    <div className="bg-white rounded-md p-4 border border-blue-100">
+                      <h4 className="font-medium text-sm mb-3 text-gray-900">Verifizierungs-Checkliste</h4>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          {detail.documents.has_license ? (
+                            <Badge variant="default" className="bg-green-600 border-transparent text-white">✓ Lizenz vorhanden</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="bg-red-600 text-white border-transparent">✗ Lizenz fehlt</Badge>
                           )}
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="border rounded-md p-2">
-                            <div className="text-xs text-gray-600 mb-1">Pending</div>
-                            {detail.profile.photo_pending_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={detail.profile.photo_pending_url} alt="Pending profile" className="max-h-60 w-auto rounded" />
-                            ) : (
-                              <div className="text-xs text-gray-500">Kein ausstehendes Foto</div>
-                            )}
-                            <details className="mt-2 rounded-md border bg-gray-50 open:bg-white">
-                              <summary className="cursor-pointer px-2 py-1 text-sm font-medium">Foto hochladen</summary>
-                              <div className="p-2">
-                                <Label htmlFor="profilePhoto">Profilfoto hochladen (JPG/PNG)</Label>
-                                <input
-                                  id="profilePhoto"
-                                  type="file"
-                                  accept="image/jpeg,image/png"
-                                  onChange={(e) => setProfilePhotoFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
-                                />
-                                {detail.status !== 'pending_verification' && (
-                                  <p className="mt-1 text-xs text-gray-500">Hinweis: Admin‑Upload wird sofort veröffentlicht.</p>
-                                )}
-                                <div className="mt-1">
+                        <div className="flex items-center gap-2">
+                          {detail.profile.photo_url ? (
+                            <Badge variant="default" className="bg-green-600 border-transparent text-white">✓ Foto veröffentlicht</Badge>
+                          ) : detail.profile.photo_pending_url ? (
+                            <Badge variant="secondary" className="bg-amber-500 text-white border-transparent">⚠ Foto wartet auf Freigabe</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="bg-red-600 text-white border-transparent">✗ Foto fehlt</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {detail.profile.approach_text && detail.profile.approach_text.length > 50 ? (
+                            <Badge variant="default" className="bg-green-600 border-transparent text-white">✓ Ansatz-Text vorhanden</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="bg-amber-600 text-white border-transparent">⚠ Ansatz-Text fehlt/kurz</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left column: Documents */}
+                    <div className="space-y-4">
+                      <div className="bg-white rounded-lg border p-4">
+                        <h4 className="font-semibold text-base mb-3 flex items-center gap-2">
+                          📄 Lizenz-Dokument
+                          {detail.documents.has_license && <Badge variant="outline" className="text-green-700 border-green-700">Vorhanden</Badge>}
+                        </h4>
+                        {detail.documents.has_license ? (
+                          <>
+                            <div className="border-2 border-dashed border-gray-300 rounded-md p-8 text-center bg-gray-50">
+                              <div className="text-sm text-gray-700 mb-3">
+                                📄 Lizenz-Dokument vorhanden
+                              </div>
+                              <p className="text-xs text-gray-500 mb-4">
+                                Aus Sicherheitsgründen kann das Dokument nicht inline angezeigt werden.
+                              </p>
+                              <a
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                                href={`/api/admin/therapists/${detail.id}/documents/license`}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                                Dokument in neuem Tab öffnen
+                              </a>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="border-2 border-dashed border-gray-300 rounded-md p-8 text-center">
+                            <p className="text-sm text-gray-500 mb-2">Kein Lizenz-Dokument hochgeladen</p>
+                            {detail.status === "pending_verification" && (
+                              <details className="mt-3 text-left">
+                                <summary className="cursor-pointer text-sm font-medium text-blue-700">Für Therapeut hochladen</summary>
+                                <div className="mt-2 space-y-2">
+                                  <input
+                                    id="licenseFile"
+                                    type="file"
+                                    accept="application/pdf,image/jpeg,image/png"
+                                    onChange={(e) => setLicenseFile(e.target.files?.[0] || null)}
+                                    className="text-sm"
+                                  />
                                   <Button
                                     size="sm"
-                                    variant="outline"
-                                    disabled={updating || !profilePhotoFile}
+                                    disabled={updating || !licenseFile}
                                     onClick={async () => {
-                                      if (!detail?.id || !profilePhotoFile) return;
+                                      if (!detail?.id || !licenseFile) return;
                                       try {
                                         setUpdating(true);
                                         setMessage(null);
                                         const fd = new FormData();
-                                        fd.append('profile_photo', profilePhotoFile);
-                                        let res: Response;
-                                        if (detail.status === 'pending_verification') {
-                                          // Public endpoint stores pending photo; requires no admin auth
-                                          res = await fetch(`/api/public/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
-                                        } else {
-                                          // Admin-only endpoint publishes directly
-                                          res = await fetch(`/api/admin/therapists/${detail.id}/photo`, { method: 'POST', body: fd, credentials: 'include' });
-                                        }
+                                        fd.append('psychotherapy_license', licenseFile);
+                                        const res = await fetch(`/api/public/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
                                         const json = await res.json();
                                         if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
-                                        setMessage(detail.status === 'pending_verification' ? 'Profilfoto hochgeladen' : 'Profilfoto hochgeladen und veröffentlicht');
-                                        setProfilePhotoFile(null);
+                                        setMessage('Lizenz hochgeladen');
+                                        setLicenseFile(null);
                                         await openDetail(detail.id);
-                                        await fetchTherapists();
                                       } catch (e) {
                                         const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
                                         setMessage(msg);
@@ -770,36 +702,205 @@ export default function AdminTherapistsPage() {
                                       }
                                     }}
                                   >
-                                    Foto hochladen
+                                    Hochladen
                                   </Button>
                                 </div>
-                              </div>
-                            </details>
+                              </details>
+                            )}
                           </div>
-                          <div className="border rounded-md p-2">
-                            <div className="text-xs text-gray-600 mb-1">Veröffentlicht</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right column: Profile */}
+                    <div className="space-y-4">
+                      <div className="bg-white rounded-lg border p-4">
+                        <h4 className="font-semibold text-base mb-3 flex items-center gap-2">
+                          📸 Profilfoto
+                          {detail.profile.photo_url && <Badge variant="outline" className="text-green-700 border-green-700">Veröffentlicht</Badge>}
+                          {!detail.profile.photo_url && detail.profile.photo_pending_url && <Badge variant="outline" className="text-amber-700 border-amber-700">Wartet auf Freigabe</Badge>}
+                        </h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          {/* Pending photo */}
+                          <div className="border rounded-md p-3 bg-amber-50">
+                            <div className="text-xs font-medium text-gray-700 mb-2">Zur Freigabe</div>
+                            {detail.profile.photo_pending_url ? (
+                              <div className="space-y-2">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={detail.profile.photo_pending_url} alt="Pending" className="w-full h-40 object-cover rounded" />
+                                <Button
+                                  size="sm"
+                                  className="w-full"
+                                  disabled={updating}
+                                  onClick={approveProfilePhoto}
+                                >
+                                  Jetzt freigeben
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="h-40 flex items-center justify-center bg-gray-100 rounded text-xs text-gray-500">
+                                Kein Foto
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Published photo */}
+                          <div className="border rounded-md p-3 bg-green-50">
+                            <div className="text-xs font-medium text-gray-700 mb-2">Veröffentlicht</div>
                             {detail.profile.photo_url ? (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img src={String(detail.profile.photo_url)} alt="Public profile" className="max-h-60 w-auto rounded" />
+                              <img src={String(detail.profile.photo_url)} alt="Public" className="w-full h-40 object-cover rounded" />
                             ) : (
-                              <div className="text-xs text-gray-500">Noch nicht veröffentlicht</div>
+                              <div className="h-40 flex items-center justify-center bg-gray-100 rounded text-xs text-gray-500">
+                                Noch nicht veröffentlicht
+                              </div>
                             )}
                           </div>
                         </div>
+
+                        {/* Upload new photo */}
+                        <details className="mt-3 border-t pt-3">
+                          <summary className="cursor-pointer text-sm font-medium text-blue-700">Neues Foto hochladen</summary>
+                          <div className="mt-2 space-y-2">
+                            <input
+                              id="profilePhoto"
+                              type="file"
+                              accept="image/jpeg,image/png"
+                              onChange={(e) => setProfilePhotoFile(e.target.files?.[0] || null)}
+                              className="text-sm w-full"
+                            />
+                            {detail.status !== 'pending_verification' && (
+                              <p className="text-xs text-amber-700">⚠ Admin-Upload wird sofort veröffentlicht</p>
+                            )}
+                            <Button
+                              size="sm"
+                              disabled={updating || !profilePhotoFile}
+                              onClick={async () => {
+                                if (!detail?.id || !profilePhotoFile) return;
+                                try {
+                                  setUpdating(true);
+                                  setMessage(null);
+                                  const fd = new FormData();
+                                  fd.append('profile_photo', profilePhotoFile);
+                                  let res: Response;
+                                  if (detail.status === 'pending_verification') {
+                                    res = await fetch(`/api/public/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
+                                  } else {
+                                    res = await fetch(`/api/admin/therapists/${detail.id}/photo`, { method: 'POST', body: fd, credentials: 'include' });
+                                  }
+                                  const json = await res.json();
+                                  if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
+                                  setMessage('Foto hochgeladen');
+                                  setProfilePhotoFile(null);
+                                  await openDetail(detail.id);
+                                } catch (e) {
+                                  const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
+                                  setMessage(msg);
+                                } finally {
+                                  setUpdating(false);
+                                }
+                              }}
+                            >
+                              Hochladen
+                            </Button>
+                          </div>
+                        </details>
                       </div>
                     </div>
                   </div>
+
+                  {/* Approach text - full width */}
+                  <div className="bg-white rounded-lg border p-4">
+                    <h4 className="font-semibold text-base mb-3 flex items-center gap-2">
+                      ✍️ Therapie-Ansatz
+                      {detail.profile.approach_text && detail.profile.approach_text.length > 50 && (
+                        <Badge variant="outline" className="text-green-700 border-green-700">Vorhanden</Badge>
+                      )}
+                    </h4>
+                    <div className="space-y-2">
+                      <textarea
+                        id="approach"
+                        rows={5}
+                        className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground w-full rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                        value={approachText}
+                        onChange={(e) => setApproachText(e.target.value)}
+                        maxLength={500}
+                        placeholder="Beschreibung des therapeutischen Ansatzes..."
+                      />
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>Max. 500 Zeichen</span>
+                        <span className={approachText.length > 450 ? "text-amber-600 font-medium" : ""}>{approachText.length} / 500</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Internal notes */}
+                  <details className="bg-gray-50 rounded-lg border open:bg-white">
+                    <summary className="cursor-pointer px-4 py-3 text-sm font-medium hover:bg-gray-100 rounded-lg">📝 Interne Notizen (nur für Admins sichtbar)</summary>
+                    <div className="p-4 pt-2">
+                      <textarea
+                        id="notes"
+                        rows={3}
+                        className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground w-full rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                        placeholder="Begründung bei Ablehnung oder interne Hinweise..."
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                      />
+                    </div>
+                  </details>
                 </div>
               )}
             </div>
 
-            <div className="sticky bottom-0 bg-white border-t px-4 py-3">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="text-xs text-gray-500">Drücke Esc oder klicke außerhalb zum Schließen</div>
-                <div className="flex gap-2 justify-end">
-                  <Button size="sm" variant="secondary" disabled={updating} onClick={() => updateStatus('verified')}>Freigeben</Button>
-                  <Button size="sm" variant="destructive" disabled={updating} onClick={() => updateStatus('rejected')}>Ablehnen</Button>
-                  <Button size="sm" variant="outline" disabled={updating} onClick={sendReminder}>Erinnerung senden</Button>
+            <div className="sticky bottom-0 bg-white border-t px-6 py-4 shadow-lg">
+              {message && (
+                <div className={`mb-3 p-3 rounded-md text-sm ${message.includes('fehlgeschlagen') || message.includes('Fehler') ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-green-50 text-green-800 border border-green-200'}`}>
+                  {message}
+                </div>
+              )}
+              <div className="flex flex-col gap-4">
+                {/* Photo approval checkbox - only show if there's a pending photo */}
+                {detail?.profile.photo_pending_url && !detail?.profile.photo_url && (
+                  <label className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-md cursor-pointer hover:bg-amber-100">
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 accent-green-600"
+                      checked={approvePhoto}
+                      onChange={(e) => setApprovePhoto(e.target.checked)}
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium text-sm text-gray-900">Profilfoto bei Freigabe automatisch veröffentlichen</div>
+                      <div className="text-xs text-gray-600 mt-0.5">Wenn aktiviert, wird das Foto zusammen mit der Verifizierung freigegeben</div>
+                    </div>
+                  </label>
+                )}
+                
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                  <div className="text-xs text-gray-500">
+                    <kbd className="px-2 py-1 bg-gray-100 border rounded text-xs">Esc</kbd> zum Schließen
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button size="sm" variant="outline" disabled={updating} onClick={sendReminder}>
+                      📧 Erinnerung
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="border-red-300 text-red-700 hover:bg-red-50"
+                      disabled={updating} 
+                      onClick={() => updateStatus('rejected')}
+                    >
+                      ✗ Ablehnen
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      disabled={updating} 
+                      onClick={() => updateStatus('verified')}
+                    >
+                      ✓ Freigeben {approvePhoto && detail?.profile.photo_pending_url ? '(inkl. Foto)' : ''}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
