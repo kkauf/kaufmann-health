@@ -46,7 +46,7 @@ interface PreAuthParams {
 }
 
 export function ContactModal({ therapist, contactType, open, onClose, onSuccess, preAuth, verified }: ContactModalProps & { preAuth?: PreAuthParams }) {
-  const [step, setStep] = useState<Step>('verify');
+  const [step, setStep] = useState<Step>('compose');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -61,6 +61,8 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const [reason, setReason] = useState('');
   const [message, setMessage] = useState('');
   const [sessionFormat, setSessionFormat] = useState<'online' | 'in_person' | ''>(''); // Required for booking
+  // Track whether the user has a verified session in this modal lifecycle
+  const [isVerified, setIsVerified] = useState<boolean>(false);
   
   const therapistName = `${therapist.first_name} ${therapist.last_name}`;
   const initials = `${therapist.first_name[0]}${therapist.last_name[0]}`.toUpperCase();
@@ -69,6 +71,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   useEffect(() => {
     if (open && preAuth) {
       setError(null);
+      setIsVerified(true);
       // Prefill name if provided (not shown in UI in pre-auth compose mode)
       if (preAuth.patientName) setName(preAuth.patientName);
       const greeting = `Guten Tag ${therapist.first_name}`;
@@ -101,6 +104,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         const s = json?.data;
         if (s?.verified && !cancelled) {
           setError(null);
+          setIsVerified(true);
           const userName = typeof s.name === 'string' && s.name ? s.name : '';
           if (userName) setName(userName);
           if (s.contact_method === 'email') {
@@ -158,7 +162,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     try {
       trackEvent('contact_modal_closed', { step });
     } catch {}
-    setStep('verify');
+    setStep('compose');
     setError(null);
     setName('');
     setEmail('');
@@ -167,6 +171,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     setReason('');
     setMessage('');
     setSessionFormat('');
+    setIsVerified(false);
     onClose();
   }, [onClose]);
   
@@ -250,49 +255,6 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       setLoading(false);
     }
   }, [name, contactMethod, email, phone, therapist.id, contactType, trackEvent]);
-  
-  // Verify code
-  const handleVerifyCode = useCallback(async () => {
-    setError(null);
-    setLoading(true);
-    
-    try {
-      // Normalize phone if needed
-      const contact = contactMethod === 'email' ? email : normalizePhoneNumber(phone) || phone;
-      
-      const res = await fetch('/api/public/verification/verify-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contact,
-          contact_type: contactMethod,
-          code: verificationCode,
-        }),
-      });
-      
-      const data = await res.json();
-      
-      if (!res.ok || !data.data?.verified) {
-        throw new Error('Ungültiger Code');
-      }
-      
-      // Generate pre-filled message
-      const greeting = `Guten Tag ${therapist.first_name}`;
-      const intent = contactType === 'booking'
-        ? 'ich möchte gerne einen Termin vereinbaren'
-        : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
-      const signature = name ? `\n\nViele Grüße\n${name}` : '';
-
-      setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei [${reason || 'beschreibe dein Anliegen'}] und fand dein Profil sehr ansprechend.${signature}`);
-      setStep('compose');
-      trackEvent('contact_verification_completed', { contact_method: contactMethod });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ungültiger Code');
-      trackEvent('contact_verification_failed', { contact_method: contactMethod });
-    } finally {
-      setLoading(false);
-    }
-  }, [contactMethod, email, phone, verificationCode, therapist.first_name, contactType, reason, trackEvent]);
   
   // Send message
   const handleSendMessage = useCallback(async () => {
@@ -391,7 +353,53 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     } finally {
       setLoading(false);
     }
-  }, [therapist.id, contactType, name, email, phone, contactMethod, reason, message, trackEvent, onSuccess, handleClose, preAuth]);
+  }, [therapist.id, contactType, name, email, phone, contactMethod, reason, message, sessionFormat, trackEvent, onSuccess, handleClose, preAuth]);
+  
+  // Verify code
+  const handleVerifyCode = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+    
+    try {
+      // Normalize phone if needed
+      const contact = contactMethod === 'email' ? email : normalizePhoneNumber(phone) || phone;
+      
+      const res = await fetch('/api/public/verification/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact,
+          contact_type: contactMethod,
+          code: verificationCode,
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok || !data.data?.verified) {
+        throw new Error('Ungültiger Code');
+      }
+      
+      // Generate pre-filled message
+      const greeting = `Guten Tag ${therapist.first_name}`;
+      const intent = contactType === 'booking'
+        ? 'ich möchte gerne einen Termin vereinbaren'
+        : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
+      const signature = name ? `\n\nViele Grüße\n${name}` : '';
+
+      setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei [${reason || 'beschreibe dein Anliegen'}] und fand dein Profil sehr ansprechend.${signature}`);
+      setIsVerified(true);
+      trackEvent('contact_verification_completed', { contact_method: contactMethod });
+      
+      // Auto-send message after successful verification
+      setLoading(false);
+      await handleSendMessage();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ungültiger Code');
+      trackEvent('contact_verification_failed', { contact_method: contactMethod });
+      setLoading(false);
+    }
+  }, [contactMethod, email, phone, verificationCode, therapist.first_name, contactType, reason, name, sessionFormat, message, trackEvent, handleSendMessage]);
   
   // Handle enter key submission
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -418,8 +426,8 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const renderVerifyStep = () => (
     <div className="space-y-5" onKeyDown={handleKeyDown}>
       <p className="text-sm leading-relaxed text-gray-600">
-        Um {therapistName} zu kontaktieren, verifiziere dich kurz. So schützen wir Therapeut:innen vor Spam
-        und stellen sicher, dass dir zuverlässig geantwortet werden kann. Danach schreibst und sendest du deine Nachricht.
+        Wie dürfen dich Therapeut:innen erreichen? <strong>Wir schützen vor Spam</strong> und stellen sicher,
+        dass deine Nachricht beantwortet werden kann. Deine Daten bleiben <strong>privat & DSGVO‑konform</strong>.
       </p>
       
       <div className="space-y-2">
@@ -508,7 +516,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           disabled={loading || !name.trim() || (contactMethod === 'email' ? !email.trim() : !phone.trim())}
           className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700"
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Weiter'}
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Bestätigen'}
         </Button>
       </div>
       
@@ -718,6 +726,13 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         </div>
       )}
 
+      {/* TODO: A/B test - Add time slot preferences (optional multi-select)
+          Goal: Increase commitment & perceived personalization, move toward full booking flow
+          Options: ['Morgens (8-12 Uhr)', 'Nachmittags (12-17 Uhr)', 'Abends (17-21 Uhr)', 'Wochenende', 'Bin flexibel']
+          Implementation: Optional checkboxes, store in metadata, append to message for therapist visibility
+          Benefits: Soft commitment without friction, practical value for therapists
+          Risk: Every field = potential drop-off, test impact on conversion rates */}
+
       <div className="space-y-2">
         <Label htmlFor="message" className="text-sm font-medium">Nachricht (optional)</Label>
         <Textarea
@@ -767,13 +782,23 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         >
           Abbrechen
         </Button>
-        <Button
-          onClick={handleSendMessage}
-          disabled={loading || !reason.trim() || (contactType === 'booking' && !sessionFormat)}
-          className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30"
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Nachricht senden'}
-        </Button>
+        {isVerified || preAuth ? (
+          <Button
+            onClick={handleSendMessage}
+            disabled={loading || !reason.trim() || (contactType === 'booking' && !sessionFormat)}
+            className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Nachricht senden'}
+          </Button>
+        ) : (
+          <Button
+            onClick={() => setStep('verify')}
+            disabled={loading || !reason.trim() || (contactType === 'booking' && !sessionFormat)}
+            className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Weiter'}
+          </Button>
+        )}
       </div>
     </div>
   );

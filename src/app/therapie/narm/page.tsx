@@ -139,7 +139,7 @@ export default async function NarmPage() {
                   <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">1. Kontakt (Prä- und perinatal)</h3>
                   <ul className="mt-2 ml-4 list-disc space-y-1.5 text-sm sm:text-base text-gray-700">
                     <li><strong>Kernbedürfnis:</strong> In Kontakt sein mit sich selbst und anderen</li>
-                    <li><strong>Wenn frustriert:</strong> „Ich existiere nicht wirklich"</li>
+                    <li><strong>Wenn frustriert:</strong> &bdquo;Ich existiere nicht wirklich&ldquo;</li>
                     <li><strong>Adaptive Strategie:</strong> Rückzug, Dissoziation, Leben im Kopf</li>
                     <li><strong>Körperlich:</strong> Schwache Erdung, fragmentiertes Körpergefühl</li>
                   </ul>
@@ -151,7 +151,7 @@ export default async function NarmPage() {
                   <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">2. Einstimmung (0–6 Monate)</h3>
                   <ul className="mt-2 ml-4 list-disc space-y-1.5 text-sm sm:text-base text-gray-700">
                     <li><strong>Kernbedürfnis:</strong> Physische und emotionale Bedürfnisse erfüllt bekommen</li>
-                    <li><strong>Wenn frustriert:</strong> „Meine Bedürfnisse zählen nicht"</li>
+                    <li><strong>Wenn frustriert:</strong> &bdquo;Meine Bedürfnisse zählen nicht&ldquo;</li>
                     <li><strong>Adaptive Strategie:</strong> Bedürfnislosigkeit, Abhängigkeit oder extreme Unabhängigkeit</li>
                     <li><strong>Körperlich:</strong> Themen mit Hunger, Sättigung, Selbstfürsorge</li>
                   </ul>
@@ -163,7 +163,7 @@ export default async function NarmPage() {
                   <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">3. Vertrauen (6–18 Monate)</h3>
                   <ul className="mt-2 ml-4 list-disc space-y-1.5 text-sm sm:text-base text-gray-700">
                     <li><strong>Kernbedürfnis:</strong> Gesunde Abhängigkeit und Vertrauen</li>
-                    <li><strong>Wenn frustriert:</strong> „Ich kann niemandem trauen"</li>
+                    <li><strong>Wenn frustriert:</strong> &bdquo;Ich kann niemandem trauen&ldquo;</li>
                     <li><strong>Adaptive Strategie:</strong> Kontrolle, Manipulation oder Unterwerfung</li>
                     <li><strong>Körperlich:</strong> Chronische Muskelspannung, Hypervigilanz</li>
                   </ul>
@@ -175,7 +175,7 @@ export default async function NarmPage() {
                   <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">4. Autonomie (18 Monate – 3 Jahre)</h3>
                   <ul className="mt-2 ml-4 list-disc space-y-1.5 text-sm sm:text-base text-gray-700">
                     <li><strong>Kernbedürfnis:</strong> Eigenen Willen ausdrücken ohne Liebesverlust</li>
-                    <li><strong>Wenn frustriert:</strong> „Ich darf nicht ich selbst sein"</li>
+                    <li><strong>Wenn frustriert:</strong> &bdquo;Ich darf nicht ich selbst sein&ldquo;</li>
                     <li><strong>Adaptive Strategie:</strong> Überanpassung, passive Aggression</li>
                     <li><strong>Körperlich:</strong> Gehaltene Wut im Körper, chronische Verspannungen</li>
                   </ul>
@@ -187,7 +187,7 @@ export default async function NarmPage() {
                   <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">5. Liebe/Sexualität (3–6 Jahre & Pubertät)</h3>
                   <ul className="mt-2 ml-4 list-disc space-y-1.5 text-sm sm:text-base text-gray-700">
                     <li><strong>Kernbedürfnis:</strong> Offenes, liebevolles Herz mit integrierter Sexualität</li>
-                    <li><strong>Wenn frustriert:</strong> „Ich kann nicht gleichzeitig lieben und begehren"</li>
+                    <li><strong>Wenn frustriert:</strong> &bdquo;Ich kann nicht gleichzeitig lieben und begehren&ldquo;</li>
                     <li><strong>Adaptive Strategie:</strong> Spaltung zwischen Herz und Sexualität</li>
                     <li><strong>Körperlich:</strong> Trennung zwischen oberem und unterem Körper</li>
                   </ul>
