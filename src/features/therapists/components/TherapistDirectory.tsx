@@ -126,15 +126,20 @@ export function TherapistDirectory() {
     try {
       const url = new URL(window.location.href);
       const confirm = url.searchParams.get('confirm');
-      if (confirm === '1' && !url.searchParams.get('contact')) {
+      const hasContact = url.searchParams.get('contact');
+      console.log('[TherapistDirectory] Checking for email confirm return:', { confirm, hasContact });
+      if (confirm === '1' && !hasContact) {
         const raw = sessionStorage.getItem('kh_dir_contact_draft');
+        console.log('[TherapistDirectory] Draft in storage:', raw);
         if (raw) {
           const d = JSON.parse(raw) as { therapist_id: string; contact_type?: 'booking' | 'consultation' };
           const th = therapists.find(x => x.id === d.therapist_id) || null;
+          console.log('[TherapistDirectory] Found therapist:', { therapistId: d.therapist_id, found: !!th });
           if (th) {
             setAutoContactTherapist(th);
             setAutoContactType(d.contact_type || 'booking');
             setAutoContactOpen(true);
+            console.log('[TherapistDirectory] Auto-opening ContactModal');
           }
         }
         // Clean URL so we don't repeat on navigation
@@ -144,8 +149,8 @@ export function TherapistDirectory() {
         const cleaned = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ''}${url.hash}`;
         window.history.replaceState({}, '', cleaned);
       }
-    } catch {
-      // ignore
+    } catch (e) {
+      console.error('[TherapistDirectory] Email confirm fallback error:', e);
     }
   }, [loading, therapists]);
 

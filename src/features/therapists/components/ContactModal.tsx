@@ -148,7 +148,10 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     if (!open || preAuth || restoredDraft) return;
     try {
       const raw = sessionStorage.getItem('kh_dir_contact_draft');
-      if (!raw) return;
+      if (!raw) {
+        console.log('[ContactModal] No draft found in sessionStorage');
+        return;
+      }
       const d = JSON.parse(raw) as {
         therapist_id: string;
         contact_type: 'booking' | 'consultation';
@@ -156,14 +159,21 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         message?: string;
         session_format?: 'online' | 'in_person';
       };
-      if (d.therapist_id !== therapist.id || d.contact_type !== contactType) return;
+      console.log('[ContactModal] Draft found:', { draft: d, currentTherapist: therapist.id, currentType: contactType });
+      if (d.therapist_id !== therapist.id || d.contact_type !== contactType) {
+        console.log('[ContactModal] Draft mismatch, skipping restore');
+        return;
+      }
       if (d.reason) setReason(d.reason);
       if (d.session_format) setSessionFormat(d.session_format);
       if (d.message) {
         setMessage(d.message);
       }
+      console.log('[ContactModal] Draft restored:', { reason: d.reason, format: d.session_format, hasMessage: !!d.message });
       setRestoredDraft(true);
-    } catch {}
+    } catch (e) {
+      console.error('[ContactModal] Draft restore error:', e);
+    }
   }, [open, preAuth, therapist.id, contactType, restoredDraft]);
 
   
@@ -179,6 +189,26 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       } catch {}
     }
   }, [open, therapist.id, contactType]);
+
+  // Persist draft to sessionStorage whenever compose fields change (for email confirm return)
+  useEffect(() => {
+    if (!open || preAuth) return;
+    // Only save if user has started composing
+    if (!reason && !message && !sessionFormat) return;
+    try {
+      const draft = {
+        therapist_id: therapist.id,
+        contact_type: contactType,
+        reason,
+        message,
+        session_format: sessionFormat || undefined,
+      };
+      sessionStorage.setItem('kh_dir_contact_draft', JSON.stringify(draft));
+      console.log('[ContactModal] Draft saved to sessionStorage:', draft);
+    } catch (e) {
+      console.error('[ContactModal] Failed to save draft:', e);
+    }
+  }, [open, preAuth, therapist.id, contactType, reason, message, sessionFormat]);
   
   // Track events
   const trackEvent = useCallback((type: string, props?: Record<string, unknown>) => {
@@ -303,8 +333,10 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   
   // Send message
   const handleSendMessage = useCallback(async () => {
+    console.log('[ContactModal] handleSendMessage called:', { reason: reason.trim(), message: message.trim(), sessionFormat, contactType });
     // Require either reason OR message (not both)
     if (!reason.trim() && !message.trim()) {
+      console.log('[ContactModal] Validation failed: no reason or message');
       setError('Bitte beschreibe dein Anliegen oder schreibe eine Nachricht');
       return;
     }
@@ -406,10 +438,14 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   // Auto-send once verified and draft restored (email confirm return path)
   useEffect(() => {
     if (!open || preAuth) return;
+    console.log('[ContactModal] Auto-send check:', { isVerified, restoredDraft, autoSendAttempted });
     if (isVerified && restoredDraft && !autoSendAttempted) {
+      console.log('[ContactModal] Triggering auto-send');
       setAutoSendAttempted(true);
       (async () => {
-        try { await handleSendMessage(); } catch {}
+        try { await handleSendMessage(); } catch (e) {
+          console.error('[ContactModal] Auto-send failed:', e);
+        }
       })();
     }
   }, [open, preAuth, isVerified, restoredDraft, autoSendAttempted, handleSendMessage]);
