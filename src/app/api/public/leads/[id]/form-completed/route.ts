@@ -223,12 +223,17 @@ export async function POST(req: Request) {
       await logError('api.leads.form_completed', e, { stage: 'load_form_session', id, fsid });
     }
 
-    // Persist metadata and promote campaign backfills (if any) into first-class columns
     const updatePayload: Record<string, unknown> = { metadata };
     if (backfillName) updatePayload['name'] = backfillName;
-    // Prefer backfill from form session; otherwise, use referrer-derived fallback
-    if (backfillCs || refCampaignSource) updatePayload['campaign_source'] = backfillCs || refCampaignSource;
-    if (backfillCv || refCampaignVariant) updatePayload['campaign_variant'] = backfillCv || refCampaignVariant;
+    const proposedSource = backfillCs || refCampaignSource;
+    const proposedVariant = backfillCv || refCampaignVariant;
+    const currentSource = (person.campaign_source || '').toLowerCase();
+    if (proposedSource && (!currentSource || (currentSource === '/fragebogen' && proposedSource !== '/fragebogen'))) {
+      updatePayload['campaign_source'] = proposedSource;
+    }
+    if (!person.campaign_variant && proposedVariant) {
+      updatePayload['campaign_variant'] = proposedVariant;
+    }
 
     const { error: upErr } = await supabaseServer
       .from('people')

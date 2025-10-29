@@ -77,7 +77,7 @@ export default function AdminLeadsPage() {
 
   const [therCity, setTherCity] = useState('');
   const [therSessionPref, setTherSessionPref] = useState<string>('');
-  const [therSpecialization, setTherSpecialization] = useState<string>('');
+  const [therSpecializations, setTherSpecializations] = useState<string[]>([]);
   const [loadingTherapists, setLoadingTherapists] = useState(false);
   const [therapists, setTherapists] = useState<Person[]>([]);
   const [therError, setTherError] = useState<string | null>(null);
@@ -132,9 +132,7 @@ export default function AdminLeadsPage() {
       // For online preference, clear city to show all by default; otherwise prefill patient's city if present
       if (pref === 'online') setTherCity('');
       else if (meta.city) setTherCity(String(meta.city));
-      // Do not prefill a single specialization; allow ANY of patient's specializations by default
-      // Also clear any previously selected specialization override
-      setTherSpecialization('');
+      setTherSpecializations([]);
     }
   }, [selectedPatient]);
 
@@ -348,15 +346,15 @@ export default function AdminLeadsPage() {
           ? String(fallbackMeta.session_preferences[0])
           : (fallbackMeta.session_preference ? String(fallbackMeta.session_preference) : '')
       );
-      const specialization = therSpecialization || '';
+      const specs = Array.isArray(therSpecializations) ? therSpecializations : [];
 
       if (sessionPref) url.searchParams.set('session_preference', sessionPref);
       // If admin did not override city and patient's preference is online, omit city filter
       if (city && !(sessionPref === 'online' && !therCity)) {
         url.searchParams.set('city', city);
       }
-      if (specialization) {
-        url.searchParams.set('specialization', specialization);
+      if (specs.length > 0) {
+        for (const s of specs) url.searchParams.append('specialization', s);
       }
       url.searchParams.set('limit', '200');
       const res = await fetch(url.toString(), { credentials: 'include' });
@@ -370,7 +368,7 @@ export default function AdminLeadsPage() {
     } finally {
       setLoadingTherapists(false);
     }
-  }, [therCity, therSessionPref, therSpecialization, selectedPatient]);
+  }, [therCity, therSessionPref, therSpecializations, selectedPatient]);
 
   async function createMatch(therapistId: string) {
     if (!selectedPatient) return;
@@ -543,9 +541,7 @@ export default function AdminLeadsPage() {
     for (const p of base) {
       (deprioritizedPatients.has(p.id) ? noAction : needs).push(p);
     }
-    // Strict filtering when "Handlungsbedarf" is selected: hide non-actionable leads
     if (viewFilter === 'action') return needs;
-    // Otherwise, show all with needs first
     return [...needs, ...noAction];
   }, [leads, deprioritizedPatients, hideLost, viewFilter]);
 
@@ -577,18 +573,18 @@ export default function AdminLeadsPage() {
                 </SelectContent>
               </Select>
             </div>
-            {/* EARTH-131: View filter */}
             <div className="space-y-1">
-              <Label>Ansicht</Label>
-              <Select value={viewFilter} onValueChange={(v) => setViewFilter(v as 'action' | 'all')}>
-                <SelectTrigger className="min-w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="action">Handlungsbedarf</SelectItem>
-                  <SelectItem value="all">Alle</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="only-action">Ansicht</Label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  id="only-action"
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={viewFilter === 'action'}
+                  onChange={(e) => setViewFilter(e.target.checked ? 'action' : 'all')}
+                />
+                <span>Nur Handlungsbedarf</span>
+              </label>
             </div>
             <div className="space-y-1">
               <Label htmlFor="hide-lost">Ansicht</Label>
@@ -779,20 +775,30 @@ export default function AdminLeadsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
-              <Label>Spezialisierung</Label>
-              <Select value={therSpecialization || 'any'} onValueChange={(v) => setTherSpecialization(v === 'any' ? '' : v)}>
-                <SelectTrigger className="min-w-48">
-                  <SelectValue placeholder="Beliebig" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Beliebig</SelectItem>
-                  <SelectItem value="narm">NARM</SelectItem>
-                  <SelectItem value="somatic-experiencing">Somatic Experiencing</SelectItem>
-                  <SelectItem value="hakomi">Hakomi</SelectItem>
-                  <SelectItem value="core-energetics">Core Energetics</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-1 min-w-56">
+              <Label>Spezialisierungen</Label>
+              <div className="flex flex-col gap-1 text-sm p-2 border rounded-md">
+                {[{v:'narm', l:'NARM'}, {v:'somatic-experiencing', l:'Somatic Experiencing'}, {v:'hakomi', l:'Hakomi'}, {v:'core-energetics', l:'Core Energetics'}].map(({v,l}) => (
+                  <label key={v} className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={therSpecializations.includes(v)}
+                      onChange={(e) => {
+                        setTherSpecializations((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(v); else next.delete(v);
+                          return Array.from(next);
+                        });
+                      }}
+                    />
+                    <span>{l}</span>
+                  </label>
+                ))}
+                {therSpecializations.length === 0 && (
+                  <span className="text-xs text-gray-500">Beliebig</span>
+                )}
+              </div>
             </div>
             <div className="space-y-1">
               <Label htmlFor="only-perfect">Ansicht</Label>
