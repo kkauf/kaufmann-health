@@ -3,9 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import FaqAccordion from "@/components/FaqAccordion";
 import { FinalCtaSection } from "@/features/landing/components/FinalCtaSection";
 import { TherapistTeaserSection } from "@/features/landing/components/TherapistTeaserSection";
-import { PrivacySelfPaySection } from "@/features/landing/components/PrivacySelfPaySection";
-import RelatedTreatments from "@/features/therapy/components/RelatedTreatments";
-import { Heart, Users, Brain, CheckCircle2, Zap } from "lucide-react";
+import { Heart, Users, Brain, CheckCircle2, Target } from "lucide-react";
 import RevealContainer from "@/components/RevealContainer";
 import { MODALITIES } from "@/features/therapies/modalityConfig";
 import { HeroNoForm } from "@/features/landing/components/HeroNoForm";
@@ -103,6 +101,19 @@ export default async function CoreEnergeticsPage() {
           title="Core Energetics: Körperorientierte Charakterarbeit"
           subtitle="Tiefenpsychologische Körpertherapie nach John Pierrakos – Körper, Emotionen und spirituelle Dimension integrieren"
         />
+
+        {/* Prominent Logo */}
+        <div className="mt-8 sm:mt-12 flex justify-center">
+          <div className="inline-flex items-center gap-4 rounded-2xl border border-fuchsia-200/60 bg-gradient-to-br from-white to-fuchsia-50/30 px-6 sm:px-8 py-4 sm:py-5 shadow-lg">
+            <div className="rounded-xl bg-gradient-to-br from-fuchsia-50 to-fuchsia-100/60 p-3 sm:p-4 text-fuchsia-600 shadow-sm">
+              <Target className="h-8 w-8 sm:h-10 sm:w-10" aria-hidden />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Core Energetics</h1>
+              <p className="text-sm sm:text-base text-fuchsia-700 font-medium">Körperorientierte Charakterarbeit</p>
+            </div>
+          </div>
+        </div>
 
         <section aria-labelledby="what-narm-heading" className="mt-14 sm:mt-20 lg:mt-24">
           <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10">

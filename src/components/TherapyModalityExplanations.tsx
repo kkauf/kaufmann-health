@@ -60,11 +60,9 @@ export default function TherapyModalityExplanations() {
               Empfindungen wird das Nervensystem behutsam entladen, sodass festgehaltene Energie wieder in Fluss kommt.
             </p>
             <a
-              href="https://traumahealing.org/"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/therapie/somatic-experiencing"
               className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-amber-600 hover:text-amber-700 transition-colors duration-150"
-              aria-label="Mehr über Somatic Experiencing erfahren (öffnet in neuem Tab)"
+              aria-label="Mehr über Somatic Experiencing erfahren"
             >
               Mehr erfahren
               <ExternalLink className="h-4 w-4" aria-hidden />
@@ -86,11 +84,9 @@ export default function TherapyModalityExplanations() {
               In respektvoller, langsamer Arbeit entstehen neue Erfahrungen, die alte Überzeugungen sanft verändern.
             </p>
             <a
-              href="https://hakomi.de/"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/therapie/hakomi"
               className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors duration-150"
-              aria-label="Mehr über Hakomi erfahren (öffnet in neuem Tab)"
+              aria-label="Mehr über Hakomi erfahren"
             >
               Mehr erfahren
               <ExternalLink className="h-4 w-4" aria-hidden />
@@ -112,11 +108,9 @@ export default function TherapyModalityExplanations() {
               Bewegung werden festgehaltene Spannungen gelöst und Lebendigkeit sowie Kontaktfähigkeit gestärkt.
             </p>
             <a
-              href="https://coreenergetics.nl/en/core-energetics/"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/therapie/core-energetics"
               className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-fuchsia-600 hover:text-fuchsia-700 transition-colors duration-150"
-              aria-label="Mehr über Core Energetics erfahren (öffnet in neuem Tab)"
+              aria-label="Mehr über Core Energetics erfahren"
             >
               Mehr erfahren
               <ExternalLink className="h-4 w-4" aria-hidden />

@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import FaqAccordion from "@/components/FaqAccordion";
 import { FinalCtaSection } from "@/features/landing/components/FinalCtaSection";
 import { TherapistTeaserSection } from "@/features/landing/components/TherapistTeaserSection";
-import { Activity, Brain, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { Activity, Brain, ShieldCheck, CheckCircle2, Shell } from "lucide-react";
 import RevealContainer from "@/components/RevealContainer";
 import { MODALITIES } from "@/features/therapies/modalityConfig";
 import { HeroNoForm } from "@/features/landing/components/HeroNoForm";
@@ -106,6 +106,19 @@ export default async function SomaticExperiencingPage() {
           title="Somatic Experiencing: Trauma lösen über das Nervensystem"
           subtitle="Die wissenschaftlich fundierte Methode von Dr. Peter Levine – sanft, sicher und ohne Retraumatisierung"
         />
+
+        {/* Prominent Logo */}
+        <div className="mt-8 sm:mt-12 flex justify-center">
+          <div className="inline-flex items-center gap-4 rounded-2xl border border-amber-200/60 bg-gradient-to-br from-white to-amber-50/30 px-6 sm:px-8 py-4 sm:py-5 shadow-lg">
+            <div className="rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/60 p-3 sm:p-4 text-amber-600 shadow-sm">
+              <Shell className="h-8 w-8 sm:h-10 sm:w-10" aria-hidden />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Somatic Experiencing</h1>
+              <p className="text-sm sm:text-base text-amber-700 font-medium">(SE)</p>
+            </div>
+          </div>
+        </div>
 
         <section aria-labelledby="what-se-heading" className="mt-14 sm:mt-20 lg:mt-24">
           <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10">

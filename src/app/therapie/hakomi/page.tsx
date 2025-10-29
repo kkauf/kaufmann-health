@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import FaqAccordion from "@/components/FaqAccordion";
 import { FinalCtaSection } from "@/features/landing/components/FinalCtaSection";
 import { TherapistTeaserSection } from "@/features/landing/components/TherapistTeaserSection";
-import { Heart, Users, Brain, CheckCircle2 } from "lucide-react";
+import { Heart, Users, Brain, CheckCircle2, Wind } from "lucide-react";
 import RevealContainer from "@/components/RevealContainer";
 import { MODALITIES } from "@/features/therapies/modalityConfig";
 import { HeroNoForm } from "@/features/landing/components/HeroNoForm";
@@ -102,6 +102,19 @@ export default async function HakomiPage() {
           title="Hakomi: Achtsamkeitsbasierte Körpertherapie"
           subtitle="Unbewusste Überzeugungen sanft erkunden und transformieren – mit Achtsamkeit, Gewaltlosigkeit und Loving Presence"
         />
+
+        {/* Prominent Logo */}
+        <div className="mt-8 sm:mt-12 flex justify-center">
+          <div className="inline-flex items-center gap-4 rounded-2xl border border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30 px-6 sm:px-8 py-4 sm:py-5 shadow-lg">
+            <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 p-3 sm:p-4 text-emerald-600 shadow-sm">
+              <Wind className="h-8 w-8 sm:h-10 sm:w-10" aria-hidden />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Hakomi</h1>
+              <p className="text-sm sm:text-base text-emerald-700 font-medium">Achtsamkeitsbasierte Körpertherapie</p>
+            </div>
+          </div>
+        </div>
 
         <section aria-labelledby="what-narm-heading" className="mt-14 sm:mt-20 lg:mt-24">
           <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10">

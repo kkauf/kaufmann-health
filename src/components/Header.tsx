@@ -39,8 +39,8 @@ export default function Header() {
       <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150 whitespace-nowrap" href="/therapeuten">
         Unsere Therapeuten
       </Link>
-      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150 whitespace-nowrap" href="/start">
-        Für Klient:innen
+      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150 whitespace-nowrap" href="/start#modalities">
+        Therapieverfahren
       </Link>
       <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150 whitespace-nowrap" href="/fuer-therapeuten">
         Für Therapeut:innen
@@ -57,7 +57,7 @@ export default function Header() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex h-16 md:h-18 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="inline-flex items-center hover:opacity-80 transition-opacity duration-200" aria-label="Kaufmann Health Startseite">
+          <Link href="/start" className="inline-flex items-center hover:opacity-80 transition-opacity duration-200" aria-label="Kaufmann Health Startseite">
             <Image
               src="/logos/Health Logos - black/Kaufmann_health_logo.svg"
               alt="Kaufmann Health"
@@ -144,10 +144,10 @@ export default function Header() {
               </Link>
               <Link
                 onClick={() => setOpen(false)}
-                href="/start"
+                href="/start#modalities"
                 className="px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors"
               >
-                Für Klient:innen
+                Therapieverfahren
               </Link>
               <Link
                 onClick={() => setOpen(false)}
