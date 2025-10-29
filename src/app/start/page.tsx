@@ -47,6 +47,10 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
   // Test 1 (Browse vs Submit): decide CTA routing from raw variant param without changing copy
   const rawVariant = typeof (params?.variant) === 'string' ? (params!.variant as string).toLowerCase() : '';
   const isBrowse = rawVariant === 'browse';
+  // Preserve variant when moving into the questionnaire so downstream attribution can detect origin
+  const fragebogenHref = `/fragebogen${rawVariant ? `?variant=${encodeURIComponent(rawVariant)}` : ''}`;
+  // Preserve variant when navigating to the directory so the variant survives into /therapeuten
+  const therapeutenHref = `/therapeuten${rawVariant ? `?variant=${encodeURIComponent(rawVariant)}` : ''}`;
   
   // Variant A: Body-Oriented Specialist
   const bodyOrientedCopy = {
@@ -164,7 +168,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
         title={copy.hero.title}
         subtitle={copy.hero.subtitle}
         ctaLabel={isBrowse ? 'Therapeut:innen ansehen' : 'Jetzt Therapeut:in finden'}
-        ctaHref={isBrowse ? '/therapeuten' : '/fragebogen'}
+        ctaHref={isBrowse ? therapeutenHref : fragebogenHref}
         backgroundSrc="/images/hero.jpg"
       />
 
@@ -196,7 +200,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
         />
         <div className="mt-8 sm:mt-10 text-center">
           <CtaLink
-            href="/therapeuten"
+            href={therapeutenHref}
             eventType="cta_click"
             eventId="start-therapist-teaser-view-all"
             data-cta="view-all-therapists"
@@ -217,12 +221,12 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
           ? 'Stöbere im Verzeichnis. Profil ansehen und direkt Kontakt aufnehmen.'
           : 'Fülle unseren 5-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten-Vorschläge.'}
         buttonLabel={isBrowse ? 'Therapeut:innen ansehen' : 'Jetzt Therapeut:in finden'}
-        targetId={isBrowse ? '/therapeuten' : '/fragebogen'}
+        targetId={isBrowse ? therapeutenHref : fragebogenHref}
         align="center"
         variant="tinted"
         showAvailabilityNote={false}
         withEntryOptions={true}
-        targetBasePath={isBrowse ? '/therapeuten' : '/fragebogen'}
+        targetBasePath={isBrowse ? therapeutenHref : fragebogenHref}
       />
 
       {/* FAQ */}

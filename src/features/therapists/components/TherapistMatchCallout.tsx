@@ -1,5 +1,7 @@
 'use client';
 
+import React from 'react';
+
 import { Button } from '@/components/ui/button';
 import CtaLink from '@/components/CtaLink';
 import Image from 'next/image';
@@ -9,6 +11,29 @@ import Image from 'next/image';
  * Placed at the top of the therapeuten directory to offer help without being intrusive.
  */
 export function TherapistMatchCallout() {
+  const [href, setHref] = React.useState<string>('/fragebogen');
+  React.useEffect(() => {
+    try {
+      let v: string | null = null;
+      // Prefer current URL params
+      try {
+        const sp = new URLSearchParams(window.location.search);
+        v = sp.get('variant') || sp.get('v');
+      } catch {}
+      // Fallback to document.referrer (user likely arrived from /start?variant=...)
+      if (!v) {
+        try {
+          const ref = document.referrer || '';
+          if (ref) {
+            const u = new URL(ref);
+            v = u.searchParams.get('variant') || u.searchParams.get('v');
+          }
+        } catch {}
+      }
+      setHref(`/fragebogen${v ? `?variant=${encodeURIComponent(v)}` : ''}`);
+    } catch {}
+  }, []);
+
   return (
     <section
       aria-labelledby="match-callout-heading"
@@ -54,7 +79,7 @@ export function TherapistMatchCallout() {
             className="w-full sm:w-auto h-11 px-5 text-sm sm:text-base font-semibold shadow-md shadow-emerald-600/10 hover:shadow-lg hover:shadow-emerald-600/20 transition-all duration-200"
           >
             <CtaLink
-              href="/fragebogen"
+              href={href}
               eventType="cta_click"
               eventId="therapeuten-callout-fragebogen"
               aria-label="Jetzt Therapeut:in finden"
