@@ -99,17 +99,33 @@ export async function POST(req: NextRequest) {
           // Check if person already exists for this phone number
           const { data: existing } = await supabaseServer
             .from('people')
-            .select('id, name')
+            .select('id, name, metadata')
             .eq('phone_number', normalized)
             .eq('type', 'patient')
             .single();
 
           if (existing) {
-            // Update name if not already set or if different
+            // Update name and persist draft_contact if provided
+            const updateData: Record<string, unknown> = {};
             if (!existing.name || existing.name !== name) {
+              updateData.name = name;
+            }
+            if (draft_contact) {
+              const meta = (existing.metadata as Record<string, unknown>) || {};
+              meta['draft_contact'] = draft_contact;
+              updateData.metadata = meta;
+              try {
+                await ServerAnalytics.trackEventFromRequest(req, {
+                  type: 'draft_contact_stored',
+                  source: 'api.verification.send-code',
+                  props: { via: 'phone', therapist_id: draft_contact.therapist_id, contact_type: draft_contact.contact_type },
+                });
+              } catch {}
+            }
+            if (Object.keys(updateData).length > 0) {
               await supabaseServer
                 .from('people')
-                .update({ name })
+                .update(updateData)
                 .eq('id', existing.id);
             }
           } else {
@@ -121,6 +137,13 @@ export async function POST(req: NextRequest) {
             // Store draft contact data if provided (therapist directory flow)
             if (draft_contact) {
               metadata.draft_contact = draft_contact;
+              try {
+                await ServerAnalytics.trackEventFromRequest(req, {
+                  type: 'draft_contact_stored',
+                  source: 'api.verification.send-code',
+                  props: { via: 'phone', therapist_id: draft_contact.therapist_id, contact_type: draft_contact.contact_type },
+                });
+              } catch {}
             }
             await supabaseServer
               .from('people')
@@ -244,6 +267,16 @@ export async function POST(req: NextRequest) {
           const meta = (existing[0].metadata as Record<string, unknown>) || {};
           meta['confirm_token'] = token;
           meta['confirm_sent_at'] = new Date().toISOString();
+          if (draft_contact) {
+            meta['draft_contact'] = draft_contact;
+            try {
+              await ServerAnalytics.trackEventFromRequest(req, {
+                type: 'draft_contact_stored',
+                source: 'api.verification.send-code',
+                props: { via: 'email', therapist_id: draft_contact.therapist_id, contact_type: draft_contact.contact_type },
+              });
+            } catch {}
+          }
 
           // Prepare update data: always update metadata and status
           const updateData: Record<string, unknown> = {
@@ -280,6 +313,13 @@ export async function POST(req: NextRequest) {
           // Store draft contact data if provided (therapist directory flow)
           if (draft_contact) {
             metadata.draft_contact = draft_contact;
+            try {
+              await ServerAnalytics.trackEventFromRequest(req, {
+                type: 'draft_contact_stored',
+                source: 'api.verification.send-code',
+                props: { via: 'email', therapist_id: draft_contact.therapist_id, contact_type: draft_contact.contact_type },
+              });
+            } catch {}
           }
           const insertData: Record<string, unknown> = {
             email: contact,
@@ -322,6 +362,13 @@ export async function POST(req: NextRequest) {
         // Store draft contact data if provided (therapist directory flow)
         if (draft_contact) {
           meta['draft_contact'] = draft_contact;
+          try {
+            await ServerAnalytics.trackEventFromRequest(req, {
+              type: 'draft_contact_stored',
+              source: 'api.verification.send-code',
+              props: { via: 'email', therapist_id: draft_contact.therapist_id, contact_type: draft_contact.contact_type },
+            });
+          } catch {}
         }
 
         // Prepare update data: always update metadata and status

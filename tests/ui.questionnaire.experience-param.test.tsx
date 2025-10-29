@@ -1,15 +1,18 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { act } from 'react';
 import SignupWizard from '@/features/leads/components/SignupWizard';
 
 function render(ui: React.ReactElement) {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
-  root.render(ui);
-  return { container, unmount: () => root.unmount() };
+  act(() => {
+    root.render(ui);
+  });
+  return { container, unmount: () => act(() => root.unmount()) };
 }
 
 // Mock next/navigation
@@ -20,6 +23,7 @@ vi.mock('next/navigation', () => ({
 
 describe('EARTH-209: SignupWizard Experience Param Integration', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     vi.clearAllMocks();
     mockSearchParams.delete('experience');
     // Clear localStorage
@@ -33,13 +37,19 @@ describe('EARTH-209: SignupWizard Experience Param Integration', () => {
     );
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('pre-fills therapy_experience=has_experience when experience=yes param is present', async () => {
     mockSearchParams.set('experience', 'yes');
     
     const { container, unmount } = render(<SignupWizard />);
     
     try {
-      await new Promise((r) => setTimeout(r, 100));
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
       // Find the selected button (has emerald background)
       const selectedButton = container.querySelector('.bg-emerald-50');
       expect(selectedButton).toBeTruthy();
@@ -55,7 +65,9 @@ describe('EARTH-209: SignupWizard Experience Param Integration', () => {
     const { container, unmount } = render(<SignupWizard />);
     
     try {
-      await new Promise((r) => setTimeout(r, 100));
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
       const selectedButton = container.querySelector('.bg-emerald-50');
       expect(selectedButton).toBeTruthy();
       expect(selectedButton?.textContent).toContain('Nein, dies wäre meine erste Therapie');
@@ -70,7 +82,9 @@ describe('EARTH-209: SignupWizard Experience Param Integration', () => {
     const { container, unmount } = render(<SignupWizard />);
     
     try {
-      await new Promise((r) => setTimeout(r, 100));
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
       const selectedButton = container.querySelector('.bg-emerald-50');
       expect(selectedButton).toBeTruthy();
       expect(selectedButton?.textContent).toContain('Bin mir nicht sicher');
@@ -85,7 +99,9 @@ describe('EARTH-209: SignupWizard Experience Param Integration', () => {
     const { container, unmount } = render(<SignupWizard />);
     
     try {
-      await new Promise((r) => setTimeout(r, 100));
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
       // No button should be selected
       const selectedButton = container.querySelector('.bg-emerald-50');
       expect(selectedButton).toBeNull();
@@ -100,7 +116,9 @@ describe('EARTH-209: SignupWizard Experience Param Integration', () => {
     const { container, unmount } = render(<SignupWizard />);
     
     try {
-      await new Promise((r) => setTimeout(r, 100));
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
       // No button should be selected initially
       const selectedButton = container.querySelector('.bg-emerald-50');
       expect(selectedButton).toBeNull();
@@ -116,7 +134,9 @@ describe('EARTH-209: SignupWizard Experience Param Integration', () => {
     
     try {
       // Wait for component to mount and prefill (100ms), then auto-advance (800ms + buffer)
-      await new Promise((r) => setTimeout(r, 1000));
+      await act(async () => {
+        vi.advanceTimersByTime(1000);
+      });
       // Should be on step 2 (Timeline) - check for unique step 2 text
       expect(container.textContent).toContain('Wann möchtest du idealerweise beginnen');
       expect(container.textContent).toContain('Innerhalb der nächsten Woche');
@@ -132,7 +152,9 @@ describe('EARTH-209: SignupWizard Experience Param Integration', () => {
     
     try {
       // Wait for component to mount and prefill (100ms), then auto-advance (800ms + buffer)
-      await new Promise((r) => setTimeout(r, 1000));
+      await act(async () => {
+        vi.advanceTimersByTime(1000);
+      });
       // Should be on step 2 (Timeline) - check for unique step 2 text
       expect(container.textContent).toContain('Wann möchtest du idealerweise beginnen');
       expect(container.textContent).toContain('Innerhalb der nächsten Woche');
@@ -148,7 +170,9 @@ describe('EARTH-209: SignupWizard Experience Param Integration', () => {
     
     try {
       // Wait same duration
-      await new Promise((r) => setTimeout(r, 800));
+      await act(async () => {
+        vi.advanceTimersByTime(800);
+      });
       // Should still be on step 1, showing therapy_type question
       expect(container.textContent).toContain('Welche Art von Therapie war/ist es');
     } finally {

@@ -188,7 +188,7 @@ export default async function KoerpertherapiePage() {
           subtitle="Körperorientierte Therapie (auch somatische Therapie genannt) arbeitet dort, wo Trauma und Stress im Nervensystem gespeichert sind – wissenschaftlich fundiert, professionell und ohne Esoterik."
           // use default background image with blur overlay
           valueProps={[]}
-          backgroundBlurClass="object-cover scale-105 blur-[4px]"
+          backgroundBlurClass="object-cover scale-105 blur-[6px]"
           icon={
             <div className="flex items-center gap-4 sm:gap-5">
               <div className="rounded-xl bg-gradient-to-br from-teal-50 to-teal-100/60 p-3 sm:p-4 text-teal-600 shadow-sm">

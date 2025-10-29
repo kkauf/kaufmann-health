@@ -100,19 +100,29 @@ export function TherapistDirectory() {
       const tid = url.searchParams.get('tid');
       const t = (url.searchParams.get('type') || 'booking').toLowerCase();
       const type = t === 'consultation' ? 'consultation' : 'booking';
+      const confirm = url.searchParams.get('confirm');
+      // If confirm=1 is present, server already processed draft → do NOT auto-open modal
+      if (confirm === '1') {
+        url.searchParams.delete('contact');
+        url.searchParams.delete('tid');
+        url.searchParams.delete('type');
+        const cleaned = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ''}${url.hash}`;
+        window.history.replaceState({}, '', cleaned);
+        return;
+      }
       if (contact === 'compose' && tid) {
         const th = therapists.find(x => x.id === tid) || null;
         if (th) {
           setAutoContactTherapist(th);
           setAutoContactType(type);
           setAutoContactOpen(true);
+          // Clean URL after opening
+          url.searchParams.delete('contact');
+          url.searchParams.delete('tid');
+          url.searchParams.delete('type');
+          const cleaned = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ''}${url.hash}`;
+          window.history.replaceState({}, '', cleaned);
         }
-        // Clean the URL so we don't reopen on navigation
-        url.searchParams.delete('contact');
-        url.searchParams.delete('tid');
-        url.searchParams.delete('type');
-        const cleaned = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ''}${url.hash}`;
-        window.history.replaceState({}, '', cleaned);
       }
     } catch {
       // ignore

@@ -90,13 +90,12 @@ export async function POST(req: NextRequest) {
           .single<PersonRow>();
 
         if (!fetchErr && person) {
-          // Extract draft_contact if present (therapist directory flow)
+          // Extract draft_contact reference (do NOT remove yet; clear after success)
           const draftContact = person.metadata?.draft_contact as Record<string, unknown> | undefined;
-          
-          // Update metadata with phone_verified flag and mark actionable
+
+          // Update metadata with phone_verified flag and mark actionable (keep draft until processed)
           const metadata: Record<string, unknown> = { ...(person.metadata || {}), phone_verified: true };
-          delete metadata.draft_contact; // Clear draft after extraction
-          
+
           await supabaseServer
             .from('people')
             // Mark as 'new' so phone users proceed without email confirmation
@@ -114,6 +113,7 @@ export async function POST(req: NextRequest) {
 
               if (therapistId && (patientReason || patientMessage)) {
                 const origin = new URL(req.url).origin;
+                const idempotencyKey = `${person.id}:${therapistId}:${contactType}`;
                 const contactPayload = {
                   therapist_id: therapistId,
                   contact_type: contactType,
@@ -123,6 +123,7 @@ export async function POST(req: NextRequest) {
                   patient_reason: patientReason,
                   patient_message: patientMessage,
                   session_format: sessionFormat,
+                  idempotency_key: idempotencyKey,
                 };
 
                 const contactRes = await fetch(`${origin}/api/public/contact`, {
@@ -141,6 +142,30 @@ export async function POST(req: NextRequest) {
                     status: contactRes.status,
                     therapistId,
                   });
+                  try {
+                    await ServerAnalytics.trackEventFromRequest(req, {
+                      type: 'draft_contact_failed',
+                      source: 'api.verification.verify-code',
+                      props: { therapist_id: therapistId, contact_type: contactType, status: contactRes.status },
+                    });
+                  } catch {}
+                } else {
+                  // Clear draft_contact only after success
+                  try {
+                    const clearedMeta: Record<string, unknown> = { ...(metadata || {}) };
+                    delete clearedMeta['draft_contact'];
+                    await supabaseServer
+                      .from('people')
+                      .update({ metadata: clearedMeta })
+                      .eq('id', person.id);
+                  } catch {}
+                  try {
+                    await ServerAnalytics.trackEventFromRequest(req, {
+                      type: 'draft_contact_processed',
+                      source: 'api.verification.verify-code',
+                      props: { therapist_id: therapistId, contact_type: contactType },
+                    });
+                  } catch {}
                 }
               }
             } catch (err) {

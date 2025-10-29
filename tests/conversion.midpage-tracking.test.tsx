@@ -2,14 +2,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { act } from 'react';
 import { FinalCtaSection } from '@/features/landing/components/FinalCtaSection';
 
 function render(ui: React.ReactElement) {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
-  root.render(ui);
-  return { container, unmount: () => root.unmount() };
+  act(() => {
+    root.render(ui);
+  });
+  return { container, unmount: () => act(() => root.unmount()) };
 }
 
 describe('FinalCtaSection entry options (midpage analytics continuity)', () => {
@@ -21,7 +24,6 @@ describe('FinalCtaSection entry options (midpage analytics continuity)', () => {
     const { container, unmount } = render(<FinalCtaSection withEntryOptions />);
     
     try {
-      await new Promise((r) => setTimeout(r, 0));
       expect(container.textContent).toMatch(/Bereit für den ersten Schritt\?/);
       expect(container.textContent).toContain('Hast du bereits Therapie gemacht');
     } finally {
@@ -33,7 +35,6 @@ describe('FinalCtaSection entry options (midpage analytics continuity)', () => {
     const { container, unmount } = render(<FinalCtaSection withEntryOptions />);
     
     try {
-      await new Promise((r) => setTimeout(r, 0));
       expect(container.textContent).toContain('Ja, bereits Erfahrung');
       expect(container.textContent).toContain('Nein, erste Therapie');
       expect(container.textContent).toContain('Bin mir unsicher');
@@ -46,7 +47,6 @@ describe('FinalCtaSection entry options (midpage analytics continuity)', () => {
     const { container, unmount } = render(<FinalCtaSection withEntryOptions />);
     
     try {
-      await new Promise((r) => setTimeout(r, 0));
       const yesLink = container.querySelector('[data-cta="midpage-conversion-yes"]');
       const noLink = container.querySelector('[data-cta="midpage-conversion-no"]');
       const unsureLink = container.querySelector('[data-cta="midpage-conversion-unsure"]');
@@ -63,7 +63,6 @@ describe('FinalCtaSection entry options (midpage analytics continuity)', () => {
     const { container, unmount } = render(<FinalCtaSection withEntryOptions />);
     
     try {
-      await new Promise((r) => setTimeout(r, 0));
       expect(container.textContent).toContain('5-Minuten Fragebogen');
     } finally {
       unmount();
@@ -74,7 +73,6 @@ describe('FinalCtaSection entry options (midpage analytics continuity)', () => {
     const { container, unmount } = render(<FinalCtaSection withEntryOptions />);
     
     try {
-      await new Promise((r) => setTimeout(r, 0));
       const directoryLink = container.querySelector('[data-cta="midpage-conversion-directory"]');
       expect(directoryLink).toBeNull();
       expect(container.textContent).not.toContain('Alle Therapeut:innen ansehen');
@@ -87,7 +85,6 @@ describe('FinalCtaSection entry options (midpage analytics continuity)', () => {
     const { container, unmount } = render(<FinalCtaSection withEntryOptions className="custom-test-class" />);
     
     try {
-      await new Promise((r) => setTimeout(r, 0));
       const section = container.querySelector('section');
       expect(section?.className).toContain('custom-test-class');
     } finally {

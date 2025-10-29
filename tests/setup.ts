@@ -9,6 +9,8 @@ vi.mock('@vercel/analytics/next', () => ({
   Analytics: (_props: any) => null,
 }));
 
+;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
 // Safety defaults to ensure tests never hit real services locally
 // These keep server-side helpers in no-op mode unless a test opts-in explicitly.
 process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';

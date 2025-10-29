@@ -413,20 +413,11 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         throw new Error('Ungültiger Code');
       }
       
-      // Generate pre-filled message
-      const greeting = `Guten Tag ${therapist.first_name}`;
-      const intent = contactType === 'booking'
-        ? 'ich möchte gerne einen Termin vereinbaren'
-        : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
-      const signature = name ? `\n\nViele Grüße\n${name}` : '';
-
-      setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei [${reason || 'beschreibe dein Anliegen'}] und fand dein Profil sehr ansprechend.${signature}`);
+      // Mark verified and show success; server processes draft_contact and sends message
       setIsVerified(true);
       trackEvent('contact_verification_completed', { contact_method: contactMethod });
-      
-      // Auto-send message after successful verification
       setLoading(false);
-      await handleSendMessage();
+      setStep('success');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ungültiger Code');
       trackEvent('contact_verification_failed', { contact_method: contactMethod });

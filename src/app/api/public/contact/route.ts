@@ -33,6 +33,7 @@ interface ContactRequestBody {
   patient_message?: string;
   session_format?: 'online' | 'in_person';
   session_id?: string;
+  idempotency_key?: string;
 }
 
 /**
@@ -87,17 +88,24 @@ export async function POST(req: Request) {
     const { campaign_source, campaign_variant, landing_page } = ServerAnalytics.parseCampaignFromRequest(req);
     
     // Validation
-    if (!therapist_id || !contact_type || !patient_name || !contact_method || !patient_reason) {
-      console.error('[contact] Missing required fields:', {
+    const reasonTrimmed = (patient_reason || '').trim();
+    const messageTrimmed = (patient_message || '').trim();
+    if (!therapist_id || !contact_type || !patient_name || !contact_method) {
+      console.error('[contact] Missing required fields (base):', {
         therapist_id: !!therapist_id,
         contact_type: !!contact_type,
         patient_name: !!patient_name,
         contact_method: !!contact_method,
-        patient_reason: !!patient_reason,
-        body,
       });
       return NextResponse.json(
         { error: 'Fehlende Pflichtfelder' },
+        { status: 400 }
+      );
+    }
+    // Require either reason OR message (not necessarily both)
+    if (!reasonTrimmed && !messageTrimmed) {
+      return NextResponse.json(
+        { error: 'Bitte gib ein Anliegen oder eine Nachricht an' },
         { status: 400 }
       );
     }
@@ -307,14 +315,41 @@ export async function POST(req: Request) {
       }
     } catch {}
     
+    // Use a derived reason for storage/email if reason is missing
+    const patientReasonEffective = reasonTrimmed || (messageTrimmed ? 'Anliegen per Nachricht' : '');
+
+    // Idempotency: if idempotency_key is provided, check for existing match
+    const idempotencyKey = (body.idempotency_key || '').trim();
+    if (idempotencyKey) {
+      try {
+        const { data: existingMatch } = await supabase
+          .from('matches')
+          .select('id')
+          .eq('patient_id', patientId)
+          .eq('therapist_id', therapist.id)
+          .contains('metadata', { idempotency_key: idempotencyKey })
+          .limit(1)
+          .maybeSingle();
+        if (existingMatch) {
+          void track({
+            type: 'contact_idempotent_duplicate',
+            source: 'api.public.contact',
+            props: { match_id: existingMatch.id, therapist_id: therapist.id, patient_id: patientId },
+          });
+          return NextResponse.json({ data: { match_id: existingMatch.id, therapist_name: `${therapist.first_name} ${therapist.last_name}`, success: true } });
+        }
+      } catch {}
+    }
+
     // Create match record
     const matchMetadata = {
       patient_initiated: true,
       contact_type,
-      patient_reason,
+      patient_reason: patientReasonEffective,
       patient_message: patient_message || '',
       contact_method,
       session_format: session_format || null,
+      ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
     };
     
     const { data: match, error: matchError } = await supabase
@@ -395,7 +430,7 @@ export async function POST(req: Request) {
         type: 'outreach',
         therapistName: therapist.first_name,
         patientCity: '', // Not collected in this flow
-        patientIssue: patient_reason,
+        patientIssue: patientReasonEffective,
         patientSessionPreference: session_format || null,
         magicUrl: `${BASE_URL}/match/${match.secure_uuid}`,
         expiresHours: 72,

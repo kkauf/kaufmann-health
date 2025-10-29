@@ -134,11 +134,8 @@ export async function GET(req: Request) {
     newMetadata['confirmed_at'] = nowIso;
     newMetadata['email_confirmed_at'] = nowIso;
 
-    // Extract draft_contact if present (therapist directory flow)
-    const draftContact = newMetadata['draft_contact'] as Record<string, unknown> | undefined;
-    if (draftContact) {
-      delete newMetadata['draft_contact']; // Clear draft after extraction
-    }
+    // Read draft_contact if present (therapist directory flow). Do NOT remove yet; only clear after successful processing.
+    const draftContact = (metadata?.['draft_contact'] as Record<string, unknown> | undefined) || undefined;
 
     // If the questionnaire was completed already, the lead is actionable: mark as 'new'.
     // Otherwise, keep the transitional 'email_confirmed' status.
@@ -197,6 +194,7 @@ export async function GET(req: Request) {
         const sessionFormat = (draftContact.session_format === 'online' || draftContact.session_format === 'in_person') ? draftContact.session_format : undefined;
 
         if (therapistId && (patientReason || patientMessage)) {
+          const idempotencyKey = `${id}:${therapistId}:${contactType}`;
           // Create match via internal contact endpoint logic
           const contactPayload = {
             therapist_id: therapistId,
@@ -207,6 +205,7 @@ export async function GET(req: Request) {
             patient_reason: patientReason,
             patient_message: patientMessage,
             session_format: sessionFormat,
+            idempotency_key: idempotencyKey,
           };
 
           // Call internal contact API
@@ -226,6 +225,30 @@ export async function GET(req: Request) {
               status: contactRes.status,
               therapistId,
             });
+            try {
+              await ServerAnalytics.trackEventFromRequest(req, {
+                type: 'draft_contact_failed',
+                source: 'api.leads.confirm',
+                props: { therapist_id: therapistId, contact_type: contactType, status: contactRes.status },
+              });
+            } catch {}
+          } else {
+            // Clear draft_contact only after success
+            try {
+              const clearedMeta = { ...(newMetadata || {}) } as Record<string, unknown>;
+              delete clearedMeta['draft_contact'];
+              await supabaseServer
+                .from('people')
+                .update({ metadata: clearedMeta })
+                .eq('id', id);
+            } catch {}
+            try {
+              await ServerAnalytics.trackEventFromRequest(req, {
+                type: 'draft_contact_processed',
+                source: 'api.leads.confirm',
+                props: { therapist_id: therapistId, contact_type: contactType },
+              });
+            } catch {}
           }
         }
       } catch (err) {
