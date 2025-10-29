@@ -163,7 +163,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
       <HeroNoForm
         title={copy.hero.title}
         subtitle={copy.hero.subtitle}
-        ctaLabel={isBrowse ? 'Jetzt Therapeut:in finden – direkt Kontakt aufnehmen' : 'Jetzt Therapeut:in finden'}
+        ctaLabel={isBrowse ? 'Therapeut:innen ansehen' : 'Jetzt Therapeut:in finden'}
         ctaHref={isBrowse ? '/therapeuten' : '/fragebogen'}
         backgroundSrc="/images/hero.jpg"
       />
@@ -216,7 +216,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
         subtitle={isBrowse
           ? 'Stöbere im Verzeichnis. Profil ansehen und direkt Kontakt aufnehmen.'
           : 'Fülle unseren 5-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten-Vorschläge.'}
-        buttonLabel={isBrowse ? 'Jetzt Therapeut:in finden – direkt Kontakt aufnehmen' : 'Jetzt Therapeut:in finden'}
+        buttonLabel={isBrowse ? 'Therapeut:innen ansehen' : 'Jetzt Therapeut:in finden'}
         targetId={isBrowse ? '/therapeuten' : '/fragebogen'}
         align="center"
         variant="tinted"
