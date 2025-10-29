@@ -249,6 +249,38 @@ This doc captures the visual patterns that save debugging time and keep the UI c
   - Icon bubbles: `rounded-xl shadow-sm`
   - Pills/Tags: `rounded-full`
 
+### Modality Pills (Therapists)
+
+Use the same visual language for modality tokens on cards and as interactive filters in the directory.
+
+- **Base component**: shadcn `Badge`
+- **Sizing by context**:
+  - **On cards** (display only): `text-xs font-medium px-2 py-0.5 gap-1.5` with `h-3 w-3` icons
+  - **Directory filters (desktop)**: `h-11 px-4 py-2.5 text-sm font-medium gap-2` with `h-4 w-4` icons (44px tap target)
+  - **Directory filters (mobile sheet)**: `h-12 px-5 py-3 text-sm font-medium gap-2` with `h-4 w-4` icons (48px tap target)
+- **Layout**: `inline-flex items-center rounded-full`
+- **Icons**:
+  - NARM → `HeartHandshake`
+  - Somatic Experiencing → `Shell`
+  - Hakomi → `Wind`
+  - Core Energetics → `Target`
+- **Color mapping** (same for cards and filters):
+  - NARM: `border-teal-200 bg-teal-50 text-teal-800 hover:border-teal-300 hover:bg-teal-100`
+  - Somatic Experiencing: `border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-300 hover:bg-amber-100`
+  - Hakomi: `border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100`
+  - Core Energetics: `border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 hover:border-fuchsia-300 hover:bg-fuchsia-100`
+  - Default/unknown: `border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100`
+- **Directory filter behavior**:
+  - Pills are clickable Badges (keyboard: Enter/Space). Selected pill adds `ring-2 ring-emerald-300`.
+  - Include an "Alle" pill for resetting. When selected, use distinct indigo styling to avoid confusion with modality colors: `bg-indigo-100 text-indigo-700 border-indigo-200 ring-2 ring-indigo-300`.
+  - Desktop: horizontal, scrollable rail (`overflow-x-auto`, gradients optional for edges) in sticky filters.
+  - Mobile: pills in sheet use `flex flex-wrap` with same sizes for tap targets.
+  - Accessibility: `role="button"` and `tabIndex=0` on badge wrappers.
+- **Format filter buttons** (Alle/Online/Vor Ort):
+  - Desktop: `h-11` (44px) for adequate tap targets.
+  - Mobile sheet: `h-12` (48px) for comfortable thumb interaction.
+  - Use Button component with `flex-1` for equal width distribution.
+
 - **Shadows Palette**
   - Subtle: `shadow-sm` (2px blur)
   - Standard: `shadow-md` (4px blur)

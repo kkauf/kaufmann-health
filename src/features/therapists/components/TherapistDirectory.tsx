@@ -3,14 +3,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
-import { SlidersHorizontal, X, ShieldCheck } from 'lucide-react';
+import { SlidersHorizontal, X, ShieldCheck, CalendarCheck2, HeartHandshake, Shell, Wind, Target, Video, User } from 'lucide-react';
 import { TherapistCard } from './TherapistCard';
 import { getAttribution } from '@/lib/attribution';
 import { TherapistDetailModal } from './TherapistDetailModal';
 import { ContactModal } from './ContactModal';
+import { cn } from '@/lib/utils';
 
 export type TherapistData = {
   id: string;
@@ -133,6 +133,25 @@ export function TherapistDirectory() {
     return Array.from(modalitySet).sort();
   }, [therapists]);
 
+  // Visual style mapping for modality pills (align with TherapistPreview)
+  const MODALITY_STYLE: Record<string, { cls: string; Icon: React.ElementType; label: string }> = useMemo(() => {
+    const base: Record<string, { cls: string; Icon: React.ElementType; label: string }> = {
+      'narm': { label: 'NARM', cls: 'border-teal-200 bg-teal-50 text-teal-800 hover:border-teal-300 hover:bg-teal-100', Icon: HeartHandshake },
+      'somatic-experiencing': { label: 'Somatic Experiencing', cls: 'border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-300 hover:bg-amber-100', Icon: Shell },
+      'hakomi': { label: 'Hakomi', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100', Icon: Wind },
+      'core-energetics': { label: 'Core Energetics', cls: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 hover:border-fuchsia-300 hover:bg-fuchsia-100', Icon: Target },
+    };
+    // Include any other modalities with neutral style
+    const map: Record<string, { cls: string; Icon: React.ElementType; label: string }> = { ...base };
+    allModalities.forEach(m => {
+      const key = normalizeModality(m);
+      if (!map[key]) {
+        map[key] = { label: m, cls: 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100', Icon: Target };
+      }
+    });
+    return map;
+  }, [allModalities]);
+
   const filteredTherapists = useMemo(() => {
     const filtered = therapists.filter(t => {
       // Filter by modality
@@ -166,6 +185,10 @@ export function TherapistDirectory() {
       return 0;
     });
   }, [therapists, selectedModality, onlineOnly]);
+
+  const availableTherapistsCount = useMemo(() =>
+    filteredTherapists.filter(t => t.accepting_new).length
+  , [filteredTherapists]);
 
   const visibleTherapists = useMemo(() => filteredTherapists.slice(0, Math.max(0, visibleCount)), [filteredTherapists, visibleCount]);
   const hasMore = filteredTherapists.length > visibleCount;
@@ -258,24 +281,56 @@ export function TherapistDirectory() {
       </div>
 
       {/* Desktop: Inline filters (sticky) */}
-      <div className="mb-8 hidden md:flex flex-col gap-4 md:flex-row md:items-center md:gap-6 md:sticky md:top-0 md:z-20 md:bg-white/95 md:backdrop-blur supports-[backdrop-filter]:md:bg-white/70 md:py-3 md:border-b">
+      <div className="mb-8 hidden md:flex flex-col gap-4 md:flex-row md:items-center md:gap-6 md:sticky md:top-0 md:z-20 md:bg-white/95 md:backdrop-blur supports-[backdrop-filter]:md:bg-white/70 md:py-3 md:border-b overflow-visible">
         <div className="flex-1">
           <label className="mb-2 block text-sm font-medium text-gray-700">
             Modalität
           </label>
-          <Select value={selectedModality} onValueChange={setSelectedModality}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Alle Modalitäten" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Modalitäten</SelectItem>
-              {allModalities.map(m => (
-                <SelectItem key={m} value={m}>
-                  {getModalityLabel(m)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="relative -mx-1">
+            <div className="min-h-[48px] overflow-x-auto overflow-y-visible whitespace-nowrap px-1 py-1 [scrollbar-width:none] [-ms-overflow-style:none]">
+              <div className="inline-flex gap-2">
+                {/* All pill */}
+                <Badge
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedModality('all')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedModality('all'); }}
+                  className={cn(
+                    'h-11 px-4 py-2.5 text-sm font-medium rounded-full cursor-pointer shadow-sm hover:shadow-md transition',
+                    selectedModality === 'all'
+                      ? 'bg-indigo-100 text-indigo-700 border-indigo-200 ring-2 ring-indigo-300'
+                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100'
+                  )}
+                >
+                  Alle
+                </Badge>
+                {allModalities.map((m) => {
+                  const key = normalizeModality(m);
+                  const conf = MODALITY_STYLE[key] || { cls: 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100', Icon: Target, label: m };
+                  const Icon = conf.Icon;
+                  const selected = selectedModality === m;
+                  return (
+                    <Badge
+                      key={m}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedModality(m)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedModality(m); }}
+                      variant="outline"
+                      className={cn(
+                        'h-11 px-4 py-2.5 text-sm font-medium rounded-full cursor-pointer gap-2 shadow-sm hover:shadow-md transition',
+                        conf.cls,
+                        selected && 'ring-2 ring-emerald-300'
+                      )}
+                    >
+                      <Icon className="h-4 w-4 opacity-90" aria-hidden="true" />
+                      {getModalityLabel(m)}
+                    </Badge>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="flex-1">
@@ -286,22 +341,32 @@ export function TherapistDirectory() {
             <Button
               variant={onlineOnly === null ? 'default' : 'outline'}
               onClick={() => setOnlineOnly(null)}
-              className="flex-1"
+              className="flex-1 h-11"
             >
               Alle
             </Button>
             <Button
-              variant={onlineOnly === true ? 'default' : 'outline'}
+              variant="outline"
               onClick={() => setOnlineOnly(true)}
-              className="flex-1"
+              className={cn(
+                'flex-1 h-11 gap-2',
+                'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100',
+                onlineOnly === true && 'ring-2 ring-emerald-300'
+              )}
             >
+              <Video className="h-4 w-4" />
               Online
             </Button>
             <Button
-              variant={onlineOnly === false ? 'default' : 'outline'}
+              variant="outline"
               onClick={() => setOnlineOnly(false)}
-              className="flex-1"
+              className={cn(
+                'flex-1 h-11 gap-2',
+                'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100',
+                onlineOnly === false && 'ring-2 ring-emerald-300'
+              )}
             >
+              <User className="h-4 w-4" />
               Vor Ort
             </Button>
           </div>
@@ -310,14 +375,15 @@ export function TherapistDirectory() {
 
       {/* Results header: count + compact trust note */}
       <div className="mb-4 flex flex-col items-start justify-between gap-2 text-sm text-gray-700 sm:flex-row sm:items-center">
-        <div>
-          {filteredTherapists.length} {filteredTherapists.length === 1 ? 'Therapeut:in' : 'Therapeut:innen'} gefunden
-        </div>
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-800">
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-800 text-xs font-medium">
           <ShieldCheck className="h-3.5 w-3.5 text-emerald-700" />
           <span className="leading-none">Alle Profile verifiziert</span>
           <span className="sr-only">– Qualifikation & Lizenzen geprüft</span>
         </div>
+        <Badge className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+          <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>{availableTherapistsCount} Therapeuten mit freien Terminen gefunden</span>
+        </Badge>
       </div>
 
       {/* Therapist grid */}
@@ -393,19 +459,46 @@ export function TherapistDirectory() {
                 <label className="mb-3 block text-sm font-semibold text-gray-900">
                   Modalität
                 </label>
-                <Select value={draftModality} onValueChange={setDraftModality}>
-                  <SelectTrigger className="w-full h-12">
-                    <SelectValue placeholder="Alle Modalitäten" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Alle Modalitäten</SelectItem>
-                    {allModalities.map(m => (
-                      <SelectItem key={m} value={m}>
+                <div className="flex flex-wrap gap-2">
+                  <Badge
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setDraftModality('all')}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setDraftModality('all'); }}
+                    className={cn(
+                      'h-12 px-5 py-3 text-sm font-medium rounded-full cursor-pointer shadow-sm hover:shadow-md transition',
+                      draftModality === 'all'
+                        ? 'bg-indigo-100 text-indigo-700 border-indigo-200 ring-2 ring-indigo-300'
+                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100'
+                    )}
+                  >
+                    Alle
+                  </Badge>
+                  {allModalities.map((m) => {
+                    const key = normalizeModality(m);
+                    const conf = MODALITY_STYLE[key] || { cls: 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100', Icon: Target, label: m };
+                    const Icon = conf.Icon;
+                    const selected = draftModality === m;
+                    return (
+                      <Badge
+                        key={m}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setDraftModality(m)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setDraftModality(m); }}
+                        variant="outline"
+                        className={cn(
+                          'h-12 px-5 py-3 text-sm font-medium rounded-full cursor-pointer gap-2 shadow-sm hover:shadow-md transition',
+                          conf.cls,
+                          selected && 'ring-2 ring-emerald-300'
+                        )}
+                      >
+                        <Icon className="h-4 w-4 opacity-90" aria-hidden="true" />
                         {getModalityLabel(m)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      </Badge>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Format filter */}
@@ -422,17 +515,27 @@ export function TherapistDirectory() {
                     Alle
                   </Button>
                   <Button
-                    variant={draftOnlineOnly === true ? 'default' : 'outline'}
+                    variant="outline"
                     onClick={() => setDraftOnlineOnly(true)}
-                    className="h-12"
+                    className={cn(
+                      'h-12 gap-2',
+                      'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100',
+                      draftOnlineOnly === true && 'ring-2 ring-emerald-300'
+                    )}
                   >
+                    <Video className="h-4 w-4" />
                     Online
                   </Button>
                   <Button
-                    variant={draftOnlineOnly === false ? 'default' : 'outline'}
+                    variant="outline"
                     onClick={() => setDraftOnlineOnly(false)}
-                    className="h-12"
+                    className={cn(
+                      'h-12 gap-2',
+                      'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100',
+                      draftOnlineOnly === false && 'ring-2 ring-emerald-300'
+                    )}
                   >
+                    <User className="h-4 w-4" />
                     Vor Ort
                   </Button>
                 </div>

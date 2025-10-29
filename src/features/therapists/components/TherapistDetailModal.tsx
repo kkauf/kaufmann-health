@@ -11,7 +11,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, User, Calendar, MessageCircle, Globe, ShieldCheck, HeartHandshake, Shell, Wind, Target, CalendarCheck2 } from 'lucide-react';
+import { MapPin, Video, User, Calendar, MessageCircle, Globe, ShieldCheck, HeartHandshake, Shell, Wind, Target, CalendarCheck2, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import type { TherapistData } from './TherapistDirectory';
 import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
@@ -54,6 +55,8 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
   const [imageError, setImageError] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [contactType, setContactType] = useState<'booking' | 'consultation'>('booking');
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   
   const photoSrc = therapist.photo_url && !imageError ? therapist.photo_url : undefined;
   const initials = getInitials(therapist.first_name, therapist.last_name);
@@ -79,6 +82,10 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
   };
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (open) {
       try {
         const attrs = getAttribution();
@@ -89,9 +96,67 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
     }
   }, [open, therapist.id]);
 
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && imageViewerOpen) {
+        setImageViewerOpen(false);
+      }
+    };
+    
+    if (imageViewerOpen) {
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
+    }
+  }, [imageViewerOpen]);
+
+  // Close viewer on any click while it's open
+  useEffect(() => {
+    if (!imageViewerOpen) return;
+    
+    const handleClick = () => {
+      setImageViewerOpen(false);
+    };
+    
+    // Small delay to avoid closing immediately on the click that opened it
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClick);
+    }, 100);
+    
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handleClick);
+    };
+  }, [imageViewerOpen]);
+
+  const handleImageClick = () => {
+    if (photoSrc) {
+      setImageViewerOpen(true);
+      try {
+        const attrs = getAttribution();
+        const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
+        const payload = { type: 'profile_image_expanded', ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id } };
+        navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+      } catch {}
+    }
+  };
+
+  const closeViewer = () => {
+    setImageViewerOpen(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-h-[85vh] overflow-x-hidden overflow-y-auto p-4 sm:p-6 md:max-w-3xl">
+      <DialogContent
+        aria-describedby={undefined}
+        className="max-h-[85vh] overflow-x-hidden overflow-y-auto p-4 sm:p-6 md:max-w-3xl"
+        onInteractOutside={(e) => {
+          // While image viewer is open, prevent dialog from closing on outside clicks
+          if (imageViewerOpen) {
+            e.preventDefault();
+            closeViewer();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="sr-only">
             Profil von {therapist.first_name} {therapist.last_name}
@@ -100,7 +165,21 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
 
         {/* Hero section with avatar and basic info */}
         <div className="flex flex-col items-center gap-4 border-b pb-6 sm:flex-row sm:items-start">
-          <Avatar className="h-32 w-32 shrink-0 ring-4 ring-gray-100">
+          <Avatar 
+            className={`h-32 w-32 shrink-0 ring-4 ring-gray-100 transition-all duration-200 ${
+              photoSrc ? 'cursor-pointer hover:ring-emerald-300 hover:ring-offset-2 hover:shadow-lg' : ''
+            }`}
+            onClick={handleImageClick}
+            role={photoSrc ? 'button' : undefined}
+            tabIndex={photoSrc ? 0 : undefined}
+            onKeyDown={(e) => {
+              if (photoSrc && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                handleImageClick();
+              }
+            }}
+            aria-label={photoSrc ? `Profilbild von ${therapist.first_name} ${therapist.last_name} vergrößern` : undefined}
+          >
             {photoSrc ? (
               <AvatarImage
                 src={photoSrc}
@@ -119,8 +198,8 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
               {therapist.first_name} {therapist.last_name}
             </h2>
 
-            {/* Trust + Availability */}
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            {/* Trust + Availability badges */}
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               <Badge variant="outline" className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Verifiziert
@@ -135,44 +214,44 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
               )}
             </div>
 
-            {/* Quick info */}
-            <div className="mt-4 space-y-2 text-sm text-gray-600">
-              <div className="flex items-center justify-center gap-2 sm:justify-start">
-                <MapPin className="h-4 w-4" />
-                <span>{therapist.city}</span>
-              </div>
-
-              {(offersOnline || offersInPerson) && (
-                <div className="flex items-center justify-center gap-2 sm:justify-start">
-                  {offersOnline && (
-                    <Badge variant="secondary" className="gap-1 bg-sky-50 text-sky-700 hover:bg-sky-100">
-                      <Video className="h-3 w-3" />
-                      Online-Therapie
-                    </Badge>
-                  )}
-                  {offersInPerson && (
-                    <Badge variant="secondary" className="gap-1 bg-slate-50 text-slate-700 hover:bg-slate-100">
-                      <User className="h-3 w-3" />
-                      Vor-Ort-Therapie
-                    </Badge>
-                  )}
-                </div>
+            {/* Location & Session Format pills */}
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
+                <MapPin className="h-3.5 w-3.5" />
+                {therapist.city}
+              </Badge>
+              
+              {offersOnline && (
+                <Badge variant="outline" className="gap-1.5 border-sky-200 bg-sky-50 text-sky-700">
+                  <Video className="h-3.5 w-3.5" />
+                  Online-Therapie
+                </Badge>
               )}
-
-              {yearsExperience && (
-                <div className="flex items-center justify-center gap-2 sm:justify-start">
-                  <Globe className="h-4 w-4" />
-                  <span>{yearsExperience} Jahre Erfahrung</span>
-                </div>
-              )}
-
-              {languages.length > 0 && (
-                <div className="flex items-center justify-center gap-2 sm:justify-start">
-                  <MessageCircle className="h-4 w-4" />
-                  <span>Sprachen: {languages.join(', ')}</span>
-                </div>
+              {offersInPerson && (
+                <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
+                  <User className="h-3.5 w-3.5" />
+                  Vor-Ort-Therapie
+                </Badge>
               )}
             </div>
+
+            {/* Languages & Experience pills */}
+            {(languages.length > 0 || yearsExperience) && (
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                {languages.length > 0 && (
+                  <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    {languages.join(', ')}
+                  </Badge>
+                )}
+                {yearsExperience && (
+                  <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
+                    <Globe className="h-3.5 w-3.5" />
+                    {yearsExperience} Jahre Erfahrung
+                  </Badge>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -232,6 +311,69 @@ export function TherapistDetailModal({ therapist, open, onClose }: TherapistDeta
           </Button>
         </div>
       </DialogContent>
+      
+      {/* Image viewer (card-like, tap-to-close anywhere via portal) */}
+      {mounted && imageViewerOpen && photoSrc && createPortal(
+        <div
+          className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-900/30 backdrop-blur-[2px] animate-in fade-in duration-150 cursor-zoom-out"
+          onClick={closeViewer}
+          onPointerUp={closeViewer}
+          onPointerDown={closeViewer}
+          onPointerDownCapture={closeViewer}
+          onMouseDown={closeViewer}
+          onTouchStart={closeViewer}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Vergrößertes Profilbild"
+        >
+          {/* Close button */}
+          <button
+            onClick={closeViewer}
+            className="absolute top-4 right-4 z-[10000] rounded-full bg-white shadow-md p-2 text-slate-700 transition hover:shadow-lg hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            aria-label="Schließen"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          {/* Card container */}
+          <div
+            className="relative w-[min(92vw,560px)] sm:w-[min(85vw,680px)] max-h-[85vh] rounded-2xl bg-white p-3 sm:p-4 shadow-2xl ring-1 ring-black/5 animate-in zoom-in-95 duration-200 flex flex-col cursor-zoom-out overflow-hidden"
+            onClick={closeViewer}
+            onPointerUp={closeViewer}
+            onPointerDown={closeViewer}
+            onMouseDown={closeViewer}
+            onTouchStart={closeViewer}
+            tabIndex={0}
+          >
+            <div className="flex-1 flex items-center justify-center overflow-hidden">
+              <img
+                src={photoSrc}
+                alt={`${therapist.first_name} ${therapist.last_name}`}
+                className="max-h-[70vh] w-auto max-w-full rounded-xl object-contain cursor-zoom-out"
+                onClick={closeViewer}
+                onPointerUp={closeViewer}
+                onPointerDown={closeViewer}
+                onMouseDown={closeViewer}
+                onTouchStart={closeViewer}
+                draggable={false}
+              />
+            </div>
+
+            {/* Name caption */}
+            <div className="pt-3 text-center">
+              <p className="text-base font-semibold text-slate-900">
+                {therapist.first_name} {therapist.last_name}
+              </p>
+            </div>
+
+            {/* Mobile hint */}
+            <div className="mt-2 text-center text-xs text-slate-500 sm:hidden">
+              Tippen irgendwo, um zu schließen
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
       
       {/* Contact modal */}
       <ContactModal

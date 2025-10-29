@@ -190,9 +190,9 @@ export function TherapistCard({
         {/* Modalities (conditional based on showModalities prop) */}
         {showModalities && therapist.modalities && therapist.modalities.length > 0 && (
           <div className="mb-3">
-            <div className="relative -mx-1">
+            <div className="relative -mx-4">
               <div
-                className="min-h-[28px] overflow-x-auto whitespace-nowrap px-1 [scrollbar-width:none] [-ms-overflow-style:none]"
+                className="min-h-[32px] overflow-x-auto overflow-y-visible whitespace-nowrap px-4 py-1 [scrollbar-width:none] [-ms-overflow-style:none]"
                 aria-label="Modalitäten"
               >
                 <div className="inline-flex gap-2">
