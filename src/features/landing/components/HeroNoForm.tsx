@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import CtaLink from '@/components/CtaLink';
+import type { ReactNode } from 'react';
 
 export function HeroNoForm({
   title,
@@ -17,6 +18,9 @@ export function HeroNoForm({
     '✓ Somatische Therapie',
     '✓ Vor Ort in Berlin oder online',
   ],
+  noBackground = false,
+  icon,
+  backgroundBlurClass = 'object-cover scale-105 blur-[2px]',
 }: {
   title: string;
   subtitle?: string;
@@ -25,34 +29,64 @@ export function HeroNoForm({
   ctaHref?: string;
   backgroundSrc?: string;
   valueProps?: string[];
+  noBackground?: boolean;
+  icon?: ReactNode;
+  backgroundBlurClass?: string;
 }) {
-  return (
-    <section aria-labelledby="kh-hero-heading" className="relative isolate overflow-hidden rounded-3xl border border-slate-200/60 shadow-xl">
-      {/* Background image with enhanced overlay and blur */}
-      <div className="absolute inset-0 -z-10">
-        <Image
-          src={backgroundSrc}
-          alt="Freudiger Moment in der Natur"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover scale-105 blur-[2px]"
-        />
-        {/* Enhanced gradient overlay for better text legibility */}
-        <div className="absolute inset-0 bg-gradient-to-br from-black/50 via-black/45 to-black/40" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
-      </div>
+  const titleClass = noBackground
+    ? "text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl md:text-6xl lg:text-7xl leading-tight"
+    : "text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl leading-tight drop-shadow-lg";
+  const subtitleClass = noBackground
+    ? "mt-5 max-w-3xl text-lg sm:text-xl md:text-2xl leading-relaxed text-gray-700"
+    : "mt-5 max-w-3xl text-xl text-white/95 sm:text-2xl md:text-3xl leading-relaxed drop-shadow-md";
+  const supportClass = noBackground
+    ? "mt-3 max-w-2xl text-base sm:text-lg md:text-xl leading-relaxed text-gray-600"
+    : "mt-3 max-w-2xl text-base text-white/90 sm:text-lg md:text-xl leading-relaxed drop-shadow-md";
+  const valuePropsClass = noBackground
+    ? "mt-12 flex flex-wrap items-center gap-x-8 gap-y-3 text-base sm:text-lg text-gray-700"
+    : "mt-12 flex flex-wrap items-center gap-x-8 gap-y-3 text-base sm:text-lg text-white/95 drop-shadow-md";
 
-      <div className="mx-auto grid min-h-[520px] w-full max-w-7xl grid-rows-[1fr] px-6 py-20 sm:min-h-[640px] sm:py-24 lg:px-8 lg:py-28">
+  return (
+    <section
+      aria-labelledby="kh-hero-heading"
+      className={`relative isolate overflow-hidden rounded-3xl border border-slate-200/60 ${
+        noBackground ? 'shadow-lg bg-gradient-to-br from-slate-50/80 via-white to-slate-50/60' : 'shadow-xl'
+      }`}
+    >
+      {/* Background variants */}
+      {!noBackground ? (
+        <div className="absolute inset-0 -z-10">
+          <Image
+            src={backgroundSrc}
+            alt="Freudiger Moment in der Natur"
+            fill
+            priority
+            sizes="100vw"
+            className={backgroundBlurClass}
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-black/50 via-black/45 to-black/40" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+        </div>
+      ) : (
+        <>
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_50%_0%,rgba(99,102,241,0.1),transparent_70%),radial-gradient(30rem_16rem_at_100%_100%,rgba(14,165,233,0.08),transparent_65%)]" />
+          <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-gradient-to-br from-indigo-200/20 to-transparent blur-3xl" />
+        </>
+      )}
+
+      <div className={`mx-auto w-full max-w-7xl px-6 ${noBackground ? 'py-14 sm:py-16 lg:px-8 lg:py-20' : 'grid min-h-[520px] grid-rows-[1fr] py-20 sm:min-h-[640px] sm:py-24 lg:px-8 lg:py-28'}`}>
         <div className="flex flex-col justify-center">
-          <h1 id="kh-hero-heading" className="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl leading-tight drop-shadow-lg">
+          {icon ? (
+            <div className="mb-4 sm:mb-6">{icon}</div>
+          ) : null}
+          <h1 id="kh-hero-heading" className={titleClass}>
             {title}
           </h1>
           {subtitle ? (
-            <p className="mt-5 max-w-3xl text-xl text-white/95 sm:text-2xl md:text-3xl leading-relaxed drop-shadow-md">{subtitle}</p>
+            <p className={subtitleClass}>{subtitle}</p>
           ) : null}
           {supportLine ? (
-            <p className="mt-3 max-w-2xl text-base text-white/90 sm:text-lg md:text-xl leading-relaxed drop-shadow-md">{supportLine}</p>
+            <p className={supportClass}>{supportLine}</p>
           ) : null}
 
           <div className="mt-10">
@@ -69,7 +103,7 @@ export function HeroNoForm({
           </div>
 
           {valueProps?.length ? (
-            <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-3 text-base sm:text-lg text-white/95 drop-shadow-md">
+            <div className={valuePropsClass}>
               {valueProps.map((vp, i) => (
                 <span key={i} className="inline-flex items-center font-medium">
                   {vp}

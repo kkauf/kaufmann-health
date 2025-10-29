@@ -39,7 +39,7 @@ export default function Header() {
       <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150 whitespace-nowrap" href="/therapeuten">
         Unsere Therapeuten
       </Link>
-      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150 whitespace-nowrap" href="/start#modalities">
+      <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150 whitespace-nowrap" href="/therapie">
         Therapieverfahren
       </Link>
       <Link onClick={onClick} className="hover:text-gray-900 transition-colors duration-150 whitespace-nowrap" href="/fuer-therapeuten">
@@ -144,7 +144,7 @@ export default function Header() {
               </Link>
               <Link
                 onClick={() => setOpen(false)}
-                href="/start#modalities"
+                href="/therapie"
                 className="px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 Therapieverfahren

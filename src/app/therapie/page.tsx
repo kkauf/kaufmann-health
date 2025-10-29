@@ -4,7 +4,8 @@ import FaqAccordion from "@/components/FaqAccordion";
 import TherapyModalityExplanations from "@/components/TherapyModalityExplanations";
 import { FinalCtaSection } from "@/features/landing/components/FinalCtaSection";
 import { TherapistTeaserSection } from "@/features/landing/components/TherapistTeaserSection";
-import { Brain, Heart, Users, CheckCircle2, Shield } from "lucide-react";
+import { HeroNoForm } from "@/features/landing/components/HeroNoForm";
+import { Brain, Heart, Users, CheckCircle2, Shield, HeartHandshake, Shell, Wind, Target } from "lucide-react";
 import RevealContainer from "@/components/RevealContainer";
 
 export const revalidate = 3600;
@@ -35,36 +36,7 @@ export const metadata: Metadata = {
   },
 };
 
-function HeroSection() {
-  return (
-    <section aria-labelledby="hero-heading" className="">
-      <RevealContainer>
-        <div className="relative overflow-hidden rounded-3xl border border-slate-200/60 shadow-lg shadow-slate-100/50 bg-gradient-to-br from-slate-50/80 via-white to-slate-50/60 p-8 sm:p-10 lg:p-12 opacity-0 translate-y-2 transition-all duration-500" data-reveal>
-          <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_50%_0%,rgba(99,102,241,0.1),transparent_70%),radial-gradient(30rem_16rem_at_100%_100%,rgba(14,165,233,0.08),transparent_65%)]" />
-          <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-gradient-to-br from-indigo-200/20 to-transparent blur-3xl" />
-          
-          <h1 id="hero-heading" className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight text-gray-900">
-            Körperorientierte Therapie
-          </h1>
-          <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-700">
-            Körperorientierte Therapie (auch somatische Therapie genannt) arbeitet dort, wo Trauma und Stress im Nervensystem gespeichert sind – wissenschaftlich fundiert, professionell und ohne Esoterik.
-          </p>
-          
-          <div className="mt-6 flex flex-wrap gap-4">
-            <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-2 text-sm font-medium text-slate-700">
-              <Shield className="h-5 w-5 text-emerald-600" />
-              Wissenschaftlich fundiert
-            </div>
-            <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-50 to-sky-50 px-4 py-2 text-sm font-medium text-slate-700">
-              <Brain className="h-5 w-5 text-indigo-600" />
-              Keine Esoterik
-            </div>
-          </div>
-        </div>
-      </RevealContainer>
-    </section>
-  );
-}
+// Hero is now provided by HeroNoForm with blurred background and modality logos
 
 function WhatIsBodyTherapy() {
   return (
@@ -211,7 +183,29 @@ export default async function KoerpertherapiePage() {
     <div className="min-h-screen bg-white">
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
         
-        <HeroSection />
+        <HeroNoForm
+          title="Körperorientierte Therapie"
+          subtitle="Körperorientierte Therapie (auch somatische Therapie genannt) arbeitet dort, wo Trauma und Stress im Nervensystem gespeichert sind – wissenschaftlich fundiert, professionell und ohne Esoterik."
+          // use default background image with blur overlay
+          valueProps={[]}
+          backgroundBlurClass="object-cover scale-105 blur-[4px]"
+          icon={
+            <div className="flex items-center gap-4 sm:gap-5">
+              <div className="rounded-xl bg-gradient-to-br from-teal-50 to-teal-100/60 p-3 sm:p-4 text-teal-600 shadow-sm">
+                <HeartHandshake className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
+              </div>
+              <div className="rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/60 p-3 sm:p-4 text-amber-600 shadow-sm">
+                <Shell className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
+              </div>
+              <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 p-3 sm:p-4 text-emerald-600 shadow-sm">
+                <Wind className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
+              </div>
+              <div className="rounded-xl bg-gradient-to-br from-fuchsia-50 to-fuchsia-100/60 p-3 sm:p-4 text-fuchsia-600 shadow-sm">
+                <Target className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
+              </div>
+            </div>
+          }
+        />
 
         <WhatIsBodyTherapy />
 
