@@ -99,22 +99,18 @@ export default async function NarmPage() {
     <div className="min-h-screen bg-white">
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
         <HeroNoForm
-          title="NARM: Entwicklungstrauma heilen, ohne in die Vergangenheit zu gehen"
+          title="NARM"
           subtitle="Das NeuroAffektive Beziehungsmodell arbeitet mit dem, was jetzt ist – für Menschen, die funktionieren, aber nicht wirklich leben"
+          noBackground
+          valueProps={[]}
+          icon={
+            <div className="inline-flex items-center gap-4">
+              <div className="rounded-xl bg-gradient-to-br from-teal-50 to-teal-100/60 p-3 sm:p-4 text-teal-600 shadow-sm">
+                <HeartHandshake className="h-8 w-8 sm:h-10 sm:w-10" aria-hidden />
+              </div>
+            </div>
+          }
         />
-
-        {/* Prominent Logo */}
-        <div className="mt-8 sm:mt-12 flex justify-center">
-          <div className="inline-flex items-center gap-4 rounded-2xl border border-teal-200/60 bg-gradient-to-br from-white to-teal-50/30 px-6 sm:px-8 py-4 sm:py-5 shadow-lg">
-            <div className="rounded-xl bg-gradient-to-br from-teal-50 to-teal-100/60 p-3 sm:p-4 text-teal-600 shadow-sm">
-              <HeartHandshake className="h-8 w-8 sm:h-10 sm:w-10" aria-hidden />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">NARM</h1>
-              <p className="text-sm sm:text-base text-teal-700 font-medium">Neuroaffektives Beziehungsmodell</p>
-            </div>
-          </div>
-        </div>
 
         <section aria-labelledby="what-narm-heading" className="mt-14 sm:mt-20 lg:mt-24">
           <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10">

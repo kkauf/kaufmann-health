@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next'
+import { getAllModalitySlugs } from '@/features/therapies/modalityConfig'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://www.kaufmann-health.de'
@@ -40,18 +41,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'weekly',
       priority: 0.9,
     },
-    {
-      url: `${baseUrl}/therapie/somatic-experiencing`,
+    ...getAllModalitySlugs().map<MetadataRoute.Sitemap[number]>((slug) => ({
+      url: `${baseUrl}/therapie/${slug}`,
       lastModified: new Date(),
-      changeFrequency: 'weekly',
+      changeFrequency: 'weekly' as const,
       priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/therapie/narm`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.9,
-    },
+    })),
     {
       url: `${baseUrl}/fuer-therapeuten`,
       lastModified: new Date(),

@@ -99,24 +99,20 @@ export default async function HakomiPage() {
     <div className="min-h-screen bg-white">
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
         <HeroNoForm
-          title="Hakomi: Achtsamkeitsbasierte Körpertherapie"
+          title="Hakomi"
           subtitle="Unbewusste Überzeugungen sanft erkunden und transformieren – mit Achtsamkeit, Gewaltlosigkeit und Loving Presence"
+          noBackground
+          valueProps={[]}
+          icon={
+            <div className="inline-flex items-center gap-4">
+              <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 p-3 sm:p-4 text-emerald-600 shadow-sm">
+                <Wind className="h-8 w-8 sm:h-10 sm:w-10" aria-hidden />
+              </div>
+            </div>
+          }
         />
 
-        {/* Prominent Logo */}
-        <div className="mt-8 sm:mt-12 flex justify-center">
-          <div className="inline-flex items-center gap-4 rounded-2xl border border-emerald-200/60 bg-gradient-to-br from-white to-emerald-50/30 px-6 sm:px-8 py-4 sm:py-5 shadow-lg">
-            <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 p-3 sm:p-4 text-emerald-600 shadow-sm">
-              <Wind className="h-8 w-8 sm:h-10 sm:w-10" aria-hidden />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Hakomi</h1>
-              <p className="text-sm sm:text-base text-emerald-700 font-medium">Achtsamkeitsbasierte Körpertherapie</p>
-            </div>
-          </div>
-        </div>
-
-        <section aria-labelledby="what-narm-heading" className="mt-14 sm:mt-20 lg:mt-24">
+        <section aria-labelledby="what-hakomi-heading" className="mt-14 sm:mt-20 lg:mt-24">
           <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
             <h2 id="what-hakomi-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Was ist Hakomi?</h2>
