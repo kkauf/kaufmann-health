@@ -543,8 +543,11 @@ export default function AdminLeadsPage() {
     for (const p of base) {
       (deprioritizedPatients.has(p.id) ? noAction : needs).push(p);
     }
+    // Strict filtering when "Handlungsbedarf" is selected: hide non-actionable leads
+    if (viewFilter === 'action') return needs;
+    // Otherwise, show all with needs first
     return [...needs, ...noAction];
-  }, [leads, deprioritizedPatients, hideLost]);
+  }, [leads, deprioritizedPatients, hideLost, viewFilter]);
 
   return (
     <main className="min-h-screen p-6 space-y-6">

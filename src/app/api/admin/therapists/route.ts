@@ -71,7 +71,7 @@ export async function GET(req: Request) {
     if (!status || status === 'verified') {
       query = query.eq('accepting_new', true);
     }
-    if (city && sessionPref !== 'online') {
+    if (city) {
       // Case-insensitive partial match on city column
       query = query.ilike('city', `%${city}%`);
     }
