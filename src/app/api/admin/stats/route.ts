@@ -100,9 +100,15 @@ type StatsResponse = {
     email_confirmed: number;
     phone_verified: number;
     converted_to_new: number;
+    // New: split activation semantics
+    activated_via_verification?: number; // status=new AND verified by email/phone (not directory-only)
+    activated_via_directory?: number;    // status=new created via directory contact before verification
     email_confirmation_rate: number; // % of email_only that are email_confirmed
     phone_verification_rate: number; // % of phone_only that are phone_verified
     overall_activation_rate: number; // % of total_leads that became status=new
+    // New: activation breakdown rates
+    activated_verified_rate?: number;   // activated_via_verification / total_leads
+    activated_directory_rate?: number;  // activated_via_directory / total_leads
   };
   matchFunnel: {
     total_matches: number;
@@ -774,6 +780,48 @@ export async function GET(req: Request) {
       await logError('admin.api.stats', e, { stage: 'directory' });
     }
 
+    // Augment directory metrics with server-side events (email confirm + server contact processing)
+    try {
+      const { data: serverEventRows } = await supabaseServer
+        .from('events')
+        .select('type, source, properties')
+        .in('type', ['directory_contact_conversion', 'contact_verification_completed'])
+        .gte('created_at', sinceIso)
+        .limit(50000);
+
+      let serverSent = 0;
+      let serverVerifyEmail = 0;
+      let serverVerifyPhone = 0;
+
+      for (const row of (serverEventRows || []) as Array<{ type?: string; source?: string | null; properties?: Record<string, unknown> }>) {
+        try {
+          const t = String(row.type || '').toLowerCase();
+          const src = String(row.source || '');
+          if (t === 'directory_contact_conversion') {
+            serverSent++;
+          } else if (t === 'contact_verification_completed' && src === 'api.leads.confirm') {
+            const m = String((row.properties?.['contact_method'] as string | undefined) || '').toLowerCase();
+            if (m === 'email') serverVerifyEmail++;
+            else if (m === 'phone') serverVerifyPhone++;
+          }
+        } catch {}
+      }
+
+      // Merge server counts into displayed totals
+      directory.contactSent = (directory.contactSent || 0) + serverSent;
+      directory.verifyCompletedEmailSessions = (directory.verifyCompletedEmailSessions || 0) + serverVerifyEmail;
+      directory.verifyCompletedPhoneSessions = (directory.verifyCompletedPhoneSessions || 0) + serverVerifyPhone;
+      // Recompute rates conservatively using totals (approximation; session mapping not available for server events)
+      const openCount = Number(directory.contactOpened || 0);
+      const verifyTotal = Number((directory.verifyCompletedEmailSessions || 0) + (directory.verifyCompletedPhoneSessions || 0));
+      const sentTotal = Number(directory.contactSent || 0);
+      directory.openToVerifyRate = openCount > 0 ? Math.round((verifyTotal / openCount) * 1000) / 10 : directory.openToVerifyRate || 0;
+      directory.verifyToSendRate = verifyTotal > 0 ? Math.round((sentTotal / verifyTotal) * 1000) / 10 : directory.verifyToSendRate || 0;
+      directory.openToSendRate = openCount > 0 ? Math.round((sentTotal / openCount) * 1000) / 10 : directory.openToSendRate || 0;
+    } catch (e) {
+      await logError('admin.api.stats', e, { stage: 'directory_server_events' });
+    }
+
     // === CONVERSION FUNNEL (Email & Phone) ===
     const conversionFunnel: StatsResponse['conversionFunnel'] = {
       total_leads: 0,
@@ -782,9 +830,13 @@ export async function GET(req: Request) {
       email_confirmed: 0,
       phone_verified: 0,
       converted_to_new: 0,
+      activated_via_verification: 0,
+      activated_via_directory: 0,
       email_confirmation_rate: 0,
       phone_verification_rate: 0,
       overall_activation_rate: 0,
+      activated_verified_rate: 0,
+      activated_directory_rate: 0,
     };
     try {
       type PersonRow = {
@@ -808,15 +860,9 @@ export async function GET(req: Request) {
 
       for (const row of (peopleRows || []) as PersonRow[]) {
         try {
-          // Runtime skip for E2E pattern just in case
-          const emailRaw = (row.email || '').trim();
-          if (/^e2e-[a-z0-9]+@example\.com$/i.test(emailRaw)) {
-            continue;
-          }
-          conversionFunnel.total_leads++;
-          const email = emailRaw;
+          const email = (row.email || '').trim();
           const phone = (row.phone_number || '').trim();
-          const status = (row.status || '').toLowerCase();
+          const status = String((row.status || '').toLowerCase());
           const meta = (row.metadata || {}) as Record<string, unknown>;
           const cmRaw = String((meta['contact_method'] as string | undefined) || '').toLowerCase();
           const isEmailOnly = cmRaw === 'email' || (!!email && !phone);
@@ -824,15 +870,24 @@ export async function GET(req: Request) {
           if (isEmailOnly) conversionFunnel.email_only++;
           if (isPhoneOnly) conversionFunnel.phone_only++;
           if (status === 'email_confirmed') conversionFunnel.email_confirmed++;
-          if (status === 'new') conversionFunnel.converted_to_new++;
-          const phoneVerified = meta && typeof meta['phone_verified'] === 'boolean' ? (meta['phone_verified'] as boolean) : false;
-          if (phoneVerified) conversionFunnel.phone_verified++;
+          if (status === 'new') {
+            conversionFunnel.converted_to_new++;
+            const emailVerified = typeof meta['email_confirmed_at'] === 'string' && !!meta['email_confirmed_at'];
+            const phoneVerified = meta && typeof meta['phone_verified'] === 'boolean' ? (meta['phone_verified'] as boolean) : false;
+            const viaDirectory = String((meta['source'] as string | undefined) || '').toLowerCase() === 'directory_contact';
+            if (emailVerified || phoneVerified) conversionFunnel.activated_via_verification = (conversionFunnel.activated_via_verification || 0) + 1;
+            else if (viaDirectory) conversionFunnel.activated_via_directory = (conversionFunnel.activated_via_directory || 0) + 1;
+          }
+          const phoneVerifiedFlag = meta && typeof meta['phone_verified'] === 'boolean' ? (meta['phone_verified'] as boolean) : false;
+          if (phoneVerifiedFlag) conversionFunnel.phone_verified++;
         } catch {}
       }
 
       conversionFunnel.email_confirmation_rate = pct(conversionFunnel.email_confirmed, conversionFunnel.email_only);
       conversionFunnel.phone_verification_rate = pct(conversionFunnel.phone_verified, conversionFunnel.phone_only);
       conversionFunnel.overall_activation_rate = pct(conversionFunnel.converted_to_new, conversionFunnel.total_leads);
+      conversionFunnel.activated_verified_rate = pct(conversionFunnel.activated_via_verification || 0, conversionFunnel.total_leads);
+      conversionFunnel.activated_directory_rate = pct(conversionFunnel.activated_via_directory || 0, conversionFunnel.total_leads);
     } catch (e) {
       await logError('admin.api.stats', e, { stage: 'conversion_funnel' });
     }

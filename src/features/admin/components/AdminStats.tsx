@@ -70,6 +70,11 @@ type StatsData = {
     email_confirmation_rate: number;
     phone_verification_rate: number;
     overall_activation_rate: number;
+    // New: activation breakdown
+    activated_via_verification?: number;
+    activated_via_directory?: number;
+    activated_verified_rate?: number;
+    activated_directory_rate?: number;
   };
   matchFunnel?: {
     total_matches: number;
@@ -150,7 +155,7 @@ export default function AdminStats() {
         <div>
           <h2 className="text-xl font-semibold">Admin Statistics</h2>
           <p className="text-sm text-muted-foreground">
-            Tracking insights for last {days} days
+            Tracking insights for last {days} days. Totals are lifetime; all other sections reflect the selected window.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -206,7 +211,7 @@ export default function AdminStats() {
       {data?.conversionFunnel && (
         <FunnelCard
           title="Lead Conversion Funnel"
-          description="Email & SMS verification → Activation"
+          description={`Klient:innen‑Anmeldung und Verifizierung. "Aktiviert (status=new)" wird aufgeschlüsselt in: verifizierte Aktivierung (E‑Mail/Telefon bestätigt) und Verzeichnis‑Aktivierung (nachrichtensendebereit vor Verifizierung).`}
           totalLabel="Total Leads"
           totalCount={data.conversionFunnel.total_leads}
           items={[
@@ -215,6 +220,8 @@ export default function AdminStats() {
             { label: 'Phone Only', count: data.conversionFunnel.phone_only, percentage: data.conversionFunnel.phone_verification_rate, color: 'blue', emoji: '📱' },
             { label: 'Phone Verified', count: data.conversionFunnel.phone_verified, color: 'blue' },
             { label: 'Activated (status=new)', count: data.conversionFunnel.converted_to_new, percentage: data.conversionFunnel.overall_activation_rate, color: 'green', emoji: '✅' },
+            { label: 'Activated via verification', count: data.conversionFunnel.activated_via_verification ?? 0, percentage: data.conversionFunnel.activated_verified_rate, color: 'green' },
+            { label: 'Activated via directory', count: data.conversionFunnel.activated_via_directory ?? 0, percentage: data.conversionFunnel.activated_directory_rate, color: 'amber' },
           ]}
         />
       )}
@@ -223,7 +230,7 @@ export default function AdminStats() {
       {data?.matchFunnel && (
         <FunnelCard
           title="Match Conversion Funnel"
-          description="Therapist responses & patient selections"
+          description={`Therapist-patient matching pipeline. Matches progress: Admin creates → Therapist contacted (email sent) → Therapist responds (accepts/declines outreach) → Patient selects → Final acceptance. Gap between Total and Contacted = proposed matches not yet sent to therapist.`}
           totalLabel="Total Matches"
           totalCount={data.matchFunnel.total_matches}
           items={[
@@ -368,12 +375,14 @@ export default function AdminStats() {
                               </div>
                             </div>
                             <div className="w-32 text-left">
-                              <div className="font-medium tabular-nums">{count} ({pct(count, step1Count)}%)</div>
+                              <div className="font-medium tabular-nums">
+                                {count} <span className="text-muted-foreground">({pct(count, step1Count)}% of total)</span>
+                              </div>
                             </div>
                             <div className="w-40 text-left text-muted-foreground">{stepLabels[step]}</div>
                             {step > 1 && (
-                              <div className="w-20 text-right tabular-nums text-muted-foreground">
-                                {retentionRate}% kept
+                              <div className="w-24 text-right text-xs text-muted-foreground">
+                                {retentionRate}% from prev
                               </div>
                             )}
                           </div>
@@ -394,12 +403,12 @@ export default function AdminStats() {
                         </div>
                         <div className="w-32 text-left">
                           <div className="font-semibold tabular-nums text-blue-700">
-                            {data.wizardFunnel.form_completed} ({pct(data.wizardFunnel.form_completed, step1Count)}%)
+                            {data.wizardFunnel.form_completed} <span className="text-blue-600">({pct(data.wizardFunnel.form_completed, step1Count)}% of total)</span>
                           </div>
                         </div>
                         <div className="w-40 text-left text-blue-700 font-medium">Form Submitted</div>
-                        <div className="w-20 text-right tabular-nums text-blue-700 font-medium">
-                          {pct(data.wizardFunnel.form_completed, data.wizardFunnel.steps[9] || 1)}% from Step 9
+                        <div className="w-24 text-right text-xs text-blue-700 font-medium">
+                          {pct(data.wizardFunnel.form_completed, data.wizardFunnel.steps[9] || 1)}% from prev
                         </div>
                       </div>
                     </>
@@ -575,8 +584,10 @@ export default function AdminStats() {
       {/* Directory Engagement */}
       <Card>
         <CardHeader>
-          <CardTitle>Verzeichnis-Engagement (/therapeuten)</CardTitle>
-          <CardDescription>Nutzung des Therapeuten-Verzeichnisses</CardDescription>
+          <CardTitle>Verzeichnis‑Engagement (/therapeuten)</CardTitle>
+          <CardDescription>
+            Nutzerverhalten auf der Therapeuten‑Seite. Erfasst Views, Navigation, Profilaufrufe, Kontakt‑Modal‑Interaktionen und den Verifizierungs‑vor‑Senden‑Flow. Beinhaltet auch serverseitige Bestätigungen und serverseitig verarbeitete Nachrichtensendungen.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {!data?.directory ? (
@@ -587,6 +598,7 @@ export default function AdminStats() {
                 <div>
                   <div className="text-sm text-muted-foreground">Views</div>
                   <div className="text-2xl font-semibold tabular-nums">{data.directory.views}</div>
+                  <div className="text-xs text-muted-foreground">Unique sessions on /therapeuten</div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Help Clicks</div>
@@ -595,6 +607,9 @@ export default function AdminStats() {
                     <span className="text-sm text-muted-foreground">
                       ({pct(data.directory.helpClicks, data.directory.views)}%)
                     </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    &ldquo;Need help? Try questionnaire&rdquo; callout clicks
                   </div>
                 </div>
                 <div>
@@ -614,6 +629,9 @@ export default function AdminStats() {
                       ({pct(data.directory.contactOpened, data.directory.views)}%)
                     </span>
                   </div>
+                  <div className="text-xs text-muted-foreground">
+                    Opened contact modal on therapist card
+                  </div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Messages Sent</div>
@@ -622,6 +640,9 @@ export default function AdminStats() {
                     <span className="text-sm text-muted-foreground">
                       ({pct(data.directory.contactSent, data.directory.views)}%)
                     </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Completed and sent message via modal
                   </div>
                 </div>
               </div>
@@ -648,57 +669,82 @@ export default function AdminStats() {
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <div className="text-muted-foreground">Profile Sessions</div>
-                  <div className="text-2xl font-semibold tabular-nums">{data.directory.profileViewsSessions ?? 0}</div>
+              <div className="mt-4 space-y-4">
+                <div className="text-xs text-muted-foreground font-medium">Profile Browsing</div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <div className="text-muted-foreground">Profile Sessions</div>
+                    <div className="text-2xl font-semibold tabular-nums">{data.directory.profileViewsSessions ?? 0}</div>
+                    <div className="text-xs text-muted-foreground">Sessions that viewed ≥1 profile</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Profile Views</div>
+                    <div className="text-2xl font-semibold tabular-nums">{data.directory.profileViewsTotal ?? 0}</div>
+                    <div className="text-xs text-muted-foreground">Total profile modal opens</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Profiles/Session</div>
+                    <div className="text-2xl font-semibold tabular-nums">{data.directory.profilesPerSessionAvg ?? 0}</div>
+                    <div className="text-xs text-muted-foreground">Average profiles viewed per session</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-muted-foreground">Profile Views</div>
-                  <div className="text-2xl font-semibold tabular-nums">{data.directory.profileViewsTotal ?? 0}</div>
+                
+                <div className="text-xs text-muted-foreground font-medium">Contact CTAs</div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div className="text-muted-foreground">Booking CTAs</div>
+                    <div className="text-2xl font-semibold tabular-nums">{data.directory.ctaBookingSessions ?? 0}</div>
+                    <div className="text-xs text-muted-foreground">Clicked &ldquo;Termin buchen&rdquo; button</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Erstgespräch CTAs</div>
+                    <div className="text-2xl font-semibold tabular-nums">{data.directory.ctaConsultSessions ?? 0}</div>
+                    <div className="text-xs text-muted-foreground">Clicked &ldquo;Erstgespräch anfragen&rdquo; button</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-muted-foreground">Profiles/Session</div>
-                  <div className="text-2xl font-semibold tabular-nums">{data.directory.profilesPerSessionAvg ?? 0}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Booking CTAs</div>
-                  <div className="text-2xl font-semibold tabular-nums">{data.directory.ctaBookingSessions ?? 0}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Erstgespräch CTAs</div>
-                  <div className="text-2xl font-semibold tabular-nums">{data.directory.ctaConsultSessions ?? 0}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Verify Started (Phone)</div>
-                  <div className="text-2xl font-semibold tabular-nums">{data.directory.verifyStartedPhoneSessions ?? 0}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Verify Started (Email)</div>
-                  <div className="text-2xl font-semibold tabular-nums">{data.directory.verifyStartedEmailSessions ?? 0}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Verify Completed (Phone)</div>
-                  <div className="text-2xl font-semibold tabular-nums">{data.directory.verifyCompletedPhoneSessions ?? 0}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Verify Completed (Email)</div>
-                  <div className="text-2xl font-semibold tabular-nums">{data.directory.verifyCompletedEmailSessions ?? 0}</div>
+                
+                <div className="text-xs text-muted-foreground font-medium">Verification Flow (Required before sending)</div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <div className="text-muted-foreground">Verify Started (Phone)</div>
+                    <div className="text-2xl font-semibold tabular-nums">{data.directory.verifyStartedPhoneSessions ?? 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Verify Started (Email)</div>
+                    <div className="text-2xl font-semibold tabular-nums">{data.directory.verifyStartedEmailSessions ?? 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Verify Completed (Phone)</div>
+                    <div className="text-2xl font-semibold tabular-nums">{data.directory.verifyCompletedPhoneSessions ?? 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Verify Completed (Email)</div>
+                    <div className="text-2xl font-semibold tabular-nums">{data.directory.verifyCompletedEmailSessions ?? 0}</div>
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <div className="text-muted-foreground">Open → Verify</div>
-                  <div className="text-2xl font-semibold tabular-nums">{data.directory.openToVerifyRate ?? 0}%</div>
+              <div className="mt-4 space-y-2">
+                <div className="text-xs text-muted-foreground font-medium">Conversion Rates (Contact Modal Funnel)</div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <div className="text-muted-foreground">Open → Verify</div>
+                    <div className="text-2xl font-semibold tabular-nums">{data.directory.openToVerifyRate ?? 0}%</div>
+                    <div className="text-xs text-muted-foreground">% of modal openers who completed verification</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Verify → Send</div>
+                    <div className="text-2xl font-semibold tabular-nums">{data.directory.verifyToSendRate ?? 0}%</div>
+                    <div className="text-xs text-muted-foreground">% of verified users who sent message</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Open → Send</div>
+                    <div className="text-2xl font-semibold tabular-nums">{data.directory.openToSendRate ?? 0}%</div>
+                    <div className="text-xs text-muted-foreground">Overall conversion from open to send</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-muted-foreground">Verify → Send</div>
-                  <div className="text-2xl font-semibold tabular-nums">{data.directory.verifyToSendRate ?? 0}%</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Open → Send</div>
-                  <div className="text-2xl font-semibold tabular-nums">{data.directory.openToSendRate ?? 0}%</div>
+                <div className="text-xs text-muted-foreground">
+                  Note: Rates merge client and server events; where sessions can’t be joined, totals are approximated.
                 </div>
               </div>
 
@@ -734,7 +780,9 @@ export default function AdminStats() {
       <Card>
         <CardHeader>
           <CardTitle>Questionnaire Insights</CardTitle>
-          <CardDescription>Aggregated preferences from Fragebogen (last {days} days)</CardDescription>
+          <CardDescription>
+            Aggregierte Präferenzen von Klient:innen aus abgeschlossenen Fragebögen: Kontaktmethode, Sitzungsformat, Budget, Therapieerfahrung, Geschlechtspräferenz und bevorzugte Methoden.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {!data?.questionnaireInsights ? (
