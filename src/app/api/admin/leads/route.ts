@@ -69,9 +69,10 @@ export async function GET(req: Request) {
     result = result.filter((r) => {
       try {
         const meta = (r?.metadata ?? {}) as Record<string, unknown>;
-        if ((meta as any).is_test === true) return false;
-        const email = String((r as any).email || '').trim();
-        const name = String((r as any).name || '').trim();
+        const isTestVal: unknown = meta ? (meta as Record<string, unknown>)['is_test'] : undefined;
+        if (isTestVal === true) return false;
+        const email = String(((r as Record<string, unknown>)['email'] as string | undefined) || '').trim();
+        const name = String(((r as Record<string, unknown>)['name'] as string | undefined) || '').trim();
         if (/^e2e-[a-z0-9]+@example\.com$/i.test(email)) return false;
         if (/^e2e\b/i.test(name)) return false;
       } catch {}
