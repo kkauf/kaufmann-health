@@ -48,6 +48,17 @@ async function checkRateLimitByMatches(patientId: string): Promise<{ allowed: bo
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
   const ua = req.headers.get('user-agent') || '';
+  let isTestCookie = false;
+  try {
+    const cookie = req.headers.get('cookie') || '';
+    if (cookie) {
+      const parts = cookie.split(';');
+      for (const p of parts) {
+        const [k, v] = p.trim().split('=');
+        if (k === 'kh_test' && v === '1') { isTestCookie = true; break; }
+      }
+    }
+  } catch {}
 
   const { pathname } = (() => {
     try {
@@ -155,7 +166,7 @@ export async function POST(req: Request) {
     if (existingMatch) {
       // Merge metadata
       const meta: Record<string, unknown> = (existingMatch.metadata as Record<string, unknown>) || {};
-      const merged: Record<string, unknown> = { ...meta, patient_initiated: true, contact_type, patient_reason, patient_message };
+      const merged: Record<string, unknown> = { ...meta, patient_initiated: true, contact_type, patient_reason, patient_message, ...(isTestCookie ? { is_test: true } : {}) };
       try {
         await supabaseServer
           .from('matches')
@@ -175,7 +186,7 @@ export async function POST(req: Request) {
           patient_id: patientId,
           therapist_id,
           status: 'proposed',
-          metadata: { patient_initiated: true, contact_type, patient_reason, patient_message, session_format },
+          metadata: { patient_initiated: true, contact_type, patient_reason, patient_message, session_format, ...(isTestCookie ? { is_test: true } : {}) },
         })
         .select('id, secure_uuid')
         .single();
@@ -192,7 +203,8 @@ export async function POST(req: Request) {
       type TherapistRow = { email: string; first_name: string | null };
       const t = therapist as unknown as TherapistRow;
       const email = t.email;
-      if (email && magicUuid) {
+      const suppress = isTestCookie;
+      if (!suppress && email && magicUuid) {
         const content = renderTherapistNotification({
           type: 'outreach',
           therapistName: t.first_name || null,

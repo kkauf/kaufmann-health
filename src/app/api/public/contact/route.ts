@@ -85,6 +85,18 @@ export async function POST(req: Request) {
       session_format,
     } = body;
     // Detect E2E/test traffic to avoid affecting production data and emails
+    const isTestCookie = (() => {
+      try {
+        const cookie = req.headers.get('cookie') || '';
+        if (!cookie) return false;
+        const parts = cookie.split(';');
+        for (const p of parts) {
+          const [k, v] = p.trim().split('=');
+          if (k === 'kh_test' && v === '1') return true;
+        }
+        return false;
+      } catch { return false; }
+    })();
     const isTestTraffic = (() => {
       try {
         const email = (patient_email || '').trim();
@@ -96,6 +108,7 @@ export async function POST(req: Request) {
         return false;
       }
     })();
+    const isTest = isTestTraffic || isTestCookie;
     // Parse campaign details from referer (Test 1: control|browse from /start)
     const { campaign_source, campaign_variant, landing_page } = ServerAnalytics.parseCampaignFromRequest(req);
     
@@ -160,6 +173,7 @@ export async function POST(req: Request) {
     let patientId: string | null = null;
     let isNewPatient = false;
     let sessionCookie: string | undefined;
+    let isTestFromPatientMeta = false;
     
     if (session) {
       // Existing session
@@ -192,13 +206,18 @@ export async function POST(req: Request) {
       const lookupField = contact_method === 'email' ? 'email' : 'phone_number';
       const { data: existing } = await supabase
         .from('people')
-        .select('id')
+        .select('id, metadata')
         .eq('type', 'patient')
         .eq(lookupField, normalizedContact)
         .single();
       
       if (existing) {
         patientId = existing.id;
+        try {
+          const meta = (existing.metadata || {}) as Record<string, unknown>;
+          const v = meta['is_test'];
+          isTestFromPatientMeta = v === true || String(v).toLowerCase() === 'true';
+        } catch {}
       } else {
         // Create new patient record
         const insertData: Record<string, unknown> = {
@@ -215,7 +234,7 @@ export async function POST(req: Request) {
             consent_share_with_therapists_at: new Date().toISOString(),
             consent_privacy_version: PRIVACY_VERSION,
             consent_terms_version: TERMS_VERSION,
-            ...(isTestTraffic ? { is_test: true } : {}),
+            ...(isTest ? { is_test: true } : {}),
           },
         };
         
@@ -355,6 +374,8 @@ export async function POST(req: Request) {
       } catch {}
     }
 
+    const isTestFinal = isTest || isTestFromPatientMeta;
+
     // Create match record
     const matchMetadata = {
       patient_initiated: true,
@@ -363,7 +384,7 @@ export async function POST(req: Request) {
       patient_message: patient_message || '',
       contact_method,
       session_format: session_format || null,
-      ...(isTestTraffic ? { is_test: true } : {}),
+      ...(isTestFinal ? { is_test: true } : {}),
       ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
     };
     
@@ -454,7 +475,7 @@ export async function POST(req: Request) {
       const hiddenVal = (md && md['hidden']) as unknown;
       const isHidden = hideIds.has(therapist.id) || hiddenVal === true || String(hiddenVal).toLowerCase() === 'true';
 
-      const suppressForTest = isTestTraffic === true;
+      const suppressForTest = isTestFinal === true;
       if (!isHidden && !suppressForTest) {
         const emailContent = renderTherapistNotification({
           type: 'outreach',

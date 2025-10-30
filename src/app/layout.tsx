@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import NoCookieToast from "@/components/NoCookieToast";
 import AnalyticsProvider from "@/components/AnalyticsProvider";
+import TestMode from "@/components/TestMode";
 import Script from "next/script";
 import { COOKIES_ENABLED } from "@/lib/config";
 import CookieBanner from "@/components/CookieBanner";
@@ -116,6 +117,7 @@ export default function RootLayout({
           Zum Inhalt springen
         </a>
         <Header />
+        <TestMode />
         <main id="main" className="flex-1">{children}</main>
         <Footer />
         <AnalyticsProvider />

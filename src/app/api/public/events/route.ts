@@ -21,6 +21,18 @@ export async function POST(req: Request) {
       );
     }
 
+    let isTestCookie = false;
+    try {
+      const cookieHeader = req.headers.get('cookie') || '';
+      if (cookieHeader) {
+        const parts = cookieHeader.split(';');
+        for (const part of parts) {
+          const [k, v] = part.trim().split('=');
+          if (k === 'kh_test' && v === '1') { isTestCookie = true; break; }
+        }
+      }
+    } catch {}
+
     const {
       type,
       id,
@@ -63,7 +75,7 @@ export async function POST(req: Request) {
       utm_source: utmSourceFinal,
       utm_medium: utmMediumFinal,
       utm_campaign: utmCampaignFinal,
-      ...(isLocalhostRequest(req) ? { is_test: true } : {}),
+      ...((isLocalhostRequest(req) || isTestCookie) ? { is_test: true } : {}),
       ...(properties && typeof properties === 'object' ? properties : {}),
     };
 

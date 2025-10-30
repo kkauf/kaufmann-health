@@ -51,6 +51,17 @@ export async function POST(req: NextRequest) {
     }
 
     const body = (await req.json()) as SendCodeRequest;
+    let isTestCookie = false;
+    try {
+      const cookieHeader = req.headers.get('cookie') || '';
+      if (cookieHeader) {
+        const parts = cookieHeader.split(';');
+        for (const p of parts) {
+          const [k, v] = p.trim().split('=');
+          if (k === 'kh_test' && v === '1') { isTestCookie = true; break; }
+        }
+      }
+    } catch {}
     const { contact, contact_type, lead_id, form_session_id, redirect, name, draft_contact } = body;
 
     if (!contact || !contact_type) {
@@ -113,6 +124,7 @@ export async function POST(req: NextRequest) {
             if (draft_contact) {
               const meta = (existing.metadata as Record<string, unknown>) || {};
               meta['draft_contact'] = draft_contact;
+              if (isTestCookie) meta['is_test'] = true;
               updateData.metadata = meta;
               try {
                 await ServerAnalytics.trackEventFromRequest(req, {
@@ -121,6 +133,11 @@ export async function POST(req: NextRequest) {
                   props: { via: 'phone', therapist_id: draft_contact.therapist_id, contact_type: draft_contact.contact_type },
                 });
               } catch {}
+            }
+            if (isTestCookie && !updateData.metadata) {
+              const meta = (existing.metadata as Record<string, unknown>) || {};
+              meta['is_test'] = true;
+              updateData.metadata = meta;
             }
             if (Object.keys(updateData).length > 0) {
               await supabaseServer
@@ -133,6 +150,7 @@ export async function POST(req: NextRequest) {
             const metadata: Record<string, unknown> = {
               contact_method: 'phone',
               source: 'directory_contact',
+              ...(isTestCookie ? { is_test: true } : {}),
             };
             // Store draft contact data if provided (therapist directory flow)
             if (draft_contact) {
@@ -267,6 +285,7 @@ export async function POST(req: NextRequest) {
           const meta = (existing[0].metadata as Record<string, unknown>) || {};
           meta['confirm_token'] = token;
           meta['confirm_sent_at'] = new Date().toISOString();
+          if (isTestCookie) meta['is_test'] = true;
           if (draft_contact) {
             meta['draft_contact'] = draft_contact;
             try {
@@ -309,6 +328,7 @@ export async function POST(req: NextRequest) {
           const metadata: Record<string, unknown> = {
             confirm_token: token,
             confirm_sent_at: new Date().toISOString(),
+            ...(isTestCookie ? { is_test: true } : {}),
           };
           // Store draft contact data if provided (therapist directory flow)
           if (draft_contact) {
@@ -359,6 +379,7 @@ export async function POST(req: NextRequest) {
         const meta = (existing?.metadata as Record<string, unknown>) || {};
         meta['confirm_token'] = token;
         meta['confirm_sent_at'] = new Date().toISOString();
+        if (isTestCookie) meta['is_test'] = true;
         // Store draft contact data if provided (therapist directory flow)
         if (draft_contact) {
           meta['draft_contact'] = draft_contact;
