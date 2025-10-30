@@ -1,4 +1,26 @@
 # API
+## POST /api/public/verification/send-code
+
+- __Purpose__: Send an email or SMS verification code and persist a server-side draft of a directory contact (optional).
+- __Auth__: None (public). Rate-limited.
+- __Request Body__ (JSON):
+  - `contact` (string, required) — email or phone
+  - `contact_type` (`'email' | 'phone'`, required)
+  - `name?` (string) — optional patient name used on session creation
+  - `redirect?` (string) — safe path for email magic link return
+  - `draft_contact?` (object) — optional draft from ContactModal
+    - `{ therapist_id, contact_type: 'booking'|'consultation', patient_reason, patient_message, session_format? }`
+- __Behavior__:
+  - Stores/merges `draft_contact` into `people.metadata.draft_contact` so the server can auto-create the match after verification (email confirm or SMS verify). Emits `draft_contact_stored` (via: 'email'|'phone').
+  - Sends email magic link or SMS OTP based on mode.
+
+## POST /api/public/verification/verify-code
+
+- __Purpose__: Verify an SMS code. On success, marks phone verified and processes `metadata.draft_contact` like email confirm.
+- __Behavior__:
+  - Updates `people.metadata.phone_verified=true`, sets `status='new'`.
+  - If `metadata.draft_contact` exists, calls `POST /api/public/contact` with `idempotency_key` and clears draft only after success. Emits `draft_contact_processed` or `draft_contact_failed`.
+
 
 > Looking for a concise overview? See `docs/api-quick-reference.md` for invariants, auth patterns, observability, and the key endpoints. This file is the deep reference with full behavior and edge cases.
 
@@ -36,6 +58,7 @@
 - __Behavior__:
   - Loads the `people` row by `id`, verifies `metadata.confirm_token` and TTL using `metadata.confirm_sent_at` (24h).
   - On success: clears `confirm_token` and `confirm_sent_at`, stamps `confirmed_at` and `email_confirmed_at`, sets `status='email_confirmed'` by default. If `metadata.form_completed_at` exists, sets `status='new'` instead. Emits analytics event `email_confirmed` with campaign properties (`campaign_source`, `campaign_variant`) and `elapsed_seconds`.
+  - If `people.metadata.draft_contact` exists (therapist directory compose flow), the server creates a contact match automatically via `POST /api/public/contact` using an `idempotency_key = <person_id>:<therapist_id>:<contact_type>`. The draft is cleared only after a successful contact. Emits analytics `draft_contact_processed` or `draft_contact_failed`.
   - On invalid/expired tokens: no changes are made.
 - __Redirects__:
   - 302 → on success: `/fragebogen?confirm=1&id=<leadId>` (or `redirect` path if provided; passes `fs` through when present)
@@ -96,14 +119,18 @@
   - `patient_email` (string, required if `contact_method='email'`)
   - `patient_phone` (string, required if `contact_method='phone'`)
   - `contact_method` ('email' | 'phone', required)
-  - `patient_reason` (string, required) — brief description of what they need help with
+  - `patient_reason` (string, optional) — short issue description
   - `patient_message` (string, optional) — full message to therapist
+  - `session_format?` ('online' | 'in_person') — required when `contact_type='booking'`
+  - `idempotency_key?` (string) — prevents duplicate sends on retries/refresh
 - __Behavior__:
+  - Validates: either `patient_reason` OR `patient_message` must be present. For `contact_type='booking'`, `session_format` is required.
   - Checks for existing `kh_client` session cookie. If valid, reuses patient record.
   - If no session: creates or finds patient by contact method, creates session token, sets cookie.
   - Rate limit: max 3 contacts per patient per 24 hours (tracked via `matches` table).
   - Consent: stores `consent_share_with_therapists=true`, `consent_share_with_therapists_at`, `consent_privacy_version`, and `consent_terms_version` in `people.metadata` for both new and existing patients; emits `consent_captured` with `{ method, privacy_version }`.
-  - Creates `match` record with `status='proposed'` and metadata: `{ patient_initiated: true, contact_type, patient_reason, patient_message, contact_method }`.
+  - Idempotency: when `idempotency_key` is provided, returns the existing match and skips resending if a previous request with the same key created it.
+  - Creates `match` record with `status='proposed'` and metadata: `{ patient_initiated: true, contact_type, patient_reason, patient_message, contact_method, session_format?, idempotency_key? }`.
   - Sends therapist notification email with magic link to `/match/[secure_uuid]` (privacy-first: no PII in email).
   - Emits analytics: `patient_created` (if new), `contact_match_created`, `contact_email_sent`, `contact_rate_limit_hit` (if blocked).
 - __Rate Limiting__:

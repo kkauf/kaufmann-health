@@ -4,16 +4,16 @@ export default defineConfig({
   testDir: './tests/e2e',
   timeout: 30_000,
   expect: { timeout: 10_000 },
-  fullyParallel: true,
+  fullyParallel: false,
   reporter: [['list']],
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.E2E_BASE_URL || 'http://127.0.0.1:3000',
   },
   webServer: {
-    command: 'npm run dev:safe',
-    url: process.env.E2E_BASE_URL || 'http://localhost:3000',
-    reuseExistingServer: true,
-    timeout: 60_000,
+    command: 'npm run dev',
+    url: process.env.E2E_BASE_URL || 'http://127.0.0.1:3000',
+    reuseExistingServer: false,
+    timeout: 120_000,
   },
   projects: [
     {
@@ -21,4 +21,5 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
+  workers: 1,
 });

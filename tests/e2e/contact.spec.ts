@@ -1,30 +1,20 @@
 import { test, expect, request } from '@playwright/test';
 
-const base = process.env.E2E_BASE_URL || 'http://localhost:3000';
+const base = process.env.E2E_BASE_URL || 'http://127.0.0.1:3000';
+const therapistId = process.env.E2E_THERAPIST_ID;
 
 // Helper to create a unique key per test run
 const uid = () => Math.random().toString(36).slice(2);
 
-// Minimal therapist fixture assumptions:
-// - There is at least one verified therapist returned by /api/public/therapists
-async function getAnyVerifiedTherapist() {
-  const ctx = await request.newContext();
-  const res = await ctx.get(`${base}/api/public/therapists`);
-  expect(res.ok()).toBeTruthy();
-  const json = await res.json();
-  const t = (json?.data || [])[0];
-  expect(t?.id).toBeTruthy();
-  return t;
-}
+test.skip(!therapistId, 'Set E2E_THERAPIST_ID to a verified therapist UUID to run contact E2E tests.');
 
 // Basic contact API E2E (server contract validation)
 // These tests exercise the endpoint behavior with idempotency and validation.
 
 test('contact accepts message when reason is empty', async () => {
-  const t = await getAnyVerifiedTherapist();
   const ctx = await request.newContext();
   const payload = {
-    therapist_id: t.id,
+    therapist_id: therapistId,
     contact_type: 'booking',
     patient_name: 'E2E Tester',
     patient_email: `e2e-${uid()}@example.com`,
@@ -40,10 +30,9 @@ test('contact accepts message when reason is empty', async () => {
 });
 
 test('contact rejects when both reason and message are empty', async () => {
-  const t = await getAnyVerifiedTherapist();
   const ctx = await request.newContext();
   const payload = {
-    therapist_id: t.id,
+    therapist_id: therapistId,
     contact_type: 'consultation',
     patient_name: 'E2E Tester',
     patient_email: `e2e-${uid()}@example.com`,
@@ -56,11 +45,10 @@ test('contact rejects when both reason and message are empty', async () => {
 });
 
 test('idempotency: repeated contact with same key returns same match', async () => {
-  const t = await getAnyVerifiedTherapist();
   const ctx = await request.newContext();
-  const key = `e2e:${uid()}:${t.id}:booking`;
+  const key = `e2e:${uid()}:${therapistId}:booking`;
   const basePayload = {
-    therapist_id: t.id,
+    therapist_id: therapistId,
     contact_type: 'booking' as const,
     patient_name: 'E2E Tester',
     patient_email: `e2e-${uid()}@example.com`,

@@ -19,6 +19,16 @@ type TherapistRow = {
 
 export async function GET(request: NextRequest) {
   try {
+    const hideIdsEnv = (process.env.HIDE_THERAPIST_IDS || '').trim();
+    const hideIds = new Set(
+      hideIdsEnv
+        ? hideIdsEnv
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : []
+    );
+
     const { data, error } = await supabaseServer
       .from('therapists')
       .select('id, first_name, last_name, city, modalities, session_preferences, accepting_new, photo_url, status, metadata')
@@ -35,7 +45,19 @@ export async function GET(request: NextRequest) {
 
     const rows = (data as TherapistRow[] | null) || [];
 
-    const therapists = rows.map((row) => {
+    const therapists = rows
+      .filter((row) => {
+        if (hideIds.has(row.id)) return false;
+        try {
+          const md = (row.metadata || {}) as Record<string, unknown>;
+          const hiddenVal = (md && (md as any)['hidden']) as unknown;
+          const hidden = hiddenVal === true || String(hiddenVal).toLowerCase() === 'true';
+          return !hidden;
+        } catch {
+          return true;
+        }
+      })
+      .map((row) => {
       const mdObj: Record<string, unknown> =
         row?.metadata && typeof row.metadata === 'object'
           ? (row.metadata as Record<string, unknown>)
