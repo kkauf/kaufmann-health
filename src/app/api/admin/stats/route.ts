@@ -200,18 +200,18 @@ export async function GET(req: Request) {
       supabaseServer
         .from('therapists')
         .select('id', { count: 'exact', head: true })
-        .not('metadata', 'cs', { is_test: true })
+        .or('metadata->>is_test.is.null,metadata->>is_test.eq.false')
         .not('email', 'ilike', '%@example.com'),
       supabaseServer
         .from('people')
         .select('id', { count: 'exact', head: true })
         .eq('type', 'patient')
-        .not('metadata', 'cs', { is_test: true })
+        .or('metadata->>is_test.is.null,metadata->>is_test.eq.false')
         .not('email', 'ilike', '%@example.com'),
       supabaseServer
         .from('matches')
         .select('id', { count: 'exact', head: true })
-        .not('metadata', 'cs', { is_test: true }),
+        .or('metadata->>is_test.is.null,metadata->>is_test.eq.false'),
     ]);
 
     // Log errors for debugging
@@ -799,7 +799,7 @@ export async function GET(req: Request) {
         .from('people')
         .select('id, email, phone_number, status, created_at, metadata')
         .eq('type', 'patient')
-        .not('metadata', 'cs', { is_test: true })
+        .or('metadata->>is_test.is.null,metadata->>is_test.eq.false')
         .not('email', 'ilike', '%@example.com')
         .gte('created_at', sinceIso)
         .limit(50000);
@@ -854,7 +854,7 @@ export async function GET(req: Request) {
       const { data: matchRows } = await supabaseServer
         .from('matches')
         .select('id, status, created_at')
-        .not('metadata', 'cs', { is_test: true })
+        .or('metadata->>is_test.is.null,metadata->>is_test.eq.false')
         .gte('created_at', sinceIso)
         .limit(50000);
 
