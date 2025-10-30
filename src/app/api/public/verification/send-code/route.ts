@@ -454,8 +454,12 @@ export async function POST(req: NextRequest) {
         props: { contact_type: 'email' },
       });
 
+      const respData: Record<string, unknown> = { sent: true, method: 'email', token };
+      if (process.env.NODE_ENV !== 'production') {
+        respData.person_id = personId;
+      }
       return NextResponse.json({
-        data: { sent: true, method: 'email', token }, // Return token for testing
+        data: respData,
         error: null,
       });
     }

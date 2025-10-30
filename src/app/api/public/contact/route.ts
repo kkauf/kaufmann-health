@@ -84,6 +84,18 @@ export async function POST(req: Request) {
       patient_message,
       session_format,
     } = body;
+    // Detect E2E/test traffic to avoid affecting production data and emails
+    const isTestTraffic = (() => {
+      try {
+        const email = (patient_email || '').trim();
+        const name = (patient_name || '').trim();
+        const e2eEmail = /^e2e-[a-z0-9]+@example\.com$/i.test(email);
+        const e2eName = /^e2e\b/i.test(name);
+        return e2eEmail || e2eName;
+      } catch {
+        return false;
+      }
+    })();
     // Parse campaign details from referer (Test 1: control|browse from /start)
     const { campaign_source, campaign_variant, landing_page } = ServerAnalytics.parseCampaignFromRequest(req);
     
@@ -203,6 +215,7 @@ export async function POST(req: Request) {
             consent_share_with_therapists_at: new Date().toISOString(),
             consent_privacy_version: PRIVACY_VERSION,
             consent_terms_version: TERMS_VERSION,
+            ...(isTestTraffic ? { is_test: true } : {}),
           },
         };
         
@@ -274,7 +287,7 @@ export async function POST(req: Request) {
     // Fetch therapist details
     const { data: therapist, error: therapistError } = await supabase
       .from('therapists')
-      .select('id, first_name, last_name, email')
+      .select('id, first_name, last_name, email, metadata')
       .eq('id', therapist_id)
       .eq('status', 'verified')
       .single();
@@ -301,6 +314,7 @@ export async function POST(req: Request) {
           consent_share_with_therapists_at: new Date().toISOString(),
           consent_privacy_version: PRIVACY_VERSION,
           consent_terms_version: TERMS_VERSION,
+          ...(isTestTraffic ? { is_test: true } : {}),
         };
         await supabase
           .from('people')
@@ -349,6 +363,7 @@ export async function POST(req: Request) {
       patient_message: patient_message || '',
       contact_method,
       session_format: session_format || null,
+      ...(isTestTraffic ? { is_test: true } : {}),
       ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
     };
     
@@ -426,36 +441,57 @@ export async function POST(req: Request) {
     
     // Send notification email to therapist (EARTH-205: include message and contact type)
     try {
-      const emailContent = renderTherapistNotification({
-        type: 'outreach',
-        therapistName: therapist.first_name,
-        patientCity: '', // Not collected in this flow
-        patientIssue: patientReasonEffective,
-        patientSessionPreference: session_format || null,
-        magicUrl: `${BASE_URL}/match/${match.secure_uuid}`,
-        expiresHours: 72,
-        contactType: contact_type,
-        patientMessage: patient_message,
-      });
-      
-      void sendEmail({
-        to: therapist.email,
-        subject: emailContent.subject,
-        html: emailContent.html,
-      }).catch(err => {
-        void logError('email.therapist_notification', err, {
-          match_id: match.id,
-          therapist_id: therapist.id,
-        }, ip, ua);
-      });
-      
-      void track({
-        type: 'contact_email_sent',
-        source: 'api.public.contact',
-        props: { match_id: match.id, therapist_id: therapist.id },
-      });
+      const hideIdsEnv = (process.env.HIDE_THERAPIST_IDS || '').trim();
+      const hideIds = new Set(
+        hideIdsEnv
+          ? hideIdsEnv
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : []
+      );
+      const md = (therapist?.metadata || {}) as Record<string, unknown>;
+      const hiddenVal = (md && (md as any)['hidden']) as unknown;
+      const isHidden = hideIds.has(therapist.id) || hiddenVal === true || String(hiddenVal).toLowerCase() === 'true';
+
+      const suppressForTest = isTestTraffic === true;
+      if (!isHidden && !suppressForTest) {
+        const emailContent = renderTherapistNotification({
+          type: 'outreach',
+          therapistName: therapist.first_name,
+          patientCity: '',
+          patientIssue: patientReasonEffective,
+          patientSessionPreference: session_format || null,
+          magicUrl: `${BASE_URL}/match/${match.secure_uuid}`,
+          expiresHours: 72,
+          contactType: contact_type,
+          patientMessage: patient_message,
+        });
+
+        void sendEmail({
+          to: therapist.email,
+          subject: emailContent.subject,
+          html: emailContent.html,
+        }).catch(err => {
+          void logError('email.therapist_notification', err, {
+            match_id: match.id,
+            therapist_id: therapist.id,
+          }, ip, ua);
+        });
+
+        void track({
+          type: 'contact_email_sent',
+          source: 'api.public.contact',
+          props: { match_id: match.id, therapist_id: therapist.id },
+        });
+      } else {
+        void track({
+          type: suppressForTest ? 'contact_email_skipped_test' : 'contact_email_skipped_hidden',
+          source: 'api.public.contact',
+          props: { match_id: match.id, therapist_id: therapist.id },
+        });
+      }
     } catch (emailErr) {
-      // Log but don't fail the request
       void logError('email.therapist_notification', emailErr, {
         match_id: match.id,
       }, ip, ua);

@@ -167,6 +167,12 @@ export async function GET(req: Request) {
           form_session_id: fs || undefined,
         },
       });
+      await ServerAnalytics.trackEventFromRequest(req, {
+        type: 'contact_verification_completed',
+        source: 'api.leads.confirm',
+        session_id: sessionIdHeader,
+        props: { contact_method: 'email' },
+      });
     } catch {}
 
     // Fire Google Ads conversion on email verification (EARTH-204)

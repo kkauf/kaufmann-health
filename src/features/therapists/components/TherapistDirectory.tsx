@@ -43,6 +43,7 @@ export function TherapistDirectory() {
   const [autoContactTherapist, setAutoContactTherapist] = useState<TherapistData | null>(null);
   const [autoContactOpen, setAutoContactOpen] = useState(false);
   const [autoContactType, setAutoContactType] = useState<'booking' | 'consultation'>('booking');
+  const [autoContactConfirmed, setAutoContactConfirmed] = useState(false);
   
   // Mobile filter sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -101,7 +102,29 @@ export function TherapistDirectory() {
       const t = (url.searchParams.get('type') || 'booking').toLowerCase();
       const type = t === 'consultation' ? 'consultation' : 'booking';
       const confirm = url.searchParams.get('confirm');
-      // If confirm=1 is present, server already processed draft → do NOT auto-open modal
+      // If confirm=1 and compose context present, auto-open and show success in ContactModal
+      if (confirm === '1' && contact === 'compose' && tid) {
+        const th = therapists.find(x => x.id === tid) || null;
+        if (th) {
+          setAutoContactTherapist(th);
+          setAutoContactType(type);
+          setAutoContactOpen(true);
+          setAutoContactConfirmed(true);
+          // Defer URL cleanup slightly to allow ContactModal to detect confirm context
+          setTimeout(() => {
+            try {
+              const u2 = new URL(window.location.href);
+              u2.searchParams.delete('contact');
+              u2.searchParams.delete('tid');
+              u2.searchParams.delete('type');
+              const cleaned2 = `${u2.pathname}${u2.searchParams.toString() ? `?${u2.searchParams.toString()}` : ''}${u2.hash}`;
+              window.history.replaceState({}, '', cleaned2);
+            } catch {}
+          }, 100);
+          return;
+        }
+      }
+      // If confirm present without compose context, just clean up and do not auto-open
       if (confirm === '1') {
         url.searchParams.delete('contact');
         url.searchParams.delete('tid');
@@ -461,6 +484,7 @@ export function TherapistDirectory() {
           open={autoContactOpen}
           onClose={() => setAutoContactOpen(false)}
           verified={true}
+          confirmed={autoContactConfirmed}
         />
       )}
 

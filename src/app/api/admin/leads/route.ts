@@ -45,6 +45,7 @@ export async function GET(req: Request) {
       .from('people')
       .select('id, name, email, phone_number, type, status, metadata, created_at')
       .eq('type', 'patient')
+      .not('metadata', 'cs', { is_test: true })
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -64,6 +65,18 @@ export async function GET(req: Request) {
     // Map phone_number -> phone for UI backward compatibility
     type Row = { phone_number?: string | null; metadata?: unknown } & Record<string, unknown>;
     let result = ((data || []) as Row[]).map((r) => ({ ...r, phone: r.phone_number ?? null }));
+    // Fallback filter: exclude E2E/test leads by metadata flag or recognizable patterns
+    result = result.filter((r) => {
+      try {
+        const meta = (r?.metadata ?? {}) as Record<string, unknown>;
+        if ((meta as any).is_test === true) return false;
+        const email = String((r as any).email || '').trim();
+        const name = String((r as any).name || '').trim();
+        if (/^e2e-[a-z0-9]+@example\.com$/i.test(email)) return false;
+        if (/^e2e\b/i.test(name)) return false;
+      } catch {}
+      return true;
+    });
     if (sessionPref === 'online' || sessionPref === 'in_person') {
       result = result.filter((p) => {
         const meta = (p?.metadata ?? {}) as { session_preference?: 'online' | 'in_person'; session_preferences?: ('online' | 'in_person')[] };

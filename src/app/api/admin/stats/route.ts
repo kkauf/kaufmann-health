@@ -199,14 +199,19 @@ export async function GET(req: Request) {
     const [therapistsRes, clientsRes, matchesRes] = await Promise.all([
       supabaseServer
         .from('therapists')
-        .select('id', { count: 'exact', head: true }),
+        .select('id', { count: 'exact', head: true })
+        .not('metadata', 'cs', { is_test: true })
+        .not('email', 'ilike', '%@example.com'),
       supabaseServer
         .from('people')
         .select('id', { count: 'exact', head: true })
-        .eq('type', 'patient'),
+        .eq('type', 'patient')
+        .not('metadata', 'cs', { is_test: true })
+        .not('email', 'ilike', '%@example.com'),
       supabaseServer
         .from('matches')
-        .select('id', { count: 'exact', head: true }),
+        .select('id', { count: 'exact', head: true })
+        .not('metadata', 'cs', { is_test: true }),
     ]);
 
     // Log errors for debugging
@@ -794,6 +799,8 @@ export async function GET(req: Request) {
         .from('people')
         .select('id, email, phone_number, status, created_at, metadata')
         .eq('type', 'patient')
+        .not('metadata', 'cs', { is_test: true })
+        .not('email', 'ilike', '%@example.com')
         .gte('created_at', sinceIso)
         .limit(50000);
 
@@ -801,8 +808,13 @@ export async function GET(req: Request) {
 
       for (const row of (peopleRows || []) as PersonRow[]) {
         try {
+          // Runtime skip for E2E pattern just in case
+          const emailRaw = (row.email || '').trim();
+          if (/^e2e-[a-z0-9]+@example\.com$/i.test(emailRaw)) {
+            continue;
+          }
           conversionFunnel.total_leads++;
-          const email = (row.email || '').trim();
+          const email = emailRaw;
           const phone = (row.phone_number || '').trim();
           const status = (row.status || '').toLowerCase();
           const meta = (row.metadata || {}) as Record<string, unknown>;
@@ -842,6 +854,7 @@ export async function GET(req: Request) {
       const { data: matchRows } = await supabaseServer
         .from('matches')
         .select('id, status, created_at')
+        .not('metadata', 'cs', { is_test: true })
         .gte('created_at', sinceIso)
         .limit(50000);
 

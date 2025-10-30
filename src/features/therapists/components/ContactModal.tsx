@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CheckCircle2, Loader2, AlertCircle, Shield, Lock, FileCheck, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Loader2, AlertCircle, Shield, Lock, FileCheck, ShieldCheck, Mail, MailCheck } from 'lucide-react';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { validatePhone } from '@/lib/verification/usePhoneValidation';
@@ -30,6 +30,8 @@ interface ContactModalProps {
   onSuccess?: () => void;
   /** If true, user is considered verified (EARTH-204 cookie). Skip verification. */
   verified?: boolean;
+  /** If true, we returned from confirm redirect and message was already sent. Show success. */
+  confirmed?: boolean;
 }
 
 type Step = 'verify' | 'verify-code' | 'verify-link' | 'compose' | 'success';
@@ -45,8 +47,8 @@ interface PreAuthParams {
   sessionPreference?: 'online' | 'in_person';
 }
 
-export function ContactModal({ therapist, contactType, open, onClose, onSuccess, preAuth, verified }: ContactModalProps & { preAuth?: PreAuthParams }) {
-  const [step, setStep] = useState<Step>('compose');
+export function ContactModal({ therapist, contactType, open, onClose, onSuccess, preAuth, verified, confirmed }: ContactModalProps & { preAuth?: PreAuthParams }) {
+  const [step, setStep] = useState<Step>(confirmed ? 'success' : 'compose');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -63,12 +65,17 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const [sessionFormat, setSessionFormat] = useState<'online' | 'in_person' | ''>(''); // Required for booking
   // Track whether the user has a verified session in this modal lifecycle
   const [isVerified, setIsVerified] = useState<boolean>(false);
-  // Email confirm return handling
+  
   const [restoredDraft, setRestoredDraft] = useState<boolean>(false);
   const [autoSendAttempted, setAutoSendAttempted] = useState<boolean>(false);
   
   const therapistName = `${therapist.first_name} ${therapist.last_name}`;
   const initials = `${therapist.first_name[0]}${therapist.last_name[0]}`.toUpperCase();
+  const [awaitingVerificationSend, setAwaitingVerificationSend] = useState<boolean>(false);
+  const [showResendForm, setShowResendForm] = useState(false);
+  const [resendSubmitting, setResendSubmitting] = useState(false);
+  const [resendMessage, setResendMessage] = useState('');
+  const [forceSuccess, setForceSuccess] = useState(Boolean(confirmed));
   
   // If pre-authenticated via match UUID, skip verification and prefill
   useEffect(() => {
@@ -100,6 +107,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     let cancelled = false;
     async function checkSession() {
       if (!open || preAuth) return;
+      if (step === 'success') return;
       try {
         const res = await fetch('/api/public/session');
         if (!res.ok) return;
@@ -117,8 +125,6 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             setContactMethod('phone');
             if (typeof s.contact_value === 'string') setPhone(s.contact_value);
           }
-
-          // Pre-fill message with signature when session is restored
           const greeting = `Guten Tag ${therapist.first_name}`;
           const intent = contactType === 'booking'
             ? 'ich möchte gerne einen Termin vereinbaren'
@@ -126,7 +132,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           const signature = userName ? `\n\nViele Grüße\n${userName}` : '';
           setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei [beschreibe dein Anliegen] und fand dein Profil sehr ansprechend.${signature}`);
 
-          setStep('compose');
+          if (forceSuccess || awaitingVerificationSend) {
+            setStep('success');
+            setAwaitingVerificationSend(false);
+          } else {
+            setStep('compose');
+          }
         }
       } catch {}
     }
@@ -134,14 +145,41 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     return () => {
       cancelled = true;
     };
-  }, [open, preAuth, therapist.first_name, contactType]);
+  }, [open, preAuth, therapist.first_name, contactType, awaitingVerificationSend, forceSuccess, step]);
 
   // If parent indicates verified (email confirm return), reflect in local state
   useEffect(() => {
     if (open && !preAuth && verified) {
       setIsVerified(true);
+      if (forceSuccess || awaitingVerificationSend) {
+        setStep('success');
+        setAwaitingVerificationSend(false);
+      }
     }
-  }, [open, preAuth, verified]);
+  }, [open, preAuth, verified, awaitingVerificationSend, forceSuccess]);
+
+  useEffect(() => {
+    if (open && !preAuth && confirmed) {
+      setIsVerified(true);
+      setForceSuccess(true);
+      setStep('success');
+    }
+  }, [open, preAuth, confirmed]);
+
+  useEffect(() => {
+    if (!open || preAuth) return;
+    try {
+      const u = new URL(window.location.href);
+      const c = u.searchParams.get('confirm');
+      const tidParam = u.searchParams.get('tid');
+      const contactParam = u.searchParams.get('contact');
+      if ((c === '1' || c === 'success') && tidParam === therapist.id && contactParam === 'compose') {
+        setIsVerified(true);
+        setForceSuccess(true);
+        setStep('success');
+      }
+    } catch {}
+  }, [open, preAuth, therapist.id]);
 
   // Draft restoration no longer needed - server processes draft_contact on verification
   // Message is auto-sent after email/SMS confirmation via /api/public/leads/confirm or /api/public/verification/verify-code
@@ -275,6 +313,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       
       // Email uses magic link → show link instructions; Phone uses OTP → show code entry
       setStep(contactMethod === 'email' ? 'verify-link' : 'verify-code');
+      setAwaitingVerificationSend(contactMethod === 'email');
       trackEvent('contact_verification_code_sent', { contact_method: contactMethod });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
@@ -554,6 +593,9 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   // Render email magic-link verification step (no code entry)
   const renderVerifyLinkStep = () => (
     <div className="space-y-5" onKeyDown={handleKeyDown}>
+      <div className="mx-auto h-16 w-16 rounded-full bg-gradient-to-br from-indigo-50 to-indigo-100/60 flex items-center justify-center shadow">
+        <Mail className="h-8 w-8 text-indigo-600" />
+      </div>
       <p className="text-sm leading-relaxed text-gray-600">
         Wir haben dir einen Bestätigungslink per E‑Mail gesendet. Bitte öffne deine E‑Mail und klicke auf
         „E‑Mail bestätigen“. Danach kehrst du automatisch hierher zurück und kannst die Nachricht senden.
@@ -572,6 +614,59 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {!showResendForm ? (
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setShowResendForm(true)}
+            disabled={loading}
+            className="text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 transition-colors"
+          >
+            E-Mail nicht erhalten?
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-3 rounded-xl border border-gray-200/60 bg-white/80 p-4 shadow-sm">
+          <p className="text-sm font-medium text-gray-700">E-Mail erneut senden oder Adresse korrigieren:</p>
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="deine@email.de"
+            disabled={loading || resendSubmitting}
+            className="h-11"
+            aria-label="E‑Mail"
+          />
+          <Button
+            type="button"
+            onClick={async () => {
+              if (resendSubmitting) return;
+              const next = (email || '').trim();
+              if (!next || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(next)) {
+                setResendMessage('Bitte eine gültige E‑Mail eingeben.');
+                return;
+              }
+              setResendSubmitting(true);
+              setResendMessage('');
+              // Ensure email path is selected and send magic link using existing logic
+              setContactMethod('email');
+              await handleSendCode();
+              // If no error set by handler, show success message
+              setResendMessage(prev => (prev || !error ? 'E‑Mail versendet. Bitte Posteingang prüfen.' : prev));
+              setResendSubmitting(false);
+            }}
+            disabled={loading || resendSubmitting}
+            className="h-11"
+          >
+            {resendSubmitting ? 'Wird gesendet…' : 'Bestätigungs‑E‑Mail erneut senden'}
+          </Button>
+          {resendMessage && (
+            <p className="text-sm text-center text-gray-600" aria-live="polite">{resendMessage}</p>
+          )}
         </div>
       )}
 
@@ -831,7 +926,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const renderSuccessStep = () => (
     <div className="space-y-6 text-center py-8">
       <div className="mx-auto h-20 w-20 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100/60 flex items-center justify-center shadow-lg shadow-emerald-100/50">
-        <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+        <MailCheck className="h-10 w-10 text-emerald-600" />
       </div>
       <div className="space-y-3">
         <h3 className="text-xl font-bold text-gray-900">Nachricht gesendet!</h3>

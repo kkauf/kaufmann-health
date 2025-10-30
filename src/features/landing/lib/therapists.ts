@@ -36,6 +36,15 @@ export function mapTherapistRow(row: TherapistRow): AppTherapist {
 
 export async function getTherapistsByIds(ids: string[]): Promise<AppTherapist[]> {
   if (!ids || ids.length === 0) return [];
+  const hideIdsEnv = (process.env.HIDE_THERAPIST_IDS || '').trim();
+  const hideIds = new Set(
+    hideIdsEnv
+      ? hideIdsEnv
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : []
+  );
   const { data, error } = await supabaseServer
     .from('therapists')
     .select('id, first_name, last_name, city, modalities, accepting_new, photo_url, status, metadata')
@@ -47,7 +56,17 @@ export async function getTherapistsByIds(ids: string[]): Promise<AppTherapist[]>
     console.error('[landing/lib/therapists] getTherapistsByIds error:', error);
     return [];
   }
-  const rows = (data as TherapistRow[] | null) || [];
+  const rows = ((data as TherapistRow[] | null) || []).filter((row) => {
+    if (hideIds.has(row.id)) return false;
+    try {
+      const md = (row.metadata || {}) as Record<string, unknown>;
+      const hiddenVal = (md && (md as any)['hidden']) as unknown;
+      const hidden = hiddenVal === true || String(hiddenVal).toLowerCase() === 'true';
+      return !hidden;
+    } catch {
+      return true;
+    }
+  });
   return rows.map(mapTherapistRow);
 }
 
@@ -57,6 +76,15 @@ export async function getTherapistsForLanding(options?: {
   modalities?: string[];
   limit?: number;
 }): Promise<AppTherapist[]> {
+  const hideIdsEnv = (process.env.HIDE_THERAPIST_IDS || '').trim();
+  const hideIds = new Set(
+    hideIdsEnv
+      ? hideIdsEnv
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : []
+  );
   let query = supabaseServer
     .from('therapists')
     .select('id, first_name, last_name, city, modalities, accepting_new, photo_url, status, metadata')
@@ -78,7 +106,17 @@ export async function getTherapistsForLanding(options?: {
     console.error('[landing/lib/therapists] getTherapistsForLanding error:', error);
     return [];
   }
-  const rows = (data as TherapistRow[] | null) || [];
+  const rows = ((data as TherapistRow[] | null) || []).filter((row) => {
+    if (hideIds.has(row.id)) return false;
+    try {
+      const md = (row.metadata || {}) as Record<string, unknown>;
+      const hiddenVal = (md && (md as any)['hidden']) as unknown;
+      const hidden = hiddenVal === true || String(hiddenVal).toLowerCase() === 'true';
+      return !hidden;
+    } catch {
+      return true;
+    }
+  });
   const mapped = rows.map(mapTherapistRow);
   if (options?.modalities && options.modalities.length > 0) {
     const wanted = new Set(options.modalities.map(m => String(m).toLowerCase().replace(/\s+/g, '-')));

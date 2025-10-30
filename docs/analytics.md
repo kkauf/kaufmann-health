@@ -27,6 +27,9 @@
    - `POST /api/public/verification/send-code` (stored)
    - `GET /api/public/leads/confirm` (processed/failed)
    - `POST /api/public/verification/verify-code` (processed/failed)
+ - Verification completion for directory flows: `contact_verification_completed` with `contact_method: 'email'|'phone'` emitted by:
+   - `GET /api/public/leads/confirm` (email)
+   - `POST /api/public/verification/verify-code` (phone)
   - **Phone-only gap tracking**: `patient_notify_skipped` with `reason: 'phone_only_no_email'` tracks when therapist accepts/declines but patient has no real email (temp placeholder). Monitor this to measure SMS notification need.
 
 - Returning contact flow (EARTH-204):

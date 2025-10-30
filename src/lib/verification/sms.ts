@@ -51,6 +51,10 @@ function extractTwilioError(err: unknown): {
  * Returns success=false if SMS fails (caller should fallback to email)
  */
 export async function sendSmsCode(phoneNumber: string): Promise<SendCodeResult> {
+  // E2E bypass: pretend SMS sent successfully in non-production
+  if (process.env.E2E_SMS_BYPASS === 'true') {
+    return { success: true, sid: 'e2e-bypass' };
+  }
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const serviceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
@@ -120,6 +124,12 @@ export async function verifySmsCode(
   phoneNumber: string,
   code: string
 ): Promise<VerifyCodeResult> {
+  // E2E bypass: accept a fixed code without calling Twilio
+  if (process.env.E2E_SMS_BYPASS === 'true') {
+    const okCode = (process.env.E2E_SMS_CODE || '000000').trim();
+    if (code.trim() === okCode) return { success: true };
+    return { success: false, error: 'Falscher Code' };
+  }
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const serviceSid = process.env.TWILIO_VERIFY_SERVICE_SID;

@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
 
       // Persist phone_verified flag to person record and fire conversion (EARTH-204)
       let sessionCookie: string | null = null;
+      let effectivePersonId: string | null = null;
       try {
         type PersonRow = { id: string; name?: string | null; email?: string | null; metadata?: Record<string, unknown> | null };
         const { data: person, error: fetchErr } = await supabaseServer
@@ -90,6 +91,7 @@ export async function POST(req: NextRequest) {
           .single<PersonRow>();
 
         if (!fetchErr && person) {
+          effectivePersonId = person.id;
           // Extract draft_contact reference (do NOT remove yet; clear after success)
           const draftContact = person.metadata?.draft_contact as Record<string, unknown> | undefined;
 
@@ -210,6 +212,7 @@ export async function POST(req: NextRequest) {
             .single<PersonRow>();
 
           if (!insErr && inserted) {
+            effectivePersonId = inserted.id;
             const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined;
             const ua = req.headers.get('user-agent') || undefined;
             await maybeFirePatientConversion({
@@ -238,8 +241,21 @@ export async function POST(req: NextRequest) {
         await logError('api.verification.verify-code', err, { stage: 'persist_phone_verified' });
       }
 
+      // Track verification completion for directory analytics parity
+      try {
+        await ServerAnalytics.trackEventFromRequest(req, {
+          type: 'contact_verification_completed',
+          source: 'api.verification.verify-code',
+          props: { contact_method: 'phone' },
+        });
+      } catch {}
+
+      const respData: Record<string, unknown> = { verified: true, method: 'sms' };
+      if (process.env.NODE_ENV !== 'production' && effectivePersonId) {
+        respData.person_id = effectivePersonId;
+      }
       const response = NextResponse.json({
-        data: { verified: true, method: 'sms' },
+        data: respData,
         error: null,
       });
       
