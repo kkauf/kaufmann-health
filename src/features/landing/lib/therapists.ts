@@ -60,7 +60,7 @@ export async function getTherapistsByIds(ids: string[]): Promise<AppTherapist[]>
     if (hideIds.has(row.id)) return false;
     try {
       const md = (row.metadata || {}) as Record<string, unknown>;
-      const hiddenVal = (md && (md as any)['hidden']) as unknown;
+      const hiddenVal: unknown = md ? (md as Record<string, unknown>)['hidden'] : undefined;
       const hidden = hiddenVal === true || String(hiddenVal).toLowerCase() === 'true';
       return !hidden;
     } catch {
@@ -110,7 +110,7 @@ export async function getTherapistsForLanding(options?: {
     if (hideIds.has(row.id)) return false;
     try {
       const md = (row.metadata || {}) as Record<string, unknown>;
-      const hiddenVal = (md && (md as any)['hidden']) as unknown;
+      const hiddenVal: unknown = md ? (md as Record<string, unknown>)['hidden'] : undefined;
       const hidden = hiddenVal === true || String(hiddenVal).toLowerCase() === 'true';
       return !hidden;
     } catch {
