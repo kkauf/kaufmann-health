@@ -451,7 +451,7 @@ export async function POST(req: Request) {
           : []
       );
       const md = (therapist?.metadata || {}) as Record<string, unknown>;
-      const hiddenVal = (md && (md as any)['hidden']) as unknown;
+      const hiddenVal = (md && md['hidden']) as unknown;
       const isHidden = hideIds.has(therapist.id) || hiddenVal === true || String(hiddenVal).toLowerCase() === 'true';
 
       const suppressForTest = isTestTraffic === true;

@@ -8,7 +8,7 @@
     "dev:safe": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "next lint --quiet",
     "test": "vitest run",
     "test:critical": "vitest run --exclude tests/storage.health.test.ts",
     "test:watch": "vitest",
