@@ -286,6 +286,11 @@ export async function POST(req: NextRequest) {
           meta['confirm_token'] = token;
           meta['confirm_sent_at'] = new Date().toISOString();
           if (isTestCookie) meta['is_test'] = true;
+          // Persist safe redirect path for idempotent confirm redirects back to directory
+          if (redirect && typeof redirect === 'string') {
+            const isSafe = redirect.startsWith('/') && !redirect.startsWith('/api') && !redirect.startsWith('//');
+            if (isSafe) meta['last_confirm_redirect_path'] = redirect;
+          }
           if (draft_contact) {
             meta['draft_contact'] = draft_contact;
             try {
@@ -341,6 +346,11 @@ export async function POST(req: NextRequest) {
               });
             } catch {}
           }
+          // Persist safe redirect path for idempotent confirm redirects back to directory
+          if (redirect && typeof redirect === 'string') {
+            const isSafe = redirect.startsWith('/') && !redirect.startsWith('/api') && !redirect.startsWith('//');
+            if (isSafe) metadata['last_confirm_redirect_path'] = redirect;
+          }
           const insertData: Record<string, unknown> = {
             email: contact,
             type: 'patient',
@@ -380,6 +390,11 @@ export async function POST(req: NextRequest) {
         meta['confirm_token'] = token;
         meta['confirm_sent_at'] = new Date().toISOString();
         if (isTestCookie) meta['is_test'] = true;
+        // Persist safe redirect path for idempotent confirm redirects back to directory
+        if (redirect && typeof redirect === 'string') {
+          const isSafe = redirect.startsWith('/') && !redirect.startsWith('/api') && !redirect.startsWith('//');
+          if (isSafe) meta['last_confirm_redirect_path'] = redirect;
+        }
         // Store draft contact data if provided (therapist directory flow)
         if (draft_contact) {
           meta['draft_contact'] = draft_contact;

@@ -76,9 +76,16 @@ export async function GET(req: Request) {
       return NextResponse.redirect(`${origin}/fragebogen?confirm=invalid`, 302);
     }
 
-    // If the email has already been confirmed previously, but preferences may not be set yet,
-    // send the user directly to the preferences screen instead of showing an invalid link.
-    if ((person.status || '').toLowerCase() === 'email_confirmed') {
+    // Resolve an effective redirect path: prefer query param if safe; otherwise fallback to stored metadata value
+    const personMeta: Record<string, unknown> = (person.metadata ?? {}) as Record<string, unknown>;
+    const storedRedirectRaw = typeof personMeta['last_confirm_redirect_path'] === 'string' ? (personMeta['last_confirm_redirect_path'] as string) : undefined;
+    const storedRedirectSafe = !!(storedRedirectRaw && storedRedirectRaw.startsWith('/') && !storedRedirectRaw.startsWith('/api') && !storedRedirectRaw.startsWith('//'));
+    const effectiveRedirect = isSafeRedirect ? redirectPath! : (storedRedirectSafe ? storedRedirectRaw! : undefined);
+
+    // If the email has already been confirmed previously (or the lead is already actionable as 'new'),
+    // send the user directly back to the intended UI context instead of showing an invalid link.
+    const statusLower = (person.status || '').toLowerCase();
+    if (statusLower === 'email_confirmed' || statusLower === 'new') {
       // Set client session cookie so the user is treated as verified (EARTH-204)
       try {
         const token = await createClientSessionToken({
@@ -88,11 +95,11 @@ export async function GET(req: Request) {
           name: person.name || undefined,
         });
         const cookie = createClientSessionCookie(token);
-        if (isSafeRedirect) {
-          const hasQuery = redirectPath!.includes('?');
+        if (effectiveRedirect) {
+          const hasQuery = effectiveRedirect.includes('?');
           const separator = hasQuery ? '&' : '?';
           const suffix = `${separator}confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
-          const resp = NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
+          const resp = NextResponse.redirect(`${origin}${effectiveRedirect}${suffix}`, 302);
           resp.headers.set('Set-Cookie', cookie);
           return resp;
         }
@@ -100,11 +107,11 @@ export async function GET(req: Request) {
         resp.headers.set('Set-Cookie', cookie);
         return resp;
       } catch {
-        if (isSafeRedirect) {
-          const hasQuery = redirectPath!.includes('?');
+        if (effectiveRedirect) {
+          const hasQuery = effectiveRedirect.includes('?');
           const separator = hasQuery ? '&' : '?';
           const suffix = `${separator}confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
-          return NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
+          return NextResponse.redirect(`${origin}${effectiveRedirect}${suffix}`, 302);
         }
         return NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`, 302);
       }
@@ -271,11 +278,11 @@ export async function GET(req: Request) {
         name: person.name || undefined,
       });
       const cookie = createClientSessionCookie(token);
-      if (isSafeRedirect) {
-        const hasQuery = redirectPath!.includes('?');
+      if (effectiveRedirect) {
+        const hasQuery = effectiveRedirect.includes('?');
         const separator = hasQuery ? '&' : '?';
         const suffix = `${separator}confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
-        const resp = NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
+        const resp = NextResponse.redirect(`${origin}${effectiveRedirect}${suffix}`, 302);
         resp.headers.set('Set-Cookie', cookie);
         return resp;
       }
@@ -283,11 +290,11 @@ export async function GET(req: Request) {
       resp.headers.set('Set-Cookie', cookie);
       return resp;
     } catch {
-      if (isSafeRedirect) {
-        const hasQuery = redirectPath!.includes('?');
+      if (effectiveRedirect) {
+        const hasQuery = effectiveRedirect.includes('?');
         const separator = hasQuery ? '&' : '?';
         const suffix = `${separator}confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
-        return NextResponse.redirect(`${origin}${redirectPath}${suffix}`, 302);
+        return NextResponse.redirect(`${origin}${effectiveRedirect}${suffix}`, 302);
       }
       return NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`, 302);
     }

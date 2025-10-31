@@ -137,7 +137,10 @@ export async function POST(req: Request) {
       const origin = new URL(req.url).origin || BASE_URL;
       const base = `${origin}/api/public/leads/confirm?token=${encodeURIComponent(newToken)}&id=${encodeURIComponent(id)}`;
       const fs = typeof metadata['form_session_id'] === 'string' ? String(metadata['form_session_id']) : '';
-      const confirmUrl = fs ? `${base}&fs=${encodeURIComponent(fs)}` : base;
+      const storedRedirect = typeof metadata['last_confirm_redirect_path'] === 'string' ? String(metadata['last_confirm_redirect_path']) : '';
+      const isSafeRedirect = !!(storedRedirect && storedRedirect.startsWith('/') && !storedRedirect.startsWith('/api') && !storedRedirect.startsWith('//'));
+      const withFs = fs ? `${base}&fs=${encodeURIComponent(fs)}` : base;
+      const confirmUrl = isSafeRedirect ? `${withFs}&redirect=${encodeURIComponent(storedRedirect)}` : withFs;
       const emailContent = renderEmailConfirmation({ confirmUrl });
       void track({
         type: 'email_attempted',
