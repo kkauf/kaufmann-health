@@ -3,7 +3,7 @@ import PageAnalytics from '@/components/PageAnalytics';
 import { TherapistDirectory } from '@/features/therapists/components/TherapistDirectory';
 import { TherapistMatchCallout } from '@/features/therapists/components/TherapistMatchCallout';
 import { buildLandingMetadata } from '@/lib/seo';
-import FloatingWhatsApp from '@/components/FloatingWhatsApp';
+import VerifiedFloatingWhatsApp from '@/components/VerifiedFloatingWhatsApp';
 import DirectoryAnalytics from '@/features/therapists/components/DirectoryAnalytics';
 
 export const revalidate = 3600;
@@ -43,7 +43,7 @@ export default function TherapeutenPage() {
           <TherapistMatchCallout />
         </div>
       </main>
-      <FloatingWhatsApp />
+      <VerifiedFloatingWhatsApp />
     </>
   );
 }
