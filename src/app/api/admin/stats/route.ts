@@ -784,7 +784,7 @@ export async function GET(req: Request) {
     try {
       const { data: serverEventRows } = await supabaseServer
         .from('events')
-        .select('type, source, properties')
+        .select('type, properties')
         .in('type', ['directory_contact_conversion', 'contact_verification_completed'])
         .gte('created_at', sinceIso)
         .limit(50000);
@@ -793,10 +793,10 @@ export async function GET(req: Request) {
       let serverVerifyEmail = 0;
       let serverVerifyPhone = 0;
 
-      for (const row of (serverEventRows || []) as Array<{ type?: string; source?: string | null; properties?: Record<string, unknown> }>) {
+      for (const row of (serverEventRows || []) as Array<{ type?: string; properties?: Record<string, unknown> }>) {
         try {
           const t = String(row.type || '').toLowerCase();
-          const src = String(row.source || '');
+          const src = String((row.properties?.['source'] as string | undefined) || '');
           if (t === 'directory_contact_conversion') {
             serverSent++;
           } else if (t === 'contact_verification_completed' && src === 'api.leads.confirm') {

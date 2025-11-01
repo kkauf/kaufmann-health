@@ -166,8 +166,7 @@ export async function GET(req: Request) {
     // level=error OR type=cron_failed, BUT exclude automated attack noise
     // Supabase .or uses a CSV of filters
     // eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
-    query = query.or('level.eq.error,type.eq.cron_failed')
-      .not('properties->>source', 'in', '["api.404"]');
+    query = query.or('level.eq.error,type.eq.cron_failed');
 
     const { data, error } = await query;
     if (error) {
@@ -175,7 +174,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ data: null, error: 'Failed to fetch events' }, { status: 500 });
     }
 
-    const rows = (data as EventRow[] | null) || [];
+    // Exclude automated 404 probes (api.404) in-memory to keep PostgREST filter simple
+    const rows = ((data as EventRow[] | null) || []).filter((r) => (getProp(r.properties, 'source') as string) !== 'api.404');
 
     // Nothing to alert on
     if (rows.length === 0) {
