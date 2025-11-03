@@ -81,6 +81,8 @@ type StatsResponse = {
     openToVerifyRate?: number;
     verifyToSendRate?: number;
     openToSendRate?: number;
+    patientInitiatedMatches?: number;
+    patientInitiatedAccepted?: number;
     closeByStep?: Array<{ step: string; count: number }>;
   };
   journeyAnalysis: {
@@ -924,8 +926,8 @@ export async function GET(req: Request) {
           if (String(r.status || '').toLowerCase() === 'accepted') acceptedPi++;
         }
       }
-      (directory as any).patientInitiatedMatches = totalPi;
-      (directory as any).patientInitiatedAccepted = acceptedPi;
+      directory.patientInitiatedMatches = totalPi;
+      directory.patientInitiatedAccepted = acceptedPi;
     } catch (e) {
       await logError('admin.api.stats', e, { stage: 'directory_patient_initiated' });
     }
