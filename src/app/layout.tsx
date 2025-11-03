@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://kaufmann-health.de"),
+  metadataBase: new URL("https://www.kaufmann-health.de"),
   title:
     "Therapeut:innen-Empfehlung – Sorgfältig geprüfte Therapeut:innen in deiner Nähe | Kaufmann Health",
   description:
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     title: "Therapeut:innen-Empfehlung | Kaufmann Health",
     description:
       "Handverlesene Empfehlungen und Kontaktdaten sorgfältig geprüfter Therapeut:innen (NARM, Hakomi, Somatic Experiencing).",
-    url: "https://kaufmann-health.de/",
+    url: "https://www.kaufmann-health.de/",
     siteName: "Kaufmann Health",
     locale: "de_DE",
     type: "website",
@@ -74,9 +74,6 @@ export const metadata: Metadata = {
     shortcut: [
       { url: "/logos/Health Logos - tree/Tree_small.png", type: "image/png" },
     ],
-  },
-  alternates: {
-    canonical: "/",
   },
 };
 
