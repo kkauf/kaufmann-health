@@ -48,6 +48,8 @@ type StatsData = {
     openToVerifyRate?: number;
     verifyToSendRate?: number;
     openToSendRate?: number;
+    patientInitiatedMatches?: number;
+    patientInitiatedAccepted?: number;
     closeByStep?: Array<{ step: string; count: number }>;
   };
   journeyAnalysis: {
@@ -751,11 +753,11 @@ export default function AdminStats() {
               <div className="mt-2 grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <div className="text-muted-foreground">Patient‑initiated matches</div>
-                  <div className="text-2xl font-semibold tabular-nums">{(data.directory as any).patientInitiatedMatches ?? 0}</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.directory.patientInitiatedMatches ?? 0}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">…of which accepted</div>
-                  <div className="text-2xl font-semibold tabular-nums">{(data.directory as any).patientInitiatedAccepted ?? 0}</div>
+                  <div className="text-2xl font-semibold tabular-nums">{data.directory.patientInitiatedAccepted ?? 0}</div>
                 </div>
               </div>
 
