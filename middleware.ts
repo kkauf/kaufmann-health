@@ -4,8 +4,6 @@ import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSessio
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   
-  // Canonicalize host: force www for public site
-  // Skip localhost/preview automatically by only redirecting exact apex domain
   const hostname = req.nextUrl.hostname;
   if (hostname === 'kaufmann-health.de') {
     const url = req.nextUrl.clone();
