@@ -2,6 +2,7 @@
   "crons": [
     { "path": "/api/admin/therapists/reminders?limit=200", "schedule": "15 9 * * *" },
     { "path": "/api/admin/matches/blocker-survey", "schedule": "0 10 * * *" },
+    { "path": "/api/admin/matches/selection-reminders?stage=day2", "schedule": "0 9 * * *" },
     { "path": "/api/admin/matches/selection-reminders?stage=day5", "schedule": "0 9 * * *" },
     { "path": "/api/admin/matches/selection-reminders?stage=day14", "schedule": "0 16 * * *" },
     { "path": "/api/admin/matches/therapist-action-reminders?stage=20h", "schedule": "0 * * * *" },

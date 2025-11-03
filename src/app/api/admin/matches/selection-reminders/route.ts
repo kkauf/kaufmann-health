@@ -99,7 +99,7 @@ type EmailEventRow = {
 
 async function alreadySentForStage(patient_id: string, stage: string): Promise<boolean> {
   try {
-    if (stage !== 'day5' && stage !== 'day14') return false;
+    if (stage !== 'day2' && stage !== 'day5' && stage !== 'day14') return false;
     // Look back far enough to catch any earlier send for this stage
     const sinceIso = hoursAgo(24 * 30);
     const { data, error } = await supabaseServer
@@ -171,13 +171,17 @@ export async function GET(req: Request) {
     if (isAdmin && !isCron && !sameOrigin(req)) return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 });
 
     const url = new URL(req.url);
-    const stage = (url.searchParams.get('stage') || '').toLowerCase(); // 'day5' | 'day14'
+    const stage = (url.searchParams.get('stage') || '').toLowerCase(); // 'day2' | 'day5' | 'day14'
 
     // Define windows
     const nowIso = new Date().toISOString();
     let fromIso: string | undefined;
     let toIso: string | undefined;
-    if (stage === 'day5') {
+    if (stage === 'day2') {
+      // Between 2 and 3 days since proposal
+      fromIso = hoursAgo(24 * 3);
+      toIso = hoursAgo(24 * 2);
+    } else if (stage === 'day5') {
       // Between 5 and 6 days since proposal
       fromIso = hoursAgo(24 * 6);
       toIso = hoursAgo(24 * 5);
@@ -373,16 +377,22 @@ export async function GET(req: Request) {
         };
       });
 
-      const subject = stage === 'day5'
-        ? 'Brauchst du Unterstützung bei der Auswahl?'
+      const subject = stage === 'day2'
+        ? 'Deine Auswahl ist bereit – sollen wir für dich eingrenzen?'
+        : stage === 'day5'
+        ? 'Wir helfen dir gern bei der Entscheidung'
         : stage === 'day14'
-        ? 'Wie können wir dich weiter unterstützen?'
+        ? 'Sollen wir die Auswahl für dich übernehmen?'
         : 'Deine sorgfältig ausgewählten Therapeuten-Empfehlungen';
 
       const bannerOverrideHtml = (
-        '<div style="background: #EEF2FF; padding: 12px; border-radius: 8px; margin-bottom: 20px;">' +
-        'Wir sind für dich da. Wenn du dir noch unsicher bist, antworte einfach auf diese E‑Mail – wir helfen dir gern bei der Auswahl.' +
-        '</div>'
+        stage === 'day2'
+          ? '<div style="background: #EEF2FF; padding: 12px; border-radius: 8px; margin-bottom: 20px;">Wir haben 3 sorgfältig geprüfte Profile auf Basis deiner Angaben bereitgestellt. Wenn du möchtest, helfen wir dir bei der Entscheidung – persönlich und ohne erneut auszufüllen.</div>'
+          : stage === 'day5'
+          ? '<div style="background: #EEF2FF; padding: 12px; border-radius: 8px; margin-bottom: 20px;">Fällt dir die Entscheidung schwer? Wir schauen uns deine Angaben an und empfehlen dir eine passende Option – oder schlagen eine Alternative vor, wenn das hilfreicher ist.</div>'
+          : stage === 'day14'
+          ? '<div style="background: #EEF2FF; padding: 12px; border-radius: 8px; margin-bottom: 20px;">Wenn du magst, übernehmen wir die Auswahl: Wir wählen auf Basis deiner Angaben die passendste Person und stellen den Kontakt her. Unverbindlich – du behältst die Entscheidung.</div>'
+          : '<div style="background: #EEF2FF; padding: 12px; border-radius: 8px; margin-bottom: 20px;">Wir sind für dich da. Wenn du dir noch unsicher bist, antworte einfach auf diese E‑Mail – wir helfen dir gern bei der Auswahl.</div>'
       );
 
       const matchesUrl = `${BASE_URL}/matches/${secure_uuid}`;
@@ -398,7 +408,13 @@ export async function GET(req: Request) {
             await logError('admin.api.matches.selection_reminders', new Error('Email send returned false'), { stage: 'send_email_failed', patient_id, email: to }, ip, ua);
           }
         } else if (hasPhone && matchesUrl) {
-          const smsBody = `Deine Therapeuten-Empfehlungen sind weiterhin für dich da. Wenn du Unterstützung brauchst, melde dich gern. Auswahl ansehen: ${matchesUrl}`;
+          const smsBody = stage === 'day2'
+            ? `Deine Therapeut:innen‑Empfehlungen sind bereit. Wir grenzen gern für dich ein. Auswahl ansehen: ${matchesUrl}`
+            : stage === 'day5'
+            ? `Entscheidungshilfe gewünscht? Wir empfehlen dir eine Option. Auswahl ansehen: ${matchesUrl}`
+            : stage === 'day14'
+            ? `Wir können die Auswahl für dich übernehmen und den Kontakt herstellen. Auswahl ansehen: ${matchesUrl}`
+            : `Deine Therapeuten‑Empfehlungen sind weiterhin für dich da. Wenn du Unterstützung brauchst, melde dich gern. Auswahl ansehen: ${matchesUrl}`;
           void track({ type: 'sms_attempted', level: 'info', source: 'admin.api.matches.selection_reminders', props: { kind: 'patient_selection_reminder', stage, patient_id } });
           const ok = await sendTransactionalSms(phoneNumber, smsBody);
           if (ok) {

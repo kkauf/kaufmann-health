@@ -322,7 +322,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             </li>
           )}
         </ul>
-        <p className="mt-4 font-semibold text-gray-900">Eine Auswahl, der du vertrauen kannst.</p>
+        <p className="mt-4 font-semibold text-gray-900">Sorgfältig geprüfte Profile – persönlich ausgewählt.</p>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
