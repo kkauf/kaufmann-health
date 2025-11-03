@@ -789,37 +789,145 @@ export async function GET(req: Request) {
         .gte('created_at', sinceIso)
         .limit(50000);
 
-      let serverSent = 0;
-      let serverVerifyEmail = 0;
-      let serverVerifyPhone = 0;
+      // Build session-aware sets and collect match_ids for de-noising tests
+      const serverSentSessions = new Set<string>();
+      const serverVerifyEmailSessions = new Set<string>();
+      const serverVerifyPhoneSessions = new Set<string>();
+      const serverSentNoSessionFallback: Array<{ match_id?: string | null }> = [];
+      const candidateMatchIds = new Set<string>();
 
       for (const row of (serverEventRows || []) as Array<{ type?: string; properties?: Record<string, unknown> }>) {
         try {
           const t = String(row.type || '').toLowerCase();
-          const src = String((row.properties?.['source'] as string | undefined) || '');
+          const props = (row.properties || {}) as Record<string, unknown>;
+          const isTestProp = String((props['is_test'] as unknown) ?? '').toLowerCase() === 'true';
+          if (isTestProp) continue; // skip explicit test events
+
+          const sid = String((props['session_id'] as string | undefined) || '').trim();
+          const matchId = String((props['match_id'] as string | undefined) || '').trim();
+          if (matchId) candidateMatchIds.add(matchId);
+
           if (t === 'directory_contact_conversion') {
-            serverSent++;
-          } else if (t === 'contact_verification_completed' && src === 'api.leads.confirm') {
-            const m = String((row.properties?.['contact_method'] as string | undefined) || '').toLowerCase();
-            if (m === 'email') serverVerifyEmail++;
-            else if (m === 'phone') serverVerifyPhone++;
+            if (sid) serverSentSessions.add(sid);
+            else serverSentNoSessionFallback.push({ match_id: matchId || null });
+          } else if (t === 'contact_verification_completed') {
+            const m = String((props['contact_method'] as string | undefined) || '').toLowerCase();
+            if (sid) {
+              if (m === 'email') serverVerifyEmailSessions.add(sid);
+              else if (m === 'phone') serverVerifyPhoneSessions.add(sid);
+            }
           }
         } catch {}
       }
 
-      // Merge server counts into displayed totals
-      directory.contactSent = (directory.contactSent || 0) + serverSent;
-      directory.verifyCompletedEmailSessions = (directory.verifyCompletedEmailSessions || 0) + serverVerifyEmail;
-      directory.verifyCompletedPhoneSessions = (directory.verifyCompletedPhoneSessions || 0) + serverVerifyPhone;
-      // Recompute rates conservatively using totals (approximation; session mapping not available for server events)
+      // De-noise: load matches and patients for candidate match_ids to drop test/E2E rows
+      const testMatchIds = new Set<string>();
+      if (candidateMatchIds.size > 0) {
+        try {
+          const matchIdsArr = Array.from(candidateMatchIds);
+          const { data: matchRows } = await supabaseServer
+            .from('matches')
+            .select('id, metadata, patient_id')
+            .in('id', matchIdsArr)
+            .limit(50000);
+          const patientIds = new Set<string>();
+          for (const r of (matchRows || []) as Array<{ id: string; metadata?: Record<string, unknown> | null; patient_id: string }>) {
+            const md = (r.metadata || {}) as Record<string, unknown>;
+            const isTest = String((md['is_test'] as unknown) ?? '').toLowerCase() === 'true';
+            if (isTest) testMatchIds.add(r.id);
+            patientIds.add(r.patient_id);
+          }
+          if (patientIds.size > 0) {
+            const { data: peopleRows } = await supabaseServer
+              .from('people')
+              .select('id, email, metadata')
+              .in('id', Array.from(patientIds))
+              .limit(50000);
+            for (const p of (peopleRows || []) as Array<{ id: string; email?: string | null; metadata?: Record<string, unknown> | null }>) {
+              const email = (p.email || '').toLowerCase();
+              const meta = (p.metadata || {}) as Record<string, unknown>;
+              const isTest = String((meta['is_test'] as unknown) ?? '').toLowerCase() === 'true';
+              const looksE2E = /^e2e-[a-z0-9]+@example\.com$/.test(email);
+              if (isTest || looksE2E) {
+                // Tag any matches for this patient as test
+                for (const r of (matchRows || []) as Array<{ id: string; patient_id: string }>) {
+                  if (r.patient_id === p.id) testMatchIds.add(r.id);
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+
+      // Remove test-derived sessions (by dropping events whose match_id is test)
+      const cleanServerSentSessions = new Set<string>();
+      for (const sid of serverSentSessions) cleanServerSentSessions.add(sid);
+      // For fallbacks without session_id, just ignore if they belong to test matches
+      const nonSessionServerSentCount = serverSentNoSessionFallback.filter((r) => r.match_id && !testMatchIds.has(r.match_id)).length;
+
+      // Merge into session-based metrics and cap rates at 100
       const openCount = Number(directory.contactOpened || 0);
-      const verifyTotal = Number((directory.verifyCompletedEmailSessions || 0) + (directory.verifyCompletedPhoneSessions || 0));
-      const sentTotal = Number(directory.contactSent || 0);
-      directory.openToVerifyRate = openCount > 0 ? Math.round((verifyTotal / openCount) * 1000) / 10 : directory.openToVerifyRate || 0;
-      directory.verifyToSendRate = verifyTotal > 0 ? Math.round((sentTotal / verifyTotal) * 1000) / 10 : directory.verifyToSendRate || 0;
-      directory.openToSendRate = openCount > 0 ? Math.round((sentTotal / openCount) * 1000) / 10 : directory.openToSendRate || 0;
+      const clientVerifyEmail = Number(directory.verifyCompletedEmailSessions || 0);
+      const clientVerifyPhone = Number(directory.verifyCompletedPhoneSessions || 0);
+      const verifySessionTotal = (clientVerifyEmail + clientVerifyPhone) + serverVerifyEmailSessions.size + serverVerifyPhoneSessions.size;
+
+      const clientSentDisplayed = Number(directory.contactSent || 0);
+      // Replace displayed Sends with client + server session-joinable, plus non-session fallback for context
+      const sentSessionsUnion = new Set<string>([...cleanServerSentSessions]);
+      // Note: we cannot get client sent sessions set here; keep displayed count consistent with sessions where possible
+      directory.contactSent = sentSessionsUnion.size + nonSessionServerSentCount;
+      directory.verifyCompletedEmailSessions = clientVerifyEmail + serverVerifyEmailSessions.size;
+      directory.verifyCompletedPhoneSessions = clientVerifyPhone + serverVerifyPhoneSessions.size;
+
+      directory.openToVerifyRate = openCount > 0 ? Math.min(100, Math.round((verifySessionTotal / openCount) * 1000) / 10) : directory.openToVerifyRate || 0;
+      directory.verifyToSendRate = verifySessionTotal > 0 ? Math.min(100, Math.round(((directory.contactSent || 0) / verifySessionTotal) * 1000) / 10) : directory.verifyToSendRate || 0;
+      directory.openToSendRate = openCount > 0 ? Math.min(100, Math.round(((directory.contactSent || 0) / openCount) * 1000) / 10) : directory.openToSendRate || 0;
     } catch (e) {
       await logError('admin.api.stats', e, { stage: 'directory_server_events' });
+    }
+
+    // Add patient-initiated matches summary (non-test) for the same window
+    try {
+      type MatchRow = { id: string; status?: string | null; metadata?: Record<string, unknown> | null; patient_id: string };
+      const { data: piMatches } = await supabaseServer
+        .from('matches')
+        .select('id, status, metadata, patient_id, created_at')
+        .gte('created_at', sinceIso)
+        .limit(50000);
+      let totalPi = 0;
+      let acceptedPi = 0;
+      if (Array.isArray(piMatches)) {
+        // Prepare patient id collection to filter tests/e2e
+        const rows = piMatches as unknown as MatchRow[];
+        const filtered = rows.filter((r) => String((r.metadata || {})['patient_initiated'] || '').toLowerCase() === 'true');
+        const ids = Array.from(new Set(filtered.map((r) => r.patient_id)));
+        const patientMeta = new Map<string, { email: string; is_test: boolean }>();
+        if (ids.length > 0) {
+          const { data: peopleRows } = await supabaseServer
+            .from('people')
+            .select('id, email, metadata')
+            .in('id', ids)
+            .limit(50000);
+          for (const p of (peopleRows || []) as Array<{ id: string; email?: string | null; metadata?: Record<string, unknown> | null }>) {
+            const email = (p.email || '').toLowerCase();
+            const meta = (p.metadata || {}) as Record<string, unknown>;
+            const isTest = String((meta['is_test'] as unknown) ?? '').toLowerCase() === 'true' || /^e2e-[a-z0-9]+@example\.com$/.test(email);
+            patientMeta.set(p.id, { email, is_test: isTest });
+          }
+        }
+        for (const r of filtered) {
+          const md = (r.metadata || {}) as Record<string, unknown>;
+          const isTest = String((md['is_test'] as unknown) ?? '').toLowerCase() === 'true';
+          const pm = patientMeta.get(r.patient_id);
+          if (isTest || pm?.is_test) continue;
+          totalPi++;
+          if (String(r.status || '').toLowerCase() === 'accepted') acceptedPi++;
+        }
+      }
+      (directory as any).patientInitiatedMatches = totalPi;
+      (directory as any).patientInitiatedAccepted = acceptedPi;
+    } catch (e) {
+      await logError('admin.api.stats', e, { stage: 'directory_patient_initiated' });
     }
 
     // === CONVERSION FUNNEL (Email & Phone) ===

@@ -748,6 +748,17 @@ export default function AdminStats() {
                 </div>
               </div>
 
+              <div className="mt-2 grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground">Patient‑initiated matches</div>
+                  <div className="text-2xl font-semibold tabular-nums">{(data.directory as any).patientInitiatedMatches ?? 0}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">…of which accepted</div>
+                  <div className="text-2xl font-semibold tabular-nums">{(data.directory as any).patientInitiatedAccepted ?? 0}</div>
+                </div>
+              </div>
+
               {data.directory.closeByStep && data.directory.closeByStep.length > 0 && (
                 <div className="mt-4">
                   <h4 className="text-sm font-medium text-muted-foreground mb-2">Abbruch nach Schritt</h4>
