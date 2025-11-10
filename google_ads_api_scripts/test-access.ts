@@ -88,6 +88,24 @@ async function testAccess() {
     console.log('  ✓ Deleted test budget');
 
     console.log('\n✅ All access tests passed! Ready to create campaigns.');
+    const uploadFlag = process.argv.slice(2).some((a) => a === '--uploadTestConversion' || a === '--upload-test-conversion');
+    if (uploadFlag) {
+      console.log('\n[optional] Uploading test conversion…');
+      try {
+        const mod = await import('../src/lib/google-ads');
+        const googleAdsTracker = (mod as any).googleAdsTracker;
+        if (!googleAdsTracker) throw new Error('googleAdsTracker not available');
+        await googleAdsTracker.trackConversion({
+          email: 'test@example.com',
+          conversionAction: 'client_registration',
+          conversionValue: 1,
+          orderId: `test-${Date.now()}`,
+        });
+        console.log('  ✓ Test conversion upload triggered');
+      } catch (e: any) {
+        console.log('  • Test conversion upload failed:', e?.message || e);
+      }
+    }
   } catch (error: any) {
     console.error('\n❌ Access test failed:', error?.message || error);
     if (error?.details) console.error('Details:', error.details);

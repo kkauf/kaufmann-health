@@ -44,6 +44,10 @@ GOOGLE_ADS_CA_CLIENT_REGISTRATION="customers/XXX/conversionActions/AAA"
 GOOGLE_ADS_CA_THERAPIST_REGISTRATION="customers/XXX/conversionActions/BBB"
 ```
 
+OAuth helper
+- If you need to generate a refresh token, use the private helper at:
+  - `google_ads_api_scripts/private/auth/generate_refresh_token.py` (gitignored)
+
 Notes
 - If any mapping is missing, uploads are skipped and an error is logged with the expected env keys.
 - The script reads `.env.local` before importing Supabase/Google Ads modules.
@@ -92,6 +96,12 @@ Before running campaign automation, validate API credentials and permissions wit
 
 ```bash
 npm run ads:test-access
+```
+
+Optionally also upload a test conversion:
+
+```bash
+npm run ads:test-access:upload
 ```
 
 This performs:
@@ -185,6 +195,21 @@ Notes:
 - Pauses use the official API: `campaign.status = PAUSED`.
 - Start with dry-run and `--nameLike` to scope changes, then apply.
 
+## Inspect Campaigns & Ads
+
+Quick insights into campaigns, ads, policy, and bidding:
+
+```bash
+# Campaign overview (dates, budgets, languages, adgroup counts)
+npm run ads:inspect -- --show=campaigns --nameLike=Positioning_Test
+
+# Ads with policy details for specific campaigns
+npm run ads:inspect:ads -- --names=KH_BodyOriented_Positioning_Test_A,KH_ReadyNow_Positioning_Test_B
+
+# Bidding/strategy and budget details
+npm run ads:inspect:bids -- --nameLike=Browse_vs_Submit
+```
+
 ## Unified Campaign Creation
 
 `create-campaigns.ts` — unified CLI that creates Search campaigns from a JSON array config. It forwards configuration to the battle‑tested engine under the hood and will fully replace the legacy scripts.
@@ -210,8 +235,9 @@ Optional filters
 
 What it does
 - Idempotent by campaign name; ensures dedicated budgets and updates existing campaigns
-- Search‑only network, presence‑only geo targeting, German language
-- Optional sitelinks, selective optimization, and geo modes (national Germany vs. Berlin proximity)
+- Search‑only network
+- Optional languages and geo via JSON (no enforced defaults)
+- Optional sitelinks, selective optimization, and geo modes (national Germany via ID 2276, or Berlin proximity)
 - AdGroups per keyword tier; adds missing keywords with policy‑aware replacements
 - Creates up to 2 RSAs per AdGroup; supports URL params (e.g., `?v=C`)
 
@@ -243,54 +269,48 @@ Safety
 - Apply only with `CONFIRM_APPLY=true`
 - Private JSON configs should live in `google_ads_api_scripts/private/` (git‑ignored)
 
-## Keyword & Asset Performance Export (Clicks)
+Notes
+- RSA fallbacks come only from `private/ad-templates.local.json` (or `ad-templates.json`). No in‑code default headlines/descriptions exist.
 
-`export-keyword-asset-performance.ts` — exports keyword performance and RSA asset-combination shares, segmented by whether a price headline (e.g., "80–120€ pro Sitzung") actually served, and whether it was pinned.
+### Modules
 
-What it does
+- `lib/util.ts` → common helpers (`requireEnv`, URL/path utils, text utils)
+- `lib/assets.ts` → sitelinks/callouts/snippets/images create + attach
+- `lib/adgroups.ts` → ad group ensure, keyword add/bid helpers
+- `lib/campaign.ts` → budgets, campaign ops, negatives, optional languages/geo
+- `lib/rsa.ts` → RSA asset prep and ad creation
 
-- Aggregates clicks from `ad_group_ad_asset_combination_view` per ad to compute the share of clicks where the price headline served, split into pinned vs unpinned (pinning is read from `ad_group_ad_asset_view`).
-- Aggregates per ad group (weighted by ad clicks) to produce ad-group-level price-serving shares.
-- Pulls keyword performance from `ad_group_criterion` and estimates, per keyword, how many clicks occurred with price pinned, price unpinned, or without price (using the ad-group shares).
-- Exports HEADLINE asset performance for context with an `is_price` flag.
+### Using JSON configs (private)
 
-Assumptions
-
-- Channel: `SEARCH` campaigns, includes both Google Search and Search Partners.
-- Status: includes all statuses (enabled/paused/removed) for historical completeness.
-- Time: aggregated over a date window (default since 2025-09-01 until yesterday).
-- Price detection: matches asset text by regex (default matches dash variants of "80–120€ pro Sitzung").
-
-Usage
+Use existing private configs directly with the creator:
 
 ```bash
-npm run ads:export:perf -- --since=2025-09-01 \
-  --outDir=google_ads_api_scripts/private/exports \
-  --priceRegex="80\s*[–-]\s*120€\s*pro\s*Sitzung"
+# Test 0
+npm run ads:create:dry -- --config=google_ads_api_scripts/private/test0-positioning.config.json
+CONFIRM_APPLY=true npm run ads:create -- --config=google_ads_api_scripts/private/test0-positioning.config.json
 ```
 
-Optional flags
+## Unified Export (General Reports)
 
-- `--until=YYYY-MM-DD` — end date (default: yesterday; controlled by `--excludeToday`)
-- `--excludeToday=true|false` — default `true`
-- `--nameLike="substring"` — only include campaigns whose name contains this substring
-- `--outDir=path` — default `google_ads_api_scripts/private/exports`
-- `--priceRegex="regex"` — override the price headline detection pattern
+Use the unified exporter for common reports. Outputs are date‑prefixed CSVs in `google_ads_api_scripts/private/exports/`.
 
-Outputs
+```bash
+# Typical (keywords + assets + labels)
+npm run ads:export -- --nameLike=Positioning_Test --since=2025-10-01
 
-- `keyword_raw.csv` — Raw keyword metrics
-  - Columns: `campaign_id,campaign_name,ad_group_id,ad_group_name,keyword_id,keyword_text,match_type,status,clicks,impressions,cost_eur,date_range`
-- `ad_price_share.csv` — Per-ad price-serving shares
-  - Columns: `campaign_id,ad_group_id,ad_id,clicks_total,clicks_price_present,clicks_price_pinned,clicks_price_unpinned,share_price_present,share_price_pinned,share_price_unpinned,share_no_price,date_range`
-- `adgroup_price_share.csv` — Ad-group aggregated shares (weighted by ad clicks)
-  - Columns: `campaign_id,ad_group_id,clicks_total,clicks_price_present,clicks_price_pinned,clicks_price_unpinned,share_price_present,share_price_pinned,share_price_unpinned,share_no_price,date_range`
-- `keyword_adjusted.csv` — Keyword clicks split by estimated buckets
-  - Columns: `campaign_id,campaign_name,ad_group_id,ad_group_name,keyword_id,keyword_text,match_type,status,clicks_total,est_clicks_price_pinned,est_clicks_price_unpinned,est_clicks_no_price,share_price_pinned,share_price_unpinned,share_no_price,date_range`
-- `asset_headline_perf.csv` — HEADLINE asset performance
-  - Columns: `asset_resource_name,field_type,text,is_price,clicks,impressions,cost_eur,date_range`
+# Everything
+npm run ads:export:all -- --nameLike=Browse_vs_Submit
+```
 
-Notes
+Modules
+- `keywords` → `*_keyword_raw.csv`, `*_keyword_perf.csv`
+- `assets` → `*_asset_headline_perf.csv`, `*_asset_description_perf.csv`, `*_asset_sitelink_perf.csv`
+- `search_terms` → `*_search_terms.csv`
+- `adgroups` → `*_adgroup_perf.csv`
+- `asset_labels` → `*_asset_labels.csv`
 
-- Shares are computed from actual served combinations, avoiding double counting across multiple assets.
-- If no price assets are found by regex, price-serving shares will be zero; adjust `--priceRegex` as needed.
+Flags
+- `--modules=keywords,assets,search_terms,adgroups,asset_labels`
+- `--since=YYYY-MM-DD`, `--until=YYYY-MM-DD`, `--nameLike=...`, `--outDir=...`
+
+ 

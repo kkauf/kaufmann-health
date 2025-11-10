@@ -1,0 +1,237 @@
+import { enums } from 'google-ads-api';
+import { requireEnv } from './util';
+
+export const findBudgetByName = async (customer: any, name: string): Promise<string | undefined> => {
+  const rows = await customer.query(`
+    SELECT campaign_budget.resource_name, campaign_budget.name
+    FROM campaign_budget
+    WHERE campaign_budget.name = '${name.replace(/'/g, "''")}'
+    LIMIT 1
+  `);
+  const r = rows?.[0];
+  const rn = (r as any)?.campaign_budget?.resource_name || (r as any)?.campaignBudget?.resourceName;
+  return rn as string | undefined;
+};
+
+export const createBudget = async (customer: any, name: string, amountMicros: number, dryRun: boolean): Promise<string> => {
+  if (dryRun) {
+    console.log(`  [DRY] Would create budget: ${name} (€${(amountMicros / 1_000_000).toFixed(2)}/day)`);
+    return `customers/${requireEnv('GOOGLE_ADS_CUSTOMER_ID')}/campaignBudgets/DRY_${Date.now()}`;
+  }
+  const res: any = await customer.campaignBudgets.create([
+    { name, amount_micros: amountMicros, delivery_method: 'STANDARD', explicitly_shared: false },
+  ]);
+  const rn = res?.results?.[0]?.resource_name || res?.[0]?.resource_name || res?.resource_name;
+  if (!rn) throw new Error('Failed to create budget (no resource_name)');
+  console.log(`  ✓ Budget ready: ${rn}`);
+  return rn as string;
+};
+
+export const findCampaignByName = async (customer: any, name: string): Promise<{ resourceName: string; status?: any } | undefined> => {
+  const rows = await customer.query(`
+    SELECT campaign.resource_name, campaign.name, campaign.status
+    FROM campaign
+    WHERE campaign.name = '${name.replace(/'/g, "''")}'
+    LIMIT 1
+  `);
+  const r = rows?.[0];
+  const c = (r as any)?.campaign || {};
+  const rn = c.resource_name || (r as any)?.campaign?.resourceName;
+  if (!rn) return undefined;
+  return { resourceName: rn as string, status: c.status };
+};
+
+export const createCampaign = async (customer: any, name: string, budgetResourceName: string, startDate: string, endDate: string, dryRun: boolean): Promise<string> => {
+  if (dryRun) {
+    console.log(`  [DRY] Would create campaign: ${name} (PAUSED)`);
+    return `customers/${requireEnv('GOOGLE_ADS_CUSTOMER_ID')}/campaigns/DRY_${Date.now()}`;
+  }
+  let res: any;
+  try {
+    res = await customer.campaigns.create([
+      {
+        name,
+        status: enums.CampaignStatus.PAUSED,
+        advertising_channel_type: enums.AdvertisingChannelType.SEARCH,
+        bidding_strategy_type: enums.BiddingStrategyType.MANUAL_CPC,
+        manual_cpc: {},
+        network_settings: {
+          target_google_search: true,
+          target_search_network: true,
+          target_content_network: false,
+          target_partner_search_network: true,
+        },
+        contains_eu_political_advertising: (enums as any).EuPoliticalAdvertisingStatus
+          ? (enums as any).EuPoliticalAdvertisingStatus.DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING
+          : 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
+        eu_political_advertising: {
+          status: (enums as any).EuPoliticalAdvertisingStatus
+            ? (enums as any).EuPoliticalAdvertisingStatus.DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING
+            : 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
+        },
+        campaign_budget: budgetResourceName,
+        start_date: startDate,
+        end_date: endDate,
+      },
+    ]);
+  } catch (e: any) {
+    console.error('  ✗ Campaign create failed');
+    try {
+      const details = e?.errors?.map((er: any) => ({ code: er?.error_code, message: er?.message, trigger: er?.trigger, location: er?.location }));
+      console.error('  Details:', JSON.stringify(details, null, 2));
+    } catch {}
+    throw e;
+  }
+  const rn = res?.results?.[0]?.resource_name || res?.[0]?.resource_name || res?.resource_name;
+  if (!rn) throw new Error('Failed to create campaign (no resource_name)');
+  console.log(`  ✓ Campaign created (PAUSED): ${rn}`);
+  return rn as string;
+};
+
+export const getBudgetAmountMicros = async (customer: any, budgetRn: string): Promise<number | undefined> => {
+  const rows = await customer.query(`
+    SELECT campaign_budget.resource_name, campaign_budget.amount_micros
+    FROM campaign_budget
+    WHERE campaign_budget.resource_name = '${budgetRn}'
+    LIMIT 1
+  `);
+  const r = rows?.[0];
+  const amt = (r as any)?.campaign_budget?.amount_micros || (r as any)?.campaignBudget?.amountMicros;
+  return typeof amt === 'number' ? amt : undefined;
+};
+
+export const ensureBudgetAmount = async (customer: any, budgetRn: string, amountMicros: number, dryRun: boolean) => {
+  const current = await getBudgetAmountMicros(customer, budgetRn).catch(() => undefined);
+  if (current === amountMicros) {
+    console.log(`  • Budget amount unchanged (€${(amountMicros/1_000_000).toFixed(2)}/day)`);
+    return;
+  }
+  if (dryRun) {
+    console.log(`  [DRY] Would update budget amount to €${(amountMicros/1_000_000).toFixed(2)}/day`);
+    return;
+  }
+  await customer.campaignBudgets.update([
+    { resource_name: budgetRn, amount_micros: amountMicros },
+  ], { partial_failure: true });
+  console.log(`  ✓ Budget updated to €${(amountMicros/1_000_000).toFixed(2)}/day`);
+};
+
+export const getCampaignBudgetRn = async (customer: any, campaignRn: string): Promise<string | undefined> => {
+  const rows: any[] = await customer.query(`
+    SELECT campaign.campaign_budget
+    FROM campaign
+    WHERE campaign.resource_name = '${campaignRn}'
+    LIMIT 1
+  `);
+  const r = rows?.[0];
+  const rn = (r as any)?.campaign?.campaign_budget || (r as any)?.campaign?.campaignBudget;
+  return rn as string | undefined;
+};
+
+export async function addCampaignNegatives(customer: any, campaignRn: string, negatives: string[] | undefined, dryRun: boolean) {
+  if (!negatives || negatives.length === 0) return;
+  for (const term of negatives) {
+    if (dryRun) {
+      console.log(`  [DRY] Would add negative KW: "${term}"`);
+      continue;
+    }
+    try {
+      await customer.campaignCriteria.create([
+        { campaign: campaignRn, negative: true, keyword: { text: term, match_type: enums.KeywordMatchType.PHRASE } },
+      ], { partial_failure: true });
+      console.log(`  ✓ Negative added: ${term}`);
+    } catch (e: any) {
+      if (String(e).includes('ALREADY_EXISTS') || String(e).includes('DUPLICATE')) {
+        console.log(`  • Negative exists: ${term}`);
+        continue;
+      }
+      console.error('  ✗ Negative failed:', term);
+      console.error('    Details:', e?.errors || String(e));
+    }
+  }
+}
+
+export async function getLanguageConstant(customer: any, code: string): Promise<string> {
+  const rows: any[] = await customer.query(`
+    SELECT language_constant.resource_name, language_constant.code
+    FROM language_constant
+    WHERE language_constant.code = '${code.toLowerCase()}'
+    LIMIT 1
+  `);
+  const r = rows?.[0];
+  const rn = (r as any)?.language_constant?.resource_name || (r as any)?.languageConstant?.resourceName;
+  if (!rn) throw new Error(`Language constant not found for code=${code}`);
+  return rn as string;
+}
+
+export async function addCampaignLanguages(customer: any, campaignRn: string, codes: string[], dryRun: boolean) {
+  const list = Array.from(new Set((codes || []).map((c) => String(c).trim().toLowerCase()).filter(Boolean)));
+  if (!list.length) return;
+  if (dryRun) {
+    console.log(`  [DRY] Would add campaign languages: ${list.join(', ')}`);
+    return;
+  }
+  const ops: any[] = [];
+  for (const code of list) {
+    try {
+      const lc = await getLanguageConstant(customer, code);
+      ops.push({ campaign: campaignRn, language: { language_constant: lc } });
+    } catch (e) {
+      console.log(`  • Skip unknown language code: ${code}`);
+    }
+  }
+  if (!ops.length) return;
+  try {
+    await customer.campaignCriteria.create(ops, { partial_failure: true });
+    console.log(`  ✓ Languages added: ${list.join(', ')}`);
+  } catch (e) {
+    console.log('  • Language add encountered errors (partial failures possible)');
+  }
+}
+
+export async function addCampaignLocationIds(customer: any, campaignRn: string, ids: number[], dryRun: boolean) {
+  const uniq = Array.from(new Set(ids || []));
+  if (!uniq.length) return;
+  if (dryRun) {
+    console.log(`  [DRY] Would add location IDs: ${uniq.join(', ')}`);
+    return;
+  }
+  const ops = uniq.map((id) => ({ campaign: campaignRn, location: { geo_target_constant: `geoTargetConstants/${id}` } }));
+  try {
+    await customer.campaignCriteria.create(ops, { partial_failure: true });
+    console.log(`  ✓ Locations added: ${uniq.length}`);
+  } catch (e) {
+    console.log('  • Location add encountered errors (partial failures possible)');
+  }
+}
+
+export async function addCampaignProximity(customer: any, campaignRn: string, lat: number, lng: number, radiusKm: number, dryRun: boolean) {
+  if (typeof lat !== 'number' || typeof lng !== 'number' || typeof radiusKm !== 'number') return;
+  if (dryRun) {
+    console.log(`  [DRY] Would add proximity: lat=${lat}, lng=${lng}, r=${radiusKm}km`);
+    return;
+  }
+  try {
+    await customer.campaignCriteria.create([
+      {
+        campaign: campaignRn,
+        proximity: {
+          geo_point: {
+            latitude_in_micro_degrees: Math.round(lat * 1_000_000),
+            longitude_in_micro_degrees: Math.round(lng * 1_000_000),
+          },
+          radius: Math.max(1, Math.floor(radiusKm)),
+          radius_units: enums.ProximityRadiusUnits.KILOMETERS,
+        },
+      },
+    ], { partial_failure: true });
+    console.log('  ✓ Proximity added');
+  } catch (e) {
+    const s = String(e);
+    if (s.includes('ALREADY_EXISTS') || s.includes('DUPLICATE')) {
+      console.log('  • Proximity already set');
+      return;
+    }
+    console.log('  • Proximity add encountered error');
+  }
+}
