@@ -29,6 +29,7 @@ export type TherapistData = {
       years_experience?: number;
     };
   };
+  availability?: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[];
 };
 
 export function TherapistDirectory() {
@@ -37,6 +38,7 @@ export function TherapistDirectory() {
   const [selectedModality, setSelectedModality] = useState<string>('all');
   const [onlineOnly, setOnlineOnly] = useState<boolean | null>(null);
   const [selectedTherapist, setSelectedTherapist] = useState<TherapistData | null>(null);
+  const [slotsOnly, setSlotsOnly] = useState<boolean>(false);
   // Pagination: show first 5, reveal more on demand
   const [visibleCount, setVisibleCount] = useState<number>(5);
   // Auto contact (EARTH-204): when returning from email magic link with redirect
@@ -217,6 +219,11 @@ export function TherapistDirectory() {
         if (!onlineOnly && !hasInPerson) return false;
       }
 
+      // Filter by availability
+      if (slotsOnly) {
+        if (!Array.isArray(t.availability) || t.availability.length === 0) return false;
+      }
+
       return true;
     });
 
@@ -229,10 +236,10 @@ export function TherapistDirectory() {
       if (!aHasPhoto && bHasPhoto) return 1;
       return 0;
     });
-  }, [therapists, selectedModality, onlineOnly]);
+  }, [therapists, selectedModality, onlineOnly, slotsOnly]);
 
   const availableTherapistsCount = useMemo(() =>
-    filteredTherapists.filter(t => t.accepting_new).length
+    filteredTherapists.filter(t => Array.isArray(t.availability) && t.availability.length > 0).length
   , [filteredTherapists]);
 
   const visibleTherapists = useMemo(() => filteredTherapists.slice(0, Math.max(0, visibleCount)), [filteredTherapists, visibleCount]);
@@ -254,8 +261,9 @@ export function TherapistDirectory() {
     let count = 0;
     if (selectedModality !== 'all') count++;
     if (onlineOnly !== null) count++;
+    if (slotsOnly) count++;
     return count;
-  }, [selectedModality, onlineOnly]);
+  }, [selectedModality, onlineOnly, slotsOnly]);
 
   // Sheet handlers
   const handleOpenSheet = () => {
@@ -322,6 +330,21 @@ export function TherapistDirectory() {
               <X className="h-4 w-4" />
             </Button>
           )}
+        </div>
+
+        <div className="shrink-0">
+          <label className="mb-2 block text-sm font-medium text-gray-700">
+            Termin-Verfügbarkeit
+          </label>
+          <div>
+            <Button
+              variant={slotsOnly ? 'default' : 'outline'}
+              onClick={() => setSlotsOnly((v) => !v)}
+              className="h-11"
+            >
+              Nur mit freien Terminen
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -545,6 +568,20 @@ export function TherapistDirectory() {
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Availability toggle */}
+              <div>
+                <label className="mb-3 block text-sm font-semibold text-gray-900">
+                  Termin-Verfügbarkeit
+                </label>
+                <Button
+                  variant={slotsOnly ? 'default' : 'outline'}
+                  onClick={() => setSlotsOnly((v) => !v)}
+                  className="h-12 w-full"
+                >
+                  Nur mit freien Terminen
+                </Button>
               </div>
 
               {/* Format filter */}

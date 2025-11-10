@@ -45,6 +45,57 @@ export async function GET(request: NextRequest) {
 
     const rows = (data as TherapistRow[] | null) || [];
 
+    // Build list of therapist ids for availability lookup
+    const therapistIds = rows.map((r) => r.id);
+
+    type SlotRow = {
+      therapist_id: string;
+      day_of_week: number; // 0..6 (Sun..Sat)
+      time_local: string;  // HH:MM[:SS]
+      format: 'online' | 'in_person' | string;
+      address: string | null;
+      duration_minutes: number | null;
+      active: boolean | null;
+    };
+
+    // Fetch active recurring slots for these therapists (best-effort)
+    let slotsByTherapist = new Map<string, SlotRow[]>();
+    try {
+      if (therapistIds.length > 0) {
+        const { data: slotsData, error: slotsErr } = await supabaseServer
+          .from('therapist_slots')
+          .select('therapist_id, day_of_week, time_local, format, address, duration_minutes, active')
+          .in('therapist_id', therapistIds)
+          .eq('active', true)
+          .limit(1000);
+        if (!slotsErr && Array.isArray(slotsData)) {
+          for (const s of slotsData as SlotRow[]) {
+            const arr = slotsByTherapist.get(s.therapist_id) || [];
+            arr.push(s);
+            slotsByTherapist.set(s.therapist_id, arr);
+          }
+        }
+      }
+    } catch {
+      // Ignore availability on failure; API should remain stable
+      slotsByTherapist = new Map();
+    }
+
+    // Helpers for Europe/Berlin date computation
+    const TZ = 'Europe/Berlin';
+    const weekdayFmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'short' });
+    const ymdFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }); // en-CA yields YYYY-MM-DD
+    const weekdayIndex: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+    function getBerlinDayIndex(d: Date): number {
+      const name = weekdayFmt.format(d);
+      return weekdayIndex[name as keyof typeof weekdayIndex] ?? d.getUTCDay();
+    }
+    function getBerlinYmd(d: Date): string {
+      // en-CA with the TZ gives YYYY-MM-DD
+      return ymdFmt.format(d);
+    }
+
     const therapists = rows
       .filter((row) => {
         if (hideIds.has(row.id)) return false;
@@ -74,6 +125,30 @@ export async function GET(request: NextRequest) {
           ? (profile['approach_text'] as string)
           : '';
 
+      // Compute availability from slots (next 3 weeks, cap 9)
+      const slots = slotsByTherapist.get(row.id) || [];
+      const availability: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] = [];
+      if (slots.length > 0) {
+        const maxDays = 21; // ~3 weeks starting tomorrow
+        const now = new Date();
+        for (let offset = 1; offset <= maxDays; offset++) {
+          if (availability.length >= 9) break;
+          const d = new Date(now.getTime());
+          d.setUTCDate(d.getUTCDate() + offset);
+          const dow = getBerlinDayIndex(d);
+          const ymd = getBerlinYmd(d); // YYYY-MM-DD in Berlin TZ
+          for (const s of slots) {
+            if (availability.length >= 9) break;
+            const sDow = Number(s.day_of_week);
+            if (sDow !== dow) continue;
+            const time = String(s.time_local || '').slice(0, 5);
+            const fmt = (s.format === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
+            const addr = fmt === 'in_person' ? String(s.address || '').trim() : '';
+            availability.push({ date_iso: ymd, time_label: time, format: fmt, ...(addr ? { address: addr } : {}) });
+          }
+        }
+      }
+
       return {
         id: row.id,
         first_name: String(row.first_name || ''),
@@ -85,6 +160,7 @@ export async function GET(request: NextRequest) {
         photo_url: row.photo_url || undefined,
         approach_text,
         metadata: mdObj,
+        availability,
       };
     });
 
