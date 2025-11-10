@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +17,7 @@ type TherapistRow = {
   metadata: unknown;
 };
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const hideIdsEnv = (process.env.HIDE_THERAPIST_IDS || '').trim();
     const hideIds = new Set(

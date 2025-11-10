@@ -44,8 +44,6 @@ interface SendCodeRequest {
 }
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') || 'unknown';
-  const ua = req.headers.get('user-agent') || '';
 
   try {
     const limiter = getFixedWindowLimiter('verification-send-code', 5, 60_000);

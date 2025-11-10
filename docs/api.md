@@ -1,3 +1,25 @@
+## POST /api/public/bookings
+
+- __Purpose__: Create a booking for a specific therapist slot occurrence (requires verified client session).
+- __Auth__: Functional cookie `kh_client` (verified session). Returns 401 otherwise.
+- __Request Body__ (JSON): `{ therapist_id: uuid, date_iso: 'YYYY-MM-DD', time_label: 'HH:MM', format: 'online'|'in_person' }`
+- __Validation__:
+  - Therapist must exist and be `status='verified'`.
+  - Occurrence must correspond to an active recurring slot (matching Berlin weekday and time/format).
+  - Prevents double‑booking via unique `(therapist_id, date_iso, time_label)`.
+- __Responses__:
+  - 200: `{ data: { booking_id }, error: null }`
+  - 400: `{ error: 'Invalid date' | 'Invalid time' | 'Invalid format' | 'Slot not available' }`
+  - 401: `{ error: 'NOT_VERIFIED' }`
+  - 404: `{ error: 'Therapist not found' }`
+  - 409: `{ error: 'SLOT_TAKEN' }`
+  - 500: `{ error: 'Failed to book' }`
+
+## GET /api/public/therapists
+
+- __Purpose__: List publicly visible therapists and computed availability.
+- **Availability**: Generated from recurring slots for the next ~3 weeks (Berlin TZ), capped at 9 and excluding already booked occurrences (via `bookings`).
+- **Response**: each therapist includes `availability: Array<{ date_iso, time_label, format, address? }>`.
 # API
 ## POST /api/public/verification/send-code
 
@@ -10,8 +32,11 @@
   - `redirect?` (string) — safe path for email magic link return
   - `draft_contact?` (object) — optional draft from ContactModal
     - `{ therapist_id, contact_type: 'booking'|'consultation', patient_reason, patient_message, session_format? }`
+  - `draft_booking?` (object) — optional selected slot for auto‑booking after verification
+    - `{ therapist_id, date_iso: 'YYYY-MM-DD', time_label: 'HH:MM', format: 'online'|'in_person' }`
 - __Behavior__:
   - Stores/merges `draft_contact` into `people.metadata.draft_contact` so the server can auto-create the match after verification (email confirm or SMS verify). Emits `draft_contact_stored` (via: 'email'|'phone').
+  - Stores/merges `draft_booking` into `people.metadata.draft_booking` to auto-create a booking after verification when a slot was selected. Emits `draft_booking_stored` (via: 'email'|'phone').
   - Sends email magic link or SMS OTP based on mode.
 
 ## POST /api/public/verification/verify-code
@@ -20,6 +45,7 @@
 - __Behavior__:
   - Updates `people.metadata.phone_verified=true`, sets `status='new'`.
   - If `metadata.draft_contact` exists, calls `POST /api/public/contact` with `idempotency_key` and clears draft only after success. Emits `draft_contact_processed` or `draft_contact_failed`.
+  - If `metadata.draft_booking` exists, creates a `bookings` row for the selected occurrence if not already taken, then clears `draft_booking`. Emits `booking_created`.
 
 
 > Looking for a concise overview? See `docs/api-quick-reference.md` for invariants, auth patterns, observability, and the key endpoints. This file is the deep reference with full behavior and edge cases.
@@ -59,6 +85,7 @@
   - Loads the `people` row by `id`, verifies `metadata.confirm_token` and TTL using `metadata.confirm_sent_at` (24h).
   - On success: clears `confirm_token` and `confirm_sent_at`, stamps `confirmed_at` and `email_confirmed_at`, sets `status='email_confirmed'` by default. If `metadata.form_completed_at` exists, sets `status='new'` instead. Emits analytics event `email_confirmed` with campaign properties (`campaign_source`, `campaign_variant`) and `elapsed_seconds`.
   - If `people.metadata.draft_contact` exists (therapist directory compose flow), the server creates a contact match automatically via `POST /api/public/contact` using an `idempotency_key = <person_id>:<therapist_id>:<contact_type>`. The draft is cleared only after a successful contact. Emits analytics `draft_contact_processed` or `draft_contact_failed`.
+  - If `people.metadata.draft_booking` exists and points to a valid occurrence, the server creates a `bookings` row (idempotent on `(therapist_id, date_iso, time_label)`) and clears `draft_booking`. Emits `booking_created`.
   - On invalid/expired tokens: no changes are made.
 - __Redirects__:
   - 302 → on success: `/fragebogen?confirm=1&id=<leadId>` (or `redirect` path if provided; passes `fs` through when present)

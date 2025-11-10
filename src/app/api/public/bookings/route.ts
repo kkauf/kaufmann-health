@@ -75,7 +75,8 @@ export async function POST(req: NextRequest) {
       .eq('day_of_week', dow);
 
     const hasValidSlot = Array.isArray(slots)
-      && slots.some((s: any) => String(s.time_local || '').slice(0, 5) === time_label && (s.format === format));
+      && (slots as { time_local: string | null; format: 'online' | 'in_person' | string }[])
+        .some((s) => String(s.time_local || '').slice(0, 5) === time_label && (s.format === format));
     if (!hasValidSlot) {
       return NextResponse.json({ error: 'Slot not available' }, { status: 400 });
     }

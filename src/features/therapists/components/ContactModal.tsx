@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CheckCircle2, Loader2, AlertCircle, Shield, Lock, FileCheck, ShieldCheck, Mail, MailCheck } from 'lucide-react';
+import { Loader2, AlertCircle, Shield, Lock, FileCheck, ShieldCheck, Mail, MailCheck } from 'lucide-react';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { validatePhone } from '@/lib/verification/usePhoneValidation';

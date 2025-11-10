@@ -3,7 +3,6 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { BASE_URL } from '@/lib/constants';
 import { logError } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
-import { VERIFICATION_MODE } from '@/lib/config';
 import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
 import { maybeFirePatientConversion } from '@/lib/conversion';
 
