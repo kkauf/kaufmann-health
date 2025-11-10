@@ -443,6 +443,34 @@ __Deliverability Note__: We intentionally send only one reminder at 24h to prote
   - 400: `{ data: null, error: 'Missing fields' | 'Invalid status' | 'approach_text too long (max 500 chars)' | 'No pending profile photo to approve' }`
   - 401/404/500 on failure.
 
+## POST /api/admin/therapists/:id/slots
+
+- __Purpose__: Create or update recurring availability slots for a therapist (admin-managed).
+- __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
+- __Body__ (JSON):
+  - `slots`: Array of objects (at least one required)
+    - `day_of_week` (number, 0–6; Sunday=0)
+    - `time_local` (string, `HH:MM`)
+    - `format` (`'online' | 'in_person'`)
+    - `address?` (string; required when `format='in_person'`)
+    - `duration_minutes?` (number; default 60; 30–240)
+    - `active?` (boolean; default true)
+- __Validation__:
+  - Max 5 active slots per therapist. Exceeding returns 400.
+- __Behavior__:
+  - Upserts on `(therapist_id, day_of_week, time_local, format, address)` and returns the full list after save.
+- __Response__:
+  - 200: `{ data: Array<slot>, error: null }`
+  - 400/401/500 on failure.
+
+## DELETE /api/admin/therapists/:id/slots/:slot_id
+
+- __Purpose__: Delete a specific recurring slot.
+- __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
+- __Response__:
+  - 200: `{ data: { ok: true }, error: null }`
+  - 400/401/500 on failure.
+
 ## GET /api/admin/therapists/:id/documents/[...type]
 - __Purpose__: Securely serve stored documents for admin review.
 - __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
