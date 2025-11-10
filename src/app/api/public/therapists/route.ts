@@ -96,6 +96,34 @@ export async function GET(request: NextRequest) {
       return ymdFmt.format(d);
     }
 
+    // Precompute booking blackout set for next 3 weeks
+    const booked = new Set<string>();
+    try {
+      if (therapistIds.length > 0) {
+        const now = new Date();
+        const start = new Date(now.getTime());
+        start.setUTCDate(start.getUTCDate() + 1);
+        const end = new Date(start.getTime());
+        end.setUTCDate(end.getUTCDate() + 21);
+        const startYmd = getBerlinYmd(start);
+        const endYmd = getBerlinYmd(end);
+
+        const { data: bookingsData } = await supabaseServer
+          .from('bookings')
+          .select('therapist_id, date_iso, time_label')
+          .in('therapist_id', therapistIds)
+          .gte('date_iso', startYmd)
+          .lte('date_iso', endYmd)
+          .limit(5000);
+        if (Array.isArray(bookingsData)) {
+          for (const b of bookingsData as { therapist_id: string; date_iso: string; time_label: string }[]) {
+            const key = `${b.therapist_id}|${String(b.date_iso)}|${String(b.time_label).slice(0,5)}`;
+            booked.add(key);
+          }
+        }
+      }
+    } catch {}
+
     const therapists = rows
       .filter((row) => {
         if (hideIds.has(row.id)) return false;
@@ -125,7 +153,7 @@ export async function GET(request: NextRequest) {
           ? (profile['approach_text'] as string)
           : '';
 
-      // Compute availability from slots (next 3 weeks, cap 9)
+      // Compute availability from slots (next 3 weeks, cap 9), skipping booked
       const slots = slotsByTherapist.get(row.id) || [];
       const availability: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] = [];
       if (slots.length > 0) {
@@ -142,11 +170,15 @@ export async function GET(request: NextRequest) {
             const sDow = Number(s.day_of_week);
             if (sDow !== dow) continue;
             const time = String(s.time_local || '').slice(0, 5);
+            const bookedKey = `${row.id}|${ymd}|${time}`;
+            if (booked.has(bookedKey)) continue;
             const fmt = (s.format === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
             const addr = fmt === 'in_person' ? String(s.address || '').trim() : '';
             availability.push({ date_iso: ymd, time_label: time, format: fmt, ...(addr ? { address: addr } : {}) });
           }
         }
+        // Ensure chronological order just in case
+        availability.sort((a, b) => (a.date_iso === b.date_iso ? a.time_label.localeCompare(b.time_label) : a.date_iso.localeCompare(b.date_iso)));
       }
 
       return {

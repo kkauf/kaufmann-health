@@ -34,6 +34,13 @@ interface SendCodeRequest {
     patient_message: string;
     session_format?: 'online' | 'in_person';
   };
+  // Optional draft booking data to store before verification (therapist directory flow)
+  draft_booking?: {
+    therapist_id: string;
+    date_iso: string; // YYYY-MM-DD
+    time_label: string; // HH:MM
+    format: 'online' | 'in_person';
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -62,7 +69,7 @@ export async function POST(req: NextRequest) {
         }
       }
     } catch {}
-    const { contact, contact_type, lead_id, form_session_id, redirect, name, draft_contact } = body;
+    const { contact, contact_type, lead_id, form_session_id, redirect, name, draft_contact, draft_booking } = body;
 
     if (!contact || !contact_type) {
       return NextResponse.json(
@@ -134,6 +141,19 @@ export async function POST(req: NextRequest) {
                 });
               } catch {}
             }
+            if (draft_booking) {
+              const meta = (updateData.metadata as Record<string, unknown>) || ((existing.metadata as Record<string, unknown>) || {});
+              meta['draft_booking'] = draft_booking;
+              if (isTestCookie) meta['is_test'] = true;
+              updateData.metadata = meta;
+              try {
+                await ServerAnalytics.trackEventFromRequest(req, {
+                  type: 'draft_booking_stored',
+                  source: 'api.verification.send-code',
+                  props: { via: 'phone', therapist_id: draft_booking.therapist_id },
+                });
+              } catch {}
+            }
             if (isTestCookie && !updateData.metadata) {
               const meta = (existing.metadata as Record<string, unknown>) || {};
               meta['is_test'] = true;
@@ -160,6 +180,16 @@ export async function POST(req: NextRequest) {
                   type: 'draft_contact_stored',
                   source: 'api.verification.send-code',
                   props: { via: 'phone', therapist_id: draft_contact.therapist_id, contact_type: draft_contact.contact_type },
+                });
+              } catch {}
+            }
+            if (draft_booking) {
+              (metadata as Record<string, unknown>)['draft_booking'] = draft_booking;
+              try {
+                await ServerAnalytics.trackEventFromRequest(req, {
+                  type: 'draft_booking_stored',
+                  source: 'api.verification.send-code',
+                  props: { via: 'phone', therapist_id: draft_booking.therapist_id },
                 });
               } catch {}
             }
@@ -301,6 +331,16 @@ export async function POST(req: NextRequest) {
               });
             } catch {}
           }
+          if (draft_booking) {
+            meta['draft_booking'] = draft_booking;
+            try {
+              await ServerAnalytics.trackEventFromRequest(req, {
+                type: 'draft_booking_stored',
+                source: 'api.verification.send-code',
+                props: { via: 'email', therapist_id: draft_booking.therapist_id },
+              });
+            } catch {}
+          }
 
           // Prepare update data: always update metadata and status
           const updateData: Record<string, unknown> = {
@@ -343,6 +383,16 @@ export async function POST(req: NextRequest) {
                 type: 'draft_contact_stored',
                 source: 'api.verification.send-code',
                 props: { via: 'email', therapist_id: draft_contact.therapist_id, contact_type: draft_contact.contact_type },
+              });
+            } catch {}
+          }
+          if (draft_booking) {
+            metadata.draft_booking = draft_booking;
+            try {
+              await ServerAnalytics.trackEventFromRequest(req, {
+                type: 'draft_booking_stored',
+                source: 'api.verification.send-code',
+                props: { via: 'email', therapist_id: draft_booking.therapist_id },
               });
             } catch {}
           }
@@ -395,7 +445,7 @@ export async function POST(req: NextRequest) {
           const isSafe = redirect.startsWith('/') && !redirect.startsWith('/api') && !redirect.startsWith('//');
           if (isSafe) meta['last_confirm_redirect_path'] = redirect;
         }
-        // Store draft contact data if provided (therapist directory flow)
+        // Store draft contact/booking data if provided (therapist directory flow)
         if (draft_contact) {
           meta['draft_contact'] = draft_contact;
           try {
@@ -403,6 +453,16 @@ export async function POST(req: NextRequest) {
               type: 'draft_contact_stored',
               source: 'api.verification.send-code',
               props: { via: 'email', therapist_id: draft_contact.therapist_id, contact_type: draft_contact.contact_type },
+            });
+          } catch {}
+        }
+        if (draft_booking) {
+          meta['draft_booking'] = draft_booking;
+          try {
+            await ServerAnalytics.trackEventFromRequest(req, {
+              type: 'draft_booking_stored',
+              source: 'api.verification.send-code',
+              props: { via: 'email', therapist_id: draft_booking.therapist_id },
             });
           } catch {}
         }

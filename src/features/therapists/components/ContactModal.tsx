@@ -32,6 +32,8 @@ interface ContactModalProps {
   verified?: boolean;
   /** If true, we returned from confirm redirect and message was already sent. Show success. */
   confirmed?: boolean;
+  /** Optional selected slot for booking (directory chips → modal) */
+  selectedSlot?: { date_iso: string; time_label: string; format: 'online' | 'in_person' };
 }
 
 type Step = 'verify' | 'verify-code' | 'verify-link' | 'compose' | 'success';
@@ -47,7 +49,7 @@ interface PreAuthParams {
   sessionPreference?: 'online' | 'in_person';
 }
 
-export function ContactModal({ therapist, contactType, open, onClose, onSuccess, preAuth, verified, confirmed }: ContactModalProps & { preAuth?: PreAuthParams }) {
+export function ContactModal({ therapist, contactType, open, onClose, onSuccess, preAuth, verified, confirmed, selectedSlot }: ContactModalProps & { preAuth?: PreAuthParams }) {
   const [step, setStep] = useState<Step>(confirmed ? 'success' : 'compose');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -146,6 +148,13 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       cancelled = true;
     };
   }, [open, preAuth, therapist.first_name, contactType, awaitingVerificationSend, forceSuccess, step]);
+
+  // Prefill session format if a slot was selected externally
+  useEffect(() => {
+    if (open && selectedSlot && contactType === 'booking') {
+      setSessionFormat(selectedSlot.format);
+    }
+  }, [open, selectedSlot, contactType]);
 
   // If parent indicates verified (email confirm return), reflect in local state
   useEffect(() => {
@@ -302,6 +311,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           redirect: redirectPath,
           // Server-side draft storage (therapist directory flow)
           draft_contact: draftContact,
+          ...(selectedSlot && contactType === 'booking' ? { draft_booking: { therapist_id: therapist.id, date_iso: selectedSlot.date_iso, time_label: selectedSlot.time_label, format: selectedSlot.format } } : {}),
         }),
       });
       

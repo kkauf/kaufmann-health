@@ -143,6 +143,7 @@ export async function GET(req: Request) {
 
     // Read draft_contact if present (therapist directory flow). Do NOT remove yet; only clear after successful processing.
     const draftContact = (metadata?.['draft_contact'] as Record<string, unknown> | undefined) || undefined;
+    const draftBooking = (metadata?.['draft_booking'] as Record<string, unknown> | undefined) || undefined;
 
     // If the questionnaire was completed already, the lead is actionable: mark as 'new'.
     // Otherwise, keep the transitional 'email_confirmed' status.
@@ -266,6 +267,54 @@ export async function GET(req: Request) {
         }
       } catch (err) {
         await logError('api.leads.confirm', err, { stage: 'draft_contact_processing' });
+      }
+    }
+
+    // Process draft booking if present (therapist directory flow)
+    if (draftBooking) {
+      try {
+        const therapistId = typeof draftBooking.therapist_id === 'string' ? draftBooking.therapist_id : null;
+        const dateIso = typeof draftBooking.date_iso === 'string' ? draftBooking.date_iso : '';
+        const timeLabel = typeof draftBooking.time_label === 'string' ? draftBooking.time_label : '';
+        const fmt = draftBooking.format === 'in_person' ? 'in_person' : (draftBooking.format === 'online' ? 'online' : null);
+
+        if (therapistId && dateIso && timeLabel && fmt) {
+          const { data: existing } = await supabaseServer
+            .from('bookings')
+            .select('id')
+            .eq('therapist_id', therapistId)
+            .eq('date_iso', dateIso)
+            .eq('time_label', timeLabel)
+            .maybeSingle();
+          if (!existing) {
+            const { error: bookErr } = await supabaseServer
+              .from('bookings')
+              .insert({ therapist_id: therapistId, patient_id: id, date_iso: dateIso, time_label: timeLabel, format: fmt });
+            if (bookErr) {
+              await logError('api.leads.confirm', bookErr, { stage: 'draft_booking_insert', therapistId, dateIso, timeLabel });
+            } else {
+              try {
+                await ServerAnalytics.trackEventFromRequest(req, {
+                  type: 'booking_created',
+                  source: 'api.leads.confirm',
+                  session_id: sessionIdHeader,
+                  props: { therapist_id: therapistId, date_iso: dateIso, time_label: timeLabel, format: fmt },
+                });
+              } catch {}
+            }
+          }
+          // Clear draft_booking regardless (processed or duplicate)
+          try {
+            const clearedMeta = { ...(newMetadata || {}) } as Record<string, unknown>;
+            delete clearedMeta['draft_booking'];
+            await supabaseServer
+              .from('people')
+              .update({ metadata: clearedMeta })
+              .eq('id', id);
+          } catch {}
+        }
+      } catch (err) {
+        await logError('api.leads.confirm', err, { stage: 'draft_booking_processing' });
       }
     }
 

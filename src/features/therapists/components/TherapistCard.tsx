@@ -46,6 +46,7 @@ export function TherapistCard({
   const [imageError, setImageError] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [contactType, setContactType] = useState<'booking' | 'consultation'>('booking');
+  const [selectedSlot, setSelectedSlot] = useState<{ date_iso: string; time_label: string; format: 'online' | 'in_person' } | null>(null);
 
   const photoSrc = therapist.photo_url && !imageError ? therapist.photo_url : undefined;
   const initials = getInitials(therapist.first_name, therapist.last_name);
@@ -265,7 +266,14 @@ export function TherapistCard({
               <Calendar className="h-4 w-4" />
               Verfügbare Termine
             </div>
-            <AvailabilityChips items={therapist.availability} />
+            <AvailabilityChips
+              items={therapist.availability}
+              onSelect={(s) => {
+                setSelectedSlot({ date_iso: s.date_iso, time_label: s.time_label, format: s.format });
+                setContactType('booking');
+                setContactModalOpen(true);
+              }}
+            />
           </div>
         )}
         </div>
@@ -306,12 +314,13 @@ export function TherapistCard({
         contactType={contactType}
         open={contactModalOpen}
         onClose={() => setContactModalOpen(false)}
+        selectedSlot={selectedSlot || undefined}
       />
     </Card>
   );
 }
 
-function AvailabilityChips({ items }: { items: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] }) {
+function AvailabilityChips({ items, onSelect }: { items: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[]; onSelect?: (s: { date_iso: string; time_label: string; format: 'online' | 'in_person' }) => void }) {
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? items.slice(0, 9) : items.slice(0, 3);
   const dayFmt = useMemo(() => new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' }), []);
@@ -326,16 +335,30 @@ function AvailabilityChips({ items }: { items: { date_iso: string; time_label: s
   }
   return (
     <div className="flex flex-wrap gap-2">
-      {shown.map((s, idx) => (
-        <span
-          key={`${s.date_iso}-${s.time_label}-${idx}`}
-          className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium shadow-sm ${s.format === 'online' ? 'border-sky-200 bg-sky-50 text-sky-800' : 'border-slate-200 bg-slate-50 text-slate-800'}`}
-          title={s.format === 'online' ? 'Online (Zoom-Link wird zugesendet)' : 'Vor Ort'}
-        >
-          {labelOf(s.date_iso, s.time_label)}
-          <span className="ml-1 opacity-70">{s.format === 'online' ? '• Online' : '• Vor Ort'}</span>
-        </span>
-      ))}
+      {shown.map((s, idx) => {
+        const cls = `inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium shadow-sm ${s.format === 'online' ? 'border-sky-200 bg-sky-50 text-sky-800' : 'border-slate-200 bg-slate-50 text-slate-800'}`;
+        const content = (
+          <>
+            {labelOf(s.date_iso, s.time_label)}
+            <span className="ml-1 opacity-70">{s.format === 'online' ? '• Online' : '• Vor Ort'}</span>
+          </>
+        );
+        return onSelect ? (
+          <button
+            key={`${s.date_iso}-${s.time_label}-${idx}`}
+            type="button"
+            className={`${cls} hover:shadow cursor-pointer`}
+            title={s.format === 'online' ? 'Online (Zoom-Link wird zugesendet)' : 'Vor Ort'}
+            onClick={() => onSelect({ date_iso: s.date_iso, time_label: s.time_label, format: s.format })}
+          >
+            {content}
+          </button>
+        ) : (
+          <span key={`${s.date_iso}-${s.time_label}-${idx}`} className={cls} title={s.format === 'online' ? 'Online (Zoom-Link wird zugesendet)' : 'Vor Ort'}>
+            {content}
+          </span>
+        );
+      })}
       {items.length > 3 && (
         <button
           type="button"
