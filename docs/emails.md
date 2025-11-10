@@ -91,6 +91,7 @@ Use `buildInternalLeadNotification()` to construct subject/text with type and ci
 - `RESEND_API_KEY` — required to actually send emails (in CI/tests we keep it empty to disable sending).
 - `LEADS_FROM_EMAIL` — sender address used by `sendEmail()`.
 - `NEXT_PUBLIC_BASE_URL` — base domain for absolute links in templates.
+- `LEADS_NOTIFY_EMAIL` — optional sink address for manual testing. When `kh_test=1` cookie is present, booking emails are rerouted here (see Testing below).
 
 ## Testing
 
@@ -101,6 +102,20 @@ Use `buildInternalLeadNotification()` to construct subject/text with type and ci
   - `tests/email.emailConfirmation.test.ts`
   - `tests/email.patientSelection.schema.test.ts`
 - In tests, `sendEmail()` is a no-op when `RESEND_API_KEY` is empty, so accidental sends are avoided.
+
+### Booking templates
+
+- `bookingTherapistNotification` → `src/lib/email/templates/bookingTherapistNotification.ts`
+  - Sent to therapist on successful booking.
+  - Includes: date, time, format, address (Vor Ort), patient name/email preview.
+- `bookingClientConfirmation` → `src/lib/email/templates/bookingClientConfirmation.ts`
+  - Sent to client on successful booking.
+  - Includes: therapist name, date, time, format. For Online: “Zoom‑Link wird zugesendet”. For Vor Ort: address.
+
+Trigger points:
+- `POST /api/public/bookings` (direct create)
+- `POST /api/public/verification/verify-code` (when processing `draft_booking`)
+- `GET /api/public/leads/confirm` (when processing `draft_booking`)
 
 ### Deliverability test (manual)
 
@@ -113,3 +128,10 @@ Use `buildInternalLeadNotification()` to construct subject/text with type and ci
   ```
 
 - The script avoids subject markers, caps recipients by default, and randomizes per‑send delays to prevent burst patterns that look like outreach.
+
+### Manual booking email tests (kh_test sink)
+
+- Set the browser cookie `kh_test=1` and ensure `LEADS_NOTIFY_EMAIL` is configured.
+- When `kh_test=1` is present, booking emails are rerouted to `LEADS_NOTIFY_EMAIL` (therapist and client messages) and the flow runs in **dry‑run** mode: no DB inserts, no `draft_booking` clearing.
+- Analytics event `booking_dry_run` is tracked with the same props as `booking_created`.
+- Scope: booking emails only, at the three trigger points listed above. E2E tests do not rely on this; they run with `RESEND_API_KEY` unset to avoid real sends.

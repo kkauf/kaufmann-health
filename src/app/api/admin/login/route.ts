@@ -58,10 +58,12 @@ export async function POST(req: Request) {
     
     // Set cookies with standard attribute order: name=value; Domain; Path; Expires; Max-Age; Secure; HttpOnly; SameSite
     // Chrome requires this order for proper persistence
-    const isProduction = process.env.NODE_ENV === 'production';
-    const domain = isProduction ? 'kaufmann-health.de' : undefined;
+    const host = url.hostname;
+    const isKaufmannDomain = host === 'kaufmann-health.de' || host === 'www.kaufmann-health.de';
+    const domain = isKaufmannDomain ? 'kaufmann-health.de' : undefined;
     const expiresDate = new Date(Date.now() + ADMIN_SESSION_MAX_AGE_SEC * 1000);
     const expiresStr = expiresDate.toUTCString();
+    const isSecure = url.protocol === 'https:';
     
     const buildCookie = (path: string) => {
       const parts = [
@@ -70,7 +72,7 @@ export async function POST(req: Request) {
         `Path=${path}`,
         `Expires=${expiresStr}`,
         `Max-Age=${ADMIN_SESSION_MAX_AGE_SEC}`,
-        ...(isProduction ? ['Secure'] : []),
+        ...(isSecure ? ['Secure'] : []),
         'HttpOnly',
         'SameSite=Lax',
       ];

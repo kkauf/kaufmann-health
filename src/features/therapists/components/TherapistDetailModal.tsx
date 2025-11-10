@@ -55,6 +55,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
   const profile = therapist.metadata?.profile;
   const languages = profile?.languages || [];
   const yearsExperience = profile?.years_experience;
+  const practiceAddress = (profile?.practice_address || '').toString().trim();
   
   const handleContactClick = (type: 'booking' | 'consultation') => {
     try {
@@ -216,6 +217,12 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
                 <MapPin className="h-3.5 w-3.5" />
                 {therapist.city}
               </Badge>
+              {offersInPerson && practiceAddress && (
+                <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700" title="Praxis-Adresse">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {practiceAddress}
+                </Badge>
+              )}
               
               {offersOnline && (
                 <Badge variant="outline" className="gap-1.5 border-sky-200 bg-sky-50 text-sky-700">

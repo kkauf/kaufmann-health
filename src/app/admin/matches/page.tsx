@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type Person = {
   id: string;
@@ -70,6 +72,8 @@ export default function AdminMatchesPage() {
   const [emailTemplate, setEmailTemplate] = useState<'match_found' | 'custom'>('match_found');
   const [emailMessage, setEmailMessage] = useState('');
   const [emailSending, setEmailSending] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -128,8 +132,26 @@ export default function AdminMatchesPage() {
   }, [load]);
 
   const sortedRows = useMemo(() => {
-    const list = rows ? [...rows] : [];
+    let list = rows ? [...rows] : [];
     if (list.length === 0) return list;
+
+    // Apply status filter
+    if (statusFilter && statusFilter !== 'all') {
+      list = list.filter(r => r.status === statusFilter);
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      list = list.filter(r =>
+        r.patient.name.toLowerCase().includes(query) ||
+        r.patient.email.toLowerCase().includes(query) ||
+        r.therapist.name.toLowerCase().includes(query) ||
+        r.therapist.email.toLowerCase().includes(query) ||
+        (r.patient.city && r.patient.city.toLowerCase().includes(query))
+      );
+    }
+
     const weight: Record<string, number> = {
       proposed: 0,
       patient_selected: 1,
@@ -151,7 +173,7 @@ export default function AdminMatchesPage() {
       return tb - ta;
     });
     return list;
-  }, [rows]);
+  }, [rows, statusFilter, searchQuery]);
 
   const isDeprioritized = useCallback((status: string) => {
     return (
@@ -198,53 +220,92 @@ export default function AdminMatchesPage() {
   }, []);
 
   return (
-    <main className="min-h-screen p-6">
-      <div className="flex items-center justify-between gap-4 mb-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Match-Status</h1>
-          <p className="text-muted-foreground text-sm">Verfolgen und aktualisieren Sie den Fortschritt aller Matches.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => void load()} disabled={loading}>Neu laden</Button>
-          <Link href="/admin/leads" className="underline text-sm">Zu Leads</Link>
-        </div>
-      </div>
+    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+        <header className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Match-Status</h1>
+            <p className="mt-1 text-base text-gray-600">Verfolge und aktualisiere den Fortschritt aller Matches</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => void load()} disabled={loading}>Neu laden</Button>
+            <Link href="/admin/leads">
+              <Button variant="outline">Zu Leads</Button>
+            </Link>
+          </div>
+        </header>
 
-      {error && (
-        <div className="mb-4 text-sm text-red-600">{error}</div>
-      )}
+        <section className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="mb-6">
+            <h2 className="text-base font-semibold mb-4">Filter & Suche</h2>
+            <div className="flex flex-wrap gap-3 items-end">
+              <div className="space-y-1">
+                <Label>Status</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="min-w-48">
+                    <SelectValue placeholder="Alle Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle Status</SelectItem>
+                    {STATUS_OPTIONS.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1 flex-1 min-w-64">
+                <Label>Suche</Label>
+                <Input
+                  placeholder="Name, E-Mail, Stadt..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+            {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
+          </div>
 
-      {loading && !rows && (
-        <div className="text-sm text-muted-foreground">Lade Matches…</div>
-      )}
+          {loading && !rows && (
+            <div className="text-center py-12">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" role="status">
+                <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Laden...</span>
+              </div>
+              <p className="text-gray-500 mt-3">Lade Matches...</p>
+            </div>
+          )}
 
-      {rows && rows.length === 0 && (
-        <div className="rounded border p-6 text-center text-sm text-muted-foreground">
-          Noch keine Matches vorhanden.
-        </div>
-      )}
+          {rows && sortedRows.length === 0 && (
+            <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed">
+              <p className="text-gray-500">Keine Matches gefunden</p>
+              <p className="text-sm text-gray-400 mt-1">Versuche die Filter anzupassen</p>
+            </div>
+          )}
 
-      {rows && rows.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b bg-accent/30">
-                <th className="text-left py-2 px-2">Klient</th>
-                <th className="text-left py-2 px-2">Kontakt</th>
-                <th className="text-left py-2 px-2">Stadt</th>
-                <th className="text-left py-2 px-2">Anliegen</th>
-                <th className="text-left py-2 px-2">Therapeut:in</th>
-                <th className="text-left py-2 px-2">Status</th>
-                <th className="text-left py-2 px-2">Erstellt</th>
-                <th className="text-left py-2 px-2">Notizen</th>
-                <th className="text-left py-2 px-2">Aktionen</th>
+          {rows && sortedRows.length > 0 && (
+            <div className="space-y-3">
+              <div className="text-sm text-gray-600 mb-3">
+                {sortedRows.length} {sortedRows.length === 1 ? 'Match' : 'Matches'} gefunden
+              </div>
+              <div className="overflow-x-auto rounded-lg border">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b bg-gray-50">
+                <th className="text-left py-3 px-3 font-semibold text-gray-700">Klient</th>
+                <th className="text-left py-3 px-3 font-semibold text-gray-700">Kontakt</th>
+                <th className="text-left py-3 px-3 font-semibold text-gray-700">Stadt</th>
+                <th className="text-left py-3 px-3 font-semibold text-gray-700">Anliegen</th>
+                <th className="text-left py-3 px-3 font-semibold text-gray-700">Therapeut:in</th>
+                <th className="text-left py-3 px-3 font-semibold text-gray-700">Status</th>
+                <th className="text-left py-3 px-3 font-semibold text-gray-700">Erstellt</th>
+                <th className="text-left py-3 px-3 font-semibold text-gray-700">Notizen</th>
+                <th className="text-left py-3 px-3 font-semibold text-gray-700">Aktionen</th>
               </tr>
             </thead>
             <tbody>
               {sortedRows.map(r => (
-                <tr key={r.id} className={`border-b hover:bg-accent/10 ${isDeprioritized(r.status) ? 'opacity-70' : ''}`}>
-                  <td className="py-2 px-2 min-w-48">{r.patient.name || '—'}</td>
-                  <td className="py-2 px-2 min-w-44">
+                <tr key={r.id} className={`border-b transition-colors hover:bg-blue-50/50 ${isDeprioritized(r.status) ? 'opacity-60' : ''}`}>
+                  <td className="py-3 px-3 min-w-48 font-medium">{r.patient.name || '—'}</td>
+                  <td className="py-3 px-3 min-w-44">
                     <div className="flex flex-col gap-0.5">
                       {r.patient.email ? (
                         <a className="underline" href={`mailto:${r.patient.email}`}>{r.patient.email}</a>
@@ -254,9 +315,9 @@ export default function AdminMatchesPage() {
                       ) : null}
                     </div>
                   </td>
-                  <td className="py-2 px-2">{r.patient.city || '—'}</td>
-                  <td className="py-2 px-2 max-w-56 truncate" title={r.patient.issue || ''}>{r.patient.issue || '—'}</td>
-                  <td className="py-2 px-2 min-w-44">
+                  <td className="py-3 px-3">{r.patient.city || '—'}</td>
+                  <td className="py-3 px-3 max-w-56 truncate" title={r.patient.issue || ''}>{r.patient.issue || '—'}</td>
+                  <td className="py-3 px-3 min-w-44">
                     <div className="flex flex-col gap-0.5">
                       <span>{r.therapist.name || '—'}</span>
                       {r.therapist.phone ? (
@@ -264,7 +325,7 @@ export default function AdminMatchesPage() {
                       ) : null}
                     </div>
                   </td>
-                  <td className="py-2 px-2 min-w-56">
+                  <td className="py-3 px-3 min-w-56">
                     <div className="flex items-center gap-2">
                       <StatusBadge status={r.status} />
                       <Select value={r.status} onValueChange={(v) => void updateStatus(r.id, v)}>
@@ -279,8 +340,8 @@ export default function AdminMatchesPage() {
                       </Select>
                     </div>
                   </td>
-                  <td className="py-2 px-2 whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
-                  <td className="py-2 px-2 min-w-64">
+                  <td className="py-3 px-3 whitespace-nowrap text-gray-600 text-xs">{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
+                  <td className="py-3 px-3 min-w-64">
                     <input
                       className="w-full rounded border bg-transparent px-2 py-1"
                       defaultValue={r.notes || ''}
@@ -288,15 +349,18 @@ export default function AdminMatchesPage() {
                       onBlur={(e) => void updateNotes(r.id, e.currentTarget.value)}
                     />
                   </td>
-                  <td className="py-2 px-2">
+                  <td className="py-3 px-3">
                     <Button variant="outline" size="sm" onClick={() => openEmail(r)}>Klient informieren</Button>
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
 
       {emailTarget && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">

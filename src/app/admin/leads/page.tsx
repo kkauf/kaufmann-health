@@ -546,55 +546,61 @@ export default function AdminLeadsPage() {
   }, [leads, deprioritizedPatients, hideLost, viewFilter]);
 
   return (
-    <main className="min-h-screen p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Leads & Matching</h1>
+    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      <div className="mx-auto max-w-[1600px] px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+        <header>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Leads & Matching</h1>
+          <p className="mt-1 text-base text-gray-600">Verwalte Klienten-Leads und finde passende Therapeut:innen</p>
+        </header>
 
-      {message && <p className="text-sm text-emerald-700" role="status">{message}</p>}
-
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Leads */}
-        <div className="border rounded-md p-4">
-          <h2 className="text-lg font-semibold mb-3">Klienten-Leads</h2>
-          <div className="flex flex-wrap gap-3 mb-3 items-end">
-            <div className="space-y-1">
-              <Label htmlFor="lead-city">Stadt</Label>
-              <Input id="lead-city" value={leadCity} onChange={(e) => setLeadCity(e.target.value)} placeholder="z.B. Berlin" />
-            </div>
-            <div className="space-y-1">
-              <Label>Sitzungsart</Label>
-              <Select value={leadSessionPref || 'any'} onValueChange={(v) => setLeadSessionPref(v === 'any' ? '' : v)}>
-                <SelectTrigger className="min-w-40">
-                  <SelectValue placeholder="Beliebig" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Beliebig</SelectItem>
-                  <SelectItem value="online">Online</SelectItem>
-                  <SelectItem value="in_person">Vor Ort</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="only-action">Ansicht</Label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  id="only-action"
-                  type="checkbox"
-                  className="h-4 w-4"
-                  checked={viewFilter === 'action'}
-                  onChange={(e) => setViewFilter(e.target.checked ? 'action' : 'all')}
-                />
-                <span>Nur Handlungsbedarf</span>
-              </label>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="hide-lost">Ansicht</Label>
-              <label className="flex items-center gap-2 text-sm">
-                <input id="hide-lost" type="checkbox" className="h-4 w-4" checked={hideLost} onChange={(e) => setHideLost(e.target.checked)} />
-                <span>Verlorene ausblenden</span>
-              </label>
-            </div>
-            <Button onClick={fetchLeads} disabled={loadingLeads}>{loadingLeads ? 'Lädt…' : 'Filtern'}</Button>
+        {message && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3">
+            <p className="text-sm text-emerald-700" role="status">{message}</p>
           </div>
+        )}
+
+        <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {/* Leads */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h2 className="text-lg font-bold mb-4">Klienten-Leads</h2>
+            <div className="mb-4 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="lead-city">Stadt</Label>
+                  <Input id="lead-city" value={leadCity} onChange={(e) => setLeadCity(e.target.value)} placeholder="z.B. Berlin" />
+                </div>
+                <div className="space-y-1">
+                  <Label>Sitzungsart</Label>
+                  <Select value={leadSessionPref || 'any'} onValueChange={(v) => setLeadSessionPref(v === 'any' ? '' : v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Beliebig" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Beliebig</SelectItem>
+                      <SelectItem value="online">Online</SelectItem>
+                      <SelectItem value="in_person">Vor Ort</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-4 items-center">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    id="only-action"
+                    type="checkbox"
+                    className="h-4 w-4 accent-black"
+                    checked={viewFilter === 'action'}
+                    onChange={(e) => setViewFilter(e.target.checked ? 'action' : 'all')}
+                  />
+                  <span>Nur Handlungsbedarf</span>
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input id="hide-lost" type="checkbox" className="h-4 w-4 accent-black" checked={hideLost} onChange={(e) => setHideLost(e.target.checked)} />
+                  <span>Verlorene ausblenden</span>
+                </label>
+                <Button onClick={fetchLeads} disabled={loadingLeads} className="ml-auto">{loadingLeads ? 'Lädt…' : 'Filtern'}</Button>
+              </div>
+            </div>
           {leadError && <p className="text-sm text-red-600 mb-2">{leadError}</p>}
 
           <div className="space-y-3">
@@ -608,7 +614,7 @@ export default function AdminLeadsPage() {
               const isSelected = selectedPatient?.id === p.id;
               const isDeprioritized = deprioritizedPatients.has(p.id);
               return (
-                <Card key={p.id} className={`${isSelected ? 'border-amber-400 bg-amber-50' : ''} ${isDeprioritized ? 'opacity-70' : ''}`} aria-selected={isSelected}>
+                <Card key={p.id} className={`transition-all ${isSelected ? 'border-amber-400 bg-amber-50/50 shadow-md' : 'hover:shadow-sm hover:border-gray-300'} ${isDeprioritized ? 'opacity-60' : ''}`} aria-selected={isSelected}>
                   <CardHeader>
                     <div className="min-w-0">
                       <CardTitle className="truncate" title={p.name || undefined}>{p.name || '—'}</CardTitle>
@@ -743,72 +749,83 @@ export default function AdminLeadsPage() {
               );
             })}
             {leads.length === 0 && !loadingLeads && (
-              <p className="col-span-full px-3 py-6 text-center text-gray-500">Keine Leads gefunden</p>
+              <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed">
+                <p className="text-gray-500">Keine Leads gefunden</p>
+                <p className="text-sm text-gray-400 mt-1">Versuche die Filter anzupassen</p>
+              </div>
             )}
             {loadingLeads && (
-              <p className="col-span-full px-3 py-6 text-center text-gray-500">Laden…</p>
+              <div className="text-center py-12">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" role="status">
+                  <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Laden...</span>
+                </div>
+                <p className="text-gray-500 mt-3">Lade Leads...</p>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Therapists */}
-        <div className="border rounded-md p-4">
-          <h2 className="text-lg font-semibold mb-3">Therapeut:innen</h2>
-          {selectedPatient && (
-            <div className="mb-2 text-xs text-gray-600">Bis zu 3 Therapeut:innen auswählen, um eine Klienten-Auswahl zu erstellen.</div>
-          )}
-          <div className="flex flex-wrap gap-3 mb-3 items-end">
-            <div className="space-y-1">
-              <Label htmlFor="ther-city">Stadt</Label>
-              <Input id="ther-city" value={therCity} onChange={(e) => setTherCity(e.target.value)} placeholder={selectedCity || 'z.B. Berlin'} />
-            </div>
-            <div className="space-y-1">
-              <Label>Sitzungsart</Label>
-              <Select value={therSessionPref || 'any'} onValueChange={(v) => setTherSessionPref(v === 'any' ? '' : v)}>
-                <SelectTrigger className="min-w-40">
-                  <SelectValue placeholder={selectedPref || 'Beliebig'} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Beliebig</SelectItem>
-                  <SelectItem value="online">Online</SelectItem>
-                  <SelectItem value="in_person">Vor Ort</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1 min-w-56">
-              <Label>Spezialisierungen</Label>
-              <div className="flex flex-col gap-1 text-sm p-2 border rounded-md">
-                {[{v:'narm', l:'NARM'}, {v:'somatic-experiencing', l:'Somatic Experiencing'}, {v:'hakomi', l:'Hakomi'}, {v:'core-energetics', l:'Core Energetics'}].map(({v,l}) => (
-                  <label key={v} className="inline-flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4"
-                      checked={therSpecializations.includes(v)}
-                      onChange={(e) => {
-                        setTherSpecializations((prev) => {
-                          const next = new Set(prev);
-                          if (e.target.checked) next.add(v); else next.delete(v);
-                          return Array.from(next);
-                        });
-                      }}
-                    />
-                    <span>{l}</span>
-                  </label>
-                ))}
-                {therSpecializations.length === 0 && (
-                  <span className="text-xs text-gray-500">Beliebig</span>
-                )}
+          {/* Therapists */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h2 className="text-lg font-bold mb-4">Therapeut:innen</h2>
+            {selectedPatient && (
+              <div className="mb-3 text-sm bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-gray-700">
+                Bis zu 3 Therapeut:innen auswählen, um eine Klienten-Auswahl zu erstellen.
+              </div>
+            )}
+            <div className="mb-4 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="ther-city">Stadt</Label>
+                  <Input id="ther-city" value={therCity} onChange={(e) => setTherCity(e.target.value)} placeholder={selectedCity || 'z.B. Berlin'} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Sitzungsart</Label>
+                  <Select value={therSessionPref || 'any'} onValueChange={(v) => setTherSessionPref(v === 'any' ? '' : v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={selectedPref || 'Beliebig'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Beliebig</SelectItem>
+                      <SelectItem value="online">Online</SelectItem>
+                      <SelectItem value="in_person">Vor Ort</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Spezialisierungen</Label>
+                  <div className="flex flex-col gap-1.5 text-sm p-2 border rounded-md bg-white">
+                    {[{v:'narm', l:'NARM'}, {v:'somatic-experiencing', l:'SE'}, {v:'hakomi', l:'Hakomi'}, {v:'core-energetics', l:'Core'}].map(({v,l}) => (
+                      <label key={v} className="inline-flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-black"
+                          checked={therSpecializations.includes(v)}
+                          onChange={(e) => {
+                            setTherSpecializations((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(v); else next.delete(v);
+                              return Array.from(next);
+                            });
+                          }}
+                        />
+                        <span className="text-xs">{l}</span>
+                      </label>
+                    ))}
+                    {therSpecializations.length === 0 && (
+                      <span className="text-xs text-gray-500">Beliebig</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-4 items-center">
+                <label className="flex items-center gap-2 text-sm">
+                  <input id="only-perfect" type="checkbox" className="h-4 w-4 accent-black" checked={onlyPerfect} onChange={(e) => setOnlyPerfect(e.target.checked)} />
+                  <span>Nur perfekte Matches</span>
+                </label>
+                <Button onClick={fetchTherapists} disabled={loadingTherapists} className="ml-auto">{loadingTherapists ? 'Lädt…' : 'Filtern'}</Button>
               </div>
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="only-perfect">Ansicht</Label>
-              <label className="flex items-center gap-2 text-sm">
-                <input id="only-perfect" type="checkbox" className="h-4 w-4" checked={onlyPerfect} onChange={(e) => setOnlyPerfect(e.target.checked)} />
-                <span>Nur perfekte Matches</span>
-              </label>
-            </div>
-            <Button onClick={fetchTherapists} disabled={loadingTherapists}>{loadingTherapists ? 'Lädt…' : 'Filtern'}</Button>
-          </div>
           {therError && <p className="text-sm text-red-600 mb-2">{therError}</p>}
           {cityOmittedForOnline && (
             <p className="text-xs text-gray-500 mb-2">Hinweis: Online-Präferenz – Stadtfilter derzeit deaktiviert. Zum Eingrenzen bitte eine Stadt eingeben.</p>
@@ -928,20 +945,30 @@ export default function AdminLeadsPage() {
               );
             })}
             {therapists.length === 0 && !loadingTherapists && (
-              <p className="px-3 py-6 text-center text-gray-500">Keine Therapeut:innen gefunden</p>
+              <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed">
+                <p className="text-gray-500">Keine Therapeut:innen gefunden</p>
+                <p className="text-sm text-gray-400 mt-1">Versuche die Filter anzupassen</p>
+              </div>
             )}
             {loadingTherapists && (
-              <p className="px-3 py-6 text-center text-gray-500">Laden…</p>
+              <div className="text-center py-12">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" role="status">
+                  <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Laden...</span>
+                </div>
+                <p className="text-gray-500 mt-3">Lade Therapeut:innen...</p>
+              </div>
             )}
           </div>
         </div>
-      </section>
+        </section>
+      </div>
+
       {isMatchModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-md shadow-xl w-full max-w-lg p-4">
-            <div className="flex items-start justify-between mb-2">
-              <h3 className="text-lg font-semibold">Match erstellen</h3>
-              <button onClick={closeMatchModal} aria-label="Schließen" className="text-gray-500 hover:text-gray-700">×</button>
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg p-6">
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-xl font-bold">Match erstellen</h3>
+              <button onClick={closeMatchModal} aria-label="Schließen" className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
             </div>
             <div className="space-y-3">
               <div className="text-sm text-gray-700">

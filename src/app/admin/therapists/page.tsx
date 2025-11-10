@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,7 +69,7 @@ function formatDate(iso?: string | null) {
 
 export default function AdminTherapistsPage() {
   // Filters
-  const [status, setStatus] = useState<"pending_verification" | "verified" | "rejected">("pending_verification");
+  const [status, setStatus] = useState<"pending_verification" | "verified" | "rejected">("verified");
   const [city, setCity] = useState("");
   const [q, setQ] = useState("");
   const [specialization, setSpecialization] = useState<string>("");
@@ -353,11 +354,17 @@ export default function AdminTherapistsPage() {
   }
 
   return (
-    <main className="min-h-screen p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Therapeuten-Verifizierung</h1>
+    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+        <header>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Therapeuten-Verifizierung</h1>
+          <p className="mt-1 text-base text-gray-600">Prüfe und verwalte eingehende Therapeuten-Anträge</p>
+        </header>
 
-      <section className="border rounded-md p-4">
-        <div className="flex flex-wrap gap-3 mb-3 items-end">
+        <section className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="mb-6">
+          <h2 className="text-base font-semibold mb-4">Filter & Suche</h2>
+          <div className="flex flex-wrap gap-3 items-end">
           <div className="space-y-1">
             <Label>Status</Label>
             <Select
@@ -441,17 +448,14 @@ export default function AdminTherapistsPage() {
             />
             Nur Opt-out
           </label>
+          </div>
+          {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
         </div>
-        {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
 
         {/* Guidelines */}
-        <div className="mb-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Richtlinien zur Profilprüfung</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-xs space-y-1">
+        <div className="mb-6 bg-blue-50 border border-blue-100 rounded-lg p-4">
+          <h3 className="text-sm font-semibold mb-3 text-blue-900">Richtlinien zur Profilprüfung</h3>
+          <div className="text-xs space-y-2 text-gray-700">
                 <p><strong>Foto:</strong></p>
                 <ul className="list-disc ml-4 space-y-1">
                   <li>Professionelles Erscheinungsbild</li>
@@ -467,20 +471,17 @@ export default function AdminTherapistsPage() {
                   <li>Klar und verständlich</li>
                 </ul>
               </div>
-            </CardContent>
-          </Card>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           {/* Pagination header */}
-          <div className="flex items-center justify-between text-sm">
-            <div>
-              Zeige {total === 0 ? 0 : (page - 1) * pageSize + 1}
-              –{Math.min(page * pageSize, total)} von {total}
+          <div className="flex items-center justify-between text-sm bg-gray-50 rounded-lg px-4 py-3 border">
+            <div className="font-medium text-gray-700">
+              Zeige {total === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} von {total}
             </div>
             <div className="flex items-center gap-2">
               <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Zurück</Button>
-              <span>Seite {page} / {totalPages}</span>
+              <span className="text-gray-600">Seite {page} / {totalPages}</span>
               <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Weiter</Button>
             </div>
           </div>
@@ -498,7 +499,7 @@ export default function AdminTherapistsPage() {
             const hasPhoto = Boolean(t.profile?.has_photo_pending || t.profile?.has_photo_public);
             const hasApproach = Boolean(t.profile?.has_approach_text);
             return (
-              <Card key={t.id} className={isPending ? "border-amber-400 bg-amber-50" : undefined}>
+              <Card key={t.id} className={`transition-all hover:shadow-md ${isPending ? "border-amber-400 bg-amber-50/50" : "hover:border-gray-300"}`}>
                 <CardHeader>
                   <div className="min-w-0">
                     <CardTitle className="truncate" title={t.name || undefined}>{t.name || "—"}</CardTitle>
@@ -519,6 +520,9 @@ export default function AdminTherapistsPage() {
                     />
                     <Button size="sm" onClick={() => openDetail(t.id)}>Dokumente prüfen</Button>
                     <Button size="sm" variant="outline" onClick={() => openDetail(t.id)}>Details</Button>
+                    <Link href={`/admin/therapists/${t.id}/slots`}>
+                      <Button size="sm" variant="outline">Slots</Button>
+                    </Link>
                   </CardAction>
                 </CardHeader>
                 <CardContent>
@@ -529,16 +533,16 @@ export default function AdminTherapistsPage() {
                     <div className="col-span-2 flex items-center gap-2">
                       <span className="text-gray-500">Profil:</span>
                       <div className="flex items-center gap-2">
-                        {hasPhoto && (<Badge variant="outline">Foto ✓</Badge>)}
-                        {hasApproach && (<Badge variant="outline">Ansatz ✓</Badge>)}
+                        {hasPhoto && (<Badge className="bg-green-100 text-green-700 border-green-200">Foto ✓</Badge>)}
+                        {hasApproach && (<Badge className="bg-green-100 text-green-700 border-green-200">Ansatz ✓</Badge>)}
                         {!hasPhoto || !hasApproach ? (
-                          <Badge variant="secondary">Unvollständig</Badge>
+                          <Badge className="bg-amber-100 text-amber-700 border-amber-200">Unvollständig</Badge>
                         ) : null}
                       </div>
                     </div>
                     <div className="col-span-2 flex items-center gap-2">
                       <span className="text-gray-500">E‑Mail‑Status:</span>
-                      {t.opted_out ? <Badge variant="outline">Opt-out</Badge> : <span>Aktiv</span>}
+                      {t.opted_out ? <Badge className="bg-red-100 text-red-700 border-red-200">Opt-out</Badge> : <span className="text-green-700 font-medium">Aktiv</span>}
                     </div>
                     <div className="col-span-2 text-xs text-gray-500">Eingang: {formatDate(t.created_at)}</div>
                   </div>
@@ -547,27 +551,35 @@ export default function AdminTherapistsPage() {
             );
           })}
           {filtered.length === 0 && !loading && (
-            <p className="px-3 py-6 text-center text-gray-500">Keine Therapeuten gefunden</p>
+            <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed">
+              <p className="text-gray-500">Keine Therapeuten gefunden</p>
+              <p className="text-sm text-gray-400 mt-1">Versuche die Filter anzupassen</p>
+            </div>
           )}
           {loading && (
-            <p className="px-3 py-6 text-center text-gray-500">Laden…</p>
+            <div className="text-center py-12">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" role="status">
+                <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Laden...</span>
+              </div>
+              <p className="text-gray-500 mt-3">Lade Therapeuten...</p>
+            </div>
           )}
           {/* Pagination footer */}
           {filtered.length > 0 && (
-            <div className="flex items-center justify-between text-sm">
-              <div>
-                Zeige {total === 0 ? 0 : (page - 1) * pageSize + 1}
-                –{Math.min(page * pageSize, total)} von {total}
+            <div className="flex items-center justify-between text-sm bg-gray-50 rounded-lg px-4 py-3 border">
+              <div className="font-medium text-gray-700">
+                Zeige {total === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} von {total}
               </div>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Zurück</Button>
-                <span>Seite {page} / {totalPages}</span>
+                <span className="text-gray-600">Seite {page} / {totalPages}</span>
                 <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Weiter</Button>
               </div>
             </div>
           )}
         </div>
-      </section>
+        </section>
+      </div>
 
       {/* Modal */}
       {openId && (

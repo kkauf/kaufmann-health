@@ -7,7 +7,7 @@ import { buildLandingMetadata } from '@/lib/seo';
 import VerifiedFloatingWhatsApp from '@/components/VerifiedFloatingWhatsApp';
 import DirectoryAnalytics from '@/features/therapists/components/DirectoryAnalytics';
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health.de';
 
