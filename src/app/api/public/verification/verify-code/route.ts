@@ -10,6 +10,9 @@ import { ServerAnalytics } from '@/lib/server-analytics';
 import { supabaseServer } from '@/lib/supabase-server';
 import { maybeFirePatientConversion } from '@/lib/conversion';
 import { logError } from '@/lib/logger';
+import { sendEmail } from '@/lib/email/client';
+import { renderBookingTherapistNotification } from '@/lib/email/templates/bookingTherapistNotification';
+import { renderBookingClientConfirmation } from '@/lib/email/templates/bookingClientConfirmation';
 import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
 import { getFixedWindowLimiter, extractIpFromHeaders } from '@/lib/rate-limit';
 
@@ -201,6 +204,66 @@ export async function POST(req: NextRequest) {
                         source: 'api.verification.verify-code',
                         props: { therapist_id: therapistId, date_iso: dateIso, time_label: timeLabel, format: fmt },
                       });
+                    } catch {}
+                    // Fire-and-forget emails
+                    try {
+                      // Therapist recipient
+                      const { data: t } = await supabaseServer
+                        .from('therapists')
+                        .select('email, first_name, last_name')
+                        .eq('id', therapistId)
+                        .maybeSingle();
+                      // Patient info already in `person`
+                      // Slot address (if in_person): fetch active slots and match by time/format
+                      let addr = '';
+                      if (fmt === 'in_person') {
+                        const { data: slots } = await supabaseServer
+                          .from('therapist_slots')
+                          .select('time_local, format, address, active')
+                          .eq('therapist_id', therapistId)
+                          .eq('active', true);
+                        if (Array.isArray(slots)) {
+                          const m = (slots as { time_local: string | null; format: string; address?: string | null }[])
+                            .find((s) => String(s.time_local || '').slice(0, 5) === timeLabel && s.format === 'in_person');
+                          addr = (m?.address || '').trim();
+                        }
+                      }
+                      type TherapistEmailRow = { email?: string | null; first_name?: string | null; last_name?: string | null } | null;
+                      const tRow = (t as unknown) as TherapistEmailRow;
+                      const therapistEmail = (tRow?.email || undefined) as string | undefined;
+                      const therapistName = [tRow?.first_name || '', tRow?.last_name || ''].filter(Boolean).join(' ');
+                      if (therapistEmail) {
+                        const content = renderBookingTherapistNotification({
+                          therapistName,
+                          patientName: (person.name || '') || null,
+                          patientEmail: (person.email || '') || null,
+                          dateIso: dateIso,
+                          timeLabel: timeLabel,
+                          format: fmt,
+                          address: addr || null,
+                        });
+                        void sendEmail({
+                          to: therapistEmail,
+                          subject: content.subject,
+                          html: content.html,
+                          context: { kind: 'booking_therapist_notification', therapist_id: therapistId, patient_id: person.id },
+                        }).catch(() => {});
+                      }
+                      if (person.email) {
+                        const content2 = renderBookingClientConfirmation({
+                          therapistName,
+                          dateIso: dateIso,
+                          timeLabel: timeLabel,
+                          format: fmt,
+                          address: addr || null,
+                        });
+                        void sendEmail({
+                          to: person.email,
+                          subject: content2.subject,
+                          html: content2.html,
+                          context: { kind: 'booking_client_confirmation', therapist_id: therapistId, patient_id: person.id },
+                        }).catch(() => {});
+                      }
                     } catch {}
                   }
                 }

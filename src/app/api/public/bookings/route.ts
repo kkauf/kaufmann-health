@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { getClientSession } from '@/lib/auth/clientSession';
 import { ServerAnalytics } from '@/lib/server-analytics';
+import { sendEmail } from '@/lib/email/client';
+import { renderBookingTherapistNotification } from '@/lib/email/templates/bookingTherapistNotification';
+import { renderBookingClientConfirmation } from '@/lib/email/templates/bookingClientConfirmation';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,7 +72,7 @@ export async function POST(req: NextRequest) {
 
     const { data: slots } = await supabaseServer
       .from('therapist_slots')
-      .select('day_of_week, time_local, format, active')
+      .select('day_of_week, time_local, format, active, address')
       .eq('therapist_id', therapist_id)
       .eq('active', true)
       .eq('day_of_week', dow);
@@ -115,6 +118,72 @@ export async function POST(req: NextRequest) {
         session_id: session_id,
         props: { therapist_id, date_iso, time_label, format },
       });
+    } catch {}
+
+    // Fire-and-forget emails (therapist notification + client confirmation)
+    try {
+      // Resolve therapist recipient
+      const { data: t } = await supabaseServer
+        .from('therapists')
+        .select('email, first_name, last_name')
+        .eq('id', therapist_id)
+        .maybeSingle();
+      // Resolve patient info
+      const { data: p } = await supabaseServer
+        .from('people')
+        .select('name, email')
+        .eq('id', session.patient_id)
+        .maybeSingle();
+      type PatientEmailRow = { name?: string | null; email?: string | null } | null;
+      const pRow = (p as unknown) as PatientEmailRow;
+      // Determine address (if in_person) from matching slot
+      const addr = (() => {
+        if (format !== 'in_person' || !Array.isArray(slots)) return '';
+        const match = (slots as { time_local: string | null; format: string; address?: string | null }[])
+          .find((s) => String(s.time_local || '').slice(0, 5) === time_label && s.format === 'in_person');
+        return (match?.address || '').trim();
+      })();
+
+      // Therapist email
+      type TherapistEmailRow = { email?: string | null; first_name?: string | null; last_name?: string | null } | null;
+      const tRow = (t as unknown) as TherapistEmailRow;
+      const therapistEmail = (tRow?.email || undefined) as string | undefined;
+      const therapistName = [tRow?.first_name || '', tRow?.last_name || ''].filter(Boolean).join(' ');
+      if (therapistEmail) {
+        const content = renderBookingTherapistNotification({
+          therapistName,
+          patientName: pRow?.name || null,
+          patientEmail: pRow?.email || null,
+          dateIso: date_iso,
+          timeLabel: time_label,
+          format,
+          address: addr || null,
+        });
+        void sendEmail({
+          to: therapistEmail,
+          subject: content.subject,
+          html: content.html,
+          context: { kind: 'booking_therapist_notification', therapist_id, patient_id: session.patient_id },
+        }).catch(() => {});
+      }
+
+      // Client email (only if we have an email)
+      const clientEmail = (pRow?.email || undefined) as string | undefined;
+      if (clientEmail) {
+        const content2 = renderBookingClientConfirmation({
+          therapistName,
+          dateIso: date_iso,
+          timeLabel: time_label,
+          format,
+          address: addr || null,
+        });
+        void sendEmail({
+          to: clientEmail,
+          subject: content2.subject,
+          html: content2.html,
+          context: { kind: 'booking_client_confirmation', therapist_id, patient_id: session.patient_id },
+        }).catch(() => {});
+      }
     } catch {}
 
     return NextResponse.json({ data: { booking_id: inserted.id }, error: null });
