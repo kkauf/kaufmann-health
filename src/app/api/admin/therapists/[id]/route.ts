@@ -71,6 +71,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       ? ((metadata as Record<string, unknown>).profile as Record<string, unknown>)
       : {};
     const pendingPath = typeof profile.photo_pending_path === 'string' ? (profile.photo_pending_path as string) : undefined;
+    const practiceAddress = typeof profile.practice_address === 'string' ? (profile.practice_address as string) : undefined;
     const approachText = typeof profile.approach_text === 'string'
       ? (profile.approach_text as string)
       : (typeof (row as Record<string, unknown>).approach_text === 'string' ? ((row as Record<string, unknown>).approach_text as string) : undefined);
@@ -106,6 +107,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           photo_pending_url,
           approach_text: approachText,
           photo_url: (row as Record<string, unknown>).photo_url || undefined,
+          practice_address: practiceAddress,
         },
         documents: {
           has_license: hasLicense,
@@ -132,8 +134,15 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     const verification_notes = typeof payload.verification_notes === 'string' ? payload.verification_notes : undefined;
     const approve_profile = Boolean(payload.approve_profile);
     const approach_text = typeof payload.approach_text === 'string' ? String(payload.approach_text) : undefined;
+    let practice_address = typeof payload.practice_address === 'string' ? String(payload.practice_address) : undefined;
+    if (!practice_address) {
+      try {
+        const nested = (payload?.profile?.practice_address as unknown);
+        if (typeof nested === 'string') practice_address = nested;
+      } catch {}
+    }
 
-    if (!status && typeof verification_notes !== 'string' && !approve_profile && typeof approach_text !== 'string') {
+    if (!status && typeof verification_notes !== 'string' && !approve_profile && typeof approach_text !== 'string' && typeof practice_address !== 'string') {
       return NextResponse.json({ data: null, error: 'Missing fields' }, { status: 400 });
     }
     if (status && !['pending_verification', 'verified', 'rejected'].includes(status)) {
@@ -166,6 +175,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 
     if (typeof approach_text === 'string') {
       profileMeta.approach_text = approach_text;
+    }
+    if (typeof practice_address === 'string') {
+      profileMeta.practice_address = practice_address.trim();
     }
 
     if (approve_profile) {

@@ -1,4 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
+import dotenv from 'dotenv';
+
+// Load environment variables for Playwright itself so tests can read from .env/.env.local
+dotenv.config();
+dotenv.config({ path: '.env.local' });
+
+// Prefer explicit E2E_BASE_URL, else align with the running Next.js base URL if provided
+const base = process.env.E2E_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://127.0.0.1:3000';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -7,11 +15,12 @@ export default defineConfig({
   fullyParallel: false,
   reporter: [['list']],
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://127.0.0.1:3000',
+    baseURL: base,
   },
   webServer: {
-    command: 'npm run dev',
-    url: process.env.E2E_BASE_URL || 'http://127.0.0.1:3000',
+    // Allow override, but default to the normal dev command
+    command: process.env.E2E_WEB_COMMAND || 'npm run dev',
+    url: base,
     reuseExistingServer: true,
     timeout: 120_000,
   },

@@ -218,7 +218,7 @@ export async function POST(req: NextRequest) {
                       // Therapist recipient
                       const { data: t } = await supabaseServer
                         .from('therapists')
-                        .select('email, first_name, last_name')
+                        .select('email, first_name, last_name, metadata')
                         .eq('id', therapistId)
                         .maybeSingle();
                       let addr = '';
@@ -234,9 +234,19 @@ export async function POST(req: NextRequest) {
                           addr = (m?.address || '').trim();
                         }
                       }
-                      type TherapistEmailRow = { email?: string | null; first_name?: string | null; last_name?: string | null } | null;
+                      type TherapistEmailRow = { email?: string | null; first_name?: string | null; last_name?: string | null; metadata?: unknown } | null;
                       const tRow = (t as unknown) as TherapistEmailRow;
                       const therapistName = [tRow?.first_name || '', tRow?.last_name || ''].filter(Boolean).join(' ');
+                      const practiceAddr = (() => {
+                        try {
+                          const md = (tRow as unknown as { metadata?: Record<string, unknown> })?.metadata || {};
+                          const prof = md['profile'] as Record<string, unknown> | undefined;
+                          const pa = typeof prof?.['practice_address'] === 'string' ? (prof['practice_address'] as string) : '';
+                          return pa.trim();
+                        } catch {
+                          return '';
+                        }
+                      })();
                       if (sinkEmail) {
                         const content = renderBookingTherapistNotification({
                           therapistName,
@@ -245,7 +255,7 @@ export async function POST(req: NextRequest) {
                           dateIso: dateIso,
                           timeLabel: timeLabel,
                           format: fmt,
-                          address: addr || null,
+                          address: (addr || practiceAddr) || null,
                         });
                         void sendEmail({
                           to: sinkEmail,
@@ -259,7 +269,7 @@ export async function POST(req: NextRequest) {
                             dateIso: dateIso,
                             timeLabel: timeLabel,
                             format: fmt,
-                            address: addr || null,
+                            address: (addr || practiceAddr) || null,
                           });
                           void sendEmail({
                             to: sinkEmail,

@@ -182,9 +182,13 @@ export async function GET() {
             const bookedKey = `${row.id}|${ymd}|${time}`;
             if (booked.has(bookedKey)) continue;
             const fmt = (s.format === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
-            const addrSlot = fmt === 'in_person' ? String(s.address || '').trim() : '';
-            const addr = addrSlot || String(practice_address || '').trim();
-            availability.push({ date_iso: ymd, time_label: time, format: fmt, ...(addr ? { address: addr } : {}) });
+            if (fmt === 'in_person') {
+              const addrSlot = String(s.address || '').trim();
+              const addr = addrSlot || String(practice_address || '').trim();
+              availability.push({ date_iso: ymd, time_label: time, format: fmt, ...(addr ? { address: addr } : {}) });
+            } else {
+              availability.push({ date_iso: ymd, time_label: time, format: fmt });
+            }
           }
         }
         // Ensure chronological order just in case

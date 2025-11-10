@@ -2,9 +2,31 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function AdminNav() {
   const pathname = usePathname() || '/admin';
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const url = new URL('/api/admin/therapists', window.location.origin);
+        url.searchParams.set('status', 'pending_verification');
+        url.searchParams.set('limit', '200');
+        const res = await fetch(url.toString(), { credentials: 'include', cache: 'no-store' });
+        const json = await res.json();
+        if (!cancelled) {
+          const arr = Array.isArray(json?.data) ? json.data : [];
+          setPendingCount(arr.length);
+        }
+      } catch {
+        if (!cancelled) setPendingCount(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const isActive = (href: string, exact = false) => {
     if (exact) return pathname === href;
@@ -30,7 +52,14 @@ export default function AdminNav() {
             Matches
           </Link>
           <Link href="/admin/therapists" className={linkCls('/admin/therapists')} aria-current={isActive('/admin/therapists') ? 'page' : undefined}>
-            Therapeuten
+            <span className="inline-flex items-center gap-2">
+              Therapeuten
+              {typeof pendingCount === 'number' && pendingCount > 0 ? (
+                <span className="ml-1 inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-amber-100 text-amber-800 text-[11px] font-semibold">
+                  {pendingCount}
+                </span>
+              ) : null}
+            </span>
           </Link>
           <Link href="/admin/errors" className={linkCls('/admin/errors')} aria-current={isActive('/admin/errors') ? 'page' : undefined}>
             Fehler

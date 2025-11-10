@@ -200,78 +200,6 @@ export async function GET(req: Request) {
 
     // Enhanced Conversions handled by maybeFirePatientConversion above
 
-    // Process draft contact if present (therapist directory flow)
-    if (draftContact) {
-      try {
-        const therapistId = typeof draftContact.therapist_id === 'string' ? draftContact.therapist_id : null;
-        const contactType = (draftContact.contact_type === 'booking' || draftContact.contact_type === 'consultation') ? draftContact.contact_type : 'booking';
-        const patientReason = typeof draftContact.patient_reason === 'string' ? draftContact.patient_reason : '';
-        const patientMessage = typeof draftContact.patient_message === 'string' ? draftContact.patient_message : '';
-        const sessionFormat = (draftContact.session_format === 'online' || draftContact.session_format === 'in_person') ? draftContact.session_format : undefined;
-
-        if (therapistId && (patientReason || patientMessage)) {
-          const idempotencyKey = `${id}:${therapistId}:${contactType}`;
-          // Create match via internal contact endpoint logic
-          const contactPayload = {
-            therapist_id: therapistId,
-            contact_type: contactType,
-            patient_name: person.name || '',
-            patient_email: person.email,
-            contact_method: 'email' as const,
-            patient_reason: patientReason,
-            patient_message: patientMessage,
-            session_format: sessionFormat,
-            idempotency_key: idempotencyKey,
-          };
-
-          // Call internal contact API
-          const contactRes = await fetch(`${origin}/api/public/contact`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-forwarded-for': req.headers.get('x-forwarded-for') || '',
-              'user-agent': req.headers.get('user-agent') || '',
-            },
-            body: JSON.stringify(contactPayload),
-          });
-
-          if (!contactRes.ok) {
-            await logError('api.leads.confirm', new Error('Draft contact creation failed'), {
-              stage: 'draft_contact',
-              status: contactRes.status,
-              therapistId,
-            });
-            try {
-              await ServerAnalytics.trackEventFromRequest(req, {
-                type: 'draft_contact_failed',
-                source: 'api.leads.confirm',
-                props: { therapist_id: therapistId, contact_type: contactType, status: contactRes.status },
-              });
-            } catch {}
-          } else {
-            // Clear draft_contact only after success
-            try {
-              const clearedMeta = { ...(newMetadata || {}) } as Record<string, unknown>;
-              delete clearedMeta['draft_contact'];
-              await supabaseServer
-                .from('people')
-                .update({ metadata: clearedMeta })
-                .eq('id', id);
-            } catch {}
-            try {
-              await ServerAnalytics.trackEventFromRequest(req, {
-                type: 'draft_contact_processed',
-                source: 'api.leads.confirm',
-                props: { therapist_id: therapistId, contact_type: contactType },
-              });
-            } catch {}
-          }
-        }
-      } catch (err) {
-        await logError('api.leads.confirm', err, { stage: 'draft_contact_processing' });
-      }
-    }
-
     // Process draft booking if present (therapist directory flow)
     if (draftBooking) {
       try {
@@ -279,7 +207,7 @@ export async function GET(req: Request) {
         const dateIso = typeof draftBooking.date_iso === 'string' ? draftBooking.date_iso : '';
         const timeLabel = typeof draftBooking.time_label === 'string' ? draftBooking.time_label : '';
         const fmt = draftBooking.format === 'in_person' ? 'in_person' : (draftBooking.format === 'online' ? 'online' : null);
-        // Determine kh_test and sink email once for draft_booking
+
         const isKhTest = (() => {
           try {
             const cookie = req.headers.get('cookie') || '';
@@ -301,6 +229,7 @@ export async function GET(req: Request) {
             .eq('date_iso', dateIso)
             .eq('time_label', timeLabel)
             .maybeSingle();
+
           if (!existing) {
             if (isKhTest) {
               // Dry-run: track, send sink-only emails, do not insert
@@ -313,13 +242,11 @@ export async function GET(req: Request) {
                 });
               } catch {}
               try {
-                // Therapist recipient
                 const { data: t } = await supabaseServer
                   .from('therapists')
-                  .select('email, first_name, last_name')
+                  .select('email, first_name, last_name, metadata')
                   .eq('id', therapistId)
                   .maybeSingle();
-                // Slot address (if in_person): fetch active slots and match by time/format
                 let addr = '';
                 if (fmt === 'in_person') {
                   const { data: slots } = await supabaseServer
@@ -333,18 +260,28 @@ export async function GET(req: Request) {
                     addr = (m?.address || '').trim();
                   }
                 }
-                type TherapistEmailRow = { email?: string | null; first_name?: string | null; last_name?: string | null } | null;
-                const tRow = (t as unknown) as TherapistEmailRow;
+                type TR = { email?: string | null; first_name?: string | null; last_name?: string | null; metadata?: unknown } | null;
+                const tRow = (t as unknown) as TR;
                 const therapistName = [tRow?.first_name || '', tRow?.last_name || ''].filter(Boolean).join(' ');
+                const practiceAddr = (() => {
+                  try {
+                    const md = (tRow as unknown as { metadata?: Record<string, unknown> })?.metadata || {};
+                    const prof = md['profile'] as Record<string, unknown> | undefined;
+                    const pa = typeof prof?.['practice_address'] === 'string' ? (prof['practice_address'] as string) : '';
+                    return pa.trim();
+                  } catch {
+                    return '';
+                  }
+                })();
                 if (sinkEmail) {
                   const content = renderBookingTherapistNotification({
                     therapistName,
                     patientName: (person.name || '') || null,
                     patientEmail: (person.email || '') || null,
-                    dateIso: dateIso,
-                    timeLabel: timeLabel,
+                    dateIso,
+                    timeLabel,
                     format: fmt,
-                    address: addr || null,
+                    address: (addr || practiceAddr) || null,
                   });
                   void sendEmail({
                     to: sinkEmail,
@@ -355,10 +292,10 @@ export async function GET(req: Request) {
                   if (person.email) {
                     const content2 = renderBookingClientConfirmation({
                       therapistName,
-                      dateIso: dateIso,
-                      timeLabel: timeLabel,
+                      dateIso,
+                      timeLabel,
                       format: fmt,
-                      address: addr || null,
+                      address: (addr || practiceAddr) || null,
                     });
                     void sendEmail({
                       to: sinkEmail,
@@ -384,15 +321,12 @@ export async function GET(req: Request) {
                     props: { therapist_id: therapistId, date_iso: dateIso, time_label: timeLabel, format: fmt },
                   });
                 } catch {}
-                // Fire-and-forget emails
                 try {
-                  // Therapist recipient
                   const { data: t } = await supabaseServer
                     .from('therapists')
-                    .select('email, first_name, last_name')
+                    .select('email, first_name, last_name, metadata')
                     .eq('id', therapistId)
                     .maybeSingle();
-                  // Slot address (if in_person): fetch active slots and match by time/format
                   let addr = '';
                   if (fmt === 'in_person') {
                     const { data: slots } = await supabaseServer
@@ -406,19 +340,29 @@ export async function GET(req: Request) {
                       addr = (m?.address || '').trim();
                     }
                   }
-                  type TherapistEmailRow = { email?: string | null; first_name?: string | null; last_name?: string | null } | null;
-                  const tRow = (t as unknown) as TherapistEmailRow;
-                  const therapistEmail = (tRow?.email || undefined) as string | undefined;
-                  const therapistName = [tRow?.first_name || '', tRow?.last_name || ''].filter(Boolean).join(' ');
+                  type TR2 = { email?: string | null; first_name?: string | null; last_name?: string | null; metadata?: unknown } | null;
+                  const tRow2 = (t as unknown) as TR2;
+                  const therapistEmail = (tRow2?.email || undefined) as string | undefined;
+                  const therapistName2 = [tRow2?.first_name || '', tRow2?.last_name || ''].filter(Boolean).join(' ');
+                  const practiceAddr2 = (() => {
+                    try {
+                      const md = (tRow2 as unknown as { metadata?: Record<string, unknown> })?.metadata || {};
+                      const prof = md['profile'] as Record<string, unknown> | undefined;
+                      const pa = typeof prof?.['practice_address'] === 'string' ? (prof['practice_address'] as string) : '';
+                      return pa.trim();
+                    } catch {
+                      return '';
+                    }
+                  })();
                   if (therapistEmail) {
                     const content = renderBookingTherapistNotification({
-                      therapistName,
+                      therapistName: therapistName2,
                       patientName: (person.name || '') || null,
                       patientEmail: (person.email || '') || null,
-                      dateIso: dateIso,
-                      timeLabel: timeLabel,
+                      dateIso,
+                      timeLabel,
                       format: fmt,
-                      address: addr || null,
+                      address: (addr || practiceAddr2) || null,
                     });
                     void sendEmail({
                       to: therapistEmail,
@@ -429,11 +373,11 @@ export async function GET(req: Request) {
                   }
                   if (person.email) {
                     const content2 = renderBookingClientConfirmation({
-                      therapistName,
-                      dateIso: dateIso,
-                      timeLabel: timeLabel,
+                      therapistName: therapistName2,
+                      dateIso,
+                      timeLabel,
                       format: fmt,
-                      address: addr || null,
+                      address: (addr || practiceAddr2) || null,
                     });
                     void sendEmail({
                       to: person.email,
@@ -446,6 +390,7 @@ export async function GET(req: Request) {
               }
             }
           }
+
           // Only clear draft_booking when not in dry-run
           if (!isKhTest) {
             try {

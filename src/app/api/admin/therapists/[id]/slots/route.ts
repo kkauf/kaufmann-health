@@ -63,6 +63,21 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return NextResponse.json({ data: null, error: 'No slots provided' }, { status: 400 });
     }
 
+    // Fallback address for in_person slots: use therapist-level practice address
+    // This keeps compatibility with DBs that still enforce non-empty address for in_person.
+    let practiceAddress = '';
+    try {
+      const { data: t } = await supabaseServer
+        .from('therapists')
+        .select('metadata')
+        .eq('id', id)
+        .single();
+      const md = (t?.metadata as Record<string, unknown>) || {};
+      const prof = (md['profile'] as Record<string, unknown> | undefined) || undefined;
+      const pa = typeof prof?.['practice_address'] === 'string' ? (prof['practice_address'] as string) : '';
+      practiceAddress = (pa || '').trim();
+    } catch {}
+
     type SlotIn = {
       day_of_week: number;
       time_local: string;
@@ -83,16 +98,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const t = String(s?.time_local || '').slice(0, 5);
       const dur = Number.isFinite(Number(s?.duration_minutes)) ? Math.max(30, Math.min(240, Number(s!.duration_minutes))) : 60;
       const act = s?.active === false ? false : true;
-      const addr = fmt === 'in_person' ? String(s?.address || '').trim() : '';
+      // Use explicit slot address if provided; otherwise fallback to therapist practice address for in_person
+      const addr = fmt === 'in_person' ? (String(s?.address || '').trim() || practiceAddress) : '';
       if (!Number.isInteger(dow) || dow < 0 || dow > 6) {
         return NextResponse.json({ data: null, error: 'Invalid day_of_week' }, { status: 400 });
       }
       if (!isValidTime(t)) {
         return NextResponse.json({ data: null, error: 'Invalid time_local (expected HH:MM)' }, { status: 400 });
       }
-      if (fmt === 'in_person' && !addr) {
-        return NextResponse.json({ data: null, error: 'Address required for in_person format' }, { status: 400 });
-      }
+      // Address optional for in_person; if empty, therapist-level practice address will be used.
       sanitized.push({ therapist_id: id, day_of_week: dow, time_local: t, format: fmt, address: addr, duration_minutes: dur, active: act });
     }
 
@@ -109,7 +123,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     const { error: upErr } = await supabaseServer
       .from('therapist_slots')
-      .upsert(sanitized, { onConflict: 'therapist_id,day_of_week,time_local,format,address' });
+      .upsert(sanitized, { ignoreDuplicates: true });
 
     if (upErr) {
       await logError('admin.api.therapists.slots', upErr, { stage: 'upsert', therapist_id: id });

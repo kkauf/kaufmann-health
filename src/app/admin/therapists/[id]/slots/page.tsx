@@ -27,9 +27,15 @@ type TherapistInfo = {
   id: string;
   first_name?: string | null;
   last_name?: string | null;
+  name?: string | null;
   city?: string | null;
   status?: string | null;
   photo_url?: string | null;
+  profile?: {
+    photo_url?: string | null;
+    photo_pending_url?: string | null;
+    practice_address?: string;
+  } | null;
 };
 
 const DAYS = [
@@ -52,12 +58,17 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
 
   const [therapist, setTherapist] = useState<TherapistInfo | null>(null);
   const [tLoading, setTLoading] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  const [practiceAddress, setPracticeAddress] = useState<string>("");
 
   const [day, setDay] = useState<number | "">("");
   const [time, setTime] = useState<string>("");
   const [format, setFormat] = useState<"online" | "in_person">("online");
   const [address, setAddress] = useState<string>("");
-  const [duration, setDuration] = useState<number>(60);
+  const [duration, setDuration] = useState<string>("60");
+  // Quick add by date
+  const [quickDate, setQuickDate] = useState<string>(""); // YYYY-MM-DD
+  const [quickTime, setQuickTime] = useState<string>(""); // HH:MM
 
   useEffect(() => {
     (async () => {
@@ -74,7 +85,9 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
         const res = await fetch(`/api/admin/therapists/${therapistId}`, { credentials: "include", cache: "no-store" });
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || "Fehler beim Laden");
-        setTherapist(json.data as TherapistInfo);
+        const data = json.data as TherapistInfo;
+        setTherapist(data);
+        setPracticeAddress((data?.profile?.practice_address || '').toString());
       } catch {
         setTherapist(null);
       } finally {
@@ -82,6 +95,15 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
       }
     })();
   }, [therapistId]);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [therapistId, therapist?.profile?.photo_url, therapist?.profile?.photo_pending_url, therapist?.photo_url]);
+
+  const photoSrc = useMemo(() => {
+    const src = therapist?.profile?.photo_url || therapist?.photo_url || therapist?.profile?.photo_pending_url || "";
+    return imgError ? "" : src;
+  }, [therapist?.profile?.photo_url, therapist?.profile?.photo_pending_url, therapist?.photo_url, imgError]);
 
   const activeCount = useMemo(() => slots.filter((s) => s.active).length, [slots]);
 
@@ -117,6 +139,10 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
       if (!Number.isInteger(d)) throw new Error("Wochentag wählen");
       if (!/^\d{2}:\d{2}$/.test(time)) throw new Error("Zeit im Format HH:MM eingeben");
       if (format === "in_person" && !address.trim()) throw new Error("Adresse angeben");
+      const durationNum = parseInt(duration);
+      if (isNaN(durationNum) || durationNum < 30 || durationNum > 240) {
+        throw new Error("Dauer muss zwischen 30 und 240 Minuten liegen");
+      }
       const body = {
         slots: [
           {
@@ -124,7 +150,7 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
             time_local: time.slice(0, 5),
             format,
             address: format === "in_person" ? address.trim() : "",
-            duration_minutes: duration,
+            duration_minutes: durationNum,
             active: true,
           },
         ],
@@ -142,7 +168,7 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
       setDay("");
       setTime("");
       setAddress("");
-      setDuration(60);
+      setDuration("60");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
       setError(msg);
@@ -173,6 +199,50 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
     }
   }
 
+  async function savePracticeAddress() {
+    if (!therapistId) return;
+    setSaving(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const body = {
+        profile: {
+          practice_address: practiceAddress,
+        },
+      };
+      const res = await fetch(`/api/admin/therapists/${therapistId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Speichern fehlgeschlagen");
+      setMessage("Praxis-Adresse gespeichert");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function applyQuickDate() {
+    try {
+      if (!quickDate) throw new Error("Datum wählen");
+      if (!/^\d{2}:\d{2}$/.test(quickTime)) throw new Error("Zeit wählen (HH:MM)");
+      const d = new Date(quickDate + "T12:00:00"); // noon to avoid TZ edge cases
+      const dow = d.getDay(); // 0=So,1=Mo,...
+      setDay(dow as 0 | 1 | 2 | 3 | 4 | 5 | 6);
+      setTime(quickTime);
+      setMessage(null);
+      setError(null);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Ungültiges Datum/Zeit";
+      setError(msg);
+    }
+  }
+
   return (
     <main className="min-h-screen p-6 space-y-6">
       <h1 className="text-2xl font-semibold">Verfügbare Termine verwalten</h1>
@@ -181,15 +251,15 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
         <CardContent>
           <div className="flex items-center gap-4">
             <Avatar className="h-14 w-14 ring-2 ring-gray-100">
-              {therapist?.photo_url ? (
-                <AvatarImage src={therapist.photo_url || undefined} alt="Profilfoto" />
+              {therapist?.profile?.photo_url ? (
+                <AvatarImage src={therapist.profile.photo_url} alt="Profilfoto" />
               ) : (
-                <AvatarFallback>{`${(therapist?.first_name?.[0] || "").toUpperCase()}${(therapist?.last_name?.[0] || "").toUpperCase()}`}</AvatarFallback>
+                <AvatarFallback>{`${((therapist?.first_name?.[0] || therapist?.name?.[0] || "").toUpperCase())}${((therapist?.last_name?.[0] || therapist?.name?.split(" ")?.[1]?.[0] || "").toUpperCase())}`}</AvatarFallback>
               )}
             </Avatar>
             <div className="min-w-0">
               <div className="text-lg font-semibold break-words">
-                {therapist?.first_name} {therapist?.last_name}
+                {therapist?.name || `${therapist?.first_name || ""} ${therapist?.last_name || ""}`}
               </div>
               <div className="mt-1 flex flex-wrap gap-2 text-sm">
                 {therapist?.city ? <Badge variant="outline">{therapist.city}</Badge> : null}
@@ -205,16 +275,53 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
       </Card>
 
       <section className="border rounded-md p-4">
+        <Card className="mb-4">
+          <CardHeader>
+            <CardTitle className="text-base">Praxis-Adresse (optional)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row gap-3 items-end">
+              <div className="space-y-1 flex-1 min-w-0">
+                <Label>Adresse</Label>
+                <Input
+                  placeholder="Straße, PLZ Ort"
+                  value={practiceAddress}
+                  onChange={(e) => setPracticeAddress(e.target.value)}
+                />
+              </div>
+              <div className="flex-shrink-0">
+                <Button onClick={savePracticeAddress} disabled={saving} className="w-full sm:w-auto">{saving ? "Speichert…" : "Speichern"}</Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Neue Terminserie hinzufügen</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
-              <div className="space-y-1">
+            <div className="mb-4 rounded-md border p-3 bg-slate-50">
+              <div className="text-sm font-medium mb-2">Schnell hinzufügen (ein bestimmtes Datum)</div>
+              <div className="flex flex-col sm:flex-row gap-3 items-end">
+                <div className="space-y-1 flex-1 min-w-0">
+                  <Label>Datum</Label>
+                  <Input type="date" value={quickDate} onChange={(e) => setQuickDate(e.target.value)} />
+                </div>
+                <div className="space-y-1 flex-1 min-w-0">
+                  <Label>Uhrzeit</Label>
+                  <Input type="time" value={quickTime} onChange={(e) => setQuickTime(e.target.value)} />
+                </div>
+                <div className="flex-shrink-0 sm:ml-auto">
+                  <Button type="button" variant="outline" onClick={applyQuickDate} className="w-full sm:w-auto whitespace-nowrap">Wochentag & Zeit übernehmen</Button>
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-slate-600">Hinweis: Der Termin wird als wöchentliche Serie gespeichert. Einmalige Termine bitte später wieder entfernen.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+              <div className="space-y-1 lg:col-span-2">
                 <Label>Wochentag</Label>
                 <Select value={day === "" ? undefined : String(day)} onValueChange={(v) => setDay(Number(v))}>
-                  <SelectTrigger className="min-w-40">
+                  <SelectTrigger>
                     <SelectValue placeholder="Wählen" />
                   </SelectTrigger>
                   <SelectContent>
@@ -224,32 +331,32 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 lg:col-span-2">
                 <Label>Uhrzeit</Label>
-                <Input placeholder="HH:MM" value={time} onChange={(e) => setTime(e.target.value)} />
+                <Input type="time" placeholder="HH:MM" value={time} onChange={(e) => setTime(e.target.value)} />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 lg:col-span-2">
                 <Label>Format</Label>
                 <Select value={format} onValueChange={(v: "online" | "in_person") => setFormat(v)}>
-                  <SelectTrigger className="min-w-40">
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="online">Online (Zoom-Link wird zugesendet)</SelectItem>
+                    <SelectItem value="online">Online</SelectItem>
                     <SelectItem value="in_person">Vor Ort</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1 md:col-span-2">
+              <div className="space-y-1 sm:col-span-2 lg:col-span-3">
                 <Label>Adresse (bei Vor Ort)</Label>
                 <Input placeholder="Straße, PLZ Ort" value={address} onChange={(e) => setAddress(e.target.value)} disabled={format !== "in_person"} />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 lg:col-span-2">
                 <Label>Dauer (Minuten)</Label>
-                <Input type="number" min={30} max={240} value={duration} onChange={(e) => setDuration(Math.max(30, Math.min(240, Number(e.target.value) || 60)))} />
+                <Input type="number" min={30} max={240} value={duration} onChange={(e) => setDuration(e.target.value)} />
               </div>
-              <div>
-                <Button onClick={addSlot} disabled={saving || activeCount >= 5}>{saving ? "Speichert…" : "Hinzufügen"}</Button>
+              <div className="lg:col-span-1">
+                <Button onClick={addSlot} disabled={saving || activeCount >= 5} className="w-full">{saving ? "Speichert…" : "Hinzufügen"}</Button>
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-2">Maximal 5 aktive Serien pro Therapeut:in.</p>
@@ -272,7 +379,7 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
                 <div className="text-sm">
                   <span className="font-medium mr-2">{DAYS.find((d) => d.value === s.day_of_week)?.label || s.day_of_week}</span>
                   <span className="mr-2">{s.time_local.slice(0,5)} Uhr</span>
-                  <span className="mr-2">{s.format === "online" ? "Online (Zoom-Link wird zugesendet)" : "Vor Ort"}</span>
+                  <span className="mr-2">{s.format === "online" ? "Online" : "Vor Ort"}</span>
                   {s.format === "in_person" && s.address ? <span className="text-gray-600">{s.address}</span> : null}
                 </div>
                 <div className="flex items-center gap-2">

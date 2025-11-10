@@ -175,7 +175,25 @@ export async function GET(req: Request) {
       } as const;
     });
 
-    return NextResponse.json({ data, error: null }, { status: 200 });
+    // Filter out E2E test matches
+    const isTestMatch = (match: typeof data[0]): boolean => {
+      const testPatterns = ['test', 'e2e', 'example.com', 'playwright', 'automation'];
+      const patientEmail = (match.patient.email || '').toLowerCase();
+      const patientName = (match.patient.name || '').toLowerCase();
+      const therapistEmail = (match.therapist.email || '').toLowerCase();
+      const therapistName = (match.therapist.name || '').toLowerCase();
+
+      return testPatterns.some(pattern =>
+        patientEmail.includes(pattern) ||
+        patientName.includes(pattern) ||
+        therapistEmail.includes(pattern) ||
+        therapistName.includes(pattern)
+      );
+    };
+
+    const filteredData = data.filter(match => !isTestMatch(match));
+
+    return NextResponse.json({ data: filteredData, error: null }, { status: 200 });
   } catch (e) {
     await logError('admin.api.matches', e, { stage: 'exception_list' });
     return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });
