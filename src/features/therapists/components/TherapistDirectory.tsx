@@ -238,9 +238,20 @@ export function TherapistDirectory() {
     });
   }, [therapists, selectedModality, onlineOnly, slotsOnly]);
 
-  const availableTherapistsCount = useMemo(() =>
+  const availabilityTherapistsCount = useMemo(() =>
     filteredTherapists.filter(t => Array.isArray(t.availability) && t.availability.length > 0).length
   , [filteredTherapists]);
+
+  const acceptingNewTherapistsCount = useMemo(() =>
+    filteredTherapists.filter(t => !!t.accepting_new).length
+  , [filteredTherapists]);
+
+  // Toggle: set to true later when we want to show only explicit slot-based availability
+  const USE_AVAILABILITY_COUNT = false;
+
+  const displayedCount = (USE_AVAILABILITY_COUNT || slotsOnly)
+    ? availabilityTherapistsCount
+    : acceptingNewTherapistsCount;
 
   const visibleTherapists = useMemo(() => filteredTherapists.slice(0, Math.max(0, visibleCount)), [filteredTherapists, visibleCount]);
   const hasMore = filteredTherapists.length > visibleCount;
@@ -450,7 +461,7 @@ export function TherapistDirectory() {
         </div>
         <Badge className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
           <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>{availableTherapistsCount} Therapeuten mit freien Terminen gefunden</span>
+          <span>{displayedCount} Therapeuten mit freien Terminen gefunden</span>
         </Badge>
       </div>
 
