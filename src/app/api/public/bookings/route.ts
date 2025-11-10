@@ -35,6 +35,19 @@ function getBerlinDayIndex(d: Date): number {
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+  // Test sink: when kh_test=1 cookie is set, reroute emails to LEADS_NOTIFY_EMAIL
+  const isKhTest = (() => {
+    try {
+      const cookie = req.headers.get('cookie') || '';
+      return cookie.split(';').some((p) => {
+        const [k, v] = p.trim().split('=');
+        return k === 'kh_test' && v === '1';
+      });
+    } catch {
+      return false;
+    }
+  })();
+  const sinkEmail = (process.env.LEADS_NOTIFY_EMAIL || '').trim();
   try {
     const body = (await req.json()) as BookRequest;
     const { therapist_id, date_iso, time_label, format, session_id } = body;
@@ -160,7 +173,7 @@ export async function POST(req: NextRequest) {
           address: addr || null,
         });
         void sendEmail({
-          to: therapistEmail,
+          to: isKhTest && sinkEmail ? sinkEmail : therapistEmail,
           subject: content.subject,
           html: content.html,
           context: { kind: 'booking_therapist_notification', therapist_id, patient_id: session.patient_id },
@@ -178,7 +191,7 @@ export async function POST(req: NextRequest) {
           address: addr || null,
         });
         void sendEmail({
-          to: clientEmail,
+          to: isKhTest && sinkEmail ? sinkEmail : clientEmail,
           subject: content2.subject,
           html: content2.html,
           context: { kind: 'booking_client_confirmation', therapist_id, patient_id: session.patient_id },

@@ -207,6 +207,19 @@ export async function POST(req: NextRequest) {
                     } catch {}
                     // Fire-and-forget emails
                     try {
+                      // Test sink: when kh_test=1 cookie is set, reroute emails to LEADS_NOTIFY_EMAIL
+                      const isKhTest = (() => {
+                        try {
+                          const cookie = req.headers.get('cookie') || '';
+                          return cookie.split(';').some((p) => {
+                            const [k, v] = p.trim().split('=');
+                            return k === 'kh_test' && v === '1';
+                          });
+                        } catch {
+                          return false;
+                        }
+                      })();
+                      const sinkEmail = (process.env.LEADS_NOTIFY_EMAIL || '').trim();
                       // Therapist recipient
                       const { data: t } = await supabaseServer
                         .from('therapists')
@@ -243,7 +256,7 @@ export async function POST(req: NextRequest) {
                           address: addr || null,
                         });
                         void sendEmail({
-                          to: therapistEmail,
+                          to: isKhTest && sinkEmail ? sinkEmail : therapistEmail,
                           subject: content.subject,
                           html: content.html,
                           context: { kind: 'booking_therapist_notification', therapist_id: therapistId, patient_id: person.id },
@@ -258,7 +271,7 @@ export async function POST(req: NextRequest) {
                           address: addr || null,
                         });
                         void sendEmail({
-                          to: person.email,
+                          to: isKhTest && sinkEmail ? sinkEmail : person.email,
                           subject: content2.subject,
                           html: content2.html,
                           context: { kind: 'booking_client_confirmation', therapist_id: therapistId, patient_id: person.id },
