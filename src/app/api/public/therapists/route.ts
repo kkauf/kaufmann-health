@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 type TherapistRow = {
   id: string;
   first_name: string | null;
@@ -153,6 +150,18 @@ export async function GET() {
           ? (profile['approach_text'] as string)
           : '';
 
+      const languages = Array.isArray(profile['languages'])
+        ? (profile['languages'] as string[])
+        : [];
+      const years_experience =
+        typeof profile['years_experience'] === 'number'
+          ? (profile['years_experience'] as number)
+          : undefined;
+      const practice_address =
+        typeof profile['practice_address'] === 'string'
+          ? (profile['practice_address'] as string)
+          : '';
+
       // Compute availability from slots (next 3 weeks, cap 9), skipping booked
       const slots = slotsByTherapist.get(row.id) || [];
       const availability: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] = [];
@@ -173,7 +182,8 @@ export async function GET() {
             const bookedKey = `${row.id}|${ymd}|${time}`;
             if (booked.has(bookedKey)) continue;
             const fmt = (s.format === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
-            const addr = fmt === 'in_person' ? String(s.address || '').trim() : '';
+            const addrSlot = fmt === 'in_person' ? String(s.address || '').trim() : '';
+            const addr = addrSlot || String(practice_address || '').trim();
             availability.push({ date_iso: ymd, time_label: time, format: fmt, ...(addr ? { address: addr } : {}) });
           }
         }
@@ -191,12 +201,25 @@ export async function GET() {
         accepting_new: Boolean(row.accepting_new),
         photo_url: row.photo_url || undefined,
         approach_text,
-        metadata: mdObj,
+        metadata: {
+          profile: {
+            ...(languages.length > 0 ? { languages } : {}),
+            ...(typeof years_experience === 'number' ? { years_experience } : {}),
+          },
+        },
         availability,
       };
     });
 
-    return NextResponse.json({ therapists }, { status: 200 });
+    return NextResponse.json(
+      { therapists },
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        },
+      }
+    );
   } catch (err) {
     console.error('[api.public.therapists] Unexpected error:', err);
     return NextResponse.json(

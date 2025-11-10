@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import PageAnalytics from '@/components/PageAnalytics';
-import { TherapistDirectory } from '@/features/therapists/components/TherapistDirectory';
+import { TherapistDirectory, TherapistData } from '@/features/therapists/components/TherapistDirectory';
 import { TherapistMatchCallout } from '@/features/therapists/components/TherapistMatchCallout';
 import { buildLandingMetadata } from '@/lib/seo';
 import VerifiedFloatingWhatsApp from '@/components/VerifiedFloatingWhatsApp';
 import DirectoryAnalytics from '@/features/therapists/components/DirectoryAnalytics';
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health.de';
 
@@ -20,7 +20,18 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function TherapeutenPage() {
+export default async function TherapeutenPage() {
+  let initialTherapists: TherapistData[] = [];
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ? process.env.NEXT_PUBLIC_BASE_URL : ''}/api/public/therapists`, {
+      next: { revalidate: 60 },
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (Array.isArray(json?.therapists)) initialTherapists = json.therapists;
+    }
+  } catch {}
+
   return (
     <>
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
@@ -36,7 +47,7 @@ export default function TherapeutenPage() {
           </p>
         </section>
         
-        <TherapistDirectory />
+        <TherapistDirectory initialTherapists={initialTherapists} />
 
         {/* Moved below results to reduce header height */}
         <div className="mt-10">
