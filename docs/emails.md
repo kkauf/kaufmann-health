@@ -132,5 +132,6 @@ Trigger points:
 ### Manual booking email tests (kh_test sink)
 
 - Set the browser cookie `kh_test=1` and ensure `LEADS_NOTIFY_EMAIL` is configured.
-- When `kh_test=1` is present, booking emails are rerouted to `LEADS_NOTIFY_EMAIL` (therapist and client messages).
+- When `kh_test=1` is present, booking emails are rerouted to `LEADS_NOTIFY_EMAIL` (therapist and client messages) and the flow runs in **dry‑run** mode: no DB inserts, no `draft_booking` clearing.
+- Analytics event `booking_dry_run` is tracked with the same props as `booking_created`.
 - Scope: booking emails only, at the three trigger points listed above. E2E tests do not rely on this; they run with `RESEND_API_KEY` unset to avoid real sends.

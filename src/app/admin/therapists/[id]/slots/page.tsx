@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,15 @@ type Slot = {
   duration_minutes: number;
   active: boolean;
   created_at?: string;
+};
+
+type TherapistInfo = {
+  id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  city?: string | null;
+  status?: string | null;
+  photo_url?: string | null;
 };
 
 const DAYS = [
@@ -39,6 +50,9 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
   const [message, setMessage] = useState<string | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
 
+  const [therapist, setTherapist] = useState<TherapistInfo | null>(null);
+  const [tLoading, setTLoading] = useState(false);
+
   const [day, setDay] = useState<number | "">("");
   const [time, setTime] = useState<string>("");
   const [format, setFormat] = useState<"online" | "in_person">("online");
@@ -51,6 +65,23 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
       setTherapistId(id);
     })();
   }, [props.params]);
+
+  useEffect(() => {
+    if (!therapistId) return;
+    setTLoading(true);
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/therapists/${therapistId}`, { credentials: "include", cache: "no-store" });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || "Fehler beim Laden");
+        setTherapist(json.data as TherapistInfo);
+      } catch {
+        setTherapist(null);
+      } finally {
+        setTLoading(false);
+      }
+    })();
+  }, [therapistId]);
 
   const activeCount = useMemo(() => slots.filter((s) => s.active).length, [slots]);
 
@@ -146,6 +177,33 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
     <main className="min-h-screen p-6 space-y-6">
       <h1 className="text-2xl font-semibold">Verfügbare Termine verwalten</h1>
 
+      <Card>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <Avatar className="h-14 w-14 ring-2 ring-gray-100">
+              {therapist?.photo_url ? (
+                <AvatarImage src={therapist.photo_url || undefined} alt="Profilfoto" />
+              ) : (
+                <AvatarFallback>{`${(therapist?.first_name?.[0] || "").toUpperCase()}${(therapist?.last_name?.[0] || "").toUpperCase()}`}</AvatarFallback>
+              )}
+            </Avatar>
+            <div className="min-w-0">
+              <div className="text-lg font-semibold break-words">
+                {therapist?.first_name} {therapist?.last_name}
+              </div>
+              <div className="mt-1 flex flex-wrap gap-2 text-sm">
+                {therapist?.city ? <Badge variant="outline">{therapist.city}</Badge> : null}
+                {therapist?.status ? (
+                  <Badge className={therapist.status === "verified" ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : undefined}>
+                    {therapist.status === "verified" ? "Verifiziert" : therapist.status === "pending_verification" ? "Prüfung ausstehend" : therapist.status}
+                  </Badge>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <section className="border rounded-md p-4">
         <Card>
           <CardHeader>
@@ -155,12 +213,11 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
             <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
               <div className="space-y-1">
                 <Label>Wochentag</Label>
-                <Select value={day === "" ? "" : String(day)} onValueChange={(v) => setDay(v === "" ? "" : Number(v))}>
+                <Select value={day === "" ? undefined : String(day)} onValueChange={(v) => setDay(Number(v))}>
                   <SelectTrigger className="min-w-40">
                     <SelectValue placeholder="Wählen" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Wählen</SelectItem>
                     {DAYS.map((d) => (
                       <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
                     ))}

@@ -184,6 +184,19 @@ export async function POST(req: NextRequest) {
               const fmt = draftBooking.format === 'in_person' ? 'in_person' : (draftBooking.format === 'online' ? 'online' : null);
 
               if (therapistId && dateIso && timeLabel && fmt) {
+                // Determine kh_test and sink email once for draft_booking
+                const isKhTest = (() => {
+                  try {
+                    const cookie = req.headers.get('cookie') || '';
+                    return cookie.split(';').some((p) => {
+                      const [k, v] = p.trim().split('=');
+                      return k === 'kh_test' && v === '1';
+                    });
+                  } catch {
+                    return false;
+                  }
+                })();
+                const sinkEmail = (process.env.LEADS_NOTIFY_EMAIL || '').trim();
                 const { data: existing } = await supabaseServer
                   .from('bookings')
                   .select('id')
@@ -192,42 +205,22 @@ export async function POST(req: NextRequest) {
                   .eq('time_label', timeLabel)
                   .maybeSingle();
                 if (!existing) {
-                  const { error: bookErr } = await supabaseServer
-                    .from('bookings')
-                    .insert({ therapist_id: therapistId, patient_id: person.id, date_iso: dateIso, time_label: timeLabel, format: fmt });
-                  if (bookErr) {
-                    await logError('api.verification.verify-code', bookErr, { stage: 'draft_booking_insert', therapistId, dateIso, timeLabel });
-                  } else {
+                  if (isKhTest) {
+                    // Dry-run: track, send sink-only emails, do not insert, do not clear draft_booking
                     try {
                       await ServerAnalytics.trackEventFromRequest(req, {
-                        type: 'booking_created',
+                        type: 'booking_dry_run',
                         source: 'api.verification.verify-code',
                         props: { therapist_id: therapistId, date_iso: dateIso, time_label: timeLabel, format: fmt },
                       });
                     } catch {}
-                    // Fire-and-forget emails
                     try {
-                      // Test sink: when kh_test=1 cookie is set, reroute emails to LEADS_NOTIFY_EMAIL
-                      const isKhTest = (() => {
-                        try {
-                          const cookie = req.headers.get('cookie') || '';
-                          return cookie.split(';').some((p) => {
-                            const [k, v] = p.trim().split('=');
-                            return k === 'kh_test' && v === '1';
-                          });
-                        } catch {
-                          return false;
-                        }
-                      })();
-                      const sinkEmail = (process.env.LEADS_NOTIFY_EMAIL || '').trim();
                       // Therapist recipient
                       const { data: t } = await supabaseServer
                         .from('therapists')
                         .select('email, first_name, last_name')
                         .eq('id', therapistId)
                         .maybeSingle();
-                      // Patient info already in `person`
-                      // Slot address (if in_person): fetch active slots and match by time/format
                       let addr = '';
                       if (fmt === 'in_person') {
                         const { data: slots } = await supabaseServer
@@ -243,9 +236,8 @@ export async function POST(req: NextRequest) {
                       }
                       type TherapistEmailRow = { email?: string | null; first_name?: string | null; last_name?: string | null } | null;
                       const tRow = (t as unknown) as TherapistEmailRow;
-                      const therapistEmail = (tRow?.email || undefined) as string | undefined;
                       const therapistName = [tRow?.first_name || '', tRow?.last_name || ''].filter(Boolean).join(' ');
-                      if (therapistEmail) {
+                      if (sinkEmail) {
                         const content = renderBookingTherapistNotification({
                           therapistName,
                           patientName: (person.name || '') || null,
@@ -256,39 +248,114 @@ export async function POST(req: NextRequest) {
                           address: addr || null,
                         });
                         void sendEmail({
-                          to: isKhTest && sinkEmail ? sinkEmail : therapistEmail,
+                          to: sinkEmail,
                           subject: content.subject,
                           html: content.html,
-                          context: { kind: 'booking_therapist_notification', therapist_id: therapistId, patient_id: person.id },
+                          context: { kind: 'booking_therapist_notification', therapist_id: therapistId, patient_id: person.id, dry_run: true },
                         }).catch(() => {});
-                      }
-                      if (person.email) {
-                        const content2 = renderBookingClientConfirmation({
-                          therapistName,
-                          dateIso: dateIso,
-                          timeLabel: timeLabel,
-                          format: fmt,
-                          address: addr || null,
-                        });
-                        void sendEmail({
-                          to: isKhTest && sinkEmail ? sinkEmail : person.email,
-                          subject: content2.subject,
-                          html: content2.html,
-                          context: { kind: 'booking_client_confirmation', therapist_id: therapistId, patient_id: person.id },
-                        }).catch(() => {});
+                        if (person.email) {
+                          const content2 = renderBookingClientConfirmation({
+                            therapistName,
+                            dateIso: dateIso,
+                            timeLabel: timeLabel,
+                            format: fmt,
+                            address: addr || null,
+                          });
+                          void sendEmail({
+                            to: sinkEmail,
+                            subject: content2.subject,
+                            html: content2.html,
+                            context: { kind: 'booking_client_confirmation', therapist_id: therapistId, patient_id: person.id, dry_run: true },
+                          }).catch(() => {});
+                        }
                       }
                     } catch {}
+                  } else {
+                    const { error: bookErr } = await supabaseServer
+                      .from('bookings')
+                      .insert({ therapist_id: therapistId, patient_id: person.id, date_iso: dateIso, time_label: timeLabel, format: fmt });
+                    if (bookErr) {
+                      await logError('api.verification.verify-code', bookErr, { stage: 'draft_booking_insert', therapistId, dateIso, timeLabel });
+                    } else {
+                      try {
+                        await ServerAnalytics.trackEventFromRequest(req, {
+                          type: 'booking_created',
+                          source: 'api.verification.verify-code',
+                          props: { therapist_id: therapistId, date_iso: dateIso, time_label: timeLabel, format: fmt },
+                        });
+                      } catch {}
+                      // Fire-and-forget emails
+                      try {
+                        // Therapist recipient
+                        const { data: t } = await supabaseServer
+                          .from('therapists')
+                          .select('email, first_name, last_name')
+                          .eq('id', therapistId)
+                          .maybeSingle();
+                        let addr = '';
+                        if (fmt === 'in_person') {
+                          const { data: slots } = await supabaseServer
+                            .from('therapist_slots')
+                            .select('time_local, format, address, active')
+                            .eq('therapist_id', therapistId)
+                            .eq('active', true);
+                          if (Array.isArray(slots)) {
+                            const m = (slots as { time_local: string | null; format: string; address?: string | null }[])
+                              .find((s) => String(s.time_local || '').slice(0, 5) === timeLabel && s.format === 'in_person');
+                            addr = (m?.address || '').trim();
+                          }
+                        }
+                        type TherapistEmailRow = { email?: string | null; first_name?: string | null; last_name?: string | null } | null;
+                        const tRow = (t as unknown) as TherapistEmailRow;
+                        const therapistEmail = (tRow?.email || undefined) as string | undefined;
+                        const therapistName = [tRow?.first_name || '', tRow?.last_name || ''].filter(Boolean).join(' ');
+                        if (therapistEmail) {
+                          const content = renderBookingTherapistNotification({
+                            therapistName,
+                            patientName: (person.name || '') || null,
+                            patientEmail: (person.email || '') || null,
+                            dateIso: dateIso,
+                            timeLabel: timeLabel,
+                            format: fmt,
+                            address: addr || null,
+                          });
+                          void sendEmail({
+                            to: therapistEmail,
+                            subject: content.subject,
+                            html: content.html,
+                            context: { kind: 'booking_therapist_notification', therapist_id: therapistId, patient_id: person.id },
+                          }).catch(() => {});
+                        }
+                        if (person.email) {
+                          const content2 = renderBookingClientConfirmation({
+                            therapistName,
+                            dateIso: dateIso,
+                            timeLabel: timeLabel,
+                            format: fmt,
+                            address: addr || null,
+                          });
+                          void sendEmail({
+                            to: person.email,
+                            subject: content2.subject,
+                            html: content2.html,
+                            context: { kind: 'booking_client_confirmation', therapist_id: therapistId, patient_id: person.id },
+                          }).catch(() => {});
+                        }
+                      } catch {}
+                    }
                   }
                 }
-                // Clear draft_booking regardless (processed or duplicate)
-                try {
-                  const clearedMeta: Record<string, unknown> = { ...(person.metadata || {}) };
-                  delete clearedMeta['draft_booking'];
-                  await supabaseServer
-                    .from('people')
-                    .update({ metadata: clearedMeta })
-                    .eq('id', person.id);
-                } catch {}
+                // Only clear draft_booking when not in dry-run
+                if (!isKhTest) {
+                  try {
+                    const clearedMeta: Record<string, unknown> = { ...(person.metadata || {}) };
+                    delete clearedMeta['draft_booking'];
+                    await supabaseServer
+                      .from('people')
+                      .update({ metadata: clearedMeta })
+                      .eq('id', person.id);
+                  } catch {}
+                }
               }
             } catch (err) {
               await logError('api.verification.verify-code', err, { stage: 'draft_booking_processing' });

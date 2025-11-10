@@ -77,6 +77,7 @@ Why this design:
   - `POST /api/public/verification/verify-code` (when processing `draft_booking`)
   - `GET /api/public/leads/confirm` (when processing `draft_booking`)
 - Manual testing sink: when browser cookie `kh_test=1` is present and `LEADS_NOTIFY_EMAIL` is set, booking emails are rerouted to that address. E2E tests avoid real sends by leaving `RESEND_API_KEY` unset.
+  - With `kh_test=1`, flows run in dry‑run mode: no DB inserts and no `draft_booking` clearing. Analytics `booking_dry_run` is emitted.
 
 ## Runtime & Hosting
 - Next.js (App Router), Tailwind v4, shadcn/ui (style: new-york, baseColor: slate).

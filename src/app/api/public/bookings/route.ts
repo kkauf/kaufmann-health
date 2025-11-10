@@ -108,6 +108,83 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'SLOT_TAKEN' }, { status: 409 });
     }
 
+    // kh_test dry-run: validate but do not consume the slot; route emails to sink only
+    if (isKhTest) {
+      try {
+        await ServerAnalytics.trackEventFromRequest(req, {
+          type: 'booking_dry_run',
+          source: 'api.public.bookings',
+          session_id: session_id,
+          props: { therapist_id, date_iso, time_label, format },
+        });
+      } catch {}
+
+      try {
+        // Resolve therapist recipient
+        const { data: t } = await supabaseServer
+          .from('therapists')
+          .select('email, first_name, last_name')
+          .eq('id', therapist_id)
+          .maybeSingle();
+        // Resolve patient info
+        const { data: p } = await supabaseServer
+          .from('people')
+          .select('name, email')
+          .eq('id', session.patient_id)
+          .maybeSingle();
+        type PatientEmailRow = { name?: string | null; email?: string | null } | null;
+        const pRow = (p as unknown) as PatientEmailRow;
+        // Determine address (if in_person) from matching slot
+        const addr = (() => {
+          if (format !== 'in_person' || !Array.isArray(slots)) return '';
+          const match = (slots as { time_local: string | null; format: string; address?: string | null }[])
+            .find((s) => String(s.time_local || '').slice(0, 5) === time_label && s.format === 'in_person');
+          return (match?.address || '').trim();
+        })();
+
+        // Only send emails if sink is configured to avoid accidental real sends in dry-run
+        if (sinkEmail) {
+          type TherapistEmailRow = { email?: string | null; first_name?: string | null; last_name?: string | null } | null;
+          const tRow = (t as unknown) as TherapistEmailRow;
+          const therapistName = [tRow?.first_name || '', tRow?.last_name || ''].filter(Boolean).join(' ');
+          const content = renderBookingTherapistNotification({
+            therapistName,
+            patientName: pRow?.name || null,
+            patientEmail: pRow?.email || null,
+            dateIso: date_iso,
+            timeLabel: time_label,
+            format,
+            address: addr || null,
+          });
+          void sendEmail({
+            to: sinkEmail,
+            subject: content.subject,
+            html: content.html,
+            context: { kind: 'booking_therapist_notification', therapist_id, patient_id: session.patient_id, dry_run: true },
+          }).catch(() => {});
+
+          const clientEmail = (pRow?.email || undefined) as string | undefined;
+          if (clientEmail) {
+            const content2 = renderBookingClientConfirmation({
+              therapistName,
+              dateIso: date_iso,
+              timeLabel: time_label,
+              format,
+              address: addr || null,
+            });
+            void sendEmail({
+              to: sinkEmail,
+              subject: content2.subject,
+              html: content2.html,
+              context: { kind: 'booking_client_confirmation', therapist_id, patient_id: session.patient_id, dry_run: true },
+            }).catch(() => {});
+          }
+        }
+      } catch {}
+
+      return NextResponse.json({ data: { dry_run: true }, error: null });
+    }
+
     const { data: inserted, error: insErr } = await supabaseServer
       .from('bookings')
       .insert({
