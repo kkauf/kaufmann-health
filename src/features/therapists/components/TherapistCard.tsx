@@ -121,6 +121,8 @@ export function TherapistCard({
               <AvatarImage
                 src={photoSrc}
                 alt={`${therapist.first_name} ${therapist.last_name}`}
+                loading="lazy"
+                decoding="async"
                 onError={() => setImageError(true)}
               />
             ) : (

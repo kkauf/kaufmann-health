@@ -31,9 +31,9 @@ export type TherapistData = {
   };
 };
 
-export function TherapistDirectory() {
-  const [therapists, setTherapists] = useState<TherapistData[]>([]);
-  const [loading, setLoading] = useState(true);
+export function TherapistDirectory({ initialTherapists = [] }: { initialTherapists?: TherapistData[] }) {
+  const [therapists, setTherapists] = useState<TherapistData[]>(initialTherapists);
+  const [loading, setLoading] = useState(initialTherapists.length === 0);
   const [selectedModality, setSelectedModality] = useState<string>('all');
   const [onlineOnly, setOnlineOnly] = useState<boolean | null>(null);
   const [selectedTherapist, setSelectedTherapist] = useState<TherapistData | null>(null);
@@ -51,24 +51,41 @@ export function TherapistDirectory() {
   const [draftOnlineOnly, setDraftOnlineOnly] = useState<boolean | null>(null);
 
   useEffect(() => {
+    if (initialTherapists.length > 0) return;
+    let cancelled = false;
     async function fetchTherapists() {
       try {
         setLoading(true);
         const res = await fetch('/api/public/therapists');
         if (!res.ok) throw new Error('Failed to fetch therapists');
         const data = await res.json();
-        const therapistList = data.therapists || [];
-        console.log('Fetched therapists:', therapistList);
-        console.log('Sample metadata:', therapistList[0]?.metadata);
-        setTherapists(therapistList);
+        if (!cancelled) setTherapists(data.therapists || []);
       } catch (err) {
         console.error('Error fetching therapists:', err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     fetchTherapists();
-  }, []);
+    return () => { cancelled = true; };
+  }, [initialTherapists.length]);
+
+  useEffect(() => {
+    if (initialTherapists.length === 0) return;
+    let cancelled = false;
+    async function refreshTherapists() {
+      try {
+        const res = await fetch('/api/public/therapists');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data?.therapists)) {
+          setTherapists(data.therapists);
+        }
+      } catch {}
+    }
+    refreshTherapists();
+    return () => { cancelled = true; };
+  }, [initialTherapists.length]);
 
   useEffect(() => {
     try {

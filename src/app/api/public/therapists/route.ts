@@ -58,37 +58,58 @@ export async function GET(request: NextRequest) {
         }
       })
       .map((row) => {
-      const mdObj: Record<string, unknown> =
-        row?.metadata && typeof row.metadata === 'object'
-          ? (row.metadata as Record<string, unknown>)
-          : {};
+        const mdObj: Record<string, unknown> =
+          row?.metadata && typeof row.metadata === 'object'
+            ? (row.metadata as Record<string, unknown>)
+            : {};
 
-      const profileUnknown = mdObj['profile'];
-      const profile: Record<string, unknown> =
-        profileUnknown && typeof profileUnknown === 'object'
-          ? (profileUnknown as Record<string, unknown>)
-          : {};
+        const profileUnknown = mdObj['profile'];
+        const profile: Record<string, unknown> =
+          profileUnknown && typeof profileUnknown === 'object'
+            ? (profileUnknown as Record<string, unknown>)
+            : {};
 
-      const approach_text =
-        typeof profile['approach_text'] === 'string'
-          ? (profile['approach_text'] as string)
-          : '';
+        const approach_text =
+          typeof profile['approach_text'] === 'string'
+            ? (profile['approach_text'] as string)
+            : '';
 
-      return {
-        id: row.id,
-        first_name: String(row.first_name || ''),
-        last_name: String(row.last_name || ''),
-        city: String(row.city || ''),
-        modalities: Array.isArray(row.modalities) ? (row.modalities as string[]) : [],
-        session_preferences: Array.isArray(row.session_preferences) ? (row.session_preferences as string[]) : [],
-        accepting_new: Boolean(row.accepting_new),
-        photo_url: row.photo_url || undefined,
-        approach_text,
-        metadata: mdObj,
-      };
-    });
+        const languages = Array.isArray(profile['languages'])
+          ? (profile['languages'] as string[])
+          : [];
+        const years_experience =
+          typeof profile['years_experience'] === 'number'
+            ? (profile['years_experience'] as number)
+            : undefined;
 
-    return NextResponse.json({ therapists }, { status: 200 });
+        return {
+          id: row.id,
+          first_name: String(row.first_name || ''),
+          last_name: String(row.last_name || ''),
+          city: String(row.city || ''),
+          modalities: Array.isArray(row.modalities) ? (row.modalities as string[]) : [],
+          session_preferences: Array.isArray(row.session_preferences) ? (row.session_preferences as string[]) : [],
+          accepting_new: Boolean(row.accepting_new),
+          photo_url: row.photo_url || undefined,
+          approach_text,
+          metadata: {
+            profile: {
+              ...(languages.length > 0 ? { languages } : {}),
+              ...(typeof years_experience === 'number' ? { years_experience } : {}),
+            },
+          },
+        };
+      });
+
+    return NextResponse.json(
+      { therapists },
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        },
+      }
+    );
   } catch (err) {
     console.error('[api.public.therapists] Unexpected error:', err);
     return NextResponse.json(
