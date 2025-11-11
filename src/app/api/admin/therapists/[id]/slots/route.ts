@@ -36,9 +36,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const { id } = await ctx.params;
     const { data, error } = await supabaseServer
       .from('therapist_slots')
-      .select('id, therapist_id, day_of_week, time_local, format, address, duration_minutes, active, created_at')
+      .select('id, therapist_id, day_of_week, time_local, format, address, duration_minutes, active, created_at, is_recurring, specific_date')
       .eq('therapist_id', id)
+      .order('is_recurring', { ascending: false })
       .order('day_of_week', { ascending: true })
+      .order('specific_date', { ascending: true })
       .order('time_local', { ascending: true });
     if (error) {
       await logError('admin.api.therapists.slots', error, { stage: 'fetch', therapist_id: id });
@@ -79,35 +81,78 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     } catch {}
 
     type SlotIn = {
-      day_of_week: number;
+      day_of_week?: number;
       time_local: string;
       format: 'online' | 'in_person';
       address?: string;
       duration_minutes?: number;
       active?: boolean;
+      is_recurring?: boolean;
+      specific_date?: string;
     };
 
     function isValidTime(v: string): boolean {
       return typeof v === 'string' && /^\d{2}:\d{2}$/.test(v);
     }
 
-    const sanitized: (SlotIn & { therapist_id: string; address: string; duration_minutes: number; active: boolean })[] = [];
+    function isValidDate(v: string): boolean {
+      return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+    }
+
+    const sanitized: (SlotIn & { therapist_id: string; address: string; duration_minutes: number; active: boolean; is_recurring: boolean })[] = [];
     for (const s of slots as SlotIn[]) {
-      const dow = Number(s?.day_of_week);
+      const isRecurring = s?.is_recurring !== false; // Default to true
       const fmt = s?.format === 'in_person' ? 'in_person' : 'online';
       const t = String(s?.time_local || '').slice(0, 5);
       const dur = Number.isFinite(Number(s?.duration_minutes)) ? Math.max(30, Math.min(240, Number(s!.duration_minutes))) : 60;
       const act = s?.active === false ? false : true;
       // Use explicit slot address if provided; otherwise fallback to therapist practice address for in_person
       const addr = fmt === 'in_person' ? (String(s?.address || '').trim() || practiceAddress) : '';
-      if (!Number.isInteger(dow) || dow < 0 || dow > 6) {
-        return NextResponse.json({ data: null, error: 'Invalid day_of_week' }, { status: 400 });
+
+      if (isRecurring) {
+        // Recurring slot: validate day_of_week
+        const dow = Number(s?.day_of_week);
+        if (!Number.isInteger(dow) || dow < 0 || dow > 6) {
+          return NextResponse.json({ data: null, error: 'Invalid day_of_week for recurring slot' }, { status: 400 });
+        }
+        if (!isValidTime(t)) {
+          return NextResponse.json({ data: null, error: 'Invalid time_local (expected HH:MM)' }, { status: 400 });
+        }
+        sanitized.push({
+          therapist_id: id,
+          day_of_week: dow,
+          time_local: t,
+          format: fmt,
+          address: addr,
+          duration_minutes: dur,
+          active: act,
+          is_recurring: true,
+          specific_date: undefined
+        });
+      } else {
+        // One-time slot: validate specific_date
+        const specificDate = String(s?.specific_date || '');
+        if (!isValidDate(specificDate)) {
+          return NextResponse.json({ data: null, error: 'Invalid or missing specific_date for one-time slot' }, { status: 400 });
+        }
+        if (!isValidTime(t)) {
+          return NextResponse.json({ data: null, error: 'Invalid time_local (expected HH:MM)' }, { status: 400 });
+        }
+        // For one-time appointments, we still store day_of_week for consistency (extract from date)
+        const dateObj = new Date(specificDate + 'T12:00:00');
+        const dow = dateObj.getDay();
+        sanitized.push({
+          therapist_id: id,
+          day_of_week: dow,
+          time_local: t,
+          format: fmt,
+          address: addr,
+          duration_minutes: dur,
+          active: act,
+          is_recurring: false,
+          specific_date: specificDate
+        });
       }
-      if (!isValidTime(t)) {
-        return NextResponse.json({ data: null, error: 'Invalid time_local (expected HH:MM)' }, { status: 400 });
-      }
-      // Address optional for in_person; if empty, therapist-level practice address will be used.
-      sanitized.push({ therapist_id: id, day_of_week: dow, time_local: t, format: fmt, address: addr, duration_minutes: dur, active: act });
     }
 
     const { count } = await supabaseServer
@@ -121,9 +166,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return NextResponse.json({ data: null, error: 'Active slots cap exceeded (max 5)' }, { status: 400 });
     }
 
+    // Upsert slots (the database has separate unique indexes for recurring and one-time)
     const { error: upErr } = await supabaseServer
       .from('therapist_slots')
-      .upsert(sanitized, { ignoreDuplicates: true, onConflict: 'therapist_id,day_of_week,time_local,format' });
+      .upsert(sanitized, { ignoreDuplicates: true });
 
     if (upErr) {
       await logError('admin.api.therapists.slots', upErr, { stage: 'upsert', therapist_id: id });
@@ -132,9 +178,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     const { data: after, error: fetchErr } = await supabaseServer
       .from('therapist_slots')
-      .select('id, therapist_id, day_of_week, time_local, format, address, duration_minutes, active, created_at')
+      .select('id, therapist_id, day_of_week, time_local, format, address, duration_minutes, active, created_at, is_recurring, specific_date')
       .eq('therapist_id', id)
+      .order('is_recurring', { ascending: false })
       .order('day_of_week', { ascending: true })
+      .order('specific_date', { ascending: true })
       .order('time_local', { ascending: true });
     if (fetchErr) {
       await logError('admin.api.therapists.slots', fetchErr, { stage: 'fetch_after', therapist_id: id });

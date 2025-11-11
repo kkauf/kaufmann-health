@@ -452,27 +452,6 @@ export default function AdminTherapistsPage() {
           {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
         </div>
 
-        {/* Guidelines */}
-        <div className="mb-6 bg-blue-50 border border-blue-100 rounded-lg p-4">
-          <h3 className="text-sm font-semibold mb-3 text-blue-900">Richtlinien zur Profilprüfung</h3>
-          <div className="text-xs space-y-2 text-gray-700">
-                <p><strong>Foto:</strong></p>
-                <ul className="list-disc ml-4 space-y-1">
-                  <li>Professionelles Erscheinungsbild</li>
-                  <li>Gesicht klar und gut beleuchtet</li>
-                  <li>Angemessene Kleidung</li>
-                  <li>Keine Texte/Logos</li>
-                </ul>
-                <p className="mt-2"><strong>Ansatz-Text:</strong></p>
-                <ul className="list-disc ml-4 space-y-1">
-                  <li>Fokus auf therapeutische Methode</li>
-                  <li>2–3 Absätze</li>
-                  <li>Professionelle Sprache</li>
-                  <li>Klar und verständlich</li>
-                </ul>
-              </div>
-        </div>
-
         <div className="space-y-4">
           {/* Pagination header */}
           <div className="flex items-center justify-between text-sm bg-gray-50 rounded-lg px-4 py-3 border">

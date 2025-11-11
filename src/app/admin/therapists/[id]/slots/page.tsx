@@ -21,6 +21,8 @@ type Slot = {
   duration_minutes: number;
   active: boolean;
   created_at?: string;
+  is_recurring: boolean;
+  specific_date?: string | null;
 };
 
 type TherapistInfo = {
@@ -61,15 +63,13 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
   const [imgError, setImgError] = useState(false);
   const [practiceAddress, setPracticeAddress] = useState<string>("");
 
+  const [appointmentType, setAppointmentType] = useState<"recurring" | "one-time">("recurring");
   const [day, setDay] = useState<number | "">("");
+  const [specificDate, setSpecificDate] = useState<string>(""); // YYYY-MM-DD
   const [time, setTime] = useState<string>("");
   const [format, setFormat] = useState<"online" | "in_person">("online");
-  const [address, setAddress] = useState<string>("");
   const [duration, setDuration] = useState<string>("60");
   const [defaultsApplied, setDefaultsApplied] = useState(false);
-  // Quick add by date
-  const [quickDate, setQuickDate] = useState<string>(""); // YYYY-MM-DD
-  const [quickTime, setQuickTime] = useState<string>(""); // HH:MM
 
   useEffect(() => {
     (async () => {
@@ -152,40 +152,71 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
     setMessage(null);
     setError(null);
     try {
-      const d = typeof day === "number" ? day : NaN;
-      if (!Number.isInteger(d)) throw new Error("Wochentag wählen");
       if (!/^\d{2}:\d{2}$/.test(time)) throw new Error("Zeit im Format HH:MM eingeben");
-      if (format === "in_person" && !address.trim()) throw new Error("Adresse angeben");
       const durationNum = parseInt(duration);
       if (isNaN(durationNum) || durationNum < 30 || durationNum > 240) {
         throw new Error("Dauer muss zwischen 30 und 240 Minuten liegen");
       }
-      const body = {
-        slots: [
-          {
-            day_of_week: d,
-            time_local: time.slice(0, 5),
-            format,
-            address: format === "in_person" ? address.trim() : "",
-            duration_minutes: durationNum,
-            active: true,
-          },
-        ],
-      };
-      const res = await fetch(`/api/admin/therapists/${therapistId}/slots`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Speichern fehlgeschlagen");
-      setSlots(json.data as Slot[]);
-      setMessage("Terminserie gespeichert");
-      setDay("");
-      setTime("");
-      setAddress("");
-      setDuration(String(durationNum));
+
+      const isRecurring = appointmentType === "recurring";
+
+      if (isRecurring) {
+        const d = typeof day === "number" ? day : NaN;
+        if (!Number.isInteger(d)) throw new Error("Wochentag wählen");
+        const body = {
+          slots: [
+            {
+              is_recurring: true,
+              day_of_week: d,
+              time_local: time.slice(0, 5),
+              format,
+              duration_minutes: durationNum,
+              active: true,
+            },
+          ],
+        };
+        const res = await fetch(`/api/admin/therapists/${therapistId}/slots`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(body),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || "Speichern fehlgeschlagen");
+        setSlots(json.data as Slot[]);
+        setMessage("Terminserie gespeichert");
+        setDay("");
+        setTime("");
+        setDuration(String(durationNum));
+      } else {
+        // One-time appointment
+        if (!specificDate) throw new Error("Datum wählen");
+        const body = {
+          slots: [
+            {
+              is_recurring: false,
+              specific_date: specificDate,
+              time_local: time.slice(0, 5),
+              format,
+              duration_minutes: durationNum,
+              active: true,
+            },
+          ],
+        };
+        const res = await fetch(`/api/admin/therapists/${therapistId}/slots`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(body),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || "Speichern fehlgeschlagen");
+        setSlots(json.data as Slot[]);
+        setMessage("Termin gespeichert");
+        setSpecificDate("");
+        setTime("");
+        setDuration(String(durationNum));
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
       setError(msg);
@@ -244,21 +275,6 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
     }
   }
 
-  function applyQuickDate() {
-    try {
-      if (!quickDate) throw new Error("Datum wählen");
-      if (!/^\d{2}:\d{2}$/.test(quickTime)) throw new Error("Zeit wählen (HH:MM)");
-      const d = new Date(quickDate + "T12:00:00"); // noon to avoid TZ edge cases
-      const dow = d.getDay(); // 0=So,1=Mo,...
-      setDay(dow as 0 | 1 | 2 | 3 | 4 | 5 | 6);
-      setTime(quickTime);
-      setMessage(null);
-      setError(null);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Ungültiges Datum/Zeit";
-      setError(msg);
-    }
-  }
 
   return (
     <main className="min-h-screen p-6 space-y-6">
@@ -314,97 +330,186 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Neue Terminserie hinzufügen</CardTitle>
+            <CardTitle className="text-base">Neuen Termin hinzufügen</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 rounded-md border p-3 bg-slate-50">
-              <div className="text-sm font-medium mb-2">Schnell hinzufügen (ein bestimmtes Datum)</div>
-              <div className="flex flex-col sm:flex-row gap-3 items-end">
-                <div className="space-y-1 flex-1 min-w-0">
-                  <Label>Datum</Label>
-                  <Input type="date" value={quickDate} onChange={(e) => setQuickDate(e.target.value)} />
+            <div className="space-y-4">
+              {/* Step 1: Select appointment type */}
+              <div className="space-y-2">
+                <Label>Terminart</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setAppointmentType("one-time")}
+                    className={`p-4 border-2 rounded-lg text-left transition-all ${
+                      appointmentType === "one-time"
+                        ? "border-blue-600 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <div className="font-medium">Einmaliger Termin</div>
+                    <div className="text-xs text-gray-600 mt-1">Ein spezifisches Datum</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAppointmentType("recurring")}
+                    className={`p-4 border-2 rounded-lg text-left transition-all ${
+                      appointmentType === "recurring"
+                        ? "border-blue-600 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <div className="font-medium">Wöchentliche Serie</div>
+                    <div className="text-xs text-gray-600 mt-1">Jeden Wochentag zur selben Zeit</div>
+                  </button>
                 </div>
-                <div className="space-y-1 flex-1 min-w-0">
+              </div>
+
+              {/* Step 2: Date/Day and time selection */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+                {appointmentType === "one-time" ? (
+                  <div className="space-y-1 lg:col-span-2">
+                    <Label>Datum</Label>
+                    <Input
+                      type="date"
+                      value={specificDate}
+                      onChange={(e) => setSpecificDate(e.target.value)}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-1 lg:col-span-2">
+                    <Label>Wochentag</Label>
+                    <Select value={day === "" ? undefined : String(day)} onValueChange={(v) => setDay(Number(v))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Wählen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DAYS.map((d) => (
+                          <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="space-y-1 lg:col-span-2">
                   <Label>Uhrzeit</Label>
-                  <Input type="time" value={quickTime} onChange={(e) => setQuickTime(e.target.value)} />
+                  <Input type="time" placeholder="HH:MM" value={time} onChange={(e) => setTime(e.target.value)} />
                 </div>
-                <div className="flex-shrink-0 sm:ml-auto">
-                  <Button type="button" variant="outline" onClick={applyQuickDate} className="w-full sm:w-auto whitespace-nowrap">Wochentag & Zeit übernehmen</Button>
+
+                {/* Step 3: Format and Duration */}
+                <div className="space-y-1 lg:col-span-1">
+                  <Label>Format</Label>
+                  <Select value={format} onValueChange={(v: "online" | "in_person") => setFormat(v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="online">Online</SelectItem>
+                      <SelectItem value="in_person">Vor Ort</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1 lg:col-span-1">
+                  <Label>Dauer (Min)</Label>
+                  <Input type="number" min={30} max={240} value={duration} onChange={(e) => setDuration(e.target.value)} />
                 </div>
               </div>
-              <p className="mt-2 text-xs text-slate-600">Hinweis: Der Termin wird als wöchentliche Serie gespeichert. Einmalige Termine bitte später wieder entfernen.</p>
+
+              <div className="flex items-center justify-between pt-2">
+                <p className="text-xs text-gray-500">
+                  {format === "in_person" && practiceAddress
+                    ? `Adresse: ${practiceAddress}`
+                    : format === "in_person"
+                    ? "Hinweis: Bitte Praxis-Adresse oben angeben"
+                    : "Maximal 5 aktive Serien/Termine pro Therapeut:in"}
+                </p>
+                <Button onClick={addSlot} disabled={saving || activeCount >= 5}>
+                  {saving ? "Speichert…" : "Hinzufügen"}
+                </Button>
+              </div>
+
+              {error && <p className="text-sm text-red-600">{error}</p>}
+              {message && <p className="text-sm text-emerald-700">{message}</p>}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
-              <div className="space-y-1 lg:col-span-2">
-                <Label>Wochentag</Label>
-                <Select value={day === "" ? undefined : String(day)} onValueChange={(v) => setDay(Number(v))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Wählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DAYS.map((d) => (
-                      <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1 lg:col-span-2">
-                <Label>Uhrzeit</Label>
-                <Input type="time" placeholder="HH:MM" value={time} onChange={(e) => setTime(e.target.value)} />
-              </div>
-              <div className="space-y-1 lg:col-span-2">
-                <Label>Format</Label>
-                <Select value={format} onValueChange={(v: "online" | "in_person") => setFormat(v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="online">Online</SelectItem>
-                    <SelectItem value="in_person">Vor Ort</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-                <Label>Adresse (bei Vor Ort)</Label>
-                <Input placeholder="Straße, PLZ Ort" value={address} onChange={(e) => setAddress(e.target.value)} disabled={format !== "in_person"} />
-              </div>
-              <div className="space-y-1 lg:col-span-2">
-                <Label>Dauer (Minuten)</Label>
-                <Input type="number" min={30} max={240} value={duration} onChange={(e) => setDuration(e.target.value)} />
-              </div>
-              <div className="lg:col-span-1">
-                <Button onClick={addSlot} disabled={saving || activeCount >= 5} className="w-full">{saving ? "Speichert…" : "Hinzufügen"}</Button>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">Maximal 5 aktive Serien pro Therapeut:in.</p>
-            {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
-            {message && <p className="text-sm text-emerald-700 mt-2">{message}</p>}
           </CardContent>
         </Card>
       </section>
 
       <section className="border rounded-md p-4">
-        <h2 className="text-base font-semibold mb-3">Aktive Serien</h2>
+        <h2 className="text-base font-semibold mb-3">Aktive Serien und Termine</h2>
         {loading ? (
           <p className="text-sm text-gray-600">Laden…</p>
         ) : slots.length === 0 ? (
-          <p className="text-sm text-gray-600">Keine Serien vorhanden</p>
+          <p className="text-sm text-gray-600">Keine Termine vorhanden</p>
         ) : (
-          <div className="space-y-2">
-            {slots.map((s) => (
-              <div key={s.id} className="flex flex-wrap items-center justify-between border rounded-md p-3">
-                <div className="text-sm">
-                  <span className="font-medium mr-2">{DAYS.find((d) => d.value === s.day_of_week)?.label || s.day_of_week}</span>
-                  <span className="mr-2">{s.time_local.slice(0,5)} Uhr</span>
-                  <span className="mr-2">{s.format === "online" ? "Online" : "Vor Ort"}</span>
-                  {s.format === "in_person" && s.address ? <span className="text-gray-600">{s.address}</span> : null}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">{s.duration_minutes} Min</span>
-                  <Button size="sm" variant="outline" onClick={() => removeSlot(s.id)} disabled={saving}>Löschen</Button>
+          <div className="space-y-3">
+            {/* Recurring slots */}
+            {slots.filter((s) => s.is_recurring).length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Wöchentliche Serien</h3>
+                <div className="space-y-2">
+                  {slots
+                    .filter((s) => s.is_recurring)
+                    .map((s) => (
+                      <div key={s.id} className="flex flex-wrap items-center justify-between border rounded-md p-3 bg-blue-50/30">
+                        <div className="text-sm">
+                          <Badge variant="outline" className="mr-2 bg-blue-100 text-blue-700 border-blue-300">Serie</Badge>
+                          <span className="font-medium mr-2">{DAYS.find((d) => d.value === s.day_of_week)?.label || s.day_of_week}</span>
+                          <span className="mr-2">{s.time_local.slice(0, 5)} Uhr</span>
+                          <span className="mr-2">{s.format === "online" ? "Online" : "Vor Ort"}</span>
+                          {s.format === "in_person" && s.address ? <span className="text-gray-600">{s.address}</span> : null}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">{s.duration_minutes} Min</span>
+                          <Button size="sm" variant="outline" onClick={() => removeSlot(s.id)} disabled={saving}>
+                            Löschen
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </div>
-            ))}
+            )}
+
+            {/* One-time appointments */}
+            {slots.filter((s) => !s.is_recurring).length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Einmalige Termine</h3>
+                <div className="space-y-2">
+                  {slots
+                    .filter((s) => !s.is_recurring)
+                    .map((s) => {
+                      const dateStr = s.specific_date
+                        ? new Date(s.specific_date + "T12:00:00").toLocaleDateString("de-DE", {
+                            weekday: "short",
+                            year: "numeric",
+                            month: "2-digit",
+                            day: "2-digit",
+                          })
+                        : "";
+                      return (
+                        <div key={s.id} className="flex flex-wrap items-center justify-between border rounded-md p-3 bg-green-50/30">
+                          <div className="text-sm">
+                            <Badge variant="outline" className="mr-2 bg-green-100 text-green-700 border-green-300">Einmalig</Badge>
+                            <span className="font-medium mr-2">{dateStr}</span>
+                            <span className="mr-2">{s.time_local.slice(0, 5)} Uhr</span>
+                            <span className="mr-2">{s.format === "online" ? "Online" : "Vor Ort"}</span>
+                            {s.format === "in_person" && s.address ? <span className="text-gray-600">{s.address}</span> : null}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">{s.duration_minutes} Min</span>
+                            <Button size="sm" variant="outline" onClick={() => removeSlot(s.id)} disabled={saving}>
+                              Löschen
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>

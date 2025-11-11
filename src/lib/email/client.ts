@@ -98,7 +98,8 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
 
   const suppress = process.env.EMAIL_SUPPRESS_OUTBOUND === 'true' || process.env.EMAIL_SUPPRESS_OUTBOUND === '1';
   const redirectTo = process.env.EMAIL_REDIRECT_TO;
-  if (suppress) {
+  const inTests = process.env.NODE_ENV === 'test';
+  if (suppress && !inTests) {
     if (!redirectTo) {
       await track({
         type: 'email_suppressed',

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, AlertCircle, Shield, Lock, FileCheck, ShieldCheck, Mail, MailCheck } from 'lucide-react';
+import { Loader2, AlertCircle, Shield, Lock, FileCheck, ShieldCheck, Mail, MailCheck, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { validatePhone } from '@/lib/verification/usePhoneValidation';
@@ -16,6 +16,7 @@ import ConsentSection from '@/components/ConsentSection';
 import { getAttribution } from '@/lib/attribution';
 
 type ContactType = 'booking' | 'consultation';
+type Slot = { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string };
 
 interface ContactModalProps {
   therapist: {
@@ -23,6 +24,8 @@ interface ContactModalProps {
     first_name: string;
     last_name: string;
     photo_url?: string;
+    availability?: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[];
+    metadata?: { profile?: { practice_address?: string } };
   };
   contactType: ContactType;
   open: boolean;
@@ -65,6 +68,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const [reason, setReason] = useState('');
   const [message, setMessage] = useState('');
   const [sessionFormat, setSessionFormat] = useState<'online' | 'in_person' | ''>(''); // Required for booking
+  const [selectedBookingSlot, setSelectedBookingSlot] = useState<{ date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string } | null>(null);
   // Track whether the user has a verified session in this modal lifecycle
   const [isVerified, setIsVerified] = useState<boolean>(false);
   
@@ -103,6 +107,21 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       setStep('compose');
     }
   }, [open, preAuth, therapist.first_name, contactType]);
+
+  // Seed selected slot and format from prop on open
+  useEffect(() => {
+    if (open && selectedSlot && contactType === 'booking') {
+      setSelectedBookingSlot(selectedSlot);
+      setSessionFormat(selectedSlot.format);
+    }
+  }, [open, selectedSlot, contactType]);
+
+  // Lock consultation to online format
+  useEffect(() => {
+    if (open && contactType === 'consultation') {
+      setSessionFormat('online');
+    }
+  }, [open, contactType]);
 
   // If a verified client session exists (kh_client), skip verification in directory flow
   useEffect(() => {
@@ -219,6 +238,46 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
     } catch {}
   }, [therapist.id, contactType]);
+
+  // Availability helpers (booking)
+  const allSlots = useMemo<Slot[]>(() => Array.isArray(therapist.availability) ? (therapist.availability as Slot[]) : [], [therapist.availability]);
+  const minSelectable = useMemo(() => new Date(Date.now() + 24 * 60 * 60 * 1000), []);
+  function slotDate(s: Slot) {
+    const [h, m] = (s.time_label || '00:00').split(':').map((x) => parseInt(x, 10) || 0);
+    const d = new Date(s.date_iso + 'T00:00:00');
+    d.setHours(h, m, 0, 0);
+    return d;
+  }
+  function formatSlotLabel(s: Slot) {
+    const dt = slotDate(s);
+    const dayStr = dt.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' });
+    return `${dayStr} ${s.time_label}`;
+  }
+  const selectableSlots = useMemo<Slot[]>(() => allSlots.filter(s => slotDate(s) >= minSelectable), [allSlots, minSelectable]);
+  const slotsByWeek = useMemo(() => {
+    const map = new Map<string, { label: string; start: Date; slots: Slot[] }>();
+    selectableSlots.forEach(s => {
+      const dt = slotDate(s);
+      const day = dt.getDay();
+      const deltaToMon = (day === 0 ? -6 : 1 - day);
+      const start = new Date(dt);
+      start.setDate(dt.getDate() + deltaToMon);
+      start.setHours(0, 0, 0, 0);
+      const key = start.toISOString().slice(0, 10);
+      if (!map.has(key)) {
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        const label = `${start.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} – ${end.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}`;
+        map.set(key, { label, start, slots: [] });
+      }
+      map.get(key)!.slots.push(s);
+    });
+    return Array.from(map.entries()).sort((a, b) => a[1].start.getTime() - b[1].start.getTime());
+  }, [selectableSlots]);
+  const [weekIndex, setWeekIndex] = useState(0);
+  useEffect(() => {
+    if (weekIndex >= slotsByWeek.length) setWeekIndex(0);
+  }, [slotsByWeek.length, weekIndex]);
   
   // Reset modal state
   const handleClose = useCallback(() => {
@@ -311,7 +370,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           redirect: redirectPath,
           // Server-side draft storage (therapist directory flow)
           draft_contact: draftContact,
-          ...(selectedSlot && contactType === 'booking' ? { draft_booking: { therapist_id: therapist.id, date_iso: selectedSlot.date_iso, time_label: selectedSlot.time_label, format: selectedSlot.format } } : {}),
+          ...(selectedBookingSlot && contactType === 'booking' ? { draft_booking: { therapist_id: therapist.id, date_iso: selectedBookingSlot.date_iso, time_label: selectedBookingSlot.time_label, format: selectedBookingSlot.format } } : {}),
         }),
       });
       
@@ -331,13 +390,13 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     } finally {
       setLoading(false);
     }
-  }, [name, contactMethod, email, phone, therapist.id, contactType, trackEvent]);
+  }, [name, contactMethod, email, phone, therapist.id, contactType, trackEvent, selectedBookingSlot, reason, message, sessionFormat]);
   
   // Send message
   const handleSendMessage = useCallback(async () => {
     console.log('[ContactModal] handleSendMessage called:', { reason: reason.trim(), message: message.trim(), sessionFormat, contactType });
-    // Require either reason OR message (not both)
-    if (!reason.trim() && !message.trim()) {
+    // Require either reason OR message unless a booking slot was selected
+    if (!(contactType === 'booking' && selectedBookingSlot) && !reason.trim() && !message.trim()) {
       console.log('[ContactModal] Validation failed: no reason or message');
       setError('Bitte beschreibe dein Anliegen oder schreibe eine Nachricht');
       return;
@@ -498,6 +557,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   // Render verification step
   const renderVerifyStep = () => (
     <div className="space-y-5" onKeyDown={handleKeyDown}>
+      {contactType === 'booking' && selectedBookingSlot && (
+        <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/80 p-3 text-sm text-emerald-900 shadow-sm">
+          <div className="font-medium">Du buchst deine {sessionFormat === 'in_person' ? 'Vor‑Ort' : 'Online'}‑Therapiesitzung</div>
+          <div className="mt-1">{formatSlotLabel(selectedBookingSlot)} bei {therapistName}</div>
+        </div>
+      )}
       <p className="text-sm leading-relaxed text-gray-600">
         Wie dürfen dich Therapeut:innen erreichen? <strong>Wir schützen vor Spam</strong> und stellen sicher,
         dass deine Nachricht beantwortet werden kann. Deine Daten bleiben <strong>privat & DSGVO‑konform</strong>.
@@ -574,6 +639,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           <span>{error}</span>
         </div>
       )}
+      {contactType === 'booking' && selectedBookingSlot && (
+        <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/70 p-3 text-sm text-emerald-900 shadow-sm">
+          <div className="font-medium">Ausgewählter Termin</div>
+          <div className="mt-1">{formatSlotLabel(selectedBookingSlot)} · {sessionFormat === 'in_person' ? 'Vor‑Ort' : 'Online'} · {therapistName}</div>
+        </div>
+      )}
       
       <div className="flex gap-3 pt-2">
         <Button 
@@ -606,6 +677,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       <div className="mx-auto h-16 w-16 rounded-full bg-gradient-to-br from-indigo-50 to-indigo-100/60 flex items-center justify-center shadow">
         <Mail className="h-8 w-8 text-indigo-600" />
       </div>
+      {contactType === 'booking' && selectedBookingSlot && (
+        <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/80 p-3 text-sm text-emerald-900 shadow-sm">
+          <div className="font-medium">Du buchst deine {sessionFormat === 'in_person' ? 'Vor‑Ort' : 'Online'}‑Therapiesitzung</div>
+          <div className="mt-1">{formatSlotLabel(selectedBookingSlot)} bei {therapistName}</div>
+        </div>
+      )}
       <p className="text-sm leading-relaxed text-gray-600">
         Wir haben dir einen Bestätigungslink per E‑Mail gesendet. Bitte öffne deine E‑Mail und klicke auf
         „E‑Mail bestätigen“. Danach kehrst du automatisch hierher zurück und kannst die Nachricht senden.
@@ -718,6 +795,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   // Render code verification step
   const renderVerifyCodeStep = () => (
     <div className="space-y-5" onKeyDown={handleKeyDown}>
+      {contactType === 'booking' && selectedBookingSlot && (
+        <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/80 p-3 text-sm text-emerald-900 shadow-sm">
+          <div className="font-medium">Du buchst deine {sessionFormat === 'in_person' ? 'Vor‑Ort' : 'Online'}‑Therapiesitzung</div>
+          <div className="mt-1">{formatSlotLabel(selectedBookingSlot)} bei {therapistName}</div>
+        </div>
+      )}
       <p className="text-sm leading-relaxed text-gray-600">
         Wir haben dir einen Code per {contactMethod === 'email' ? 'E-Mail' : 'SMS'} gesendet.
       </p>
@@ -775,7 +858,16 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   );
   
   // Render message composition step
-  const renderComposeStep = () => (
+  const renderComposeStep = () => {
+    const hasAvailability = contactType === 'booking' && Array.isArray(therapist.availability) && therapist.availability.length > 0;
+    const showBookingPicker = hasAvailability;
+    const selectedFormat = sessionFormat as 'online' | 'in_person' | '';
+    const resolvedAddress = selectedFormat === 'in_person' ? (selectedBookingSlot?.address || therapist.metadata?.profile?.practice_address || '') : '';
+
+    const slotsForWeek: Slot[] = slotsByWeek[weekIndex]?.[1]?.slots || [];
+    const filteredSlots: Slot[] = selectedFormat ? slotsForWeek.filter((s) => s.format === selectedFormat) : slotsForWeek;
+
+    return (
     <div className="space-y-5" onKeyDown={handleKeyDown}>
       {/* Therapist info */}
       <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-slate-50 to-slate-100/60 rounded-xl border border-slate-200/60 shadow-sm">
@@ -800,30 +892,31 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         </div>
       </div>
       
-      <div className="space-y-2">
-        <Label htmlFor="reason" className="text-sm font-medium">Worum geht es? *</Label>
-        <Input
-          id="reason"
-          value={reason}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-            setReason(e.target.value);
-            // Update message preview
-            const greeting = `Guten Tag ${therapist.first_name}`;
-            const intent = contactType === 'booking'
-              ? 'ich möchte gerne einen Termin vereinbaren'
-              : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
-            const signature = name ? `\n\nViele Grüße\n${name}` : '';
-            setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei ${e.target.value || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
-          }}
-          placeholder="z.B. Panikattacken, Überforderung im Alltag, Beziehungsproblemen"
-          disabled={loading}
-          className="h-11"
-          autoFocus
-        />
-        <p className="text-xs text-gray-500 leading-relaxed">
-          Beschreibe kurz, wobei du Unterstützung suchst
-        </p>
-      </div>
+      {!showBookingPicker && (
+        <div className="space-y-2">
+          <Label htmlFor="reason" className="text-sm font-medium">Worum geht es? *</Label>
+          <Input
+            id="reason"
+            value={reason}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              setReason(e.target.value);
+              const greeting = `Guten Tag ${therapist.first_name}`;
+              const intent = contactType === 'booking'
+                ? 'ich möchte gerne einen Termin vereinbaren'
+                : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
+              const signature = name ? `\n\nViele Grüße\n${name}` : '';
+              setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei ${e.target.value || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
+            }}
+            placeholder="z.B. Panikattacken, Überforderung im Alltag, Beziehungsproblemen"
+            disabled={loading}
+            className="h-11"
+            autoFocus
+          />
+          <p className="text-xs text-gray-500 leading-relaxed">
+            Beschreibe kurz, wobei du Unterstützung suchst
+          </p>
+        </div>
+      )}
 
       {/* Session format selector - only for booking type */}
       {contactType === 'booking' && (
@@ -852,31 +945,91 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           <p className="text-xs text-gray-500 leading-relaxed">
             Soll der Termin online oder vor Ort stattfinden?
           </p>
+          {selectedFormat === 'in_person' && resolvedAddress && (
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 shadow-sm">
+              <MapPin className="h-3.5 w-3.5" />
+              <span className="truncate max-w-[18rem]" title={resolvedAddress}>{resolvedAddress}</span>
+            </div>
+          )}
         </div>
       )}
 
-      {/* TODO: A/B test - Add time slot preferences (optional multi-select)
-          Goal: Increase commitment & perceived personalization, move toward full booking flow
-          Options: ['Morgens (8-12 Uhr)', 'Nachmittags (12-17 Uhr)', 'Abends (17-21 Uhr)', 'Wochenende', 'Bin flexibel']
-          Implementation: Optional checkboxes, store in metadata, append to message for therapist visibility
-          Benefits: Soft commitment without friction, practical value for therapists
-          Risk: Every field = potential drop-off, test impact on conversion rates */}
+      {/* Booking slot picker by week */}
+      {showBookingPicker && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Button type="button" variant="ghost" size="icon" className="h-10 w-10" onClick={() => setWeekIndex((i) => Math.max(0, i - 1))} disabled={weekIndex <= 0} aria-label="Vorherige Woche">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="text-sm font-medium text-gray-900">{slotsByWeek[weekIndex]?.[1]?.label || ''}</div>
+            <Button type="button" variant="ghost" size="icon" className="h-10 w-10" onClick={() => setWeekIndex((i) => Math.min(slotsByWeek.length - 1, i + 1))} disabled={weekIndex >= slotsByWeek.length - 1} aria-label="Nächste Woche">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="message" className="text-sm font-medium">Nachricht (optional)</Label>
-        <Textarea
-          id="message"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Deine Nachricht..."
-          disabled={loading}
-          rows={6}
-          className="resize-none"
-        />
-        <p className="text-xs text-gray-500 leading-relaxed">
-          Du kannst die Nachricht anpassen oder so lassen
-        </p>
-      </div>
+          <div className="flex flex-wrap gap-2">
+            {filteredSlots.map((s: Slot, idx: number) => {
+              const dt = slotDate(s);
+              const disabled = dt < minSelectable || (selectedFormat ? (s.format !== selectedFormat) : false);
+              const selected = !!selectedBookingSlot && selectedBookingSlot.date_iso === s.date_iso && selectedBookingSlot.time_label === s.time_label && selectedBookingSlot.format === s.format;
+              const base = selected
+                ? 'ring-2 ring-emerald-300 border-emerald-300 bg-emerald-50 text-emerald-800'
+                : s.format === 'online'
+                  ? 'border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100'
+                  : 'border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-100';
+              const cls = `h-11 px-3 inline-flex items-center gap-1.5 rounded-full border text-sm font-medium shadow-sm transition ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow'} ${base}`;
+              const day = dt.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+              return (
+                <button
+                  key={`${s.date_iso}-${s.time_label}-${idx}`}
+                  type="button"
+                  className={cls}
+                  disabled={disabled}
+                  onClick={() => {
+                    if (disabled) return;
+                    setSelectedBookingSlot(s);
+                    if (!sessionFormat) setSessionFormat(s.format);
+                    try {
+                      trackEvent('booking_slot_selected', {
+                        therapist_id: therapist.id,
+                        date_iso: s.date_iso,
+                        time_label: s.time_label,
+                        format: s.format,
+                        address_present: Boolean(s.address || therapist.metadata?.profile?.practice_address),
+                        week_index: weekIndex,
+                      });
+                    } catch {}
+                  }}
+                  title={s.format === 'online' ? 'Online' : 'Vor Ort'}
+                >
+                  <span>{day} {s.time_label}</span>
+                </button>
+              );
+            })}
+            {filteredSlots.length === 0 && (
+              <div className="text-sm text-gray-600">Keine Termine in dieser Woche für das gewählte Format.</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!showBookingPicker && (
+        <div className="space-y-2">
+          <Label htmlFor="message" className="text-sm font-medium">Nachricht (optional)</Label>
+          <Textarea
+            id="message"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Deine Nachricht..."
+            disabled={loading}
+            rows={6}
+            className="resize-none"
+          />
+          <p className="text-xs text-gray-500 leading-relaxed">
+            Du kannst die Nachricht anpassen oder so lassen
+          </p>
+        </div>
+      )}
       
       {error && (
         <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
@@ -911,26 +1064,39 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         >
           Abbrechen
         </Button>
-        {isVerified || preAuth ? (
+        {showBookingPicker ? (
           <Button
-            onClick={handleSendMessage}
-            disabled={loading || (!reason.trim() && !message.trim()) || (contactType === 'booking' && !sessionFormat)}
-            className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30"
+            onClick={() => {
+              setStep('verify');
+            }}
+            disabled={loading || !sessionFormat || !selectedBookingSlot}
+            className="flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Nachricht senden'}
+            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Termin buchen'}
           </Button>
         ) : (
-          <Button
-            onClick={() => setStep('verify')}
-            disabled={loading || (!reason.trim() && !message.trim()) || (contactType === 'booking' && !sessionFormat)}
-            className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Weiter'}
-          </Button>
+          (isVerified || preAuth) ? (
+            <Button
+              onClick={handleSendMessage}
+              disabled={loading || (!reason.trim() && !message.trim()) || (contactType === 'booking' && !sessionFormat)}
+              className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Nachricht senden'}
+            </Button>
+          ) : (
+            <Button
+              onClick={() => setStep('verify')}
+              disabled={loading || (!reason.trim() && !message.trim()) || (contactType === 'booking' && !sessionFormat)}
+              className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Weiter'}
+            </Button>
+          )
         )}
       </div>
     </div>
   );
+  };
   
   // Render success step
   const renderSuccessStep = () => (
@@ -961,10 +1127,10 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             {step === 'verify' && 'Anmelden um zu senden'}
             {step === 'verify-code' && 'Code bestätigen'}
             {step === 'compose' && 'Nachricht schreiben'}
+            {step === 'verify-link' && 'E‑Mail bestätigen'}
             {step === 'success' && 'Erfolgreich!'}
           </DialogTitle>
         </DialogHeader>
-        
         <div className="pb-2">
           {step === 'verify' && !preAuth && renderVerifyStep()}
           {step === 'verify-code' && !preAuth && renderVerifyCodeStep()}
