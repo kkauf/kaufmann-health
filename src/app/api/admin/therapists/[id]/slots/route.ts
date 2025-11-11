@@ -34,7 +34,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
   try {
     const { id } = await ctx.params;
-    const { data, error } = await supabaseServer
+    // Try with new columns first, fallback to legacy schema if they don't exist
+    let result = await supabaseServer
       .from('therapist_slots')
       .select('id, therapist_id, day_of_week, time_local, format, address, duration_minutes, active, created_at, is_recurring, specific_date')
       .eq('therapist_id', id)
@@ -42,11 +43,33 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       .order('day_of_week', { ascending: true })
       .order('specific_date', { ascending: true })
       .order('time_local', { ascending: true });
-    if (error) {
-      await logError('admin.api.therapists.slots', error, { stage: 'fetch', therapist_id: id });
+    
+    // If columns don't exist, fallback to legacy schema
+    if (result.error && result.error.message?.includes('does not exist')) {
+      const legacyResult = await supabaseServer
+        .from('therapist_slots')
+        .select('id, therapist_id, day_of_week, time_local, format, address, duration_minutes, active, created_at')
+        .eq('therapist_id', id)
+        .order('day_of_week', { ascending: true })
+        .order('time_local', { ascending: true });
+      
+      // Map legacy data to include missing fields as undefined
+      if (legacyResult.data) {
+        const mappedData = legacyResult.data.map(slot => ({
+          ...slot,
+          is_recurring: undefined,
+          specific_date: undefined
+        }));
+        return NextResponse.json({ data: mappedData, error: null });
+      }
+      result = legacyResult;
+    }
+    
+    if (result.error) {
+      await logError('admin.api.therapists.slots', result.error, { stage: 'fetch', therapist_id: id });
       return NextResponse.json({ data: null, error: 'Failed to fetch slots' }, { status: 500 });
     }
-    return NextResponse.json({ data: (data || []), error: null });
+    return NextResponse.json({ data: (result.data || []), error: null });
   } catch (e) {
     await logError('admin.api.therapists.slots', e, { stage: 'exception' });
     return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });
@@ -176,7 +199,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return NextResponse.json({ data: null, error: 'Failed to save slots' }, { status: 500 });
     }
 
-    const { data: after, error: fetchErr } = await supabaseServer
+    // Try with new columns first, fallback to legacy schema if they don't exist
+    let result = await supabaseServer
       .from('therapist_slots')
       .select('id, therapist_id, day_of_week, time_local, format, address, duration_minutes, active, created_at, is_recurring, specific_date')
       .eq('therapist_id', id)
@@ -184,12 +208,34 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       .order('day_of_week', { ascending: true })
       .order('specific_date', { ascending: true })
       .order('time_local', { ascending: true });
-    if (fetchErr) {
-      await logError('admin.api.therapists.slots', fetchErr, { stage: 'fetch_after', therapist_id: id });
+    
+    // If columns don't exist, fallback to legacy schema
+    if (result.error && result.error.message?.includes('does not exist')) {
+      const legacyResult = await supabaseServer
+        .from('therapist_slots')
+        .select('id, therapist_id, day_of_week, time_local, format, address, duration_minutes, active, created_at')
+        .eq('therapist_id', id)
+        .order('day_of_week', { ascending: true })
+        .order('time_local', { ascending: true });
+      
+      // Map legacy data to include missing fields as undefined
+      if (legacyResult.data) {
+        const mappedData = legacyResult.data.map(slot => ({
+          ...slot,
+          is_recurring: undefined,
+          specific_date: undefined
+        }));
+        return NextResponse.json({ data: mappedData, error: null });
+      }
+      result = legacyResult;
+    }
+    
+    if (result.error) {
+      await logError('admin.api.therapists.slots', result.error, { stage: 'fetch_after', therapist_id: id });
       return NextResponse.json({ data: null, error: 'Saved but failed to fetch' }, { status: 500 });
     }
 
-    return NextResponse.json({ data: after || [], error: null });
+    return NextResponse.json({ data: result.data || [], error: null });
   } catch (e) {
     await logError('admin.api.therapists.slots', e, { stage: 'exception' });
     return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });

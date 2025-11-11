@@ -943,7 +943,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       {contactType === 'booking' && showBookingPicker && (hasOnlineSlots || hasInPersonSlots) && (
         <div className="space-y-3">
           <Label className="text-sm font-medium">Format *</Label>
-          <div className="flex gap-2">
+          <div className="flex gap-2 max-w-md mx-auto">
             {hasOnlineSlots && (
               <Button
                 type="button"
@@ -977,13 +977,15 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
               </Button>
             )}
           </div>
-          <p className="text-xs text-gray-500 leading-relaxed">
+          <p className="text-xs text-gray-500 leading-relaxed text-center">
             Soll der Termin online oder vor Ort stattfinden?
           </p>
           {selectedFormat === 'in_person' && resolvedAddress && (
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 shadow-sm">
-              <MapPin className="h-3.5 w-3.5" />
-              <span className="truncate max-w-[18rem]" title={resolvedAddress}>{resolvedAddress}</span>
+            <div className="flex justify-center">
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 shadow-sm">
+                <MapPin className="h-3.5 w-3.5" />
+                <span className="truncate max-w-[18rem]" title={resolvedAddress}>{resolvedAddress}</span>
+              </div>
             </div>
           )}
         </div>
@@ -992,7 +994,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       {/* Booking slot picker by week */}
       {showBookingPicker && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between max-w-sm mx-auto">
             <Button type="button" variant="ghost" size="icon" className="h-10 w-10" onClick={() => setWeekIndex((i) => Math.max(0, i - 1))} disabled={weekIndex <= 0} aria-label="Vorherige Woche">
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -1002,7 +1004,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             </Button>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 justify-center">
             {filteredSlots.map((s: Slot, idx: number) => {
               const dt = slotDate(s);
               const disabled = dt < minSelectable || (selectedFormat ? (s.format !== selectedFormat) : false);

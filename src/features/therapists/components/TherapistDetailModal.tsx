@@ -82,7 +82,11 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
       setSelectedSlot(null);
       setWeekIndex(0);
     } else {
-      // For consultation, open ContactModal directly
+      // For consultation, clear any booking state and open ContactModal directly
+      setViewMode('profile');
+      setSessionFormat('');
+      setSelectedSlot(null);
+      setWeekIndex(0);
       setContactModalOpen(true);
     }
   };
@@ -112,8 +116,11 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
       };
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
     } catch {}
+    // Close the TherapistDetailModal to avoid modal-on-modal
+    onClose();
+    // Open ContactModal for verification
     setContactModalOpen(true);
-  }, [selectedSlot, therapist.id]);
+  }, [selectedSlot, therapist.id, onClose]);
 
   useEffect(() => {
     setMounted(true);
@@ -257,6 +264,8 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
 
   const handleModalClose = useCallback((isOpen: boolean) => {
     if (!isOpen) {
+      // Close ContactModal if it's open
+      setContactModalOpen(false);
       // Reset to profile view when closing
       setViewMode('profile');
       setSessionFormat('');
@@ -267,6 +276,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
   }, [onClose]);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleModalClose}>
       <DialogContent
         aria-describedby={undefined}
@@ -695,8 +705,10 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
         </div>,
         document.body
       )}
-      
-      {/* Contact modal */}
+    </Dialog>
+    
+    {/* Contact modal - rendered outside to avoid modal-on-modal */}
+    {mounted && createPortal(
       <ContactModal
         therapist={{
           id: therapist.id,
@@ -710,13 +722,11 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
         open={contactModalOpen}
         onClose={() => {
           setContactModalOpen(false);
-          // Return to profile view when closing ContactModal from booking flow
-          if (viewMode === 'booking') {
-            handleBackToProfile();
-          }
         }}
         selectedSlot={selectedSlot || undefined}
-      />
-    </Dialog>
+      />,
+      document.body
+    )}
+    </>
   );
 }
