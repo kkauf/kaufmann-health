@@ -407,6 +407,9 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           } as TherapistData}
           open={!!detailModalTherapist}
           onClose={() => setDetailModalTherapist(null)}
+          onOpenContactModal={() => {
+            // No-op for match page - contact is handled via selection flow
+          }}
         />
       )}
 

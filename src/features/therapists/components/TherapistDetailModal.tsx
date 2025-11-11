@@ -15,7 +15,6 @@ import { Label } from '@/components/ui/label';
 import { MapPin, Video, User, Calendar, MessageCircle, Globe, ShieldCheck, CalendarCheck2, X, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { TherapistData } from './TherapistDirectory';
-import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
 import { getModalityInfo } from '@/lib/modalities';
 import { cn } from '@/lib/utils';
@@ -25,6 +24,11 @@ interface TherapistDetailModalProps {
   open: boolean;
   onClose: () => void;
   initialScrollTarget?: string;
+  onOpenContactModal: (
+    therapist: TherapistData,
+    type: 'booking' | 'consultation',
+    selectedSlot?: { date_iso: string; time_label: string; format: 'online' | 'in_person' }
+  ) => void;
 }
 
 type Slot = { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string };
@@ -42,10 +46,8 @@ function hashCode(s: string) {
   return Math.abs(h);
 }
 
-export function TherapistDetailModal({ therapist, open, onClose, initialScrollTarget }: TherapistDetailModalProps) {
+export function TherapistDetailModal({ therapist, open, onClose, initialScrollTarget, onOpenContactModal }: TherapistDetailModalProps) {
   const [imageError, setImageError] = useState(false);
-  const [contactModalOpen, setContactModalOpen] = useState(false);
-  const [contactType, setContactType] = useState<'booking' | 'consultation'>('booking');
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('profile');
@@ -73,21 +75,16 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
       const payload = { type: 'contact_cta_clicked', ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id, contact_type: type } };
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
     } catch {}
-    setContactType(type);
     
     if (type === 'booking') {
-      // For booking, switch to booking mode with slot picker instead of opening modal
+      // For booking, switch to booking mode with slot picker
       setViewMode('booking');
       setSessionFormat('');
       setSelectedSlot(null);
       setWeekIndex(0);
     } else {
-      // For consultation, clear any booking state and open ContactModal directly
-      setViewMode('profile');
-      setSessionFormat('');
-      setSelectedSlot(null);
-      setWeekIndex(0);
-      setContactModalOpen(true);
+      // For consultation, call parent to open ContactModal
+      onOpenContactModal(therapist, type, undefined);
     }
   };
 
@@ -116,11 +113,13 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
       };
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
     } catch {}
-    // Close the TherapistDetailModal to avoid modal-on-modal
-    onClose();
-    // Open ContactModal for verification
-    setContactModalOpen(true);
-  }, [selectedSlot, therapist.id, onClose]);
+    // Call parent to open ContactModal for verification
+    onOpenContactModal(therapist, 'booking', {
+      date_iso: selectedSlot.date_iso,
+      time_label: selectedSlot.time_label,
+      format: selectedSlot.format
+    });
+  }, [selectedSlot, therapist, onOpenContactModal]);
 
   useEffect(() => {
     setMounted(true);
@@ -264,8 +263,6 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
 
   const handleModalClose = useCallback((isOpen: boolean) => {
     if (!isOpen) {
-      // Close ContactModal if it's open
-      setContactModalOpen(false);
       // Reset to profile view when closing
       setViewMode('profile');
       setSessionFormat('');
@@ -276,7 +273,6 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
   }, [onClose]);
 
   return (
-    <>
     <Dialog open={open} onOpenChange={handleModalClose}>
       <DialogContent
         aria-describedby={undefined}
@@ -706,27 +702,5 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
         document.body
       )}
     </Dialog>
-    
-    {/* Contact modal - rendered outside to avoid modal-on-modal */}
-    {mounted && createPortal(
-      <ContactModal
-        therapist={{
-          id: therapist.id,
-          first_name: therapist.first_name,
-          last_name: therapist.last_name,
-          photo_url: therapist.photo_url,
-          availability: therapist.availability,
-          metadata: therapist.metadata,
-        }}
-        contactType={contactType}
-        open={contactModalOpen}
-        onClose={() => {
-          setContactModalOpen(false);
-        }}
-        selectedSlot={selectedSlot || undefined}
-      />,
-      document.body
-    )}
-    </>
   );
 }

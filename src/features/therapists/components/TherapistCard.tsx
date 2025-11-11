@@ -51,8 +51,23 @@ export function TherapistCard({
   const initials = getInitials(therapist.first_name, therapist.last_name);
   const avatarColor = `hsl(${hashCode(therapist.id) % 360}, 70%, 50%)`;
 
-  // Memoize session preference normalization to prevent recalculation on every render
+  // EARTH-225: Derive format badges from actual availability slots when present,
+  // fall back to session_preferences when no slots exist (e.g., message-only therapists)
   const { offersOnline, offersInPerson } = useMemo(() => {
+    const availability = therapist.availability || [];
+    const hasSlots = Array.isArray(availability) && availability.length > 0;
+
+    if (hasSlots) {
+      // Derive from actual slot availability
+      const hasOnlineSlots = availability.some(s => s.format === 'online');
+      const hasInPersonSlots = availability.some(s => s.format === 'in_person');
+      return {
+        offersOnline: hasOnlineSlots,
+        offersInPerson: hasInPersonSlots,
+      };
+    }
+
+    // Fallback to session preferences when no slots available
     const sessionPrefs = therapist.session_preferences || [];
     const normalizedPrefs = new Set(
       (Array.isArray(sessionPrefs) ? sessionPrefs : []).map(v =>
@@ -64,7 +79,7 @@ export function TherapistCard({
       offersOnline: normalizedPrefs.has('online') || hasEither,
       offersInPerson: normalizedPrefs.has('in_person') || normalizedPrefs.has('inperson') || hasEither,
     };
-  }, [therapist.session_preferences]);
+  }, [therapist.availability, therapist.session_preferences]);
 
   // Memoize modality info lookups to prevent recalculation on every render
   const modalityInfos = useMemo(() => {

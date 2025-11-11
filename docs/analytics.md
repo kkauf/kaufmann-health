@@ -106,6 +106,9 @@ try {
 - No PII in `properties`. IPs hashed with `IP_HASH_SALT`.
 - Public site remains cookie‑free by default; only necessary cookies in restricted areas (e.g., `/admin`).
 
+## Expected funnel impact (EARTH-222)
+- **Directory ordering**: Therapists with bookable time-slots now appear first. Expected to increase `contact_modal_opened` and `contact_verification_code_sent` rates by surfacing availability upfront. Monitor conversion from directory view to contact initiation.
+
 ## Maintenance
 - Monthly review of event types; prune unused.
 - Performance: logging is best‑effort, time‑boxed (~3s) and never blocks user flows.

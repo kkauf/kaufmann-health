@@ -96,6 +96,9 @@ export function TherapistTeaserClient({
             setScrollTarget(undefined);
           }}
           initialScrollTarget={scrollTarget}
+          onOpenContactModal={() => {
+            // No-op for landing page teaser - users should go to directory for booking
+          }}
         />
       )}
     </>

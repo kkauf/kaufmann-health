@@ -57,8 +57,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       if (legacyResult.data) {
         const mappedData = legacyResult.data.map(slot => ({
           ...slot,
-          is_recurring: undefined,
-          specific_date: undefined
+          is_recurring: null,
+          specific_date: null
         }));
         return NextResponse.json({ data: mappedData, error: null });
       }
@@ -111,7 +111,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       duration_minutes?: number;
       active?: boolean;
       is_recurring?: boolean;
-      specific_date?: string;
+      specific_date?: string | null;
     };
 
     function isValidTime(v: string): boolean {
@@ -122,7 +122,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
     }
 
-    const sanitized: (SlotIn & { therapist_id: string; address: string; duration_minutes: number; active: boolean; is_recurring: boolean })[] = [];
+    const sanitized: (SlotIn & { therapist_id: string; address: string; duration_minutes: number; active: boolean; is_recurring: boolean; specific_date: string | null; day_of_week: number })[] = [];
     for (const s of slots as SlotIn[]) {
       const isRecurring = s?.is_recurring !== false; // Default to true
       const fmt = s?.format === 'in_person' ? 'in_person' : 'online';
@@ -150,7 +150,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           duration_minutes: dur,
           active: act,
           is_recurring: true,
-          specific_date: undefined
+          specific_date: null
         });
       } else {
         // One-time slot: validate specific_date
@@ -222,8 +222,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (legacyResult.data) {
         const mappedData = legacyResult.data.map(slot => ({
           ...slot,
-          is_recurring: undefined,
-          specific_date: undefined
+          is_recurring: null,
+          specific_date: null
         }));
         return NextResponse.json({ data: mappedData, error: null });
       }

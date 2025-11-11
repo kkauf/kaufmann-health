@@ -57,6 +57,12 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
   const [autoContactType, setAutoContactType] = useState<'booking' | 'consultation'>('booking');
   const [autoContactConfirmed, setAutoContactConfirmed] = useState(false);
   
+  // Contact modal state (EARTH-227): independent from detail modal
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [contactTherapist, setContactTherapist] = useState<TherapistData | null>(null);
+  const [contactType, setContactType] = useState<'booking' | 'consultation'>('booking');
+  const [contactSelectedSlot, setContactSelectedSlot] = useState<{ date_iso: string; time_label: string; format: 'online' | 'in_person' } | undefined>(undefined);
+  
   // Mobile filter sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
   const [draftModality, setDraftModality] = useState<string>('all');
@@ -184,6 +190,28 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
 
   // Note: Draft contact is now processed server-side on email/SMS verification
   // No client-side fallback needed - server creates match automatically
+
+  // EARTH-227: Handlers for TherapistDetailModal to open ContactModal independently
+  const handleOpenContactModal = (
+    therapist: TherapistData,
+    type: 'booking' | 'consultation',
+    selectedSlot?: { date_iso: string; time_label: string; format: 'online' | 'in_person' }
+  ) => {
+    setContactTherapist(therapist);
+    setContactType(type);
+    setContactSelectedSlot(selectedSlot);
+    setSelectedTherapist(null); // Close detail modal
+    setContactModalOpen(true); // Open contact modal
+  };
+
+  const handleCloseContactModal = () => {
+    setContactModalOpen(false);
+    // Don't clear therapist/slot immediately to avoid flash during close animation
+    setTimeout(() => {
+      setContactTherapist(null);
+      setContactSelectedSlot(undefined);
+    }, 200);
+  };
 
   const normalizeModality = (m: string): string => {
     return m.toLowerCase().replace(/\s+/g, '-');
@@ -499,6 +527,18 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
           therapist={selectedTherapist}
           open={!!selectedTherapist}
           onClose={() => setSelectedTherapist(null)}
+          onOpenContactModal={handleOpenContactModal}
+        />
+      )}
+      
+      {/* Contact modal - managed independently from detail modal (EARTH-227) */}
+      {contactTherapist && (
+        <ContactModal
+          therapist={contactTherapist}
+          contactType={contactType}
+          open={contactModalOpen}
+          onClose={handleCloseContactModal}
+          selectedSlot={contactSelectedSlot}
         />
       )}
 
