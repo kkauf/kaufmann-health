@@ -419,6 +419,8 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
           first_name: therapist.first_name,
           last_name: therapist.last_name,
           photo_url: therapist.photo_url,
+          availability: therapist.availability,
+          metadata: therapist.metadata,
         }}
         contactType={contactType}
         open={contactModalOpen}
