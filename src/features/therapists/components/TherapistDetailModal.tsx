@@ -121,7 +121,8 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
       };
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
     } catch {}
-    // Call parent to open ContactModal for verification
+    // Close this modal and open ContactModal with selected slot
+    // This creates a smoother transition since Contact Modal shows the same therapist header + slot
     onOpenContactModal(therapist, 'booking', {
       date_iso: selectedSlot.date_iso,
       time_label: selectedSlot.time_label,
@@ -648,7 +649,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
               <span className="break-words">Kostenloses Erstgespräch (15 min)</span>
             </Button>
           </div>
-        ) : (
+        ) : viewMode === 'booking' ? (
           <div className="sticky bottom-0 flex gap-3 pt-4">
             <Button
               variant="outline"
@@ -665,7 +666,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
               Termin buchen
             </Button>
           </div>
-        )}
+        ) : null}
       </DialogContent>
       
       {/* Image viewer (card-like, tap-to-close anywhere via portal) */}

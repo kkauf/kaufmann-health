@@ -267,8 +267,16 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
       return true;
     });
 
-    // Sort: therapists with photos first, then without photos
+    // Sort: therapists with availability first, then by photo, maintaining stable order within each group
     return filtered.sort((a, b) => {
+      const aHasAvailability = Array.isArray(a.availability) && a.availability.length > 0;
+      const bHasAvailability = Array.isArray(b.availability) && b.availability.length > 0;
+
+      // Primary sort: availability
+      if (aHasAvailability && !bHasAvailability) return -1;
+      if (!aHasAvailability && bHasAvailability) return 1;
+
+      // Secondary sort: photo (within same availability group)
       const aHasPhoto = !!a.photo_url;
       const bHasPhoto = !!b.photo_url;
 
