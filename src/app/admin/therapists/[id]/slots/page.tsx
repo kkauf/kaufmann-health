@@ -66,6 +66,7 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
   const [format, setFormat] = useState<"online" | "in_person">("online");
   const [address, setAddress] = useState<string>("");
   const [duration, setDuration] = useState<string>("60");
+  const [defaultsApplied, setDefaultsApplied] = useState(false);
   // Quick add by date
   const [quickDate, setQuickDate] = useState<string>(""); // YYYY-MM-DD
   const [quickTime, setQuickTime] = useState<string>(""); // HH:MM
@@ -129,6 +130,22 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
     fetchSlots().catch(() => {});
   }, [fetchSlots]);
 
+  useEffect(() => {
+    if (defaultsApplied) return;
+    if (!slots || slots.length === 0) return;
+    const last = [...slots]
+      .sort((a, b) => {
+        const ta = new Date(a.created_at || 0).getTime();
+        const tb = new Date(b.created_at || 0).getTime();
+        return tb - ta;
+      })[0] || slots[slots.length - 1];
+    if (last) {
+      setFormat(last.format);
+      setDuration(String(last.duration_minutes || 60));
+      setDefaultsApplied(true);
+    }
+  }, [slots, defaultsApplied]);
+
   async function addSlot() {
     if (!therapistId) return;
     setSaving(true);
@@ -168,7 +185,7 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
       setDay("");
       setTime("");
       setAddress("");
-      setDuration("60");
+      setDuration(String(durationNum));
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
       setError(msg);
