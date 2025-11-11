@@ -8,12 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, AlertCircle, Shield, Lock, FileCheck, ShieldCheck, Mail, MailCheck, MapPin, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Loader2, AlertCircle, Shield, Lock, FileCheck, ShieldCheck, Mail, MailCheck, MapPin, ChevronLeft, ChevronRight, Calendar, Video, User } from 'lucide-react';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { validatePhone } from '@/lib/verification/usePhoneValidation';
 import ConsentSection from '@/components/ConsentSection';
 import { getAttribution } from '@/lib/attribution';
+import { cn } from '@/lib/utils';
 
 type ContactType = 'booking' | 'consultation';
 type Slot = { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string };
@@ -166,7 +167,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     return () => {
       cancelled = true;
     };
-  }, [open, preAuth, therapist.first_name, contactType, awaitingVerificationSend, forceSuccess, step]);
+  }, [open, preAuth, therapist.first_name, contactType, awaitingVerificationSend, forceSuccess]);
 
   // Prefill session format if a slot was selected externally
   useEffect(() => {
@@ -863,6 +864,10 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     const showBookingPicker = hasAvailability;
     const selectedFormat = sessionFormat as 'online' | 'in_person' | '';
     const resolvedAddress = selectedFormat === 'in_person' ? (selectedBookingSlot?.address || therapist.metadata?.profile?.practice_address || '') : '';
+    
+    // Check which formats have available slots
+    const hasOnlineSlots = hasAvailability && therapist.availability!.some(s => s.format === 'online');
+    const hasInPersonSlots = hasAvailability && therapist.availability!.some(s => s.format === 'in_person');
 
     const slotsForWeek: Slot[] = slotsByWeek[weekIndex]?.[1]?.slots || [];
     const filteredSlots: Slot[] = selectedFormat ? slotsForWeek.filter((s) => s.format === selectedFormat) : slotsForWeek;
@@ -935,28 +940,42 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       )}
 
       {/* Session format selector - only for booking type */}
-      {contactType === 'booking' && (
+      {contactType === 'booking' && showBookingPicker && (hasOnlineSlots || hasInPersonSlots) && (
         <div className="space-y-3">
           <Label className="text-sm font-medium">Format *</Label>
           <div className="flex gap-2">
-            <Button
-              type="button"
-              variant={sessionFormat === 'online' ? 'default' : 'outline'}
-              onClick={() => setSessionFormat('online')}
-              disabled={loading}
-              className={sessionFormat === 'online' ? 'flex-1 h-11 bg-emerald-600 hover:bg-emerald-700' : 'flex-1 h-11'}
-            >
-              Online
-            </Button>
-            <Button
-              type="button"
-              variant={sessionFormat === 'in_person' ? 'default' : 'outline'}
-              onClick={() => setSessionFormat('in_person')}
-              disabled={loading}
-              className={sessionFormat === 'in_person' ? 'flex-1 h-11 bg-emerald-600 hover:bg-emerald-700' : 'flex-1 h-11'}
-            >
-              Vor Ort
-            </Button>
+            {hasOnlineSlots && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSessionFormat('online')}
+                disabled={loading}
+                className={cn(
+                  'flex-1 h-11 gap-2',
+                  'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100',
+                  sessionFormat === 'online' && 'ring-2 ring-emerald-400 border-emerald-400'
+                )}
+              >
+                <Video className="h-4 w-4" />
+                Online
+              </Button>
+            )}
+            {hasInPersonSlots && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSessionFormat('in_person')}
+                disabled={loading}
+                className={cn(
+                  'flex-1 h-11 gap-2',
+                  'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100',
+                  sessionFormat === 'in_person' && 'ring-2 ring-emerald-400 border-emerald-400'
+                )}
+              >
+                <User className="h-4 w-4" />
+                Vor Ort
+              </Button>
+            )}
           </div>
           <p className="text-xs text-gray-500 leading-relaxed">
             Soll der Termin online oder vor Ort stattfinden?

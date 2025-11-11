@@ -51,17 +51,25 @@ export function TherapistCard({
   const initials = getInitials(therapist.first_name, therapist.last_name);
   const avatarColor = `hsl(${hashCode(therapist.id) % 360}, 70%, 50%)`;
 
-  const sessionPrefs = therapist.session_preferences || [];
+  // Memoize session preference normalization to prevent recalculation on every render
+  const { offersOnline, offersInPerson } = useMemo(() => {
+    const sessionPrefs = therapist.session_preferences || [];
+    const normalizedPrefs = new Set(
+      (Array.isArray(sessionPrefs) ? sessionPrefs : []).map(v =>
+        String(v).toLowerCase().replace(/[\s-]+/g, '_')
+      )
+    );
+    const hasEither = normalizedPrefs.has('either') || normalizedPrefs.has('both');
+    return {
+      offersOnline: normalizedPrefs.has('online') || hasEither,
+      offersInPerson: normalizedPrefs.has('in_person') || normalizedPrefs.has('inperson') || hasEither,
+    };
+  }, [therapist.session_preferences]);
 
-  // Normalize session preferences to handle various formats
-  const normalizedPrefs = new Set(
-    (Array.isArray(sessionPrefs) ? sessionPrefs : []).map(v =>
-      String(v).toLowerCase().replace(/[\s-]+/g, '_')
-    )
-  );
-  const hasEither = normalizedPrefs.has('either') || normalizedPrefs.has('both');
-  const offersOnline = normalizedPrefs.has('online') || hasEither;
-  const offersInPerson = normalizedPrefs.has('in_person') || normalizedPrefs.has('inperson') || hasEither;
+  // Memoize modality info lookups to prevent recalculation on every render
+  const modalityInfos = useMemo(() => {
+    return (therapist.modalities || []).slice(0, 3).map(m => getModalityInfo(m));
+  }, [therapist.modalities]);
 
   const handleContactClick = (type: 'booking' | 'consultation') => {
     try {
@@ -183,8 +191,7 @@ export function TherapistCard({
                 aria-label="Modalitäten"
               >
                 <div className="inline-flex gap-2">
-                  {therapist.modalities.slice(0, 3).map((modality, idx) => {
-                    const modalityInfo = getModalityInfo(modality);
+                  {modalityInfos.map((modalityInfo, idx) => {
                     const handleModalityClick = (e: React.MouseEvent | React.KeyboardEvent) => {
                       e.stopPropagation();
                       openDetails();

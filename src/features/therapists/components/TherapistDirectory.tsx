@@ -33,6 +33,16 @@ export type TherapistData = {
   availability?: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[];
 };
 
+// Static modality style configuration (moved outside component to prevent recreation)
+const BASE_MODALITY_STYLE: Record<string, { cls: string; Icon: React.ElementType; label: string }> = {
+  'narm': { label: 'NARM', cls: 'border-teal-200 bg-teal-50 text-teal-800 hover:border-teal-300 hover:bg-teal-100', Icon: HeartHandshake },
+  'somatic-experiencing': { label: 'Somatic Experiencing', cls: 'border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-300 hover:bg-amber-100', Icon: Shell },
+  'hakomi': { label: 'Hakomi', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100', Icon: Wind },
+  'core-energetics': { label: 'Core Energetics', cls: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 hover:border-fuchsia-300 hover:bg-fuchsia-100', Icon: Target },
+};
+
+const DEFAULT_MODALITY_STYLE = { cls: 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100', Icon: Target };
+
 export function TherapistDirectory({ initialTherapists = [] }: { initialTherapists?: TherapistData[] }) {
   const [therapists, setTherapists] = useState<TherapistData[]>(initialTherapists);
   const [loading, setLoading] = useState(initialTherapists.length === 0);
@@ -198,24 +208,13 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
     return Array.from(modalitySet).sort();
   }, [therapists]);
 
-  // Visual style mapping for modality pills (align with TherapistPreview)
-  const MODALITY_STYLE: Record<string, { cls: string; Icon: React.ElementType; label: string }> = useMemo(() => {
-    const base: Record<string, { cls: string; Icon: React.ElementType; label: string }> = {
-      'narm': { label: 'NARM', cls: 'border-teal-200 bg-teal-50 text-teal-800 hover:border-teal-300 hover:bg-teal-100', Icon: HeartHandshake },
-      'somatic-experiencing': { label: 'Somatic Experiencing', cls: 'border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-300 hover:bg-amber-100', Icon: Shell },
-      'hakomi': { label: 'Hakomi', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100', Icon: Wind },
-      'core-energetics': { label: 'Core Energetics', cls: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 hover:border-fuchsia-300 hover:bg-fuchsia-100', Icon: Target },
-    };
-    // Include any other modalities with neutral style
-    const map: Record<string, { cls: string; Icon: React.ElementType; label: string }> = { ...base };
-    allModalities.forEach(m => {
-      const key = normalizeModality(m);
-      if (!map[key]) {
-        map[key] = { label: m, cls: 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100', Icon: Target };
-      }
-    });
-    return map;
-  }, [allModalities]);
+  // Helper function to get modality style (uses static constants)
+  const getModalityStyle = (modality: string) => {
+    const key = normalizeModality(modality);
+    const baseStyle = BASE_MODALITY_STYLE[key];
+    if (baseStyle) return baseStyle;
+    return { ...DEFAULT_MODALITY_STYLE, label: modality };
+  };
 
   const filteredTherapists = useMemo(() => {
     const filtered = therapists.filter(t => {
@@ -378,7 +377,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
                 </Badge>
                 {allModalities.map((m) => {
                   const key = normalizeModality(m);
-                  const conf = MODALITY_STYLE[key] || { cls: 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100', Icon: Target, label: m };
+                  const conf = getModalityStyle(m);
                   const Icon = conf.Icon;
                   const selected = selectedModality === key;
                   return (
@@ -549,7 +548,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
                   </Badge>
                   {allModalities.map((m) => {
                     const key = normalizeModality(m);
-                    const conf = MODALITY_STYLE[key] || { cls: 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100', Icon: Target, label: m };
+                    const conf = getModalityStyle(m);
                     const Icon = conf.Icon;
                     const selected = draftModality === m;
                     return (
