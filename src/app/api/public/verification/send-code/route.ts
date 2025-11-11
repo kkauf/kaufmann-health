@@ -508,7 +508,9 @@ export async function POST(req: NextRequest) {
 
       confirmUrl = `${confirmUrl}&id=${encodeURIComponent(personId)}`;
 
-      const emailContent = renderEmailConfirmation({ confirmUrl });
+      // Check if this is a booking flow (draft_booking present)
+      const isBooking = !!draft_booking;
+      const emailContent = renderEmailConfirmation({ confirmUrl, isBooking });
       
       let emailResult: { success: boolean; error?: string } = { success: true };
       try {

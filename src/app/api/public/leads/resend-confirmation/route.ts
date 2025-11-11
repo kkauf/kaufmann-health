@@ -141,7 +141,9 @@ export async function POST(req: Request) {
       const isSafeRedirect = !!(storedRedirect && storedRedirect.startsWith('/') && !storedRedirect.startsWith('/api') && !storedRedirect.startsWith('//'));
       const withFs = fs ? `${base}&fs=${encodeURIComponent(fs)}` : base;
       const confirmUrl = isSafeRedirect ? `${withFs}&redirect=${encodeURIComponent(storedRedirect)}` : withFs;
-      const emailContent = renderEmailConfirmation({ confirmUrl });
+      // Check if this is a booking flow (draft_booking present in metadata)
+      const isBooking = !!(metadata['draft_booking']);
+      const emailContent = renderEmailConfirmation({ confirmUrl, isBooking });
       void track({
         type: 'email_attempted',
         level: 'info',

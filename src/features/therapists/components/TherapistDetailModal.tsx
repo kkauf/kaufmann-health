@@ -77,11 +77,19 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
     } catch {}
     
     if (type === 'booking') {
-      // For booking, switch to booking mode with slot picker
-      setViewMode('booking');
-      setSessionFormat('');
-      setSelectedSlot(null);
-      setWeekIndex(0);
+      // Check if therapist has available slots
+      const hasSlots = selectableSlots.length > 0;
+      
+      if (hasSlots) {
+        // Has slots: switch to booking mode with slot picker
+        setViewMode('booking');
+        setSessionFormat('');
+        setSelectedSlot(null);
+        setWeekIndex(0);
+      } else {
+        // No slots: open ContactModal for messaging
+        onOpenContactModal(therapist, 'booking', undefined);
+      }
     } else {
       // For consultation, call parent to open ContactModal
       onOpenContactModal(therapist, type, undefined);
@@ -497,7 +505,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
               {(hasOnlineSlots || hasInPersonSlots) && (
                 <div className="space-y-3">
                   <Label className="text-sm font-medium">Format *</Label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 max-w-md mx-auto">
                     {hasOnlineSlots && (
                       <Button
                         type="button"
@@ -529,13 +537,15 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
                       </Button>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 leading-relaxed">
+                  <p className="text-xs text-gray-500 leading-relaxed text-center">
                     Soll der Termin online oder vor Ort stattfinden?
                   </p>
                   {sessionFormat === 'in_person' && resolvedAddress && (
-                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 shadow-sm">
-                      <MapPin className="h-3.5 w-3.5" />
-                      <span className="truncate max-w-[18rem]" title={resolvedAddress}>{resolvedAddress}</span>
+                    <div className="flex justify-center">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 shadow-sm">
+                        <MapPin className="h-3.5 w-3.5" />
+                        <span className="truncate max-w-[18rem]" title={resolvedAddress}>{resolvedAddress}</span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -544,13 +554,13 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
               {/* Week navigation and slot picker */}
               {slotsByWeek.length > 0 && (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-10 w-10" 
-                      onClick={() => setWeekIndex((i) => Math.max(0, i - 1))} 
+                  <div className="flex items-center justify-between max-w-sm mx-auto">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10"
+                      onClick={() => setWeekIndex((i) => Math.max(0, i - 1))}
                       disabled={weekIndex <= 0}
                       aria-label="Vorherige Woche"
                     >
@@ -559,12 +569,12 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
                     <div className="text-sm font-medium text-gray-900">
                       {slotsByWeek[weekIndex]?.[1]?.label || ''}
                     </div>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-10 w-10" 
-                      onClick={() => setWeekIndex((i) => Math.min(slotsByWeek.length - 1, i + 1))} 
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10"
+                      onClick={() => setWeekIndex((i) => Math.min(slotsByWeek.length - 1, i + 1))}
                       disabled={weekIndex >= slotsByWeek.length - 1}
                       aria-label="Nächste Woche"
                     >
@@ -572,7 +582,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
                     </Button>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 justify-center">
                     {filteredSlots.map((s: Slot, idx: number) => {
                       const dt = slotDate(s);
                       const disabled = dt < minSelectable || (sessionFormat ? (s.format !== sessionFormat) : false);
