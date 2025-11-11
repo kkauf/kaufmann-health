@@ -171,6 +171,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       return typeof v === 'object' && v !== null;
     }
     const currMeta = isObject(current?.metadata) ? (current!.metadata as Record<string, unknown>) : {};
+    const beforeStatus = typeof (current as { status?: string | null } | null)?.status === 'string'
+      ? ((current as { status?: string | null }).status as string)
+      : undefined;
     const profileMeta = isObject(currMeta.profile) ? (currMeta.profile as Record<string, unknown>) : {};
 
     if (typeof approach_text === 'string') {
@@ -231,7 +234,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       return NextResponse.json({ data: null, error: 'Failed to update therapist' }, { status: 500 });
     }
 
-    // Post-update: send emails if status changed to verified or rejected
     try {
       const { data: after } = await supabaseServer
         .from('therapists')
@@ -244,7 +246,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         (after as { last_name?: string | null })?.last_name || '',
       ].join(' ').trim();
       const finalStatus = (after as { status?: string | null })?.status || undefined;
-      if (to && finalStatus === 'verified') {
+      if (to && finalStatus === 'verified' && beforeStatus !== 'verified') {
         const visible = Boolean((after as { photo_url?: string | null })?.photo_url);
         const approval = renderTherapistApproval({ name, profileVisible: visible });
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.update', props: { stage: 'therapist_approval', therapist_id: id, subject: approval.subject } });
@@ -252,7 +254,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         if (!sent) {
           await logError('admin.api.therapists.update', new Error('Approval email send failed'), { stage: 'therapist_approval_send_failed', therapist_id: id, email: to });
         }
-      } else if (to && finalStatus === 'rejected') {
+      } else if (to && finalStatus === 'rejected' && beforeStatus !== 'rejected') {
         const uploadUrl = `${BASE_URL}/therapists/upload-documents/${id}`;
         const rejection = renderTherapistRejection({ name, uploadUrl, adminNotes: verification_notes || null });
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.update', props: { stage: 'therapist_rejection', therapist_id: id, subject: rejection.subject } });

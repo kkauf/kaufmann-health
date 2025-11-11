@@ -5,6 +5,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 dotenv.config({ path: '.env.local' });
 
+// Default to suppressing outbound emails during E2E runs unless explicitly overridden
+if (!process.env.EMAIL_SUPPRESS_OUTBOUND) {
+  process.env.EMAIL_SUPPRESS_OUTBOUND = 'true';
+}
+
 // Prefer explicit E2E_BASE_URL, else align with the running Next.js base URL if provided
 const base = process.env.E2E_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://127.0.0.1:3000';
 

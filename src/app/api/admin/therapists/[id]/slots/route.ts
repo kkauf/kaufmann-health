@@ -123,7 +123,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     const { error: upErr } = await supabaseServer
       .from('therapist_slots')
-      .upsert(sanitized, { ignoreDuplicates: true });
+      .upsert(sanitized, { ignoreDuplicates: true, onConflict: 'therapist_id,day_of_week,time_local,format' });
 
     if (upErr) {
       await logError('admin.api.therapists.slots', upErr, { stage: 'upsert', therapist_id: id });

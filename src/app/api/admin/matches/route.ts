@@ -191,7 +191,7 @@ export async function GET(req: Request) {
       );
     };
 
-    const filteredData = data.filter(match => !isTestMatch(match));
+    const filteredData = process.env.NODE_ENV === 'production' ? data.filter(match => !isTestMatch(match)) : data;
 
     return NextResponse.json({ data: filteredData, error: null }, { status: 200 });
   } catch (e) {

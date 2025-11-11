@@ -78,7 +78,7 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
     return false; // disabled in tests or locally
   }
 
-  const toList = !params.to
+  let toList = !params.to
     ? []
     : Array.isArray(params.to)
     ? params.to
@@ -95,6 +95,28 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
   }
 
   const fromAddress = params.from || process.env.LEADS_FROM_EMAIL || EMAIL_FROM_DEFAULT;
+
+  const suppress = process.env.EMAIL_SUPPRESS_OUTBOUND === 'true' || process.env.EMAIL_SUPPRESS_OUTBOUND === '1';
+  const redirectTo = process.env.EMAIL_REDIRECT_TO;
+  if (suppress) {
+    if (!redirectTo) {
+      await track({
+        type: 'email_suppressed',
+        level: 'info',
+        source: 'email.client',
+        props: { subject: params.subject, to_count: toList.length, ...(params.context || {}) },
+      });
+      return false;
+    } else {
+      await track({
+        type: 'email_redirected',
+        level: 'info',
+        source: 'email.client',
+        props: { subject: params.subject, to_count: toList.length, redirected_to: redirectTo, ...(params.context || {}) },
+      });
+      toList = [redirectTo];
+    }
+  }
 
   // Minimal resiliency: timeout + retry on 429/5xx with exponential backoff. Never throw.
   const maxAttempts = 3;
