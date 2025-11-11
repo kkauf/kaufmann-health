@@ -1163,9 +1163,9 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader className="pb-4">
           <DialogTitle className="text-xl font-bold">
-            {step === 'verify' && 'Anmelden um zu senden'}
+            {step === 'verify' && (contactType === 'booking' ? 'Termin buchen' : 'Anmelden um zu senden')}
             {step === 'verify-code' && 'Code bestätigen'}
-            {step === 'compose' && 'Nachricht schreiben'}
+            {step === 'compose' && (contactType === 'booking' && therapist.availability?.length ? 'Termin buchen' : 'Nachricht schreiben')}
             {step === 'verify-link' && 'E‑Mail bestätigen'}
             {step === 'success' && 'Erfolgreich!'}
           </DialogTitle>
