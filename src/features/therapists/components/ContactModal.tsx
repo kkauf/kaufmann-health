@@ -661,7 +661,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           disabled={loading || !name.trim() || (contactMethod === 'email' ? !email.trim() : !phone.trim())}
           className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700"
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Bestätigen'}
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (contactType === 'booking' ? 'Termin buchen' : 'Bestätigen')}
         </Button>
       </div>
       
@@ -1072,23 +1072,27 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           <span>{error}</span>
         </div>
       )}
-      <ConsentSection actor="directory" className="-mt-2" />
-      <p className="mt-2 text-xs sm:text-sm text-gray-600 leading-relaxed flex flex-wrap items-center gap-3">
-        <span className="inline-flex items-center gap-1.5">
-          <Shield className="h-3.5 w-3.5 text-emerald-600" />
-          <span>DSGVO‑konform</span>
-        </span>
-        <span className="text-gray-300">•</span>
-        <span className="inline-flex items-center gap-1.5">
-          <Lock className="h-3.5 w-3.5 text-emerald-600" />
-          <span>SSL‑verschlüsselt</span>
-        </span>
-        <span className="text-gray-300">•</span>
-        <span className="inline-flex items-center gap-1.5">
-          <FileCheck className="h-3.5 w-3.5 text-emerald-600" />
-          <span>Privat – keine Krankenkassenakte</span>
-        </span>
-      </p>
+      {!showBookingPicker && (
+        <>
+          <ConsentSection actor="directory" className="-mt-2" />
+          <p className="mt-2 text-xs sm:text-sm text-gray-600 leading-relaxed flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-1.5">
+              <Shield className="h-3.5 w-3.5 text-emerald-600" />
+              <span>DSGVO‑konform</span>
+            </span>
+            <span className="text-gray-300">•</span>
+            <span className="inline-flex items-center gap-1.5">
+              <Lock className="h-3.5 w-3.5 text-emerald-600" />
+              <span>SSL‑verschlüsselt</span>
+            </span>
+            <span className="text-gray-300">•</span>
+            <span className="inline-flex items-center gap-1.5">
+              <FileCheck className="h-3.5 w-3.5 text-emerald-600" />
+              <span>Privat – keine Krankenkassenakte</span>
+            </span>
+          </p>
+        </>
+      )}
       
       <div className="flex gap-3 pt-2">
         <Button 
