@@ -977,7 +977,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                 : s.format === 'online'
                   ? 'border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100'
                   : 'border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-100';
-              const cls = `h-11 px-3 inline-flex items-center gap-1.5 rounded-full border text-sm font-medium shadow-sm transition ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow'} ${base}`;
+              const cls = `h-11 px-3 inline-flex items-center gap-1.5 rounded-full border text-sm font-medium shadow-sm transition-all duration-200 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow'} ${base}`;
               const day = dt.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
               return (
                 <button
