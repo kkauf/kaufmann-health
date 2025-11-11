@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, AlertCircle, Shield, Lock, FileCheck, ShieldCheck, Mail, MailCheck, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, AlertCircle, Shield, Lock, FileCheck, ShieldCheck, Mail, MailCheck, MapPin, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { validatePhone } from '@/lib/verification/usePhoneValidation';
@@ -881,13 +881,29 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-gray-900">{therapistName}</p>
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <p className="text-gray-600">
-              {contactType === 'booking' ? 'Termin vereinbaren' : 'Erstgespräch (15 Min)'}
-            </p>
-            <Badge variant="outline" title="Profil geprüft: Qualifikation & Lizenzen verifiziert" className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Verifiziert
-            </Badge>
+            {selectedBookingSlot ? (
+              <div className="inline-flex items-center gap-1.5 rounded-full border-2 border-emerald-300 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-800 shadow-sm">
+                <Calendar className="h-3.5 w-3.5" />
+                <span>
+                  {(() => {
+                    const dt = slotDate(selectedBookingSlot);
+                    const day = dt.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+                    return `${day} ${selectedBookingSlot.time_label}`;
+                  })()}
+                </span>
+                <span className="opacity-70">• {selectedBookingSlot.format === 'online' ? 'Online' : 'Vor Ort'}</span>
+              </div>
+            ) : (
+              <>
+                <p className="text-gray-600">
+                  {contactType === 'booking' ? 'Termin vereinbaren' : 'Erstgespräch (15 Min)'}
+                </p>
+                <Badge variant="outline" title="Profil geprüft: Qualifikation & Lizenzen verifiziert" className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Verifiziert
+                </Badge>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -973,7 +989,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
               const disabled = dt < minSelectable || (selectedFormat ? (s.format !== selectedFormat) : false);
               const selected = !!selectedBookingSlot && selectedBookingSlot.date_iso === s.date_iso && selectedBookingSlot.time_label === s.time_label && selectedBookingSlot.format === s.format;
               const base = selected
-                ? 'ring-2 ring-emerald-300 border-emerald-300 bg-emerald-50 text-emerald-800'
+                ? 'ring-2 ring-emerald-400 border-2 border-emerald-400 bg-emerald-50 text-emerald-900 shadow-md scale-105'
                 : s.format === 'online'
                   ? 'border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100'
                   : 'border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-100';
