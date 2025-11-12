@@ -245,7 +245,7 @@ export async function GET(req: Request) {
             const bookedKey = `${t.id}|${ymd}|${time}`;
             if (booked.has(bookedKey)) continue;
             const fmt = (s.format === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
-            const addr = fmt === 'in_person' ? String((s as any).address || '').trim() : '';
+            const addr = fmt === 'in_person' ? String(s.address || '').trim() : '';
             if (hasSpecificTimePrefs) {
               const h = parseInt(time.slice(0,2), 10);
               const isMorning = h >= 8 && h < 12;

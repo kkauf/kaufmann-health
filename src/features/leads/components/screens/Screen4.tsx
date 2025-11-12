@@ -6,14 +6,11 @@ import { Button } from '@/components/ui/button';
 
 export type Screen4Values = {
   gender?: 'Frau' | 'Mann' | 'Keine Präferenz' | 'Divers/non-binär';
-  language?: 'Deutsch' | 'Englisch' | 'Andere';
-  language_other?: string;
   time_slots?: string[]; // e.g., 'Morgens (8-12 Uhr)'
   methods?: string[]; // Still here for compatibility, but modality is handled in NewScreen5
 };
 
 const GENDER: NonNullable<Screen4Values['gender']>[] = ['Frau', 'Mann', 'Keine Präferenz', 'Divers/non-binär'];
-const LANGS: NonNullable<Screen4Values['language']>[] = ['Deutsch', 'Englisch', 'Andere'];
 const TIMES = ['Morgens (8-12 Uhr)', 'Nachmittags (12-17 Uhr)', 'Abends (17-21 Uhr)', 'Wochenende', 'Bin flexibel'];
 
 export default function Screen4({
@@ -29,16 +26,9 @@ export default function Screen4({
   onBack: () => void;
   disabled?: boolean;
 }) {
-  const [errors, setErrors] = React.useState<{ language?: string; other?: string; time_slots?: string; methods?: string }>({});
-
+  // No required fields anymore - validation always passes
   function validate() {
-    const e: { language?: string; other?: string; time_slots?: string; methods?: string } = {};
-    if (!values.language) e.language = 'Bitte wähle eine Sprache.';
-    if (values.language === 'Andere' && !(values.language_other && values.language_other.trim())) {
-      e.other = 'Bitte gib die gewünschte Sprache an.';
-    }
-    setErrors(e);
-    return Object.keys(e).length === 0;
+    return true;
   }
 
   const toggle = (key: 'time_slots' | 'methods', val: string) => {
@@ -69,36 +59,6 @@ export default function Screen4({
             ))}
           </div>
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <p className="font-medium">In welcher Sprache möchtest du Therapie machen?*</p>
-        <div className="grid gap-2">
-          {LANGS.map((opt) => (
-            <button
-              key={opt}
-              type="button"
-              className={`h-11 rounded border px-4 text-left ${values.language === opt ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
-              disabled={!!disabled}
-              aria-disabled={disabled}
-              onClick={() => onChange({ language: opt })}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-        {values.language === 'Andere' && (
-          <input
-            type="text"
-            className="mt-2 h-11 w-full rounded border border-gray-300 px-3"
-            placeholder="Welche Sprache?"
-            value={values.language_other || ''}
-            onChange={(e) => onChange({ language_other: e.target.value })}
-            disabled={!!disabled}
-          />
-        )}
-        {errors.language && <p className="text-sm text-red-600">{errors.language}</p>}
-        {errors.other && <p className="text-sm text-red-600">{errors.other}</p>}
       </div>
 
       <div className="space-y-2">

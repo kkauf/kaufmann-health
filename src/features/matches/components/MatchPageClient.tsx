@@ -376,7 +376,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             modalities: t.modalities || [],
             session_preferences: t.session_preferences || [],
             approach_text: t.approach_text || '',
-            availability: Array.isArray(t.availability) ? (t.availability as any) : [],
+            availability: Array.isArray(t.availability) ? t.availability as { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] : [],
           };
 
           return (

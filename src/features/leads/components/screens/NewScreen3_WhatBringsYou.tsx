@@ -38,7 +38,7 @@ export default function NewScreen3_WhatBringsYou({
           disabled={disabled}
         />
         <p className="text-sm text-muted-foreground">
-          Hilft uns, passendere Therapeut:innen zu finden. Du kannst dies auch überspringen.
+          Optional – du kannst das Feld auch leer lassen und später mit deiner Therapeut:in besprechen.
         </p>
       </div>
 
