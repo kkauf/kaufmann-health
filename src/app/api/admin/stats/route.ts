@@ -40,7 +40,7 @@ type StatsResponse = {
   totals: {
     therapists: number;
     clients: number;
-    matches: number;
+    bookings: number;
   };
   pageTraffic: {
     top: Array<{ page_path: string; sessions: number }>;
@@ -204,7 +204,7 @@ export async function GET(req: Request) {
     // === TOTALS ===
     // Note: Queries ALL records (not filtered by time window) to show lifetime totals
     // Test filter: only exclude if metadata.is_test explicitly = 'true' (allow NULL/missing)
-    const [therapistsRes, clientsRes, matchesRes] = await Promise.all([
+    const [therapistsRes, clientsRes, bookingsRes] = await Promise.all([
       supabaseServer
         .from('therapists')
         .select('id', { count: 'exact', head: true })
@@ -217,9 +217,8 @@ export async function GET(req: Request) {
         .or('metadata->>is_test.is.null,metadata->>is_test.eq.false')
         .not('email', 'ilike', '%@example.com'),
       supabaseServer
-        .from('matches')
-        .select('id', { count: 'exact', head: true })
-        .or('metadata->>is_test.is.null,metadata->>is_test.eq.false'),
+        .from('bookings')
+        .select('id', { count: 'exact', head: true }),
     ]);
 
     // Log errors for debugging
@@ -229,14 +228,14 @@ export async function GET(req: Request) {
     if (clientsRes.error) {
       await logError('admin.api.stats', clientsRes.error, { stage: 'totals_clients' });
     }
-    if (matchesRes.error) {
-      await logError('admin.api.stats', matchesRes.error, { stage: 'totals_matches' });
+    if (bookingsRes.error) {
+      await logError('admin.api.stats', bookingsRes.error, { stage: 'totals_bookings' });
     }
 
     const totals = {
       therapists: therapistsRes.error ? 0 : (therapistsRes.count || 0),
       clients: clientsRes.error ? 0 : (clientsRes.count || 0),
-      matches: matchesRes.error ? 0 : (matchesRes.count || 0),
+      bookings: bookingsRes.error ? 0 : (bookingsRes.count || 0),
     };
 
     // === PAGE TRAFFIC ===
@@ -1045,6 +1044,17 @@ export async function GET(req: Request) {
       matchFunnel.response_rate = pct(matchFunnel.therapist_responded, matchFunnel.therapist_contacted);
       matchFunnel.acceptance_rate = pct(matchFunnel.accepted, matchFunnel.therapist_responded);
       matchFunnel.overall_conversion = pct(matchFunnel.accepted, matchFunnel.total_matches);
+
+      // Override the top-line "total" with successful bookings in the same window
+      try {
+        const { count: bookingCount, error: bookingErr } = await supabaseServer
+          .from('bookings')
+          .select('id', { count: 'exact', head: true })
+          .gte('created_at', sinceIso);
+        if (!bookingErr && typeof bookingCount === 'number') {
+          matchFunnel.total_matches = bookingCount;
+        }
+      } catch {}
     } catch (e) {
       await logError('admin.api.stats', e, { stage: 'match_funnel' });
     }

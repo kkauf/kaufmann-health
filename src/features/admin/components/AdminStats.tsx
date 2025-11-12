@@ -9,7 +9,7 @@ type StatsData = {
   totals: {
     therapists: number;
     clients: number;
-    matches: number;
+    bookings: number;
   };
   pageTraffic: {
     top: Array<{ page_path: string; sessions: number }>;
@@ -200,11 +200,11 @@ export default function AdminStats() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Matches</CardTitle>
-            <CardDescription>Gesamtzahl aller Matches</CardDescription>
+            <CardTitle>Buchungen</CardTitle>
+            <CardDescription>Erfolgreiche Buchungen (gesamt)</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-semibold">{data?.totals.matches ?? '—'}</div>
+            <div className="text-3xl font-semibold">{data?.totals.bookings ?? '—'}</div>
           </CardContent>
         </Card>
       </div>
@@ -232,8 +232,8 @@ export default function AdminStats() {
       {data?.matchFunnel && (
         <FunnelCard
           title="Match Conversion Funnel"
-          description={`Therapist-patient matching pipeline. Matches progress: Admin creates → Therapist contacted (email sent) → Therapist responds (accepts/declines outreach) → Patient selects → Final acceptance. Gap between Total and Contacted = proposed matches not yet sent to therapist.`}
-          totalLabel="Total Matches"
+          description={`Therapist-patient matching pipeline. Oben: erfolgreiche Buchungen im gewählten Zeitraum. Darunter: Match-Fortschritt (Admin erstellt → kontaktiert → Antwort → Auswahl → Annahme). Lücke zwischen Erstellt und Kontaktiert = noch nicht versandte Vorschläge.`}
+          totalLabel="Erfolgreiche Buchungen (Zeitraum)"
           totalCount={data.matchFunnel.total_matches}
           items={[
             { label: 'Therapist Contacted', count: data.matchFunnel.therapist_contacted, color: 'cyan' },
