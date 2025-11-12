@@ -72,7 +72,7 @@ export async function GET() {
           .limit(1000);
 
         let slotsData = initial.data as SlotRow[] | null;
-        let errorMsg = String(initial.error?.message || '');
+        const errorMsg = String(initial.error?.message || '');
 
         // Fallback to legacy schema if columns don't exist
         if (initial.error && /does not exist/i.test(errorMsg)) {
