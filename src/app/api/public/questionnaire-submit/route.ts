@@ -133,14 +133,18 @@ async function createInstantMatchesForPatient(patientId: string): Promise<{ matc
     // Create match records
     let secureUuid: string = randomUUID();
     for (let i = 0; i < top.length; i++) {
+      // Only set secure_uuid on the first inserted row to avoid violating the unique index
+      const payload: Record<string, unknown> = {
+        patient_id: patientId,
+        therapist_id: top[i].t.id,
+        status: 'suggested',
+      };
+      if (i === 0 && secureUuid) {
+        payload.secure_uuid = secureUuid;
+      }
       const { data: row } = await supabaseServer
         .from('matches')
-        .insert({
-          patient_id: patientId,
-          therapist_id: top[i].t.id,
-          status: 'suggested',
-          secure_uuid: secureUuid,
-        })
+        .insert(payload)
         .select('secure_uuid')
         .single<{ secure_uuid?: string | null }>();
       if (i === 0 && row?.secure_uuid) secureUuid = row.secure_uuid;
