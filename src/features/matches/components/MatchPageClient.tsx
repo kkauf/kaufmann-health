@@ -437,7 +437,13 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       {/* Contact modal (pre-auth) */}
       {modalFor && (
         <ContactModal
-          therapist={{ id: modalFor.therapist.id, first_name: modalFor.therapist.first_name, last_name: modalFor.therapist.last_name, photo_url: modalFor.therapist.photo_url || undefined }}
+          therapist={{ 
+            id: modalFor.therapist.id, 
+            first_name: modalFor.therapist.first_name, 
+            last_name: modalFor.therapist.last_name, 
+            photo_url: modalFor.therapist.photo_url || undefined,
+            availability: modalFor.therapist.availability || [],
+          }}
           contactType={modalFor.type}
           open={!!modalFor}
           onClose={() => setModalFor(null)}
