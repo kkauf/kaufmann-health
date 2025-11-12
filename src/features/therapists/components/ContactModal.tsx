@@ -57,11 +57,12 @@ interface PreAuthParams {
 }
 
 export function ContactModal({ therapist, contactType, open, onClose, onSuccess, preAuth, verified, confirmed, selectedSlot, requireVerification }: ContactModalProps & { preAuth?: PreAuthParams }) {
-  // Decide starting step: force verification first when required
+  // Decide starting step
+  // For preAuth (matches) we always start in 'compose' to mirror directory behavior
   const needsVerification = Boolean(requireVerification);
   const initialStep: Step = confirmed
     ? 'success'
-    : (needsVerification ? 'verify' : (contactType === 'booking' && selectedSlot ? 'verify' : 'compose'));
+    : (preAuth ? 'compose' : (needsVerification ? 'verify' : (contactType === 'booking' && selectedSlot ? 'verify' : 'compose')));
   const [step, setStep] = useState<Step>(initialStep);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,11 +93,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const [resendMessage, setResendMessage] = useState('');
   const [forceSuccess, setForceSuccess] = useState(Boolean(confirmed));
   
-  // If pre-authenticated via match UUID, skip verification and prefill
+  // If pre-authenticated via match UUID, prefill and show compose first
+  // Do NOT treat the user as verified here; they must still verify before sending
   useEffect(() => {
     if (open && preAuth && !requireVerification) {
       setError(null);
-      setIsVerified(true);
+      setIsVerified(false);
       // Prefill name if provided (not shown in UI in pre-auth compose mode)
       if (preAuth.patientName) setName(preAuth.patientName);
       const greeting = `Guten Tag ${therapist.first_name}`;
@@ -132,11 +134,11 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     }
   }, [open, contactType]);
 
-  // If a verified client session exists (kh_client), skip verification in directory flow
+  // If a verified client session exists (kh_client), skip verification
   useEffect(() => {
     let cancelled = false;
     async function checkSession() {
-      if (!open || preAuth) return;
+      if (!open) return;
       if (step === 'success') return;
       try {
         const res = await fetch('/api/public/session');
@@ -163,7 +165,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei [beschreibe dein Anliegen] und fand dein Profil sehr ansprechend.${signature}`);
 
           if (forceSuccess || awaitingVerificationSend) {
-            setStep('success');
+            // In preAuth (matches) flow we don't auto-send; return to compose
+            if (preAuth) {
+              setStep('compose');
+            } else {
+              setStep('success');
+            }
             setAwaitingVerificationSend(false);
           } else {
             setStep('compose');
@@ -175,7 +182,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     return () => {
       cancelled = true;
     };
-  }, [open, preAuth, therapist.first_name, contactType, awaitingVerificationSend, forceSuccess]);
+  }, [open, preAuth, therapist.first_name, contactType, awaitingVerificationSend, forceSuccess, step]);
 
   // Prefill session format if a slot was selected externally
   useEffect(() => {
@@ -204,7 +211,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   }, [open, preAuth, confirmed]);
 
   useEffect(() => {
-    if (!open || preAuth) return;
+    if (!open) return;
     try {
       const u = new URL(window.location.href);
       const c = u.searchParams.get('confirm');
@@ -212,8 +219,13 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       const contactParam = u.searchParams.get('contact');
       if ((c === '1' || c === 'success') && tidParam === therapist.id && contactParam === 'compose') {
         setIsVerified(true);
-        setForceSuccess(true);
-        setStep('success');
+        if (preAuth) {
+          // In matches flow, return to compose so user can send
+          setStep('compose');
+        } else {
+          setForceSuccess(true);
+          setStep('success');
+        }
       }
     } catch {}
   }, [open, preAuth, therapist.id]);
@@ -968,12 +980,64 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         </div>
       )}
 
-      {/* Session format selector - only for booking type */}
-      {contactType === 'booking' && showBookingPicker && (hasOnlineSlots || hasInPersonSlots) && (
-        <div className="space-y-3">
-          <Label className="text-sm font-medium">Format *</Label>
-          <div className="flex gap-2 max-w-md mx-auto">
-            {hasOnlineSlots && (
+      {/* Session format selector - booking type */}
+      {contactType === 'booking' && (
+        showBookingPicker ? (
+          (hasOnlineSlots || hasInPersonSlots) && (
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Format *</Label>
+            <div className="flex gap-2 max-w-md mx-auto">
+              {hasOnlineSlots && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSessionFormat('online')}
+                  disabled={loading}
+                  className={cn(
+                    'flex-1 h-11 gap-2',
+                    'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100',
+                    sessionFormat === 'online' && 'ring-2 ring-emerald-400 border-emerald-400'
+                  )}
+                >
+                  <Video className="h-4 w-4" />
+                  Online
+                </Button>
+              )}
+              {hasInPersonSlots && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSessionFormat('in_person')}
+                  disabled={loading}
+                  className={cn(
+                    'flex-1 h-11 gap-2',
+                    'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100',
+                    sessionFormat === 'in_person' && 'ring-2 ring-emerald-400 border-emerald-400'
+                  )}
+                >
+                  <User className="h-4 w-4" />
+                  Vor Ort
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed text-center">
+              Soll der Termin online oder vor Ort stattfinden?
+            </p>
+            {selectedFormat === 'in_person' && resolvedAddress && (
+              <div className="flex justify-center">
+                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 shadow-sm">
+                  <MapPin className="h-3.5 w-3.5" />
+                  <span className="truncate max-w-[18rem]" title={resolvedAddress}>{resolvedAddress}</span>
+                </div>
+              </div>
+            )}
+          </div>
+          )
+        ) : (
+          // No availability → still ask for preferred format to include in outreach
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Format *</Label>
+            <div className="flex gap-2 max-w-md mx-auto">
               <Button
                 type="button"
                 variant="outline"
@@ -988,8 +1052,6 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                 <Video className="h-4 w-4" />
                 Online
               </Button>
-            )}
-            {hasInPersonSlots && (
               <Button
                 type="button"
                 variant="outline"
@@ -1004,20 +1066,17 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                 <User className="h-4 w-4" />
                 Vor Ort
               </Button>
+            </div>
+            {selectedFormat === 'in_person' && resolvedAddress && (
+              <div className="flex justify-center">
+                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 shadow-sm">
+                  <MapPin className="h-3.5 w-3.5" />
+                  <span className="truncate max-w-[18rem]" title={resolvedAddress}>{resolvedAddress}</span>
+                </div>
+              </div>
             )}
           </div>
-          <p className="text-xs text-gray-500 leading-relaxed text-center">
-            Soll der Termin online oder vor Ort stattfinden?
-          </p>
-          {selectedFormat === 'in_person' && resolvedAddress && (
-            <div className="flex justify-center">
-              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 shadow-sm">
-                <MapPin className="h-3.5 w-3.5" />
-                <span className="truncate max-w-[18rem]" title={resolvedAddress}>{resolvedAddress}</span>
-              </div>
-            </div>
-          )}
-        </div>
+        )
       )}
 
       {/* Booking slot picker by week */}
@@ -1145,7 +1204,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Termin buchen'}
           </Button>
         ) : (
-          (isVerified || preAuth) ? (
+          (isVerified) ? (
             <Button
               onClick={handleSendMessage}
               disabled={loading || (!reason.trim() && !message.trim()) || (contactType === 'booking' && !sessionFormat)}
@@ -1220,8 +1279,8 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           </DialogTitle>
         </DialogHeader>
         <div className="pb-2">
-          {step === 'verify' && !preAuth && renderVerifyStep()}
-          {step === 'verify-code' && !preAuth && renderVerifyCodeStep()}
+          {step === 'verify' && renderVerifyStep()}
+          {step === 'verify-code' && renderVerifyCodeStep()}
           {step === 'compose' && renderComposeStep()}
           {step === 'verify-link' && renderVerifyLinkStep()}
           {step === 'success' && renderSuccessStep()}

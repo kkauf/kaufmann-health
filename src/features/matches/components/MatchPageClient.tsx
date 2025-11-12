@@ -455,7 +455,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             sessionPreference: data?.patient?.session_preference || undefined,
           }}
           selectedSlot={modalFor.selectedSlot}
-          requireVerification={!isVerified}
+          requireVerification={false}
         />
       )}
 
