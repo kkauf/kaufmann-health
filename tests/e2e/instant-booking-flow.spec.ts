@@ -28,9 +28,7 @@ test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
                 modalities: ['narm'],
                 session_preferences: ['online', 'in_person'],
                 approach_text: '',
-                availability: [
-                  { date_iso: '2025-12-01', time_label: '10:00', format: 'online' },
-                ],
+                availability: [],
               },
             ],
             metadata: { match_type: 'exact' },
@@ -45,11 +43,12 @@ test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
       // Email confirmation banner must not be present in direct booking
       await expect(page.locator('text=Bitte bestätige deine E‑Mail')).toHaveCount(0);
 
-      // Click booking CTA
-      await page.getByRole('button', { name: /Therapeut:in buchen/i }).click();
-      // Contact modal should open; select the ContactModal (not the mobile menu) by a stable control
-      const contactDialog = page.getByRole('dialog').filter({ has: page.getByLabel('Name *') });
-      await expect(contactDialog).toBeVisible();
+      // Click booking CTA (wait for it to be visible to avoid race)
+      const bookBtn = page.getByRole('button', { name: /Therapeut:in buchen/i });
+      await expect(bookBtn).toBeVisible();
+      await bookBtn.click();
+      // Contact modal should open; assert using stable test id
+      await expect(page.getByTestId('contact-modal')).toBeVisible();
     });
   });
 
