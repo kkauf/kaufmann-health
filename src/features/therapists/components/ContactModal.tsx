@@ -38,6 +38,7 @@ interface ContactModalProps {
   confirmed?: boolean;
   /** Optional selected slot for booking (directory chips → modal) */
   selectedSlot?: { date_iso: string; time_label: string; format: 'online' | 'in_person' };
+  requireVerification?: boolean;
 }
 
 type Step = 'verify' | 'verify-code' | 'verify-link' | 'compose' | 'success';
@@ -53,7 +54,7 @@ interface PreAuthParams {
   sessionPreference?: 'online' | 'in_person';
 }
 
-export function ContactModal({ therapist, contactType, open, onClose, onSuccess, preAuth, verified, confirmed, selectedSlot }: ContactModalProps & { preAuth?: PreAuthParams }) {
+export function ContactModal({ therapist, contactType, open, onClose, onSuccess, preAuth, verified, confirmed, selectedSlot, requireVerification }: ContactModalProps & { preAuth?: PreAuthParams }) {
   // For booking with pre-selected slot, skip compose and go straight to verify
   const initialStep: Step = confirmed ? 'success' : (contactType === 'booking' && selectedSlot ? 'verify' : 'compose');
   const [step, setStep] = useState<Step>(initialStep);
@@ -88,7 +89,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   
   // If pre-authenticated via match UUID, skip verification and prefill
   useEffect(() => {
-    if (open && preAuth) {
+    if (open && preAuth && !requireVerification) {
       setError(null);
       setIsVerified(true);
       // Prefill name if provided (not shown in UI in pre-auth compose mode)
@@ -109,7 +110,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
 
       setStep('compose');
     }
-  }, [open, preAuth, therapist.first_name, contactType]);
+  }, [open, preAuth, therapist.first_name, contactType, requireVerification]);
 
   // Seed selected slot and format from prop on open
   useEffect(() => {

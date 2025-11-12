@@ -29,6 +29,7 @@ type TherapistItem = {
   session_preferences?: string[];
   approach_text?: string;
   gender?: string;
+  availability?: { date_iso: string; time_label: string; format: 'online'|'in_person'; address?: string }[];
 };
 
 type MatchApiData = {
@@ -42,8 +43,11 @@ type MatchApiData = {
     gender_preference?: 'male' | 'female' | 'no_preference';
     start_timing?: string;
     modality_matters?: boolean;
+    status?: string | null;
+    time_slots?: string[];
   };
   therapists: TherapistItem[];
+  metadata?: { match_type?: 'exact' | 'partial' | 'none' };
 };
 
 const MODALITY_MAP: Record<string, { label: string; color: string }> = {
@@ -97,6 +101,11 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   }, [uuid]);
 
   const therapists = useMemo(() => data?.therapists || [], [data]);
+  const isVerified = useMemo(() => {
+    const s = (data?.patient?.status || '').toLowerCase();
+    return s === 'email_confirmed' || s === 'new';
+  }, [data?.patient?.status]);
+  const matchType = data?.metadata?.match_type || 'exact';
 
   // Compute match quality for each therapist
   const therapistsWithQuality = useMemo(() => {
@@ -151,9 +160,23 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     }
   }, [data]);
 
+  // Track partial/no-exact banner
+  useEffect(() => {
+    if (matchType === 'partial' || matchType === 'none') {
+      try {
+        const payload = { type: 'form_no_therapists_found', properties: { match_type: matchType } };
+        navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+      } catch {}
+    }
+  }, [matchType]);
+
   const handleOpen = useCallback((t: TherapistItem, type: 'booking' | 'consultation') => {
+    if (!isVerified) {
+      try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
+      return;
+    }
     setModalFor({ therapist: t, type });
-  }, []);
+  }, [isVerified]);
 
   const handleSuccess = useCallback(() => {
     // Mark as contacted locally to reflect state
@@ -229,6 +252,12 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
+      {/* Verification banner */}
+      {!isVerified && (
+        <div className="mb-6 rounded-xl border border-blue-200/70 bg-blue-50/80 p-4 text-sm text-blue-900">
+          📧 Bitte bestätige deine E‑Mail‑Adresse, um zu buchen. Wir haben dir einen Link geschickt.
+        </div>
+      )}
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           {(() => {
@@ -296,6 +325,13 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         </div>
       )}
 
+      {/* Partial match banner */}
+      {(matchType === 'partial' || matchType === 'none') && (
+        <div className="mb-6 rounded-xl border border-amber-200/70 bg-amber-50/80 p-4 text-sm text-amber-900">
+          Wir konnten keine exakten Treffer mit all deinen Präferenzen finden, aber diese Therapeut:innen könnten gut passen.
+        </div>
+      )}
+
       {/* Trust & Quality Box */}
       <div className="mb-8 rounded-xl border border-slate-200/60 bg-gradient-to-br from-slate-50/80 to-white p-6 shadow-md">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-900">
@@ -340,6 +376,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             modalities: t.modalities || [],
             session_preferences: t.session_preferences || [],
             approach_text: t.approach_text || '',
+            availability: Array.isArray(t.availability) ? (t.availability as any) : [],
           };
 
           return (
@@ -373,6 +410,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             defaultReason: data?.patient?.issue || undefined,
             sessionPreference: data?.patient?.session_preference || undefined,
           }}
+          requireVerification={!isVerified}
         />
       )}
 

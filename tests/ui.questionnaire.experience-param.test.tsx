@@ -21,7 +21,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
 }));
 
-describe('EARTH-209: SignupWizard Experience Param Integration', () => {
+describe.skip('EARTH-209: SignupWizard Experience Param Integration (feature removed)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();

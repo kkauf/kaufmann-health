@@ -24,6 +24,11 @@ vi.mock('@/lib/email/templates/therapistNotification', () => ({
   }),
 }));
 
+// Mock client session to satisfy verification gating
+vi.mock('@/lib/auth/clientSession', () => ({
+  getClientSession: vi.fn().mockResolvedValue({ patient_id: 'patient-123' }),
+}));
+
 import { supabaseServer } from '@/lib/supabase-server';
 
 describe('POST /api/public/matches/:uuid/contact', () => {

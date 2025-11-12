@@ -25,35 +25,35 @@ describe('FinalCtaSection entry options (midpage analytics continuity)', () => {
     
     try {
       expect(container.textContent).toMatch(/Bereit für den ersten Schritt\?/);
-      expect(container.textContent).toContain('Hast du bereits Therapie gemacht');
+      expect(container.textContent).toContain('Wann möchtest du idealerweise beginnen?');
     } finally {
       unmount();
     }
   });
 
-  it('renders all three experience answer buttons with correct labels', async () => {
+  it('renders all three timing answer buttons with correct labels', async () => {
     const { container, unmount } = render(<FinalCtaSection withEntryOptions />);
     
     try {
-      expect(container.textContent).toContain('Ja, bereits Erfahrung');
-      expect(container.textContent).toContain('Nein, erste Therapie');
-      expect(container.textContent).toContain('Bin mir unsicher');
+      expect(container.textContent).toContain('So schnell wie möglich');
+      expect(container.textContent).toContain('In den nächsten 2-4 Wochen');
+      expect(container.textContent).toContain('In 1-2 Monaten');
     } finally {
       unmount();
     }
   });
 
-  it('answer buttons link to questionnaire with correct experience params', async () => {
+  it('answer buttons link to questionnaire with correct timing params', async () => {
     const { container, unmount } = render(<FinalCtaSection withEntryOptions />);
     
     try {
-      const yesLink = container.querySelector('[data-cta="midpage-conversion-yes"]');
-      const noLink = container.querySelector('[data-cta="midpage-conversion-no"]');
-      const unsureLink = container.querySelector('[data-cta="midpage-conversion-unsure"]');
+      const immediateLink = container.querySelector('[data-cta="midpage-conversion-immediate"]');
+      const soonLink = container.querySelector('[data-cta="midpage-conversion-soon"]');
+      const flexibleLink = container.querySelector('[data-cta="midpage-conversion-flexible"]');
 
-      expect(yesLink?.getAttribute('href')).toBe('/fragebogen?experience=yes');
-      expect(noLink?.getAttribute('href')).toBe('/fragebogen?experience=no');
-      expect(unsureLink?.getAttribute('href')).toBe('/fragebogen?experience=unsure');
+      expect(immediateLink?.getAttribute('href')).toBe('/fragebogen?timing=immediate');
+      expect(soonLink?.getAttribute('href')).toBe('/fragebogen?timing=soon');
+      expect(flexibleLink?.getAttribute('href')).toBe('/fragebogen?timing=flexible');
     } finally {
       unmount();
     }
@@ -63,7 +63,7 @@ describe('FinalCtaSection entry options (midpage analytics continuity)', () => {
     const { container, unmount } = render(<FinalCtaSection withEntryOptions />);
     
     try {
-      expect(container.textContent).toContain('5-Minuten Fragebogen');
+      expect(container.textContent).toContain('3-Minuten Fragebogen');
     } finally {
       unmount();
     }

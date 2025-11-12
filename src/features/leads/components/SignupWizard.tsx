@@ -26,37 +26,28 @@ const LS_KEYS = {
 
 export type WizardData = Omit<Screen1Values, 'email'> & Screen1_5Values & {
   email?: string; // Make email optional since we might use phone instead
-  // New Screen 1: Therapy Experience
-  therapy_experience?: NewScreen1Values['therapy_experience'];
-  therapy_type?: NewScreen1Values['therapy_type'];
-  // New Screen 2: Timeline
+  // Step 1: Timeline
   start_timing?: NewScreen2Values['start_timing'];
-  // New Screen 3: What Brings You (optional)
+  // Step 2: What Brings You (optional)
   additional_info?: NewScreen3Values['additional_info'];
-  // New Screen 4: Budget
-  budget?: NewScreen4Values['budget'];
-  // Screen 5: Modality (updated with modality_matters)
+  // Step 3: Modality
   modality_matters?: boolean;
-  methods?: Screen4Values['methods'];
-  // Screen 6: Location
+  methods?: string[];
+  // Step 4: Location
   city?: string;
   online_ok?: boolean;
   session_preference?: 'online' | 'in_person' | 'either';
-  privacy_preference?: Screen3Values['privacy_preference'];
-  // Screen 7: Preferences (gender, language, time_slots)
-  gender?: Screen4Values['gender'];
-  language?: Screen4Values['language'];
-  language_other?: string;
-  time_slots?: Screen4Values['time_slots'];
-  // Screen 8: Contact Info (moved from Screen1)
+  // Step 5: Preferences (gender, time_slots only)
+  gender?: 'Frau' | 'Mann' | 'Keine Präferenz' | 'Divers/non-binär';
+  time_slots?: string[];
+  // Step 6: Contact Info
   name: string;
 };
 
-// Progress: 9 main steps (or 10 with SMS verification)
-// Step 1: Therapy Experience (0%), 2: Timeline (11%), 3: What Brings You (22%), 4: Budget (33%),
-// 5: Modality (44%), 6: Location (56%), 7: Preferences (67%), 8: Contact (78%),
-// 8.5: SMS (89%), 9: Confirmation (100%)
-const PROGRESS = [0, 11, 22, 33, 44, 56, 67, 78, 89, 100]; // steps 1-9 (step 8.5 uses index 8)
+// Progress: 7 main steps (or 8 with SMS verification)
+// Step 1: Timeline (0%), 2: Topic (14%), 3: Modality (28%), 4: Location (43%),
+// 5: Preferences (57%), 6: Contact (71%), 6.5: SMS (86%), 7: Confirmation (100%)
+const PROGRESS = [0, 14, 28, 43, 57, 71, 86, 100]; // steps 1-7 (step 6.5 uses index 6)
 
 export default function SignupWizard() {
   const searchParams = useSearchParams();
@@ -160,31 +151,21 @@ export default function SignupWizard() {
   function missingRequiredForStep(s: number, d: WizardData): string[] {
     switch (s) {
       case 1: {
-        // Step 1: Therapy Experience (required)
-        const miss: string[] = [];
-        if (!d.therapy_experience) miss.push('therapy_experience');
-        return miss;
-      }
-      case 2: {
-        // Step 2: Timeline (required)
+        // Step 1: Timeline (required)
         const miss: string[] = [];
         if (!d.start_timing) miss.push('start_timing');
         return miss;
       }
+      case 2: {
+        // Step 2: What Brings You (TRULY OPTIONAL - no required fields)
+        return [];
+      }
       case 3: {
-        // Step 3: What Brings You (optional)
+        // Step 3: Modality (optional)
         return [];
       }
       case 4: {
-        // Step 4: Budget (optional)
-        return [];
-      }
-      case 5: {
-        // Step 5: Modality (optional)
-        return [];
-      }
-      case 6: {
-        // Step 6: Location (session_preference required, city required if in_person)
+        // Step 4: Location (session_preference required, city required if in_person)
         const miss: string[] = [];
         const hasCity = !!(d.city && d.city.trim());
         const pref = d.session_preference;
@@ -192,15 +173,12 @@ export default function SignupWizard() {
         if (pref === 'in_person' && !hasCity) miss.push('city');
         return miss;
       }
-      case 7: {
-        // Step 7: Preferences (language required)
-        const miss: string[] = [];
-        if (!d.language) miss.push('language');
-        if (d.language === 'Andere' && !(d.language_other && d.language_other.trim())) miss.push('language_other');
-        return miss;
+      case 5: {
+        // Step 5: Preferences (NO REQUIRED fields - gender and time_slots optional)
+        return [];
       }
-      case 8: {
-        // Step 8: Contact Info (name, email/phone required)
+      case 6: {
+        // Step 6: Contact Info (name, email/phone required)
         const miss: string[] = [];
         if (!d.name || !d.name.trim()) miss.push('name');
         // Check contact info based on method
@@ -212,8 +190,12 @@ export default function SignupWizard() {
         }
         return miss;
       }
-      case 9: {
-        // Step 9: Confirmation (no required fields)
+      case 6.5: {
+        // Step 6.5: SMS verification (no required fields - verification happens in component)
+        return [];
+      }
+      case 7: {
+        // Step 7: Confirmation (no required fields)
         return [];
       }
       default:
@@ -263,24 +245,24 @@ export default function SignupWizard() {
           // Ignore session check errors
         });
       
-      // Handle ?experience= param from mid-page conversion (EARTH-209)
-      const experienceParam = searchParams?.get('experience');
-      if (experienceParam) {
-        let therapy_experience: 'has_experience' | 'first_time' | 'unsure' | undefined;
-        switch (experienceParam) {
-          case 'yes':
-            therapy_experience = 'has_experience';
+      // Handle ?timing= param from mid-page conversion (from /start entry options)
+      const timingParam = searchParams?.get('timing');
+      if (timingParam) {
+        let start_timing: string | undefined;
+        switch (timingParam) {
+          case 'immediate':
+            start_timing = 'So schnell wie möglich';
             break;
-          case 'no':
-            therapy_experience = 'first_time';
+          case 'soon':
+            start_timing = 'In den nächsten 2-4 Wochen';
             break;
-          case 'unsure':
-            therapy_experience = 'unsure';
+          case 'flexible':
+            start_timing = 'In 1-2 Monaten';
             break;
         }
-        if (therapy_experience) {
-          setData((prev) => ({ ...prev, therapy_experience }));
-          void trackEvent('midpage_prefill', { experience: experienceParam });
+        if (start_timing) {
+          setData((prev) => ({ ...prev, start_timing }));
+          void trackEvent('midpage_prefill', { timing: timingParam });
         }
       }
       
@@ -674,13 +656,10 @@ export default function SignupWizard() {
   function renderScreen() {
     switch (step) {
       case 1:
-        // Step 1: Therapy Experience
+        // Step 1: Timeline (now first step - no back button)
         return (
-          <NewScreen1_TherapyExperience
-            values={{
-              therapy_experience: data.therapy_experience,
-              therapy_type: data.therapy_type,
-            }}
+          <NewScreen2_Timeline
+            values={{ start_timing: data.start_timing }}
             onChange={saveLocal}
             onNext={() => safeGoToStep(2)}
             suppressAutoAdvance={suppressAutoStep === 1}
@@ -688,42 +667,18 @@ export default function SignupWizard() {
           />
         );
       case 2:
-        // Step 2: Timeline
-        return (
-          <NewScreen2_Timeline
-            values={{ start_timing: data.start_timing }}
-            onChange={saveLocal}
-            onBack={() => safeGoToStep(1)}
-            onNext={() => safeGoToStep(3)}
-            suppressAutoAdvance={suppressAutoStep === 2}
-            disabled={navLock || submitting}
-          />
-        );
-      case 3:
-        // Step 3: What Brings You (optional)
+        // Step 2: What Brings You (truly optional)
         return (
           <NewScreen3_WhatBringsYou
             values={{ additional_info: data.additional_info }}
             onChange={saveLocal}
-            onBack={() => safeGoToStep(2)}
-            onNext={() => safeGoToStep(4)}
+            onBack={() => safeGoToStep(1)}
+            onNext={() => safeGoToStep(3)}
             disabled={navLock || submitting}
           />
         );
-      case 4:
-        // Step 4: Budget
-        return (
-          <NewScreen4_Budget
-            values={{ budget: data.budget }}
-            onChange={saveLocal}
-            onBack={() => safeGoToStep(3)}
-            onNext={() => safeGoToStep(5)}
-            suppressAutoAdvance={suppressAutoStep === 4}
-            disabled={navLock || submitting}
-          />
-        );
-      case 5:
-        // Step 5: Modality Preferences (with progressive disclosure)
+      case 3:
+        // Step 3: Modality Preferences
         return (
           <NewScreen5_Modality
             values={{
@@ -731,47 +686,44 @@ export default function SignupWizard() {
               methods: data.methods,
             }}
             onChange={saveLocal}
-            onBack={() => safeGoToStep(4)}
-            onNext={() => safeGoToStep(6)}
-            suppressAutoAdvance={suppressAutoStep === 5}
+            onBack={() => safeGoToStep(2)}
+            onNext={() => safeGoToStep(4)}
+            suppressAutoAdvance={suppressAutoStep === 3}
             disabled={navLock || submitting}
           />
         );
-      case 6:
-        // Step 6: Location (session preference + city only - budget handled in step 4)
+      case 4:
+        // Step 4: Location (session preference + city only, no privacy)
         return (
           <Screen3
             values={{
               city: data.city,
               online_ok: data.online_ok,
               session_preference: data.session_preference,
-              privacy_preference: data.privacy_preference,
             }}
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
-            onBack={() => safeGoToStep(5)}
-            onNext={() => safeGoToStep(7)}
+            onBack={() => safeGoToStep(3)}
+            onNext={() => safeGoToStep(5)}
             disabled={navLock || submitting}
           />
         );
-      case 7:
-        // Step 7: Preferences (gender, language, time_slots - modality is in step 5)
+      case 5:
+        // Step 5: Preferences (gender + time_slots only, no language)
         return (
           <Screen4
             values={{
               gender: data.gender,
-              language: data.language,
-              language_other: data.language_other,
               time_slots: data.time_slots,
-              methods: data.methods,
+              methods: data.methods, // Keep for compatibility
             }}
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
-            onBack={() => safeGoToStep(6)}
-            onNext={() => safeGoToStep(8)}
+            onBack={() => safeGoToStep(4)}
+            onNext={() => safeGoToStep(6)}
             disabled={navLock || submitting}
           />
         );
-      case 8:
-        // Step 8: Contact Info (moved from Screen1, implicit consent on submit)
+      case 6:
+        // Step 6: Contact Info (moved from step 8)
         return (
           <Screen1
             values={{
@@ -782,39 +734,31 @@ export default function SignupWizard() {
             }}
             initialized={initialized}
             onChange={saveLocal}
-            onBack={() => safeGoToStep(7)}
+            onBack={() => safeGoToStep(5)}
             onNext={async () => {
-              void trackEvent('submit_clicked', { step: 8, contact_method: data.contact_method });
-              // If phone and already verified (from existing session), skip verification
+              void trackEvent('submit_clicked', { step: 6, contact_method: data.contact_method });
               if (data.contact_method === 'phone' && data.phone_number) {
                 if (data.phone_verified) {
-                  // Already verified - submit directly
                   await handleSubmit();
                 } else {
-                  // Not verified - send SMS and go to verification step
                   try {
                     const sent = await handleSendSmsCode();
-                    if (sent) safeGoToStep(8.5);
-                    // else: stay on step 8 so user can switch to email or retry
+                    if (sent) safeGoToStep(6.5);
                   } catch (err) {
                     console.error('Failed to send SMS:', err);
-                    // Could show error to user here
                   }
                 }
               } else {
-                // Email: submit directly (consent implicit on button click)
                 await handleSubmit();
               }
             }}
             disabled={navLock || submitting}
           />
         );
-      case 8.5:
-        // SMS verification screen (phone users only)
-        // SECURITY: Never auto-advance forward from verification step
+      case 6.5:
+        // Step 6.5: SMS verification (phone users only)
         if (data.contact_method !== 'phone' || !data.phone_number) {
-          // Send user back to step 8 to properly set up phone verification
-          safeGoToStep(8);
+          safeGoToStep(6);
           return null;
         }
         return (
@@ -823,18 +767,25 @@ export default function SignupWizard() {
             onVerify={async (code: string) => {
               const result = await handleVerifySmsCode(code);
               if (result.success) {
-                // After SMS verification, submit the form
                 await handleSubmit();
               }
               return result;
             }}
             onResend={async () => { await handleSendSmsCode(); }}
-            onBack={() => safeGoToStep(8)}
+            onBack={() => safeGoToStep(6)}
             disabled={navLock || submitting}
           />
         );
-      case 9:
-        return (() => {
+      case 7:
+        // Step 7: Confirmation (was step 9)
+        return renderConfirmationScreen();
+      default:
+        return null;
+    }
+  }
+
+  function renderConfirmationScreen() {
+    return (() => {
           const confirmParam = searchParams?.get('confirm');
           const isConfirmed = confirmParam === '1' || confirmParam === 'success';
           const isPhoneUser = data.contact_method === 'phone' && !!data.phone_number;
@@ -1017,9 +968,6 @@ export default function SignupWizard() {
             </div>
           );
         })();
-      default:
-        return null;
-    }
   }
 
   async function handleSubmit() {
@@ -1030,11 +978,11 @@ export default function SignupWizard() {
     const slowTimer = setTimeout(() => setSubmitSlow(true), 3000);
     try {
 
-      // Track completion for last screen before submit (step 8 for email, 8.5 for SMS)
+      // Track completion for last screen before submit (step 6 for contact, 6.5 for SMS)
       {
         const now = Date.now();
         const elapsed = now - (screenStartRef.current || now);
-        const currentStep = data.contact_method === 'phone' ? 8.5 : 8;
+        const currentStep = data.contact_method === 'phone' ? 6.5 : 6;
         const miss = missingRequiredForStep(currentStep, data);
         void trackEvent('screen_completed', { step: currentStep, duration_ms: elapsed, missing_required: miss });
       }
@@ -1141,8 +1089,17 @@ export default function SignupWizard() {
         void trackEvent('submit_succeeded', { step: currentStep2, contact_method: data.contact_method });
       }
 
-      void trackEvent('form_completed', { steps: 8 }); // 8 main steps (9 with SMS)
-      // Go to final confirmation screen (step 9)
+      // Instant matching: redirect to matches page when provided by API
+      const matchesUrl = (j?.data?.matchesUrl as string | undefined) || undefined;
+      if (matchesUrl) {
+        void trackEvent('redirect_to_matches', { instant_match: true });
+        if (typeof window !== 'undefined') {
+          window.location.assign(matchesUrl);
+          return;
+        }
+      }
+
+      void trackEvent('form_completed', { steps: 8 });
       goToStep(9);
     } catch (err) {
       setSubmitError('Senden fehlgeschlagen. Bitte überprüfe deine Verbindung und versuche es erneut.');

@@ -13,6 +13,10 @@ vi.mock('@/lib/email/templates/therapistNotification', () => ({
   renderTherapistNotification: vi.fn().mockReturnValue({ subject: 'Subject', html: '<p>Body</p>' }),
 }));
 
+vi.mock('@/lib/auth/clientSession', () => ({
+  getClientSession: vi.fn(async () => ({ patient_id: 'patient-xyz' })),
+}));
+
 vi.mock('@/lib/supabase-server', () => ({
   supabaseServer: { from: vi.fn() },
 }));

@@ -71,7 +71,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
       {
         id: 'how-it-works',
         question: 'Wie funktioniert die Vermittlung genau?',
-        answer: 'Du füllst einen kurzen Fragebogen aus (5 Minuten). Wir senden dir innerhalb von 24 Stunden bis zu 3 passende Profile – du entscheidest und buchst direkt.',
+        answer: 'Du füllst einen kurzen Fragebogen aus (3 Minuten). Wir senden dir innerhalb von 24 Stunden bis zu 3 passende Profile – du entscheidest und buchst direkt.',
       },
       {
         id: 'termine',
@@ -104,7 +104,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
       {
         id: 'how-it-works',
         question: 'Wie funktioniert die Vermittlung?',
-        answer: 'Du füllst einen 5-Minuten-Fragebogen aus. Innerhalb von 24 Stunden senden wir dir bis zu 3 passende Therapeut:innen-Profile. Du wählst deinen Favoriten und buchst direkt einen Termin.',
+        answer: 'Du füllst einen 3-Minuten-Fragebogen aus. Innerhalb von 24 Stunden senden wir dir bis zu 3 passende Therapeut:innen-Profile. Du wählst deinen Favoriten und buchst direkt einen Termin.',
       },
       {
         id: 'termine',
@@ -128,6 +128,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
   const timelineTagline = isBrowse
     ? 'Verzeichnis durchsuchen. Profil ansehen. Direkt Kontakt aufnehmen – privat und ohne Wartezeit.'
     : 'Bis zu 3 passende Therapeut:innen-Vorschläge in <24h. Deine Daten bleiben privat. Du entscheidest, wie du kontaktiert werden möchtest.';
+  const instantFlow = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
   const timelineItems = isBrowse
     ? [
         {
@@ -149,26 +150,49 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
           bullets: ['Kurz verifizieren, Nachricht senden', 'Antwort in <24h'],
         },
       ]
-    : [
-        {
-          icon: <MessageCircle className="h-5 w-5" />,
-          title: 'Deine Präferenzen',
-          caption: '5 Minuten',
-          bullets: [' Du sagst uns, was dir wichtig ist'],
-        },
-        {
-          icon: <UserCheck className="h-5 w-5" />,
-          title: 'Unsere persönliche Auswahl',
-          caption: '24 Stunden',
-          bullets: ['Bis zu 3 passende Profile, von uns handverlesen'],
-        },
-        {
-          icon: <PhoneCall className="h-5 w-5" />,
-          title: 'Du entscheidest',
-          caption: 'Direkter Kontakt',
-          bullets: ['Wunschtherapeut:in wählen und direkt Termin vereinbaren', 'Vorschläge per E‑Mail oder SMS – du entscheidest'],
-        },
-      ];
+    : (
+      instantFlow
+        ? [
+            {
+              icon: <MessageCircle className="h-5 w-5" />,
+              title: 'Deine Präferenzen',
+              caption: '3 Minuten',
+              bullets: [' Du sagst uns, was dir wichtig ist'],
+            },
+            {
+              icon: <UserCheck className="h-5 w-5" />,
+              title: 'Therapeut:in wählen',
+              caption: 'Sofort',
+              bullets: ['Sieh verfügbare Termine und wähle deine:n Therapeut:in'],
+            },
+            {
+              icon: <PhoneCall className="h-5 w-5" />,
+              title: 'Termin buchen',
+              caption: '2 Minuten',
+              bullets: ['Buche direkt einen verfügbaren Termin'],
+            },
+          ]
+        : [
+            {
+              icon: <MessageCircle className="h-5 w-5" />,
+              title: 'Deine Präferenzen',
+              caption: '3 Minuten',
+              bullets: [' Du sagst uns, was dir wichtig ist'],
+            },
+            {
+              icon: <UserCheck className="h-5 w-5" />,
+              title: 'Unsere persönliche Auswahl',
+              caption: '24 Stunden',
+              bullets: ['Bis zu 3 passende Profile, von uns handverlesen'],
+            },
+            {
+              icon: <PhoneCall className="h-5 w-5" />,
+              title: 'Du entscheidest',
+              caption: 'Direkter Kontakt',
+              bullets: ['Wunschtherapeut:in wählen und direkt Termin vereinbaren', 'Vorschläge per E‑Mail oder SMS – du entscheidest'],
+            },
+          ]
+    );
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
@@ -233,7 +257,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
         heading="Bereit für den ersten Schritt?"
         subtitle={isBrowse
           ? 'Stöbere im Verzeichnis. Profil ansehen und direkt Kontakt aufnehmen.'
-          : 'Fülle unseren 5-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten-Vorschläge.'}
+          : 'Fülle unseren 3-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten-Vorschläge.'}
         buttonLabel={isBrowse ? 'Therapeut:innen ansehen' : 'Jetzt Therapeut:in finden'}
         targetId={isBrowse ? therapeutenHref : fragebogenHref}
         align="center"

@@ -25,7 +25,7 @@ export default function NewScreen2_Timeline({
   values: NewScreen2Values;
   onChange: (patch: Partial<NewScreen2Values>) => void;
   onNext: () => void;
-  onBack: () => void;
+  onBack?: () => void; // Optional - this can be the first step
   disabled?: boolean;
   suppressAutoAdvance?: boolean;
 }) {
@@ -82,15 +82,17 @@ export default function NewScreen2_Timeline({
       </div>
 
       <div className="flex items-center justify-between pt-2">
-        <Button
-          variant="secondary"
-          className="h-11"
-          onClick={onBack}
-          disabled={disabled}
-          aria-disabled={disabled}
-        >
-          Zurück
-        </Button>
+        {onBack ? (
+          <Button
+            variant="secondary"
+            className="h-11"
+            onClick={onBack}
+            disabled={disabled}
+            aria-disabled={disabled}
+          >
+            Zurück
+          </Button>
+        ) : <div />}
         <Button
           className="h-11"
           onClick={() => validate() && onNext()}

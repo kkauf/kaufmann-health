@@ -5,6 +5,7 @@ import { renderTherapistNotification } from '@/lib/email/templates/therapistNoti
 import { sendEmail } from '@/lib/email/client';
 import { maybeFirePatientConversion } from '@/lib/conversion';
 import { BASE_URL } from '@/lib/constants';
+import { getClientSession } from '@/lib/auth/clientSession';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -130,6 +131,13 @@ export async function POST(req: Request) {
     }
 
     const patientId = r.patient_id;
+
+    try {
+      const session = await getClientSession(req);
+      if (!session || session.patient_id !== patientId) {
+        return NextResponse.json({ data: null, error: 'Verification required' }, { status: 401 });
+      }
+    } catch {}
 
     // Rate limit by events (3 sends per day)
     const rl = await checkRateLimitByMatches(patientId);

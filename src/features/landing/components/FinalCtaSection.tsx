@@ -29,7 +29,7 @@ export function FinalCtaSection({
   showAvailabilityNote?: boolean;
   className?: string;
   withEntryOptions?: boolean;
-  /** Base path for entry options. '/therapeuten' shows format options; otherwise experience options. */
+  /** Base path for entry options. '/therapeuten' shows format options; otherwise timing options. */
   targetBasePath?: string;
 }) {
   const bgClass = variant === 'tinted'
@@ -39,10 +39,10 @@ export function FinalCtaSection({
   const sectionClass = (className ? className + ' ' : '') +
     `mt-12 sm:mt-16 relative overflow-hidden rounded-3xl border border-emerald-200/60 shadow-xl shadow-emerald-100/20 ${bgClass} p-8 sm:p-12 lg:p-16 ${alignClass}`;
 
-  const EXPERIENCE_OPTIONS = [
-    { value: 'yes', label: 'Ja, bereits Erfahrung', query: 'experience=yes' },
-    { value: 'no', label: 'Nein, erste Therapie', query: 'experience=no' },
-    { value: 'unsure', label: 'Bin mir unsicher', query: 'experience=unsure' },
+  const START_TIMING_OPTIONS = [
+    { value: 'immediate', label: 'So schnell wie möglich', query: 'timing=immediate' },
+    { value: 'soon', label: 'In den nächsten 2-4 Wochen', query: 'timing=soon' },
+    { value: 'flexible', label: 'In 1-2 Monaten', query: 'timing=flexible' },
   ] as const;
 
   const FORMAT_OPTIONS = [
@@ -103,10 +103,10 @@ export function FinalCtaSection({
         ) : (
           <div className={`mt-6 sm:mt-8 w-full ${align === 'center' ? 'text-center' : ''}`}>
             <p className="text-base sm:text-lg text-gray-700">
-              {targetBasePath === '/therapeuten' ? 'Welches Therapieformat passt am besten zu dir?' : 'Hast du bereits Therapie gemacht?'}
+              {targetBasePath === '/therapeuten' ? 'Welches Therapieformat passt am besten zu dir?' : 'Wann möchtest du idealerweise beginnen?'}
             </p>
             <div className="mt-5 sm:mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-2xl mx-auto">
-              {(targetBasePath === '/therapeuten' ? FORMAT_OPTIONS : EXPERIENCE_OPTIONS).map((option) => {
+              {(targetBasePath === '/therapeuten' ? FORMAT_OPTIONS : START_TIMING_OPTIONS).map((option) => {
                 const isDirectory = targetBasePath === '/therapeuten';
                 const href = isDirectory ? `/therapeuten?${option.query}` : `${targetBasePath}?${option.query}`;
                 return (
@@ -131,7 +131,7 @@ export function FinalCtaSection({
               ) : (
                 <>
                   <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
-                  <span>5-Minuten Fragebogen</span>
+                  <span>3-Minuten Fragebogen</span>
                 </>
               )}
             </div>
