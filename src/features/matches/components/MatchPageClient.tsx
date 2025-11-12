@@ -137,7 +137,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
 
   // If any card shows a perfect match badge, suppress the amber "no exact match" banner
   const hasPerfect = useMemo(
-    () => therapistsWithQuality.some((t: any) => t?.matchQuality?.isPerfect === true),
+    () => therapistsWithQuality.some((t) => t.matchQuality?.isPerfect === true),
     [therapistsWithQuality]
   );
   const shouldShowPartialBanner = useMemo(
@@ -497,7 +497,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
               modalities: therapistFromProfile.modalities,
               session_preferences: therapistFromProfile.session_preferences,
               approach_text: therapistFromProfile.approach_text,
-              availability: Array.isArray((therapistFromProfile as any).availability) ? (therapistFromProfile as any).availability : [],
+              availability: Array.isArray(therapistFromProfile.availability) ? therapistFromProfile.availability : [],
             };
             setDetailModalTherapist(null);
             handleOpen(t, type, selectedSlot);
