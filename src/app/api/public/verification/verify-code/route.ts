@@ -281,10 +281,12 @@ export async function POST(req: NextRequest) {
                       }
                     } catch {}
                   } else {
-                    const { error: bookErr } = await supabaseServer
+                    const { data: insertedBooking, error: bookErr } = await supabaseServer
                       .from('bookings')
-                      .insert({ therapist_id: therapistId, patient_id: person.id, date_iso: dateIso, time_label: timeLabel, format: fmt });
-                    if (bookErr) {
+                      .insert({ therapist_id: therapistId, patient_id: person.id, date_iso: dateIso, time_label: timeLabel, format: fmt })
+                      .select('id')
+                      .single();
+                    if (bookErr || !insertedBooking?.id) {
                       await logError('api.verification.verify-code', bookErr, { stage: 'draft_booking_insert', therapistId, dateIso, timeLabel });
                     } else {
                       try {
@@ -319,15 +321,27 @@ export async function POST(req: NextRequest) {
                         const tRow = (t as unknown) as TherapistEmailRow;
                         const therapistEmail = (tRow?.email || undefined) as string | undefined;
                         const therapistName = [tRow?.first_name || '', tRow?.last_name || ''].filter(Boolean).join(' ');
+                        // Build magic link if secure_uuid exists
+                        let secureUuid: string | null = null;
+                        try {
+                          const { data: br } = await supabaseServer
+                            .from('bookings')
+                            .select('secure_uuid')
+                            .eq('id', insertedBooking.id)
+                            .maybeSingle();
+                          secureUuid = ((br as unknown) as { secure_uuid?: string | null } | null)?.secure_uuid || null;
+                        } catch {}
+                        const base = process.env.NEXT_PUBLIC_BASE_URL || '';
+                        const magicUrl = secureUuid ? `${base}${base.startsWith('http') ? '' : ''}/booking/${secureUuid}` : undefined;
+
                         if (therapistEmail) {
                           const content = renderBookingTherapistNotification({
                             therapistName,
-                            patientName: (person.name || '') || null,
-                            patientEmail: (person.email || '') || null,
                             dateIso: dateIso,
                             timeLabel: timeLabel,
                             format: fmt,
                             address: addr || null,
+                            magicUrl: magicUrl || null,
                           });
                           void sendEmail({
                             to: therapistEmail,

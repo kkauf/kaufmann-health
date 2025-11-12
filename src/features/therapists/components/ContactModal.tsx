@@ -54,7 +54,9 @@ interface PreAuthParams {
 }
 
 export function ContactModal({ therapist, contactType, open, onClose, onSuccess, preAuth, verified, confirmed, selectedSlot }: ContactModalProps & { preAuth?: PreAuthParams }) {
-  const [step, setStep] = useState<Step>(confirmed ? 'success' : 'compose');
+  // For booking with pre-selected slot, skip compose and go straight to verify
+  const initialStep: Step = confirmed ? 'success' : (contactType === 'booking' && selectedSlot ? 'verify' : 'compose');
+  const [step, setStep] = useState<Step>(initialStep);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -294,9 +296,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     setReason('');
     setMessage('');
     setSessionFormat('');
+    setSelectedBookingSlot(null);
     setIsVerified(false);
+    setForceSuccess(false);
+    setAwaitingVerificationSend(false);
     onClose();
-  }, [onClose]);
+  }, [onClose, step, trackEvent]);
   
   // Send verification code
   const handleSendCode = useCallback(async () => {
@@ -1140,25 +1145,39 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   };
   
   // Render success step
-  const renderSuccessStep = () => (
-    <div className="space-y-6 text-center py-8">
-      <div className="mx-auto h-20 w-20 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100/60 flex items-center justify-center shadow-lg shadow-emerald-100/50">
-        <MailCheck className="h-10 w-10 text-emerald-600" />
+  const renderSuccessStep = () => {
+    const isBooking = contactType === 'booking' && selectedBookingSlot;
+    
+    return (
+      <div className="space-y-6 text-center py-8">
+        <div className="mx-auto h-20 w-20 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100/60 flex items-center justify-center shadow-lg shadow-emerald-100/50">
+          <MailCheck className="h-10 w-10 text-emerald-600" />
+        </div>
+        <div className="space-y-3">
+          <h3 className="text-xl font-bold text-gray-900">
+            {isBooking ? 'Termin gebucht!' : 'Nachricht gesendet!'}
+          </h3>
+          <p className="text-sm leading-relaxed text-gray-600 max-w-sm mx-auto">
+            {isBooking ? (
+              <>
+                Deine Buchung wurde bestätigt. {therapistName} erhält die Details und du bekommst eine Bestätigungs-E-Mail.
+              </>
+            ) : (
+              <>
+                {therapistName} erhält deine Nachricht und meldet sich innerhalb von 24 Stunden bei dir.
+              </>
+            )}
+          </p>
+        </div>
+        <Button 
+          onClick={handleClose} 
+          className="w-full h-11 bg-emerald-600 hover:bg-emerald-700"
+        >
+          Weitere Therapeuten ansehen
+        </Button>
       </div>
-      <div className="space-y-3">
-        <h3 className="text-xl font-bold text-gray-900">Nachricht gesendet!</h3>
-        <p className="text-sm leading-relaxed text-gray-600 max-w-sm mx-auto">
-          {therapistName} erhält deine Nachricht und meldet sich innerhalb von 24 Stunden bei dir.
-        </p>
-      </div>
-      <Button 
-        onClick={handleClose} 
-        className="w-full h-11 bg-emerald-600 hover:bg-emerald-700"
-      >
-        Weitere Therapeuten ansehen
-      </Button>
-    </div>
-  );
+    );
+  };
   
   return (
     <Dialog open={open} onOpenChange={handleClose}>
