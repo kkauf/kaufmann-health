@@ -102,13 +102,22 @@ async function createInstantMatchesForPatient(patientId: string): Promise<{ matc
       return false;
     }
 
-    const scored = therapists.map((t) => {
+    const scored: { id: string; isPerfect: boolean; reasons: string[]; accepting: boolean }[] = [];
+    for (const t of therapists) {
+      // Filter out therapists not accepting new clients
+      if (t.accepting_new === false) continue;
+      // Filter out therapists hidden from directory
+      const tMeta = (t.metadata || {}) as Record<string, unknown>;
+      const hideFromDir = tMeta['hide_from_directory'] === true;
+      if (hideFromDir) continue;
+      
       const tRow: TherapistRowForMatch = { id: t.id, gender: t.gender || undefined, city: t.city || undefined, session_preferences: t.session_preferences, modalities: t.modalities };
       const mm = computeMismatches(pMeta, tRow);
       const timeOk = slotMatchesPreferences(t.id);
       const isPerfect = mm.isPerfect && timeOk;
-      return { id: t.id, isPerfect, reasons: mm.reasons, accepting: Boolean(t.accepting_new) };
-    });
+      scored.push({ id: t.id, isPerfect, reasons: mm.reasons, accepting: Boolean(t.accepting_new) });
+    }
+    
     scored.sort((a, b) => {
       if (a.isPerfect !== b.isPerfect) return a.isPerfect ? -1 : 1;
       if (a.accepting !== b.accepting) return a.accepting ? -1 : 1;
