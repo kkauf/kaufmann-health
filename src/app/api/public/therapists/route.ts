@@ -54,20 +54,39 @@ export async function GET() {
       address: string | null;
       duration_minutes: number | null;
       active: boolean | null;
+      // New schema fields (nullable for legacy fallback)
+      is_recurring?: boolean | null;
+      specific_date?: string | null; // YYYY-MM-DD
     };
 
-    // Fetch active recurring slots for these therapists (best-effort)
+    // Fetch active slots for these therapists (best-effort) including recurrence fields when available
     let slotsByTherapist = new Map<string, SlotRow[]>();
     try {
       if (therapistIds.length > 0) {
-        const { data: slotsData, error: slotsErr } = await supabaseServer
+        // Try selecting with new columns first
+        const initial = await supabaseServer
           .from('therapist_slots')
-          .select('therapist_id, day_of_week, time_local, format, address, duration_minutes, active')
+          .select('therapist_id, day_of_week, time_local, format, address, duration_minutes, active, is_recurring, specific_date')
           .in('therapist_id', therapistIds)
           .eq('active', true)
           .limit(1000);
-        if (!slotsErr && Array.isArray(slotsData)) {
-          for (const s of slotsData as SlotRow[]) {
+
+        let slotsData = initial.data as SlotRow[] | null;
+        let errorMsg = String(initial.error?.message || '');
+
+        // Fallback to legacy schema if columns don't exist
+        if (initial.error && /does not exist/i.test(errorMsg)) {
+          const legacy = await supabaseServer
+            .from('therapist_slots')
+            .select('therapist_id, day_of_week, time_local, format, address, duration_minutes, active')
+            .in('therapist_id', therapistIds)
+            .eq('active', true)
+            .limit(1000);
+          slotsData = legacy.data as SlotRow[] | null;
+        }
+
+        if (Array.isArray(slotsData)) {
+          for (const s of slotsData) {
             const arr = slotsByTherapist.get(s.therapist_id) || [];
             arr.push(s);
             slotsByTherapist.set(s.therapist_id, arr);
@@ -169,31 +188,64 @@ export async function GET() {
       if (slots.length > 0) {
         const maxDays = 21; // ~3 weeks starting tomorrow
         const now = new Date();
+        const start = new Date(now.getTime());
+        start.setUTCDate(start.getUTCDate() + 1);
+        const end = new Date(start.getTime());
+        end.setUTCDate(end.getUTCDate() + maxDays);
+        const startYmd = getBerlinYmd(start);
+        const endYmd = getBerlinYmd(end);
+
+        // Build candidates from one-time slots and recurring expansions
+        const candidates: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] = [];
+        const seen = new Set<string>();
+
+        // Helper to push deduped
+        const pushCandidate = (ymd: string, time: string, fmt: 'online' | 'in_person', addr?: string) => {
+          const key = `${ymd}|${time}|${fmt}|${addr || ''}`;
+          if (seen.has(key)) return;
+          const bookedKey = `${row.id}|${ymd}|${time}`;
+          if (booked.has(bookedKey)) return;
+          seen.add(key);
+          candidates.push({ date_iso: ymd, time_label: time, format: fmt, ...(fmt === 'in_person' && addr ? { address: addr } : {}) });
+        };
+
+        // One-time slots: include only on specific_date within the window
+        for (const s of slots) {
+          const isRecurring = (s as SlotRow).is_recurring;
+          if (isRecurring === false) {
+            const specific = String((s as SlotRow).specific_date || '').trim();
+            if (!specific) continue;
+            // Within window check (lex compare okay for YYYY-MM-DD)
+            if (specific < startYmd || specific > endYmd) continue;
+            const time = String(s.time_local || '').slice(0, 5);
+            const fmt = (s.format === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
+            const addr = fmt === 'in_person' ? (String(s.address || '').trim() || String(practice_address || '').trim()) : undefined;
+            pushCandidate(specific, time, fmt, addr);
+          }
+        }
+
+        // Recurring slots: expand across the window by matching day_of_week
         for (let offset = 1; offset <= maxDays; offset++) {
-          if (availability.length >= 9) break;
           const d = new Date(now.getTime());
           d.setUTCDate(d.getUTCDate() + offset);
           const dow = getBerlinDayIndex(d);
           const ymd = getBerlinYmd(d); // YYYY-MM-DD in Berlin TZ
           for (const s of slots) {
-            if (availability.length >= 9) break;
+            const isRecurring = (s as SlotRow).is_recurring;
+            // Treat missing is_recurring (legacy) as recurring
+            if (isRecurring === false) continue;
             const sDow = Number(s.day_of_week);
             if (sDow !== dow) continue;
             const time = String(s.time_local || '').slice(0, 5);
-            const bookedKey = `${row.id}|${ymd}|${time}`;
-            if (booked.has(bookedKey)) continue;
             const fmt = (s.format === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
-            if (fmt === 'in_person') {
-              const addrSlot = String(s.address || '').trim();
-              const addr = addrSlot || String(practice_address || '').trim();
-              availability.push({ date_iso: ymd, time_label: time, format: fmt, ...(addr ? { address: addr } : {}) });
-            } else {
-              availability.push({ date_iso: ymd, time_label: time, format: fmt });
-            }
+            const addr = fmt === 'in_person' ? (String(s.address || '').trim() || String(practice_address || '').trim()) : undefined;
+            pushCandidate(ymd, time, fmt, addr);
           }
         }
-        // Ensure chronological order just in case
-        availability.sort((a, b) => (a.date_iso === b.date_iso ? a.time_label.localeCompare(b.time_label) : a.date_iso.localeCompare(b.date_iso)));
+
+        // Sort chronologically and cap to 9
+        candidates.sort((a, b) => (a.date_iso === b.date_iso ? a.time_label.localeCompare(b.time_label) : a.date_iso.localeCompare(b.date_iso)));
+        availability.push(...candidates.slice(0, 9));
       }
 
       return {
