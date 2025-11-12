@@ -132,6 +132,7 @@ export type CampaignConfig = {
   languages?: string[]; // e.g., ['de']
   geo?: { mode: 'germany' | 'berlin_proximity'; radius_km?: number };
   replacements?: Record<string, string>;
+  bidding?: { strategy?: 'MANUAL_CPC' | 'MAXIMIZE_CLICKS'; cpc_ceiling_eur?: number };
   ads?: {
     final_url_params?: Record<string, string>;
     pinning_rules?: { price_regex?: string; privacy_phrase?: string };
@@ -333,7 +334,8 @@ async function main() {
         budgetRn as string,
         c.schedule.start,
         c.schedule.end,
-        dryRun || validateOnly
+        dryRun || validateOnly,
+        c.bidding
       );
     }
 

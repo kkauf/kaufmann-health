@@ -1,6 +1,13 @@
 import { enums } from 'google-ads-api';
 import { requireEnv } from './util';
 
+type BiddingConfig = {
+  strategy?: 'MANUAL_CPC' | 'MAXIMIZE_CLICKS';
+  cpc_ceiling_eur?: number;
+};
+
+const eurosToMicros = (eur: number): number => Math.round((eur || 0) * 1_000_000);
+
 export const findBudgetByName = async (customer: any, name: string): Promise<string | undefined> => {
   const rows = await customer.query(`
     SELECT campaign_budget.resource_name, campaign_budget.name
@@ -41,25 +48,40 @@ export const findCampaignByName = async (customer: any, name: string): Promise<{
   return { resourceName: rn as string, status: c.status };
 };
 
-export const createCampaign = async (customer: any, name: string, budgetResourceName: string, startDate: string, endDate: string, dryRun: boolean): Promise<string> => {
+export const createCampaign = async (
+  customer: any,
+  name: string,
+  budgetResourceName: string,
+  startDate: string,
+  endDate: string,
+  dryRun: boolean,
+  bidding?: BiddingConfig
+): Promise<string> => {
   if (dryRun) {
     console.log(`  [DRY] Would create campaign: ${name} (PAUSED)`);
     return `customers/${requireEnv('GOOGLE_ADS_CUSTOMER_ID')}/campaigns/DRY_${Date.now()}`;
   }
   let res: any;
   try {
+    const useMaxClicks = bidding?.strategy === 'MAXIMIZE_CLICKS';
+    const cpcCeilMicros = typeof bidding?.cpc_ceiling_eur === 'number' ? eurosToMicros(bidding!.cpc_ceiling_eur!) : undefined;
     res = await customer.campaigns.create([
       {
         name,
         status: enums.CampaignStatus.PAUSED,
         advertising_channel_type: enums.AdvertisingChannelType.SEARCH,
-        bidding_strategy_type: enums.BiddingStrategyType.MANUAL_CPC,
-        manual_cpc: {},
+        bidding_strategy_type: useMaxClicks
+          ? enums.BiddingStrategyType.TARGET_SPEND
+          : enums.BiddingStrategyType.MANUAL_CPC,
+        manual_cpc: useMaxClicks ? undefined : {},
+        target_spend: useMaxClicks
+          ? (cpcCeilMicros ? { cpc_bid_ceiling_micros: cpcCeilMicros } : {})
+          : undefined,
         network_settings: {
           target_google_search: true,
           target_search_network: true,
           target_content_network: false,
-          target_partner_search_network: true,
+          target_partner_search_network: false,
         },
         contains_eu_political_advertising: (enums as any).EuPoliticalAdvertisingStatus
           ? (enums as any).EuPoliticalAdvertisingStatus.DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING
