@@ -193,6 +193,25 @@ export async function POST(req: Request) {
       }
     }
     
+    // Early rate-limit check when a valid session exists
+    if (session?.patient_id) {
+      const rl = await checkRateLimit(session.patient_id, ip);
+      if (!rl.allowed) {
+        void track({
+          type: 'contact_rate_limit_hit',
+          source: 'api.public.contact',
+          props: { patient_id: session.patient_id, count: rl.count },
+        });
+        return NextResponse.json(
+          {
+            error: 'Du hast bereits 3 Therapeuten kontaktiert. Bitte warte auf ihre Rückmeldung, bevor du weitere Therapeuten kontaktierst.',
+            code: 'RATE_LIMIT_EXCEEDED',
+          },
+          { status: 429 }
+        );
+      }
+    }
+
     if (!session) {
       // New patient: create or find existing record
       isNewPatient = true;
