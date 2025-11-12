@@ -4,18 +4,38 @@ import { adminLogin, setPracticeAddress, upsertSlots, deleteSlot, getBerlinDayIn
 const base = process.env.E2E_BASE_URL || 'http://127.0.0.1:3000';
 const therapistId = process.env.E2E_THERAPIST_ID;
 const verificationMode = process.env.NEXT_PUBLIC_VERIFICATION_MODE || 'email';
+const smsBypass = process.env.E2E_SMS_BYPASS === 'true';
+const smsCode = process.env.E2E_SMS_CODE || '000000';
 
 const uid = () => Math.random().toString(36).slice(2);
 
 // Skip entire file if we don't have a target therapist
 test.skip(!therapistId, 'Set E2E_THERAPIST_ID to a verified therapist UUID to run booking E2E tests.');
-// Email confirm flow requires RESEND_API_KEY to be configured in the server env
-test.skip(!process.env.RESEND_API_KEY, 'Set RESEND_API_KEY to run booking E2E tests (email confirm flow).');
+// Allow either email (RESEND) or SMS bypass to create a verified client session
+const allowEmailFlow = Boolean(process.env.RESEND_API_KEY);
+const allowSmsFlow = verificationMode === 'sms' && smsBypass;
+test.skip(!(allowEmailFlow || allowSmsFlow), 'Enable either RESEND_API_KEY (email flow) or set NEXT_PUBLIC_VERIFICATION_MODE=sms and E2E_SMS_BYPASS=true to run booking E2E tests.');
 
 async function createVerifiedClientSessionCookie(): Promise<string> {
-  // Use email confirm flow to obtain kh_client cookie
-  if (verificationMode === 'sms') test.skip(true, 'Email verification not enabled in this environment');
   const ctx = await request.newContext({ baseURL: base });
+  // Prefer SMS bypass when configured
+  if (verificationMode === 'sms' && smsBypass) {
+    const phone = `+49151${Math.floor(1000000 + Math.random() * 8999999)}`;
+    const sc = await ctx.post('/api/public/verification/send-code', {
+      data: { contact: phone, contact_type: 'phone', name: 'E2E Booker' },
+    });
+    expect(sc.ok()).toBeTruthy();
+    const v = await ctx.post('/api/public/verification/verify-code', {
+      data: { contact: phone, contact_type: 'phone', code: smsCode },
+    });
+    expect(v.ok()).toBeTruthy();
+    const setCookieV = v.headers()['set-cookie'] || v.headers()['Set-Cookie'] || '';
+    const mV = /kh_client=([^;]+)/.exec(setCookieV);
+    expect(mV).toBeTruthy();
+    return decodeURIComponent(mV![1]);
+  }
+
+  // Fallback to email confirm flow (requires RESEND_API_KEY)
   const email = `e2e-book-${uid()}@example.com`;
   const sc = await ctx.post('/api/public/verification/send-code', {
     data: { contact: email, contact_type: 'email', name: 'E2E Booker', redirect: '/therapeuten' },
