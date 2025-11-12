@@ -72,6 +72,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   const [loading, setLoading] = useState(true);
   const [modalFor, setModalFor] = useState<{ therapist: TherapistItem; type: 'booking' | 'consultation' } | null>(null);
   const [detailModalTherapist, setDetailModalTherapist] = useState<TherapistItem | null>(null);
+  const isDirectBookingFlow = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
 
   useEffect(() => {
     let cancelled = false;
@@ -107,9 +108,9 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   }, [data?.patient?.status]);
   const matchType = data?.metadata?.match_type || 'exact';
 
-  // Compute match quality for each therapist
+  // Compute match quality for each therapist (used for badges and contradiction checks)
   const therapistsWithQuality = useMemo(() => {
-    if (!data) return [];
+    if (!data) return [] as Array<TherapistItem & { matchQuality: ReturnType<typeof computeMismatches> }>;
     const patientMeta: PatientMeta = {
       city: data.patient.city,
       session_preference: data.patient.session_preference || undefined,
@@ -129,6 +130,18 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       return { ...t, matchQuality: result };
     });
   }, [data, therapists]);
+
+  // If any card shows a perfect match badge, suppress the amber "no exact match" banner
+  const hasPerfect = useMemo(
+    () => therapistsWithQuality.some((t: any) => t?.matchQuality?.isPerfect === true),
+    [therapistsWithQuality]
+  );
+  const shouldShowPartialBanner = useMemo(
+    () => (matchType === 'partial' || matchType === 'none') && !hasPerfect,
+    [matchType, hasPerfect]
+  );
+
+  
 
   // Track page view
   useEffect(() => {
@@ -252,12 +265,6 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
-      {/* Verification banner */}
-      {!isVerified && (
-        <div className="mb-6 rounded-xl border border-blue-200/70 bg-blue-50/80 p-4 text-sm text-blue-900">
-          📧 Bitte bestätige deine E‑Mail‑Adresse, um zu buchen. Wir haben dir einen Link geschickt.
-        </div>
-      )}
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           {(() => {
@@ -326,40 +333,42 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       )}
 
       {/* Partial match banner */}
-      {(matchType === 'partial' || matchType === 'none') && (
+      {shouldShowPartialBanner && (
         <div className="mb-6 rounded-xl border border-amber-200/70 bg-amber-50/80 p-4 text-sm text-amber-900">
           Wir konnten keine exakten Treffer mit all deinen Präferenzen finden, aber diese Therapeut:innen könnten gut passen.
         </div>
       )}
 
       {/* Trust & Quality Box */}
-      <div className="mb-8 rounded-xl border border-slate-200/60 bg-gradient-to-br from-slate-50/80 to-white p-6 shadow-md">
-        <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-900">
-          <Sparkles className="h-5 w-5 text-emerald-600" />
-          Warum diese Auswahl?
-        </h2>
-        <ul className="space-y-2 text-sm text-gray-700">
-          <li className="flex items-start gap-2">
-            <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-            <span>Wir haben uns deiner Anfrage persönlich angenommen.</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-            <span>Die Auswahl basiert auf deinen individuellen Präferenzen und Bedürfnissen.</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-            <span>Wir prüfen die Qualifikationen der Therapeut:innen gründlich.</span>
-          </li>
-          {data?.patient?.modality_matters && (
+      {!isDirectBookingFlow && (
+        <div className="mb-8 rounded-xl border border-slate-200/60 bg-gradient-to-br from-slate-50/80 to-white p-6 shadow-md">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-900">
+            <Sparkles className="h-5 w-5 text-emerald-600" />
+            Warum diese Auswahl?
+          </h2>
+          <ul className="space-y-2 text-sm text-gray-700">
             <li className="flex items-start gap-2">
               <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-              <span>Spezielle Ausbildungen (NARM, Somatic Experiencing, Hakomi, Core Energetics) sind in den farbigen Abzeichen sichtbar.</span>
+              <span>Wir haben uns deiner Anfrage persönlich angenommen.</span>
             </li>
-          )}
-        </ul>
-        <p className="mt-4 font-semibold text-gray-900">Sorgfältig geprüfte Profile – persönlich ausgewählt.</p>
-      </div>
+            <li className="flex items-start gap-2">
+              <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
+              <span>Die Auswahl basiert auf deinen individuellen Präferenzen und Bedürfnissen.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
+              <span>Wir prüfen die Qualifikationen der Therapeut:innen gründlich.</span>
+            </li>
+            {data?.patient?.modality_matters && (
+              <li className="flex items-start gap-2">
+                <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
+                <span>Spezielle Ausbildungen (NARM, Somatic Experiencing, Hakomi, Core Energetics) sind in den farbigen Abzeichen sichtbar.</span>
+              </li>
+            )}
+          </ul>
+          <p className="mt-4 font-semibold text-gray-900">Sorgfältig geprüfte Profile – persönlich ausgewählt.</p>
+        </div>
+      )}
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {therapistsWithQuality.map((t, idx) => {

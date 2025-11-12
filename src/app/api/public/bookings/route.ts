@@ -3,6 +3,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { getClientSession } from '@/lib/auth/clientSession';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { sendEmail } from '@/lib/email/client';
+import { maybeFirePatientConversion } from '@/lib/conversion';
 import { renderBookingTherapistNotification } from '@/lib/email/templates/bookingTherapistNotification';
 import { renderBookingClientConfirmation } from '@/lib/email/templates/bookingClientConfirmation';
 
@@ -246,10 +247,10 @@ export async function POST(req: NextRequest) {
       // Resolve patient info
       const { data: p } = await supabaseServer
         .from('people')
-        .select('name, email')
+        .select('name, email, phone_number')
         .eq('id', session.patient_id)
         .maybeSingle();
-      type PatientEmailRow = { name?: string | null; email?: string | null } | null;
+      type PatientEmailRow = { name?: string | null; email?: string | null; phone_number?: string | null } | null;
       const pRow = (p as unknown) as PatientEmailRow;
       // Determine address (if in_person) from matching slot
       const addr = (() => {
@@ -272,6 +273,21 @@ export async function POST(req: NextRequest) {
           .eq('id', inserted.id)
           .maybeSingle();
         secureUuid = ((br as unknown) as { secure_uuid?: string | null } | null)?.secure_uuid || null;
+      } catch {}
+
+      // Fire Google Ads Enhanced Conversion on booking completion (idempotent)
+      try {
+        const ipAddr = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined;
+        const ua = req.headers.get('user-agent') || undefined;
+        const method = (session.contact_method === 'phone' ? 'sms' : 'email') as 'email' | 'sms';
+        await maybeFirePatientConversion({
+          patient_id: session.patient_id,
+          email: pRow?.email || undefined,
+          phone_number: pRow?.phone_number || (session.contact_method === 'phone' ? session.contact_value : undefined),
+          verification_method: method,
+          ip: ipAddr,
+          ua,
+        });
       } catch {}
       const base = process.env.NEXT_PUBLIC_BASE_URL || '';
       const magicUrl = secureUuid ? `${base}${base.startsWith('http') ? '' : ''}/booking/${secureUuid}` : undefined;
