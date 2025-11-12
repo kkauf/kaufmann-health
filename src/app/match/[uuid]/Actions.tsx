@@ -128,7 +128,6 @@ export function Actions({
     // Determine if online based on sessionPreference
     const isOnline = sessionPreference?.toLowerCase().includes('online') && !sessionPreference?.toLowerCase().includes('vor ort');
     const isInPerson = sessionPreference?.toLowerCase().includes('vor ort') && !sessionPreference?.toLowerCase().includes('online');
-    const isBoth = sessionPreference?.toLowerCase().includes('online') && sessionPreference?.toLowerCase().includes('vor ort');
     
     if (contactType === 'booking') {
       body += `Gerne vereinbaren wir einen Termin. Ich biete dir folgende Zeitslots an:\n\n`;
