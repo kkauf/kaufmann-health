@@ -165,12 +165,8 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei [beschreibe dein Anliegen] und fand dein Profil sehr ansprechend.${signature}`);
 
           if (forceSuccess || awaitingVerificationSend) {
-            // In preAuth (matches) flow we don't auto-send; return to compose
-            if (preAuth) {
-              setStep('compose');
-            } else {
-              setStep('success');
-            }
+            // After magic-link verification we show success to mirror directory behavior
+            setStep('success');
             setAwaitingVerificationSend(false);
           } else {
             setStep('compose');
@@ -219,13 +215,8 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       const contactParam = u.searchParams.get('contact');
       if ((c === '1' || c === 'success') && tidParam === therapist.id && contactParam === 'compose') {
         setIsVerified(true);
-        if (preAuth) {
-          // In matches flow, return to compose so user can send
-          setStep('compose');
-        } else {
-          setForceSuccess(true);
-          setStep('success');
-        }
+        setForceSuccess(true);
+        setStep('success');
       }
     } catch {}
   }, [open, preAuth, therapist.id]);

@@ -220,15 +220,9 @@ export async function GET(req: Request) {
         modalities: Array.isArray(t.modalities) ? t.modalities : [],
       };
       const mm = computeMismatches(patientMeta, tRow);
-      // Build availability list
+      // Build availability list (no time-of-day filtering)
       const slots = slotsByTherapist.get(t.id) || [];
       const availability: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] = [];
-      const prefs = new Set((timeSlots || []).map((s) => String(s)));
-      const hasSpecificTimePrefs = prefs.size > 0 && !prefs.has('Bin flexibel');
-      const wantMorning = Array.from(prefs).some((s) => s.toLowerCase().includes('morg'));
-      const wantAfternoon = Array.from(prefs).some((s) => s.toLowerCase().includes('nachmitt'));
-      const wantEvening = Array.from(prefs).some((s) => s.toLowerCase().includes('abend'));
-      const wantWeekend = Array.from(prefs).some((s) => s.toLowerCase().includes('wochen'));
       if (slots.length > 0) {
         const maxDays = 21;
         const now = new Date();
@@ -246,21 +240,12 @@ export async function GET(req: Request) {
             if (booked.has(bookedKey)) continue;
             const fmt = (s.format === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
             const addr = fmt === 'in_person' ? String(s.address || '').trim() : '';
-            if (hasSpecificTimePrefs) {
-              const h = parseInt(time.slice(0,2), 10);
-              const isMorning = h >= 8 && h < 12;
-              const isAfternoon = h >= 12 && h < 17;
-              const isEvening = h >= 17 && h < 21;
-              const isWeekend = dow === 0 || dow === 6;
-              const ok = (wantMorning && isMorning) || (wantAfternoon && isAfternoon) || (wantEvening && isEvening) || (wantWeekend && isWeekend);
-              if (!ok) continue;
-            }
             availability.push({ date_iso: ymd, time_label: time, format: fmt, ...(addr ? { address: addr } : {}) });
           }
         }
         availability.sort((a, b) => (a.date_iso === b.date_iso ? a.time_label.localeCompare(b.time_label) : a.date_iso.localeCompare(b.date_iso)));
       }
-      // Determine time-of-day exactness
+
       function slotMatchesPreferences(): boolean {
         const prefs = new Set((timeSlots || []).map((s) => String(s)));
         if (prefs.size === 0 || prefs.has('Bin flexibel')) return true;
@@ -269,7 +254,7 @@ export async function GET(req: Request) {
         const wantEvening = Array.from(prefs).some((s) => s.toLowerCase().includes('abend'));
         const wantWeekend = Array.from(prefs).some((s) => s.toLowerCase().includes('wochen'));
         for (const a of availability) {
-          const h = parseInt(a.time_label.slice(0,2), 10);
+          const h = parseInt(a.time_label.slice(0, 2), 10);
           const d = new Date(a.date_iso + 'T00:00:00');
           const dow = getBerlinDayIndex(d);
           const isMorning = h >= 8 && h < 12;

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { SlidersHorizontal, X, ShieldCheck, CalendarCheck2, HeartHandshake, Shell, Wind, Target, Video, User } from 'lucide-react';
@@ -11,6 +11,7 @@ import { getAttribution } from '@/lib/attribution';
 import { TherapistDetailModal } from './TherapistDetailModal';
 import { ContactModal } from './ContactModal';
 import { cn } from '@/lib/utils';
+import CtaLink from '@/components/CtaLink';
 
 export type TherapistData = {
   id: string;
@@ -44,9 +45,9 @@ const BASE_MODALITY_STYLE: Record<string, { cls: string; Icon: React.ElementType
 
 const DEFAULT_MODALITY_STYLE = { cls: 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100', Icon: Target };
 
-export function TherapistDirectory({ initialTherapists = [] }: { initialTherapists?: TherapistData[] }) {
+export function TherapistDirectory({ initialTherapists = [], emptyState, disableClientFetch = false, restrictToIds }: { initialTherapists?: TherapistData[]; emptyState?: { title: string; description?: string; ctaHref: string; ctaText: string }; disableClientFetch?: boolean; restrictToIds?: string[] }) {
   const [therapists, setTherapists] = useState<TherapistData[]>(initialTherapists);
-  const [loading, setLoading] = useState(initialTherapists.length === 0);
+  const [loading, setLoading] = useState(disableClientFetch ? false : initialTherapists.length === 0);
   const [selectedModality, setSelectedModality] = useState<string>('all');
   const [onlineOnly, setOnlineOnly] = useState<boolean | null>(null);
   const [selectedTherapist, setSelectedTherapist] = useState<TherapistData | null>(null);
@@ -70,8 +71,8 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
   const [draftOnlineOnly, setDraftOnlineOnly] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // If server provided initial data, skip the initial client fetch
-    if (initialTherapists.length > 0) return;
+    // If server provided initial data, or client fetch is disabled, skip the initial client fetch
+    if (initialTherapists.length > 0 || disableClientFetch) return;
     let cancelled = false;
     async function fetchTherapists() {
       try {
@@ -88,10 +89,10 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
     }
     fetchTherapists();
     return () => { cancelled = true; };
-  }, [initialTherapists.length]);
+  }, [initialTherapists.length, disableClientFetch]);
 
   useEffect(() => {
-    if (initialTherapists.length === 0) return;
+    if (initialTherapists.length === 0 || disableClientFetch) return;
     let cancelled = false;
     async function refreshTherapists() {
       try {
@@ -105,7 +106,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
     }
     refreshTherapists();
     return () => { cancelled = true; };
-  }, [initialTherapists.length]);
+  }, [initialTherapists.length, disableClientFetch]);
 
   useEffect(() => {
     try {
@@ -245,22 +246,38 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
     return { ...DEFAULT_MODALITY_STYLE, label: modality };
   };
 
+  const baseTherapists = useMemo(() => (
+    Array.isArray(restrictToIds) && restrictToIds.length > 0
+      ? therapists.filter(t => restrictToIds.includes(t.id))
+      : therapists
+  ), [therapists, restrictToIds]);
+
   const filteredTherapists = useMemo(() => {
-    const filtered = therapists.filter(t => {
+    const filtered = baseTherapists.filter(t => {
       // Filter by modality
       if (selectedModality !== 'all' && !t.modalities?.some(m => normalizeModality(m) === selectedModality)) {
         return false;
       }
 
-      // Filter by online availability (strict)
+      // Filter by online/in-person offering; prefer actual availability formats when present,
+      // fall back to declared session_preferences when no slots exist
       if (onlineOnly !== null) {
-        const raw = Array.isArray(t.session_preferences) ? (t.session_preferences as string[]) : [];
-        const normalized = new Set(
-          raw.map(v => String(v).toLowerCase().replace(/[\s-]+/g, '_'))
-        );
-        const hasEither = normalized.has('either') || normalized.has('both');
-        const hasOnline = normalized.has('online') || hasEither;
-        const hasInPerson = normalized.has('in_person') || normalized.has('inperson') || hasEither;
+        const avail = Array.isArray(t.availability) ? t.availability : [];
+        const hasSlots = avail.length > 0;
+        let hasOnline = false;
+        let hasInPerson = false;
+        if (hasSlots) {
+          hasOnline = avail.some(s => s.format === 'online');
+          hasInPerson = avail.some(s => s.format === 'in_person');
+        } else {
+          const raw = Array.isArray(t.session_preferences) ? (t.session_preferences as string[]) : [];
+          const normalized = new Set(
+            raw.map(v => String(v).toLowerCase().replace(/[\s-]+/g, '_'))
+          );
+          const hasEither = normalized.has('either') || normalized.has('both');
+          hasOnline = normalized.has('online') || hasEither;
+          hasInPerson = normalized.has('in_person') || normalized.has('inperson') || hasEither;
+        }
         if (onlineOnly && !hasOnline) return false;
         if (!onlineOnly && !hasInPerson) return false;
       }
@@ -285,7 +302,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
       if (!aHasPhoto && bHasPhoto) return 1;
       return 0;
     });
-  }, [therapists, selectedModality, onlineOnly]);
+  }, [baseTherapists, selectedModality, onlineOnly]);
 
   const availabilityTherapistsCount = useMemo(() =>
     filteredTherapists.filter(t => Array.isArray(t.availability) && t.availability.length > 0).length
@@ -525,9 +542,29 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
       )}
 
       {filteredTherapists.length === 0 && (
-        <div className="py-12 text-center text-gray-600">
-          Keine Therapeut:innen gefunden. Bitte passe deine Filter an.
-        </div>
+        emptyState ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>{emptyState.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {emptyState.description && (
+                <p className="text-sm text-muted-foreground">{emptyState.description}</p>
+              )}
+              <div className="mt-4">
+                <Button asChild>
+                  <CtaLink href={emptyState.ctaHref} eventType="cta_click" eventId="alle-therapeuten" data-cta="alle-therapeuten">
+                    {emptyState.ctaText}
+                  </CtaLink>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="py-12 text-center text-gray-600">
+            Keine Therapeut:innen gefunden. Bitte passe deine Filter an.
+          </div>
+        )
       )}
 
       {/* Detail modal */}
