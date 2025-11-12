@@ -6,7 +6,7 @@ import { hashIP } from '@/features/leads/lib/validation';
 import { isIpRateLimited } from '@/features/leads/lib/rateLimit';
 import { track } from '@/lib/logger';
 import { safeJson } from '@/lib/http';
-import { computeMismatches, type PatientMeta, type TherapistRowForMatch } from '@/features/leads/lib/match';
+import { computeMismatches, type PatientMeta, type TherapistRowForMatch, type MismatchResult } from '@/features/leads/lib/match';
 
 // getClientIP helper
 function getClientIP(headers: Headers): string | undefined {
@@ -101,7 +101,7 @@ async function createInstantMatchesForPatient(patientId: string): Promise<{ matc
     }
 
     // Score and rank therapists
-    const scored: { t: TherapistRowForMatch; score: number; hasSlots: boolean }[] = [];
+    const scored: { t: TherapistRowForMatch; result: MismatchResult; hasSlots: boolean }[] = [];
     for (const t of therapists) {
       if (t.accepting_new === false) continue;
       const tMeta = (t.metadata || {}) as Record<string, unknown>;
@@ -114,21 +114,21 @@ async function createInstantMatchesForPatient(patientId: string): Promise<{ matc
         session_preferences: Array.isArray(t.session_preferences) ? (t.session_preferences as ('online'|'in_person')[]) : [],
         modalities: Array.isArray(t.modalities) ? (t.modalities as string[]) : [],
       };
-      const mismatches = computeMismatches(pMeta, tRow);
-      const score = -mismatches;
+      const result = computeMismatches(pMeta, tRow);
       const hasSlots = slotMatchesPreferences(t.id);
-      scored.push({ t: tRow, score, hasSlots });
+      scored.push({ t: tRow, result, hasSlots });
     }
 
-    // Sort by score desc, then by hasSlots
+    // Sort by isPerfect first, then by number of mismatches, then by slot availability
     scored.sort((a, b) => {
-      if (a.score !== b.score) return b.score - a.score;
+      if (a.result.isPerfect !== b.result.isPerfect) return a.result.isPerfect ? -1 : 1;
+      if (a.result.reasons.length !== b.result.reasons.length) return a.result.reasons.length - b.result.reasons.length;
       if (a.hasSlots !== b.hasSlots) return a.hasSlots ? -1 : 1;
       return 0;
     });
 
     const top = scored.slice(0, 3);
-    const matchQuality: 'exact'|'partial'|'none' = top.length === 0 ? 'none' : top[0].score === 0 ? 'exact' : 'partial';
+    const matchQuality: 'exact'|'partial'|'none' = top.length === 0 ? 'none' : top[0].result.isPerfect ? 'exact' : 'partial';
 
     // Create match records
     let secureUuid: string = randomUUID();
