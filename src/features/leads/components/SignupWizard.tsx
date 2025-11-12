@@ -49,6 +49,10 @@ const PROGRESS = [0, 14, 28, 43, 57, 71, 86, 100]; // steps 1-7 (step 6.5 uses i
 
 export default function SignupWizard() {
   const searchParams = useSearchParams();
+  // Feature flag: direct booking (5-step anonymous) vs manual curation (9-step with contact)
+  const isDirectBookingFlow = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
+  const maxStep = isDirectBookingFlow ? 5 : 9; // 5 steps for anonymous, 9 for contact collection
+  
   const [step, setStep] = React.useState<number>(1);
   const [data, setData] = React.useState<WizardData>({ name: '' });
   const [initialized, setInitialized] = React.useState(false);
@@ -215,33 +219,37 @@ export default function SignupWizard() {
         }
       }
       const savedStep = Number(localStorage.getItem(LS_KEYS.step) || '1');
-      if (savedStep >= 1 && savedStep <= 9) setStep(savedStep);
+      // Clamp to valid range: 1-5 for direct booking, 1-9 for manual curation
+      const clampedStep = Math.max(1, Math.min(maxStep, savedStep));
+      setStep(clampedStep);
 
       // Check for existing verified session (kh_client cookie from EARTH-204)
-      // If user is already verified, prefill contact info (no need to skip steps)
-      fetch('/api/public/session')
-        .then(res => res.ok ? res.json() : null)
-        .then(json => {
-          const session = json?.data;
-          if (session?.verified) {
-            const updates: Partial<WizardData> = {};
-            if (session.name) updates.name = session.name;
-            if (session.contact_method === 'email' && session.contact_value) {
-              updates.email = session.contact_value;
-              updates.contact_method = 'email';
-            } else if (session.contact_method === 'phone' && session.contact_value) {
-              updates.phone_number = session.contact_value;
-              updates.contact_method = 'phone';
-              updates.phone_verified = true;
+      // Only prefill contact info in manual curation flow (steps 6-9 exist)
+      if (!isDirectBookingFlow) {
+        fetch('/api/public/session')
+          .then(res => res.ok ? res.json() : null)
+          .then(json => {
+            const session = json?.data;
+            if (session?.verified) {
+              const updates: Partial<WizardData> = {};
+              if (session.name) updates.name = session.name;
+              if (session.contact_method === 'email' && session.contact_value) {
+                updates.email = session.contact_value;
+                updates.contact_method = 'email';
+              } else if (session.contact_method === 'phone' && session.contact_value) {
+                updates.phone_number = session.contact_value;
+                updates.contact_method = 'phone';
+                updates.phone_verified = true;
+              }
+              if (Object.keys(updates).length > 0) {
+                setData(prev => ({ ...prev, ...updates }));
+              }
             }
-            if (Object.keys(updates).length > 0) {
-              setData(prev => ({ ...prev, ...updates }));
-            }
-          }
-        })
-        .catch(() => {
-          // Ignore session check errors
-        });
+          })
+          .catch(() => {
+            // Ignore session check errors
+          });
+      }
       
       // Handle ?timing= param from mid-page conversion (from /start entry options)
       const timingParam = searchParams?.get('timing');
@@ -377,11 +385,11 @@ export default function SignupWizard() {
         if (remote && typeof remote === 'object') {
           const remoteObj = remote as Partial<WizardData> & { step?: number };
           const remoteStep = typeof remoteObj.step === 'number' ? remoteObj.step : undefined;
-          // Adopt remote if it appears further along than local
+          // Adopt remote if it appears further along than local (clamp to maxStep based on feature flag)
           if (remoteStep && remoteStep > step) {
             const next = { ...data, ...remoteObj } as WizardData;
             setData(next);
-            const clamped = Math.max(1, Math.min(6, remoteStep));
+            const clamped = Math.max(1, Math.min(maxStep, remoteStep));
             setStep(clamped);
             try {
               localStorage.setItem(LS_KEYS.data, JSON.stringify(next));
@@ -435,8 +443,8 @@ export default function SignupWizard() {
       if (miss.length > 0) {
         void trackEvent('field_abandonment', { step: current, fields: miss });
       }
-      // Update refs and navigate
-      const v = Math.max(1, Math.min(9, n));
+      // Update refs and navigate (clamp to valid range based on feature flag)
+      const v = Math.max(1, Math.min(maxStep, n));
       prevStepRef.current = current;
       screenStartRef.current = Date.now();
       // If navigating backward, suppress auto-advance on the target step until user interacts
@@ -463,7 +471,7 @@ export default function SignupWizard() {
       }
       return v;
     });
-  }, [data, trackEvent]);
+  }, [data, trackEvent, maxStep]);
 
   // Safe navigation to prevent double-clicks on Next/Back
   const safeGoToStep = React.useCallback(
@@ -716,7 +724,7 @@ export default function SignupWizard() {
             }}
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
             onBack={() => safeGoToStep(4)}
-            onNext={() => safeGoToStep(6)}
+            onNext={isDirectBookingFlow ? handleQuestionnaireSubmit : () => safeGoToStep(6)}
             disabled={navLock || submitting}
           />
         );
@@ -968,6 +976,87 @@ export default function SignupWizard() {
         })();
   }
 
+  // Submit questionnaire after Step 5 - create anonymous patient and redirect to matches (direct booking flow only)
+  async function handleQuestionnaireSubmit() {
+    if (submitting) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    setSubmitSlow(false);
+    const slowTimer = setTimeout(() => setSubmitSlow(true), 3000);
+
+    try {
+      void trackEvent('questionnaire_submitted', { 
+        step: 5,
+        has_city: !!data.city,
+        has_timing: !!data.start_timing,
+      });
+
+      const sidHeader = webSessionIdRef.current || getOrCreateSessionId() || undefined;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (sidHeader) headers['X-Session-Id'] = sidHeader;
+      if (campaignSourceOverrideRef.current) headers['X-Campaign-Source-Override'] = campaignSourceOverrideRef.current;
+      if (campaignVariantOverrideRef.current) headers['X-Campaign-Variant-Override'] = campaignVariantOverrideRef.current;
+
+      const sessionPref = data.session_preference;
+      const payload = {
+        start_timing: data.start_timing,
+        additional_info: data.additional_info,
+        modality_matters: data.modality_matters,
+        methods: data.methods || [],
+        city: data.city,
+        session_preference: sessionPref,
+        gender: data.gender,
+        time_slots: data.time_slots || [],
+        form_session_id: sessionIdRef.current || undefined,
+      };
+
+      const res = await fetch('/api/public/questionnaire-submit', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      
+      if (!res.ok || json?.error) {
+        throw new Error(json?.error || 'Questionnaire submission failed');
+      }
+
+      const matchesUrl = json?.data?.matchesUrl;
+      const patientId = json?.data?.patientId;
+
+      // Persist patient ID for analytics
+      if (patientId && typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem('anonymousPatientId', patientId);
+        } catch {}
+      }
+
+      void trackEvent('questionnaire_completed', { 
+        match_quality: json?.data?.matchQuality,
+        patient_id: patientId,
+      });
+
+      // Redirect to matches
+      if (matchesUrl && typeof window !== 'undefined') {
+        void trackEvent('redirect_to_matches', { anonymous: true });
+        window.location.assign(matchesUrl);
+        return;
+      }
+
+      // Fallback if no matches URL
+      setSubmitError('Keine Therapeuten gefunden. Bitte versuche es später erneut.');
+
+    } catch (err) {
+      console.error('Questionnaire submit error:', err);
+      setSubmitError('Senden fehlgeschlagen. Bitte überprüfe deine Verbindung und versuche es erneut.');
+    } finally {
+      clearTimeout(slowTimer);
+      setSubmitting(false);
+    }
+  }
+
+  // Submit for manual curation flow (9-step with contact collection)
   async function handleSubmit() {
     if (submitting) return;
     setSubmitting(true);

@@ -70,6 +70,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'NOT_VERIFIED' }, { status: 401 });
     }
 
+    // Upgrade anonymous patients to 'new' status when they complete their first booking
+    try {
+      const { data: patient } = await supabaseServer
+        .from('people')
+        .select('id, status')
+        .eq('id', session.patient_id)
+        .single<{ id: string; status: string }>();
+      
+      if (patient?.status === 'anonymous') {
+        await supabaseServer
+          .from('people')
+          .update({ status: 'new' })
+          .eq('id', patient.id);
+        
+        void ServerAnalytics.trackEventFromRequest(req, {
+          type: 'anonymous_patient_upgraded',
+          source: 'api.public.bookings',
+          props: { patient_id: patient.id },
+        });
+      }
+    } catch (err) {
+      console.error('Failed to upgrade anonymous patient:', err);
+      // Don't block booking if status upgrade fails
+    }
+
     const { data: therapist } = await supabaseServer
       .from('therapists')
       .select('id')

@@ -8,13 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, AlertCircle, Shield, Lock, FileCheck, ShieldCheck, Mail, MailCheck, MapPin, ChevronLeft, ChevronRight, Calendar, Video, User } from 'lucide-react';
+import { Loader2, AlertCircle, Shield, Lock, FileCheck, ShieldCheck, Mail, MailCheck, MapPin, ChevronLeft, ChevronRight, Calendar, Video, User, Tag } from 'lucide-react';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { validatePhone } from '@/lib/verification/usePhoneValidation';
 import ConsentSection from '@/components/ConsentSection';
 import { getAttribution } from '@/lib/attribution';
 import { cn } from '@/lib/utils';
+import { formatSessionPrice } from '@/lib/pricing';
 
 type ContactType = 'booking' | 'consultation';
 type Slot = { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string };
@@ -25,6 +26,7 @@ interface ContactModalProps {
     first_name: string;
     last_name: string;
     photo_url?: string;
+    typical_rate?: number | null;
     availability?: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[];
     metadata?: { profile?: { practice_address?: string } };
   };
@@ -565,9 +567,15 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const renderVerifyStep = () => (
     <div className="space-y-5" onKeyDown={handleKeyDown}>
       {contactType === 'booking' && selectedBookingSlot && (
-        <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/80 p-3 text-sm text-emerald-900 shadow-sm">
-          <div className="font-medium">Du buchst deine {sessionFormat === 'in_person' ? 'Vor‑Ort' : 'Online'}‑Therapiesitzung</div>
-          <div className="mt-1">{formatSlotLabel(selectedBookingSlot)} bei {therapistName}</div>
+        <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/80 p-3 space-y-2 shadow-sm">
+          <div className="text-sm text-emerald-900">
+            <div className="font-medium">Du buchst deine {sessionFormat === 'in_person' ? 'Vor‑Ort' : 'Online'}‑Therapiesitzung</div>
+            <div className="mt-1">{formatSlotLabel(selectedBookingSlot)} bei {therapistName}</div>
+          </div>
+          <Badge variant="outline" className="gap-1.5 border-emerald-200 bg-white text-emerald-800">
+            <Tag className="h-3.5 w-3.5" />
+            {formatSessionPrice(therapist.typical_rate)}
+          </Badge>
         </div>
       )}
       <p className="text-sm leading-relaxed text-gray-600">
@@ -685,9 +693,15 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         <Mail className="h-8 w-8 text-indigo-600" />
       </div>
       {contactType === 'booking' && selectedBookingSlot && (
-        <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/80 p-3 text-sm text-emerald-900 shadow-sm">
-          <div className="font-medium">Du buchst deine {sessionFormat === 'in_person' ? 'Vor‑Ort' : 'Online'}‑Therapiesitzung</div>
-          <div className="mt-1">{formatSlotLabel(selectedBookingSlot)} bei {therapistName}</div>
+        <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/80 p-3 space-y-2 shadow-sm">
+          <div className="text-sm text-emerald-900">
+            <div className="font-medium">Du buchst deine {sessionFormat === 'in_person' ? 'Vor‑Ort' : 'Online'}‑Therapiesitzung</div>
+            <div className="mt-1">{formatSlotLabel(selectedBookingSlot)} bei {therapistName}</div>
+          </div>
+          <Badge variant="outline" className="gap-1.5 border-emerald-200 bg-white text-emerald-800">
+            <Tag className="h-3.5 w-3.5" />
+            {formatSessionPrice(therapist.typical_rate)}
+          </Badge>
         </div>
       )}
       <p className="text-sm leading-relaxed text-gray-600">
@@ -803,9 +817,15 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const renderVerifyCodeStep = () => (
     <div className="space-y-5" onKeyDown={handleKeyDown}>
       {contactType === 'booking' && selectedBookingSlot && (
-        <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/80 p-3 text-sm text-emerald-900 shadow-sm">
-          <div className="font-medium">Du buchst deine {sessionFormat === 'in_person' ? 'Vor‑Ort' : 'Online'}‑Therapiesitzung</div>
-          <div className="mt-1">{formatSlotLabel(selectedBookingSlot)} bei {therapistName}</div>
+        <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/80 p-3 space-y-2 shadow-sm">
+          <div className="text-sm text-emerald-900">
+            <div className="font-medium">Du buchst deine {sessionFormat === 'in_person' ? 'Vor‑Ort' : 'Online'}‑Therapiesitzung</div>
+            <div className="mt-1">{formatSlotLabel(selectedBookingSlot)} bei {therapistName}</div>
+          </div>
+          <Badge variant="outline" className="gap-1.5 border-emerald-200 bg-white text-emerald-800">
+            <Tag className="h-3.5 w-3.5" />
+            {formatSessionPrice(therapist.typical_rate)}
+          </Badge>
         </div>
       )}
       <p className="text-sm leading-relaxed text-gray-600">

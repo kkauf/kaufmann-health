@@ -12,6 +12,7 @@ type TherapistRow = {
   photo_url: string | null;
   status: string | null;
   metadata: unknown;
+  typical_rate: number | null;
 };
 
 export async function GET() {
@@ -28,7 +29,7 @@ export async function GET() {
 
     const { data, error } = await supabaseServer
       .from('therapists')
-      .select('id, first_name, last_name, city, modalities, session_preferences, accepting_new, photo_url, status, metadata')
+      .select('id, first_name, last_name, city, modalities, session_preferences, accepting_new, photo_url, status, metadata, typical_rate')
       .eq('status', 'verified')
       .order('created_at', { ascending: false });
 
@@ -205,6 +206,7 @@ export async function GET() {
         accepting_new: Boolean(row.accepting_new),
         photo_url: row.photo_url || undefined,
         approach_text,
+        typical_rate: row.typical_rate,
         metadata: {
           profile: {
             ...(languages.length > 0 ? { languages } : {}),

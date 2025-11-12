@@ -22,6 +22,7 @@ export type TherapistData = {
   approach_text: string;
   accepting_new: boolean;
   city: string;
+  typical_rate?: number | null;
   metadata?: {
     profile?: {
       approach_text?: string;

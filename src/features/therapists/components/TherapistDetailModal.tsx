@@ -12,12 +12,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
-import { MapPin, Video, User, Calendar, MessageCircle, Globe, ShieldCheck, CalendarCheck2, X, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
+import { MapPin, Video, User, Calendar, MessageCircle, Globe, ShieldCheck, CalendarCheck2, X, ChevronLeft, ChevronRight, ArrowLeft, Tag } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { TherapistData } from './TherapistDirectory';
 import { getAttribution } from '@/lib/attribution';
 import { getModalityInfo } from '@/lib/modalities';
 import { cn } from '@/lib/utils';
+import { formatSessionPrice } from '@/lib/pricing';
 
 interface TherapistDetailModalProps {
   therapist: TherapistData;
@@ -447,6 +448,13 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
                     paragraph.trim() && <p key={idx} className="mb-3 break-words">{paragraph}</p>
                   ))}
                 </div>
+                {/* Session price badge */}
+                <div className="mt-4">
+                  <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
+                    <Tag className="h-3.5 w-3.5" />
+                    {formatSessionPrice(therapist.typical_rate)}
+                  </Badge>
+                </div>
               </div>
             )}
 
@@ -621,6 +629,24 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
                 <div className="text-center py-8 text-gray-600">
                   <Calendar className="h-12 w-12 mx-auto mb-3 text-gray-400" />
                   <p className="text-sm">Momentan sind keine Termine verfügbar.</p>
+                </div>
+              )}
+
+              {/* Booking summary with price */}
+              {selectedSlot && sessionFormat && (
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+                  <p className="text-sm text-gray-900">
+                    Du buchst deine {sessionFormat === 'online' ? 'Online' : 'Vor-Ort'}‑Sitzung{' '}
+                    {(() => {
+                      const d = new Date(selectedSlot.date_iso + 'T00:00:00');
+                      return d.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' });
+                    })()}{' '}
+                    {selectedSlot.time_label} bei {therapist.first_name} {therapist.last_name}
+                  </p>
+                  <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
+                    <Tag className="h-3.5 w-3.5" />
+                    {formatSessionPrice(therapist.typical_rate)}
+                  </Badge>
                 </div>
               )}
             </div>
