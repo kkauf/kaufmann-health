@@ -98,14 +98,17 @@ test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
         const body = { data: { patient: { status: 'anonymous' }, therapists: [], metadata: { match_type: 'none' } }, error: null };
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
       });
-      const waitMatches = page.waitForResponse((res) => res.url().includes('/api/public/matches/') && res.status() === 200);
-      await Promise.all([
-        page.goto('/matches/test-uuid'),
-        waitMatches,
-      ]);
-      // Empty state: no booking CTA should be present
-      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-      await expect(page.getByText('Therapeut:in buchen')).toHaveCount(0);
+      await page.route('**/api/public/therapists', (route) => {
+        const body = { therapists: [] };
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+      });
+      await page.goto('/matches/test-uuid');
+      // Wait for client directory fetch to complete (spinner disappears)
+      const spinner = page.getByText('Lade Therapeuten...');
+      await expect(spinner).toBeVisible();
+      await expect(spinner).toHaveCount(0, { timeout: 15000 });
+      // Empty state CTA should be visible
+      await expect(page.getByText('Alle Therapeuten ansehen')).toBeVisible();
     });
   });
 
