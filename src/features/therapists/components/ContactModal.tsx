@@ -57,8 +57,11 @@ interface PreAuthParams {
 }
 
 export function ContactModal({ therapist, contactType, open, onClose, onSuccess, preAuth, verified, confirmed, selectedSlot, requireVerification }: ContactModalProps & { preAuth?: PreAuthParams }) {
-  // For booking with pre-selected slot, skip compose and go straight to verify
-  const initialStep: Step = confirmed ? 'success' : (contactType === 'booking' && selectedSlot ? 'verify' : 'compose');
+  // Decide starting step: force verification first when required
+  const needsVerification = Boolean(requireVerification);
+  const initialStep: Step = confirmed
+    ? 'success'
+    : (needsVerification ? 'verify' : (contactType === 'booking' && selectedSlot ? 'verify' : 'compose'));
   const [step, setStep] = useState<Step>(initialStep);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

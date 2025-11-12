@@ -70,7 +70,11 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   const [data, setData] = useState<MatchApiData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [modalFor, setModalFor] = useState<{ therapist: TherapistItem; type: 'booking' | 'consultation' } | null>(null);
+  const [modalFor, setModalFor] = useState<{
+    therapist: TherapistItem;
+    type: 'booking' | 'consultation';
+    selectedSlot?: { date_iso: string; time_label: string; format: 'online' | 'in_person' };
+  } | null>(null);
   const [detailModalTherapist, setDetailModalTherapist] = useState<TherapistItem | null>(null);
   const isDirectBookingFlow = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
 
@@ -183,13 +187,10 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     }
   }, [matchType]);
 
-  const handleOpen = useCallback((t: TherapistItem, type: 'booking' | 'consultation') => {
-    if (!isVerified) {
-      try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
-      return;
-    }
-    setModalFor({ therapist: t, type });
-  }, [isVerified]);
+  const handleOpen = useCallback((t: TherapistItem, type: 'booking' | 'consultation', selectedSlot?: { date_iso: string; time_label: string; format: 'online' | 'in_person' }) => {
+    // Always open the modal; ContactModal will handle verification if required
+    setModalFor({ therapist: t, type, selectedSlot });
+  }, []);
 
   const handleSuccess = useCallback(() => {
     // Mark as contacted locally to reflect state
@@ -269,13 +270,15 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           {(() => {
             const name = (data?.patient?.name || '').trim();
-            if (!name) return 'Deine persönlichen Empfehlungen';
+            if (!name) return isDirectBookingFlow ? 'Deine passenden Ergebnisse' : 'Deine persönlichen Empfehlungen';
             const first = name.split(/\s+/)[0];
-            return `${first}, deine persönlichen Empfehlungen`;
+            return isDirectBookingFlow ? `${first}, deine passenden Ergebnisse` : `${first}, deine persönlichen Empfehlungen`;
           })()}
         </h1>
         <p className="mt-2 text-gray-600">
-          Katherine und Konstantin haben basierend auf deiner Anfrage {therapistsWithQuality.length} Therapeut:innen für dich ausgewählt.
+          {isDirectBookingFlow
+            ? `Basierend auf deinen Angaben und aktueller Verfügbarkeit haben wir ${therapistsWithQuality.length} passende Therapeut:innen zusammengestellt.`
+            : `Katherine und Konstantin haben basierend auf deiner Anfrage ${therapistsWithQuality.length} Therapeut:innen für dich ausgewählt.`}
         </p>
       </div>
 
@@ -370,6 +373,32 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         </div>
       )}
 
+      {isDirectBookingFlow && (
+        <div className="mb-8 rounded-xl border border-slate-200/60 bg-gradient-to-br from-slate-50/80 to-white p-6 shadow-md">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-900">
+            <Sparkles className="h-5 w-5 text-emerald-600" />
+            Warum diese Ergebnisse?
+          </h2>
+          <ul className="space-y-2 text-sm text-gray-700">
+            <li className="flex items-start gap-2">
+              <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
+              <span>Basierend auf deinen Präferenzen und aktueller Verfügbarkeit.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
+              <span>Profile und Qualifikationen verifiziert.</span>
+            </li>
+            {data?.patient?.modality_matters && (
+              <li className="flex items-start gap-2">
+                <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
+                <span>Spezielle Ausbildungen (NARM, Somatic Experiencing, Hakomi, Core Energetics) sind in den farbigen Abzeichen sichtbar.</span>
+              </li>
+            )}
+          </ul>
+          <p className="mt-4 font-semibold text-gray-900">Sorgfältig geprüfte Profile.</p>
+        </div>
+      )}
+
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {therapistsWithQuality.map((t, idx) => {
           const isTopMatch = idx === 0 || t.matchQuality.isPerfect;
@@ -419,6 +448,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             defaultReason: data?.patient?.issue || undefined,
             sessionPreference: data?.patient?.session_preference || undefined,
           }}
+          selectedSlot={modalFor.selectedSlot}
           requireVerification={!isVerified}
         />
       )}
@@ -446,16 +476,31 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             first_name: detailModalTherapist.first_name,
             last_name: detailModalTherapist.last_name,
             photo_url: detailModalTherapist.photo_url,
+            availability: Array.isArray(detailModalTherapist.availability) ? detailModalTherapist.availability as { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] : [],
             modalities: data?.patient?.modality_matters ? (detailModalTherapist.modalities || []) : [],
             session_preferences: detailModalTherapist.session_preferences || [],
             approach_text: detailModalTherapist.approach_text || '',
-            accepting_new: detailModalTherapist.accepting_new ?? false,
+            accepting_new: detailModalTherapist.accepting_new ?? true,
             city: detailModalTherapist.city || '',
           } as TherapistData}
           open={!!detailModalTherapist}
           onClose={() => setDetailModalTherapist(null)}
-          onOpenContactModal={() => {
-            // No-op for match page - contact is handled via selection flow
+          onOpenContactModal={(therapistFromProfile: TherapistData, type: 'booking' | 'consultation', selectedSlot?: { date_iso: string; time_label: string; format: 'online' | 'in_person' }) => {
+            // Map TherapistData → TherapistItem minimal fields and open ContactModal
+            const t: TherapistItem = {
+              id: therapistFromProfile.id,
+              first_name: therapistFromProfile.first_name,
+              last_name: therapistFromProfile.last_name,
+              photo_url: therapistFromProfile.photo_url,
+              city: therapistFromProfile.city,
+              accepting_new: therapistFromProfile.accepting_new,
+              modalities: therapistFromProfile.modalities,
+              session_preferences: therapistFromProfile.session_preferences,
+              approach_text: therapistFromProfile.approach_text,
+              availability: Array.isArray((therapistFromProfile as any).availability) ? (therapistFromProfile as any).availability : [],
+            };
+            setDetailModalTherapist(null);
+            handleOpen(t, type, selectedSlot);
           }}
         />
       )}

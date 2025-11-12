@@ -123,12 +123,17 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
   const faqs = copy.faqs;
   const faqSchema = buildFaqJsonLd(faqs.map(({ question, answer }) => ({ question, answer })));
   const businessSchema = buildLocalBusinessJsonLd({ baseUrl, path: '/start', areaServed: { type: 'Country', name: 'Deutschland', addressCountry: 'DE' } });
+  const neutralHeroSubtitle = variant === 'ready-now'
+    ? 'Sofort verfügbare Therapeut:innen – geprüftes Netzwerk in Berlin oder online.'
+    : 'Erfahrene Körpertherapeut:innen, die wirklich verfügbar sind. Geprüftes Netzwerk – Berlin oder online.';
 
   // Variant-specific timeline ("So funktioniert") for Test 1
+  const instantFlow = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
   const timelineTagline = isBrowse
     ? 'Verzeichnis durchsuchen. Profil ansehen. Direkt Kontakt aufnehmen – privat und ohne Wartezeit.'
-    : 'Bis zu 3 passende Therapeut:innen-Vorschläge in <24h. Deine Daten bleiben privat. Du entscheidest, wie du kontaktiert werden möchtest.';
-  const instantFlow = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
+    : (instantFlow
+      ? 'Sofort passende Profile und freie Termine. Deine Daten bleiben privat.'
+      : 'Bis zu 3 passende Therapeut:innen-Vorschläge in <24h. Deine Daten bleiben privat. Du entscheidest, wie du kontaktiert werden möchtest.');
   const timelineItems = isBrowse
     ? [
         {
@@ -201,7 +206,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
       {/* HERO (no form) */}
       <HeroNoForm
         title={copy.hero.title}
-        subtitle={copy.hero.subtitle}
+        subtitle={instantFlow ? neutralHeroSubtitle : copy.hero.subtitle}
         ctaLabel={isBrowse ? 'Therapeut:innen ansehen' : 'Jetzt Therapeut:in finden'}
         ctaHref={isBrowse ? therapeutenHref : fragebogenHref}
         backgroundSrc="/images/hero.jpg"
@@ -230,7 +235,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
       <section className="mt-10 sm:mt-14">
         <TherapistTeaserSection
           title="Unser Therapeuten-Netzwerk"
-          subtitle="Persönlich ausgewählte Spezialist:innen"
+          subtitle={instantFlow ? 'Geprüfte Spezialist:innen' : 'Persönlich ausgewählte Spezialist:innen'}
           limit={3}
         />
         <div className="mt-8 sm:mt-10 text-center">
@@ -257,7 +262,9 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
         heading="Bereit für den ersten Schritt?"
         subtitle={isBrowse
           ? 'Stöbere im Verzeichnis. Profil ansehen und direkt Kontakt aufnehmen.'
-          : 'Fülle unseren 3-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten-Vorschläge.'}
+          : (instantFlow
+            ? 'Fülle unseren 3-Minuten Fragebogen aus. Wir zeigen dir sofort passende Profile mit freien Terminen.'
+            : 'Fülle unseren 3-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten-Vorschläge.')}
         buttonLabel={isBrowse ? 'Therapeut:innen ansehen' : 'Jetzt Therapeut:in finden'}
         targetId={isBrowse ? therapeutenHref : fragebogenHref}
         align="center"

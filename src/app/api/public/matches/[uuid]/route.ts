@@ -286,24 +286,29 @@ export async function GET(req: Request) {
       const isPerfect = mm.isPerfect && timeOk;
       return { t, mm, availability, isPerfect } as const;
     });
+
+    // Sort: perfect matches first, then by fewest mismatch reasons
     scored.sort((a, b) => {
       if (a.isPerfect !== b.isPerfect) return a.isPerfect ? -1 : 1;
       return a.mm.reasons.length - b.mm.reasons.length;
     });
 
-    const list = scored.map(({ t, availability }) => ({
+    // Build response list and include per-therapist is_perfect
+    const list = scored.map(({ t, availability, isPerfect }) => ({
       id: t.id,
       first_name: t.first_name,
       last_name: t.last_name,
       photo_url: t.photo_url || undefined,
       city: (t.city || '') || undefined,
-      accepting_new: Boolean(t.accepting_new),
+      // Default to true when accepting_new is null/undefined to avoid disabling booking unnecessarily
+      accepting_new: (t.accepting_new === false ? false : true),
       contacted_at: contactedById.get(t.id) || null,
       modalities: Array.isArray(t.modalities) ? t.modalities : [],
       session_preferences: Array.isArray(t.session_preferences) ? t.session_preferences : (Array.isArray(t.metadata?.session_preferences) ? t.metadata?.session_preferences : []),
       approach_text: t.approach_text || t.metadata?.profile?.approach_text || '',
       gender: t.gender || undefined,
       availability,
+      is_perfect: Boolean(isPerfect),
     }));
 
     // Compute overall match_type for banner logic
