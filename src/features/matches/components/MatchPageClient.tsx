@@ -247,7 +247,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
         <Card>
           <CardHeader>
-            <CardTitle>Keine Empfehlungen verfügbar</CardTitle>
+            <CardTitle>Keine passenden Therapeuten gefunden</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">Keine passende Person? Schau dir unser vollständiges Verzeichnis an.</p>

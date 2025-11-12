@@ -69,7 +69,9 @@ test.describe('Booking Submission + Verification (EARTH-233)', () => {
     await page.getByRole('button', { name: 'Morgens (8-12 Uhr)' }).click();
     await page.getByRole('button', { name: 'Weiter →' }).click();
     await expect(page).toHaveURL(/\/matches\/test-uuid$/);
-    await page.getByRole('button', { name: /Therapeut:in buchen/i }).first().click();
+    const bookBtn2 = page.getByRole('button', { name: /Therapeut:in buchen/i }).first();
+    await expect(bookBtn2).toBeVisible();
+    await bookBtn2.click();
     await expect(page.getByTestId('contact-modal')).toBeVisible();
   });
 
@@ -145,16 +147,21 @@ test.describe('Booking Submission + Verification (EARTH-233)', () => {
     await page.route('**/api/public/questionnaire-submit', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { patientId: 'p3', matchesUrl: '/matches/test-uuid', matchQuality: 'partial' }, error: null }) }));
     await page.route('**/api/public/matches/*', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { patient: { status: 'anonymous' }, therapists: [], metadata: { match_type: 'none' } }, error: null }) }));
     await page.goto('/fragebogen');
-    await page.getByRole('button', { name: 'Innerhalb der nächsten Woche' }).click();
-    await page.getByRole('button', { name: 'Weiter →' }).click();
-    await page.getByRole('button', { name: 'Nein' }).click();
-    await page.waitForTimeout(900);
-    await page.getByRole('button', { name: 'Online (Video)' }).click();
-    await page.getByRole('button', { name: 'Weiter →' }).click();
+    await page.getByRole('button', { name: /Innerhalb der nächsten Woche|nächsten Woche/i }).click();
+    // Ensure Step 2 is visible before advancing
+    await expect(page.getByText(/Was bringt dich zur Therapie\? \(Optional\)/i)).toBeVisible();
+    await page.getByRole('button', { name: /Überspringen/i }).click();
+    // Modality step: wait for the screen prompt to ensure we're on step 3
+    await expect(page.getByText(/Weißt du welche Therapiemethode du bevorzugst\?/i)).toBeVisible();
+    // Proceed deterministically
+    await expect(page.getByRole('button', { name: /Nein|Nicht sicher|Weiß nicht/i })).toBeVisible();
+    await page.getByRole('button', { name: /Nein|Nicht sicher|Weiß nicht/i }).click();
+    await page.getByRole('button', { name: /Weiter(\s*→)?/i }).click();
+    await page.getByRole('button', { name: /Online(\s*\(Video\))?/i }).click();
+    await page.getByRole('button', { name: /Weiter(\s*→)?/i }).click();
     await page.getByRole('button', { name: 'Morgens (8-12 Uhr)' }).click();
     await page.getByRole('button', { name: 'Weiter →' }).click();
     await expect(page).toHaveURL(/\/matches\/test-uuid$/);
-    const title = page.locator('h1');
-    await expect(title).toBeVisible();
+    await expect(page.getByText('Alle Therapeuten ansehen')).toBeVisible();
   });
 });

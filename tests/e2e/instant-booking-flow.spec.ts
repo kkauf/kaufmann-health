@@ -39,6 +39,10 @@ test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
       });
 
       await page.goto('/matches/test-uuid');
+      // Wait for client to load and hydrate
+      const loading = page.getByText('Lade Empfehlungen…');
+      await loading.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+      await expect(loading).toHaveCount(0, { timeout: 15000 });
       await expect(page.locator('h1')).toBeVisible();
       // Email confirmation banner must not be present in direct booking
       await expect(page.locator('text=Bitte bestätige deine E‑Mail')).toHaveCount(0);
@@ -86,6 +90,9 @@ test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
       });
 
       await page.goto('/matches/test-uuid');
+      const loading2 = page.getByText('Lade Empfehlungen…');
+      await loading2.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+      await expect(loading2).toHaveCount(0, { timeout: 15000 });
       await expect(page.locator('h1')).toBeVisible();
       // No perfect match badge should be shown
       await expect(page.getByText('⭐ Perfekte Übereinstimmung')).toHaveCount(0);
@@ -103,11 +110,11 @@ test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
       });
       await page.goto('/matches/test-uuid');
-      // Wait for client directory fetch to complete (spinner disappears)
-      const spinner = page.getByText('Lade Therapeuten...');
-      await expect(spinner).toBeVisible();
-      await expect(spinner).toHaveCount(0, { timeout: 15000 });
-      // Empty state CTA should be visible
+      const loading3 = page.getByText('Lade Empfehlungen…');
+      await loading3.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+      await expect(loading3).toHaveCount(0, { timeout: 15000 });
+      // With zero therapists stubbed, empty-state CTA should be visible
+      await expect(page.getByText('Alle Therapeuten ansehen')).toBeVisible();
       await expect(page.getByText('Alle Therapeuten ansehen')).toBeVisible();
     });
   });
@@ -132,8 +139,8 @@ test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
       });
       await page.goto('/matches/test-uuid');
-      // Assert main heading visible (unique H1)
-      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      // With zero therapists stubbed, empty-state CTA should be visible on mobile
+      await expect(page.getByText('Alle Therapeuten ansehen')).toBeVisible();
     });
   });
 
