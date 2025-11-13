@@ -226,19 +226,11 @@ export async function POST(req: Request) {
       }
     }
 
-    // Parse attribution
+    // Parse attribution (landing page only). For quiz flow, enforce canonical source/variant.
     const campaign = parseCampaignFromRequest(req);
-    let campaign_source: string | undefined = campaign.campaign_source;
     const landing_page = campaign.landing_page;
-    let campaign_variant: string | undefined = campaign.campaign_variant || undefined;
-    
-    // Header overrides from client
-    try {
-      const csOver = req.headers.get('x-campaign-source-override') || undefined;
-      const cvOver = req.headers.get('x-campaign-variant-override') || undefined;
-      if (csOver) campaign_source = csOver;
-      if (cvOver) campaign_variant = cvOver;
-    } catch {}
+    const campaign_source: string | undefined = '/start';
+    const campaign_variant: string | undefined = 'quiz';
 
     // Prepare metadata with all preferences
     const metadata: Record<string, unknown> = {
