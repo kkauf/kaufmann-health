@@ -261,33 +261,81 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return NextResponse.json({ data: null, error: 'Active slots cap exceeded (max 5 series/termine)' }, { status: 400 });
     }
 
-    // Upsert slots in two batches with conflict keys that ignore format
+    // Manual upsert to avoid dependency on DB unique indexes
     const rec = sanitized.filter((s) => s.is_recurring !== false);
     const one = sanitized.filter((s) => s.is_recurring === false);
-    type UpsertErr = { message?: string } | null;
-    let up1: { error: UpsertErr } = { error: null };
-    if (rec.length > 0) {
-      up1 = await supabaseServer
-        .from('therapist_slots')
-        .upsert(rec, { ignoreDuplicates: true, onConflict: 'therapist_id,day_of_week,time_local' });
-      if (up1.error) {
-        // If legacy unique includes address, retry with address included
-        const up1b = await supabaseServer
+    let up1Err: { message?: string } | null = null;
+    // Recurring: key by therapist_id + day_of_week + time_local
+    for (const s of rec) {
+      try {
+        const { data: ex } = await supabaseServer
           .from('therapist_slots')
-          .upsert(rec, { ignoreDuplicates: true, onConflict: 'therapist_id,day_of_week,time_local,address' });
-        if (up1b.error) up1 = up1b as { error: UpsertErr };
-        else up1 = { error: null };
+          .select('id')
+          .eq('therapist_id', s.therapist_id)
+          .eq('day_of_week', s.day_of_week)
+          .eq('time_local', s.time_local)
+          .limit(1);
+        const exId = Array.isArray(ex) && ex.length > 0 ? (ex[0] as { id: string }).id : null;
+        if (exId) {
+          const { error: uErr } = await supabaseServer
+            .from('therapist_slots')
+            .update({
+              format: s.format,
+              address: s.address,
+              duration_minutes: s.duration_minutes,
+              active: s.active,
+              is_recurring: true,
+              end_date: s.end_date,
+            })
+            .eq('id', exId);
+          if (uErr) { up1Err = uErr as { message?: string }; break; }
+        } else {
+          const ins = await supabaseServer.from('therapist_slots').insert(s).select('id').single();
+          if (ins.error) { up1Err = ins.error as { message?: string }; break; }
+        }
+      } catch (e) {
+        up1Err = { message: e instanceof Error ? e.message : 'unknown error' };
+        break;
       }
     }
-    if (!up1.error && one.length > 0) {
-      const upOne = await supabaseServer
-        .from('therapist_slots')
-        .upsert(one, { ignoreDuplicates: true, onConflict: 'therapist_id,specific_date,time_local' });
-      if (upOne.error) up1 = upOne as { error: UpsertErr };
+    // One-time: key by therapist_id + specific_date + time_local
+    if (!up1Err) {
+      for (const s of one) {
+        try {
+          const { data: ex } = await supabaseServer
+            .from('therapist_slots')
+            .select('id')
+            .eq('therapist_id', s.therapist_id)
+            .eq('specific_date', s.specific_date)
+            .eq('time_local', s.time_local)
+            .limit(1);
+          const exId = Array.isArray(ex) && ex.length > 0 ? (ex[0] as { id: string }).id : null;
+          if (exId) {
+            const { error: uErr } = await supabaseServer
+              .from('therapist_slots')
+              .update({
+                format: s.format,
+                address: s.address,
+                duration_minutes: s.duration_minutes,
+                active: s.active,
+                is_recurring: false,
+                specific_date: s.specific_date,
+              })
+              .eq('id', exId);
+            if (uErr) { up1Err = uErr as { message?: string }; break; }
+          } else {
+            const ins = await supabaseServer.from('therapist_slots').insert(s).select('id').single();
+            if (ins.error) { up1Err = ins.error as { message?: string }; break; }
+          }
+        } catch (e) {
+          up1Err = { message: e instanceof Error ? e.message : 'unknown error' };
+          break;
+        }
+      }
     }
 
-    if (up1.error) {
-      const msg = up1.error.message || '';
+    if (up1Err) {
+      const msg = up1Err.message || '';
       const missingCols = msg.includes('does not exist') || msg.includes('column');
       if (missingCols) {
         // Legacy schema fallback: if the DB doesn't have the new columns yet, retry without them for recurring slots.
@@ -306,12 +354,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         }
       } else {
         const hasInPersonNoAddress = sanitized.some((s) => (s.format === 'in_person' || s.format === 'both') && (!s.address || s.address.trim() === ''));
-        const msg2 = (up1.error.message || '').toLowerCase();
+        const msg2 = (up1Err.message || '').toLowerCase();
         const addrConstraint = msg2.includes('therapist_slots_format_address_chk') || msg2.includes('violates check constraint') || (msg2.includes('address') && hasInPersonNoAddress);
         if (addrConstraint && hasInPersonNoAddress) {
           return NextResponse.json({ data: null, error: 'Für Vor-Ort-Termine bitte zuerst eine Praxis-Adresse speichern.' }, { status: 400 });
         }
-        await logError('admin.api.therapists.slots', up1.error, { stage: 'upsert', therapist_id: id });
+        await logError('admin.api.therapists.slots', up1Err, { stage: 'upsert', therapist_id: id });
         return NextResponse.json({ data: null, error: 'Failed to save slots' }, { status: 500 });
       }
     }
