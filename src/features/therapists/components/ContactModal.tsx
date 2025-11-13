@@ -122,6 +122,34 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     }
   }, [open, preAuth, therapist.first_name, contactType, requireVerification]);
 
+  // If preAuth preferred format isn't available for this therapist, fall back to the available format.
+  // Also, when there is exactly one available format overall, auto-select it to avoid an empty picker.
+  useEffect(() => {
+    if (!open) return;
+    const avail = Array.isArray(therapist.availability) ? therapist.availability : [];
+    const hasOnline = avail.some((s) => s.format === 'online');
+    const hasInPerson = avail.some((s) => s.format === 'in_person');
+
+    // If a preference was provided via preAuth but therapist doesn't offer it, switch to the offered one
+    if (preAuth?.sessionPreference === 'in_person' && !hasInPerson && hasOnline) {
+      if (sessionFormat !== 'online') setSessionFormat('online');
+      return;
+    }
+    if (preAuth?.sessionPreference === 'online' && !hasOnline && hasInPerson) {
+      if (sessionFormat !== 'in_person') setSessionFormat('in_person');
+      return;
+    }
+
+    // If no preference provided and only one format exists overall, pick it
+    if (!preAuth?.sessionPreference) {
+      if (hasOnline && !hasInPerson && sessionFormat !== 'online') {
+        setSessionFormat('online');
+      } else if (!hasOnline && hasInPerson && sessionFormat !== 'in_person') {
+        setSessionFormat('in_person');
+      }
+    }
+  }, [open, preAuth?.sessionPreference, therapist.availability, sessionFormat]);
+
   // Seed selected slot and format from prop on open
   useEffect(() => {
     if (open && selectedSlot && contactType === 'booking') {
@@ -296,6 +324,16 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   useEffect(() => {
     if (weekIndex >= slotsByWeek.length) setWeekIndex(0);
   }, [slotsByWeek.length, weekIndex]);
+  useEffect(() => {
+    if (!open) return;
+    let idx = -1;
+    for (let i = 0; i < slotsByWeek.length; i++) {
+      const slots = slotsByWeek[i]?.[1]?.slots || [];
+      const filtered = sessionFormat ? slots.filter((s) => s.format === sessionFormat) : slots;
+      if (filtered.length > 0) { idx = i; break; }
+    }
+    if (idx >= 0 && idx !== weekIndex) setWeekIndex(idx);
+  }, [open, slotsByWeek, sessionFormat, weekIndex]);
   
   // Reset modal state
   const handleClose = useCallback(() => {

@@ -242,6 +242,17 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
     if (weekIndex >= slotsByWeek.length) setWeekIndex(0);
   }, [slotsByWeek.length, weekIndex]);
 
+  useEffect(() => {
+    if (!open) return;
+    let idx = -1;
+    for (let i = 0; i < slotsByWeek.length; i++) {
+      const slots = slotsByWeek[i]?.[1]?.slots || [];
+      const filtered = sessionFormat ? slots.filter((s) => s.format === sessionFormat) : slots;
+      if (filtered.length > 0) { idx = i; break; }
+    }
+    if (idx >= 0 && idx !== weekIndex) setWeekIndex(idx);
+  }, [open, slotsByWeek, sessionFormat, weekIndex]);
+
   const hasOnlineSlots = allSlots.some(s => s.format === 'online');
   const hasInPersonSlots = allSlots.some(s => s.format === 'in_person');
   const slotsForWeek: Slot[] = slotsByWeek[weekIndex]?.[1]?.slots || [];
