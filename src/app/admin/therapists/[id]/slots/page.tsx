@@ -41,6 +41,17 @@ type TherapistInfo = {
   } | null;
 };
 
+type NewSlotPayload = {
+  is_recurring: boolean;
+  day_of_week?: number;
+  specific_date?: string;
+  time_local: string;
+  format: "online" | "in_person";
+  duration_minutes: number;
+  active: boolean;
+  end_date?: string;
+};
+
 const DAYS = [
   { value: 1, label: "Montag" },
   { value: 2, label: "Dienstag" },
@@ -165,7 +176,7 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
       if (isRecurring) {
         const d = typeof day === "number" ? day : NaN;
         if (!Number.isInteger(d)) throw new Error("Wochentag wählen");
-        const slotsPayload: any[] = [];
+        const slotsPayload: NewSlotPayload[] = [];
         const pushRecurring = (fmt: "online" | "in_person") => {
           slotsPayload.push({
             is_recurring: true,
@@ -201,7 +212,7 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
       } else {
         // One-time appointment
         if (!specificDate) throw new Error("Datum wählen");
-        const slotsPayload: any[] = [];
+        const slotsPayload: NewSlotPayload[] = [];
         const pushOneTime = (fmt: "online" | "in_person") => {
           slotsPayload.push({
             is_recurring: false,
