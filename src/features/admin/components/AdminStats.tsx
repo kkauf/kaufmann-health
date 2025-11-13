@@ -118,6 +118,7 @@ export default function AdminStats() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState(7);
+  const showLegacy = false;
 
   async function load() {
     setLoading(true);
@@ -213,8 +214,7 @@ export default function AdminStats() {
         </Card>
       </div>
 
-      {/* Lead Conversion Funnel */}
-      {data?.conversionFunnel && (
+      {showLegacy && data?.conversionFunnel && (
         <FunnelCard
           title="Lead Conversion Funnel"
           description={`Klient:innen‑Anmeldung und Verifizierung. "Aktiviert (status=new)" wird aufgeschlüsselt in: verifizierte Aktivierung (E‑Mail/Telefon bestätigt) und Verzeichnis‑Aktivierung (nachrichtensendebereit vor Verifizierung).`}
@@ -232,8 +232,7 @@ export default function AdminStats() {
         />
       )}
 
-      {/* Match Conversion Funnel */}
-      {data?.matchFunnel && (
+      {showLegacy && data?.matchFunnel && (
         <FunnelCard
           title="Match Conversion Funnel"
           description={`Therapist-patient matching pipeline. Oben: erfolgreiche Buchungen im gewählten Zeitraum. Darunter: Match-Fortschritt (Admin erstellt → kontaktiert → Antwort → Auswahl → Annahme). Lücke zwischen Erstellt und Kontaktiert = noch nicht versandte Vorschläge.`}
@@ -373,7 +372,7 @@ export default function AdminStats() {
         </CardContent>
       </Card>
 
-      {/* Wizard Funnel + Dropoffs (Combined) */}
+      {showLegacy && (
       <Card>
         <CardHeader>
           <CardTitle>Fragebogen-Funnel & Abbrüche</CardTitle>
@@ -607,10 +606,11 @@ export default function AdminStats() {
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* Abandoned Fields merged above */}
 
-      {/* Journey Analysis */}
+      {showLegacy && (
       <Card>
         <CardHeader>
           <CardTitle>Fragebogen vs. Therapeuten Journey</CardTitle>
@@ -678,8 +678,9 @@ export default function AdminStats() {
           )}
         </CardContent>
       </Card>
+      )}
 
-      {/* Directory Engagement */}
+      {showLegacy && (
       <Card>
         <CardHeader>
           <CardTitle>Verzeichnis‑Engagement (/therapeuten)</CardTitle>
@@ -884,8 +885,10 @@ export default function AdminStats() {
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* Questionnaire Insights */}
+      {showLegacy && (
       <Card>
         <CardHeader>
           <CardTitle>Questionnaire Insights</CardTitle>
@@ -957,6 +960,7 @@ export default function AdminStats() {
           )}
         </CardContent>
       </Card>
+      )}
     </section>
   );
 }
