@@ -196,6 +196,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       }
     }
 
+    // Reject early if any in_person or both slots lack an address
+    const needsAddress = sanitized.some((s) => (s.format === 'in_person' || s.format === 'both') && (!s.address || s.address.trim() === ''));
+    if (needsAddress) {
+      return NextResponse.json({ data: null, error: 'Für Vor-Ort-Termine bitte zuerst eine Praxis-Adresse speichern.' }, { status: 400 });
+    }
+
     // Cap: maximum 5 active series/appointments per therapist.
     // Count unique series by day/time (recurring) or date/time (one-time), ignoring format.
     const existingKeys = new Set<string>();
@@ -299,7 +305,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           return NextResponse.json({ data: null, error: 'Failed to save slots' }, { status: 500 });
         }
       } else {
-        const hasInPersonNoAddress = sanitized.some((s) => s.format === 'in_person' && (!s.address || s.address.trim() === ''));
+        const hasInPersonNoAddress = sanitized.some((s) => (s.format === 'in_person' || s.format === 'both') && (!s.address || s.address.trim() === ''));
         const msg2 = (up1.error.message || '').toLowerCase();
         const addrConstraint = msg2.includes('therapist_slots_format_address_chk') || msg2.includes('violates check constraint') || (msg2.includes('address') && hasInPersonNoAddress);
         if (addrConstraint && hasInPersonNoAddress) {

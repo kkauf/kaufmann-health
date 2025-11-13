@@ -76,7 +76,7 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
   const [practiceAddress, setPracticeAddress] = useState<string>("");
 
   const [appointmentType, setAppointmentType] = useState<"recurring" | "one-time">("recurring");
-  const [day, setDay] = useState<string>("");
+  const [day, setDay] = useState<string | undefined>(undefined);
   const [specificDate, setSpecificDate] = useState<string>(""); // YYYY-MM-DD
   const [time, setTime] = useState<string>("");
   const [format, setFormat] = useState<"online" | "in_person" | "both">("online");
@@ -391,7 +391,7 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setAppointmentType("one-time")}
+                    onClick={() => { setAppointmentType("one-time"); setDay(undefined); }}
                     className={`p-4 border-2 rounded-lg text-left transition-all ${
                       appointmentType === "one-time"
                         ? "border-blue-600 bg-blue-50"
@@ -403,7 +403,7 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
                   </button>
                   <button
                     type="button"
-                    onClick={() => setAppointmentType("recurring")}
+                    onClick={() => { setAppointmentType("recurring"); setSpecificDate(""); }}
                     className={`p-4 border-2 rounded-lg text-left transition-all ${
                       appointmentType === "recurring"
                         ? "border-blue-600 bg-blue-50"
