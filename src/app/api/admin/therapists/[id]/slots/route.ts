@@ -197,13 +197,32 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     // Upsert slots (the database has separate unique indexes for recurring and one-time)
-    const { error: upErr } = await supabaseServer
+    const up1 = await supabaseServer
       .from('therapist_slots')
       .upsert(sanitized, { ignoreDuplicates: true });
 
-    if (upErr) {
-      await logError('admin.api.therapists.slots', upErr, { stage: 'upsert', therapist_id: id });
-      return NextResponse.json({ data: null, error: 'Failed to save slots' }, { status: 500 });
+    if (up1.error) {
+      const msg = up1.error.message || '';
+      const missingCols = msg.includes('does not exist') || msg.includes('column');
+      if (missingCols) {
+        // Legacy schema fallback: if the DB doesn't have the new columns yet, retry without them for recurring slots.
+        const hasOneTime = sanitized.some((s) => s.is_recurring === false);
+        if (hasOneTime) {
+          // One-time appointments require the new schema; fail gracefully with a helpful error.
+          return NextResponse.json({ data: null, error: 'One-time appointments are not supported until the database migration is applied.' }, { status: 400 });
+        }
+        const legacySanitized = sanitized.map(({ is_recurring, specific_date, end_date, ...rest }) => rest);
+        const up2 = await supabaseServer
+          .from('therapist_slots')
+          .upsert(legacySanitized as any, { ignoreDuplicates: true });
+        if (up2.error) {
+          await logError('admin.api.therapists.slots', up2.error, { stage: 'upsert_legacy', therapist_id: id });
+          return NextResponse.json({ data: null, error: 'Failed to save slots' }, { status: 500 });
+        }
+      } else {
+        await logError('admin.api.therapists.slots', up1.error, { stage: 'upsert', therapist_id: id });
+        return NextResponse.json({ data: null, error: 'Failed to save slots' }, { status: 500 });
+      }
     }
 
     // Try with new columns first, fallback to legacy schema if they don't exist

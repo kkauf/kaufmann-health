@@ -205,10 +205,7 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
         if (!res.ok) throw new Error(json?.error || "Speichern fehlgeschlagen");
         setSlots(json.data as Slot[]);
         setMessage("Terminserie gespeichert");
-        setDay("");
-        setTime("");
-        setDuration(String(durationNum));
-        setEndDate("");
+        // Keep previous inputs to speed up adding multiple series
       } else {
         // One-time appointment
         if (!specificDate) throw new Error("Datum wählen");
