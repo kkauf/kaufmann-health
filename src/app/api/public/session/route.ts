@@ -34,7 +34,8 @@ export async function GET(req: Request) {
         verified: true,
         name: currentName || null,
         contact_method,
-        contact_value
+        contact_value,
+        patient_id,
       },
       error: null
     });

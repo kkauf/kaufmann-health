@@ -107,7 +107,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     type SlotIn = {
       day_of_week?: number;
       time_local: string;
-      format: 'online' | 'in_person';
+      format: 'online' | 'in_person' | 'both';
       address?: string;
       duration_minutes?: number;
       active?: boolean;
@@ -137,12 +137,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const sanitized: (SlotIn & { therapist_id: string; address: string; duration_minutes: number; active: boolean; is_recurring: boolean; specific_date: string | null; end_date: string | null; day_of_week: number })[] = [];
     for (const s of slots as SlotIn[]) {
       const isRecurring = s?.is_recurring !== false; // Default to true
-      const fmt = s?.format === 'in_person' ? 'in_person' : 'online';
+      const fmtRaw = String(s?.format || '').trim();
+      const fmt: 'online' | 'in_person' | 'both' = fmtRaw === 'in_person' ? 'in_person' : (fmtRaw === 'both' ? 'both' : 'online');
       const t = String(s?.time_local || '').slice(0, 5);
       const dur = Number.isFinite(Number(s?.duration_minutes)) ? Math.max(30, Math.min(240, Number(s!.duration_minutes))) : 60;
       const act = s?.active === false ? false : true;
       // Use explicit slot address if provided; otherwise fallback to therapist practice address for in_person
-      const addr = fmt === 'in_person' ? (String(s?.address || '').trim() || practiceAddress) : '';
+      const addr = (fmt === 'in_person' || fmt === 'both') ? (String(s?.address || '').trim() || practiceAddress) : '';
       // Optional end_date for recurring series
       const endDateStr = String(s?.end_date || '').trim();
       const endDate = endDateStr && isValidDate(endDateStr) ? endDateStr : null;
@@ -195,21 +196,89 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       }
     }
 
-    const { count } = await supabaseServer
-      .from('therapist_slots')
-      .select('id', { count: 'exact', head: true })
-      .eq('therapist_id', id)
-      .eq('active', true);
-    const existingActive = typeof count === 'number' ? count : 0;
-    const incomingActive = sanitized.filter((s) => s.active).length;
-    if (existingActive >= 5 || existingActive + incomingActive > 5) {
-      return NextResponse.json({ data: null, error: 'Active slots cap exceeded (max 5)' }, { status: 400 });
+    // Cap: maximum 5 active series/appointments per therapist.
+    // Count unique series by day/time (recurring) or date/time (one-time), ignoring format.
+    const existingKeys = new Set<string>();
+    try {
+      const { data: current } = await supabaseServer
+        .from('therapist_slots')
+        .select('day_of_week, time_local, is_recurring, specific_date, active')
+        .eq('therapist_id', id)
+        .eq('active', true);
+      if (Array.isArray(current)) {
+        for (const s of current as { day_of_week?: number | null; time_local?: string | null; is_recurring?: boolean | null; specific_date?: string | null }[]) {
+          const time = String(s.time_local || '').slice(0, 5);
+          const recurring = s.is_recurring !== false; // treat undefined as recurring
+          if (recurring) {
+            const dow = Number(s.day_of_week);
+            if (Number.isFinite(dow) && time) existingKeys.add(`R|${dow}|${time}`);
+          } else {
+            const date = String(s.specific_date || '').slice(0, 10);
+            if (date && time) existingKeys.add(`O|${date}|${time}`);
+          }
+        }
+      }
+    } catch {
+      // Fallback: legacy count (treat as recurring, dedupe by dow+time)
+      try {
+        const { data: legacy } = await supabaseServer
+          .from('therapist_slots')
+          .select('day_of_week, time_local')
+          .eq('therapist_id', id)
+          .eq('active', true);
+        if (Array.isArray(legacy)) {
+          for (const s of legacy as { day_of_week?: number | null; time_local?: string | null }[]) {
+            const time = String(s.time_local || '').slice(0, 5);
+            const dow = Number(s.day_of_week);
+            if (Number.isFinite(dow) && time) existingKeys.add(`R|${dow}|${time}`);
+          }
+        }
+      } catch {}
     }
 
-    // Upsert slots (the database has separate unique indexes for recurring and one-time)
-    const up1 = await supabaseServer
-      .from('therapist_slots')
-      .upsert(sanitized, { ignoreDuplicates: true });
+    // Incoming unique keys
+    const incomingKeys = new Set<string>();
+    for (const s of sanitized.filter((x) => x.active)) {
+      const time = String(s.time_local || '').slice(0, 5);
+      if (s.is_recurring !== false) {
+        if (Number.isFinite(s.day_of_week) && time) incomingKeys.add(`R|${s.day_of_week}|${time}`);
+      } else {
+        const date = String(s.specific_date || '').slice(0, 10);
+        if (date && time) incomingKeys.add(`O|${date}|${time}`);
+      }
+    }
+
+    // Compute union size
+    const union = new Set<string>(existingKeys);
+    for (const k of incomingKeys) union.add(k);
+    if (union.size > 5) {
+      return NextResponse.json({ data: null, error: 'Active slots cap exceeded (max 5 series/termine)' }, { status: 400 });
+    }
+
+    // Upsert slots in two batches with conflict keys that ignore format
+    const rec = sanitized.filter((s) => s.is_recurring !== false);
+    const one = sanitized.filter((s) => s.is_recurring === false);
+    type UpsertErr = { message?: string } | null;
+    let up1: { error: UpsertErr } = { error: null };
+    if (rec.length > 0) {
+      up1 = await supabaseServer
+        .from('therapist_slots')
+        .upsert(rec, { ignoreDuplicates: true, onConflict: 'therapist_id,day_of_week,time_local' });
+      if (up1.error) {
+        // If legacy unique includes address, retry with address included
+        const up1b = await supabaseServer
+          .from('therapist_slots')
+          .upsert(rec, { ignoreDuplicates: true, onConflict: 'therapist_id,day_of_week,time_local,address' });
+        if (up1b.error) up1 = up1b as { error: UpsertErr };
+        else up1 = { error: null };
+      }
+    }
+    if (!up1.error && one.length > 0) {
+      const upOne = await supabaseServer
+        .from('therapist_slots')
+        .upsert(one, { ignoreDuplicates: true, onConflict: 'therapist_id,specific_date,time_local' });
+      if (upOne.error) up1 = upOne as { error: UpsertErr };
+    }
 
     if (up1.error) {
       const msg = up1.error.message || '';

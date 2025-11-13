@@ -16,7 +16,7 @@ type Slot = {
   therapist_id: string;
   day_of_week: number;
   time_local: string;
-  format: "online" | "in_person";
+  format: "online" | "in_person" | "both";
   address: string;
   duration_minutes: number;
   active: boolean;
@@ -46,7 +46,7 @@ type NewSlotPayload = {
   day_of_week?: number;
   specific_date?: string;
   time_local: string;
-  format: "online" | "in_person";
+  format: "online" | "in_person" | "both";
   duration_minutes: number;
   active: boolean;
   end_date?: string;
@@ -119,7 +119,21 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
     return imgError ? "" : src;
   }, [therapist?.profile?.photo_url, therapist?.profile?.photo_pending_url, therapist?.photo_url, imgError]);
 
-  const activeCount = useMemo(() => slots.filter((s) => s.active).length, [slots]);
+  const activeCount = useMemo(() => {
+    const keys = new Set<string>();
+    for (const s of slots) {
+      if (!s.active) continue;
+      const time = String(s.time_local || '').slice(0, 5);
+      if (s.is_recurring !== false) {
+        const dow = Number(s.day_of_week);
+        if (Number.isFinite(dow) && time) keys.add(`R|${dow}|${time}`);
+      } else {
+        const date = String(s.specific_date || '').slice(0, 10);
+        if (date && time) keys.add(`O|${date}|${time}`);
+      }
+    }
+    return keys.size;
+  }, [slots]);
 
   const fetchSlots = useCallback(async () => {
     if (!therapistId) return;
@@ -189,8 +203,15 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
           });
         };
         if (format === "both") {
-          pushRecurring("online");
-          pushRecurring("in_person");
+          slotsPayload.push({
+            is_recurring: true,
+            day_of_week: d,
+            time_local: time.slice(0, 5),
+            format: "both",
+            duration_minutes: durationNum,
+            active: true,
+            ...(endDate ? { end_date: endDate } : {}),
+          });
         } else {
           pushRecurring(format);
         }
@@ -221,8 +242,14 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
           });
         };
         if (format === "both") {
-          pushOneTime("online");
-          pushOneTime("in_person");
+          slotsPayload.push({
+            is_recurring: false,
+            specific_date: specificDate,
+            time_local: time.slice(0, 5),
+            format: "both",
+            duration_minutes: durationNum,
+            active: true,
+          });
         } else {
           pushOneTime(format);
         }

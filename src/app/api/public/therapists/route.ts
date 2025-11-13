@@ -216,12 +216,18 @@ export async function GET() {
           if (isRecurring === false) {
             const specific = String((s as SlotRow).specific_date || '').trim();
             if (!specific) continue;
-            // Within window check (lex compare okay for YYYY-MM-DD)
             if (specific < startYmd || specific > endYmd) continue;
             const time = String(s.time_local || '').slice(0, 5);
-            const fmt = (s.format === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
-            const addr = fmt === 'in_person' ? (String(s.address || '').trim() || String(practice_address || '').trim()) : undefined;
-            pushCandidate(specific, time, fmt, addr);
+            const fmtRaw = String(s.format || '').trim();
+            if (fmtRaw === 'both') {
+              const addr = String(s.address || '').trim() || String(practice_address || '').trim();
+              pushCandidate(specific, time, 'online');
+              pushCandidate(specific, time, 'in_person', addr || undefined);
+            } else {
+              const fmt = (fmtRaw === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
+              const addr = fmt === 'in_person' ? (String(s.address || '').trim() || String(practice_address || '').trim()) : undefined;
+              pushCandidate(specific, time, fmt, addr);
+            }
           }
         }
 
@@ -241,9 +247,16 @@ export async function GET() {
             const end = String((s as SlotRow).end_date || '').trim();
             if (end && ymd > end) continue;
             const time = String(s.time_local || '').slice(0, 5);
-            const fmt = (s.format === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
-            const addr = fmt === 'in_person' ? (String(s.address || '').trim() || String(practice_address || '').trim()) : undefined;
-            pushCandidate(ymd, time, fmt, addr);
+            const fmtRaw = String(s.format || '').trim();
+            if (fmtRaw === 'both') {
+              const addr = String(s.address || '').trim() || String(practice_address || '').trim();
+              pushCandidate(ymd, time, 'online');
+              pushCandidate(ymd, time, 'in_person', addr || undefined);
+            } else {
+              const fmt = (fmtRaw === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
+              const addr = fmt === 'in_person' ? (String(s.address || '').trim() || String(practice_address || '').trim()) : undefined;
+              pushCandidate(ymd, time, fmt, addr);
+            }
           }
         }
 

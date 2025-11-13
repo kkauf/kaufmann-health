@@ -118,14 +118,14 @@ export async function POST(req: NextRequest) {
 
     const hasValidSlot = Array.isArray(slots) && (slots as {
       time_local: string | null;
-      format: 'online' | 'in_person' | string;
+      format: 'online' | 'in_person' | 'both' | string;
       day_of_week: number | null;
       is_recurring?: boolean | null;
       specific_date?: string | null;
       end_date?: string | null;
     }[]).some((s) => {
       const timeOk = String(s.time_local || '').slice(0, 5) === time_label;
-      const fmtOk = s.format === format;
+      const fmtOk = s.format === format || s.format === 'both';
       if (!timeOk || !fmtOk) return false;
       const recurring = s.is_recurring !== false; // treat undefined as recurring
       if (!recurring) {
@@ -277,7 +277,7 @@ export async function POST(req: NextRequest) {
       const addr = (() => {
         if (format !== 'in_person' || !Array.isArray(slots)) return '';
         const match = (slots as { time_local: string | null; format: string; address?: string | null }[])
-          .find((s) => String(s.time_local || '').slice(0, 5) === time_label && s.format === 'in_person');
+          .find((s) => String(s.time_local || '').slice(0, 5) === time_label && (s.format === 'in_person' || s.format === 'both'));
         return (match?.address || '').trim();
       })();
 
