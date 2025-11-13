@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { logError } from '@/lib/logger';
-import { computeMismatches, type PatientMeta, type TherapistRowForMatch } from '@/features/leads/lib/match';
+import { computeMismatches, normalizeSpec, type PatientMeta, type TherapistRowForMatch } from '@/features/leads/lib/match';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -345,10 +345,47 @@ export async function GET(req: Request) {
         uniqueReasons.add('location');
       }
       const reasonsArr = Array.from(uniqueReasons).filter(r => r === 'gender' || r === 'location' || r === 'modality');
+
+      const top3Genders = Array.from(new Set(top3.map(s => String(s.t.gender || '').toLowerCase()).filter(Boolean)));
+      const top3ModalitiesRaw: string[] = Array.from(new Set(top3.flatMap(s => Array.isArray(s.t.modalities) ? s.t.modalities : []))).filter(Boolean) as string[];
+      const top3Modalities = Array.from(new Set(top3ModalitiesRaw.map(m => normalizeSpec(String(m)))));
+      const wantedSpecs = Array.isArray(patientMeta.specializations) ? patientMeta.specializations.map(s => normalizeSpec(String(s))) : [];
+      const hasGenderPref = patientMeta.gender_preference === 'male' || patientMeta.gender_preference === 'female';
+      const preferredGender = hasGenderPref ? String(patientMeta.gender_preference) : undefined;
+      const missingPreferredGender = Boolean(hasGenderPref && preferredGender && !top3Genders.includes(preferredGender));
+      const missingRequestedModalities = wantedSpecs.filter(w => !top3Modalities.includes(w));
+
+      const insights: string[] = [];
+      if (wantsInPerson && total_in_person_slots === 0) insights.push('in_person_supply_gap');
+      if (missingPreferredGender) insights.push('gender_supply_gap');
+      if (missingRequestedModalities.length > 0) insights.push('modality_supply_gap');
+      if (missingPreferredGender && missingRequestedModalities.length > 0) insights.push('combo_gender_modality_gap');
+      if (missingPreferredGender && wantsInPerson && total_in_person_slots === 0) insights.push('combo_gender_in_person_gap');
+
       if (reasonsArr.length > 0) {
         const rows = reasonsArr.map((r) => ({ patient_id: patientId, mismatch_type: r as 'gender' | 'location' | 'modality', city: patientMeta.city || null }));
         await supabaseServer.from('business_opportunities').insert(rows).select('id').limit(1).maybeSingle();
-        void ServerAnalytics.trackEventFromRequest(req, { type: 'business_opportunity_logged', source: 'api.public.matches', props: { patient_id: patientId, reasons: reasonsArr } });
+      }
+      if (reasonsArr.length > 0 || insights.length > 0) {
+        void ServerAnalytics.trackEventFromRequest(req, {
+          type: 'business_opportunity_logged',
+          source: 'api.public.matches',
+          props: {
+            patient_id: patientId,
+            reasons: reasonsArr,
+            insights,
+            details: {
+              wants_in_person: wantsInPerson,
+              total_in_person_slots,
+              total_online_slots,
+              preferred_gender: preferredGender || null,
+              top3_genders: top3Genders,
+              top3_modalities: top3Modalities,
+              missing_requested_modalities: missingRequestedModalities,
+              city: patientMeta.city || null,
+            },
+          },
+        });
       }
     } catch (e) {
       await logError('api.public.matches.get', e, { stage: 'availability_opportunities', uuid, patient_id: patientId });

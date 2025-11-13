@@ -6,7 +6,7 @@ import { hashIP } from '@/features/leads/lib/validation';
 import { isIpRateLimited } from '@/features/leads/lib/rateLimit';
 import { track } from '@/lib/logger';
 import { safeJson } from '@/lib/http';
-import { computeMismatches, type PatientMeta, type TherapistRowForMatch, type MismatchResult } from '@/features/leads/lib/match';
+import { computeMismatches, normalizeSpec, type PatientMeta, type TherapistRowForMatch, type MismatchResult } from '@/features/leads/lib/match';
 
 // getClientIP helper
 function getClientIP(headers: Headers): string | undefined {
@@ -158,15 +158,59 @@ async function createInstantMatchesForPatient(patientId: string): Promise<{ matc
       for (const r of top) {
         for (const reason of r.result.reasons) uniqueReasons.add(reason);
       }
-      if (wantsInPerson) {
-        for (const r of top) {
+      const reasonsArr = Array.from(uniqueReasons).filter(r => r === 'gender' || r === 'location' || r === 'modality');
+
+      let total_in_person_slots = 0;
+      let total_online_slots = 0;
+      for (const s of top) {
+        const rows = slotsByTid.get(s.t.id) || [];
+        for (const row of rows) {
+          const fmt = String(row.format || '').trim();
+          if (fmt === 'in_person' || fmt === 'both') total_in_person_slots++;
+          if (fmt === 'online' || fmt === 'both') total_online_slots++;
         }
       }
-      const reasonsArr = Array.from(uniqueReasons).filter(r => r === 'gender' || r === 'location' || r === 'modality');
+
+      const topGenders = Array.from(new Set(top.map(s => String(s.t.gender || '').toLowerCase()).filter(Boolean)));
+      const topModalitiesRaw: string[] = Array.from(new Set(top.flatMap(s => Array.isArray(s.t.modalities) ? s.t.modalities : []))).filter(Boolean) as string[];
+      const topModalities = Array.from(new Set(topModalitiesRaw.map(m => normalizeSpec(String(m)))));
+      const wantedSpecs = Array.isArray(specializations) ? specializations.map(s => normalizeSpec(String(s))) : [];
+      const hasGenderPref = gender_preference === 'male' || gender_preference === 'female';
+      const preferredGender = hasGenderPref ? String(gender_preference) : undefined;
+      const missingPreferredGender = Boolean(hasGenderPref && preferredGender && !topGenders.includes(preferredGender));
+      const missingRequestedModalities = wantedSpecs.filter(w => !topModalities.includes(w));
+
+      const insights: string[] = [];
+      if (wantsInPerson && total_in_person_slots === 0) insights.push('in_person_supply_gap');
+      if (missingPreferredGender) insights.push('gender_supply_gap');
+      if (missingRequestedModalities.length > 0) insights.push('modality_supply_gap');
+      if (missingPreferredGender && missingRequestedModalities.length > 0) insights.push('combo_gender_modality_gap');
+      if (missingPreferredGender && wantsInPerson && total_in_person_slots === 0) insights.push('combo_gender_in_person_gap');
+
       if (reasonsArr.length > 0) {
         const rows = reasonsArr.map((r) => ({ patient_id: patientId, mismatch_type: r as 'gender' | 'location' | 'modality', city: city || null }));
         await supabaseServer.from('business_opportunities').insert(rows).select('id').limit(1).maybeSingle();
-        void track({ type: 'business_opportunity_logged', source: 'api.questionnaire-submit', props: { patient_id: patientId, reasons: reasonsArr } });
+      }
+      if (reasonsArr.length > 0 || insights.length > 0) {
+        void track({
+          type: 'business_opportunity_logged',
+          source: 'api.questionnaire-submit',
+          props: {
+            patient_id: patientId,
+            reasons: reasonsArr,
+            insights,
+            details: {
+              wants_in_person: wantsInPerson,
+              total_in_person_slots,
+              total_online_slots,
+              preferred_gender: preferredGender || null,
+              top_genders: topGenders,
+              top_modalities: topModalities,
+              missing_requested_modalities: missingRequestedModalities,
+              city: city || null,
+            },
+          },
+        });
       }
     } catch {}
 

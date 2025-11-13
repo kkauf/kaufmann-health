@@ -58,8 +58,7 @@ export async function GET(req: Request) {
     const ok = new Map<string, number>();
     const mm = new Map<string, number>();
     const st = new Map<string, number>();
-    const bb = new Map<string, number>();
-    const te = new Map<string, number>();
+    const ts = new Map<string, number>();
     const gd = new Map<string, number>();
     const mt = new Map<string, number>();
     const steps = new Map<string, number>();
@@ -69,16 +68,7 @@ export async function GET(req: Request) {
       if (!k) return;
       map.set(k, (map.get(k) || 0) + 1);
     };
-    const normalizeBudget = (raw?: string | null): string => {
-      const s = (raw || '').toLowerCase().trim();
-      if (!s) return 'unknown';
-      if (s.includes('flex')) return 'flexible';
-      if (s.includes('unter') || s.includes('<') || s.includes('bis 80')) return '<80';
-      if (s.includes('80') && s.includes('100')) return '80-100';
-      if (s.includes('100') && s.includes('120')) return '100-120';
-      if (s.includes('über') || s.includes('>') || s.includes('120')) return '>120';
-      return 'unknown';
-    };
+    // no budget bucketing or therapy experience in direct booking flow
 
     let total = 0;
     for (const row of (fsRows || []) as Array<{ data?: unknown }>) {
@@ -101,8 +91,13 @@ export async function GET(req: Request) {
         add(ok, okVal);
         add(mm, typeof d['modality_matters'] === 'boolean' ? ((d['modality_matters'] as boolean) ? 'true' : 'false') : undefined);
         add(st, (d['start_timing'] as string | undefined) || undefined);
-        add(bb, normalizeBudget((d['budget'] as string | undefined) || undefined));
-        add(te, (d['therapy_experience'] as string | undefined) || undefined);
+        // Aggregate preferred time slots (array of strings)
+        const timeSlots = Array.isArray(d['time_slots']) ? (d['time_slots'] as unknown[]) : [];
+        for (const t of timeSlots) {
+          const v = String(t || '').trim();
+          if (!v) continue;
+          ts.set(v, (ts.get(v) || 0) + 1);
+        }
         add(gd, (d['gender'] as string | undefined) || undefined);
         add(steps, String((d['step'] as string | number | undefined) || ''));
         const methods = Array.isArray(d['methods']) ? (d['methods'] as unknown[]) : [];
@@ -144,8 +139,7 @@ export async function GET(req: Request) {
     addSection('online_ok', toKAnonArr(ok));
     addSection('modality_matters', toKAnonArr(mm));
     addSection('start_timing', toKAnonArr(st));
-    addSection('budget_bucket', toKAnonArr(bb));
-    addSection('therapy_experience', toKAnonArr(te));
+    addSection('time_slots', toKAnonArr(ts));
     addSection('gender', toKAnonArr(gd));
     addSection('methods', toKAnonArr(mt));
     addSection('step', toKAnonArr(steps));
