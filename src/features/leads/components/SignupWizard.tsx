@@ -107,8 +107,17 @@ export default function SignupWizard() {
         session_id: sid,
         properties: { ...(properties || {}), form_session_id: sessionIdRef.current || undefined },
       };
-      navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' })) ||
-        (await fetch('/api/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }));
+      void (
+        navigator.sendBeacon?.(
+          '/api/events',
+          new Blob([JSON.stringify(payload)], { type: 'application/json' }),
+        ) ||
+        (await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }))
+      );
     } catch {}
   }, []);
 
