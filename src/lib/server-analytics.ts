@@ -89,6 +89,16 @@ export async function trackEventFromRequest(
   const ip = getClientIP(req.headers);
   const ua = req.headers.get('user-agent') || undefined;
   const attr = parseAttributionFromRequest(req);
+
+  // Environment and preview/bot detection
+  const hostHeader = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').toLowerCase();
+  const deploymentUrlHeader = (req.headers.get('x-vercel-deployment-url') || '').toLowerCase();
+  const isPreviewHost = hostHeader.endsWith('.vercel.app') || deploymentUrlHeader.endsWith('.vercel.app');
+  const vercelEnv = (process.env.VERCEL_ENV || '').toLowerCase();
+  const envTag = vercelEnv || ((hostHeader.includes('localhost') || hostHeader.startsWith('127.')) ? 'development' : (isPreviewHost ? 'preview' : 'production'));
+  const isVercelScreenshot = /vercel-screenshot/i.test(String(ua || ''));
+  const markAsTest = envTag !== 'production' || isVercelScreenshot || isPreviewHost;
+
   const props: Record<string, unknown> = {
     ...(input.id ? { id: input.id } : {}),
     ...(input.title ? { title: input.title } : {}),
@@ -97,6 +107,9 @@ export async function trackEventFromRequest(
     ...(attr.utm_source ? { utm_source: attr.utm_source } : {}),
     ...(attr.utm_medium ? { utm_medium: attr.utm_medium } : {}),
     ...(attr.utm_campaign ? { utm_campaign: attr.utm_campaign } : {}),
+    env: envTag,
+    host: hostHeader || undefined,
+    ...(markAsTest ? { is_test: true } : {}),
     ...(input.props || {}),
   };
   await track({ type: input.type, level: 'info', source: input.source, ip, ua, props });

@@ -66,6 +66,16 @@ export async function POST(req: Request) {
     const utmMediumFinal = utm_medium || attr.utm_medium;
     const utmCampaignFinal = utm_campaign || attr.utm_campaign;
 
+    // Environment and bot/preview detection for analytics hygiene
+    const uaHeader = req.headers.get('user-agent') || '';
+    const hostHeader = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').toLowerCase();
+    const deploymentUrlHeader = (req.headers.get('x-vercel-deployment-url') || '').toLowerCase();
+    const isPreviewHost = hostHeader.endsWith('.vercel.app') || deploymentUrlHeader.endsWith('.vercel.app');
+    const vercelEnv = (process.env.VERCEL_ENV || '').toLowerCase();
+    const envTag = vercelEnv || (isLocalhostRequest(req) ? 'development' : (isPreviewHost ? 'preview' : 'production'));
+    const isVercelScreenshot = /vercel-screenshot/i.test(uaHeader);
+    const markAsTest = isLocalhostRequest(req) || isTestCookie || envTag !== 'production' || isVercelScreenshot || isPreviewHost;
+
     const mergedProps: Record<string, unknown> = {
       id,
       title,
@@ -75,7 +85,9 @@ export async function POST(req: Request) {
       utm_source: utmSourceFinal,
       utm_medium: utmMediumFinal,
       utm_campaign: utmCampaignFinal,
-      ...((isLocalhostRequest(req) || isTestCookie) ? { is_test: true } : {}),
+      env: envTag,
+      host: hostHeader || undefined,
+      ...(markAsTest ? { is_test: true } : {}),
       ...(properties && typeof properties === 'object' ? properties : {}),
     };
 
