@@ -5,28 +5,76 @@ import { enums } from 'google-ads-api';
 export async function ensureSitelinkAssetsForCampaign(customer: any, campaignRn: string, items: Array<{ text: string; url: string }>, dryRun: boolean) {
   if (!items || items.length === 0) return;
   if (dryRun) {
-    console.log(`  [DRY] Would create & attach ${items.length} sitelinks`);
+    console.log(`  [DRY] Would ensure (create if missing) & attach up to ${items.length} sitelinks`);
     return;
   }
   try {
-    const creates = items.map((it) => ({
-      sitelink_asset: { link_text: it.text, final_urls: [it.url] },
-    }));
-    const created: any = await customer.assets.create(creates, { partial_failure: true });
-    const rns: string[] = (created?.results || []).map((r: any) => r?.resource_name).filter(Boolean);
-    if (rns.length) {
-      await customer.campaignAssets.create(
-        rns.map((rn) => ({
-          campaign: campaignRn,
-          asset: rn,
-          field_type: (enums as any).AssetFieldType?.SITELINK ?? enums.AssetFieldType.SITELINK,
-        })),
-        { partial_failure: true }
-      );
-      console.log(`  ✓ Sitelinks attached: ${rns.length}`);
+    // Reuse existing sitelink assets by link_text when possible
+    const existing = await listSitelinkAssets(customer);
+    const byText = new Map<string, string>();
+    for (const a of existing) {
+      const key = (a.linkText || '').trim().toLowerCase();
+      if (key && a.resourceName && !byText.has(key)) byText.set(key, a.resourceName);
     }
+
+    const toAttach: string[] = [];
+    const toCreate: Array<{ text: string; url: string }> = [];
+    for (const it of items) {
+      const key = (it.text || '').trim().toLowerCase();
+      const rn = key ? byText.get(key) : undefined;
+      if (rn) toAttach.push(rn); else toCreate.push(it);
+    }
+
+    // Create missing sitelinks
+    if (toCreate.length) {
+      try {
+        const creates = toCreate.map((it) => ({ sitelink_asset: { link_text: it.text, final_urls: [it.url] } }));
+        const created: any = await customer.assets.create(creates, { partial_failure: true });
+        const createdRns: string[] = (created?.results || []).map((r: any) => r?.resource_name).filter(Boolean);
+        toAttach.push(...createdRns);
+        if (createdRns.length) console.log(`  ✓ Created sitelinks: ${createdRns.length}`);
+      } catch (e) {
+        console.error('  ✗ Sitelinks create failed', e);
+      }
+    }
+
+    // Skip if nothing to attach
+    if (!toAttach.length) {
+      console.log('  • No sitelinks to attach');
+      return;
+    }
+
+    // Avoid duplicate attachments: fetch existing campaign SITELINK assets
+    let already: Set<string> = new Set();
+    try {
+      const rows: any[] = await customer.query(`
+        SELECT campaign_asset.asset
+        FROM campaign_asset
+        WHERE campaign.resource_name = '${campaignRn}'
+          AND campaign_asset.field_type = 'SITELINK'
+      `);
+      already = new Set((rows || []).map((r: any) => r?.campaign_asset?.asset || r?.campaignAsset?.asset).filter(Boolean));
+    } catch {
+      // ignore
+    }
+
+    const finalToAttach = toAttach.filter((rn) => !already.has(rn));
+    if (!finalToAttach.length) {
+      console.log('  • All sitelinks already attached');
+      return;
+    }
+
+    await customer.campaignAssets.create(
+      finalToAttach.map((rn) => ({
+        campaign: campaignRn,
+        asset: rn,
+        field_type: (enums as any).AssetFieldType?.SITELINK ?? enums.AssetFieldType.SITELINK,
+      })),
+      { partial_failure: true }
+    );
+    console.log(`  ✓ Sitelinks attached: ${finalToAttach.length}`);
   } catch (e) {
-    console.error('  ✗ Sitelinks create/attach failed', e);
+    console.error('  ✗ Sitelinks ensure/attach failed', e);
   }
 }
 
