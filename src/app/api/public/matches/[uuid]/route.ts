@@ -246,9 +246,16 @@ export async function GET(req: Request) {
             const time = String(s.time_local || '').slice(0, 5);
             const bookedKey = `${t.id}|${ymd}|${time}`;
             if (booked.has(bookedKey)) continue;
-            const fmt = (s.format === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
-            const addr = fmt === 'in_person' ? String(s.address || '').trim() : '';
-            availability.push({ date_iso: ymd, time_label: time, format: fmt, ...(addr ? { address: addr } : {}) });
+            const fmtRaw = String(s.format || '').trim();
+            if (fmtRaw === 'both') {
+              const addr = String(s.address || '').trim();
+              availability.push({ date_iso: ymd, time_label: time, format: 'online' });
+              availability.push({ date_iso: ymd, time_label: time, format: 'in_person', ...(addr ? { address: addr } : {}) });
+            } else {
+              const fmt = (fmtRaw === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
+              const addr = fmt === 'in_person' ? String(s.address || '').trim() : '';
+              availability.push({ date_iso: ymd, time_label: time, format: fmt, ...(addr ? { address: addr } : {}) });
+            }
           }
         }
         availability.sort((a, b) => (a.date_iso === b.date_iso ? a.time_label.localeCompare(b.time_label) : a.date_iso.localeCompare(b.date_iso)));
@@ -308,6 +315,43 @@ export async function GET(req: Request) {
     let matchType: 'exact' | 'partial' | 'none' = 'none';
     if (scored.length > 0) {
       matchType = scored.some(s => s.isPerfect) ? 'exact' : 'partial';
+    }
+
+    try {
+      const top3 = scored.slice(0, 3);
+      const total_online_slots = top3.reduce((acc, s) => acc + (s.availability?.filter(a => a.format === 'online').length || 0), 0);
+      const total_in_person_slots = top3.reduce((acc, s) => acc + (s.availability?.filter(a => a.format === 'in_person').length || 0), 0);
+      const wantsInPerson = Boolean(
+        (Array.isArray(patientMeta.session_preferences) && patientMeta.session_preferences.includes('in_person')) ||
+        patientMeta.session_preference === 'in_person'
+      );
+      void ServerAnalytics.trackEventFromRequest(req, {
+        type: 'match_availability_summary',
+        source: 'api.public.matches',
+        props: {
+          patient_id: patientId,
+          match_type: matchType,
+          therapist_ids: top3.map(s => s.t.id),
+          total_online_slots,
+          total_in_person_slots,
+          wants_in_person: wantsInPerson,
+        },
+      });
+      const uniqueReasons = new Set<string>();
+      for (const s of top3) {
+        for (const r of s.mm.reasons) uniqueReasons.add(r);
+      }
+      if (wantsInPerson && total_in_person_slots === 0) {
+        uniqueReasons.add('location');
+      }
+      const reasonsArr = Array.from(uniqueReasons).filter(r => r === 'gender' || r === 'location' || r === 'modality');
+      if (reasonsArr.length > 0) {
+        const rows = reasonsArr.map((r) => ({ patient_id: patientId, mismatch_type: r as 'gender' | 'location' | 'modality', city: patientMeta.city || null }));
+        await supabaseServer.from('business_opportunities').insert(rows).select('id').limit(1).maybeSingle();
+        void ServerAnalytics.trackEventFromRequest(req, { type: 'business_opportunity_logged', source: 'api.public.matches', props: { patient_id: patientId, reasons: reasonsArr } });
+      }
+    } catch (e) {
+      await logError('api.public.matches.get', e, { stage: 'availability_opportunities', uuid, patient_id: patientId });
     }
 
     void ServerAnalytics.trackEventFromRequest(req, {

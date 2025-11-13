@@ -149,7 +149,27 @@ async function createInstantMatchesForPatient(patientId: string): Promise<{ matc
         .single<{ secure_uuid?: string | null }>();
       if (i === 0 && row?.secure_uuid) secureUuid = row.secure_uuid;
     }
-    
+    try {
+      const wantsInPerson = Boolean(
+        (Array.isArray(session_preferences) && session_preferences.includes('in_person')) ||
+        session_preference === 'in_person'
+      );
+      const uniqueReasons = new Set<string>();
+      for (const r of top) {
+        for (const reason of r.result.reasons) uniqueReasons.add(reason);
+      }
+      if (wantsInPerson) {
+        for (const r of top) {
+        }
+      }
+      const reasonsArr = Array.from(uniqueReasons).filter(r => r === 'gender' || r === 'location' || r === 'modality');
+      if (reasonsArr.length > 0) {
+        const rows = reasonsArr.map((r) => ({ patient_id: patientId, mismatch_type: r as 'gender' | 'location' | 'modality', city: city || null }));
+        await supabaseServer.from('business_opportunities').insert(rows).select('id').limit(1).maybeSingle();
+        void track({ type: 'business_opportunity_logged', source: 'api.questionnaire-submit', props: { patient_id: patientId, reasons: reasonsArr } });
+      }
+    } catch {}
+
     return secureUuid ? { matchesUrl: `/matches/${encodeURIComponent(String(secureUuid))}`, matchQuality } : null;
   } catch {
     return null;
