@@ -23,6 +23,7 @@ type Slot = {
   created_at?: string;
   is_recurring: boolean;
   specific_date?: string | null;
+  end_date?: string | null;
 };
 
 type TherapistInfo = {
@@ -67,9 +68,10 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
   const [day, setDay] = useState<number | "">("");
   const [specificDate, setSpecificDate] = useState<string>(""); // YYYY-MM-DD
   const [time, setTime] = useState<string>("");
-  const [format, setFormat] = useState<"online" | "in_person">("online");
+  const [format, setFormat] = useState<"online" | "in_person" | "both">("online");
   const [duration, setDuration] = useState<string>("60");
   const [defaultsApplied, setDefaultsApplied] = useState(false);
+  const [endDate, setEndDate] = useState<string>(""); // YYYY-MM-DD (optional for recurring)
 
   useEffect(() => {
     (async () => {
@@ -163,18 +165,25 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
       if (isRecurring) {
         const d = typeof day === "number" ? day : NaN;
         if (!Number.isInteger(d)) throw new Error("Wochentag wählen");
-        const body = {
-          slots: [
-            {
-              is_recurring: true,
-              day_of_week: d,
-              time_local: time.slice(0, 5),
-              format,
-              duration_minutes: durationNum,
-              active: true,
-            },
-          ],
+        const slotsPayload: any[] = [];
+        const pushRecurring = (fmt: "online" | "in_person") => {
+          slotsPayload.push({
+            is_recurring: true,
+            day_of_week: d,
+            time_local: time.slice(0, 5),
+            format: fmt,
+            duration_minutes: durationNum,
+            active: true,
+            ...(endDate ? { end_date: endDate } : {}),
+          });
         };
+        if (format === "both") {
+          pushRecurring("online");
+          pushRecurring("in_person");
+        } else {
+          pushRecurring(format);
+        }
+        const body = { slots: slotsPayload };
         const res = await fetch(`/api/admin/therapists/${therapistId}/slots`, {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -188,21 +197,28 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
         setDay("");
         setTime("");
         setDuration(String(durationNum));
+        setEndDate("");
       } else {
         // One-time appointment
         if (!specificDate) throw new Error("Datum wählen");
-        const body = {
-          slots: [
-            {
-              is_recurring: false,
-              specific_date: specificDate,
-              time_local: time.slice(0, 5),
-              format,
-              duration_minutes: durationNum,
-              active: true,
-            },
-          ],
+        const slotsPayload: any[] = [];
+        const pushOneTime = (fmt: "online" | "in_person") => {
+          slotsPayload.push({
+            is_recurring: false,
+            specific_date: specificDate,
+            time_local: time.slice(0, 5),
+            format: fmt,
+            duration_minutes: durationNum,
+            active: true,
+          });
         };
+        if (format === "both") {
+          pushOneTime("online");
+          pushOneTime("in_person");
+        } else {
+          pushOneTime(format);
+        }
+        const body = { slots: slotsPayload };
         const res = await fetch(`/api/admin/therapists/${therapistId}/slots`, {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -400,13 +416,14 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
                 {/* Step 3: Format and Duration */}
                 <div className="space-y-1 lg:col-span-1">
                   <Label>Format</Label>
-                  <Select value={format} onValueChange={(v: "online" | "in_person") => setFormat(v)}>
+                  <Select value={format} onValueChange={(v: "online" | "in_person" | "both") => setFormat(v)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="online">Online</SelectItem>
                       <SelectItem value="in_person">Vor Ort</SelectItem>
+                      <SelectItem value="both">Beides</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -416,6 +433,19 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
                   <Input type="number" min={30} max={240} value={duration} onChange={(e) => setDuration(e.target.value)} />
                 </div>
               </div>
+
+              {appointmentType === "recurring" ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+                  <div className="space-y-1 lg:col-span-2">
+                    <Label>Enddatum (optional)</Label>
+                    <Input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+              ) : null}
 
               <div className="flex items-center justify-between pt-2">
                 <p className="text-xs text-gray-500">
@@ -459,6 +489,9 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
                           <span className="font-medium mr-2">{DAYS.find((d) => d.value === s.day_of_week)?.label || s.day_of_week}</span>
                           <span className="mr-2">{s.time_local.slice(0, 5)} Uhr</span>
                           <span className="mr-2">{s.format === "online" ? "Online" : "Vor Ort"}</span>
+                          {s.is_recurring && s.end_date ? (
+                            <span className="text-gray-600 ml-2">bis {new Date((s.end_date as string) + "T12:00:00").toLocaleDateString("de-DE", { year: "numeric", month: "2-digit", day: "2-digit" })}</span>
+                          ) : null}
                           {s.format === "in_person" && s.address ? <span className="text-gray-600">{s.address}</span> : null}
                         </div>
                         <div className="flex items-center gap-2">

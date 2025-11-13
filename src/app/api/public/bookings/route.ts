@@ -111,14 +111,35 @@ export async function POST(req: NextRequest) {
 
     const { data: slots } = await supabaseServer
       .from('therapist_slots')
-      .select('day_of_week, time_local, format, active, address')
+      .select('day_of_week, time_local, format, active, address, is_recurring, specific_date, end_date')
       .eq('therapist_id', therapist_id)
       .eq('active', true)
-      .eq('day_of_week', dow);
+      .or(`day_of_week.eq.${dow},is_recurring.eq.false`);
 
-    const hasValidSlot = Array.isArray(slots)
-      && (slots as { time_local: string | null; format: 'online' | 'in_person' | string }[])
-        .some((s) => String(s.time_local || '').slice(0, 5) === time_label && (s.format === format));
+    const hasValidSlot = Array.isArray(slots) && (slots as {
+      time_local: string | null;
+      format: 'online' | 'in_person' | string;
+      day_of_week: number | null;
+      is_recurring?: boolean | null;
+      specific_date?: string | null;
+      end_date?: string | null;
+    }[]).some((s) => {
+      const timeOk = String(s.time_local || '').slice(0, 5) === time_label;
+      const fmtOk = s.format === format;
+      if (!timeOk || !fmtOk) return false;
+      const recurring = s.is_recurring !== false; // treat undefined as recurring
+      if (!recurring) {
+        // one-time slot must match exact date
+        const sd = String(s.specific_date || '').trim();
+        return sd === date_iso;
+      }
+      // recurring: must match day_of_week and not exceed optional end_date
+      const dowOk = Number(s.day_of_week) === dow;
+      if (!dowOk) return false;
+      const end = String(s.end_date || '').trim();
+      if (end && date_iso > end) return false;
+      return true;
+    });
     if (!hasValidSlot) {
       return NextResponse.json({ error: 'Slot not available' }, { status: 400 });
     }
@@ -301,7 +322,8 @@ export async function POST(req: NextRequest) {
           return '';
         }
       })();
-      if (therapistEmail) {
+      if ((isKhTest && sinkEmail) || (!isKhTest && therapistEmail)) {
+        const toAddr = (isKhTest ? sinkEmail : therapistEmail) as string;
         const content = renderBookingTherapistNotification({
           therapistName,
           dateIso: date_iso,
@@ -311,7 +333,7 @@ export async function POST(req: NextRequest) {
           magicUrl: magicUrl || null,
         });
         void sendEmail({
-          to: isKhTest && sinkEmail ? sinkEmail : therapistEmail,
+          to: toAddr,
           subject: content.subject,
           html: content.html,
           context: { kind: 'booking_therapist_notification', therapist_id, patient_id: session.patient_id },
@@ -320,7 +342,8 @@ export async function POST(req: NextRequest) {
 
       // Client email (only if we have an email)
       const clientEmail = (pRow?.email || undefined) as string | undefined;
-      if (clientEmail) {
+      if ((isKhTest && sinkEmail) || (!isKhTest && clientEmail)) {
+        const toAddr = (isKhTest ? sinkEmail : clientEmail) as string;
         const content2 = renderBookingClientConfirmation({
           therapistName,
           dateIso: date_iso,
@@ -329,7 +352,7 @@ export async function POST(req: NextRequest) {
           address: (addr || practiceAddr) || null,
         });
         void sendEmail({
-          to: isKhTest && sinkEmail ? sinkEmail : clientEmail,
+          to: toAddr,
           subject: content2.subject,
           html: content2.html,
           context: { kind: 'booking_client_confirmation', therapist_id, patient_id: session.patient_id },

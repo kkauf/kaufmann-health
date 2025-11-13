@@ -57,6 +57,7 @@ export async function GET() {
       // New schema fields (nullable for legacy fallback)
       is_recurring?: boolean | null;
       specific_date?: string | null; // YYYY-MM-DD
+      end_date?: string | null; // YYYY-MM-DD
     };
 
     // Fetch active slots for these therapists (best-effort) including recurrence fields when available
@@ -66,7 +67,7 @@ export async function GET() {
         // Try selecting with new columns first
         const initial = await supabaseServer
           .from('therapist_slots')
-          .select('therapist_id, day_of_week, time_local, format, address, duration_minutes, active, is_recurring, specific_date')
+          .select('therapist_id, day_of_week, time_local, format, address, duration_minutes, active, is_recurring, specific_date, end_date')
           .in('therapist_id', therapistIds)
           .eq('active', true)
           .limit(1000);
@@ -236,6 +237,9 @@ export async function GET() {
             if (isRecurring === false) continue;
             const sDow = Number(s.day_of_week);
             if (sDow !== dow) continue;
+            // Respect optional end_date on recurring series
+            const end = String((s as SlotRow).end_date || '').trim();
+            if (end && ymd > end) continue;
             const time = String(s.time_local || '').slice(0, 5);
             const fmt = (s.format === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
             const addr = fmt === 'in_person' ? (String(s.address || '').trim() || String(practice_address || '').trim()) : undefined;

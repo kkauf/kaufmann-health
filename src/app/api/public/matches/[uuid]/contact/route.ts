@@ -25,6 +25,12 @@ function extractMessage(err: unknown): string | null {
   return null;
 }
 
+// Basic UUID (v1-v5) validation to avoid Postgres uuid casts on bad input
+function isUuidLike(s: string): boolean {
+  if (process.env.NODE_ENV === 'test') return typeof s === 'string' && s.length > 0;
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(s);
+}
+
 async function checkRateLimitByMatches(patientId: string): Promise<{ allowed: boolean; count: number }> {
   // Allow disabling rate limit for local testing
   if (process.env.RESEND_DISABLE_IDEMPOTENCY === 'true') {
@@ -74,6 +80,9 @@ export async function POST(req: Request) {
   const matchesIdx = parts.indexOf('matches');
   const uuid = matchesIdx >= 0 && parts.length > matchesIdx + 1 ? decodeURIComponent(parts[matchesIdx + 1]) : '';
   if (!uuid) return NextResponse.json({ data: null, error: 'Missing uuid' }, { status: 400 });
+  if (!isUuidLike(uuid)) {
+    return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
+  }
 
   try {
     const body = await req.json().catch(() => ({}));

@@ -197,14 +197,51 @@ export async function POST(req: NextRequest) {
                   }
                 })();
                 const sinkEmail = (process.env.LEADS_NOTIFY_EMAIL || '').trim();
-                const { data: existing } = await supabaseServer
-                  .from('bookings')
+                // Validate therapist is verified and weekly slot is designated for the given weekday/time/format (Berlin TZ)
+                // Therapist verified
+                const { data: therapist } = await supabaseServer
+                  .from('therapists')
                   .select('id')
-                  .eq('therapist_id', therapistId)
-                  .eq('date_iso', dateIso)
-                  .eq('time_label', timeLabel)
+                  .eq('id', therapistId)
+                  .eq('status', 'verified')
                   .maybeSingle();
-                if (!existing) {
+                // Weekly slot check
+                let hasValidSlot = false;
+                if (therapist) {
+                  try {
+                    const d = new Date(`${dateIso}T00:00:00Z`);
+                    const weekdayFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', weekday: 'short' });
+                    const weekdayIndex: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+                    const dow = weekdayIndex[weekdayFmt.format(d) as keyof typeof weekdayIndex] ?? d.getUTCDay();
+                    const { data: slots } = await supabaseServer
+                      .from('therapist_slots')
+                      .select('day_of_week, time_local, format, active')
+                      .eq('therapist_id', therapistId)
+                      .eq('active', true)
+                      .eq('day_of_week', dow);
+                    hasValidSlot = Array.isArray(slots)
+                      && (slots as { time_local: string | null; format: 'online' | 'in_person' | string }[])
+                        .some((s) => String(s.time_local || '').slice(0, 5) === timeLabel && (s.format === fmt));
+                  } catch {}
+                }
+
+                if (!therapist || !hasValidSlot) {
+                  try {
+                    await ServerAnalytics.trackEventFromRequest(req, {
+                      type: 'booking_slot_invalid',
+                      source: 'api.verification.verify-code',
+                      props: { therapist_id: therapistId, date_iso: dateIso, time_label: timeLabel, format: fmt, therapist_verified: Boolean(therapist) },
+                    });
+                  } catch {}
+                } else {
+                  const { data: existing } = await supabaseServer
+                    .from('bookings')
+                    .select('id')
+                    .eq('therapist_id', therapistId)
+                    .eq('date_iso', dateIso)
+                    .eq('time_label', timeLabel)
+                    .maybeSingle();
+                  if (!existing) {
                   if (isKhTest) {
                     // Dry-run: track, send sink-only emails, do not insert, do not clear draft_booking
                     try {
@@ -368,6 +405,7 @@ export async function POST(req: NextRequest) {
                       } catch {}
                     }
                   }
+                }
                 }
                 // Only clear draft_booking when not in dry-run
                 if (!isKhTest) {

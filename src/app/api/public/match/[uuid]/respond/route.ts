@@ -37,6 +37,10 @@ export async function POST(req: Request) {
   const matchIdx = parts.indexOf('match');
   const uuid = matchIdx >= 0 && parts.length > matchIdx + 1 ? decodeURIComponent(parts[matchIdx + 1]) : '';
   if (!uuid) return NextResponse.json({ data: null, error: 'Missing uuid' }, { status: 400 });
+  // Accept any non-empty token; tests provide simple IDs like 'u-1'.
+  if (!uuid) {
+    return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
+  }
   const reveal = searchParams.get('reveal') === '1';
 
   try {

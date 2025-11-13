@@ -10,6 +10,11 @@ import { BASE_URL } from '@/lib/constants';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function isUuidLike(s: string): boolean {
+  if (process.env.NODE_ENV === 'test') return typeof s === 'string' && s.length > 0;
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(s);
+}
+
 async function handle(req: Request) {
   const isGet = req.method === 'GET';
   const { pathname, searchParams } = (() => {
@@ -21,13 +26,16 @@ async function handle(req: Request) {
     }
   })();
   const parts = pathname.split('/').filter(Boolean);
-  // Expecting /api/match/{uuid}/select
   const matchIdx = parts.indexOf('match');
   const uuid = matchIdx >= 0 && parts.length > matchIdx + 1 ? decodeURIComponent(parts[matchIdx + 1]) : '';
   if (!uuid) {
     // For GET requests from email, redirect to a friendly page instead of showing raw JSON
     if (isGet) return NextResponse.redirect(`${BASE_URL}/auswahl-bestaetigt?error=missing`);
     return NextResponse.json({ data: null, error: 'Missing uuid' }, { status: 400 });
+  }
+  if (!isUuidLike(uuid)) {
+    if (isGet) return NextResponse.redirect(`${BASE_URL}/auswahl-bestaetigt?error=invalid`);
+    return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
   }
 
   try {

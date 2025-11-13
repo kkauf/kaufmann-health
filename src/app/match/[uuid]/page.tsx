@@ -10,6 +10,10 @@ function hoursSince(iso: string | null | undefined): number | null {
   return (Date.now() - t) / (1000 * 60 * 60);
 }
 
+function isUuidLike(s: string): string | null {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(s) ? s : null;
+}
+
 async function getData(uuid: string) {
   const { data: match, error } = await supabaseServer
     .from('matches')
@@ -152,6 +156,23 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
   const { uuid: rawUuid } = await params;
   const uuid = (rawUuid || '').trim();
   if (!uuid) return null;
+  if (!isUuidLike(uuid)) {
+    return (
+      <>
+        <div className="mx-auto max-w-xl px-4 py-10">
+          <Card>
+            <CardHeader>
+              <CardTitle>Anfrage nicht gefunden</CardTitle>
+              <CardDescription>
+                Der Link ist ungültig oder wurde bereits verwendet.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+        <FloatingWhatsApp />
+      </>
+    );
+  }
   const data = await getData(uuid);
 
   if (!data) {
