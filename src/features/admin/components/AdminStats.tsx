@@ -282,7 +282,7 @@ export default function AdminStats() {
                       <tbody>
                         {data.opportunities.breakdowns.preferredGender.map((r) => (
                           <tr key={r.option} className="border-t">
-                            <td className="py-1 pr-3 font-mono text-xs">{r.option}</td>
+                            <td className="py-1 pr-3 font-mono text-xs">{r.option === 'none' ? 'keine Angabe' : r.option}</td>
                             <td className="py-1 pr-3 text-right tabular-nums">{r.count}</td>
                           </tr>
                         ))}
