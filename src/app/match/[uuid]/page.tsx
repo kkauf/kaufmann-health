@@ -252,7 +252,7 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
             {/* EARTH-205: Display patient message */}
             {data.patientMessage ? (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm font-medium text-gray-900 mb-2">Nachricht vom Klienten</p>
+                <p className="text-sm font-medium text-gray-900 mb-2">Nachricht von Klient:in</p>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap">{data.patientMessage}</p>
               </div>
             ) : null}

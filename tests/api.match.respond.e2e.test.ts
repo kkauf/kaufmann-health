@@ -72,7 +72,7 @@ describe('EARTH-205: End-to-End Therapist Response Flow', () => {
       // Verify email content
       expect(emailContent.subject).toBe('Neue Anfrage: Direktbuchung');
       expect(emailContent.html).toContain('Direktbuchung');
-      expect(emailContent.html).toContain('Nachricht vom Klienten');
+      expect(emailContent.html).toContain('Nachricht von Klient:in');
       expect(emailContent.html).toContain('traumatischer Erlebnisse');
       expect(emailContent.html).toContain('NARM');
 
@@ -287,9 +287,9 @@ describe('EARTH-205: End-to-End Therapist Response Flow', () => {
         // No contactType or patientMessage
       });
 
-      expect(emailContent.subject).toBe('Neue Klientenanfrage – Berlin – Angststörung');
+      expect(emailContent.subject).toBe('Neue Anfrage von Klient:in – Berlin – Angststörung');
       expect(emailContent.html).not.toContain('Direktbuchung');
-      expect(emailContent.html).not.toContain('Nachricht vom Klienten');
+      expect(emailContent.html).not.toContain('Nachricht von Klient:in');
     });
 
     it('generates generic mailto for admin matches', () => {

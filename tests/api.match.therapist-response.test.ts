@@ -38,7 +38,7 @@ describe('EARTH-205: Therapist Response Flow', () => {
 
       expect(result.subject).toBe('Neue Anfrage: Direktbuchung');
       expect(result.html).toContain('Direktbuchung');
-      expect(result.html).toContain('Nachricht vom Klienten');
+      expect(result.html).toContain('Nachricht von Klient:in');
       expect(result.html).toContain('Ich würde gerne einen Termin vereinbaren');
       expect(result.html).toContain('Ich habe Erfahrung mit NARM gesucht');
     });
@@ -68,9 +68,9 @@ describe('EARTH-205: Therapist Response Flow', () => {
         expiresHours: 72,
       });
 
-      expect(result.subject).toBe('Neue Klientenanfrage – Berlin – Angst');
+      expect(result.subject).toBe('Neue Anfrage von Klient:in – Berlin – Angst');
       expect(result.html).not.toContain('Direktbuchung');
-      expect(result.html).not.toContain('Nachricht vom Klienten');
+      expect(result.html).not.toContain('Nachricht von Klient:in');
     });
 
     it('escapes HTML in patient message', () => {
