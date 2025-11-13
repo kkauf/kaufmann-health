@@ -95,8 +95,7 @@ type StatsData = {
     onlineOk: Array<{ option: string; count: number }>;
     modalityMatters: Array<{ option: string; count: number }>;
     startTiming: Array<{ option: string; count: number }>;
-    budgetBuckets: Array<{ option: string; count: number }>;
-    therapyExperience: Array<{ option: string; count: number }>;
+    timeSlots: Array<{ option: string; count: number }>;
     gender: Array<{ option: string; count: number }>;
     methodsTop: Array<{ option: string; count: number }>;
     totalSessions: number;
@@ -111,6 +110,16 @@ type StatsData = {
     quizMatches: { steps: Array<{ name: string; count: number; from_prev_rate: number; from_start_rate: number }>; };
     browseDirectory: { steps: Array<{ name: string; count: number; from_prev_rate: number; from_start_rate: number }>; };
   };
+  opportunities?: {
+    byReason: { gender: number; location: number; modality: number };
+    insights: Array<{ type: string; count: number }>;
+    insightsModalityMatters: Array<{ type: string; count: number }>;
+    topCities: Array<{ city: string; count: number }>;
+    breakdowns: {
+      preferredGender: Array<{ option: string; count: number }>;
+      wantsInPerson: Array<{ option: string; count: number }>;
+    };
+  };
 };
 
 export default function AdminStats() {
@@ -118,6 +127,7 @@ export default function AdminStats() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState(7);
+  const [modalityOnly, setModalityOnly] = useState(false);
   const showLegacy = false;
 
   async function load() {
@@ -165,6 +175,152 @@ export default function AdminStats() {
             Tracking insights for last {days} days. Totals are lifetime; all other sections reflect the selected window.
           </p>
         </div>
+
+      {data?.opportunities && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Business Opportunities</CardTitle>
+            <CardDescription>Signals from mismatches and supply gaps in the selected window</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-sm text-muted-foreground">Filter</div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={modalityOnly}
+                  onChange={(e) => setModalityOnly(e.target.checked)}
+                />
+                Only show insights where modality matters
+              </label>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="p-3 border rounded-md">
+                <div className="text-sm text-muted-foreground">Gender</div>
+                <div className="text-2xl font-semibold tabular-nums">{data.opportunities.byReason.gender}</div>
+              </div>
+              <div className="p-3 border rounded-md">
+                <div className="text-sm text-muted-foreground">Location</div>
+                <div className="text-2xl font-semibold tabular-nums">{data.opportunities.byReason.location}</div>
+              </div>
+              <div className="p-3 border rounded-md">
+                <div className="text-sm text-muted-foreground">Modality</div>
+                <div className="text-2xl font-semibold tabular-nums">{data.opportunities.byReason.modality}</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <div className="text-sm font-medium mb-2">Insights</div>
+                {(
+                  (modalityOnly ? data.opportunities.insightsModalityMatters : data.opportunities.insights)?.length
+                ) === 0 ? (
+                  <div className="text-sm text-muted-foreground">Keine Daten</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-muted-foreground">
+                          <th className="py-1 pr-3">Typ</th>
+                          <th className="py-1 pr-3 text-right">Anzahl</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(modalityOnly ? data.opportunities.insightsModalityMatters : data.opportunities.insights).map((r) => (
+                          <tr key={r.type} className="border-t">
+                            <td className="py-1 pr-3 font-mono text-xs">{r.type}</td>
+                            <td className="py-1 pr-3 text-right tabular-nums">{r.count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div className="text-sm font-medium mb-2">Top Städte</div>
+                {!data.opportunities.topCities?.length ? (
+                  <div className="text-sm text-muted-foreground">Keine Daten</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-muted-foreground">
+                          <th className="py-1 pr-3">Stadt</th>
+                          <th className="py-1 pr-3 text-right">Anzahl</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.opportunities.topCities.map((r) => (
+                          <tr key={r.city} className="border-t">
+                            <td className="py-1 pr-3 font-mono text-xs">{r.city}</td>
+                            <td className="py-1 pr-3 text-right tabular-nums">{r.count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              <div>
+                <div className="text-sm font-medium mb-2">Breakdown: Preferred Gender (for gender gap insights)</div>
+                {!data.opportunities.breakdowns?.preferredGender?.length ? (
+                  <div className="text-sm text-muted-foreground">Keine Daten</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-muted-foreground">
+                          <th className="py-1 pr-3">Option</th>
+                          <th className="py-1 pr-3 text-right">Anzahl</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.opportunities.breakdowns.preferredGender.map((r) => (
+                          <tr key={r.option} className="border-t">
+                            <td className="py-1 pr-3 font-mono text-xs">{r.option}</td>
+                            <td className="py-1 pr-3 text-right tabular-nums">{r.count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div className="text-sm font-medium mb-2">Breakdown: Wants In-person (for in-person gap insights)</div>
+                {!data.opportunities.breakdowns?.wantsInPerson?.length ? (
+                  <div className="text-sm text-muted-foreground">Keine Daten</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-muted-foreground">
+                          <th className="py-1 pr-3">Option</th>
+                          <th className="py-1 pr-3 text-right">Anzahl</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.opportunities.breakdowns.wantsInPerson.map((r) => (
+                          <tr key={r.option} className="border-t">
+                            <td className="py-1 pr-3 font-mono text-xs">{r.option}</td>
+                            <td className="py-1 pr-3 text-right tabular-nums">{r.count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
         <div className="flex items-center gap-2">
           <select
             value={days}
@@ -937,10 +1093,9 @@ export default function AdminStats() {
                     <>
                       {block('Kontaktmethode', data.questionnaireInsights.contactMethod)}
                       {block('Sitzungspräferenz', data.questionnaireInsights.sessionPreference)}
-                      {block('Therapieerfahrung', data.questionnaireInsights.therapyExperience)}
+                      {block('Zeitfenster', data.questionnaireInsights.timeSlots)}
                       {block('Modalität wichtig', data.questionnaireInsights.modalityMatters)}
                       {block('Startzeit', data.questionnaireInsights.startTiming)}
-                      {block('Budget', data.questionnaireInsights.budgetBuckets)}
                       {block('Geschlecht', data.questionnaireInsights.gender)}
                       {block('Methoden (Top)', data.questionnaireInsights.methodsTop)}
                     </>

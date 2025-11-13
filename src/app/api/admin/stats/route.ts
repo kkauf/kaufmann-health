@@ -318,8 +318,7 @@ type StatsResponse = {
     onlineOk: Array<{ option: string; count: number }>;
     modalityMatters: Array<{ option: string; count: number }>;
     startTiming: Array<{ option: string; count: number }>;
-    budgetBuckets: Array<{ option: string; count: number }>;
-    therapyExperience: Array<{ option: string; count: number }>;
+    timeSlots: Array<{ option: string; count: number }>;
     gender: Array<{ option: string; count: number }>;
     methodsTop: Array<{ option: string; count: number }>;
     totalSessions: number;
@@ -331,6 +330,16 @@ type StatsResponse = {
     byBudgetBucket: Array<{ option: string; started: number; completed: number; completion_rate: number }>;
   };
   funnels?: FunnelsResponse;
+  opportunities: {
+    byReason: { gender: number; location: number; modality: number };
+    insights: Array<{ type: string; count: number }>;
+    insightsModalityMatters: Array<{ type: string; count: number }>;
+    topCities: Array<{ city: string; count: number }>;
+    breakdowns: {
+      preferredGender: Array<{ option: string; count: number }>;
+      wantsInPerson: Array<{ option: string; count: number }>;
+    };
+  };
 };
 
 export async function GET(req: Request) {
@@ -737,16 +746,7 @@ export async function GET(req: Request) {
         }
       }
 
-      const normalizeBudget = (raw?: string | null): string => {
-        const s = (raw || '').toLowerCase().trim();
-        if (!s) return 'unknown';
-        if (s.includes('flex')) return 'flexible';
-        if (s.includes('unter') || s.includes('<') || s.includes('bis 80')) return '<80';
-        if (s.includes('80') && s.includes('100')) return '80-100';
-        if (s.includes('100') && s.includes('120')) return '100-120';
-        if (s.includes('über') || s.includes('>') || s.includes('120')) return '>120';
-        return 'unknown';
-      };
+      // no-op: budget removed in direct booking flow
 
       const seg = {
         bySessionPreference: [] as Array<{ option: string; started: number; completed: number; completion_rate: number }>,
@@ -791,13 +791,12 @@ export async function GET(req: Request) {
         return 'unknown';
       };
       const getSt = (d?: Record<string, unknown>) => String(((d?.['start_timing'] as string | undefined) || '').trim() || 'unknown');
-      const getBb = (d?: Record<string, unknown>) => normalizeBudget((d?.['budget'] as string | undefined) || undefined);
 
       const wizardSegments = {
         bySessionPreference: compute(getSp),
         byOnlineOk: compute(getOk),
         byStartTiming: compute(getSt),
-        byBudgetBucket: compute(getBb),
+        byBudgetBucket: [],
       };
       // expose segments by attaching to closure scope for later response
       (wizardFunnel as unknown as { _segments?: unknown })._segments = wizardSegments;
@@ -1339,8 +1338,7 @@ export async function GET(req: Request) {
       onlineOk: [],
       modalityMatters: [],
       startTiming: [],
-      budgetBuckets: [],
-      therapyExperience: [],
+      timeSlots: [],
       gender: [],
       methodsTop: [],
       totalSessions: 0,
@@ -1360,8 +1358,7 @@ export async function GET(req: Request) {
       const ok = new Map<string, number>();
       const mm = new Map<string, number>();
       const st = new Map<string, number>();
-      const bb = new Map<string, number>();
-      const te = new Map<string, number>();
+      const ts = new Map<string, number>();
       const gd = new Map<string, number>();
       const mt = new Map<string, number>();
 
@@ -1370,16 +1367,7 @@ export async function GET(req: Request) {
         if (!k) return;
         map.set(k, (map.get(k) || 0) + 1);
       };
-      const normalizeBudget = (raw?: string | null): string => {
-        const s = (raw || '').toLowerCase().trim();
-        if (!s) return 'unknown';
-        if (s.includes('flex')) return 'flexible';
-        if (s.includes('unter') || s.includes('<') || s.includes('bis 80')) return '<80';
-        if (s.includes('80') && s.includes('100')) return '80-100';
-        if (s.includes('100') && s.includes('120')) return '100-120';
-        if (s.includes('über') || s.includes('>') || s.includes('120')) return '>120';
-        return 'unknown';
-      };
+      // no budget bucketing in direct booking flow
 
       let total = 0;
       for (const row of (fsRows || []) as Array<{ data?: unknown }>) {
@@ -1390,9 +1378,18 @@ export async function GET(req: Request) {
           total++;
 
           add(cm, (d['contact_method'] as string | undefined) || undefined);
-          // Count missing session_preference as "unknown" to match wizard funnel behavior
-          const spVal = (d['session_preference'] as string | undefined) || undefined;
-          add(sp, spVal || 'unknown');
+          // Session preference quality: only count for sessions that reached step >= 4.
+          // If field missing but step>=4, count as 'unknown'. Ignore earlier steps to avoid inflating 'unknown'.
+          let stepNum = 0;
+          try {
+            const sv = (d['step'] as unknown);
+            const n = Number(String(sv ?? ''));
+            stepNum = Number.isFinite(n) ? Math.floor(n) : 0;
+          } catch { stepNum = 0; }
+          if (stepNum >= 4) {
+            const spVal = (d['session_preference'] as string | undefined) || undefined;
+            add(sp, spVal || 'unknown');
+          }
           // Derive onlineOk from session_preference when boolean is absent
           let okVal: string | undefined;
           if (typeof d['online_ok'] === 'boolean') {
@@ -1406,8 +1403,13 @@ export async function GET(req: Request) {
           add(ok, okVal);
           add(mm, typeof d['modality_matters'] === 'boolean' ? ((d['modality_matters'] as boolean) ? 'true' : 'false') : undefined);
           add(st, (d['start_timing'] as string | undefined) || undefined);
-          add(bb, normalizeBudget((d['budget'] as string | undefined) || undefined));
-          add(te, (d['therapy_experience'] as string | undefined) || undefined);
+          // Aggregate preferred time slots (array of strings)
+          const timeSlots = Array.isArray(d['time_slots']) ? (d['time_slots'] as unknown[]) : [];
+          for (const t of timeSlots) {
+            const v = String(t || '').trim();
+            if (!v) continue;
+            ts.set(v, (ts.get(v) || 0) + 1);
+          }
           add(gd, (d['gender'] as string | undefined) || undefined);
 
           const methods = Array.isArray(d['methods']) ? (d['methods'] as unknown[]) : [];
@@ -1428,8 +1430,7 @@ export async function GET(req: Request) {
       questionnaireInsights.onlineOk = toArr(ok);
       questionnaireInsights.modalityMatters = toArr(mm);
       questionnaireInsights.startTiming = toArr(st);
-      questionnaireInsights.budgetBuckets = toArr(bb);
-      questionnaireInsights.therapyExperience = toArr(te);
+      questionnaireInsights.timeSlots = toArr(ts);
       questionnaireInsights.gender = toArr(gd);
       questionnaireInsights.methodsTop = toArr(mt).slice(0, 15);
       questionnaireInsights.totalSessions = total;
@@ -1446,6 +1447,85 @@ export async function GET(req: Request) {
 
     const funnels = await buildFunnels(sinceIso);
 
+    let opportunities: StatsResponse['opportunities'] = {
+      byReason: { gender: 0, location: 0, modality: 0 },
+      insights: [],
+      insightsModalityMatters: [],
+      topCities: [],
+      breakdowns: { preferredGender: [], wantsInPerson: [] },
+    };
+    try {
+      const [boRes, evRes] = await Promise.all([
+        supabaseServer
+          .from('business_opportunities')
+          .select('mismatch_type, city, created_at')
+          .gte('created_at', sinceIso)
+          .limit(50000),
+        supabaseServer
+          .from('events')
+          .select('properties')
+          .eq('type', 'business_opportunity_logged')
+          .gte('created_at', sinceIso)
+          .limit(50000),
+      ]);
+
+      const reasonCounts: Record<string, number> = { gender: 0, location: 0, modality: 0 };
+      const cityCounts = new Map<string, number>();
+      for (const row of ((boRes.data || []) as Array<{ mismatch_type?: string | null; city?: string | null }>)) {
+        const r = String(row.mismatch_type || '').toLowerCase();
+        if (r === 'gender' || r === 'location' || r === 'modality') reasonCounts[r] = (reasonCounts[r] || 0) + 1;
+        const c = String((row.city || '').trim());
+        if (c) cityCounts.set(c, (cityCounts.get(c) || 0) + 1);
+      }
+
+      const insightCounts = new Map<string, number>();
+      const insightCountsModality = new Map<string, number>();
+      const preferredGenderCounts = new Map<string, number>();
+      const inPersonCounts = new Map<string, number>();
+      for (const row of ((evRes.data || []) as Array<{ properties?: Record<string, unknown> }>)) {
+        const props = (row.properties || {}) as Record<string, unknown>;
+        const isTest = String((props['is_test'] as unknown) ?? '').toLowerCase() === 'true';
+        if (isTest) continue;
+        const arr = Array.isArray(props['insights']) ? (props['insights'] as unknown[]).map(String) : [];
+        const details = (props['details'] || {}) as Record<string, unknown>;
+        const missingMods = Array.isArray(details['missing_requested_modalities']) ? (details['missing_requested_modalities'] as unknown[]) : [];
+        const modalityMatters = missingMods.length > 0;
+        const preferredGender = String((details['preferred_gender'] as unknown) || '').toLowerCase() || 'none';
+        const wantsInPerson = String(Boolean(details['wants_in_person'])) as 'true' | 'false';
+        for (const x of arr) {
+          const k = String(x || '').trim();
+          if (!k) continue;
+          insightCounts.set(k, (insightCounts.get(k) || 0) + 1);
+          if (modalityMatters) insightCountsModality.set(k, (insightCountsModality.get(k) || 0) + 1);
+        }
+
+        if (arr.includes('gender_supply_gap')) {
+          preferredGenderCounts.set(preferredGender, (preferredGenderCounts.get(preferredGender) || 0) + 1);
+        }
+        if (arr.includes('in_person_supply_gap')) {
+          inPersonCounts.set(wantsInPerson, (inPersonCounts.get(wantsInPerson) || 0) + 1);
+        }
+      }
+
+      const insightsArr = Array.from(insightCounts.entries()).map(([type, count]) => ({ type, count }));
+      insightsArr.sort((a, b) => b.count - a.count);
+      const insightsModalityArr = Array.from(insightCountsModality.entries()).map(([type, count]) => ({ type, count }));
+      insightsModalityArr.sort((a, b) => b.count - a.count);
+      const topCities = Array.from(cityCounts.entries()).map(([city, count]) => ({ city, count })).sort((a, b) => b.count - a.count).slice(0, 10);
+      const preferredGender = Array.from(preferredGenderCounts.entries()).map(([option, count]) => ({ option, count })).sort((a, b) => b.count - a.count);
+      const wantsInPerson = Array.from(inPersonCounts.entries()).map(([option, count]) => ({ option, count })).sort((a, b) => b.count - a.count);
+
+      opportunities = {
+        byReason: { gender: reasonCounts['gender'] || 0, location: reasonCounts['location'] || 0, modality: reasonCounts['modality'] || 0 },
+        insights: insightsArr,
+        insightsModalityMatters: insightsModalityArr,
+        topCities,
+        breakdowns: { preferredGender, wantsInPerson },
+      };
+    } catch (e) {
+      await logError('admin.api.stats', e, { stage: 'opportunities' });
+    }
+
     const data: StatsResponse = {
       totals,
       pageTraffic,
@@ -1459,6 +1539,7 @@ export async function GET(req: Request) {
       questionnaireInsights,
       wizardSegments: segments,
       funnels,
+      opportunities,
     };
 
     return NextResponse.json({ data, error: null }, { status: 200 });
