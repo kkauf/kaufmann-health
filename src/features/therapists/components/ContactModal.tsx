@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import ConsentSection from '@/components/ConsentSection';
 import { getAttribution } from '@/lib/attribution';
 import { cn } from '@/lib/utils';
 import { formatSessionPrice } from '@/lib/pricing';
+import { fireGoogleAdsClientConversion } from '@/lib/gtag';
 
 type ContactType = 'booking' | 'consultation';
 type Slot = { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string };
@@ -69,7 +70,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   
   // Verification step
   const [name, setName] = useState('');
-  const [contactMethod, setContactMethod] = useState<'email' | 'phone'>('phone'); // Default to phone for mobile
+  const [contactMethod, setContactMethod] = useState<'email' | 'phone'>('email'); // Default to phone for mobile
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
@@ -84,6 +85,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   
   const [restoredDraft, setRestoredDraft] = useState<boolean>(false);
   const [autoSendAttempted, setAutoSendAttempted] = useState<boolean>(false);
+  const draftTrackedRef = useRef<boolean>(false);
   
   const therapistName = `${therapist.first_name} ${therapist.last_name}`;
   const initials = `${therapist.first_name[0]}${therapist.last_name[0]}`.toUpperCase();
@@ -92,6 +94,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const [resendSubmitting, setResendSubmitting] = useState(false);
   const [resendMessage, setResendMessage] = useState('');
   const [forceSuccess, setForceSuccess] = useState(Boolean(confirmed));
+  const [patientId, setPatientId] = useState<string | undefined>(undefined);
   
   // If pre-authenticated via match UUID, prefill and show compose first
   // Do NOT treat the user as verified here; they must still verify before sending
@@ -148,6 +151,9 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         if (s?.verified && !cancelled) {
           setError(null);
           setIsVerified(true);
+          try {
+            if (typeof s.patient_id === 'string' && s.patient_id) setPatientId(s.patient_id);
+          } catch {}
           const userName = typeof s.name === 'string' && s.name ? s.name : '';
           if (userName) setName(userName);
           if (s.contact_method === 'email') {
@@ -538,6 +544,14 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       
       // Mark verified and show success; server processes draft_contact and sends message
       setIsVerified(true);
+      try {
+        const res = await fetch('/api/public/session');
+        if (res.ok) {
+          const json = await res.json();
+          const pid = json?.data?.patient_id;
+          if (typeof pid === 'string' && pid) setPatientId(pid);
+        }
+      } catch {}
       trackEvent('contact_verification_completed', { contact_method: contactMethod });
       setLoading(false);
       setStep('success');
@@ -547,6 +561,31 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       setLoading(false);
     }
   }, [contactMethod, email, phone, verificationCode, therapist.first_name, contactType, reason, name, sessionFormat, message, trackEvent, handleSendMessage]);
+
+  useEffect(() => {
+    async function maybeFireClientConv() {
+      if (step !== 'success') return;
+      let pid = patientId;
+      if (!pid) {
+        try {
+          const res = await fetch('/api/public/session');
+          if (res.ok) {
+            const json = await res.json();
+            const sPid = json?.data?.patient_id;
+            if (typeof sPid === 'string' && sPid) {
+              pid = sPid;
+              setPatientId(sPid);
+            }
+          }
+        } catch {}
+      }
+      try {
+        fireGoogleAdsClientConversion(pid);
+      } catch {}
+    }
+    void maybeFireClientConv();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
   
   // Handle enter key submission
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -959,6 +998,15 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                 : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
               const signature = name ? `\n\nViele Grüße\n${name}` : '';
               setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei ${e.target.value || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
+              try {
+                if (!draftTrackedRef.current) {
+                  const len = (`${e.target.value}` + `${message || ''}`).trim().length;
+                  if (len > 0) {
+                    draftTrackedRef.current = true;
+                    trackEvent('message_drafted', { length: len, step: 'reason' });
+                  }
+                }
+              } catch {}
             }}
             placeholder="z.B. Panikattacken, Überforderung im Alltag, Beziehungsproblemen"
             disabled={loading}
@@ -1135,7 +1183,18 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           <Textarea
             id="message"
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => {
+              setMessage(e.target.value);
+              try {
+                if (!draftTrackedRef.current) {
+                  const len = (`${reason || ''}` + `${e.target.value}`).trim().length;
+                  if (len > 0) {
+                    draftTrackedRef.current = true;
+                    trackEvent('message_drafted', { length: len, step: 'message' });
+                  }
+                }
+              } catch {}
+            }}
             placeholder="Deine Nachricht..."
             disabled={loading}
             rows={6}
