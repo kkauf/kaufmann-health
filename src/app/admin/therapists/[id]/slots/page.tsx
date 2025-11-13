@@ -76,7 +76,7 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
   const [practiceAddress, setPracticeAddress] = useState<string>("");
 
   const [appointmentType, setAppointmentType] = useState<"recurring" | "one-time">("recurring");
-  const [day, setDay] = useState<number | "">("");
+  const [day, setDay] = useState<string>("");
   const [specificDate, setSpecificDate] = useState<string>(""); // YYYY-MM-DD
   const [time, setTime] = useState<string>("");
   const [format, setFormat] = useState<"online" | "in_person" | "both">("online");
@@ -174,7 +174,7 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
       const isRecurring = appointmentType === "recurring";
 
       if (isRecurring) {
-        const d = typeof day === "number" ? day : NaN;
+        const d = Number(day);
         if (!Number.isInteger(d)) throw new Error("Wochentag wählen");
         const slotsPayload: NewSlotPayload[] = [];
         const pushRecurring = (fmt: "online" | "in_person") => {
@@ -403,7 +403,7 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
                 ) : (
                   <div className="space-y-1 lg:col-span-2">
                     <Label>Wochentag</Label>
-                    <Select value={day === "" ? undefined : String(day)} onValueChange={(v) => setDay(Number(v))}>
+                    <Select value={day} onValueChange={(v) => setDay(v)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Wählen" />
                       </SelectTrigger>

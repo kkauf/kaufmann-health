@@ -9,7 +9,7 @@ export type TimelineItem = {
 };
 
 export function ProcessTimeline({
-  heading = 'So funktioniert deine Vermittlung',
+  heading = 'So funktioniert’s',
   tagline,
   items,
   className,
