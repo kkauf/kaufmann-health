@@ -36,6 +36,185 @@ function toDayKey(iso: string): string {
   return startOfDayUTC(new Date(iso)).toISOString().slice(0, 10);
 }
 
+type FunnelStep = { name: string; count: number; from_prev_rate: number; from_start_rate: number };
+type FunnelsResponse = { quizMatches: { steps: FunnelStep[] }; browseDirectory: { steps: FunnelStep[] } };
+
+function isTestEvent(props?: Record<string, unknown>): boolean {
+  const v = props?.['is_test'] as unknown;
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'string') return v.toLowerCase() === 'true';
+  return false;
+}
+
+function pathLikeMatches(props?: Record<string, unknown>): boolean {
+  const p = String((props?.['page_path'] as string | undefined) || '').trim().toLowerCase();
+  return p.startsWith('/matches/');
+}
+
+function onDirectory(props?: Record<string, unknown>): boolean {
+  const p = String((props?.['page_path'] as string | undefined) || '').trim().toLowerCase();
+  const ref = String((props?.['referrer'] as string | undefined) || '').trim().toLowerCase();
+  return p === '/therapeuten' || ref.includes('/therapeuten');
+}
+
+function buildSequentialCounts(orderedSets: Set<string>[]): { counts: number[]; ratesPrev: number[]; ratesStart: number[] } {
+  if (orderedSets.length === 0) return { counts: [], ratesPrev: [], ratesStart: [] };
+  let prev = new Set(orderedSets[0]);
+  const start = new Set(orderedSets[0]);
+  const counts: number[] = [prev.size];
+  const ratesPrev: number[] = [100];
+  const ratesStart: number[] = [100];
+  for (let i = 1; i < orderedSets.length; i++) {
+    const s = new Set<string>();
+    for (const sid of orderedSets[i]) if (prev.has(sid)) s.add(sid);
+    counts.push(s.size);
+    ratesPrev.push(prev.size > 0 ? Math.round((s.size / prev.size) * 1000) / 10 : 0);
+    ratesStart.push(start.size > 0 ? Math.round((s.size / start.size) * 1000) / 10 : 0);
+    prev = s;
+  }
+  return { counts, ratesPrev, ratesStart };
+}
+
+async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
+  const funnels: FunnelsResponse = { quizMatches: { steps: [] }, browseDirectory: { steps: [] } };
+
+  const quizTypes = [
+    'match_page_view',
+    'contact_cta_clicked',
+    'contact_modal_opened',
+    'booking_slot_selected',
+    'message_drafted',
+    'contact_verification_started',
+    'contact_verification_completed',
+    'contact_message_sent',
+    'contact_message_sent_client_pre_auth',
+  ];
+  const { data: quizRows } = await supabaseServer
+    .from('events')
+    .select('type, properties')
+    .in('type', quizTypes)
+    .gte('created_at', sinceIso)
+    .limit(50000);
+
+  const qRoot = new Set<string>();
+  const qCta = new Set<string>();
+  const qOpen = new Set<string>();
+  const qSlot = new Set<string>();
+  const qDraft = new Set<string>();
+  const qVerStart = new Set<string>();
+  const qVerDone = new Set<string>();
+  const qSent = new Set<string>();
+
+  for (const row of (quizRows || []) as Array<{ type?: string; properties?: Record<string, unknown> }>) {
+    const t = String(row.type || '').toLowerCase();
+    const props = (row.properties || {}) as Record<string, unknown>;
+    if (isTestEvent(props)) continue;
+    const sid = String((props['session_id'] as string | undefined) || '').trim();
+    if (!sid) continue;
+    if (t === 'match_page_view' && pathLikeMatches(props)) qRoot.add(sid);
+    else if (t === 'contact_cta_clicked' && pathLikeMatches(props)) qCta.add(sid);
+    else if (t === 'contact_modal_opened' && pathLikeMatches(props)) qOpen.add(sid);
+    else if (t === 'booking_slot_selected' && pathLikeMatches(props)) qSlot.add(sid);
+    else if (t === 'message_drafted' && pathLikeMatches(props)) qDraft.add(sid);
+    else if (t === 'contact_verification_started' && pathLikeMatches(props)) qVerStart.add(sid);
+    else if (t === 'contact_verification_completed' && pathLikeMatches(props)) qVerDone.add(sid);
+    else if (t === 'contact_message_sent_client_pre_auth' && pathLikeMatches(props)) qSent.add(sid);
+    else if (t === 'contact_message_sent') {
+      const src = String((props['source'] as string | undefined) || '').toLowerCase();
+      if (src === 'api.public.matches.contact') qSent.add(sid);
+    }
+  }
+
+  {
+    const ordered = [qRoot, qCta, qOpen, qSlot, qDraft, qVerStart, qVerDone, qSent];
+    const names = [
+      'match_page_view',
+      'contact_cta_clicked',
+      'contact_modal_opened',
+      'booking_slot_selected',
+      'message_drafted',
+      'contact_verification_started',
+      'contact_verification_completed',
+      'contact_message_sent',
+    ];
+    const { counts, ratesPrev, ratesStart } = buildSequentialCounts(ordered);
+    funnels.quizMatches.steps = names.map((name, i) => ({
+      name,
+      count: counts[i] || 0,
+      from_prev_rate: ratesPrev[i] || 0,
+      from_start_rate: ratesStart[i] || 0,
+    }));
+  }
+
+  const browseTypes = [
+    'page_view',
+    'contact_cta_clicked',
+    'contact_modal_opened',
+    'booking_slot_selected',
+    'message_drafted',
+    'contact_verification_started',
+    'contact_verification_completed',
+    'contact_message_sent',
+  ];
+  const { data: browseRows } = await supabaseServer
+    .from('events')
+    .select('type, properties')
+    .in('type', browseTypes)
+    .gte('created_at', sinceIso)
+    .limit(50000);
+
+  const bRoot = new Set<string>();
+  const bCta = new Set<string>();
+  const bOpen = new Set<string>();
+  const bSlot = new Set<string>();
+  const bDraft = new Set<string>();
+  const bVerStart = new Set<string>();
+  const bVerDone = new Set<string>();
+  const bSent = new Set<string>();
+
+  for (const row of (browseRows || []) as Array<{ type?: string; properties?: Record<string, unknown> }>) {
+    const t = String(row.type || '').toLowerCase();
+    const props = (row.properties || {}) as Record<string, unknown>;
+    if (isTestEvent(props)) continue;
+    const sid = String((props['session_id'] as string | undefined) || '').trim();
+    if (!sid) continue;
+
+    if (t === 'page_view') {
+      const p = String((props['page_path'] as string | undefined) || '').trim().toLowerCase();
+      if (p === '/therapeuten') bRoot.add(sid);
+    } else if (t === 'contact_cta_clicked' && onDirectory(props)) bCta.add(sid);
+    else if (t === 'contact_modal_opened' && onDirectory(props)) bOpen.add(sid);
+    else if (t === 'booking_slot_selected' && onDirectory(props)) bSlot.add(sid);
+    else if (t === 'message_drafted' && onDirectory(props)) bDraft.add(sid);
+    else if (t === 'contact_verification_started' && onDirectory(props)) bVerStart.add(sid);
+    else if (t === 'contact_verification_completed' && onDirectory(props)) bVerDone.add(sid);
+    else if (t === 'contact_message_sent' && onDirectory(props)) bSent.add(sid);
+  }
+
+  {
+    const ordered = [bRoot, bCta, bOpen, bSlot, bDraft, bVerStart, bVerDone, bSent];
+    const names = [
+      'directory_page_view',
+      'contact_cta_clicked',
+      'contact_modal_opened',
+      'booking_slot_selected',
+      'message_drafted',
+      'contact_verification_started',
+      'contact_verification_completed',
+      'contact_message_sent',
+    ];
+    const { counts, ratesPrev, ratesStart } = buildSequentialCounts(ordered);
+    funnels.browseDirectory.steps = names.map((name, i) => ({
+      name,
+      count: counts[i] || 0,
+      from_prev_rate: ratesPrev[i] || 0,
+      from_start_rate: ratesStart[i] || 0,
+    }));
+  }
+
+  return funnels;
+}
+
 type StatsResponse = {
   totals: {
     therapists: number;
@@ -141,6 +320,7 @@ type StatsResponse = {
     byStartTiming: Array<{ option: string; started: number; completed: number; completion_rate: number }>;
     byBudgetBucket: Array<{ option: string; started: number; completed: number; completion_rate: number }>;
   };
+  funnels?: FunnelsResponse;
 };
 
 export async function GET(req: Request) {
@@ -1254,6 +1434,8 @@ export async function GET(req: Request) {
       byBudgetBucket: [],
     };
 
+    const funnels = await buildFunnels(sinceIso);
+
     const data: StatsResponse = {
       totals,
       pageTraffic,
@@ -1266,6 +1448,7 @@ export async function GET(req: Request) {
       matchFunnel,
       questionnaireInsights,
       wizardSegments: segments,
+      funnels,
     };
 
     return NextResponse.json({ data, error: null }, { status: 200 });
