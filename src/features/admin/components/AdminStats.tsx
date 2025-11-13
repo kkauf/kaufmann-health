@@ -888,7 +888,6 @@ export default function AdminStats() {
       )}
 
       {/* Questionnaire Insights */}
-      {showLegacy && (
       <Card>
         <CardHeader>
           <CardTitle>Questionnaire Insights</CardTitle>
@@ -960,7 +959,6 @@ export default function AdminStats() {
           )}
         </CardContent>
       </Card>
-      )}
     </section>
   );
 }

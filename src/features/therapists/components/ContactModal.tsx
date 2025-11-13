@@ -465,6 +465,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             patient_reason: reason,
             patient_message: message,
             session_format: sessionFormat || undefined,
+            session_id: attrsForConv.session_id,
           }
         : {
             therapist_id: therapist.id,

@@ -48,7 +48,8 @@ function isTestEvent(props?: Record<string, unknown>): boolean {
 
 function pathLikeMatches(props?: Record<string, unknown>): boolean {
   const p = String((props?.['page_path'] as string | undefined) || '').trim().toLowerCase();
-  return p.startsWith('/matches/');
+  const ref = String((props?.['referrer'] as string | undefined) || '').trim().toLowerCase();
+  return p.startsWith('/matches/') || ref.includes('/matches/');
 }
 
 function onDirectory(props?: Record<string, unknown>): boolean {
@@ -126,7 +127,12 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
   }
 
   {
-    const ordered = [qRoot, qCta, qOpen, qSlot, qDraft, qVerStart, qVerDone, qSent];
+    // Transitional fallback: if root is empty (early instrumentation missed session_id/page_path),
+    // seed with earliest available step so the funnel isn't all zeros.
+    const qRootSeed = qRoot.size > 0 ? qRoot : new Set<string>([
+      ...qCta, ...qOpen, ...qSlot, ...qDraft, ...qVerStart, ...qVerDone, ...qSent,
+    ]);
+    const ordered = [qRootSeed, qCta, qOpen, qSlot, qDraft, qVerStart, qVerDone, qSent];
     const names = [
       'match_page_view',
       'contact_cta_clicked',
@@ -188,7 +194,11 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
     else if (t === 'message_drafted' && onDirectory(props)) bDraft.add(sid);
     else if (t === 'contact_verification_started' && onDirectory(props)) bVerStart.add(sid);
     else if (t === 'contact_verification_completed' && onDirectory(props)) bVerDone.add(sid);
-    else if (t === 'contact_message_sent' && onDirectory(props)) bSent.add(sid);
+    else if (t === 'contact_message_sent' && onDirectory(props)) {
+      const src = String((props['source'] as string | undefined) || '').toLowerCase();
+      if (!src || src === 'api.public.contact') bSent.add(sid);
+    }
+    else if (t === 'directory_contact_conversion' && onDirectory(props)) bSent.add(sid);
   }
 
   {
