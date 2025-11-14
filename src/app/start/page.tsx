@@ -27,8 +27,8 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const variant = normalizeVariant(params?.variant);
   
   const title = variant === 'ready-now'
-    ? 'Kaufmann Health – Therapie ohne Wartezeit (Termine in 24h)'
-    : 'Kaufmann Health – Körperorientierte Therapie (Termine in 24h)';
+    ? 'Kaufmann Health – Psychotherapie ohne Wartezeit (Termine in 24h)'
+    : 'Kaufmann Health – Körperorientierte Psychotherapie (Termine in 24h)';
   const description = variant === 'ready-now'
     ? 'Sofort verfügbare Therapeuten in Berlin und online. Persönlich ausgewählt, keine Wartelisten, keine Kassentherapie.'
     : 'Körperorientierte Traumatherapie in Berlin und online. Handverlesene Spezialist:innen, sofort verfügbar.';
@@ -65,8 +65,8 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
     faqs: [
       {
         id: 'why-body',
-        question: 'Warum körperorientierte Therapie?',
-        answer: 'Viele Menschen verstehen ihre Probleme bereits – sie wissen, woher ihre Ängste kommen, welche Muster sie haben. Aber Verstehen allein führt nicht zu Veränderung. Trauma und festgefahrene Reaktionen leben in deinem Nervensystem. Körperorientierte Therapie arbeitet direkt mit deinem Körper, um diese Muster zu lösen. Das Ergebnis: Nachhaltige Veränderung, nicht nur Einsicht.',
+        question: 'Warum körperorientierte Psychotherapie?',
+        answer: 'Viele Menschen verstehen ihre Probleme bereits – sie wissen, woher ihre Ängste kommen, welche Muster sie haben. Aber Verstehen allein führt nicht zu Veränderung. Trauma und festgefahrene Reaktionen leben in deinem Nervensystem. Körperorientierte Psychotherapie arbeitet direkt mit deinem Körper, um diese Muster zu lösen. Das Ergebnis: Nachhaltige Veränderung, nicht nur Einsicht.',
       },
       {
         id: 'how-it-works',
@@ -241,7 +241,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
         <span className="text-gray-400">•</span>
         <span className="inline-flex items-center gap-2">
           <FileCheck className="h-4 w-4 text-emerald-600" />
-          <span>Therapie ohne Krankenkassen-Eintrag</span>
+          <span>Psychotherapie ohne Krankenkassen-Eintrag</span>
         </span>
       </p>
 

@@ -21,7 +21,7 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health
 
 export const metadata = async ({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }): Promise<Metadata> => {
   const title = 'Therapeut:innen finden – Heilpraktiker:in für Psychotherapie | Kaufmann Health';
-  const description = 'Therapeuten finden in 24 Stunden. Persönlich ausgewählt für dich. Online Therapie oder Berlin. Ohne Wartezeit.';
+  const description = 'Therapeuten finden in 24 Stunden. Persönlich ausgewählt für dich. Online-Psychotherapie oder vor Ort in Berlin. Ohne Wartezeit.';
   const v = (searchParams?.v as string) || undefined;
   return buildLandingMetadata({
     baseUrl: baseUrl,
@@ -37,7 +37,7 @@ export default async function TherapieFindenPage() {
   const faqs = [
     { id: 'prices', question: 'Was kosten die Sitzungen?', answer: 'In der Regel 80–120€ pro 60 Minuten. Den genauen Satz sprichst du direkt mit deiner Therapeut:in ab.' },
     { id: 'speed', question: 'Wie schnell bekomme ich Termine?', answer: 'Du erhältst handverlesene Vorschläge meist innerhalb weniger Stunden – Termine sind in der Regel noch diese Woche möglich.' },
-    { id: 'privacy', question: 'Wird die Therapie bei meiner Krankenkasse dokumentiert?', answer: 'Nein. Es erfolgt keine Kassenabrechnung, kein Eintrag in deiner Krankenakte und keine ICD‑10‑Diagnose bei der Kasse.' },
+    { id: 'privacy', question: 'Wird die Psychotherapie bei meiner Krankenkasse dokumentiert?', answer: 'Nein. Es erfolgt keine Kassenabrechnung, kein Eintrag in deiner Krankenakte und keine ICD‑10‑Diagnose bei der Kasse.' },
     { id: 'methods', question: 'Mit welchen Methoden wird gearbeitet?', answer: 'Körperorientierte Verfahren wie NARM, Somatic Experiencing, Hakomi und Core Energetics – passend zu deinem Anliegen.' },
   ];
 

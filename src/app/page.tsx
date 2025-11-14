@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     canonical: `${baseUrl}/`,
   },
   openGraph: {
-    title: "Finde geprüfte körperorientierte Trauma-Therapeut:innen | Kaufmann Health",
+    title: "Finde geprüfte körperorientierte Therapeut:innen | Kaufmann Health",
     description: "Therapeuten finden in 24 Stunden. Persönlich ausgewählt für dich. Online oder vor Ort. Ohne Wartezeit.",
     url: `${baseUrl}/`,
     siteName: "Kaufmann Health",
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Finde geprüfte körperorientierte Trauma-Therapeut:innen",
+    title: "Finde geprüfte körperorientierte Therapeut:innen",
     description: "Therapeuten finden in 24 Stunden. Persönlich ausgewählt für dich. Online oder vor Ort. Ohne Wartezeit.",
     images: [`${baseUrl}/images/hero.jpg`],
   },
@@ -68,7 +68,7 @@ export default function Home() {
             id="hero-heading"
             className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-tight bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent"
           >
-            Finde geprüfte körperorientierte Trauma‑Therapeut:innen
+            Finde geprüfte körperorientierte Therapeut:innen
           </h1>
           <p className="mt-4 sm:mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-gray-700">
             Handverlesene Therapeut:innen-Empfehlungen.
@@ -183,7 +183,7 @@ export default function Home() {
               <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
               <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">Spezialisierte Expertise</h3>
               <p className="mt-3 text-sm leading-relaxed text-gray-600">
-                Ausschließlich körperorientierte Trauma-Therapeut:innen mit
+                Ausschließlich körperorientierte Therapeut:innen mit
                 nachgewiesener Ausbildung in NARM, Hakomi, Core Energetics oder Somatic
                 Experiencing.
               </p>

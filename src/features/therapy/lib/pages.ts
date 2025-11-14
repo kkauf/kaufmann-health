@@ -9,8 +9,8 @@ export type TherapyPage = {
 export const THERAPY_PAGES: TherapyPage[] = [
   {
     slug: 'koerpertherapie',
-    title: 'Körpertherapie',
-    description: 'Wissenschaftlich fundierte körperorientierte Therapie – professionell und ohne Esoterik.'
+    title: 'Körperorientierte Psychotherapie',
+    description: 'Wissenschaftlich fundierte körperorientierte Psychotherapie – professionell und ohne Esoterik.'
   },
   {
     slug: 'somatic-experiencing',

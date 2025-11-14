@@ -67,7 +67,7 @@ export function renderPatientSelectionEmail(params: {
         <li style="margin:8px 0; color:#475569 !important;">Wir haben uns deiner Anfrage persönlich angenommen.</li>
         <li style="margin:8px 0; color:#475569 !important;">Auf Basis deiner Präferenzen (z.&nbsp;B. online oder vor Ort) ausgewählt.</li>
         <li style="margin:8px 0; color:#475569 !important;">Wir prüfen die Qualifikationen der Therapeut:innen gründlich (Ausbildung, zertifizierte Fortbildungen, Erfahrung, aktuelle Verfügbarkeit).</li>
-        <li style="margin:8px 0; color:#475569 !important;">Spezielle Ausbildungen für Körpertherapie sind in den farbigen Abzeichen sichtbar (z.&nbsp;B. NARM, Somatic Experiencing, Hakomi, Core Energetics).</li>
+        <li style="margin:8px 0; color:#475569 !important;">Spezielle Ausbildungen für körperorientierte Psychotherapie sind in den farbigen Abzeichen sichtbar (z.&nbsp;B. NARM, Somatic Experiencing, Hakomi, Core Energetics).</li>
       </ul>
       <p style="margin:16px 0 0; color:#0f172a !important; font-weight:600;">Sorgfältig geprüfte Profile – persönlich für dich ausgewählt.</p>
     </div>

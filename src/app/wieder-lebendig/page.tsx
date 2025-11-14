@@ -25,9 +25,9 @@ export const metadata = async ({ searchParams }: { searchParams?: { [key: string
   const isTestVariant = variant === 'B' || variant === 'C';
 
   return {
-    title: "Körpertherapie Berlin | Wenn Erfolg nicht reicht | Kaufmann Health",
+    title: "Körperorientierte Psychotherapie in Berlin | Wenn Erfolg nicht reicht | Kaufmann Health",
     description:
-      "Erfolgreich aber leer? Körperorientierte Therapie für Menschen, die mehr wollen als nur funktionieren. Keine Kasse, keine Optimierung – echte Tiefe.",
+      "Erfolgreich aber leer? Körperorientierte Psychotherapie für Menschen, die mehr wollen als nur funktionieren. Keine Kasse, keine Optimierung – echte Tiefe.",
     alternates: {
       canonical: `${baseUrl}/wieder-lebendig`,
     },
@@ -35,7 +35,7 @@ export const metadata = async ({ searchParams }: { searchParams?: { [key: string
     openGraph: {
       title: "Du hast alles erreicht. Warum fühlt es sich so leer an?",
       description:
-        "Körperorientierte Therapie für Menschen, die wieder lebendig sein wollen.",
+        "Körperorientierte Psychotherapie für Menschen, die wieder lebendig sein wollen.",
       url: `${baseUrl}/wieder-lebendig`,
       siteName: "Kaufmann Health",
       locale: "de_DE",
@@ -45,14 +45,14 @@ export const metadata = async ({ searchParams }: { searchParams?: { [key: string
           url: `${baseUrl}/images/hero.jpg`,
           width: 1200,
           height: 630,
-          alt: "Kaufmann Health – Körpertherapie Berlin",
+          alt: "Kaufmann Health – Körperorientierte Psychotherapie in Berlin",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
       title: "Du hast alles erreicht. Warum fühlt es sich so leer an?",
-      description: "Körperorientierte Therapie für Menschen, die wieder lebendig sein wollen.",
+      description: "Körperorientierte Psychotherapie für Menschen, die wieder lebendig sein wollen.",
       images: [`${baseUrl}/images/hero.jpg`],
     },
   };
@@ -75,7 +75,7 @@ export default async function WiederLebendigPage() {
     url: `${baseUrl}/wieder-lebendig`,
     image: `${baseUrl}/images/hero.jpg`,
     description:
-      "Körperorientierte Therapie für Menschen, die wieder lebendig sein wollen – nicht noch erfolgreicher.",
+      "Körperorientierte Psychotherapie für Menschen, die wieder lebendig sein wollen – nicht noch erfolgreicher.",
     areaServed: {
       "@type": "City",
       name: "Berlin",
@@ -170,10 +170,10 @@ export default async function WiederLebendigPage() {
                 <span>Körperorientiertes Coaching & Begleitung – 80–120€ pro Sitzung. Diese Woche noch verfügbar.</span>
               </VariantGate>
               <VariantGate show="A">
-                <span>Körperorientierte Therapie mit handverlesenen Therapeut:innen – diese Woche noch verfügbar</span>
+                <span>Körperorientierte Psychotherapie mit handverlesenen Therapeut:innen – diese Woche noch verfügbar</span>
               </VariantGate>
               <VariantGate show="B">
-                <span>Körperorientierte Therapie mit handverlesenen Therapeut:innen – diese Woche noch verfügbar</span>
+                <span>Körperorientierte Psychotherapie mit handverlesenen Therapeut:innen – diese Woche noch verfügbar</span>
               </VariantGate>
             </>
           }
@@ -310,7 +310,7 @@ export default async function WiederLebendigPage() {
               Deine Investition in Lebendigkeit
             </h2>
             <p className="mt-3 max-w-2xl text-gray-700">
-              Therapie bei uns ist eine bewusste Entscheidung. Keine Kassenleistung, keine Diagnosen – dafür volle
+              Psychotherapie bei uns ist eine bewusste Entscheidung. Keine Kassenleistung, keine Diagnosen – dafür volle
               Diskretion und echte Veränderung.
             </p>
 

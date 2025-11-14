@@ -25,23 +25,23 @@ export const metadata = async ({ searchParams }: { searchParams?: { [key: string
   const isTestVariant = variant === 'B' || variant === 'C';
 
   return {
-    title: "Ankommen in dir – Körperorientierte Therapie online | Kaufmann Health",
+    title: "Ankommen in dir – Körperorientierte Psychotherapie online | Kaufmann Health",
     description:
-      "Körperorientierte Therapie – handverlesen und online verfügbar, deutschlandweit. Embodiment & Nervensystem‑Regulation.",
+      "Körperorientierte Psychotherapie – handverlesen und online verfügbar, deutschlandweit. Embodiment & Nervensystem‑Regulation.",
     alternates: { canonical: `${baseUrl}/ankommen-in-dir` },
     robots: isTestVariant ? { index: false, follow: false } : { index: true, follow: true },
     openGraph: {
-      title: "Ankommen in dir – Körperorientierte Therapie online",
+      title: "Ankommen in dir – Körperorientierte Psychotherapie online",
       description: "Handverlesene Empfehlungen für Online-Sitzungen, deutschlandweit.",
       url: `${baseUrl}/ankommen-in-dir`,
       siteName: "Kaufmann Health",
       locale: "de_DE",
       type: "website",
-      images: [{ url: `${baseUrl}/images/hero.jpg`, width: 1200, height: 630, alt: "Kaufmann Health – Körperorientierte Therapie online" }],
+      images: [{ url: `${baseUrl}/images/hero.jpg`, width: 1200, height: 630, alt: "Kaufmann Health – Körperorientierte Psychotherapie online" }],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Ankommen in dir – Körperorientierte Therapie online",
+      title: "Ankommen in dir – Körperorientierte Psychotherapie online",
       description: "Handverlesene Empfehlungen für Online-Sitzungen, deutschlandweit.",
       images: [`${baseUrl}/images/hero.jpg`],
     },
@@ -62,7 +62,7 @@ export default async function AnkommenInDirPage() {
   const faqs = [
     {
       id: 'online-works',
-      question: 'Funktioniert körperorientierte Therapie online?',
+      question: 'Funktioniert körperorientierte Psychotherapie online?',
       answer: 'Absolut! Wir arbeiten sicher mit Fokus auf Körperwahrnehmung, Regulation und Präsenz – auch online.',
     },
     {

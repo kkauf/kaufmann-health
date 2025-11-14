@@ -15,7 +15,7 @@ export function HeroNoForm({
   valueProps = [
     '✓ Handverlesene Therapeuten',
     '✓ Termine in 24 Stunden',
-    '✓ Somatische Therapie',
+    '✓ Körperorientierte Psychotherapie',
     '✓ Vor Ort in Berlin oder online',
   ],
   noBackground = false,
