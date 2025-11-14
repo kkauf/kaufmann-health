@@ -162,13 +162,66 @@ function parseArgs(argv: string[]) {
   return out;
 }
 
+function normalizeConfig(parsed: unknown): CampaignConfig[] {
+  if (Array.isArray(parsed)) {
+    const campaigns = parsed as CampaignConfig[];
+    for (const c of campaigns) {
+      if (!c.name || !c.budget_euros || !c.landing_page || !c.schedule || !c.keywords) {
+        throw new Error(`Campaign missing required fields: ${c.name ?? '<unnamed>'}`);
+      }
+    }
+    return campaigns;
+  }
+
+  if (parsed && typeof parsed === 'object' && 'base' in (parsed as any) && 'variants' in (parsed as any)) {
+    const { base, variants } = parsed as {
+      base: CampaignConfig;
+      variants: Array<Partial<CampaignConfig> & { name: string }>;
+    };
+
+    if (!base || !variants || !Array.isArray(variants)) {
+      throw new Error('Config object with { base, variants } must include a base and an array of variants');
+    }
+
+    const campaigns: CampaignConfig[] = variants.map((variant, idx) => {
+      const merged: CampaignConfig = {
+        ...base,
+        ...variant,
+        keywords: variant.keywords || base.keywords,
+        negativeKeywords: variant.negativeKeywords ?? base.negativeKeywords,
+        languages: variant.languages || base.languages,
+        geo: variant.geo || base.geo,
+        bidding: variant.bidding || base.bidding,
+        assets: variant.assets ?? base.assets,
+        ads: {
+          ...(base.ads || {}),
+          ...(variant.ads || {}),
+        },
+      };
+
+      if (!merged.name) {
+        throw new Error(`Variant at index ${idx} is missing a name`);
+      }
+      if (!merged.budget_euros || !merged.landing_page || !merged.schedule || !merged.keywords) {
+        throw new Error(`Variant ${merged.name} is missing required fields after merging with base`);
+      }
+
+      return merged;
+    });
+
+    return campaigns;
+  }
+
+  throw new Error('Config must be a JSON array of campaigns or an object with { base, variants }');
+}
+
 function loadConfigFromEnvOrArgs(): { rawJson: string; campaigns: CampaignConfig[] } {
   const args = parseArgs(process.argv.slice(2));
   const envJson = process.env.ADS_CONFIG_JSON;
   const argPath = (args['config'] as string) || process.env.ADS_CONFIG_PATH;
 
   let rawJson: string | undefined;
-  if (envJson && envJson.trim().startsWith('[')) {
+  if (envJson) {
     rawJson = envJson;
   } else if (argPath) {
     const p = path.isAbsolute(argPath) ? argPath : path.resolve(process.cwd(), argPath);
@@ -203,16 +256,7 @@ function loadConfigFromEnvOrArgs(): { rawJson: string; campaigns: CampaignConfig
     throw new Error('ADS_CONFIG_JSON/Path content is not valid JSON');
   }
 
-  if (!Array.isArray(parsed)) {
-    throw new Error('Config must be a JSON array of campaigns');
-  }
-
-  const campaigns = parsed as CampaignConfig[];
-  for (const c of campaigns) {
-    if (!c.name || !c.budget_euros || !c.landing_page || !c.schedule || !c.keywords) {
-      throw new Error(`Campaign missing required fields: ${c.name ?? '<unnamed>'}`);
-    }
-  }
+  const campaigns = normalizeConfig(parsed);
   return { rawJson: JSON.stringify(campaigns), campaigns };
 }
 

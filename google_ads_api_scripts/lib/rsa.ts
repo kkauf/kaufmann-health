@@ -1,5 +1,5 @@
 import { enums } from 'google-ads-api';
-import { buildFinalUrl, sanitizePathPart, normalizeText, uniqueKeepOrder } from './util';
+import { buildFinalUrl, sanitizePathPart, normalizeText, uniqueKeepOrder, clip } from './util';
 
 export type RsaAugmentOpts = { useKeywordInsertion?: boolean; autoComplete?: boolean; kwTokens?: string[] };
 
@@ -28,14 +28,104 @@ function sanitizeAdInputs(headlines?: string[], descriptions?: string[]): { H?: 
   return { H, D };
 }
 
-export function augmentRsaTextAssets(headlines: string[] | undefined, descriptions: string[] | undefined, _opts: RsaAugmentOpts): { headlines: string[]; descriptions: string[] } {
-  const H = uniqueKeepOrder([...(headlines || [])]);
-  const D = uniqueKeepOrder([...(descriptions || [])]);
-  return { headlines: H.slice(0, 15), descriptions: D.slice(0, 4) };
+function titleCaseForHeadline(s: string): string {
+  return s
+    .split(' ')
+    .map((part) => {
+      const trimmed = part.trim();
+      if (!trimmed) return '';
+      if (trimmed.length === 1) return trimmed.toUpperCase();
+      return trimmed[0].toUpperCase() + trimmed.slice(1);
+    })
+    .filter(Boolean)
+    .join(' ');
 }
 
-export function prepareRsaAssets(headlines: string[] | undefined, descriptions: string[] | undefined, _opts: RsaAugmentOpts): { headlines?: string[]; descriptions?: string[] } {
-  const { headlines: H, descriptions: D } = augmentRsaTextAssets(headlines, descriptions, _opts);
+function deriveKeywordHeadline(kw: string): string | undefined {
+  // Normalise whitespace and remove common location suffix to keep headlines short
+  let norm = normalizeText(kw);
+  norm = norm.replace(/\s+berlin\b/i, '').trim();
+  if (!norm) return undefined;
+  const titled = titleCaseForHeadline(norm);
+  const clipped = clip(titled, 30);
+  return clipped.length > 0 ? clipped : undefined;
+}
+
+function isCtaHeadline(h: string): boolean {
+  const lc = h.toLowerCase();
+  return /(termin|buchen|starten|sofort|heute|jetzt)/.test(lc);
+}
+
+export function augmentRsaTextAssets(
+  headlines: string[] | undefined,
+  descriptions: string[] | undefined,
+  opts: RsaAugmentOpts
+): { headlines: string[]; descriptions: string[] } {
+  const baseH = uniqueKeepOrder([...(headlines || [])]);
+  const baseD = uniqueKeepOrder([...(descriptions || [])]);
+
+  const kwTokens = Array.from(new Set(opts?.kwTokens || []))
+    .map((k) => normalizeText(k))
+    .filter((k) => !!k);
+
+  const extraH: string[] = [];
+  const MAX_KW_HEADLINES = 1;
+
+  for (const kw of kwTokens) {
+    if (extraH.length >= MAX_KW_HEADLINES) break;
+    const candidate = deriveKeywordHeadline(kw);
+    if (!candidate) continue;
+    const candLc = candidate.toLowerCase();
+    const existsInBase = baseH.some((h) => h.toLowerCase() === candLc);
+    const existsInExtra = extraH.some((h) => h.toLowerCase() === candLc);
+    if (existsInBase || existsInExtra) continue;
+    extraH.push(candidate);
+  }
+
+  let finalH = baseH.slice();
+
+  if (extraH.length > 0) {
+    // If we already have 15 headlines, drop one CTA-style headline (preferably) to make room
+    if (finalH.length >= 15) {
+      let toDrop = extraH.length;
+      const indicesToDrop = new Set<number>();
+
+      // Drop CTA-style headlines from the end first
+      for (let i = finalH.length - 1; i >= 0 && toDrop > 0; i--) {
+        if (isCtaHeadline(finalH[i])) {
+          indicesToDrop.add(i);
+          toDrop--;
+        }
+      }
+
+      // If still need to drop, remove from the end
+      for (let i = finalH.length - 1; i >= 0 && toDrop > 0; i--) {
+        if (!indicesToDrop.has(i)) {
+          indicesToDrop.add(i);
+          toDrop--;
+        }
+      }
+
+      if (indicesToDrop.size > 0) {
+        finalH = finalH.filter((_, idx) => !indicesToDrop.has(idx));
+      }
+    }
+
+    finalH = uniqueKeepOrder([...finalH, ...extraH]);
+  }
+
+  const H = finalH.slice(0, 15);
+  const D = baseD.slice(0, 4);
+
+  return { headlines: H, descriptions: D };
+}
+
+export function prepareRsaAssets(
+  headlines: string[] | undefined,
+  descriptions: string[] | undefined,
+  opts: RsaAugmentOpts
+): { headlines?: string[]; descriptions?: string[] } {
+  const { headlines: H, descriptions: D } = augmentRsaTextAssets(headlines, descriptions, opts);
   return { headlines: H, descriptions: D };
 }
 
@@ -44,6 +134,7 @@ export async function listAdGroupAds(customer: any, adGroupRn: string): Promise<
     SELECT ad_group_ad.resource_name, ad_group_ad.status
     FROM ad_group_ad
     WHERE ad_group_ad.ad_group = '${adGroupRn}'
+      AND ad_group_ad.ad.type = 'RESPONSIVE_SEARCH_AD'
   `);
   return rows.map((r) => (r as any)?.ad_group_ad?.resource_name || (r as any)?.adGroupAd?.resourceName).filter(Boolean);
 }
@@ -67,17 +158,42 @@ export async function addRSAs(
     return;
   }
   const finalUrl = buildFinalUrl(landing, params);
-  for (let i = 0; i < Math.max(1, count); i++) {
-    if (dryRun) {
-      console.log(`    [DRY] Would create RSA #${i + 1} with ${h.length} headlines / ${d.length} descriptions`);
-      continue;
-    }
+  const desiredCount = Math.max(1, count);
+
+  if (dryRun || /\/DRY_/.test(adGroupRn)) {
+    console.log(
+      `    [DRY] Would ensure ${desiredCount} RSAs with ${h.length} headlines / ${d.length} descriptions`
+    );
+    return;
+  }
+
+  const existing = await listAdGroupAds(customer, adGroupRn);
+
+  const rsa: any = { headlines: h, descriptions: d };
+  const p1 = sanitizePathPart(path1);
+  const p2 = sanitizePathPart(path2);
+  if (p1) rsa.path1 = p1;
+  if (p2) rsa.path2 = p2;
+
+  if (existing.length > 0) {
     try {
-      const rsa: any = { headlines: h, descriptions: d };
-      const p1 = sanitizePathPart(path1);
-      const p2 = sanitizePathPart(path2);
-      if (p1) rsa.path1 = p1;
-      if (p2) rsa.path2 = p2;
+      await customer.adGroupAds.update(
+        existing.map((rn: string) => ({
+          resource_name: rn,
+          ad: { final_urls: [finalUrl], responsive_search_ad: rsa },
+        })),
+        { partial_failure: true }
+      );
+      console.log(`    ✓ Updated ${existing.length} existing RSAs`);
+    } catch (e: any) {
+      const msg = JSON.stringify(e?.errors || String(e));
+      console.error(`    ✗ RSA update failed: ${msg}`);
+    }
+  }
+
+  const toCreate = Math.max(0, desiredCount - existing.length);
+  for (let i = 0; i < toCreate; i++) {
+    try {
       await customer.adGroupAds.create(
         [
           {

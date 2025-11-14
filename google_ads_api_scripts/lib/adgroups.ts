@@ -118,14 +118,27 @@ export async function addKeywords(customer: any, adGroupRn: string, terms: strin
       continue;
     }
     try {
-      await customer.adGroupCriteria.create(
+      const res: any = await customer.adGroupCriteria.create(
         [
           { ad_group: adGroupRn, status: enums.AdGroupCriterionStatus.ENABLED, cpc_bid_micros: cpcMicros, keyword: { text: t, match_type: enums.KeywordMatchType.PHRASE } },
           { ad_group: adGroupRn, status: enums.AdGroupCriterionStatus.ENABLED, cpc_bid_micros: cpcMicros, keyword: { text: t, match_type: enums.KeywordMatchType.EXACT } },
         ],
         { partial_failure: true }
       );
-      console.log(`    ✓ KW added (phrase+exact): ${t}`);
+
+      const partial = (res && (res.partial_failure_error || res.partialFailureError)) ||
+        (Array.isArray(res) && res[0] && (res[0].partial_failure_error || res[0].partialFailureError));
+
+      if (partial) {
+        console.error(`    ✗ KW had partial failures (likely policy/invalid): ${t}`);
+        try {
+          console.error(`      partial_failure_error: ${JSON.stringify(partial, null, 2)}`);
+        } catch {
+          console.error('      partial_failure_error present but could not be stringified');
+        }
+      } else {
+        console.log(`    ✓ KW added (phrase+exact): ${t}`);
+      }
     } catch (e: any) {
       if (String(e).includes('ALREADY_EXISTS') || String(e).includes('DUPLICATE')) {
         console.log(`    • KW exists: ${t}`);
