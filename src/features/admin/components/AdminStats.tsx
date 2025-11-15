@@ -109,6 +109,8 @@ type StatsData = {
   funnels?: {
     quizMatches: { steps: Array<{ name: string; count: number; from_prev_rate: number; from_start_rate: number }>; };
     browseDirectory: { steps: Array<{ name: string; count: number; from_prev_rate: number; from_start_rate: number }>; };
+    landingFromStartQuiz?: { steps: Array<{ name: string; count: number; from_prev_rate: number; from_start_rate: number }>; };
+    landingFromStartDirectory?: { steps: Array<{ name: string; count: number; from_prev_rate: number; from_start_rate: number }>; };
   };
   opportunities?: {
     byReason: { gender: number; location: number; modality: number };
@@ -260,6 +262,94 @@ export default function AdminStats() {
 
       {data?.funnels && (
         <div className="grid grid-cols-1 gap-4">
+          {(() => {
+            const steps = data.funnels?.landingFromStartQuiz?.steps || [];
+            const start = steps[0]?.count || 0;
+            const sent = steps[steps.length - 1]?.count || 0;
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Landing → Quiz Funnel</CardTitle>
+                  <CardDescription>Von /start bis Nachricht gesendet (Matches). Golden Metric: {sent}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {!steps.length ? (
+                    <div className="text-sm text-muted-foreground">Keine Daten</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {steps.map((s, i) => {
+                        const widthPct = start > 0 ? (s.count / start) * 100 : 0;
+                        const fromPrev = s.from_prev_rate;
+                        const fromStart = s.from_start_rate;
+                        return (
+                          <div key={`landing-quiz-${s.name}-${i}`} className="flex items-center gap-2 text-xs">
+                            <div className="w-48 text-right text-muted-foreground truncate">{s.name}</div>
+                            <div className="flex-1 bg-gray-100 rounded-sm h-6 relative overflow-hidden">
+                              <div className="bg-emerald-500 h-full transition-all duration-300 flex items-center px-2" style={{ width: `${widthPct}%` }}>
+                                {widthPct > 15 && (
+                                  <span className="text-white font-medium text-xs tabular-nums">{s.count}</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="w-28 text-left">
+                              <div className="font-medium tabular-nums">{s.count} <span className="text-muted-foreground">({pct(s.count, start)}%)</span></div>
+                            </div>
+                            <div className="w-24 text-right text-muted-foreground tabular-nums">{fromPrev}%</div>
+                            <div className="w-24 text-right text-muted-foreground tabular-nums">{fromStart}%</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {(() => {
+            const steps = data.funnels?.landingFromStartDirectory?.steps || [];
+            const start = steps[0]?.count || 0;
+            const sent = steps[steps.length - 1]?.count || 0;
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Landing → Directory Funnel</CardTitle>
+                  <CardDescription>Von /start bis Nachricht gesendet (Verzeichnis). Golden Metric: {sent}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {!steps.length ? (
+                    <div className="text-sm text-muted-foreground">Keine Daten</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {steps.map((s, i) => {
+                        const widthPct = start > 0 ? (s.count / start) * 100 : 0;
+                        const fromPrev = s.from_prev_rate;
+                        const fromStart = s.from_start_rate;
+                        return (
+                          <div key={`landing-dir-${s.name}-${i}`} className="flex items-center gap-2 text-xs">
+                            <div className="w-48 text-right text-muted-foreground truncate">{s.name}</div>
+                            <div className="flex-1 bg-gray-100 rounded-sm h-6 relative overflow-hidden">
+                              <div className="bg-blue-500 h-full transition-all duration-300 flex items-center px-2" style={{ width: `${widthPct}%` }}>
+                                {widthPct > 15 && (
+                                  <span className="text-white font-medium text-xs tabular-nums">{s.count}</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="w-28 text-left">
+                              <div className="font-medium tabular-nums">{s.count} <span className="text-muted-foreground">({pct(s.count, start)}%)</span></div>
+                            </div>
+                            <div className="w-24 text-right text-muted-foreground tabular-nums">{fromPrev}%</div>
+                            <div className="w-24 text-right text-muted-foreground tabular-nums">{fromStart}%</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           {(() => {
             const steps = data.funnels?.quizMatches?.steps || [];
             const start = steps[0]?.count || 0;

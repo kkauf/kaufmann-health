@@ -12,6 +12,7 @@ import type { TherapistData } from '@/features/therapists/components/TherapistDi
 import { computeMismatches, type PatientMeta } from '@/features/leads/lib/match';
 import CtaLink from '@/components/CtaLink';
 import FloatingWhatsApp from '@/components/FloatingWhatsApp';
+import { getAttribution } from '@/lib/attribution';
 
 const TherapyModalityExplanations = dynamic(() => import('@/components/TherapyModalityExplanations'), {
   ssr: true,
@@ -151,7 +152,13 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   useEffect(() => {
     if (data) {
       try {
-        const payload = { type: 'match_page_view', properties: { therapist_count: therapists.length } };
+        const attrs = getAttribution();
+        const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
+        const payload = {
+          type: 'match_page_view',
+          ...attrs,
+          properties: { page_path: pagePath, therapist_count: therapists.length },
+        };
         navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
       } catch {}
     }
@@ -161,10 +168,14 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   useEffect(() => {
     if (data) {
       try {
+        const attrs = getAttribution();
+        const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
         const sp = data.patient.session_preferences || (data.patient.session_preference ? [data.patient.session_preference] : []);
         const payload = {
           type: 'match_page_preferences_shown',
+          ...attrs,
           properties: {
+            page_path: pagePath,
             has_issue: Boolean((data.patient.issue || '').trim()),
             session_online: Array.isArray(sp) && sp.includes('online'),
             session_in_person: Array.isArray(sp) && sp.includes('in_person'),
@@ -181,7 +192,13 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   useEffect(() => {
     if (matchType === 'partial' || matchType === 'none') {
       try {
-        const payload = { type: 'form_no_therapists_found', properties: { match_type: matchType } };
+        const attrs = getAttribution();
+        const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
+        const payload = {
+          type: 'form_no_therapists_found',
+          ...attrs,
+          properties: { page_path: pagePath, match_type: matchType },
+        };
         navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
       } catch {}
     }

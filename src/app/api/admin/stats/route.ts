@@ -37,7 +37,13 @@ function toDayKey(iso: string): string {
 }
 
 type FunnelStep = { name: string; count: number; from_prev_rate: number; from_start_rate: number };
-type FunnelsResponse = { quizMatches: { steps: FunnelStep[] }; browseDirectory: { steps: FunnelStep[] } };
+type FunnelsResponse = {
+  quizMatches: { steps: FunnelStep[] };
+  browseDirectory: { steps: FunnelStep[] };
+  // New: /start-anchored funnels
+  landingFromStartQuiz: { steps: FunnelStep[] };
+  landingFromStartDirectory: { steps: FunnelStep[] };
+};
 
 function isTestEvent(props?: Record<string, unknown>): boolean {
   const v = props?.['is_test'] as unknown;
@@ -77,7 +83,12 @@ function buildSequentialCounts(orderedSets: Set<string>[]): { counts: number[]; 
 }
 
 async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
-  const funnels: FunnelsResponse = { quizMatches: { steps: [] }, browseDirectory: { steps: [] } };
+  const funnels: FunnelsResponse = {
+    quizMatches: { steps: [] },
+    browseDirectory: { steps: [] },
+    landingFromStartQuiz: { steps: [] },
+    landingFromStartDirectory: { steps: [] },
+  };
 
   const quizTypes = [
     'match_page_view',
@@ -221,6 +232,89 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
       from_start_rate: ratesStart[i] || 0,
     }));
   }
+
+  // === LANDING FUNNELS FROM /start ===
+  // Anchor both quiz and directory funnels on sessions that viewed /start and clicked the respective CTA.
+  try {
+    const { data: startRows } = await supabaseServer
+      .from('events')
+      .select('type, properties')
+      .in('type', ['page_view', 'cta_click'])
+      .gte('created_at', sinceIso)
+      .limit(50000);
+
+    const startViews = new Set<string>();
+    const startCtaQuiz = new Set<string>();
+    const startCtaDirectory = new Set<string>();
+
+    for (const row of (startRows || []) as Array<{ type?: string; properties?: Record<string, unknown> }>) {
+      try {
+        const t = String(row.type || '').toLowerCase();
+        const props = (row.properties || {}) as Record<string, unknown>;
+        if (isTestEvent(props)) continue;
+        const sid = String((props['session_id'] as string | undefined) || '').trim();
+        if (!sid) continue;
+        const pagePath = String((props['page_path'] as string | undefined) || '').trim().toLowerCase();
+
+        if (t === 'page_view') {
+          if (pagePath === '/start') startViews.add(sid);
+        } else if (t === 'cta_click' && pagePath === '/start') {
+          const href = String((props['href'] as string | undefined) || '').trim().toLowerCase();
+          if (!href) continue;
+          if (href.includes('/fragebogen')) startCtaQuiz.add(sid);
+          if (href.includes('/therapeuten')) startCtaDirectory.add(sid);
+        }
+      } catch {}
+    }
+
+    if (startViews.size > 0) {
+      {
+        const ordered = [startViews, startCtaQuiz, qRoot, qCta, qOpen, qSlot, qDraft, qVerStart, qVerDone, qSent];
+        const names = [
+          'start_page_view',
+          'start_cta_quiz',
+          'match_page_view',
+          'contact_cta_clicked',
+          'contact_modal_opened',
+          'booking_slot_selected',
+          'message_drafted',
+          'contact_verification_started',
+          'contact_verification_completed',
+          'contact_message_sent',
+        ];
+        const { counts, ratesPrev, ratesStart } = buildSequentialCounts(ordered);
+        funnels.landingFromStartQuiz.steps = names.map((name, i) => ({
+          name,
+          count: counts[i] || 0,
+          from_prev_rate: ratesPrev[i] || 0,
+          from_start_rate: ratesStart[i] || 0,
+        }));
+      }
+
+      {
+        const ordered = [startViews, startCtaDirectory, bRoot, bCta, bOpen, bSlot, bDraft, bVerStart, bVerDone, bSent];
+        const names = [
+          'start_page_view',
+          'start_cta_directory',
+          'directory_page_view',
+          'contact_cta_clicked',
+          'contact_modal_opened',
+          'booking_slot_selected',
+          'message_drafted',
+          'contact_verification_started',
+          'contact_verification_completed',
+          'contact_message_sent',
+        ];
+        const { counts, ratesPrev, ratesStart } = buildSequentialCounts(ordered);
+        funnels.landingFromStartDirectory.steps = names.map((name, i) => ({
+          name,
+          count: counts[i] || 0,
+          from_prev_rate: ratesPrev[i] || 0,
+          from_start_rate: ratesStart[i] || 0,
+        }));
+      }
+    }
+  } catch {}
 
   return funnels;
 }
