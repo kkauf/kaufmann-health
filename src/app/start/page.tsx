@@ -221,7 +221,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
       <HeroNoForm
         title={copy.hero.title}
         subtitle={instantFlow ? neutralHeroSubtitle : copy.hero.subtitle}
-        ctaLabel={isBrowse ? 'Therapeut:innen ansehen' : (instantFlow ? 'Jetzt Termin buchen' : 'Jetzt Therapeut:in finden')}
+        ctaLabel={isBrowse ? 'Therapeut:innen ansehen' : 'Jetzt Therapeut:in finden'}
         ctaHref={isBrowse ? therapeutenHref : fragebogenHref}
         backgroundSrc="/images/hero.jpg"
       />

@@ -268,6 +268,7 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
     }
 
     if (startViews.size > 0) {
+      // Landing → Quiz: /start → quiz CTA → matches contact funnel
       {
         const ordered = [startViews, startCtaQuiz, qRoot, qCta, qOpen, qSlot, qDraft, qVerStart, qVerDone, qSent];
         const names = [
@@ -291,12 +292,14 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
         }));
       }
 
+      // Landing → Directory: /start → directory CTA → directory contact funnel
+      // Note: we skip the intermediate directory_page_view step because it's almost
+      // always a technical follow-through of the CTA click, not a new decision.
       {
-        const ordered = [startViews, startCtaDirectory, bRoot, bCta, bOpen, bSlot, bDraft, bVerStart, bVerDone, bSent];
+        const ordered = [startViews, startCtaDirectory, bCta, bOpen, bSlot, bDraft, bVerStart, bVerDone, bSent];
         const names = [
           'start_page_view',
           'start_cta_directory',
-          'directory_page_view',
           'contact_cta_clicked',
           'contact_modal_opened',
           'booking_slot_selected',
