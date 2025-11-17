@@ -27,6 +27,15 @@ export default function Footer() {
                   kontakt@kaufmann-health.de
                 </a>
               </li>
+              <li>
+                Beratung & Projekte:{" "}
+                <a
+                  href="/beratung"
+                  className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900 hover:decoration-gray-900 transition-colors"
+                >
+                  Digitale Lösungen
+                </a>
+              </li>
             </ul>
           </section>
           <nav aria-labelledby="footer-legal">

@@ -368,6 +368,34 @@ export default function TherapistsPage() {
         </div>
       </section>
 
+      {/* Beratung & digitale Lösungen */}
+      <section aria-labelledby="consulting" className="mt-14 sm:mt-20 lg:mt-24">
+        <div className="relative rounded-2xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-8 sm:p-10 shadow-lg shadow-indigo-100/30 overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(35rem_18rem_at_40%_0%,rgba(99,102,241,0.09),transparent_65%)]" />
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 id="consulting" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
+              Individuelle digitale Lösungen für deine Praxis
+            </h2>
+            <p className="mt-4 text-base sm:text-lg leading-relaxed text-gray-700">
+              Du möchtest neben Klient:innen-Anfragen auch deine digitale Infrastruktur professionalisieren – z. B.
+              mit Buchungssystem, Online-Kursen oder automatisierten E-Mail-Strecken? Über Kaufmann Health hinaus
+              begleite ich ausgewählte Therapeut:innen und Praxen bei der Umsetzung maßgeschneiderter Lösungen.
+            </p>
+            <div className="mt-6">
+              <Button
+                asChild
+                size="lg"
+                className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 transition-all duration-200 hover:scale-[1.02]"
+              >
+                <CtaLink href="/beratung" eventType="cta_click" eventId="fuer-therapeuten-consulting-cta">
+                  Mehr zu Beratung & digitalen Lösungen
+                </CtaLink>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section aria-labelledby="faq" className="mt-14 sm:mt-20 lg:mt-24">
         <h2 id="faq" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Häufige Fragen</h2>
