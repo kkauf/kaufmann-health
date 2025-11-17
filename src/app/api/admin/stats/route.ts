@@ -40,6 +40,7 @@ type FunnelStep = { name: string; count: number; from_prev_rate: number; from_st
 type FunnelsResponse = {
   quizMatches: { steps: FunnelStep[] };
   browseDirectory: { steps: FunnelStep[] };
+  quizConversion?: { steps: FunnelStep[] };
   // New: /start-anchored funnels
   landingFromStartQuiz: { steps: FunnelStep[] };
   landingFromStartDirectory: { steps: FunnelStep[] };
@@ -61,7 +62,13 @@ function pathLikeMatches(props?: Record<string, unknown>): boolean {
 function onDirectory(props?: Record<string, unknown>): boolean {
   const p = String((props?.['page_path'] as string | undefined) || '').trim().toLowerCase();
   const ref = String((props?.['referrer'] as string | undefined) || '').trim().toLowerCase();
-  return p === '/therapeuten' || ref.includes('/therapeuten');
+  const conv = String((props?.['conversion_path'] as string | undefined) || '').trim().toLowerCase();
+  return (
+    p === '/therapeuten' ||
+    ref.includes('/therapeuten') ||
+    conv === '/therapeuten' ||
+    conv.includes('/therapeuten')
+  );
 }
 
 function buildSequentialCounts(orderedSets: Set<string>[]): { counts: number[]; ratesPrev: number[]; ratesStart: number[] } {
@@ -86,6 +93,7 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
   const funnels: FunnelsResponse = {
     quizMatches: { steps: [] },
     browseDirectory: { steps: [] },
+    quizConversion: { steps: [] },
     landingFromStartQuiz: { steps: [] },
     landingFromStartDirectory: { steps: [] },
   };
@@ -172,6 +180,7 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
     'contact_verification_started',
     'contact_verification_completed',
     'contact_message_sent',
+    'directory_contact_conversion',
   ];
   const { data: browseRows } = await supabaseServer
     .from('events')
@@ -317,6 +326,82 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
         }));
       }
     }
+  } catch {}
+
+  try {
+    const quizConvTypes = [
+      'form_completed',
+      'fragebogen_completed',
+      'email_confirmed',
+      'booking_dry_run',
+      'booking_created',
+    ];
+    const { data: quizConvRows } = await supabaseServer
+      .from('events')
+      .select('type, properties')
+      .in('type', quizConvTypes)
+      .gte('created_at', sinceIso)
+      .limit(50000);
+
+    const allRows = (quizConvRows || []) as Array<{ type?: string; properties?: Record<string, unknown> }>;
+    const sidToFs = new Map<string, string>();
+    const qcRoot = new Set<string>();
+    const qcEmail = new Set<string>();
+    const qcDry = new Set<string>();
+    const qcBook = new Set<string>();
+
+    for (const row of allRows) {
+      const props = (row.properties || {}) as Record<string, unknown>;
+      if (isTestEvent(props)) continue;
+      const sid = String((props['session_id'] as string | undefined) || '').trim();
+      const fsidRaw = String((props['form_session_id'] as string | undefined) || '').trim();
+      if (fsidRaw && sid && !sidToFs.has(sid)) {
+        sidToFs.set(sid, fsidRaw);
+      }
+      const t = String(row.type || '').toLowerCase();
+      if (t === 'form_completed' || t === 'fragebogen_completed') {
+        const key = fsidRaw || (sid ? `sid:${sid}` : '');
+        if (key) qcRoot.add(key);
+      }
+    }
+
+    for (const row of allRows) {
+      const t = String(row.type || '').toLowerCase();
+      const props = (row.properties || {}) as Record<string, unknown>;
+      if (isTestEvent(props)) continue;
+      const sid = String((props['session_id'] as string | undefined) || '').trim();
+      let fsid = String((props['form_session_id'] as string | undefined) || '').trim();
+      if (!fsid && sid && sidToFs.has(sid)) {
+        fsid = sidToFs.get(sid) || '';
+      }
+      const key = fsid || (sid ? `sid:${sid}` : '');
+      if (!key) continue;
+
+      if (t === 'email_confirmed') qcEmail.add(key);
+      else if (t === 'booking_dry_run') qcDry.add(key);
+      else if (t === 'booking_created') qcBook.add(key);
+    }
+
+    const qcRootSeed =
+      qcRoot.size > 0
+        ? qcRoot
+        : new Set<string>([...qcEmail, ...qcDry, ...qcBook]);
+    const ordered = [qcRootSeed, qcEmail, qcDry, qcBook];
+    const names = [
+      'quiz_form_completed',
+      'quiz_email_confirmed',
+      'quiz_booking_dry_run',
+      'quiz_booking_created',
+    ];
+    const { counts, ratesPrev, ratesStart } = buildSequentialCounts(ordered);
+    funnels.quizConversion = {
+      steps: names.map((name, i) => ({
+        name,
+        count: counts[i] || 0,
+        from_prev_rate: ratesPrev[i] || 0,
+        from_start_rate: ratesStart[i] || 0,
+      })),
+    };
   } catch {}
 
   return funnels;
