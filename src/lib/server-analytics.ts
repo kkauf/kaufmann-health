@@ -93,11 +93,22 @@ export async function trackEventFromRequest(
   // Environment and preview/bot detection
   const hostHeader = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').toLowerCase();
   const deploymentUrlHeader = (req.headers.get('x-vercel-deployment-url') || '').toLowerCase();
-  const isPreviewHost = hostHeader.endsWith('.vercel.app') || deploymentUrlHeader.endsWith('.vercel.app');
+  const isLocal = hostHeader.includes('localhost') || hostHeader.startsWith('127.');
+  const isPreviewDomainHost = hostHeader.endsWith('.vercel.app');
+  const isPreviewDeployment = deploymentUrlHeader.endsWith('.vercel.app');
   const vercelEnv = (process.env.VERCEL_ENV || '').toLowerCase();
-  const envTag = vercelEnv || ((hostHeader.includes('localhost') || hostHeader.startsWith('127.')) ? 'development' : (isPreviewHost ? 'preview' : 'production'));
+  let envTag = vercelEnv;
+  if (!envTag) {
+    if (isLocal) {
+      envTag = 'development';
+    } else if (isPreviewDomainHost || isPreviewDeployment) {
+      envTag = 'preview';
+    } else {
+      envTag = 'production';
+    }
+  }
   const isVercelScreenshot = /vercel-screenshot/i.test(String(ua || ''));
-  const markAsTest = envTag !== 'production' || isVercelScreenshot || isPreviewHost;
+  const markAsTest = envTag !== 'production' || isVercelScreenshot || isLocal;
 
   const props: Record<string, unknown> = {
     ...(input.id ? { id: input.id } : {}),

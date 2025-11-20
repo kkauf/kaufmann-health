@@ -443,6 +443,10 @@ async function main() {
         c.descriptions,
         { useKeywordInsertion: c.ads?.use_keyword_insertion ?? true, autoComplete: c.ads?.auto_complete_assets ?? true, kwTokens: kwTokensFromTier }
       );
+      // Use the landing_page from config as the canonical URL; final_url_params
+      // are a generic way to tack on additional static query params (e.g. v=browse).
+      // The script itself has no understanding of variants beyond whatever is
+      // already encoded in c.landing_page.
       await addRSAsLib(
         customer,
         adGroupRn,
@@ -476,7 +480,17 @@ async function main() {
         const t = templates?.[c.name] as any;
         const fallbackH = Array.isArray(t?.headlines) ? (t.headlines as string[]) : [];
         const fallbackD = Array.isArray(t?.descriptions) ? (t.descriptions as string[]) : [];
-        await ensureAtLeastOneRSALib(customer, adGroupRn, c.landing_page, c.ads?.final_url_params, fallbackH, fallbackD, dryRun || validateOnly);
+        await ensureAtLeastOneRSALib(
+          customer,
+          adGroupRn,
+          c.landing_page,
+          c.ads?.final_url_params,
+          fallbackH,
+          fallbackD,
+          dryRun || validateOnly,
+          c.ads?.path1,
+          c.ads?.path2,
+        );
       }
     }
     await pauseOtherAdGroups(customer, campaignRn as string, allowedNames, dryRun || validateOnly);
