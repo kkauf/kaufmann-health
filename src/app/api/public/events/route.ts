@@ -70,11 +70,26 @@ export async function POST(req: Request) {
     const uaHeader = req.headers.get('user-agent') || '';
     const hostHeader = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').toLowerCase();
     const deploymentUrlHeader = (req.headers.get('x-vercel-deployment-url') || '').toLowerCase();
-    const isPreviewHost = hostHeader.endsWith('.vercel.app') || deploymentUrlHeader.endsWith('.vercel.app');
+    const isLocal = isLocalhostRequest(req);
+    const isPreviewDomainHost = hostHeader.endsWith('.vercel.app');
+    const isPreviewDeployment = deploymentUrlHeader.endsWith('.vercel.app');
     const vercelEnv = (process.env.VERCEL_ENV || '').toLowerCase();
-    const envTag = vercelEnv || (isLocalhostRequest(req) ? 'development' : (isPreviewHost ? 'preview' : 'production'));
+    let envTag = vercelEnv;
+    if (!envTag) {
+      if (isLocal) {
+        envTag = 'development';
+      } else if (isPreviewDomainHost || isPreviewDeployment) {
+        envTag = 'preview';
+      } else {
+        envTag = 'production';
+      }
+    }
     const isVercelScreenshot = /vercel-screenshot/i.test(uaHeader);
-    const markAsTest = isLocalhostRequest(req) || isTestCookie || envTag !== 'production' || isVercelScreenshot || isPreviewHost;
+    const markAsTest =
+      isLocal ||
+      isTestCookie ||
+      envTag !== 'production' ||
+      isVercelScreenshot;
 
     const mergedProps: Record<string, unknown> = {
       id,
