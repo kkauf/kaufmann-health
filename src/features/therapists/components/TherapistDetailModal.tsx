@@ -605,7 +605,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
                   <div className="flex flex-wrap gap-2 justify-center">
                     {filteredSlots.map((s: Slot, idx: number) => {
                       const dt = slotDate(s);
-                      const disabled = dt < minSelectable || (sessionFormat ? (s.format !== sessionFormat) : false);
+                      const disabled = dt < minSelectable;
                       const selected = !!selectedSlot && selectedSlot.date_iso === s.date_iso && selectedSlot.time_label === s.time_label && selectedSlot.format === s.format;
                       const base = selected
                         ? 'ring-2 ring-emerald-400 border-2 border-emerald-400 bg-emerald-50 text-emerald-900 shadow-md scale-105'

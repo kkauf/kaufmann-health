@@ -328,7 +328,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     if (!open) return;
     let idx = -1;
     for (let i = 0; i < slotsByWeek.length; i++) {
-      const slots = slotsByWeek[i]?.[1]?.slots || [];
+      const slots = slotsByWeek[i]?.[1]?.slots;
       const filtered = sessionFormat ? slots.filter((s) => s.format === sessionFormat) : slots;
       if (filtered.length > 0) { idx = i; break; }
     }
@@ -1173,7 +1173,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           <div className="flex flex-wrap gap-2 justify-center">
             {filteredSlots.map((s: Slot, idx: number) => {
               const dt = slotDate(s);
-              const disabled = dt < minSelectable || (selectedFormat ? (s.format !== selectedFormat) : false);
+              const disabled = dt < minSelectable;
               const selected = !!selectedBookingSlot && selectedBookingSlot.date_iso === s.date_iso && selectedBookingSlot.time_label === s.time_label && selectedBookingSlot.format === s.format;
               const base = selected
                 ? 'ring-2 ring-emerald-400 border-2 border-emerald-400 bg-emerald-50 text-emerald-900 shadow-md scale-105'
