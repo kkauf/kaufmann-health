@@ -30,6 +30,7 @@ export type TherapistData = {
       languages?: string[];
       years_experience?: number;
       practice_address?: string;
+      qualification?: string;
     };
   };
   availability?: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[];
@@ -58,13 +59,13 @@ export function TherapistDirectory({ initialTherapists = [], emptyState, disable
   const [autoContactOpen, setAutoContactOpen] = useState(false);
   const [autoContactType, setAutoContactType] = useState<'booking' | 'consultation'>('booking');
   const [autoContactConfirmed, setAutoContactConfirmed] = useState(false);
-  
+
   // Contact modal state (EARTH-227): independent from detail modal
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [contactTherapist, setContactTherapist] = useState<TherapistData | null>(null);
   const [contactType, setContactType] = useState<'booking' | 'consultation'>('booking');
   const [contactSelectedSlot, setContactSelectedSlot] = useState<{ date_iso: string; time_label: string; format: 'online' | 'in_person' } | undefined>(undefined);
-  
+
   // Mobile filter sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
   const [draftModality, setDraftModality] = useState<string>('all');
@@ -102,7 +103,7 @@ export function TherapistDirectory({ initialTherapists = [], emptyState, disable
         if (!cancelled && Array.isArray(data?.therapists)) {
           setTherapists(data.therapists);
         }
-      } catch {}
+      } catch { }
     }
     refreshTherapists();
     return () => { cancelled = true; };
@@ -157,7 +158,7 @@ export function TherapistDirectory({ initialTherapists = [], emptyState, disable
               u2.searchParams.delete('type');
               const cleaned2 = `${u2.pathname}${u2.searchParams.toString() ? `?${u2.searchParams.toString()}` : ''}${u2.hash}`;
               window.history.replaceState({}, '', cleaned2);
-            } catch {}
+            } catch { }
           }, 100);
           return;
         }
@@ -306,11 +307,11 @@ export function TherapistDirectory({ initialTherapists = [], emptyState, disable
 
   const availabilityTherapistsCount = useMemo(() =>
     filteredTherapists.filter(t => Array.isArray(t.availability) && t.availability.length > 0).length
-  , [filteredTherapists]);
+    , [filteredTherapists]);
 
   const acceptingNewTherapistsCount = useMemo(() =>
     filteredTherapists.filter(t => !!t.accepting_new).length
-  , [filteredTherapists]);
+    , [filteredTherapists]);
 
   const displayedCount = acceptingNewTherapistsCount;
 
@@ -323,7 +324,7 @@ export function TherapistDirectory({ initialTherapists = [], emptyState, disable
       const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
       const payload = { type: 'directory_load_more_clicked', ...attrs, properties: { page_path: pagePath, total: filteredTherapists.length, visible_before: visibleCount } };
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
-    } catch {}
+    } catch { }
     // Reveal all remaining in one step (simple behavior for now)
     setVisibleCount(filteredTherapists.length);
   };
@@ -576,7 +577,7 @@ export function TherapistDirectory({ initialTherapists = [], emptyState, disable
           onOpenContactModal={handleOpenContactModal}
         />
       )}
-      
+
       {/* Contact modal - managed independently from detail modal (EARTH-227) */}
       {contactTherapist && (
         <ContactModal

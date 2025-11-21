@@ -30,13 +30,13 @@ type TherapistItem = {
   session_preferences?: string[];
   approach_text?: string;
   gender?: string;
-  availability?: { date_iso: string; time_label: string; format: 'online'|'in_person'; address?: string }[];
+  availability?: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[];
 };
 
 type MatchApiData = {
-  patient: { 
-    name?: string | null; 
-    issue?: string | null; 
+  patient: {
+    name?: string | null;
+    issue?: string | null;
     session_preference?: 'online' | 'in_person' | null;
     city?: string;
     session_preferences?: ('online' | 'in_person')[];
@@ -146,7 +146,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     [matchType, hasPerfect]
   );
 
-  
+
 
   // Track page view
   useEffect(() => {
@@ -160,7 +160,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           properties: { page_path: pagePath, therapist_count: therapists.length },
         };
         navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
-      } catch {}
+      } catch { }
     }
   }, [data, therapists.length]);
 
@@ -184,7 +184,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           },
         };
         navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
-      } catch {}
+      } catch { }
     }
   }, [data]);
 
@@ -200,7 +200,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           properties: { page_path: pagePath, match_type: matchType },
         };
         navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
-      } catch {}
+      } catch { }
     }
   }, [matchType]);
 
@@ -454,12 +454,13 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       {/* Contact modal (pre-auth) */}
       {modalFor && (
         <ContactModal
-          therapist={{ 
-            id: modalFor.therapist.id, 
-            first_name: modalFor.therapist.first_name, 
-            last_name: modalFor.therapist.last_name, 
+          therapist={{
+            id: modalFor.therapist.id,
+            first_name: modalFor.therapist.first_name,
+            last_name: modalFor.therapist.last_name,
             photo_url: modalFor.therapist.photo_url || undefined,
             availability: modalFor.therapist.availability || [],
+            accepting_new: true,
           }}
           contactType={modalFor.type}
           open={!!modalFor}

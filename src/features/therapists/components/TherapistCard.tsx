@@ -27,7 +27,7 @@ function getInitials(firstName: string, lastName: string) {
 }
 
 function hashCode(s: string) {
-  let h = 0;  
+  let h = 0;
   for (let i = 0; i < s.length; i++) {
     h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
   }
@@ -92,7 +92,7 @@ export function TherapistCard({
       const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
       const payload = { type: 'contact_cta_clicked', ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id, contact_type: type } };
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
-    } catch {}
+    } catch { }
     if (customContactHandler) {
       customContactHandler(type);
     } else {
@@ -116,7 +116,7 @@ export function TherapistCard({
       const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
       const payload = { type: 'profile_cta_clicked', ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id } };
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
-    } catch {}
+    } catch { }
     onViewDetails();
   };
 
@@ -137,150 +137,151 @@ export function TherapistCard({
           }}
           className="outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer rounded-lg hover:bg-slate-50/50 transition-colors"
         >
-        {/* Header with avatar and name */}
-        <div className="mb-5 flex items-start gap-5">
-          <Avatar className="h-20 w-20 ring-2 ring-gray-100">
-            {photoSrc ? (
-              <AvatarImage
-                src={photoSrc}
-                alt={`${therapist.first_name} ${therapist.last_name}`}
-                loading="lazy"
-                decoding="async"
-                onError={() => setImageError(true)}
-              />
-            ) : (
-              <AvatarFallback style={{ backgroundColor: avatarColor }} className="text-xl font-semibold text-white">
-                {initials}
-              </AvatarFallback>
-            )}
-          </Avatar>
+          {/* Header with avatar and name */}
+          <div className="mb-5 flex items-start gap-5">
+            <Avatar className="h-20 w-20 ring-2 ring-gray-100">
+              {photoSrc ? (
+                <AvatarImage
+                  src={photoSrc}
+                  alt={`${therapist.first_name} ${therapist.last_name}`}
+                  loading="lazy"
+                  decoding="async"
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <AvatarFallback style={{ backgroundColor: avatarColor }} className="text-xl font-semibold text-white">
+                  {initials}
+                </AvatarFallback>
+              )}
+            </Avatar>
 
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-1.5">
-              <span>
-                {therapist.first_name} {therapist.last_name}
-              </span>
-              <ChevronRight className="h-4 w-4 text-slate-400 transition-all duration-200 opacity-0 -translate-x-0.5 group-hover:opacity-100 group-hover:-translate-x-0" aria-hidden="true" />
-            </h3>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-1.5">
+                <span>
+                  {therapist.first_name} {therapist.last_name}
+                </span>
+                <ChevronRight className="h-4 w-4 text-slate-400 transition-all duration-200 opacity-0 -translate-x-0.5 group-hover:opacity-100 group-hover:-translate-x-0" aria-hidden="true" />
+              </h3>
 
-            {/* Match quality badge (takes priority if provided) */}
-            {matchBadge ? (
-              <Badge className={matchBadge.className || "mt-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100"}>
-                {matchBadge.text}
-              </Badge>
-            ) : (
-              /* Trust + Availability */
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                <Badge variant="outline" title="Profil geprüft: Qualifikation & Lizenzen verifiziert" className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700">
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  Verifiziert
+              {/* Match quality badge (takes priority if provided) */}
+              {matchBadge ? (
+                <Badge className={matchBadge.className || "mt-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100"}>
+                  {matchBadge.text}
                 </Badge>
-                {therapist.accepting_new ? (
-                  <Badge className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                    <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
-                    <span>Verfügbar</span>
+              ) : (
+                /* Trust + Availability */
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  {/* Trust + Qualification Badge */}
+                  <Badge variant="outline" title="Profil geprüft: Qualifikation & Lizenzen verifiziert" className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700 whitespace-nowrap">
+                    <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate max-w-[200px] sm:max-w-none">{therapist.metadata?.profile?.qualification || 'Verifiziert'}</span>
                   </Badge>
-                ) : (
-                  <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
-                    Keine Kapazität
+                  {therapist.accepting_new ? (
+                    <Badge className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                      <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>Verfügbar</span>
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+                      Keine Kapazität
+                    </Badge>
+                  )}
+                </div>
+              )}
+
+              {/* Contacted date */}
+              {contactedAt && (
+                <div className="mt-1 text-xs text-emerald-700">
+                  Bereits kontaktiert am {fmtDate(contactedAt)}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Modalities (conditional based on showModalities prop) */}
+          {showModalities && therapist.modalities && therapist.modalities.length > 0 && (
+            <div className="mb-3">
+              <div className="relative -mx-4">
+                <div
+                  className="min-h-[32px] overflow-x-auto overflow-y-visible whitespace-nowrap px-4 py-1 [scrollbar-width:none] [-ms-overflow-style:none]"
+                  aria-label="Modalitäten"
+                >
+                  <div className="inline-flex gap-2">
+                    {modalityInfos.map((modalityInfo, idx) => {
+                      const handleModalityClick = (e: React.MouseEvent | React.KeyboardEvent) => {
+                        e.stopPropagation();
+                        openDetails();
+                        // Small delay to allow modal to open before scrolling
+                        setTimeout(() => {
+                          const element = document.getElementById(`modality-${modalityInfo.id}`);
+                          if (element) {
+                            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }
+                        }, 300);
+                      };
+                      return (
+                        <Badge
+                          key={idx}
+                          variant="outline"
+                          role="button"
+                          tabIndex={0}
+                          onClick={handleModalityClick}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleModalityClick(e);
+                            }
+                          }}
+                          className={`rounded-full gap-1.5 shadow-sm cursor-pointer ${modalityInfo.cls} transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md active:shadow-sm active:translate-y-0`}
+                          aria-label={`Profil öffnen und zu ${modalityInfo.label} springen`}
+                        >
+                          <modalityInfo.Icon className="h-3 w-3 opacity-90" />
+                          {modalityInfo.label}
+                        </Badge>
+                      );
+                    })}
+                    {therapist.modalities.length > 3 && (
+                      <Badge variant="secondary">+{therapist.modalities.length - 3}</Badge>
+                    )}
+                  </div>
+                </div>
+                {/* Edge fades */}
+                <div className="pointer-events-none absolute left-0 top-0 h-full w-4 bg-gradient-to-r from-white to-transparent"></div>
+                <div className="pointer-events-none absolute right-0 top-0 h-full w-4 bg-gradient-to-l from-white to-transparent"></div>
+              </div>
+            </div>
+          )}
+
+          {/* Location and format info */}
+          <div className="mb-5 space-y-2.5 text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              <span>{therapist.city}</span>
+            </div>
+            {(offersOnline || offersInPerson) && (
+              <div className="flex flex-wrap items-center gap-2">
+                {offersOnline && (
+                  <Badge variant="secondary" className="gap-1 bg-sky-50 text-sky-700 hover:bg-sky-100">
+                    <Video className="h-3 w-3" />
+                    Online-Therapie
+                  </Badge>
+                )}
+                {offersInPerson && (
+                  <Badge variant="secondary" className="gap-1 bg-slate-50 text-slate-700 hover:bg-slate-100">
+                    <User className="h-3 w-3" />
+                    Vor-Ort-Therapie
                   </Badge>
                 )}
               </div>
             )}
-
-            {/* Contacted date */}
-            {contactedAt && (
-              <div className="mt-1 text-xs text-emerald-700">
-                Bereits kontaktiert am {fmtDate(contactedAt)}
-              </div>
-            )}
           </div>
-        </div>
 
-        {/* Modalities (conditional based on showModalities prop) */}
-        {showModalities && therapist.modalities && therapist.modalities.length > 0 && (
-          <div className="mb-3">
-            <div className="relative -mx-4">
-              <div
-                className="min-h-[32px] overflow-x-auto overflow-y-visible whitespace-nowrap px-4 py-1 [scrollbar-width:none] [-ms-overflow-style:none]"
-                aria-label="Modalitäten"
-              >
-                <div className="inline-flex gap-2">
-                  {modalityInfos.map((modalityInfo, idx) => {
-                    const handleModalityClick = (e: React.MouseEvent | React.KeyboardEvent) => {
-                      e.stopPropagation();
-                      openDetails();
-                      // Small delay to allow modal to open before scrolling
-                      setTimeout(() => {
-                        const element = document.getElementById(`modality-${modalityInfo.id}`);
-                        if (element) {
-                          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }
-                      }, 300);
-                    };
-                    return (
-                      <Badge
-                        key={idx}
-                        variant="outline"
-                        role="button"
-                        tabIndex={0}
-                        onClick={handleModalityClick}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            handleModalityClick(e);
-                          }
-                        }}
-                        className={`rounded-full gap-1.5 shadow-sm cursor-pointer ${modalityInfo.cls} transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md active:shadow-sm active:translate-y-0`}
-                        aria-label={`Profil öffnen und zu ${modalityInfo.label} springen`}
-                      >
-                        <modalityInfo.Icon className="h-3 w-3 opacity-90" />
-                        {modalityInfo.label}
-                      </Badge>
-                    );
-                  })}
-                  {therapist.modalities.length > 3 && (
-                    <Badge variant="secondary">+{therapist.modalities.length - 3}</Badge>
-                  )}
-                </div>
-              </div>
-              {/* Edge fades */}
-              <div className="pointer-events-none absolute left-0 top-0 h-full w-4 bg-gradient-to-r from-white to-transparent"></div>
-              <div className="pointer-events-none absolute right-0 top-0 h-full w-4 bg-gradient-to-l from-white to-transparent"></div>
-            </div>
-          </div>
-        )}
-
-        {/* Location and format info */}
-        <div className="mb-5 space-y-2.5 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
-            <span>{therapist.city}</span>
-          </div>
-          {(offersOnline || offersInPerson) && (
-            <div className="flex flex-wrap items-center gap-2">
-              {offersOnline && (
-                <Badge variant="secondary" className="gap-1 bg-sky-50 text-sky-700 hover:bg-sky-100">
-                  <Video className="h-3 w-3" />
-                  Online-Therapie
-                </Badge>
-              )}
-              {offersInPerson && (
-                <Badge variant="secondary" className="gap-1 bg-slate-50 text-slate-700 hover:bg-slate-100">
-                  <User className="h-3 w-3" />
-                  Vor-Ort-Therapie
-                </Badge>
-              )}
-            </div>
+          {/* Approach text preview */}
+          {therapist.approach_text && (
+            <p className="mb-5 line-clamp-3 text-sm text-gray-700">
+              {therapist.approach_text}
+            </p>
           )}
-        </div>
-
-        {/* Approach text preview */}
-        {therapist.approach_text && (
-          <p className="mb-5 line-clamp-3 text-sm text-gray-700">
-            {therapist.approach_text}
-          </p>
-        )}
 
         </div>
 
@@ -308,7 +309,7 @@ export function TherapistCard({
           </Button>
         </div>
       </CardContent>
-      
+
       {/* Contact modal */}
       <ContactModal
         therapist={{
@@ -318,6 +319,7 @@ export function TherapistCard({
           photo_url: therapist.photo_url,
           availability: therapist.availability,
           metadata: therapist.metadata,
+          accepting_new: therapist.accepting_new,
         }}
         contactType={contactType}
         open={contactModalOpen}
@@ -326,4 +328,3 @@ export function TherapistCard({
     </Card>
   );
 }
-

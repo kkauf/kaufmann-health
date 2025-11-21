@@ -55,7 +55,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
   const [sessionFormat, setSessionFormat] = useState<'online' | 'in_person' | ''>('');
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [weekIndex, setWeekIndex] = useState(0);
-  
+
   const photoSrc = therapist.photo_url && !imageError ? therapist.photo_url : undefined;
   const initials = getInitials(therapist.first_name, therapist.last_name);
   const avatarColor = `hsl(${hashCode(therapist.id) % 360}, 70%, 50%)`;
@@ -68,19 +68,19 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
   const languages = profile?.languages || [];
   const yearsExperience = profile?.years_experience;
   const practiceAddress = (profile?.practice_address || '').toString().trim();
-  
+
   const handleContactClick = (type: 'booking' | 'consultation') => {
     try {
       const attrs = getAttribution();
       const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
       const payload = { type: 'contact_cta_clicked', ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id, contact_type: type } };
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
-    } catch {}
-    
+    } catch { }
+
     if (type === 'booking') {
       // Check if therapist has available slots
       const hasSlots = selectableSlots.length > 0;
-      
+
       if (hasSlots) {
         // Has slots: switch to booking mode with slot picker
         setViewMode('booking');
@@ -109,19 +109,19 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
     try {
       const attrs = getAttribution();
       const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
-      const payload = { 
-        type: 'booking_proceed_to_verification', 
-        ...attrs, 
-        properties: { 
-          page_path: pagePath, 
+      const payload = {
+        type: 'booking_proceed_to_verification',
+        ...attrs,
+        properties: {
+          page_path: pagePath,
           therapist_id: therapist.id,
           date_iso: selectedSlot.date_iso,
           time_label: selectedSlot.time_label,
           format: selectedSlot.format
-        } 
+        }
       };
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
-    } catch {}
+    } catch { }
     // Close this modal and open ContactModal with selected slot
     // This creates a smoother transition since Contact Modal shows the same therapist header + slot
     onOpenContactModal(therapist, 'booking', {
@@ -142,8 +142,8 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
         const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
         const payload = { type: 'profile_modal_opened', ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id } };
         navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
-      } catch {}
-      
+      } catch { }
+
       // Scroll to initial target if provided
       if (initialScrollTarget) {
         setTimeout(() => {
@@ -162,7 +162,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
         setImageViewerOpen(false);
       }
     };
-    
+
     if (imageViewerOpen) {
       document.addEventListener('keydown', handleEscape);
       return () => document.removeEventListener('keydown', handleEscape);
@@ -172,16 +172,16 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
   // Close viewer on any click while it's open
   useEffect(() => {
     if (!imageViewerOpen) return;
-    
+
     const handleClick = () => {
       setImageViewerOpen(false);
     };
-    
+
     // Small delay to avoid closing immediately on the click that opened it
     const timer = setTimeout(() => {
       document.addEventListener('click', handleClick);
     }, 100);
-    
+
     return () => {
       clearTimeout(timer);
       document.removeEventListener('click', handleClick);
@@ -196,7 +196,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
         const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
         const payload = { type: 'profile_image_expanded', ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id } };
         navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
-      } catch {}
+      } catch { }
     }
   };
 
@@ -207,16 +207,16 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
   // Booking slot logic (extracted from ContactModal)
   const allSlots = useMemo<Slot[]>(() => Array.isArray(therapist.availability) ? (therapist.availability as Slot[]) : [], [therapist.availability]);
   const minSelectable = useMemo(() => new Date(Date.now() + 24 * 60 * 60 * 1000), []);
-  
+
   function slotDate(s: Slot) {
     const [h, m] = (s.time_label || '00:00').split(':').map((x) => parseInt(x, 10) || 0);
     const d = new Date(s.date_iso + 'T00:00:00');
     d.setHours(h, m, 0, 0);
     return d;
   }
-  
+
   const selectableSlots = useMemo<Slot[]>(() => allSlots.filter(s => slotDate(s) >= minSelectable), [allSlots, minSelectable]);
-  
+
   const slotsByWeek = useMemo(() => {
     const map = new Map<string, { label: string; start: Date; slots: Slot[] }>();
     selectableSlots.forEach(s => {
@@ -267,7 +267,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
         },
       };
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
-    } catch {}
+    } catch { }
   }, [sessionFormat, weekIndex, therapist.id, therapist.metadata?.profile?.practice_address]);
 
   const handleModalClose = useCallback((isOpen: boolean) => {
@@ -302,10 +302,9 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
 
         {/* Hero section with avatar and basic info */}
         <div className="flex flex-col items-center gap-4 border-b pb-6 sm:flex-row sm:items-start">
-          <Avatar 
-            className={`h-32 w-32 shrink-0 ring-4 ring-gray-100 transition-all duration-200 ${
-              photoSrc ? 'cursor-pointer hover:ring-emerald-300 hover:ring-offset-2 hover:shadow-lg' : ''
-            }`}
+          <Avatar
+            className={`h-32 w-32 shrink-0 ring-4 ring-gray-100 transition-all duration-200 ${photoSrc ? 'cursor-pointer hover:ring-emerald-300 hover:ring-offset-2 hover:shadow-lg' : ''
+              }`}
             onClick={handleImageClick}
             role={photoSrc ? 'button' : undefined}
             tabIndex={photoSrc ? 0 : undefined}
@@ -337,9 +336,9 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
 
             {/* Trust + Availability badges */}
             <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-              <Badge variant="outline" className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Verifiziert
+              <Badge variant="outline" title="Profil geprüft: Qualifikation & Lizenzen verifiziert" className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700 whitespace-nowrap">
+                <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate max-w-[200px] sm:max-w-none">{therapist.metadata?.profile?.qualification || 'Verifiziert'}</span>
               </Badge>
               {therapist.accepting_new ? (
                 <Badge className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
@@ -363,7 +362,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
                   {practiceAddress}
                 </Badge>
               )}
-              
+
               {offersOnline && (
                 <Badge variant="outline" className="gap-1.5 border-sky-200 bg-sky-50 text-sky-700">
                   <Video className="h-3.5 w-3.5" />
@@ -693,7 +692,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
           </div>
         ) : null}
       </DialogContent>
-      
+
       {/* Image viewer (card-like, tap-to-close anywhere via portal) */}
       {mounted && imageViewerOpen && photoSrc && createPortal(
         <div

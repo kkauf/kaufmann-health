@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, AlertCircle, Shield, Lock, FileCheck, ShieldCheck, Mail, MailCheck, MapPin, ChevronLeft, ChevronRight, Calendar, Video, User, Tag } from 'lucide-react';
+import { Loader2, AlertCircle, Shield, Lock, FileCheck, ShieldCheck, Mail, MailCheck, MapPin, ChevronLeft, ChevronRight, Calendar, Video, User, Tag, CalendarCheck2 } from 'lucide-react';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { validatePhone } from '@/lib/verification/usePhoneValidation';
@@ -30,6 +30,7 @@ interface ContactModalProps {
     typical_rate?: number | null;
     availability?: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[];
     metadata?: { profile?: { practice_address?: string } };
+    accepting_new: boolean;
   };
   contactType: ContactType;
   open: boolean;
@@ -67,14 +68,14 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const [step, setStep] = useState<Step>(initialStep);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Verification step
   const [name, setName] = useState('');
   const [contactMethod, setContactMethod] = useState<'email' | 'phone'>('email'); // Default to phone for mobile
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
-  
+
   // Message step
   const [reason, setReason] = useState('');
   const [message, setMessage] = useState('');
@@ -82,11 +83,11 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const [selectedBookingSlot, setSelectedBookingSlot] = useState<{ date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string } | null>(null);
   // Track whether the user has a verified session in this modal lifecycle
   const [isVerified, setIsVerified] = useState<boolean>(false);
-  
+
   const [restoredDraft, setRestoredDraft] = useState<boolean>(false);
   const [autoSendAttempted, setAutoSendAttempted] = useState<boolean>(false);
   const draftTrackedRef = useRef<boolean>(false);
-  
+
   const therapistName = `${therapist.first_name} ${therapist.last_name}`;
   const initials = `${therapist.first_name[0]}${therapist.last_name[0]}`.toUpperCase();
   const [awaitingVerificationSend, setAwaitingVerificationSend] = useState<boolean>(false);
@@ -95,7 +96,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const [resendMessage, setResendMessage] = useState('');
   const [forceSuccess, setForceSuccess] = useState(Boolean(confirmed));
   const [patientId, setPatientId] = useState<string | undefined>(undefined);
-  
+
   // If pre-authenticated via match UUID, prefill and show compose first
   // Do NOT treat the user as verified here; they must still verify before sending
   useEffect(() => {
@@ -181,7 +182,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           setIsVerified(true);
           try {
             if (typeof s.patient_id === 'string' && s.patient_id) setPatientId(s.patient_id);
-          } catch {}
+          } catch { }
           const userName = typeof s.name === 'string' && s.name ? s.name : '';
           if (userName) setName(userName);
           if (s.contact_method === 'email') {
@@ -206,7 +207,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             setStep('compose');
           }
         }
-      } catch {}
+      } catch { }
     }
     void checkSession();
     return () => {
@@ -252,13 +253,13 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         setForceSuccess(true);
         setStep('success');
       }
-    } catch {}
+    } catch { }
   }, [open, preAuth, therapist.id]);
 
   // Draft restoration no longer needed - server processes draft_contact on verification
   // Message is auto-sent after email/SMS confirmation via /api/public/leads/confirm or /api/public/verification/verify-code
 
-  
+
 
   // Track modal open
   useEffect(() => {
@@ -268,13 +269,13 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
         const payload = { type: 'contact_modal_opened', ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id, contact_type: contactType } };
         navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
-      } catch {}
+      } catch { }
     }
   }, [open, therapist.id, contactType]);
 
   // Note: Draft is now saved server-side via draft_contact parameter in handleSendCode
   // No longer using sessionStorage for cross-device compatibility
-  
+
   // Track events
   const trackEvent = useCallback((type: string, props?: Record<string, unknown>) => {
     try {
@@ -282,7 +283,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
       const payload = { type, ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id, contact_type: contactType, ...props } };
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
-    } catch {}
+    } catch { }
   }, [therapist.id, contactType]);
 
   // Availability helpers (booking)
@@ -322,16 +323,16 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   }, [selectableSlots]);
   const [weekIndex, setWeekIndex] = useState(0);
 
-useEffect(() => {
-  if (weekIndex >= slotsByWeek.length) setWeekIndex(0);
-}, [slotsByWeek.length, weekIndex]);
-// NOTE: intentionally no second useEffect here
+  useEffect(() => {
+    if (weekIndex >= slotsByWeek.length) setWeekIndex(0);
+  }, [slotsByWeek.length, weekIndex]);
+  // NOTE: intentionally no second useEffect here
 
   // Reset modal state
   const handleClose = useCallback(() => {
     try {
       trackEvent('contact_modal_closed', { step });
-    } catch {}
+    } catch { }
     setStep('compose');
     setError(null);
     setName('');
@@ -347,7 +348,7 @@ useEffect(() => {
     setAwaitingVerificationSend(false);
     onClose();
   }, [onClose, step, trackEvent]);
-  
+
   // Send verification code
   const handleSendCode = useCallback(async () => {
     setError(null);
@@ -374,10 +375,10 @@ useEffect(() => {
       }
       contact = validation.normalized;
     }
-    
-    try { trackEvent('contact_verification_started', { contact_method: contactMethod }); } catch {}
+
+    try { trackEvent('contact_verification_started', { contact_method: contactMethod }); } catch { }
     setLoading(true);
-    
+
     try {
       // For email magic-link: include a safe redirect back to the current page
       // so that the confirm endpoint can bring the user back into the ContactModal
@@ -424,13 +425,13 @@ useEffect(() => {
           ...(selectedBookingSlot && contactType === 'booking' ? { draft_booking: { therapist_id: therapist.id, date_iso: selectedBookingSlot.date_iso, time_label: selectedBookingSlot.time_label, format: selectedBookingSlot.format } } : {}),
         }),
       });
-      
+
       const data = await res.json();
-      
+
       if (!res.ok) {
         throw new Error(data.error || 'Fehler beim Senden des Codes');
       }
-      
+
       // Email uses magic link → show link instructions; Phone uses OTP → show code entry
       setStep(contactMethod === 'email' ? 'verify-link' : 'verify-code');
       setAwaitingVerificationSend(contactMethod === 'email');
@@ -442,7 +443,7 @@ useEffect(() => {
       setLoading(false);
     }
   }, [name, contactMethod, email, phone, therapist.id, contactType, trackEvent, selectedBookingSlot, reason, message, sessionFormat]);
-  
+
   // Send message
   const handleSendMessage = useCallback(async () => {
     console.log('[ContactModal] handleSendMessage called:', { reason: reason.trim(), message: message.trim(), sessionFormat, contactType });
@@ -490,40 +491,40 @@ useEffect(() => {
       const attrsForConv = getAttribution();
       const payload = isPreAuth
         ? {
-            therapist_id: therapist.id,
-            contact_type: contactType,
-            patient_reason: reason,
-            patient_message: message,
-            session_format: sessionFormat || undefined,
-            session_id: attrsForConv.session_id,
-          }
+          therapist_id: therapist.id,
+          contact_type: contactType,
+          patient_reason: reason,
+          patient_message: message,
+          session_format: sessionFormat || undefined,
+          session_id: attrsForConv.session_id,
+        }
         : {
-            therapist_id: therapist.id,
-            contact_type: contactType,
-            patient_name: name,
-            patient_email: contactMethod === 'email' ? email : undefined,
-            patient_phone: contactMethod === 'phone' ? normalizePhoneNumber(phone) : undefined,
-            contact_method: contactMethod,
-            patient_reason: reason,
-            patient_message: message,
-            session_format: sessionFormat || undefined,
-            session_id: attrsForConv.session_id,
-          };
+          therapist_id: therapist.id,
+          contact_type: contactType,
+          patient_name: name,
+          patient_email: contactMethod === 'email' ? email : undefined,
+          patient_phone: contactMethod === 'phone' ? normalizePhoneNumber(phone) : undefined,
+          contact_method: contactMethod,
+          patient_reason: reason,
+          patient_message: message,
+          session_format: sessionFormat || undefined,
+          session_id: attrsForConv.session_id,
+        };
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      
+
       const data = await res.json();
-      
+
       if (!res.ok) {
         if (data.code === 'RATE_LIMIT_EXCEEDED') {
           throw new Error(data.error);
         }
         throw new Error(data.error || 'Fehler beim Senden der Nachricht');
       }
-      
+
       setStep('success');
       if (!preAuth) {
         trackEvent('contact_message_sent');
@@ -531,7 +532,7 @@ useEffect(() => {
         // Mark a separate client-side signal for observability without affecting server rate limit
         trackEvent('contact_message_sent_client_pre_auth');
       }
-      
+
       if (onSuccess) {
         setTimeout(() => {
           onSuccess();
@@ -545,18 +546,18 @@ useEffect(() => {
       setLoading(false);
     }
   }, [therapist.id, contactType, name, email, phone, contactMethod, reason, message, sessionFormat, trackEvent, onSuccess, handleClose, preAuth]);
-  
+
   // Auto-send no longer needed - server handles draft_contact processing on verification
-  
+
   // Verify code
   const handleVerifyCode = useCallback(async () => {
     setError(null);
     setLoading(true);
-    
+
     try {
       // Normalize phone if needed
       const contact = contactMethod === 'email' ? email : normalizePhoneNumber(phone) || phone;
-      
+
       const res = await fetch('/api/public/verification/verify-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -566,13 +567,13 @@ useEffect(() => {
           code: verificationCode,
         }),
       });
-      
+
       const data = await res.json();
-      
+
       if (!res.ok || !data.data?.verified) {
         throw new Error('Ungültiger Code');
       }
-      
+
       // Mark verified and show success; server processes draft_contact and sends message
       setIsVerified(true);
       try {
@@ -582,7 +583,7 @@ useEffect(() => {
           const pid = json?.data?.patient_id;
           if (typeof pid === 'string' && pid) setPatientId(pid);
         }
-      } catch {}
+      } catch { }
       trackEvent('contact_verification_completed', { contact_method: contactMethod });
       setLoading(false);
       setStep('success');
@@ -608,16 +609,16 @@ useEffect(() => {
               setPatientId(sPid);
             }
           }
-        } catch {}
+        } catch { }
       }
       try {
         fireGoogleAdsClientConversion(pid);
-      } catch {}
+      } catch { }
     }
     void maybeFireClientConv();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
-  
+
   // Handle enter key submission
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey && !loading) {
@@ -638,7 +639,7 @@ useEffect(() => {
       }
     }
   }, [step, loading, name, contactMethod, email, phone, verificationCode, reason, handleSendCode, handleVerifyCode, handleSendMessage]);
-  
+
   // Render verification step
   const renderVerifyStep = () => (
     <div className="space-y-5" onKeyDown={handleKeyDown}>
@@ -658,7 +659,7 @@ useEffect(() => {
         Wie dürfen dich Therapeut:innen erreichen? <strong>Wir schützen vor Spam</strong> und stellen sicher,
         dass deine Nachricht beantwortet werden kann. Deine Daten bleiben <strong>privat & DSGVO‑konform</strong>.
       </p>
-      
+
       <div className="space-y-2">
         <Label htmlFor="name" className="text-sm font-medium">Name *</Label>
         <Input
@@ -672,7 +673,7 @@ useEffect(() => {
           autoFocus
         />
       </div>
-      
+
       <div className="space-y-3">
         <Label className="text-sm font-medium">Kontaktmethode *</Label>
         <div className="flex gap-2">
@@ -696,7 +697,7 @@ useEffect(() => {
           </Button>
         </div>
       </div>
-      
+
       {contactMethod === 'email' ? (
         <div className="space-y-2">
           <Label htmlFor="email" className="text-sm font-medium">E-Mail *</Label>
@@ -723,7 +724,7 @@ useEffect(() => {
           />
         </div>
       )}
-      
+
       {error && (
         <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
           <AlertCircle className="h-4 w-4 shrink-0" />
@@ -736,12 +737,12 @@ useEffect(() => {
           <div className="mt-1">{formatSlotLabel(selectedBookingSlot)} · {sessionFormat === 'in_person' ? 'Vor‑Ort' : 'Online'} · {therapistName}</div>
         </div>
       )}
-      
+
       <div className="flex gap-3 pt-2">
-        <Button 
-          variant="outline" 
-          onClick={handleClose} 
-          disabled={loading} 
+        <Button
+          variant="outline"
+          onClick={handleClose}
+          disabled={loading}
           className="flex-1 h-11"
         >
           Abbrechen
@@ -754,7 +755,7 @@ useEffect(() => {
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (contactType === 'booking' ? 'Termin buchen' : 'Bestätigen')}
         </Button>
       </div>
-      
+
       <p className="text-xs text-gray-500 text-center leading-relaxed">
         Deine Angaben werden ausschließlich für diese Kontaktaufnahme genutzt – privat & DSGVO‑konform.
         Mit dem Absenden stimmst du unserer <a href="/datenschutz" className="underline hover:text-gray-700">Datenschutzerklärung</a> zu.
@@ -888,7 +889,7 @@ useEffect(() => {
           compose step. EARTH-204 will set a cookie so the user is treated as verified. */}
     </div>
   );
-  
+
   // Render code verification step
   const renderVerifyCodeStep = () => (
     <div className="space-y-5" onKeyDown={handleKeyDown}>
@@ -907,7 +908,7 @@ useEffect(() => {
       <p className="text-sm leading-relaxed text-gray-600">
         Wir haben dir einen Code per {contactMethod === 'email' ? 'E-Mail' : 'SMS'} gesendet.
       </p>
-      
+
       <div className="space-y-2">
         <Label htmlFor="code" className="text-sm font-medium">Bestätigungscode *</Label>
         <Input
@@ -923,19 +924,19 @@ useEffect(() => {
           autoFocus
         />
       </div>
-      
+
       {error && (
         <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
-      
+
       <div className="flex gap-3 pt-2">
-        <Button 
-          variant="outline" 
-          onClick={() => setStep('verify')} 
-          disabled={loading} 
+        <Button
+          variant="outline"
+          onClick={() => setStep('verify')}
+          disabled={loading}
           className="flex-1 h-11"
         >
           Zurück
@@ -948,7 +949,7 @@ useEffect(() => {
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Bestätigen'}
         </Button>
       </div>
-      
+
       <button
         type="button"
         onClick={handleSendCode}
@@ -959,14 +960,14 @@ useEffect(() => {
       </button>
     </div>
   );
-  
+
   // Render message composition step
   const renderComposeStep = () => {
     const hasAvailability = contactType === 'booking' && Array.isArray(therapist.availability) && therapist.availability.length > 0;
     const showBookingPicker = hasAvailability;
     const selectedFormat = sessionFormat as 'online' | 'in_person' | '';
     const resolvedAddress = selectedFormat === 'in_person' ? (selectedBookingSlot?.address || therapist.metadata?.profile?.practice_address || '') : '';
-    
+
     // Check which formats have available slots
     const hasOnlineSlots = hasAvailability && therapist.availability!.some(s => s.format === 'online');
     const hasInPersonSlots = hasAvailability && therapist.availability!.some(s => s.format === 'in_person');
@@ -975,89 +976,143 @@ useEffect(() => {
     const filteredSlots: Slot[] = selectedFormat ? slotsForWeek.filter((s) => s.format === selectedFormat) : slotsForWeek;
 
     return (
-    <div className="space-y-5" onKeyDown={handleKeyDown}>
-      {/* Therapist info */}
-      <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-slate-50 to-slate-100/60 rounded-xl border border-slate-200/60 shadow-sm">
-        <Avatar className="h-14 w-14 ring-2 ring-white shadow-sm">
-          {therapist.photo_url ? (
-            <AvatarImage src={therapist.photo_url} alt={therapistName} />
-          ) : (
-            <AvatarFallback className="text-lg font-semibold">{initials}</AvatarFallback>
-          )}
-        </Avatar>
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold text-gray-900">{therapistName}</p>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            {selectedBookingSlot ? (
-              <div className="inline-flex items-center gap-1.5 rounded-full border-2 border-emerald-300 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-800 shadow-sm">
-                <Calendar className="h-3.5 w-3.5" />
-                <span>
-                  {(() => {
-                    const dt = slotDate(selectedBookingSlot);
-                    const day = dt.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
-                    return `${day} ${selectedBookingSlot.time_label}`;
-                  })()}
-                </span>
-                <span className="opacity-70">• {selectedBookingSlot.format === 'online' ? 'Online' : 'Vor Ort'}</span>
-              </div>
+      <div className="space-y-5" onKeyDown={handleKeyDown}>
+        {/* Therapist info */}
+        <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-slate-50 to-slate-100/60 rounded-xl border border-slate-200/60 shadow-sm">
+          <Avatar className="h-14 w-14 ring-2 ring-white shadow-sm">
+            {therapist.photo_url ? (
+              <AvatarImage src={therapist.photo_url} alt={therapistName} />
             ) : (
-              <>
-                <p className="text-gray-600">
-                  {contactType === 'booking' ? 'Termin vereinbaren' : 'Erstgespräch (15 Min)'}
-                </p>
-                <Badge variant="outline" title="Profil geprüft: Qualifikation & Lizenzen verifiziert" className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700">
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  Verifiziert
-                </Badge>
-              </>
+              <AvatarFallback className="text-lg font-semibold">{initials}</AvatarFallback>
             )}
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-gray-900">{therapistName}</p>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              {selectedBookingSlot ? (
+                <div className="inline-flex items-center gap-1.5 rounded-full border-2 border-emerald-300 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-800 shadow-sm">
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span>
+                    {(() => {
+                      const dt = slotDate(selectedBookingSlot);
+                      const day = dt.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+                      return `${day} ${selectedBookingSlot.time_label}`;
+                    })()}
+                  </span>
+                  <span className="opacity-70">• {selectedBookingSlot.format === 'online' ? 'Online' : 'Vor Ort'}</span>
+                </div>
+              ) : (
+                <>
+                  <p className="text-gray-600">
+                    {contactType === 'booking' ? 'Termin vereinbaren' : 'Erstgespräch (15 Min)'}
+                  </p>
+                  {therapist.accepting_new ? (
+                    <Badge className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                      <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>Verfügbar</span>
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Keine Kapazität</Badge>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-      
-      {!showBookingPicker && (
-        <div className="space-y-2">
-          <Label htmlFor="reason" className="text-sm font-medium">Worum geht es? *</Label>
-          <Input
-            id="reason"
-            value={reason}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              setReason(e.target.value);
-              const greeting = `Guten Tag ${therapist.first_name}`;
-              const intent = contactType === 'booking'
-                ? 'ich möchte gerne einen Termin vereinbaren'
-                : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
-              const signature = name ? `\n\nViele Grüße\n${name}` : '';
-              setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei ${e.target.value || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
-              try {
-                if (!draftTrackedRef.current) {
-                  const len = (`${e.target.value}` + `${message || ''}`).trim().length;
-                  if (len > 0) {
-                    draftTrackedRef.current = true;
-                    trackEvent('message_drafted', { length: len, step: 'reason' });
-                  }
-                }
-              } catch {}
-            }}
-            placeholder="z.B. Panikattacken, Überforderung im Alltag, Beziehungsproblemen"
-            disabled={loading}
-            className="h-11"
-            autoFocus
-          />
-          <p className="text-xs text-gray-500 leading-relaxed">
-            Beschreibe kurz, wobei du Unterstützung suchst
-          </p>
-        </div>
-      )}
 
-      {/* Session format selector - booking type */}
-      {contactType === 'booking' && (
-        showBookingPicker ? (
-          (hasOnlineSlots || hasInPersonSlots) && (
-          <div className="space-y-3">
-            <Label className="text-sm font-medium">Format *</Label>
-            <div className="flex gap-2 max-w-md mx-auto">
-              {hasOnlineSlots && (
+        {!showBookingPicker && (
+          <div className="space-y-2">
+            <Label htmlFor="reason" className="text-sm font-medium">Worum geht es? *</Label>
+            <Input
+              id="reason"
+              value={reason}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                setReason(e.target.value);
+                const greeting = `Guten Tag ${therapist.first_name}`;
+                const intent = contactType === 'booking'
+                  ? 'ich möchte gerne einen Termin vereinbaren'
+                  : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
+                const signature = name ? `\n\nViele Grüße\n${name}` : '';
+                setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei ${e.target.value || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
+                try {
+                  if (!draftTrackedRef.current) {
+                    const len = (`${e.target.value}` + `${message || ''}`).trim().length;
+                    if (len > 0) {
+                      draftTrackedRef.current = true;
+                      trackEvent('message_drafted', { length: len, step: 'reason' });
+                    }
+                  }
+                } catch { }
+              }}
+              placeholder="z.B. Panikattacken, Überforderung im Alltag, Beziehungsproblemen"
+              disabled={loading}
+              className="h-11"
+              autoFocus
+            />
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Beschreibe kurz, wobei du Unterstützung suchst
+            </p>
+          </div>
+        )}
+
+        {/* Session format selector - booking type */}
+        {contactType === 'booking' && (
+          showBookingPicker ? (
+            (hasOnlineSlots || hasInPersonSlots) && (
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Format *</Label>
+                <div className="flex gap-2 max-w-md mx-auto">
+                  {hasOnlineSlots && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setSessionFormat('online')}
+                      disabled={loading}
+                      className={cn(
+                        'flex-1 h-11 gap-2',
+                        'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100',
+                        sessionFormat === 'online' && 'ring-2 ring-emerald-400 border-emerald-400'
+                      )}
+                    >
+                      <Video className="h-4 w-4" />
+                      Online
+                    </Button>
+                  )}
+                  {hasInPersonSlots && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setSessionFormat('in_person')}
+                      disabled={loading}
+                      className={cn(
+                        'flex-1 h-11 gap-2',
+                        'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100',
+                        sessionFormat === 'in_person' && 'ring-2 ring-emerald-400 border-emerald-400'
+                      )}
+                    >
+                      <User className="h-4 w-4" />
+                      Vor Ort
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 leading-relaxed text-center">
+                  Soll der Termin online oder vor Ort stattfinden?
+                </p>
+                {selectedFormat === 'in_person' && resolvedAddress && (
+                  <div className="flex justify-center">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 shadow-sm">
+                      <MapPin className="h-3.5 w-3.5" />
+                      <span className="truncate max-w-[18rem]" title={resolvedAddress}>{resolvedAddress}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          ) : (
+            // No availability → still ask for preferred format to include in outreach
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Format *</Label>
+              <div className="flex gap-2 max-w-md mx-auto">
                 <Button
                   type="button"
                   variant="outline"
@@ -1072,8 +1127,6 @@ useEffect(() => {
                   <Video className="h-4 w-4" />
                   Online
                 </Button>
-              )}
-              {hasInPersonSlots && (
                 <Button
                   type="button"
                   variant="outline"
@@ -1088,230 +1141,182 @@ useEffect(() => {
                   <User className="h-4 w-4" />
                   Vor Ort
                 </Button>
+              </div>
+              {selectedFormat === 'in_person' && resolvedAddress && (
+                <div className="flex justify-center">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 shadow-sm">
+                    <MapPin className="h-3.5 w-3.5" />
+                    <span className="truncate max-w-[18rem]" title={resolvedAddress}>{resolvedAddress}</span>
+                  </div>
+                </div>
               )}
             </div>
-            <p className="text-xs text-gray-500 leading-relaxed text-center">
-              Soll der Termin online oder vor Ort stattfinden?
-            </p>
-            {selectedFormat === 'in_person' && resolvedAddress && (
-              <div className="flex justify-center">
-                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 shadow-sm">
-                  <MapPin className="h-3.5 w-3.5" />
-                  <span className="truncate max-w-[18rem]" title={resolvedAddress}>{resolvedAddress}</span>
-                </div>
-              </div>
-            )}
-          </div>
-          )
-        ) : (
-          // No availability → still ask for preferred format to include in outreach
-          <div className="space-y-3">
-            <Label className="text-sm font-medium">Format *</Label>
-            <div className="flex gap-2 max-w-md mx-auto">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setSessionFormat('online')}
-                disabled={loading}
-                className={cn(
-                  'flex-1 h-11 gap-2',
-                  'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100',
-                  sessionFormat === 'online' && 'ring-2 ring-emerald-400 border-emerald-400'
-                )}
-              >
-                <Video className="h-4 w-4" />
-                Online
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setSessionFormat('in_person')}
-                disabled={loading}
-                className={cn(
-                  'flex-1 h-11 gap-2',
-                  'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100',
-                  sessionFormat === 'in_person' && 'ring-2 ring-emerald-400 border-emerald-400'
-                )}
-              >
-                <User className="h-4 w-4" />
-                Vor Ort
-              </Button>
-            </div>
-            {selectedFormat === 'in_person' && resolvedAddress && (
-              <div className="flex justify-center">
-                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 shadow-sm">
-                  <MapPin className="h-3.5 w-3.5" />
-                  <span className="truncate max-w-[18rem]" title={resolvedAddress}>{resolvedAddress}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        )
-      )}
-
-      {/* Booking slot picker by week */}
-      {showBookingPicker && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between max-w-sm mx-auto">
-            <Button type="button" variant="ghost" size="icon" className="h-10 w-10" onClick={() => setWeekIndex((i) => Math.max(0, i - 1))} disabled={weekIndex <= 0} aria-label="Vorherige Woche">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="text-sm font-medium text-gray-900">{slotsByWeek[weekIndex]?.[1]?.label || ''}</div>
-            <Button type="button" variant="ghost" size="icon" className="h-10 w-10" onClick={() => setWeekIndex((i) => Math.min(slotsByWeek.length - 1, i + 1))} disabled={weekIndex >= slotsByWeek.length - 1} aria-label="Nächste Woche">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="flex flex-wrap gap-2 justify-center">
-            {filteredSlots.map((s: Slot, idx: number) => {
-              const dt = slotDate(s);
-              const disabled = dt < minSelectable;
-              const selected = !!selectedBookingSlot && selectedBookingSlot.date_iso === s.date_iso && selectedBookingSlot.time_label === s.time_label && selectedBookingSlot.format === s.format;
-              const base = selected
-                ? 'ring-2 ring-emerald-400 border-2 border-emerald-400 bg-emerald-50 text-emerald-900 shadow-md scale-105'
-                : s.format === 'online'
-                  ? 'border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100'
-                  : 'border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-100';
-              const cls = `h-11 px-3 inline-flex items-center gap-1.5 rounded-full border text-sm font-medium shadow-sm transition-all duration-200 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow'} ${base}`;
-              const day = dt.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
-              return (
-                <button
-                  key={`${s.date_iso}-${s.time_label}-${idx}`}
-                  type="button"
-                  className={cls}
-                  disabled={disabled}
-                  onClick={() => {
-                    if (disabled) return;
-                    setSelectedBookingSlot(s);
-                    if (!sessionFormat) setSessionFormat(s.format);
-                    try {
-                      trackEvent('booking_slot_selected', {
-                        therapist_id: therapist.id,
-                        date_iso: s.date_iso,
-                        time_label: s.time_label,
-                        format: s.format,
-                        address_present: Boolean(s.address || therapist.metadata?.profile?.practice_address),
-                        week_index: weekIndex,
-                      });
-                    } catch {}
-                  }}
-                  title={s.format === 'online' ? 'Online' : 'Vor Ort'}
-                >
-                  <span>{day} {s.time_label}</span>
-                </button>
-              );
-            })}
-            {filteredSlots.length === 0 && (
-              <div className="text-sm text-gray-600">Keine Termine in dieser Woche für das gewählte Format.</div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {!showBookingPicker && (
-        <div className="space-y-2">
-          <Label htmlFor="message" className="text-sm font-medium">Nachricht (optional)</Label>
-          <Textarea
-            id="message"
-            value={message}
-            onChange={(e) => {
-              setMessage(e.target.value);
-              try {
-                if (!draftTrackedRef.current) {
-                  const len = (`${reason || ''}` + `${e.target.value}`).trim().length;
-                  if (len > 0) {
-                    draftTrackedRef.current = true;
-                    trackEvent('message_drafted', { length: len, step: 'message' });
-                  }
-                }
-              } catch {}
-            }}
-            placeholder="Deine Nachricht..."
-            disabled={loading}
-            rows={6}
-            className="resize-none"
-          />
-          <p className="text-xs text-gray-500 leading-relaxed">
-            Du kannst die Nachricht anpassen oder so lassen
-          </p>
-        </div>
-      )}
-      
-      {error && (
-        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-      {!showBookingPicker && (
-        <>
-          <ConsentSection actor="directory" className="-mt-2" />
-          <p className="mt-2 text-xs sm:text-sm text-gray-600 leading-relaxed flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-1.5">
-              <Shield className="h-3.5 w-3.5 text-emerald-600" />
-              <span>DSGVO‑konform</span>
-            </span>
-            <span className="text-gray-300">•</span>
-            <span className="inline-flex items-center gap-1.5">
-              <Lock className="h-3.5 w-3.5 text-emerald-600" />
-              <span>SSL‑verschlüsselt</span>
-            </span>
-            <span className="text-gray-300">•</span>
-            <span className="inline-flex items-center gap-1.5">
-              <FileCheck className="h-3.5 w-3.5 text-emerald-600" />
-              <span>Privat – keine Krankenkassenakte</span>
-            </span>
-          </p>
-        </>
-      )}
-      
-      <div className="flex gap-3 pt-2">
-        <Button 
-          variant="outline" 
-          onClick={handleClose} 
-          disabled={loading} 
-          className="flex-1 h-11"
-        >
-          Abbrechen
-        </Button>
-        {showBookingPicker ? (
-          <Button
-            onClick={() => {
-              setStep('verify');
-            }}
-            disabled={loading || !sessionFormat || !selectedBookingSlot}
-            className="flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl"
-          >
-            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Weiter zur Eingabe'}
-          </Button>
-        ) : (
-          (isVerified) ? (
-            <Button
-              onClick={handleSendMessage}
-              disabled={loading || (!reason.trim() && !message.trim()) || (contactType === 'booking' && !sessionFormat)}
-              className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30"
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Nachricht senden'}
-            </Button>
-          ) : (
-            <Button
-              onClick={() => setStep('verify')}
-              disabled={loading || (!reason.trim() && !message.trim()) || (contactType === 'booking' && !sessionFormat)}
-              className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700"
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Weiter'}
-            </Button>
           )
         )}
+
+        {/* Booking slot picker by week */}
+        {showBookingPicker && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between max-w-sm mx-auto">
+              <Button type="button" variant="ghost" size="icon" className="h-10 w-10" onClick={() => setWeekIndex((i) => Math.max(0, i - 1))} disabled={weekIndex <= 0} aria-label="Vorherige Woche">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="text-sm font-medium text-gray-900">{slotsByWeek[weekIndex]?.[1]?.label || ''}</div>
+              <Button type="button" variant="ghost" size="icon" className="h-10 w-10" onClick={() => setWeekIndex((i) => Math.min(slotsByWeek.length - 1, i + 1))} disabled={weekIndex >= slotsByWeek.length - 1} aria-label="Nächste Woche">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-2 justify-center">
+              {filteredSlots.map((s: Slot, idx: number) => {
+                const dt = slotDate(s);
+                const disabled = dt < minSelectable;
+                const selected = !!selectedBookingSlot && selectedBookingSlot.date_iso === s.date_iso && selectedBookingSlot.time_label === s.time_label && selectedBookingSlot.format === s.format;
+                const base = selected
+                  ? 'ring-2 ring-emerald-400 border-2 border-emerald-400 bg-emerald-50 text-emerald-900 shadow-md scale-105'
+                  : s.format === 'online'
+                    ? 'border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100'
+                    : 'border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-100';
+                const cls = `h-11 px-3 inline-flex items-center gap-1.5 rounded-full border text-sm font-medium shadow-sm transition-all duration-200 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow'} ${base}`;
+                const day = dt.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+                return (
+                  <button
+                    key={`${s.date_iso}-${s.time_label}-${idx}`}
+                    type="button"
+                    className={cls}
+                    disabled={disabled}
+                    onClick={() => {
+                      if (disabled) return;
+                      setSelectedBookingSlot(s);
+                      if (!sessionFormat) setSessionFormat(s.format);
+                      try {
+                        trackEvent('booking_slot_selected', {
+                          therapist_id: therapist.id,
+                          date_iso: s.date_iso,
+                          time_label: s.time_label,
+                          format: s.format,
+                          address_present: Boolean(s.address || therapist.metadata?.profile?.practice_address),
+                          week_index: weekIndex,
+                        });
+                      } catch { }
+                    }}
+                    title={s.format === 'online' ? 'Online' : 'Vor Ort'}
+                  >
+                    <span>{day} {s.time_label}</span>
+                  </button>
+                );
+              })}
+              {filteredSlots.length === 0 && (
+                <div className="text-sm text-gray-600">Keine Termine in dieser Woche für das gewählte Format.</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!showBookingPicker && (
+          <div className="space-y-2">
+            <Label htmlFor="message" className="text-sm font-medium">Nachricht (optional)</Label>
+            <Textarea
+              id="message"
+              value={message}
+              onChange={(e) => {
+                setMessage(e.target.value);
+                try {
+                  if (!draftTrackedRef.current) {
+                    const len = (`${reason || ''}` + `${e.target.value}`).trim().length;
+                    if (len > 0) {
+                      draftTrackedRef.current = true;
+                      trackEvent('message_drafted', { length: len, step: 'message' });
+                    }
+                  }
+                } catch { }
+              }}
+              placeholder="Deine Nachricht..."
+              disabled={loading}
+              rows={6}
+              className="resize-none"
+            />
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Du kannst die Nachricht anpassen oder so lassen
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+        {!showBookingPicker && (
+          <>
+            <ConsentSection actor="directory" className="-mt-2" />
+            <p className="mt-2 text-xs sm:text-sm text-gray-600 leading-relaxed flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center gap-1.5">
+                <Shield className="h-3.5 w-3.5 text-emerald-600" />
+                <span>DSGVO‑konform</span>
+              </span>
+              <span className="text-gray-300">•</span>
+              <span className="inline-flex items-center gap-1.5">
+                <Lock className="h-3.5 w-3.5 text-emerald-600" />
+                <span>SSL‑verschlüsselt</span>
+              </span>
+              <span className="text-gray-300">•</span>
+              <span className="inline-flex items-center gap-1.5">
+                <FileCheck className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Privat – keine Krankenkassenakte</span>
+              </span>
+            </p>
+          </>
+        )}
+
+        <div className="flex gap-3 pt-2">
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={loading}
+            className="flex-1 h-11"
+          >
+            Abbrechen
+          </Button>
+          {showBookingPicker ? (
+            <Button
+              onClick={() => {
+                setStep('verify');
+              }}
+              disabled={loading || !sessionFormat || !selectedBookingSlot}
+              className="flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl"
+            >
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Weiter zur Eingabe'}
+            </Button>
+          ) : (
+            (isVerified) ? (
+              <Button
+                onClick={handleSendMessage}
+                disabled={loading || (!reason.trim() && !message.trim()) || (contactType === 'booking' && !sessionFormat)}
+                className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Nachricht senden'}
+              </Button>
+            ) : (
+              <Button
+                onClick={() => setStep('verify')}
+                disabled={loading || (!reason.trim() && !message.trim()) || (contactType === 'booking' && !sessionFormat)}
+                className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Weiter'}
+              </Button>
+            )
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
   };
-  
+
   // Render success step
   const renderSuccessStep = () => {
     const isBooking = contactType === 'booking' && selectedBookingSlot;
-    
+
     return (
       <div className="space-y-6 text-center py-8">
         <div className="mx-auto h-20 w-20 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100/60 flex items-center justify-center shadow-lg shadow-emerald-100/50">
@@ -1333,8 +1338,8 @@ useEffect(() => {
             )}
           </p>
         </div>
-        <Button 
-          onClick={handleClose} 
+        <Button
+          onClick={handleClose}
           className="w-full h-11 bg-emerald-600 hover:bg-emerald-700"
         >
           Weitere Therapeuten ansehen
@@ -1342,7 +1347,7 @@ useEffect(() => {
       </div>
     );
   };
-  
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent

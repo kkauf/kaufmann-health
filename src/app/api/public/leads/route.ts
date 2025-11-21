@@ -514,6 +514,16 @@ async function handleTherapistMultipart(req: Request) {
   const profileMeta: Record<string, unknown> = {};
   if (profilePendingPath) profileMeta.photo_pending_path = profilePendingPath;
   if (approach_text) profileMeta.approach_text = approach_text;
+  
+  // EARTH-71: Persist trust signals
+  const qualification = sanitize(form.get('qualification')?.toString());
+  const experience = sanitize(form.get('experience')?.toString());
+  const website = sanitize(form.get('website')?.toString());
+  
+  if (qualification) profileMeta.qualification = qualification;
+  if (experience) profileMeta.experience = experience;
+  if (website) profileMeta.website = website;
+
   const metadata: Record<string, unknown> = { ...(isTest ? { is_test: true } : {}), documents };
   if (Object.keys(profileMeta).length > 0) {
     metadata.profile = profileMeta;
