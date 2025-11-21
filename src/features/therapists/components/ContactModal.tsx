@@ -321,20 +321,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     return Array.from(map.entries()).sort((a, b) => a[1].start.getTime() - b[1].start.getTime());
   }, [selectableSlots]);
   const [weekIndex, setWeekIndex] = useState(0);
-  useEffect(() => {
-    if (weekIndex >= slotsByWeek.length) setWeekIndex(0);
-  }, [slotsByWeek.length, weekIndex]);
-  useEffect(() => {
-    if (!open) return;
-    let idx = -1;
-    for (let i = 0; i < slotsByWeek.length; i++) {
-      const slots = slotsByWeek[i]?.[1]?.slots;
-      const filtered = sessionFormat ? slots.filter((s) => s.format === sessionFormat) : slots;
-      if (filtered.length > 0) { idx = i; break; }
-    }
-    if (idx >= 0 && idx !== weekIndex) setWeekIndex(idx);
-  }, [open, slotsByWeek, sessionFormat, weekIndex]);
-  
+
+useEffect(() => {
+  if (weekIndex >= slotsByWeek.length) setWeekIndex(0);
+}, [slotsByWeek.length, weekIndex]);
+// NOTE: intentionally no second useEffect here
+
   // Reset modal state
   const handleClose = useCallback(() => {
     try {
