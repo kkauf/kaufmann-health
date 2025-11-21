@@ -262,7 +262,7 @@ export async function GET() {
 
         // Sort chronologically and cap to 9
         candidates.sort((a, b) => (a.date_iso === b.date_iso ? a.time_label.localeCompare(b.time_label) : a.date_iso.localeCompare(b.date_iso)));
-        availability.push(...candidates.slice(0, 9));
+        availability.push(...candidates.slice(0, 50));
       }
 
       return {

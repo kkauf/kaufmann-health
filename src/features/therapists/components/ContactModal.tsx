@@ -1290,7 +1290,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             disabled={loading || !sessionFormat || !selectedBookingSlot}
             className="flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl"
           >
-            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Termin buchen'}
+            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Weiter zur Eingabe'}
           </Button>
         ) : (
           (isVerified) ? (
