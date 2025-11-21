@@ -332,6 +332,7 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
     const quizConvTypes = [
       'form_completed',
       'fragebogen_completed',
+      'anonymous_patient_created',
       'email_confirmed',
       'booking_dry_run',
       'booking_created',
@@ -361,6 +362,10 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
       const t = String(row.type || '').toLowerCase();
       if (t === 'form_completed' || t === 'fragebogen_completed') {
         const key = fsidRaw || (sid ? `sid:${sid}` : '');
+        if (key) qcRoot.add(key);
+      } else if (t === 'anonymous_patient_created') {
+        const patientId = String((props['patient_id'] as string | undefined) || '').trim();
+        const key = patientId ? `pid:${patientId}` : (sid ? `sid:${sid}` : '');
         if (key) qcRoot.add(key);
       }
     }
