@@ -700,7 +700,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
               disabled={!sessionFormat || !selectedSlot}
               className="flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200"
             >
-              Termin buchen
+              Weiter
             </Button>
           </div>
         ) : null}
