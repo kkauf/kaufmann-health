@@ -100,6 +100,7 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
 
   const quizTypes = [
     'match_page_view',
+    'profile_modal_opened',
     'contact_cta_clicked',
     'contact_modal_opened',
     'booking_slot_selected',
@@ -117,6 +118,7 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
     .limit(50000);
 
   const qRoot = new Set<string>();
+  const qProfile = new Set<string>();
   const qCta = new Set<string>();
   const qOpen = new Set<string>();
   const qSlot = new Set<string>();
@@ -132,6 +134,7 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
     const sid = String((props['session_id'] as string | undefined) || '').trim();
     if (!sid) continue;
     if (t === 'match_page_view' && pathLikeMatches(props)) qRoot.add(sid);
+    else if (t === 'profile_modal_opened' && pathLikeMatches(props)) qProfile.add(sid);
     else if (t === 'contact_cta_clicked' && pathLikeMatches(props)) qCta.add(sid);
     else if (t === 'contact_modal_opened' && pathLikeMatches(props)) qOpen.add(sid);
     else if (t === 'booking_slot_selected' && pathLikeMatches(props)) qSlot.add(sid);
@@ -149,11 +152,12 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
     // Transitional fallback: if root is empty (early instrumentation missed session_id/page_path),
     // seed with earliest available step so the funnel isn't all zeros.
     const qRootSeed = qRoot.size > 0 ? qRoot : new Set<string>([
-      ...qCta, ...qOpen, ...qSlot, ...qDraft, ...qVerStart, ...qVerDone, ...qSent,
+      ...qProfile, ...qCta, ...qOpen, ...qSlot, ...qDraft, ...qVerStart, ...qVerDone, ...qSent,
     ]);
-    const ordered = [qRootSeed, qCta, qOpen, qSlot, qDraft, qVerStart, qVerDone, qSent];
+    const ordered = [qRootSeed, qProfile, qCta, qOpen, qSlot, qDraft, qVerStart, qVerDone, qSent];
     const names = [
       'match_page_view',
+      'therapist_profile_viewed',
       'contact_cta_clicked',
       'contact_modal_opened',
       'booking_slot_selected',
@@ -173,6 +177,7 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
 
   const browseTypes = [
     'page_view',
+    'profile_modal_opened',
     'contact_cta_clicked',
     'contact_modal_opened',
     'booking_slot_selected',
@@ -190,6 +195,7 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
     .limit(50000);
 
   const bRoot = new Set<string>();
+  const bProfile = new Set<string>();
   const bCta = new Set<string>();
   const bOpen = new Set<string>();
   const bSlot = new Set<string>();
@@ -208,7 +214,8 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
     if (t === 'page_view') {
       const p = String((props['page_path'] as string | undefined) || '').trim().toLowerCase();
       if (p === '/therapeuten') bRoot.add(sid);
-    } else if (t === 'contact_cta_clicked' && onDirectory(props)) bCta.add(sid);
+    } else if (t === 'profile_modal_opened' && onDirectory(props)) bProfile.add(sid);
+    else if (t === 'contact_cta_clicked' && onDirectory(props)) bCta.add(sid);
     else if (t === 'contact_modal_opened' && onDirectory(props)) bOpen.add(sid);
     else if (t === 'booking_slot_selected' && onDirectory(props)) bSlot.add(sid);
     else if (t === 'message_drafted' && onDirectory(props)) bDraft.add(sid);
@@ -222,9 +229,10 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
   }
 
   {
-    const ordered = [bRoot, bCta, bOpen, bSlot, bDraft, bVerStart, bVerDone, bSent];
+    const ordered = [bRoot, bProfile, bCta, bOpen, bSlot, bDraft, bVerStart, bVerDone, bSent];
     const names = [
       'directory_page_view',
+      'therapist_profile_viewed',
       'contact_cta_clicked',
       'contact_modal_opened',
       'booking_slot_selected',
@@ -279,11 +287,12 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
     if (startViews.size > 0) {
       // Landing → Quiz: /start → quiz CTA → matches contact funnel
       {
-        const ordered = [startViews, startCtaQuiz, qRoot, qCta, qOpen, qSlot, qDraft, qVerStart, qVerDone, qSent];
+        const ordered = [startViews, startCtaQuiz, qRoot, qProfile, qCta, qOpen, qSlot, qDraft, qVerStart, qVerDone, qSent];
         const names = [
           'start_page_view',
           'start_cta_quiz',
           'match_page_view',
+          'therapist_profile_viewed',
           'contact_cta_clicked',
           'contact_modal_opened',
           'booking_slot_selected',
@@ -305,10 +314,11 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
       // Note: we skip the intermediate directory_page_view step because it's almost
       // always a technical follow-through of the CTA click, not a new decision.
       {
-        const ordered = [startViews, startCtaDirectory, bCta, bOpen, bSlot, bDraft, bVerStart, bVerDone, bSent];
+        const ordered = [startViews, startCtaDirectory, bProfile, bCta, bOpen, bSlot, bDraft, bVerStart, bVerDone, bSent];
         const names = [
           'start_page_view',
           'start_cta_directory',
+          'therapist_profile_viewed',
           'contact_cta_clicked',
           'contact_modal_opened',
           'booking_slot_selected',
