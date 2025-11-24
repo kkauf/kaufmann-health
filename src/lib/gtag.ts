@@ -32,12 +32,11 @@ function sendConversion({ label, value, transactionId, dedupePrefix }: { label?:
     if (!GA_ID || !label) return;
     if (typeof window === 'undefined') return;
     if (!consentGranted()) return;
-    if (isTestMode()) return;
+    if (process.env.NODE_ENV === 'production' && isTestMode()) return;
 
     const key = transactionId ? `${dedupePrefix}${transactionId}` : dedupePrefix;
     try {
       if (window.sessionStorage.getItem(key) === '1') return;
-      if (window.localStorage.getItem(key) === '1') return;
     } catch {}
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -57,7 +56,6 @@ function sendConversion({ label, value, transactionId, dedupePrefix }: { label?:
 
     try {
       window.sessionStorage.setItem(key, '1');
-      window.localStorage.setItem(key, '1');
     } catch {}
   } catch {}
 }
