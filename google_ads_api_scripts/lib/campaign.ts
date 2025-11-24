@@ -2,7 +2,7 @@ import { enums } from 'google-ads-api';
 import { requireEnv } from './util';
 
 type BiddingConfig = {
-  strategy?: 'MANUAL_CPC' | 'MAXIMIZE_CLICKS';
+  strategy?: 'MANUAL_CPC' | 'MAXIMIZE_CLICKS' | 'MAXIMIZE_CONVERSIONS';
   cpc_ceiling_eur?: number;
 };
 
@@ -63,20 +63,35 @@ export const createCampaign = async (
   }
   let res: any;
   try {
-    const useMaxClicks = bidding?.strategy === 'MAXIMIZE_CLICKS';
+    const strategy = bidding?.strategy || 'MANUAL_CPC';
     const cpcCeilMicros = typeof bidding?.cpc_ceiling_eur === 'number' ? eurosToMicros(bidding!.cpc_ceiling_eur!) : undefined;
+    
+    // Determine bidding strategy type and settings
+    let biddingStrategyType: any;
+    let manualCpc: any = undefined;
+    let targetSpend: any = undefined;
+    let maximizeConversions: any = undefined;
+    
+    if (strategy === 'MAXIMIZE_CONVERSIONS') {
+      biddingStrategyType = enums.BiddingStrategyType.MAXIMIZE_CONVERSIONS;
+      maximizeConversions = {}; // No target CPA for pure maximize conversions
+    } else if (strategy === 'MAXIMIZE_CLICKS') {
+      biddingStrategyType = enums.BiddingStrategyType.TARGET_SPEND;
+      targetSpend = cpcCeilMicros ? { cpc_bid_ceiling_micros: cpcCeilMicros } : {};
+    } else {
+      biddingStrategyType = enums.BiddingStrategyType.MANUAL_CPC;
+      manualCpc = {};
+    }
+    
     res = await customer.campaigns.create([
       {
         name,
         status: enums.CampaignStatus.PAUSED,
         advertising_channel_type: enums.AdvertisingChannelType.SEARCH,
-        bidding_strategy_type: useMaxClicks
-          ? enums.BiddingStrategyType.TARGET_SPEND
-          : enums.BiddingStrategyType.MANUAL_CPC,
-        manual_cpc: useMaxClicks ? undefined : {},
-        target_spend: useMaxClicks
-          ? (cpcCeilMicros ? { cpc_bid_ceiling_micros: cpcCeilMicros } : {})
-          : undefined,
+        bidding_strategy_type: biddingStrategyType,
+        manual_cpc: manualCpc,
+        target_spend: targetSpend,
+        maximize_conversions: maximizeConversions,
         network_settings: {
           target_google_search: true,
           target_search_network: true,
