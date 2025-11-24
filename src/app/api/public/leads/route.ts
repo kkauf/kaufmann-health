@@ -29,9 +29,10 @@ function getErrorMessage(err: unknown): string {
   return '';
 }
 
-async function createInstantMatchesForPatient(patientId: string): Promise<{ matchesUrl: string; matchQuality: 'exact' | 'partial' | 'none' } | null> {
+async function createInstantMatchesForPatient(patientId: string, variant?: string): Promise<{ matchesUrl: string; matchQuality: 'exact' | 'partial' | 'none' } | null> {
   try {
-    if (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW !== 'true') return null;
+    const isConcierge = variant === 'concierge';
+    if (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW !== 'true' && !isConcierge) return null;
     type PersonRow = { id: string; metadata?: Record<string, unknown> | null };
     const { data: person } = await supabaseServer
       .from('people')
@@ -41,9 +42,9 @@ async function createInstantMatchesForPatient(patientId: string): Promise<{ matc
     const meta = (person?.metadata || {}) as Record<string, unknown>;
     const city = typeof meta['city'] === 'string' ? (meta['city'] as string) : undefined;
     const session_preference = typeof meta['session_preference'] === 'string' ? (meta['session_preference'] as string) as 'online' | 'in_person' : undefined;
-    const session_preferences = Array.isArray(meta['session_preferences']) ? (meta['session_preferences'] as ('online'|'in_person')[]) : undefined;
+    const session_preferences = Array.isArray(meta['session_preferences']) ? (meta['session_preferences'] as ('online' | 'in_person')[]) : undefined;
     const specializations = Array.isArray(meta['specializations']) ? (meta['specializations'] as string[]) : undefined;
-    const gender_preference = typeof meta['gender_preference'] === 'string' ? (meta['gender_preference'] as 'male'|'female'|'no_preference') : undefined;
+    const gender_preference = typeof meta['gender_preference'] === 'string' ? (meta['gender_preference'] as 'male' | 'female' | 'no_preference') : undefined;
     const time_slots = Array.isArray(meta['time_slots']) ? (meta['time_slots'] as string[]) : [];
     const pMeta: PatientMeta = { city, session_preference, session_preferences, specializations, gender_preference };
 
@@ -52,7 +53,8 @@ async function createInstantMatchesForPatient(patientId: string): Promise<{ matc
       .from('therapists')
       .select('id, gender, city, session_preferences, modalities, accepting_new, metadata')
       .eq('status', 'verified')
-      .limit(1000);
+      .eq('status', 'verified')
+      .limit(5000);
     const therapists = Array.isArray(trows) ? (trows as TR[]) : [];
 
     const tIds = therapists.map(t => t.id);
@@ -91,7 +93,7 @@ async function createInstantMatchesForPatient(patientId: string): Promise<{ matc
         const dow = d.getUTCDay();
         for (const s of slots) {
           if (Number(s.day_of_week) !== (dow === 0 ? 0 : dow)) continue;
-          const h = parseInt(String(s.time_local || '').slice(0,2), 10);
+          const h = parseInt(String(s.time_local || '').slice(0, 2), 10);
           const isMorning = h >= 8 && h < 12;
           const isAfternoon = h >= 12 && h < 17;
           const isEvening = h >= 17 && h < 21;
@@ -110,21 +112,23 @@ async function createInstantMatchesForPatient(patientId: string): Promise<{ matc
       const tMeta = (t.metadata || {}) as Record<string, unknown>;
       const hideFromDir = tMeta['hide_from_directory'] === true;
       if (hideFromDir) continue;
-      
+
       const tRow: TherapistRowForMatch = { id: t.id, gender: t.gender || undefined, city: t.city || undefined, session_preferences: t.session_preferences, modalities: t.modalities };
       const mm = computeMismatches(pMeta, tRow);
       const timeOk = slotMatchesPreferences(t.id);
       const isPerfect = mm.isPerfect && timeOk;
       scored.push({ id: t.id, isPerfect, reasons: mm.reasons, accepting: Boolean(t.accepting_new) });
     }
-    
+
     scored.sort((a, b) => {
       if (a.isPerfect !== b.isPerfect) return a.isPerfect ? -1 : 1;
       if (a.accepting !== b.accepting) return a.accepting ? -1 : 1;
       return a.reasons.length - b.reasons.length;
     });
-    const chosenScored = scored.slice(0, 3);
+    const chosenScored = scored.slice(0, 2);
     const chosen = chosenScored.map(s => s.id);
+
+    console.log(`[InstantMatch] Patient ${patientId}: Found ${therapists.length} verified therapists. Scored ${scored.length} candidates. Chosen ${chosen.length}.`);
 
     // Determine match quality for business intelligence
     const hasAnyPerfect = chosenScored.some(s => s.isPerfect);
@@ -144,9 +148,9 @@ async function createInstantMatchesForPatient(patientId: string): Promise<{ matc
         const therapistQuality = chosenScored[i].isPerfect ? 'exact' : 'partial';
         const { data: row } = await supabaseServer
           .from('matches')
-          .insert({ 
-            patient_id: patientId, 
-            therapist_id: tid, 
+          .insert({
+            patient_id: patientId,
+            therapist_id: tid,
             status: 'proposed',
             metadata: { match_quality: matchQuality, therapist_match_quality: therapistQuality }
           })
@@ -186,7 +190,7 @@ export async function GET(req: Request) {
       ua,
       props: { method: 'GET', path },
     });
-  } catch {}
+  } catch { }
   return safeJson(
     { data: null, error: 'Use POST' },
     { status: 405, headers: { 'Cache-Control': 'no-store' } },
@@ -514,12 +518,12 @@ async function handleTherapistMultipart(req: Request) {
   const profileMeta: Record<string, unknown> = {};
   if (profilePendingPath) profileMeta.photo_pending_path = profilePendingPath;
   if (approach_text) profileMeta.approach_text = approach_text;
-  
+
   // EARTH-71: Persist trust signals
   const qualification = sanitize(form.get('qualification')?.toString());
   const experience = sanitize(form.get('experience')?.toString());
   const website = sanitize(form.get('website')?.toString());
-  
+
   if (qualification) profileMeta.qualification = qualification;
   if (experience) profileMeta.experience = experience;
   if (website) profileMeta.website = website;
@@ -572,7 +576,7 @@ async function handleTherapistMultipart(req: Request) {
         'List-Unsubscribe': `<${optOutUrl}>`,
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
       };
-    } catch {}
+    } catch { }
     const sent = await sendEmail({
       to: data.email,
       subject: welcome.subject,
@@ -604,7 +608,7 @@ async function handleTherapistMultipart(req: Request) {
         ua,
         props: { stage: 'internal_notification', lead_id: therapistId, lead_type: 'therapist', subject: notif.subject },
       });
-      void sendEmail({ to, subject: notif.subject, text: notif.text, context: { stage: 'internal_notification', lead_id: therapistId, lead_type: 'therapist' } }).catch(() => {});
+      void sendEmail({ to, subject: notif.subject, text: notif.text, context: { stage: 'internal_notification', lead_id: therapistId, lead_type: 'therapist' } }).catch(() => { });
     } else {
       void track({ type: 'notify_skipped', level: 'warn', source: 'api.leads', ip, ua, props: { reason: 'missing_recipient', lead_id: therapistId, lead_type: 'therapist' } });
     }
@@ -789,7 +793,7 @@ export async function POST(req: Request) {
         const cvOver = req.headers.get('x-campaign-variant-override') || undefined;
         if (csOver) campaign_source = csOver;
         if (cvOver) campaign_variant = cvOver;
-      } catch {}
+      } catch { }
 
       // Prepare confirmation token up-front so we can store it at insert time
       const confirmToken = randomUUID();
@@ -913,7 +917,7 @@ export async function POST(req: Request) {
               source: 'api.leads',
               props: { campaign_source, campaign_variant, requires_confirmation: false, is_test: isTest, contact_method: contactMethod },
             });
-            const matchResult = await createInstantMatchesForPatient(existing.id);
+            const matchResult = await createInstantMatchesForPatient(existing.id, campaign_variant || undefined);
             if (matchResult) {
               void ServerAnalytics.trackEventFromRequest(req, {
                 type: 'instant_match_created',
@@ -948,7 +952,7 @@ export async function POST(req: Request) {
                   .update({ ...(Object.keys(updateData).length ? updateData : {}), ...(metaChanged ? { metadata: meta } : {}) })
                   .eq('id', existing.id);
               }
-            } catch {}
+            } catch { }
             await ServerAnalytics.trackEventFromRequest(req, {
               type: 'contact_submitted',
               source: 'api.leads',
@@ -982,9 +986,9 @@ export async function POST(req: Request) {
             if (isTest) {
               await supabaseServer
                 .from('people')
-                .update({ 
+                .update({
                   status: 'pre_confirmation',
-                  metadata: merged, 
+                  metadata: merged,
                   ...(data.name ? { name: data.name } : {}),
                   ...(phoneNumber ? { phone_number: phoneNumber } : {})
                 })
@@ -1079,13 +1083,21 @@ export async function POST(req: Request) {
         },
       });
 
-      const matchResult = await createInstantMatchesForPatient(effectiveId!);
+      const matchResult = await createInstantMatchesForPatient(effectiveId!, campaign_variant || undefined);
       if (matchResult) {
         void ServerAnalytics.trackEventFromRequest(req, {
           type: 'instant_match_created',
           source: 'api.leads',
           props: { match_quality: matchResult.matchQuality, patient_id: effectiveId! },
         });
+        // Store matchesUrl as redirect path so after verification user goes to their matches
+        // This ensures conversion fires at verification (Test 3 requirement)
+        try {
+          await supabaseServer
+            .from('people')
+            .update({ metadata: { ...((await supabaseServer.from('people').select('metadata').eq('id', effectiveId!).single()).data?.metadata || {}), last_confirm_redirect_path: matchResult.matchesUrl } })
+            .eq('id', effectiveId!);
+        } catch { /* Non-blocking */ }
       }
       return safeJson(
         { data: { id: effectiveId!, requiresConfirmation: true, ...(matchResult ? { matchesUrl: matchResult.matchesUrl } : {}) }, error: null },

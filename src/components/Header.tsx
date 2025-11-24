@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Menu, X } from 'lucide-react'
@@ -11,6 +12,14 @@ export default function Header() {
   const [open, setOpen] = React.useState(false)
   const closeBtnRef = React.useRef<HTMLButtonElement>(null)
   const [mounted, setMounted] = React.useState(false)
+  const pathname = usePathname()
+  const [entryLanding] = React.useState<string | null>(() => {
+    if (pathname === '/start' || pathname === '/therapie-finden') {
+      return pathname
+    }
+    return null
+  })
+  const logoHref = entryLanding ?? '/start'
 
   // Close on Escape and lock scroll when menu is open
   React.useEffect(() => {
@@ -57,7 +66,7 @@ export default function Header() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex h-16 md:h-18 items-center justify-between">
           {/* Logo */}
-          <Link href="/start" className="inline-flex items-center hover:opacity-80 transition-opacity duration-200" aria-label="Kaufmann Health Startseite">
+          <Link href={logoHref} className="inline-flex items-center hover:opacity-80 transition-opacity duration-200" aria-label="Kaufmann Health Startseite">
             <Image
               src="/logos/Health Logos - black/Kaufmann_health_logo.svg"
               alt="Kaufmann Health"

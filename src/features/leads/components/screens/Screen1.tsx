@@ -68,7 +68,7 @@ export default function Screen1({
 
     // If already set, don't override
     if (values.contact_method) return;
-    
+
     // Must match server-side default (email) to avoid hydration mismatch
     let defaultMethod: ContactMethod = 'email';
     if (mode === 'email') {
@@ -85,7 +85,7 @@ export default function Screen1({
         defaultMethod = 'phone';
       }
     }
-    
+
     onChange({ contact_method: defaultMethod });
   }, [mode, values.contact_method, onChange, initialized]);
 
@@ -133,9 +133,9 @@ export default function Screen1({
     >
       <div className="space-y-2">
         <h2 className="text-xl font-semibold">Fast geschafft!</h2>
-        <p>Katherine und Konstantin prüfen deine Anfrage persönlich.</p>
+        <p>Gleich erhältst du passende Therapeut:innen-Vorschläge basierend auf deinen Angaben.</p>
         <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm font-medium text-gray-700">
-          <span className="inline-flex items-center gap-2"><Clock className="h-4 w-4 text-emerald-600" /><span>Vorschläge in &lt;24h</span></span>
+          <span className="inline-flex items-center gap-2"><Clock className="h-4 w-4 text-emerald-600" /><span>Sofortige Ergebnisse</span></span>
           <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /><span>Du entscheidest</span></span>
           <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-indigo-600" /><span>Daten bleiben privat</span></span>
         </div>
@@ -159,7 +159,7 @@ export default function Screen1({
         )}
       </div>
 
-      <p className="text-sm text-muted-foreground">Um dir deine Vorschläge zusenden zu können, benötigen wir noch Kontaktdaten von dir.</p>
+      <p className="text-sm text-muted-foreground">Um dir deine Vorschläge anzuzeigen und später Kontaktaufnahme zu ermöglichen, benötigen wir noch Kontaktdaten von dir.</p>
 
       {/* Contact field - email or phone based on mode */}
       {canSwitchMethod && mounted && (
@@ -222,12 +222,12 @@ export default function Screen1({
               error={phoneError || undefined}
               helpText="Du bekommst einen SMS-Code zur Bestätigung"
             />
-            
+
           </>
         )}
       </div>
 
-      
+
 
       <ConsentSection actor="patient" className="mt-1" />
 

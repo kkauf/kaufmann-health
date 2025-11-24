@@ -45,13 +45,14 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 export default async function StartPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const params = await searchParams;
   const variant = normalizeVariant(params?.variant);
-  // Test 1 (Browse vs Submit): decide CTA routing from raw variant param without changing copy
-  const rawVariant = typeof (params?.variant) === 'string' ? (params!.variant as string).toLowerCase() : '';
+  // Test 1/3: decide CTA routing from raw variant param (supports both ?variant= and ?v=)
+  const rawVariantParam = params?.variant || params?.v;
+  const rawVariant = typeof rawVariantParam === 'string' ? rawVariantParam.toLowerCase() : '';
   const isBrowse = rawVariant === 'browse';
   // Preserve variant when moving into the questionnaire so downstream attribution can detect origin
-  const fragebogenHref = `/fragebogen${rawVariant ? `?variant=${encodeURIComponent(rawVariant)}` : ''}`;
+  const fragebogenHref = `/fragebogen${rawVariant ? `?v=${encodeURIComponent(rawVariant)}` : ''}`;
   // Preserve variant when navigating to the directory so the variant survives into /therapeuten
-  const therapeutenHref = `/therapeuten${rawVariant ? `?variant=${encodeURIComponent(rawVariant)}` : ''}`;
+  const therapeutenHref = `/therapeuten${rawVariant ? `?v=${encodeURIComponent(rawVariant)}` : ''}`;
   
   // Variant A: Body-Oriented Specialist
   const bodyOrientedCopy = {

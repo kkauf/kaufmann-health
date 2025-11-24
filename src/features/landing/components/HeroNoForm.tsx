@@ -49,13 +49,13 @@ export function HeroNoForm({
   return (
     <section
       aria-labelledby="kh-hero-heading"
-      className={`relative isolate overflow-hidden rounded-3xl border border-slate-200/60 ${
+      className={`relative isolate rounded-3xl border border-slate-200/60 ${
         noBackground ? 'shadow-lg bg-gradient-to-br from-slate-50/80 via-white to-slate-50/60' : 'shadow-xl'
       }`}
     >
-      {/* Background variants */}
+      {/* Background variants - overflow-hidden only on background container */}
       {!noBackground ? (
-        <div className="absolute inset-0 -z-10">
+        <div className="absolute inset-0 -z-10 overflow-hidden rounded-3xl">
           <Image
             src={backgroundSrc}
             alt="Freudiger Moment in der Natur"
@@ -74,7 +74,7 @@ export function HeroNoForm({
         </>
       )}
 
-      <div className={`mx-auto w-full max-w-7xl px-6 ${noBackground ? 'py-14 sm:py-16 lg:px-8 lg:py-20' : 'grid min-h-[520px] grid-rows-[1fr] py-20 sm:min-h-[640px] sm:py-24 lg:px-8 lg:py-28'}`}>
+      <div className={`mx-auto w-full max-w-7xl px-6 sm:px-8 ${noBackground ? 'py-14 sm:py-16 lg:px-8 lg:py-20' : 'grid min-h-[520px] grid-rows-[1fr] py-16 sm:min-h-[640px] sm:py-24 lg:px-10 lg:py-28'}`}>
         <div className="flex flex-col justify-center">
           {icon ? (
             <div className="mb-4 sm:mb-6">{icon}</div>
@@ -93,10 +93,10 @@ export function HeroNoForm({
             <Button
               asChild
               size="lg"
-              className="h-14 px-8 text-base sm:text-lg font-semibold shadow-xl shadow-emerald-900/30 hover:shadow-2xl hover:shadow-emerald-900/40 transition-all duration-200 hover:scale-[1.02]"
+              className="h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold shadow-xl shadow-emerald-900/30 hover:shadow-2xl hover:shadow-emerald-900/40 transition-all duration-200 hover:scale-[1.02] max-w-full"
               data-cta="hero-primary"
             >
-              <CtaLink href={ctaHref} eventType="cta_click" aria-label={ctaLabel} data-cta="hero-primary">
+              <CtaLink href={ctaHref} eventType="cta_click" aria-label={ctaLabel} data-cta="hero-primary" className="truncate">
                 {ctaLabel}
               </CtaLink>
             </Button>

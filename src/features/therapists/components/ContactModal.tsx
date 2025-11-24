@@ -213,7 +213,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     return () => {
       cancelled = true;
     };
-  }, [open, preAuth, therapist.first_name, contactType, awaitingVerificationSend, forceSuccess, step]);
+  }, [open, preAuth, therapist.first_name, contactType, awaitingVerificationSend, forceSuccess]);
 
   // Prefill session format if a slot was selected externally
   useEffect(() => {
@@ -1188,7 +1188,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                     onClick={() => {
                       if (disabled) return;
                       setSelectedBookingSlot(s);
-                      if (!sessionFormat) setSessionFormat(s.format);
+                      setSessionFormat(s.format);
                       try {
                         trackEvent('booking_slot_selected', {
                           therapist_id: therapist.id,

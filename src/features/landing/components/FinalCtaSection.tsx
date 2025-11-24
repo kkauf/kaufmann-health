@@ -37,7 +37,7 @@ export function FinalCtaSection({
     : 'bg-gradient-to-b from-slate-50 to-white';
   const alignClass = align === 'center' ? 'text-center items-center' : '';
   const sectionClass = (className ? className + ' ' : '') +
-    `mt-12 sm:mt-16 relative overflow-hidden rounded-3xl border border-emerald-200/60 shadow-xl shadow-emerald-100/20 ${bgClass} p-8 sm:p-12 lg:p-16 ${alignClass}`;
+    `mt-12 sm:mt-16 relative overflow-hidden rounded-3xl border border-emerald-200/60 shadow-xl shadow-emerald-100/20 ${bgClass} px-6 py-10 sm:p-12 lg:p-16 ${alignClass}`;
 
   const START_TIMING_OPTIONS = [
     { value: 'immediate', label: 'So schnell wie möglich', query: 'timing=immediate' },

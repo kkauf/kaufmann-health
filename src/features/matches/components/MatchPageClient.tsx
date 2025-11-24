@@ -84,18 +84,28 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     async function load() {
       setLoading(true);
       setError(null);
+      const start = Date.now();
       try {
         const res = await fetch(`/api/public/matches/${encodeURIComponent(uuid)}`);
         const json = await res.json();
+
+        // Ensure at least 3s loading animation for "searching" feel
+        const elapsed = Date.now() - start;
+        if (elapsed < 3000) await new Promise(r => setTimeout(r, 3000 - elapsed));
+
         if (!res.ok) {
-          setError(json?.error || 'Fehler beim Laden');
-          setData(null);
+          if (!cancelled) {
+            setError(json?.error || 'Fehler beim Laden');
+            setData(null);
+          }
         } else {
           if (!cancelled) setData(json.data as MatchApiData);
         }
       } catch (e) {
-        setError('Netzwerkfehler');
-        setData(null);
+        if (!cancelled) {
+          setError('Netzwerkfehler');
+          setData(null);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -223,8 +233,16 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
-        <div className="text-gray-600">Lade Empfehlungen…</div>
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
+        <div className="relative mb-8 h-24 w-24">
+          <div className="absolute inset-0 animate-ping rounded-full bg-emerald-100 opacity-75 duration-1000"></div>
+          <div className="absolute inset-0 m-4 animate-pulse rounded-full bg-emerald-200 opacity-75"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Sparkles className="h-8 w-8 text-emerald-600 animate-bounce" />
+          </div>
+        </div>
+        <h2 className="text-2xl font-semibold text-gray-900">Wir suchen den passenden Experten für dein Anliegen...</h2>
+        <p className="mt-2 text-gray-600">Dies kann einen Moment dauern.</p>
       </div>
     );
   }
@@ -295,7 +313,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         <p className="mt-2 text-gray-600">
           {isDirectBookingFlow
             ? `Basierend auf deinen Angaben und aktueller Verfügbarkeit haben wir ${therapistsWithQuality.length} passende Therapeut:innen zusammengestellt.`
-            : `Katherine und Konstantin haben basierend auf deiner Anfrage ${therapistsWithQuality.length} Therapeut:innen für dich ausgewählt.`}
+            : `Basierend auf deiner Anfrage haben wir ${therapistsWithQuality.length} Therapeut:innen für dich ausgewählt.`}
         </p>
       </div>
 
@@ -369,7 +387,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           <ul className="space-y-2 text-sm text-gray-700">
             <li className="flex items-start gap-2">
               <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-              <span>Wir haben uns deiner Anfrage persönlich angenommen.</span>
+              <span>Deine Auswahl basiert auf deinen individuellen Präferenzen.</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
@@ -386,7 +404,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
               </li>
             )}
           </ul>
-          <p className="mt-4 font-semibold text-gray-900">Sorgfältig geprüfte Profile – persönlich ausgewählt.</p>
+          <p className="mt-4 font-semibold text-gray-900">Sorgfältig geprüfte Profile – passend für dich.</p>
         </div>
       )}
 

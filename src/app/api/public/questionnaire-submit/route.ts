@@ -22,23 +22,24 @@ export const runtime = 'nodejs';
  * Create instant matches for a patient based on their preferences
  * Returns secure match UUID for browsing therapists anonymously
  */
-async function createInstantMatchesForPatient(patientId: string): Promise<{ matchesUrl: string; matchQuality: 'exact' | 'partial' | 'none' } | null> {
+async function createInstantMatchesForPatient(patientId: string, variant?: string): Promise<{ matchesUrl: string; matchQuality: 'exact' | 'partial' | 'none' } | null> {
   try {
-    if (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW !== 'true') return null;
-    
+    const isConcierge = variant === 'concierge';
+    if (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW !== 'true' && !isConcierge) return null;
+
     type PersonRow = { id: string; metadata?: Record<string, unknown> | null };
     const { data: person } = await supabaseServer
       .from('people')
       .select('id, metadata')
       .eq('id', patientId)
       .single<PersonRow>();
-      
+
     const meta = (person?.metadata || {}) as Record<string, unknown>;
     const city = typeof meta['city'] === 'string' ? (meta['city'] as string) : undefined;
     const session_preference = typeof meta['session_preference'] === 'string' ? (meta['session_preference'] as string) as 'online' | 'in_person' : undefined;
-    const session_preferences = Array.isArray(meta['session_preferences']) ? (meta['session_preferences'] as ('online'|'in_person')[]) : undefined;
+    const session_preferences = Array.isArray(meta['session_preferences']) ? (meta['session_preferences'] as ('online' | 'in_person')[]) : undefined;
     const specializations = Array.isArray(meta['specializations']) ? (meta['specializations'] as string[]) : undefined;
-    const gender_preference = typeof meta['gender_preference'] === 'string' ? (meta['gender_preference'] as 'male'|'female'|'no_preference') : undefined;
+    const gender_preference = typeof meta['gender_preference'] === 'string' ? (meta['gender_preference'] as 'male' | 'female' | 'no_preference') : undefined;
     const time_slots = Array.isArray(meta['time_slots']) ? (meta['time_slots'] as string[]) : [];
     const pMeta: PatientMeta = { city, session_preference, session_preferences, specializations, gender_preference };
 
@@ -89,7 +90,7 @@ async function createInstantMatchesForPatient(patientId: string): Promise<{ matc
         const dow = d.getUTCDay();
         for (const s of slots) {
           if (Number(s.day_of_week) !== (dow === 0 ? 0 : dow)) continue;
-          const h = parseInt(String(s.time_local || '').slice(0,2), 10);
+          const h = parseInt(String(s.time_local || '').slice(0, 2), 10);
           const isMorning = h >= 8 && h < 12;
           const isAfternoon = h >= 12 && h < 17;
           const isEvening = h >= 17 && h < 21;
@@ -109,9 +110,9 @@ async function createInstantMatchesForPatient(patientId: string): Promise<{ matc
       if (hideFromDir) continue;
       const tRow: TherapistRowForMatch = {
         id: t.id,
-        gender: typeof t.gender === 'string' ? (t.gender as 'male'|'female'|'non_binary') : undefined,
+        gender: typeof t.gender === 'string' ? (t.gender as 'male' | 'female' | 'non_binary') : undefined,
         city: t.city ?? undefined,
-        session_preferences: Array.isArray(t.session_preferences) ? (t.session_preferences as ('online'|'in_person')[]) : [],
+        session_preferences: Array.isArray(t.session_preferences) ? (t.session_preferences as ('online' | 'in_person')[]) : [],
         modalities: Array.isArray(t.modalities) ? (t.modalities as string[]) : [],
       };
       const result = computeMismatches(pMeta, tRow);
@@ -127,8 +128,9 @@ async function createInstantMatchesForPatient(patientId: string): Promise<{ matc
       return 0;
     });
 
-    const top = scored.slice(0, 3);
-    const matchQuality: 'exact'|'partial'|'none' = top.length === 0 ? 'none' : top[0].result.isPerfect ? 'exact' : 'partial';
+    // Limit to 2 matches for concierge feel (or 1 if perfect)
+    const top = scored.slice(0, 2);
+    const matchQuality: 'exact' | 'partial' | 'none' = top.length === 0 ? 'none' : top[0].result.isPerfect ? 'exact' : 'partial';
 
     // Create match records
     let secureUuid: string = randomUUID();
@@ -212,7 +214,7 @@ async function createInstantMatchesForPatient(patientId: string): Promise<{ matc
           },
         });
       }
-    } catch {}
+    } catch { }
 
     return secureUuid ? { matchesUrl: `/matches/${encodeURIComponent(String(secureUuid))}`, matchQuality } : null;
   } catch {
@@ -229,7 +231,7 @@ async function createInstantMatchesForPatient(patientId: string): Promise<{ matc
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    
+
     // Extract questionnaire data (Steps 1-5 only)
     const {
       start_timing,
@@ -333,7 +335,7 @@ export async function POST(req: Request) {
     await ServerAnalytics.trackEventFromRequest(req, {
       type: 'anonymous_patient_created',
       source: 'api.questionnaire-submit',
-      props: { 
+      props: {
         patient_id: patient.id,
         campaign_source,
         campaign_variant,
@@ -343,13 +345,13 @@ export async function POST(req: Request) {
     });
 
     // Create instant matches
-    const matchResult = await createInstantMatchesForPatient(patient.id);
-    
+    const matchResult = await createInstantMatchesForPatient(patient.id, campaign_variant);
+
     if (matchResult) {
       void ServerAnalytics.trackEventFromRequest(req, {
         type: 'instant_match_created',
         source: 'api.questionnaire-submit',
-        props: { 
+        props: {
           match_quality: matchResult.matchQuality,
           patient_id: patient.id,
         },
@@ -376,7 +378,7 @@ export async function POST(req: Request) {
       ua,
       props: { error: err instanceof Error ? err.message : 'Unknown error' },
     });
-    
+
     return safeJson(
       { data: null, error: 'Internal server error' },
       { status: 500, headers: { 'Cache-Control': 'no-store' } },

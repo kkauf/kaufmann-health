@@ -51,8 +51,13 @@ export default function SignupWizard() {
   const searchParams = useSearchParams();
   // Feature flag: direct booking (5-step anonymous) vs manual curation (9-step with contact)
   const isDirectBookingFlow = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
-  const maxStep = isDirectBookingFlow ? 5 : 9; // 5 steps for anonymous, 9 for contact collection
-  
+  const variant = searchParams.get('variant') || searchParams.get('v');
+  const isConcierge = variant === 'concierge';
+  const isMarketplace = variant === 'marketplace';
+  // Test 3: Both concierge AND marketplace need verification before matches (9-step flow)
+  const needsVerificationFlow = isConcierge || isMarketplace;
+  const maxStep = (isDirectBookingFlow && !needsVerificationFlow) ? 5 : 9; // 5 steps for anonymous, 9 for contact collection
+
   const [step, setStep] = React.useState<number>(1);
   const [data, setData] = React.useState<WizardData>({ name: '' });
   const [initialized, setInitialized] = React.useState(false);
@@ -118,7 +123,7 @@ export default function SignupWizard() {
           body: JSON.stringify(payload),
         }))
       );
-    } catch {}
+    } catch { }
   }, []);
 
   function missingRequiredForStep(s: number, d: WizardData): string[] {
@@ -220,7 +225,7 @@ export default function SignupWizard() {
             // Ignore session check errors
           });
       }
-      
+
       // Handle ?timing= param from mid-page conversion (from /start entry options)
       const timingParam = searchParams?.get('timing');
       if (timingParam) {
@@ -241,7 +246,7 @@ export default function SignupWizard() {
           void trackEvent('midpage_prefill', { timing: timingParam });
         }
       }
-      
+
       // Prefer fs from URL if present, otherwise fall back to localStorage
       const fsFromUrl = searchParams?.get('fs');
       const fsid = fsFromUrl || localStorage.getItem(LS_KEYS.sessionId);
@@ -249,7 +254,7 @@ export default function SignupWizard() {
         sessionIdRef.current = fsid;
         try {
           localStorage.setItem(LS_KEYS.sessionId, fsid);
-        } catch {}
+        } catch { }
       }
       setSessionId(sessionIdRef.current);
       // Online/offline listeners
@@ -263,7 +268,7 @@ export default function SignupWizard() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const vv = (window as any).visualViewport as { height: number } | undefined;
         baseVVHeightRef.current = vv?.height || null;
-      } catch {}
+      } catch { }
       // Mark initialization complete only after attempting to load saved state
       // Capture campaign source/variant from URL or referrer
       try {
@@ -283,13 +288,13 @@ export default function SignupWizard() {
               const u = new URL(ref);
               const vp = u.searchParams.get('variant') || u.searchParams.get('v') || undefined;
               variant = vp || variant;
-            } catch {}
+            } catch { }
           }
-        } catch {}
+        } catch { }
         if (src) campaignSourceOverrideRef.current = src;
         if (variant) campaignVariantOverrideRef.current = variant;
-      } catch {}
-      
+      } catch { }
+
       // Mark initialization complete only after attempting to load saved state
       setInitialized(true);
       // Cleanup
@@ -297,7 +302,7 @@ export default function SignupWizard() {
         window.removeEventListener('online', handleOnline);
         window.removeEventListener('offline', handleOffline);
       };
-    } catch {}
+    } catch { }
     // Scroll to top initially
     window.scrollTo({ top: 0 });
   }, [searchParams]);
@@ -324,11 +329,11 @@ export default function SignupWizard() {
       // Force step 9 when confirmed via URL (cross-device flow)
       if (c === '1' || c === 'success') {
         setStep(9);
-        try { localStorage.setItem(LS_KEYS.step, '9'); } catch {}
+        try { localStorage.setItem(LS_KEYS.step, '9'); } catch { }
         // Analytics: confirmation success rendered
         void trackEvent('confirm_success_rendered', { contact_method: 'email' });
       }
-    } catch {}
+    } catch { }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -364,10 +369,10 @@ export default function SignupWizard() {
             try {
               localStorage.setItem(LS_KEYS.data, JSON.stringify(next));
               localStorage.setItem(LS_KEYS.step, String(clamped));
-            } catch {}
+            } catch { }
           }
         }
-      } catch {}
+      } catch { }
     })();
     return () => {
       cancelled = true;
@@ -380,7 +385,7 @@ export default function SignupWizard() {
       const merged = { ...prev, ...next };
       try {
         localStorage.setItem(LS_KEYS.data, JSON.stringify(merged));
-      } catch {}
+      } catch { }
       // Track changed fields (PII-safe: only field names, no values)
       try {
         if (process.env.NEXT_PUBLIC_ANALYTICS_VERBOSE === 'true') {
@@ -389,7 +394,7 @@ export default function SignupWizard() {
             void trackEvent('field_change', { field: String(k), step });
           }
         }
-      } catch {}
+      } catch { }
       return merged;
     });
   }, []);
@@ -404,7 +409,7 @@ export default function SignupWizard() {
           return current; // Stay on current step
         }
       }
-      
+
       // Track completion for current screen
       const now = Date.now();
       const elapsed = now - (screenStartRef.current || now);
@@ -422,7 +427,7 @@ export default function SignupWizard() {
       else setSuppressAutoStep(null);
       try {
         localStorage.setItem(LS_KEYS.step, String(v));
-      } catch {}
+      } catch { }
       lastTrackedStepRef.current = v;
       void trackEvent('screen_viewed', { step: v });
       try {
@@ -498,7 +503,7 @@ export default function SignupWizard() {
             sessionIdRef.current = j.data.id as string;
             try {
               localStorage.setItem(LS_KEYS.sessionId, sessionIdRef.current);
-            } catch {}
+            } catch { }
           }
         } else {
           await fetch(`/api/public/form-sessions/${encodeURIComponent(sessionIdRef.current)}`, {
@@ -531,10 +536,12 @@ export default function SignupWizard() {
             step,
             _bootstrap: true,
             ...((campaignSourceOverrideRef.current || campaignVariantOverrideRef.current)
-              ? { _attr: {
+              ? {
+                _attr: {
                   ...(campaignSourceOverrideRef.current ? { campaign_source: campaignSourceOverrideRef.current } : {}),
                   ...(campaignVariantOverrideRef.current ? { campaign_variant: campaignVariantOverrideRef.current } : {}),
-                } }
+                }
+              }
               : {}),
           },
           email: data.email || undefined,
@@ -549,9 +556,9 @@ export default function SignupWizard() {
           sessionIdRef.current = j.data.id as string;
           try {
             localStorage.setItem(LS_KEYS.sessionId, sessionIdRef.current);
-          } catch {}
+          } catch { }
         }
-      } catch {}
+      } catch { }
       earlyFsCreatedRef.current = true;
     }, 300);
     return () => clearTimeout(t);
@@ -600,7 +607,7 @@ export default function SignupWizard() {
 
   const handleVerifySmsCode = React.useCallback(async (code: string): Promise<{ success: boolean; error?: string }> => {
     if (!data.phone_number) return { success: false, error: 'Keine Telefonnummer' };
-    
+
     try {
       const res = await fetch('/api/public/verification/verify-code', {
         method: 'POST',
@@ -611,16 +618,16 @@ export default function SignupWizard() {
           code,
         }),
       });
-      
+
       const result = await res.json();
-      
+
       if (result.data?.verified) {
         saveLocal({ phone_verified: true });
         void trackEvent('verification_code_verified', { contact_type: 'phone' });
         // Don't navigate here - caller will handle submit after verification
         return { success: true };
       }
-      
+
       return { success: false, error: 'Ungültiger Code' };
     } catch (err) {
       console.error('Failed to verify SMS code:', err);
@@ -694,7 +701,7 @@ export default function SignupWizard() {
             }}
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
             onBack={() => safeGoToStep(4)}
-            onNext={isDirectBookingFlow ? handleQuestionnaireSubmit : () => safeGoToStep(6)}
+            onNext={(isDirectBookingFlow && !needsVerificationFlow) ? handleQuestionnaireSubmit : () => safeGoToStep(6)}
             disabled={navLock || submitting}
           />
         );
@@ -762,188 +769,188 @@ export default function SignupWizard() {
 
   function renderConfirmationScreen() {
     return (() => {
-          const confirmParam = searchParams?.get('confirm');
-          const isConfirmed = confirmParam === '1' || confirmParam === 'success';
-          const isPhoneUser = data.contact_method === 'phone' && !!data.phone_number;
-          if (isConfirmed) {
-            return (
-              <div className="space-y-4">
-                <h2 className="text-2xl font-semibold">✓ E‑Mail bestätigt – wir bereiten deine Empfehlungen vor</h2>
-                <p>Unser Team von Kaufmann Health prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.</p>
-                <p>Du bekommst deine Matches innerhalb von 24 Stunden.</p>
-                <div className="rounded-md border p-3 bg-emerald-50 border-emerald-200">
-                  <p className="text-sm">Was als Nächstes passiert: Wir gleichen deine Präferenzen ab und senden dir deine Auswahl mit einem 1‑Klick‑Bestätigungslink.</p>
-                </div>
-              </div>
-            );
-          }
-          // Phone users: show success state (SMS verified) + optional email collection
-          if (isPhoneUser) {
-            async function handleAddEmail() {
-              if (addEmailSubmitting) return;
-              const email = (addEmail || '').trim();
-              if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-                setAddEmailMessage('Bitte eine gültige E‑Mail eingeben.');
-                return;
-              }
-              setAddEmailSubmitting(true);
-              setAddEmailMessage('');
-              try {
-                const leadId = (typeof window !== 'undefined' ? localStorage.getItem('leadId') : null) || '';
-                const res = await fetch(`/api/public/leads/${encodeURIComponent(leadId)}/add-email`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ email, form_session_id: sessionIdRef.current || undefined }),
-                });
-                const j = await res.json().catch(() => ({}));
-                if (res.status === 409 || j?.error === 'email_in_use') {
-                  setAddEmailMessage('Diese E‑Mail wird bereits verwendet. Bitte eine andere Adresse verwenden.');
-                } else if (!res.ok || j?.error) {
-                  setAddEmailMessage('Speichern fehlgeschlagen. Bitte später erneut versuchen.');
-                } else {
-                  // Success → persist locally for future UX
-                  saveLocal({ email });
-                  try { localStorage.setItem('leadEmail', email); } catch {}
-                  setAddEmailMessage('E‑Mail gespeichert. Danke!');
-                  void trackEvent('optional_email_provided', { step: 9 });
-                }
-              } catch {
-                setAddEmailMessage('Speichern fehlgeschlagen. Bitte später erneut versuchen.');
-              } finally {
-                setAddEmailSubmitting(false);
-              }
-            }
-
-            return (
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">✓ Geschafft! Deine Anfrage ist bei uns</h2>
-                  <p className="text-base leading-relaxed text-gray-700">Du hast deine Handynummer bestätigt. Unser Team prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.</p>
-                  <p className="text-base leading-relaxed text-gray-700">Du bekommst deine Matches innerhalb von 24 Stunden.</p>
-                </div>
-
-                {/* Feature Highlight Panel - Optional email add */}
-                <div className="relative overflow-hidden rounded-2xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-6 sm:p-8 shadow-lg shadow-indigo-100/30">
-                  <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(35rem_18rem_at_40%_0%,rgba(99,102,241,0.09),transparent_65%)]" />
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <p className="text-base font-semibold text-gray-900">✉️ Optional: E‑Mail hinzufügen</p>
-                      <p className="text-sm leading-relaxed text-gray-700">Therapeut:innen antworten oft per E‑Mail. Wenn du möchtest, kannst du eine E‑Mail-Adresse ergänzen.</p>
-                      <p className="text-xs text-gray-600">Ohne E‑Mail kontaktieren dich Therapeut:innen per SMS oder Anruf.</p>
-                    </div>
-                    <div className="space-y-3">
-                      <input
-                        type="email"
-                        value={addEmail}
-                        onChange={(e) => setAddEmail(e.target.value)}
-                        placeholder="deine@email.de"
-                        className="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        aria-label="E‑Mail"
-                      />
-                      <Button
-                        onClick={handleAddEmail}
-                        disabled={addEmailSubmitting}
-                        className="h-11 w-full text-base"
-                      >
-                        {addEmailSubmitting ? 'Speichere…' : 'E‑Mail speichern'}
-                      </Button>
-                      {addEmailMessage && (
-                        <p className="text-sm text-center text-gray-700" aria-live="polite">{addEmailMessage}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          }
-          // Not confirmed yet → show prominent callout with progressive disclosure (email path)
-          async function handleResend() {
-            if (resendSubmitting) return;
-            const email = (resendEmail || '').trim();
-            if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-              setResendMessage('Bitte eine gültige E‑Mail eingeben.');
-              return;
-            }
-            setResendSubmitting(true);
-            setResendMessage('');
-            try {
-              await fetch('/api/public/leads/resend-confirmation', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                  email,
-                  form_session_id: sessionIdRef.current || undefined,
-                }),
-              });
-              setResendMessage('E‑Mail versendet. Bitte Posteingang prüfen.');
-            } catch {
-              setResendMessage('Bitte später erneut versuchen.');
-            } finally {
-              setResendSubmitting(false);
-            }
-          }
-          return (
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">✓ Geschafft! Deine Anfrage ist bei uns</h2>
-                <p className="text-base leading-relaxed text-gray-700">Unser Team von Kaufmann Health prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.</p>
-                <p className="text-base leading-relaxed text-gray-700">Du bekommst deine Matches innerhalb von 24 Stunden.</p>
-              </div>
-
-              {/* Feature Highlight Panel - Email confirmation callout */}
-              <div className="relative overflow-hidden rounded-2xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-6 sm:p-8 shadow-lg shadow-indigo-100/30">
-                <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(35rem_18rem_at_40%_0%,rgba(99,102,241,0.09),transparent_65%)]" />
-                <div className="space-y-3">
-                  <p className="text-base font-semibold text-gray-900">📧 Wichtig: Bitte bestätige deine E‑Mail‑Adresse</p>
-                  <p className="text-sm leading-relaxed text-gray-700">
-                    Wir haben dir gerade eine Bestätigungs-E-Mail geschickt. Bitte prüfe deinen Posteingang und klicke auf den Link, damit wir dir deine Therapeuten-Empfehlungen zusenden können.
-                  </p>
-                  <p className="text-xs text-gray-600">Tipp: Falls du nichts findest, schau auch im Spam-Ordner nach.</p>
-                </div>
-              </div>
-
-              {/* Progressive disclosure: resend form */}
-              {!showResendForm ? (
-                <div className="flex justify-center">
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => {
-                      setShowResendForm(true);
-                      void trackEvent('resend_form_opened', { step: 9 });
-                    }}
-                    className="text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 transition-colors"
-                  >
-                    E-Mail nicht erhalten?
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3 rounded-xl border border-gray-200/60 bg-white/80 p-4 sm:p-5 shadow-sm">
-                  <p className="text-sm font-medium text-gray-700">E-Mail erneut senden oder Adresse korrigieren:</p>
-                  <div className="space-y-3">
-                    <input
-                      type="email"
-                      value={resendEmail}
-                      onChange={(e) => setResendEmail(e.target.value)}
-                      placeholder="deine@email.de"
-                      className="h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                      aria-label="E‑Mail"
-                    />
-                    <Button 
-                      onClick={handleResend} 
-                      disabled={resendSubmitting} 
-                      className="h-11 w-full text-base"
-                    >
-                      {resendSubmitting ? 'Wird gesendet…' : 'Bestätigungs-E-Mail erneut senden'}
-                    </Button>
-                    {resendMessage && (
-                      <p className="text-sm text-center text-gray-600" aria-live="polite">{resendMessage}</p>
-                    )}
-                  </div>
-                </div>
-              )}
+      const confirmParam = searchParams?.get('confirm');
+      const isConfirmed = confirmParam === '1' || confirmParam === 'success';
+      const isPhoneUser = data.contact_method === 'phone' && !!data.phone_number;
+      if (isConfirmed) {
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-semibold">✓ E‑Mail bestätigt – wir bereiten deine Empfehlungen vor</h2>
+            <p>Unser Team von Kaufmann Health prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.</p>
+            <p>Du bekommst deine Matches innerhalb von 24 Stunden.</p>
+            <div className="rounded-md border p-3 bg-emerald-50 border-emerald-200">
+              <p className="text-sm">Was als Nächstes passiert: Wir gleichen deine Präferenzen ab und senden dir deine Auswahl mit einem 1‑Klick‑Bestätigungslink.</p>
             </div>
-          );
-        })();
+          </div>
+        );
+      }
+      // Phone users: show success state (SMS verified) + optional email collection
+      if (isPhoneUser) {
+        async function handleAddEmail() {
+          if (addEmailSubmitting) return;
+          const email = (addEmail || '').trim();
+          if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            setAddEmailMessage('Bitte eine gültige E‑Mail eingeben.');
+            return;
+          }
+          setAddEmailSubmitting(true);
+          setAddEmailMessage('');
+          try {
+            const leadId = (typeof window !== 'undefined' ? localStorage.getItem('leadId') : null) || '';
+            const res = await fetch(`/api/public/leads/${encodeURIComponent(leadId)}/add-email`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, form_session_id: sessionIdRef.current || undefined }),
+            });
+            const j = await res.json().catch(() => ({}));
+            if (res.status === 409 || j?.error === 'email_in_use') {
+              setAddEmailMessage('Diese E‑Mail wird bereits verwendet. Bitte eine andere Adresse verwenden.');
+            } else if (!res.ok || j?.error) {
+              setAddEmailMessage('Speichern fehlgeschlagen. Bitte später erneut versuchen.');
+            } else {
+              // Success → persist locally for future UX
+              saveLocal({ email });
+              try { localStorage.setItem('leadEmail', email); } catch { }
+              setAddEmailMessage('E‑Mail gespeichert. Danke!');
+              void trackEvent('optional_email_provided', { step: 9 });
+            }
+          } catch {
+            setAddEmailMessage('Speichern fehlgeschlagen. Bitte später erneut versuchen.');
+          } finally {
+            setAddEmailSubmitting(false);
+          }
+        }
+
+        return (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">✓ Geschafft! Deine Anfrage ist bei uns</h2>
+              <p className="text-base leading-relaxed text-gray-700">Du hast deine Handynummer bestätigt. Unser Team prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.</p>
+              <p className="text-base leading-relaxed text-gray-700">Du bekommst deine Matches innerhalb von 24 Stunden.</p>
+            </div>
+
+            {/* Feature Highlight Panel - Optional email add */}
+            <div className="relative overflow-hidden rounded-2xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-6 sm:p-8 shadow-lg shadow-indigo-100/30">
+              <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(35rem_18rem_at_40%_0%,rgba(99,102,241,0.09),transparent_65%)]" />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-base font-semibold text-gray-900">✉️ Optional: E‑Mail hinzufügen</p>
+                  <p className="text-sm leading-relaxed text-gray-700">Therapeut:innen antworten oft per E‑Mail. Wenn du möchtest, kannst du eine E‑Mail-Adresse ergänzen.</p>
+                  <p className="text-xs text-gray-600">Ohne E‑Mail kontaktieren dich Therapeut:innen per SMS oder Anruf.</p>
+                </div>
+                <div className="space-y-3">
+                  <input
+                    type="email"
+                    value={addEmail}
+                    onChange={(e) => setAddEmail(e.target.value)}
+                    placeholder="deine@email.de"
+                    className="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    aria-label="E‑Mail"
+                  />
+                  <Button
+                    onClick={handleAddEmail}
+                    disabled={addEmailSubmitting}
+                    className="h-11 w-full text-base"
+                  >
+                    {addEmailSubmitting ? 'Speichere…' : 'E‑Mail speichern'}
+                  </Button>
+                  {addEmailMessage && (
+                    <p className="text-sm text-center text-gray-700" aria-live="polite">{addEmailMessage}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      // Not confirmed yet → show prominent callout with progressive disclosure (email path)
+      async function handleResend() {
+        if (resendSubmitting) return;
+        const email = (resendEmail || '').trim();
+        if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+          setResendMessage('Bitte eine gültige E‑Mail eingeben.');
+          return;
+        }
+        setResendSubmitting(true);
+        setResendMessage('');
+        try {
+          await fetch('/api/public/leads/resend-confirmation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email,
+              form_session_id: sessionIdRef.current || undefined,
+            }),
+          });
+          setResendMessage('E‑Mail versendet. Bitte Posteingang prüfen.');
+        } catch {
+          setResendMessage('Bitte später erneut versuchen.');
+        } finally {
+          setResendSubmitting(false);
+        }
+      }
+      return (
+        <div className="space-y-6">
+          <div className="space-y-4">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">✓ Geschafft! Deine Anfrage ist bei uns</h2>
+            <p className="text-base leading-relaxed text-gray-700">Unser Team von Kaufmann Health prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.</p>
+            <p className="text-base leading-relaxed text-gray-700">Du bekommst deine Matches innerhalb von 24 Stunden.</p>
+          </div>
+
+          {/* Feature Highlight Panel - Email confirmation callout */}
+          <div className="relative overflow-hidden rounded-2xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-6 sm:p-8 shadow-lg shadow-indigo-100/30">
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(35rem_18rem_at_40%_0%,rgba(99,102,241,0.09),transparent_65%)]" />
+            <div className="space-y-3">
+              <p className="text-base font-semibold text-gray-900">📧 Wichtig: Bitte bestätige deine E‑Mail‑Adresse</p>
+              <p className="text-sm leading-relaxed text-gray-700">
+                Wir haben dir gerade eine Bestätigungs-E-Mail geschickt. Bitte prüfe deinen Posteingang und klicke auf den Link, damit wir dir deine Therapeuten-Empfehlungen zusenden können.
+              </p>
+              <p className="text-xs text-gray-600">Tipp: Falls du nichts findest, schau auch im Spam-Ordner nach.</p>
+            </div>
+          </div>
+
+          {/* Progressive disclosure: resend form */}
+          {!showResendForm ? (
+            <div className="flex justify-center">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowResendForm(true);
+                  void trackEvent('resend_form_opened', { step: 9 });
+                }}
+                className="text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 transition-colors"
+              >
+                E-Mail nicht erhalten?
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3 rounded-xl border border-gray-200/60 bg-white/80 p-4 sm:p-5 shadow-sm">
+              <p className="text-sm font-medium text-gray-700">E-Mail erneut senden oder Adresse korrigieren:</p>
+              <div className="space-y-3">
+                <input
+                  type="email"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  placeholder="deine@email.de"
+                  className="h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  aria-label="E‑Mail"
+                />
+                <Button
+                  onClick={handleResend}
+                  disabled={resendSubmitting}
+                  className="h-11 w-full text-base"
+                >
+                  {resendSubmitting ? 'Wird gesendet…' : 'Bestätigungs-E-Mail erneut senden'}
+                </Button>
+                {resendMessage && (
+                  <p className="text-sm text-center text-gray-600" aria-live="polite">{resendMessage}</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    })();
   }
 
   // Submit questionnaire after Step 5 - create anonymous patient and redirect to matches (direct booking flow only)
@@ -955,7 +962,7 @@ export default function SignupWizard() {
     const slowTimer = setTimeout(() => setSubmitSlow(true), 3000);
 
     try {
-      void trackEvent('questionnaire_submitted', { 
+      void trackEvent('questionnaire_submitted', {
         step: 5,
         has_city: !!data.city,
         has_timing: !!data.start_timing,
@@ -987,7 +994,7 @@ export default function SignupWizard() {
       });
 
       const json = await res.json().catch(() => ({}));
-      
+
       if (!res.ok || json?.error) {
         throw new Error(json?.error || 'Questionnaire submission failed');
       }
@@ -999,10 +1006,10 @@ export default function SignupWizard() {
       if (patientId && typeof window !== 'undefined') {
         try {
           window.localStorage.setItem('anonymousPatientId', patientId);
-        } catch {}
+        } catch { }
       }
 
-      void trackEvent('questionnaire_completed', { 
+      void trackEvent('questionnaire_completed', {
         match_quality: json?.data?.matchQuality,
         patient_id: patientId,
       });
@@ -1062,7 +1069,7 @@ export default function SignupWizard() {
             sessionIdRef.current = jj.data.id as string;
             try {
               localStorage.setItem(LS_KEYS.sessionId, sessionIdRef.current);
-            } catch {}
+            } catch { }
             void trackEvent('fs_created_on_submit', { step });
           }
         } else {
@@ -1073,14 +1080,14 @@ export default function SignupWizard() {
           });
           void trackEvent('fs_patched_on_submit', { step });
         }
-      } catch {}
+      } catch { }
       // Trigger email confirmation after completion (EARTH-190, EARTH-191)
       // Validate contract before sending (supports both email and phone)
       const sessionPref = data.session_preference;
       // Trim and normalize contact fields before validation
       const email = data.email?.trim() || undefined;
       const phone = data.phone_number ? (normalizePhoneNumber(data.phone_number) || undefined) : undefined;
-      
+
       // Only include the contact field matching the selected method
       const submissionPayload = {
         type: 'patient' as const,
@@ -1094,8 +1101,8 @@ export default function SignupWizard() {
         ...(sessionPref === 'either'
           ? { session_preferences: ['online', 'in_person'] }
           : sessionPref
-          ? { session_preference: sessionPref }
-          : {}),
+            ? { session_preference: sessionPref }
+            : {}),
       };
       const submission = leadSubmissionSchema.safeParse(submissionPayload);
       if (!submission.success) {
@@ -1124,7 +1131,7 @@ export default function SignupWizard() {
           window.localStorage.setItem('leadId', leadId);
           if (data.email) window.localStorage.setItem('leadEmail', data.email);
         }
-      } catch {}
+      } catch { }
 
       // Server conversions: mark form completed
       if (leadId) {
@@ -1135,7 +1142,7 @@ export default function SignupWizard() {
             method: 'POST',
             headers: fcHeaders,
           });
-        } catch {}
+        } catch { }
       }
 
       {
@@ -1143,14 +1150,12 @@ export default function SignupWizard() {
         void trackEvent('submit_succeeded', { step: currentStep2, contact_method: data.contact_method });
       }
 
-      // Instant matching: redirect to matches page when provided by API
+      // Test 3: Always require verification before showing matches
+      // The matchesUrl is stored in metadata.last_confirm_redirect_path by the leads API
+      // After email/phone verification, user will be redirected to their matches
       const matchesUrl = (j?.data?.matchesUrl as string | undefined) || undefined;
       if (matchesUrl) {
-        void trackEvent('redirect_to_matches', { instant_match: true });
-        if (typeof window !== 'undefined') {
-          window.location.assign(matchesUrl);
-          return;
-        }
+        void trackEvent('matches_created_pending_verification', { instant_match: true });
       }
 
       void trackEvent('form_completed', { steps: 8 });
