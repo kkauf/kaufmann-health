@@ -22,20 +22,23 @@ function makeReq(body: any, headers?: Record<string, string>) {
 }
 
 function wireSupabaseForInstantMatch({ patientMeta, therapists, slots, secureUuid = 'su-123' }: { patientMeta: any; therapists: any[]; slots: any[]; secureUuid?: string }) {
-  let call = 0;
   (supabaseServer.from as unknown as ReturnType<typeof vi.fn>).mockImplementation((table: string) => {
     if (table === 'people') {
       return {
         // insert patient
         insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'p-1' }, error: null }) }) }),
-        // fetch patient meta after insert
+        // fetch patient meta after insert - chain: select().eq().single()
         select: () => ({ eq: () => ({ single: async () => ({ data: { id: 'p-1', metadata: patientMeta }, error: null }) }) }),
+        // update patient metadata - chain: update().eq()
+        update: () => ({ eq: async () => ({ error: null }) }),
       } as any;
     }
     if (table === 'therapists') {
-      return { select: () => ({ eq: () => ({ limit: async () => ({ data: therapists, error: null }) }) }) } as any;
+      // Chain: select().eq().eq().limit() - two eq() calls for status
+      return { select: () => ({ eq: () => ({ eq: () => ({ limit: async () => ({ data: therapists, error: null }) }) }) }) } as any;
     }
     if (table === 'therapist_slots') {
+      // Chain: select().in().eq().limit()
       return { select: () => ({ in: () => ({ eq: () => ({ limit: async () => ({ data: slots, error: null }) }) }) }) } as any;
     }
     if (table === 'matches') {
