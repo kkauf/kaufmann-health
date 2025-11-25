@@ -1,20 +1,15 @@
 import type { Metadata } from 'next';
 import FaqAccordion from '@/components/FaqAccordion';
-import { Button } from '@/components/ui/button';
 import CtaLink from '@/components/CtaLink';
 import {
-  LandingHero,
   HeroNoForm,
-  RecognitionSection,
-  MethodComparison,
   TherapistTeaserSection,
-  InvestmentSection,
   ProcessTimeline,
   FinalCtaSection,
 } from '@/features/landing/components';
 import { buildLandingMetadata, buildLocalBusinessJsonLd, buildFaqJsonLd } from '@/lib/seo';
-import { Lock, MessageCircle, UserCheck, FileCheck, Shield, Clock, CalendarCheck, TrendingUp, Euro } from 'lucide-react';
-import WhyBodyTherapySection from '@/components/WhyBodyTherapySection';
+import { Lock, MessageCircle, UserCheck, FileCheck, Shield, Clock, CalendarCheck, TrendingUp, Euro, Brain, Activity, Heart, Sparkles } from 'lucide-react';
+import RecognitionChips from './RecognitionChips';
 
 export const revalidate = 3600;
 
@@ -46,118 +41,135 @@ export default async function TherapieFindenPage() {
   const faqSchema = buildFaqJsonLd(faqs.map(({ question, answer }) => ({ question, answer })));
   const businessSchema = buildLocalBusinessJsonLd({ baseUrl, path: '/therapie-finden', areaServed: { type: 'Country', name: 'Deutschland', addressCountry: 'DE' } });
 
-  // Curated therapist IDs (limit display to these)
-  const TRUST_IDS = [
-    '7402bb04-c8d8-403e-a8d7-6bc32289c87b',
-    '58d98a45-21ab-40ea-99b3-f65ba27f6715',
-    'e81b560c-7489-4563-be53-1b6cd858f152',
-    '25ae2093-6d85-4d34-84bd-08411f713164',
-    '84c187fb-a981-442b-8a42-422093a3196b',
-  ];
-  // Use deterministic selection to avoid hydration mismatch
-  const selected = TRUST_IDS.slice(0, 3);
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
       <HeroNoForm
         title="Traumata lösen sich nicht von Reden allein."
-        subtitle="Finde schnell und unkompliziert die passende körperorientierte Psychotherapie für dich."
-        ctaLabel="Jetzt Therapeut:in finden"
+        subtitle="Dein Körper erinnert sich — auch wenn dein Kopf längst verstanden hat. Körperpsychotherapie setzt dort an, wo Gespräche nicht hinkommen."
+        ctaLabel="Therapeut:in finden"
         ctaHref="/fragebogen?variant=concierge"
-        backgroundSrc="/images/hero.jpg"
-      />
-
-      {/* Recognition Hook */}
-      <RecognitionSection
-        heading="Kommt dir das bekannt vor?"
-        items={[
-          'Du hast in der Therapie viel verstanden, aber die Muster wiederholen sich',
-          'Der Kopf weiß, was zu tun ist – der Körper macht nicht mit',
-          'Nach 25 Sitzungen Verhaltenstherapie fehlt noch etwas',
-          'Du spürst: Es braucht einen anderen Ansatz',
+        backgroundSrc="/images/hero-calm3.jpeg"
+        valueProps={[
+          '✓ Handverlesene Therapeut:innen',
+          '✓ Termine innerhalb von 7 Tagen',
+          '✓ Körperpsychotherapie',
+          '✓ Selbstzahler · €80–120 pro Sitzung',
         ]}
       />
-      <p className="mt-4 sm:mt-5 text-gray-700">
-        <strong>Du bist nicht „schwierig“ oder „therapieresistent“.</strong> Körperorientierte Ansätze erreichen, was reine Gesprächstherapie nicht kann: dein Nervensystem und die im Körper gespeicherten Erfahrungen.
-      </p>
 
-      {/* Method Bridge - Redesigned */}
-      <h2 className="mt-14 sm:mt-20 text-2xl font-semibold tracking-tight text-center mb-8">Was deine bisherige Therapie nicht erreichen konnte</h2>
-      <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-        <div className="bg-slate-50 rounded-2xl p-6 sm:p-8 border border-slate-200">
-          <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-            <MessageCircle className="h-5 w-5 text-slate-400" />
-            Gesprächstherapie
-          </h3>
-          <ul className="space-y-3 text-slate-600">
-            <li className="flex gap-3">
-              <span className="text-slate-400">•</span>
-              <span>Versteht und analysiert Probleme</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="text-slate-400">•</span>
-              <span>Arbeitet vorwiegend mit dem Verstand</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="text-slate-400">•</span>
-              <span>Schafft kognitive Einsichten</span>
-            </li>
-          </ul>
-        </div>
-        <div className="bg-indigo-50 rounded-2xl p-6 sm:p-8 border border-indigo-100 shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-100 rounded-bl-full -mr-10 -mt-10 opacity-50"></div>
-          <h3 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2 relative z-10">
-            <UserCheck className="h-5 w-5 text-indigo-600" />
-            Körperorientierte Verfahren
-          </h3>
-          <ul className="space-y-3 text-indigo-800 relative z-10">
-            <li className="flex gap-3">
-              <span className="text-indigo-400 font-bold">✓</span>
-              <span>Integriert und verkörpert das Neue</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="text-indigo-400 font-bold">✓</span>
-              <span>Erreicht das Nervensystem direkt</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="text-indigo-400 font-bold">✓</span>
-              <span>Spürbare, nachhaltige Veränderung</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-      <p className="mt-6 text-center text-gray-500 text-sm">Auf Basis neuester Erkenntnisse der Traumaforschung und Neurobiologie.</p>
-
-      {/* Video Section - COMMENTED OUT FOR NOW
-      <section className="mt-14 sm:mt-20 rounded-3xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-8 sm:p-12 shadow-lg shadow-indigo-100/30 relative overflow-hidden">
-        ...video content...
+      {/* Recognition Hook - Interactive Chips */}
+      <section className="mt-10 sm:mt-14">
+        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-center mb-6">
+          Kommt dir das bekannt vor?
+        </h2>
+        <RecognitionChips />
+        <p className="mt-6 sm:mt-8 text-center text-gray-700 max-w-3xl mx-auto text-base sm:text-lg leading-relaxed">
+          <strong className="text-gray-900">Du bist nicht &bdquo;schwierig&ldquo; oder &bdquo;therapieresistent&ldquo;.</strong>{' '}
+          Du brauchst einen Ansatz, der dort arbeitet, wo Gespräche nicht hinkommen: in deinem Nervensystem und deinem Körper.
+        </p>
       </section>
-      */}
 
-      {/* Why Body-Oriented Therapy - Interactive */}
-      <WhyBodyTherapySection />
+      {/* Bridge Section - Why patterns repeat */}
+      <section className="mt-14 sm:mt-20">
+        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-center mb-6 sm:mb-8">
+          Warum sich Muster wiederholen — auch wenn du alles verstanden hast
+        </h2>
+        <div className="max-w-3xl mx-auto space-y-5 text-gray-700 leading-relaxed text-base sm:text-lg">
+          <p>
+            Bei Trauma, chronischer Überforderung oder frühen Beziehungserfahrungen reagiert dein Nervensystem automatisch — unabhängig davon, was du denkst oder weißt.
+          </p>
+          <p>
+            Der Körper speichert diese Erfahrungen als Anspannung, Taubheit oder ständige Alarmbereitschaft. Gesprächstherapie erreicht den Verstand. Aber diese Muster sitzen tiefer.
+          </p>
+          <p>
+            Körperpsychotherapie arbeitet genau dort: mit dem autonomen Nervensystem, mit den Reaktionen, die du nicht &bdquo;wegdenken&ldquo; kannst.
+          </p>
+        </div>
+        {/* Visual accent quote */}
+        <div className="mt-8 max-w-2xl mx-auto">
+          <blockquote className="relative rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50/90 to-orange-50/60 p-6 sm:p-8 shadow-sm">
+            <div className="absolute -top-3 left-6 bg-white px-2">
+              <span className="text-amber-500 text-2xl font-serif">&ldquo;</span>
+            </div>
+            <p className="text-gray-800 font-medium text-base sm:text-lg leading-relaxed italic">
+              Trauma wird nicht nur als Geschichte im Gehirn gespeichert — sondern als körperliche Erfahrung im Nervensystem.
+            </p>
+          </blockquote>
+        </div>
+      </section>
 
-      {/* Process with guarantee - Modern Timeline */}
+      {/* What body-oriented approaches achieve - 4 Cards */}
+      <section className="mt-14 sm:mt-20">
+        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-center mb-8 sm:mb-10">
+          Was körperorientierte Ansätze erreichen können
+        </h2>
+        <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto">
+          {/* Card 1: Nervensystem regulieren */}
+          <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-white p-6 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 mb-4">
+              <Brain className="h-6 w-6 text-indigo-600" />
+            </div>
+            <h3 className="font-semibold text-gray-900 text-lg mb-2">Nervensystem regulieren</h3>
+            <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
+              Lerne, dein autonomes Nervensystem direkt zu beeinflussen — nicht durch Analyse, sondern durch körperliche Erfahrung und Präsenz.
+            </p>
+          </div>
+          {/* Card 2: Blockaden lösen */}
+          <div className="rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-50/80 to-white p-6 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-100 mb-4">
+              <Activity className="h-6 w-6 text-cyan-600" />
+            </div>
+            <h3 className="font-semibold text-gray-900 text-lg mb-2">Blockaden lösen</h3>
+            <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
+              Festgehaltene Überlebensenergie kann sich entladen. Chronische Anspannung oder Taubheit beginnen sich zu lösen.
+            </p>
+          </div>
+          {/* Card 3: Verbindungen verstehen */}
+          <div className="rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50/80 to-white p-6 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-100 mb-4">
+              <Heart className="h-6 w-6 text-rose-600" />
+            </div>
+            <h3 className="font-semibold text-gray-900 text-lg mb-2">Verbindungen verstehen</h3>
+            <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
+              Erkenne, wie Körperempfindungen, Emotionen und Gedanken zusammenhängen — und wie sie sich gegenseitig beeinflussen.
+            </p>
+          </div>
+          {/* Card 4: Nachhaltige Veränderung */}
+          <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/80 to-white p-6 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 mb-4">
+              <Sparkles className="h-6 w-6 text-emerald-600" />
+            </div>
+            <h3 className="font-semibold text-gray-900 text-lg mb-2">Nachhaltige Veränderung</h3>
+            <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
+              Veränderung, die nicht nur im Kopf stattfindet, sondern körperlich integriert ist. Spürbar. Stabil.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Process - 3 Steps */}
       <ProcessTimeline
-        tagline="Sofort passende Therapeut:innen-Vorschläge basierend auf deinen Angaben. Deine Daten bleiben privat."
+        heading="In drei Schritten zur passenden Therapeut:in"
+        tagline="Sofort passende Vorschläge basierend auf deinen Angaben. Deine Daten bleiben privat."
         items={[
           {
             icon: <MessageCircle className="h-5 w-5" />,
             title: 'Deine Präferenzen',
             caption: '3 Minuten',
-            bullets: ['Du sagst uns, was dir wichtig ist'],
+            bullets: ['Du sagst uns, was dir wichtig ist — online oder vor Ort, zeitliche Verfügbarkeit, was dich belastet.'],
           },
           {
             icon: <UserCheck className="h-5 w-5" />,
             title: 'Passende Ergebnisse',
             caption: 'Sofort',
-            bullets: ['Bis zu 3 passende Profile aus unserem geprüften Netzwerk'],
+            bullets: ['Wir zeigen dir bis zu 3 passende Profile aus unserem geprüften Netzwerk.'],
           },
           {
             icon: <CalendarCheck className="h-5 w-5" />,
-            title: 'Termin buchen & Starten',
+            title: 'Termin buchen',
             caption: 'Direkt online',
-            bullets: ['Buche deinen ersten Termin direkt online. Keine Überweisung nötig. Start als Selbstzahler.'],
+            bullets: ['Buche deinen ersten Termin direkt online. Keine Überweisung nötig. Start als Selbstzahler:in.'],
           },
         ]}
       />
@@ -225,8 +237,8 @@ export default async function TherapieFindenPage() {
       {/* Therapist Network */}
       <section className="mt-10 sm:mt-14">
         <TherapistTeaserSection
-          title="Unser Therapeuten-Netzwerk"
-          subtitle="Persönlich ausgewählte Spezialist:innen"
+          title="Unser Therapeut:innen-Netzwerk"
+          subtitle="Persönlich ausgewählte Spezialist:innen für körperorientierte Verfahren"
           limit={3}
         />
         <div className="mt-8 sm:mt-10 text-center">
@@ -246,7 +258,7 @@ export default async function TherapieFindenPage() {
       {/* Final CTA - before FAQ */}
       <FinalCtaSection
         heading="Bereit für den ersten Schritt?"
-        subtitle="Fülle unseren 3-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten-Vorschläge."
+        subtitle="100% kostenlos & unverbindlich. Wir schlagen dir passende Therapeut:innen vor — du entscheidest, mit wem du Kontakt aufnehmen möchtest."
         buttonLabel="Jetzt Therapeut:in finden"
         targetId="/fragebogen?variant=concierge"
         targetBasePath="/fragebogen?variant=concierge"
