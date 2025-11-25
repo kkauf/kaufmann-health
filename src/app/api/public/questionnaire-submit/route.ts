@@ -16,6 +16,23 @@ function getClientIP(headers: Headers): string | undefined {
   return xrip || undefined;
 }
 
+// Map German UI gender labels to English values for matching logic
+function normalizeGenderPreference(gender: string | undefined): 'male' | 'female' | 'no_preference' | undefined {
+  if (!gender) return undefined;
+  switch (gender) {
+    case 'Mann': return 'male';
+    case 'Frau': return 'female';
+    case 'Keine Präferenz':
+    case 'Divers/non-binär':
+      return 'no_preference';
+    // Already normalized values
+    case 'male': return 'male';
+    case 'female': return 'female';
+    case 'no_preference': return 'no_preference';
+    default: return undefined;
+  }
+}
+
 export const runtime = 'nodejs';
 
 /**
@@ -279,6 +296,8 @@ export async function POST(req: Request) {
     const campaign_variant: string | undefined = 'quiz';
 
     // Prepare metadata with all preferences
+    // Normalize gender from German UI labels to English values for matching
+    const normalizedGender = normalizeGenderPreference(gender);
     const metadata: Record<string, unknown> = {
       form_session_id,
       start_timing,
@@ -287,7 +306,7 @@ export async function POST(req: Request) {
       methods: methods || [],
       city,
       session_preference,
-      gender_preference: gender,
+      gender_preference: normalizedGender,
       time_slots: time_slots || [],
     };
 

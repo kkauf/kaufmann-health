@@ -963,14 +963,15 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
 
   // Render message composition step
   const renderComposeStep = () => {
-    const hasAvailability = contactType === 'booking' && Array.isArray(therapist.availability) && therapist.availability.length > 0;
+    // Use selectableSlots (≥24h in future) instead of raw availability to determine booking picker
+    const hasAvailability = contactType === 'booking' && selectableSlots.length > 0;
     const showBookingPicker = hasAvailability;
     const selectedFormat = sessionFormat as 'online' | 'in_person' | '';
     const resolvedAddress = selectedFormat === 'in_person' ? (selectedBookingSlot?.address || therapist.metadata?.profile?.practice_address || '') : '';
 
-    // Check which formats have available slots
-    const hasOnlineSlots = hasAvailability && therapist.availability!.some(s => s.format === 'online');
-    const hasInPersonSlots = hasAvailability && therapist.availability!.some(s => s.format === 'in_person');
+    // Check which formats have available slots (from selectable slots only)
+    const hasOnlineSlots = hasAvailability && selectableSlots.some(s => s.format === 'online');
+    const hasInPersonSlots = hasAvailability && selectableSlots.some(s => s.format === 'in_person');
 
     const slotsForWeek: Slot[] = slotsByWeek[weekIndex]?.[1]?.slots || [];
     const filteredSlots: Slot[] = selectedFormat ? slotsForWeek.filter((s) => s.format === selectedFormat) : slotsForWeek;
