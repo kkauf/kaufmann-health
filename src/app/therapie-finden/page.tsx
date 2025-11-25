@@ -60,8 +60,8 @@ export default async function TherapieFindenPage() {
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
       <HeroNoForm
-        title="Finde die passende Therapeut:in"
-        subtitle="Persönliche Empfehlungen basierend auf deinen Bedürfnissen – kostenlos & unverbindlich."
+        title="Traumata lösen sich nicht von Reden allein."
+        subtitle="Finde schnell und unkompliziert die passende körperorientierte Psychotherapie für dich."
         ctaLabel="Jetzt Therapeut:in finden"
         ctaHref="/fragebogen?variant=concierge"
         backgroundSrc="/images/hero.jpg"
@@ -77,7 +77,7 @@ export default async function TherapieFindenPage() {
           'Du spürst: Es braucht einen anderen Ansatz',
         ]}
       />
-      <p className="mt-4 sm:mt-5 max-w-4xl text-gray-700">
+      <p className="mt-4 sm:mt-5 text-gray-700">
         <strong>Du bist nicht „schwierig“ oder „therapieresistent“.</strong> Körperorientierte Ansätze erreichen, was reine Gesprächstherapie nicht kann: dein Nervensystem und die im Körper gespeicherten Erfahrungen.
       </p>
 

@@ -66,7 +66,7 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
         ],
         slots: [{ therapist_id: 't1', day_of_week: new Date().getUTCDay(), time_local: '09:00', format: 'online', address: null, active: true }],
       });
-      const res = await POST(makeReq({ type: 'patient', email: 'patient@example.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' }));
+      const res = await POST(makeReq({ type: 'patient', email: 'patient@example.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
       expect(json.data.matchesUrl).toMatch(/^\/matches\//);
@@ -75,7 +75,7 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
     it('does not return matchesUrl when flag is false', async () => {
       process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW = 'false';
       wireSupabaseForInstantMatch({ patientMeta: {}, therapists: [], slots: [] });
-      const res = await POST(makeReq({ type: 'patient', email: 'patient@example.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' }));
+      const res = await POST(makeReq({ type: 'patient', email: 'patient@example.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
       expect(json.data.matchesUrl).toBeUndefined();
@@ -106,7 +106,7 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
         ],
         slots: [ { therapist_id: 't1', day_of_week: new Date().getUTCDay(), time_local: '09:30', format: 'online', address: null, active: true } ],
       });
-      const res = await POST(makeReq({ type: 'patient', email: 'patient@example.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' }));
+      const res = await POST(makeReq({ type: 'patient', email: 'patient@example.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
       expect(json.data.matchesUrl).toBeDefined();
@@ -115,7 +115,7 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
     it('creates empty match when no therapists available', async () => {
       // Test scenario where no therapists match criteria
       wireSupabaseForInstantMatch({ patientMeta: {}, therapists: [], slots: [] });
-      const res = await POST(makeReq({ type: 'patient', email: 'niche@test.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' }));
+      const res = await POST(makeReq({ type: 'patient', email: 'niche@test.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
       expect(json.data.matchesUrl).toBeDefined();
@@ -133,7 +133,7 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
         therapists: [{ id: 't1', status: 'verified', accepting_new: true, session_preferences: ['online'], modalities: [] }],
         slots: [{ therapist_id: 't1', day_of_week: new Date().getUTCDay(), time_local: '08:30', format: 'online', address: null, active: true }],
       });
-      const res = await POST(makeReq({ type: 'patient', email: 'morning@test.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' }));
+      const res = await POST(makeReq({ type: 'patient', email: 'morning@test.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
       expect(json.data.matchesUrl).toBeDefined();
@@ -145,7 +145,7 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
         therapists: [{ id: 't1', status: 'verified', accepting_new: true, session_preferences: ['online'], modalities: [] }],
         slots: [{ therapist_id: 't1', day_of_week: new Date().getUTCDay(), time_local: '18:00', format: 'online', address: null, active: true }],
       });
-      const res = await POST(makeReq({ type: 'patient', email: 'flexible@test.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' }));
+      const res = await POST(makeReq({ type: 'patient', email: 'flexible@test.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
       expect(json.data.matchesUrl).toBeDefined();
@@ -159,7 +159,7 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
 
     it('handles missing form_session_id gracefully', async () => {
       wireSupabaseForInstantMatch({ patientMeta: {}, therapists: [], slots: [] });
-      const res = await POST(makeReq({ type: 'patient', email: 'nosession@test.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' }));
+      const res = await POST(makeReq({ type: 'patient', email: 'nosession@test.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
       expect(json.data.matchesUrl).toBeDefined();
@@ -167,7 +167,7 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
 
     it('works with phone contact method', async () => {
       wireSupabaseForInstantMatch({ patientMeta: {}, therapists: [{ id: 't1', status: 'verified', accepting_new: true, session_preferences: ['online'], modalities: [] }], slots: [] });
-      const res = await POST(makeReq({ type: 'patient', phone_number: '+491234567890', contact_method: 'phone', consent_share_with_therapists: true, privacy_version: '2024-10-01' }));
+      const res = await POST(makeReq({ type: 'patient', phone_number: '+491234567890', contact_method: 'phone', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
       expect(json.data.matchesUrl).toBeDefined();
