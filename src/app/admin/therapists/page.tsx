@@ -99,7 +99,7 @@ export default function AdminTherapistsPage() {
 
   // Upload state for admin-side uploads
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
-  const [specFiles, setSpecFiles] = useState<FileList | null>(null);
+  const [_specFiles, _setSpecFiles] = useState<FileList | null>(null);
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
 
   const toggleSelected = useCallback((id: string) => {

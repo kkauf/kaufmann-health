@@ -52,7 +52,7 @@ function normalizeId(value: unknown): string {
   const s = value.trim();
   return s === 'null' || s === 'undefined' ? '' : s;
 }
-function isUuid(s: string): boolean {
+function _isUuid(s: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
 }
 

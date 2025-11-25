@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import FaqAccordion from "@/components/FaqAccordion";
 import { FinalCtaSection } from "@/features/landing/components/FinalCtaSection";
 import { TherapistTeaserSection } from "@/features/landing/components/TherapistTeaserSection";

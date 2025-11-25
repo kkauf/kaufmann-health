@@ -17,7 +17,7 @@ function parseCookie(header?: string | null): Map<string, string> {
   return map;
 }
 
-async function isCronOrAdmin(req: Request): Promise<boolean> {
+async function _isCronOrAdmin(req: Request): Promise<boolean> {
   try {
     const cronSecretHeader = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
     const cronSecret = process.env.CRON_SECRET;

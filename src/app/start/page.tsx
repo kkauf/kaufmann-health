@@ -9,7 +9,7 @@ import { FoundersValuesSection } from '@/features/landing/components/FoundersVal
 import { TherapistTeaserSection } from '@/features/landing/components/TherapistTeaserSection';
 import { FinalCtaSection } from '@/features/landing/components/FinalCtaSection';
 import { buildLandingMetadata, buildFaqJsonLd, buildLocalBusinessJsonLd } from '@/lib/seo';
-import { MessageCircle, UserCheck, PhoneCall, Shield, Lock, FileCheck, TextSearch, Search } from 'lucide-react';
+import { MessageCircle, UserCheck, PhoneCall, Shield, Lock, FileCheck, Search } from 'lucide-react';
 
 export const revalidate = 3600;
 

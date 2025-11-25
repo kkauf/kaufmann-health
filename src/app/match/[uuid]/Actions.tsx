@@ -22,8 +22,8 @@ export function Actions({
   initialContact,
   contactType,
   patientName,
-  patientReason,
-  contactMethod,
+  patientReason: _patientReason,
+  contactMethod: _contactMethod,
   therapistName,
   sessionPreference,
 }: {

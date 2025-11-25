@@ -92,7 +92,7 @@ export default function Screen1({
   const contactMethod = values.contact_method || 'email';
   const canSwitchMethod = mode === 'choice';
 
-  const handleSwitch = React.useCallback(() => {
+  const _handleSwitch = React.useCallback(() => {
     const newMethod: ContactMethod = contactMethod === 'email' ? 'phone' : 'email';
     saveContactMethod(newMethod);
     onChange({ contact_method: newMethod });

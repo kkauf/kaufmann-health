@@ -1,4 +1,3 @@
-import TherapistPreview, { type Therapist } from "@/components/TherapistPreview";
 import { getTherapistsByIds, getTherapistsForLanding } from "../lib/therapists";
 import { TherapistTeaserClient } from './TherapistTeaserClient';
 

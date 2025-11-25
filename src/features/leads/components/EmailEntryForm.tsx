@@ -31,9 +31,9 @@ interface ContactEntryFormProps {
 }
 
 /**
- * Detect if user is on mobile device
+ * Detect if user is on mobile device (kept for potential future use)
  */
-function isMobileDevice(): boolean {
+function _isMobileDevice(): boolean {
   if (typeof window === 'undefined') return false;
   const ua = window.navigator.userAgent.toLowerCase();
   return /mobile|android|iphone|ipad|ipod/i.test(ua);

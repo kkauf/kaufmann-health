@@ -1,8 +1,8 @@
 import { randomUUID } from 'crypto';
-import { NextResponse } from 'next/server';
+// NextResponse retained for type compatibility
 import { supabaseServer } from '@/lib/supabase-server';
 import { ServerAnalytics, parseAttributionFromRequest, parseCampaignFromRequest } from '@/lib/server-analytics';
-import { hashIP } from '@/features/leads/lib/validation';
+// hashIP removed - not currently used in this route
 import { isIpRateLimited } from '@/features/leads/lib/rateLimit';
 import { track } from '@/lib/logger';
 import { safeJson } from '@/lib/http';

@@ -81,7 +81,7 @@ export async function POST(req: Request) {
           'svix-signature': svixSig,
         });
         signatureVerified = true;
-      } catch (e) {
+      } catch {
         // fall through to shared-secret auth
       }
     }

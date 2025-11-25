@@ -27,7 +27,7 @@ export async function POST(req: Request) {
         // Twilio posts as application/x-www-form-urlencoded by default
         const params = Object.fromEntries(new URLSearchParams(raw));
         valid = twilio.validateRequest(authToken, sig, url, params as Record<string, string>);
-      } catch (e) {
+      } catch {
         valid = false;
       }
     }

@@ -14,7 +14,11 @@ const eslintConfig = [
   {
     rules: {
       // Allow warnings but don't fail CI on them
-      "@typescript-eslint/no-unused-vars": "warn",
+      "@typescript-eslint/no-unused-vars": ["warn", {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+        caughtErrorsIgnorePattern: "^_",
+      }],
       "react-hooks/exhaustive-deps": "warn",
       "@typescript-eslint/no-unused-expressions": "warn",
       "@next/next/no-img-element": "warn",

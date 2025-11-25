@@ -344,7 +344,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           // One-time appointments require the new schema; fail gracefully with a helpful error.
           return NextResponse.json({ data: null, error: 'One-time appointments are not supported until the database migration is applied.' }, { status: 400 });
         }
-        const legacySanitized = sanitized.map(({ is_recurring, specific_date, end_date, ...rest }) => rest) as LegacySlot[];
+        const legacySanitized = sanitized.map(({ is_recurring: _ir, specific_date: _sd, end_date: _ed, ...rest }) => rest) as LegacySlot[];
         const up2 = await supabaseServer
           .from('therapist_slots')
           .upsert(legacySanitized, { ignoreDuplicates: true });

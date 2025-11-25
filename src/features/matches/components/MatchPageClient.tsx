@@ -101,7 +101,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         } else {
           if (!cancelled) setData(json.data as MatchApiData);
         }
-      } catch (e) {
+      } catch {
         if (!cancelled) {
           setError('Netzwerkfehler');
           setData(null);
@@ -117,7 +117,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   }, [uuid]);
 
   const therapists = useMemo(() => data?.therapists || [], [data]);
-  const isVerified = useMemo(() => {
+  const _isVerified = useMemo(() => {
     const s = (data?.patient?.status || '').toLowerCase();
     return s === 'email_confirmed' || s === 'new';
   }, [data?.patient?.status]);

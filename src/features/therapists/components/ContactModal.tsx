@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, AlertCircle, Shield, Lock, FileCheck, ShieldCheck, Mail, MailCheck, MapPin, ChevronLeft, ChevronRight, Calendar, Video, User, Tag, CalendarCheck2 } from 'lucide-react';
+import { Loader2, AlertCircle, Shield, Lock, FileCheck, Mail, MailCheck, MapPin, ChevronLeft, ChevronRight, Calendar, Video, User, Tag, CalendarCheck2 } from 'lucide-react';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { validatePhone } from '@/lib/verification/usePhoneValidation';
@@ -84,8 +84,8 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   // Track whether the user has a verified session in this modal lifecycle
   const [isVerified, setIsVerified] = useState<boolean>(false);
 
-  const [restoredDraft, setRestoredDraft] = useState<boolean>(false);
-  const [autoSendAttempted, setAutoSendAttempted] = useState<boolean>(false);
+  const [_restoredDraft, _setRestoredDraft] = useState<boolean>(false);
+  const [_autoSendAttempted, _setAutoSendAttempted] = useState<boolean>(false);
   const draftTrackedRef = useRef<boolean>(false);
 
   const therapistName = `${therapist.first_name} ${therapist.last_name}`;

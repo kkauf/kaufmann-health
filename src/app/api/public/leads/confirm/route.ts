@@ -144,7 +144,7 @@ export async function GET(req: Request) {
     newMetadata['email_confirmed_at'] = nowIso;
 
     // Read draft_contact if present (therapist directory flow). Do NOT remove yet; only clear after successful processing.
-    const draftContact = (metadata?.['draft_contact'] as Record<string, unknown> | undefined) || undefined;
+    const _draftContact = (metadata?.['draft_contact'] as Record<string, unknown> | undefined) || undefined;
     const draftBooking = (metadata?.['draft_booking'] as Record<string, unknown> | undefined) || undefined;
 
     // If the questionnaire was completed already, the lead is actionable: mark as 'new'.

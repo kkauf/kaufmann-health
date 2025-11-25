@@ -155,8 +155,8 @@ export async function GET(req: Request) {
       const tRow = (therapistRow || null) as TherapistRow | null;
 
       const patientMeta: PatientMeta = (pRow?.metadata || {}) as PatientMeta;
-      const patientEmail = (pRow?.email || '').trim();
-      const patientPhoneNumber = (pRow?.phone_number || '').trim();
+      const _patientEmail = (pRow?.email || '').trim();
+      const _patientPhoneNumber = (pRow?.phone_number || '').trim();
       const therapistEmail = (tRow?.email || '').trim();
       const therapistFirst = (tRow?.first_name || '').trim();
       const therapistLast = (tRow?.last_name || '').trim();

@@ -35,7 +35,7 @@ function getBerlinDayIndex(d: Date): number {
 }
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+  const _ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
   // Test sink: when kh_test=1 cookie is set, reroute emails to LEADS_NOTIFY_EMAIL
   const isKhTest = (() => {
     try {
@@ -361,7 +361,7 @@ export async function POST(req: NextRequest) {
     } catch {}
 
     return NextResponse.json({ data: { booking_id: inserted.id }, error: null });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

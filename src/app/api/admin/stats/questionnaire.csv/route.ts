@@ -154,7 +154,7 @@ export async function GET(req: Request) {
       },
     });
     return resp;
-  } catch (e) {
+  } catch {
     return new NextResponse('Unexpected error', { status: 500 });
   }
 }

@@ -9,7 +9,7 @@ import Screen3 from './screens/Screen3';
 import Screen4 from './screens/Screen4';
 import NewScreen2_Timeline, { type NewScreen2Values } from './screens/NewScreen2_Timeline';
 import NewScreen3_WhatBringsYou, { type NewScreen3Values } from './screens/NewScreen3_WhatBringsYou';
-import NewScreen5_Modality, { type NewScreen5Values } from './screens/NewScreen5_Modality';
+import NewScreen5_Modality from './screens/NewScreen5_Modality';
 import { Button } from '@/components/ui/button';
 import { leadSubmissionSchema } from '@/lib/contracts';
 import { PRIVACY_VERSION } from '@/lib/privacy';
@@ -1160,7 +1160,7 @@ export default function SignupWizard() {
 
       void trackEvent('form_completed', { steps: 8 });
       goToStep(9);
-    } catch (err) {
+    } catch {
       setSubmitError('Senden fehlgeschlagen. Bitte überprüfe deine Verbindung und versuche es erneut.');
     } finally {
       clearTimeout(slowTimer);

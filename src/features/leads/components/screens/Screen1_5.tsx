@@ -89,7 +89,7 @@ export default function Screen1_5({
         setCode(['', '', '', '', '', '']);
         inputRefs.current[0]?.focus();
       }
-    } catch (err) {
+    } catch {
       setError('Fehler bei der Überprüfung');
       setCode(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
@@ -108,7 +108,7 @@ export default function Screen1_5({
     try {
       await onResend();
       inputRefs.current[0]?.focus();
-    } catch (err) {
+    } catch {
       setError('Fehler beim erneuten Senden');
     } finally {
       setResending(false);

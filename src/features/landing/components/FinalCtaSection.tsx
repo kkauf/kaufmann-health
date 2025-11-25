@@ -10,7 +10,7 @@ export function FinalCtaSection({
   quote,
   buttonLabel = "Passende Therapeut:innen finden",
   targetId = "#top-form",
-  footnoteText = "Kostenlos & unverbindlich. Antwort innerhalb von 24 Stunden.",
+  footnoteText: _footnoteText = "Kostenlos & unverbindlich. Antwort innerhalb von 24 Stunden.",
   variant = 'default',
   align = 'left',
   showAvailabilityNote = true,

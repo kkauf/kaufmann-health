@@ -42,7 +42,7 @@ export async function GET() {
     if (Array.isArray(lastErrRows) && lastErrRows.length > 0) {
       lastError = { type: String(lastErrRows[0].type || 'unknown'), created_at: String(lastErrRows[0].created_at) };
     }
-  } catch (e) {
+  } catch {
     dbConnected = false;
   }
 

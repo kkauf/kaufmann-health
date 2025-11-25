@@ -14,7 +14,8 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     .single();
 
   if (!row) return notFound();
-  const status = (row as { status?: string }).status || 'pending_verification';
+  // Status available but not displayed currently
+  const _status = (row as { status?: string }).status || 'pending_verification';
 
   const name = [
     (row as { first_name?: string }).first_name || '',

@@ -945,7 +945,7 @@ export async function GET(req: Request) {
 
       // no-op: budget removed in direct booking flow
 
-      const seg = {
+      const _seg = {
         bySessionPreference: [] as Array<{ option: string; started: number; completed: number; completion_rate: number }>,
         byOnlineOk: [] as Array<{ option: string; started: number; completed: number; completion_rate: number }>,
         byStartTiming: [] as Array<{ option: string; started: number; completed: number; completion_rate: number }>,
@@ -1258,7 +1258,7 @@ export async function GET(req: Request) {
       const clientVerifyPhone = Number(directory.verifyCompletedPhoneSessions || 0);
       const verifySessionTotal = (clientVerifyEmail + clientVerifyPhone) + serverVerifyEmailSessions.size + serverVerifyPhoneSessions.size;
 
-      const clientSentDisplayed = Number(directory.contactSent || 0);
+      const _clientSentDisplayed = Number(directory.contactSent || 0);
       // Replace displayed Sends with client + server session-joinable, plus non-session fallback for context
       const sentSessionsUnion = new Set<string>([...cleanServerSentSessions]);
       // Note: we cannot get client sent sessions set here; keep displayed count consistent with sessions where possible
@@ -1484,7 +1484,7 @@ export async function GET(req: Request) {
       }
 
       // Analyze each session's journey
-      for (const [sid, visits] of sessionPaths.entries()) {
+      for (const [_sid, visits] of sessionPaths.entries()) {
         const paths = visits.map(v => v.path);
         const hasFrage = paths.includes('/fragebogen');
         const hasTher = paths.includes('/therapeuten');

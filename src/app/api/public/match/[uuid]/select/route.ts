@@ -106,7 +106,7 @@ async function handle(req: Request) {
 
     // Determine whether we should update and notify. We only transition from 'proposed' to 'patient_selected'.
     const shouldTransition = existingStatus === 'proposed';
-    const alreadySelected = existingStatus === 'patient_selected' || existingStatus === 'accepted';
+    const _alreadySelected = existingStatus === 'patient_selected' || existingStatus === 'accepted';
 
     if (shouldTransition) {
       const { error: updErr } = await supabaseServer

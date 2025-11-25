@@ -71,7 +71,7 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
   const [slots, setSlots] = useState<Slot[]>([]);
 
   const [therapist, setTherapist] = useState<TherapistInfo | null>(null);
-  const [tLoading, setTLoading] = useState(false);
+  const [_tLoading, setTLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [practiceAddress, setPracticeAddress] = useState<string>("");
 
@@ -114,7 +114,7 @@ export default function TherapistSlotsPage(props: { params: Promise<{ id: string
     setImgError(false);
   }, [therapistId, therapist?.profile?.photo_url, therapist?.profile?.photo_pending_url, therapist?.photo_url]);
 
-  const photoSrc = useMemo(() => {
+  const _photoSrc = useMemo(() => {
     const src = therapist?.profile?.photo_url || therapist?.photo_url || therapist?.profile?.photo_pending_url || "";
     return imgError ? "" : src;
   }, [therapist?.profile?.photo_url, therapist?.profile?.photo_pending_url, therapist?.photo_url, imgError]);

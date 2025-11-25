@@ -30,7 +30,7 @@ export function ResendConfirmationForm() {
       } else {
         setMessage('Bitte später erneut versuchen.');
       }
-    } catch (e) {
+    } catch {
       setMessage('Bitte später erneut versuchen.');
     } finally {
       setSubmitting(false);

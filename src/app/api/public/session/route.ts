@@ -39,7 +39,7 @@ export async function GET(req: Request) {
       },
       error: null
     });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ data: { verified: false }, error: null }, { status: 200 });
   }
 }
