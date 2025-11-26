@@ -50,7 +50,7 @@ export default async function TherapieFindenPage() {
         // subtitle="Dein Körper erinnert sich — auch wenn dein Kopf längst verstanden hat. Körperpsychotherapie setzt dort an, wo Gespräche nicht hinkommen."
         ctaLabel="Therapeut:in finden"
         ctaHref="/fragebogen?variant=concierge"
-        backgroundSrc="/images/hero-calm3.jpeg"
+        backgroundSrc="/images/hero-calm.jpeg"
         valueProps={[
           '✓ Handverlesene Therapeut:innen',
           '✓ Termine innerhalb von 7 Tagen',
@@ -109,7 +109,7 @@ export default async function TherapieFindenPage() {
             <div className="relative w-full aspect-[4/5] max-w-xs rounded-2xl overflow-hidden shadow-xl border border-slate-200/60">
 
               <Image
-                src="/images/hands.jpeg"
+                src="/images/body-remembers.jpeg"
                 alt="Handverlesene Therapeut:innen"
                 fill
                 className="object-cover"
@@ -132,9 +132,24 @@ export default async function TherapieFindenPage() {
         {/* Decorative blur */}
         <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-gradient-to-br from-indigo-200/15 to-transparent blur-3xl" />
 
-        <div className="grid gap-8 lg:grid-cols-2 lg:gap-12 items-center">
-          {/* Text content */}
-          <div>
+        <div className="grid gap-8 lg:grid-cols-5 lg:gap-12 items-center">
+          {/* Visual - LEFT on desktop (order-first) */}
+          <div className="hidden lg:flex lg:col-span-2 lg:order-first items-center justify-center">
+            <div className="relative w-full aspect-[4/3] max-w-sm rounded-2xl overflow-hidden shadow-xl border border-slate-200/60">
+              <Image
+                src="/images/session.jpeg"
+                alt="Körperpsychotherapie-Sitzung"
+                fill
+                className="object-cover"
+                sizes="(min-width: 1024px) 340px, 0px"
+              />
+              {/* Subtle gradient overlay for depth */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900/10 via-transparent to-transparent" />
+            </div>
+          </div>
+
+          {/* Text content - RIGHT on desktop */}
+          <div className="lg:col-span-3">
             <h2 id="bridge-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
               Dein Körper erinnert sich.
             </h2>
@@ -151,35 +166,19 @@ export default async function TherapieFindenPage() {
             </div>
 
             {/* Mid-bridge CTA */}
-            <div className="mt-8">
+            <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <CtaLink
                 href="/fragebogen?variant=concierge"
                 eventType="cta_click"
                 eventId="therapie-finden-bridge-cta"
                 data-cta="bridge-section"
                 className="inline-flex items-center gap-2 rounded-lg bg-white border-2 border-teal-600 px-6 sm:px-8 py-3 sm:py-3.5 text-base sm:text-lg font-semibold text-teal-700 shadow-md hover:bg-teal-600 hover:text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2"
-             >
+              >
                 Fragebogen starten
               </CtaLink>
-              <p className="mt-3 text-sm sm:text-base text-gray-600 leading-relaxed">
-                In 3 Minuten teilen, was dich belastet – wir schlagen dir passende Körperpsychotherapie vor.
+              <p className="text-sm sm:text-base text-gray-600">
+                3 Minuten · Unverbindlich
               </p>
-            </div>
-          </div>
-
-          {/* Visual: Nervous system illustration placeholder */}
-          <div className="hidden lg:flex items-center justify-center">
-            <div className="relative w-full max-w-sm aspect-square rounded-2xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/80 shadow-md flex items-center justify-center">
-              {/* Placeholder for nervous system / body-mind connection illustration */}
-              <div className="text-center p-6">
-                <div className="mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100/60 flex items-center justify-center mb-4">
-                  <Brain className="h-12 w-12 text-indigo-500" />
-                </div>
-                <p className="text-sm text-gray-500 italic">
-                  Körper-Geist-Verbindung
-                </p>
-              </div>
-              {/* TODO: Replace with actual illustration showing nervous system / body storage concept */}
             </div>
           </div>
         </div>
@@ -312,6 +311,19 @@ export default async function TherapieFindenPage() {
           <span>Psychotherapie ohne Krankenkassen-Eintrag</span>
         </span>
       </p>
+
+      {/* Mid-page CTA - after process, before stats */}
+      <div className="mt-10 sm:mt-12 text-center">
+        <CtaLink
+          href="/fragebogen?variant=concierge"
+          eventType="cta_click"
+          eventId="therapie-finden-process-cta"
+          data-cta="after-process"
+          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-8 sm:px-10 py-3.5 sm:py-4 text-base sm:text-lg font-semibold text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/30 hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2"
+        >
+          Jetzt passende Therapeut:in finden
+        </CtaLink>
+      </div>
 
       {/* Hard Facts / Stats */}
       <section aria-labelledby="stats-heading" className="mt-10 sm:mt-14">
