@@ -10,7 +10,7 @@ import {
 } from '@/features/landing/components';
 import { buildLandingMetadata, buildLocalBusinessJsonLd, buildFaqJsonLd } from '@/lib/seo';
 import { Lock, MessageCircle, UserCheck, FileCheck, Shield, Clock, CalendarCheck, TrendingUp, Euro, Brain, Activity, Heart, Sparkles } from 'lucide-react';
-import RecognitionChips from './RecognitionChips';
+import Image from 'next/image';
 
 export const revalidate = 3600;
 
@@ -47,7 +47,7 @@ export default async function TherapieFindenPage() {
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
       <HeroNoForm
         title="Traumata lösen sich nicht von Reden allein."
-        subtitle="Dein Körper erinnert sich — auch wenn dein Kopf längst verstanden hat. Körperpsychotherapie setzt dort an, wo Gespräche nicht hinkommen."
+        // subtitle="Dein Körper erinnert sich — auch wenn dein Kopf längst verstanden hat. Körperpsychotherapie setzt dort an, wo Gespräche nicht hinkommen."
         ctaLabel="Therapeut:in finden"
         ctaHref="/fragebogen?variant=concierge"
         backgroundSrc="/images/hero-calm3.jpeg"
@@ -59,16 +59,67 @@ export default async function TherapieFindenPage() {
         ]}
       />
 
-      {/* Recognition Hook - Interactive Chips */}
-      <section className="mt-10 sm:mt-14">
-        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-center mb-6">
-          Kommt dir das bekannt vor?
-        </h2>
-        <RecognitionChips />
-        <p className="mt-6 sm:mt-8 text-center text-gray-700 max-w-3xl mx-auto text-base sm:text-lg leading-relaxed">
-          <strong className="text-gray-900">Du bist nicht &bdquo;schwierig&ldquo; oder &bdquo;therapieresistent&ldquo;.</strong>{' '}
-          Du brauchst einen Ansatz, der dort arbeitet, wo Gespräche nicht hinkommen: in deinem Nervensystem und deinem Körper.
-        </p>
+      {/* Recognition Hook */}
+      <section
+        aria-labelledby="recognition-heading"
+        className="relative mt-14 overflow-hidden rounded-3xl border border-slate-200/60 shadow-lg shadow-slate-100/50 bg-gradient-to-br from-slate-50/80 via-white to-slate-50/60 p-8 sm:mt-20 sm:p-10 lg:p-12"
+      >
+        {/* Enhanced gradient overlays */}
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_30%_0%,rgba(99,102,241,0.08),transparent_70%),radial-gradient(30rem_16rem_at_100%_80%,rgba(14,165,233,0.06),transparent_65%)]" />
+        {/* Decorative blur */}
+        <div className="pointer-events-none absolute -top-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-br from-indigo-200/20 to-transparent blur-3xl" />
+
+        <div className="grid gap-8 lg:grid-cols-5 lg:gap-12 items-center">
+          {/* Text content - takes 3/5 on large screens */}
+          <div className="lg:col-span-3">
+            <h2
+              id="recognition-heading"
+              className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 leading-tight"
+            >
+              Du hast vieles verstanden — und trägst es trotzdem noch mit dir.
+            </h2>
+
+            <p className="mt-6 text-base sm:text-lg lg:text-xl leading-relaxed text-gray-700">
+              Fühlst du dich oft überwältigt, abgeschnitten von dir selbst — als ob die Last der Vergangenheit dich daran hindert, wirklich im Jetzt anzukommen?
+            </p>
+
+            <p className="mt-5 text-base sm:text-lg leading-relaxed text-gray-700">
+              Hier findest du Therapeut:innen, die verstehen, was du durchmachst — sorgfältig ausgewählt für deine Situation. Online oder vor Ort. Ohne Wartezeit. Ohne Eintrag in deine Krankenakte.
+            </p>
+
+            {/* CTA area */}
+            <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <CtaLink
+                href="/fragebogen?variant=concierge"
+                eventType="cta_click"
+                eventId="therapie-finden-recognition-cta"
+                data-cta="recognition-hook"
+                className="inline-flex items-center gap-2 rounded-lg bg-white border-2 border-indigo-600 px-6 sm:px-8 py-3 sm:py-3.5 text-base sm:text-lg font-semibold text-indigo-700 shadow-md hover:bg-indigo-600 hover:text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
+              >
+                Unverbindlich anfragen
+              </CtaLink>
+              <p className="text-sm sm:text-base text-gray-600">
+                Wir helfen dir, die richtige Begleitung zu finden.
+              </p>
+            </div>
+          </div>
+
+          {/* Visual - takes 2/5 on large screens */}
+          <div className="hidden lg:flex lg:col-span-2 items-center justify-center">
+            <div className="relative w-full aspect-[4/5] max-w-xs rounded-2xl overflow-hidden shadow-xl border border-slate-200/60">
+
+              <Image
+                src="/images/hands.jpeg"
+                alt="Handverlesene Therapeut:innen"
+                fill
+                className="object-cover"
+                sizes="(min-width: 1024px) 280px, 0px"
+              />
+              {/* Subtle gradient overlay for depth */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900/10 via-transparent to-transparent" />
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Bridge Section - Why patterns repeat */}
@@ -85,7 +136,7 @@ export default async function TherapieFindenPage() {
           {/* Text content */}
           <div>
             <h2 id="bridge-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
-              Warum sich Muster wiederholen — auch wenn du alles verstanden hast
+              Dein Körper erinnert sich.
             </h2>
             <div className="mt-6 space-y-4 text-gray-700 leading-relaxed text-base sm:text-lg">
               <p>
@@ -99,15 +150,21 @@ export default async function TherapieFindenPage() {
               </p>
             </div>
 
-            {/* Integrated quote */}
-            <blockquote className="relative mt-8 rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50/80 to-orange-50/50 p-5 sm:p-6 shadow-sm">
-              <div className="flex gap-3">
-                <span className="text-amber-400 text-3xl font-serif leading-none">&ldquo;</span>
-                <p className="text-gray-800 font-medium text-base sm:text-lg leading-relaxed">
-                  Trauma wird nicht nur als Geschichte im Gehirn gespeichert — sondern als körperliche Erfahrung im Nervensystem.
-                </p>
-              </div>
-            </blockquote>
+            {/* Mid-bridge CTA */}
+            <div className="mt-8">
+              <CtaLink
+                href="/fragebogen?variant=concierge"
+                eventType="cta_click"
+                eventId="therapie-finden-bridge-cta"
+                data-cta="bridge-section"
+                className="inline-flex items-center gap-2 rounded-lg bg-white border-2 border-teal-600 px-6 sm:px-8 py-3 sm:py-3.5 text-base sm:text-lg font-semibold text-teal-700 shadow-md hover:bg-teal-600 hover:text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2"
+             >
+                Fragebogen starten
+              </CtaLink>
+              <p className="mt-3 text-sm sm:text-base text-gray-600 leading-relaxed">
+                In 3 Minuten teilen, was dich belastet – wir schlagen dir passende Körperpsychotherapie vor.
+              </p>
+            </div>
           </div>
 
           {/* Visual: Nervous system illustration placeholder */}
