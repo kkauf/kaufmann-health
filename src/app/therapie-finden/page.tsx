@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import FaqAccordion from '@/components/FaqAccordion';
 import CtaLink from '@/components/CtaLink';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
   HeroNoForm,
   TherapistTeaserSection,
@@ -71,80 +72,145 @@ export default async function TherapieFindenPage() {
       </section>
 
       {/* Bridge Section - Why patterns repeat */}
-      <section className="mt-14 sm:mt-20">
-        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-center mb-6 sm:mb-8">
-          Warum sich Muster wiederholen — auch wenn du alles verstanden hast
-        </h2>
-        <div className="max-w-3xl mx-auto space-y-5 text-gray-700 leading-relaxed text-base sm:text-lg">
-          <p>
-            Bei Trauma, chronischer Überforderung oder frühen Beziehungserfahrungen reagiert dein Nervensystem automatisch — unabhängig davon, was du denkst oder weißt.
-          </p>
-          <p>
-            Der Körper speichert diese Erfahrungen als Anspannung, Taubheit oder ständige Alarmbereitschaft. Gesprächstherapie erreicht den Verstand. Aber diese Muster sitzen tiefer.
-          </p>
-          <p>
-            Körperpsychotherapie arbeitet genau dort: mit dem autonomen Nervensystem, mit den Reaktionen, die du nicht &bdquo;wegdenken&ldquo; kannst.
-          </p>
-        </div>
-        {/* Visual accent quote */}
-        <div className="mt-8 max-w-2xl mx-auto">
-          <blockquote className="relative rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50/90 to-orange-50/60 p-6 sm:p-8 shadow-sm">
-            <div className="absolute -top-3 left-6 bg-white px-2">
-              <span className="text-amber-500 text-2xl font-serif">&ldquo;</span>
+      <section
+        aria-labelledby="bridge-heading"
+        className="relative mt-14 overflow-hidden rounded-3xl border border-slate-200/60 shadow-lg shadow-slate-100/50 bg-gradient-to-br from-slate-50/80 via-white to-slate-50/60 p-8 sm:mt-20 sm:p-10 lg:p-12"
+      >
+        {/* Enhanced gradient overlays */}
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_50%_0%,rgba(99,102,241,0.08),transparent_70%),radial-gradient(30rem_16rem_at_100%_100%,rgba(14,165,233,0.06),transparent_65%)]" />
+        {/* Decorative blur */}
+        <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-gradient-to-br from-indigo-200/15 to-transparent blur-3xl" />
+
+        <div className="grid gap-8 lg:grid-cols-2 lg:gap-12 items-center">
+          {/* Text content */}
+          <div>
+            <h2 id="bridge-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
+              Warum sich Muster wiederholen — auch wenn du alles verstanden hast
+            </h2>
+            <div className="mt-6 space-y-4 text-gray-700 leading-relaxed text-base sm:text-lg">
+              <p>
+                Bei Trauma, chronischer Überforderung oder frühen Beziehungserfahrungen reagiert dein Nervensystem automatisch — unabhängig davon, was du denkst oder weißt.
+              </p>
+              <p>
+                Der Körper speichert diese Erfahrungen als Anspannung, Taubheit oder ständige Alarmbereitschaft. Gesprächstherapie erreicht den Verstand. Aber diese Muster sitzen tiefer.
+              </p>
+              <p>
+                <strong className="text-gray-900">Körperpsychotherapie arbeitet genau dort:</strong> mit dem autonomen Nervensystem, mit den Reaktionen, die du nicht &bdquo;wegdenken&ldquo; kannst.
+              </p>
             </div>
-            <p className="text-gray-800 font-medium text-base sm:text-lg leading-relaxed italic">
-              Trauma wird nicht nur als Geschichte im Gehirn gespeichert — sondern als körperliche Erfahrung im Nervensystem.
-            </p>
-          </blockquote>
+
+            {/* Integrated quote */}
+            <blockquote className="relative mt-8 rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50/80 to-orange-50/50 p-5 sm:p-6 shadow-sm">
+              <div className="flex gap-3">
+                <span className="text-amber-400 text-3xl font-serif leading-none">&ldquo;</span>
+                <p className="text-gray-800 font-medium text-base sm:text-lg leading-relaxed">
+                  Trauma wird nicht nur als Geschichte im Gehirn gespeichert — sondern als körperliche Erfahrung im Nervensystem.
+                </p>
+              </div>
+            </blockquote>
+          </div>
+
+          {/* Visual: Nervous system illustration placeholder */}
+          <div className="hidden lg:flex items-center justify-center">
+            <div className="relative w-full max-w-sm aspect-square rounded-2xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/80 shadow-md flex items-center justify-center">
+              {/* Placeholder for nervous system / body-mind connection illustration */}
+              <div className="text-center p-6">
+                <div className="mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100/60 flex items-center justify-center mb-4">
+                  <Brain className="h-12 w-12 text-indigo-500" />
+                </div>
+                <p className="text-sm text-gray-500 italic">
+                  Körper-Geist-Verbindung
+                </p>
+              </div>
+              {/* TODO: Replace with actual illustration showing nervous system / body storage concept */}
+            </div>
+          </div>
         </div>
       </section>
 
       {/* What body-oriented approaches achieve - 4 Cards */}
-      <section className="mt-14 sm:mt-20">
-        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-center mb-8 sm:mb-10">
-          Was körperorientierte Ansätze erreichen können
-        </h2>
-        <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto">
+      <section
+        aria-labelledby="approaches-heading"
+        className="relative mt-14 overflow-hidden rounded-3xl border border-slate-200/60 shadow-lg shadow-slate-100/50 bg-gradient-to-br from-slate-50/80 via-white to-slate-50/60 p-8 sm:mt-20 sm:p-10 lg:p-12"
+      >
+        {/* Enhanced gradient overlays */}
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40rem_20rem_at_50%_0%,rgba(16,185,129,0.06),transparent_70%),radial-gradient(30rem_16rem_at_0%_100%,rgba(99,102,241,0.06),transparent_65%)]" />
+        {/* Decorative blur */}
+        <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-gradient-to-tr from-emerald-200/15 to-transparent blur-3xl" />
+
+        <div className="text-center">
+          <h2 id="approaches-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
+            Was körperorientierte Ansätze erreichen können
+          </h2>
+          <p className="mt-4 text-base sm:text-lg leading-relaxed text-gray-700 max-w-2xl mx-auto">
+            Körperpsychotherapie wirkt dort, wo kognitive Methoden an Grenzen stoßen.
+          </p>
+        </div>
+
+        <div className="mt-10 grid sm:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto">
           {/* Card 1: Nervensystem regulieren */}
-          <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-white p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 mb-4">
-              <Brain className="h-6 w-6 text-indigo-600" />
-            </div>
-            <h3 className="font-semibold text-gray-900 text-lg mb-2">Nervensystem regulieren</h3>
-            <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
-              Lerne, dein autonomes Nervensystem direkt zu beeinflussen — nicht durch Analyse, sondern durch körperliche Erfahrung und Präsenz.
-            </p>
-          </div>
+          <Card className="group relative border-gray-200/60 shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 bg-white/80 backdrop-blur-sm">
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
+            <CardHeader>
+              <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/60 p-3 text-indigo-600 shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-200 w-fit">
+                <Brain className="h-6 w-6" />
+              </div>
+              <CardTitle className="mt-4 text-lg text-gray-900">Nervensystem regulieren</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
+                Lerne, dein autonomes Nervensystem direkt zu beeinflussen — nicht durch Analyse, sondern durch körperliche Erfahrung und Präsenz.
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Card 2: Blockaden lösen */}
-          <div className="rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-50/80 to-white p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-100 mb-4">
-              <Activity className="h-6 w-6 text-cyan-600" />
-            </div>
-            <h3 className="font-semibold text-gray-900 text-lg mb-2">Blockaden lösen</h3>
-            <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
-              Festgehaltene Überlebensenergie kann sich entladen. Chronische Anspannung oder Taubheit beginnen sich zu lösen.
-            </p>
-          </div>
+          <Card className="group relative border-gray-200/60 shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 bg-white/80 backdrop-blur-sm">
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
+            <CardHeader>
+              <div className="rounded-xl bg-gradient-to-br from-sky-50 to-sky-100/60 p-3 text-sky-600 shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-200 w-fit">
+                <Activity className="h-6 w-6" />
+              </div>
+              <CardTitle className="mt-4 text-lg text-gray-900">Blockaden lösen</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
+                Festgehaltene Überlebensenergie kann sich entladen. Chronische Anspannung oder Taubheit beginnen sich zu lösen.
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Card 3: Verbindungen verstehen */}
-          <div className="rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50/80 to-white p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-100 mb-4">
-              <Heart className="h-6 w-6 text-rose-600" />
-            </div>
-            <h3 className="font-semibold text-gray-900 text-lg mb-2">Verbindungen verstehen</h3>
-            <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
-              Erkenne, wie Körperempfindungen, Emotionen und Gedanken zusammenhängen — und wie sie sich gegenseitig beeinflussen.
-            </p>
-          </div>
+          <Card className="group relative border-gray-200/60 shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 bg-white/80 backdrop-blur-sm">
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
+            <CardHeader>
+              <div className="rounded-xl bg-gradient-to-br from-rose-50 to-rose-100/60 p-3 text-rose-600 shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-200 w-fit">
+                <Heart className="h-6 w-6" />
+              </div>
+              <CardTitle className="mt-4 text-lg text-gray-900">Verbindungen verstehen</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
+                Erkenne, wie Körperempfindungen, Emotionen und Gedanken zusammenhängen — und wie sie sich gegenseitig beeinflussen.
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Card 4: Nachhaltige Veränderung */}
-          <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/80 to-white p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 mb-4">
-              <Sparkles className="h-6 w-6 text-emerald-600" />
-            </div>
-            <h3 className="font-semibold text-gray-900 text-lg mb-2">Nachhaltige Veränderung</h3>
-            <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
-              Veränderung, die nicht nur im Kopf stattfindet, sondern körperlich integriert ist. Spürbar. Stabil.
-            </p>
-          </div>
+          <Card className="group relative border-gray-200/60 shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 bg-white/80 backdrop-blur-sm">
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50/50 rounded-xl" />
+            <CardHeader>
+              <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 p-3 text-emerald-600 shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-200 w-fit">
+                <Sparkles className="h-6 w-6" />
+              </div>
+              <CardTitle className="mt-4 text-lg text-gray-900">Nachhaltige Veränderung</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
+                Veränderung, die nicht nur im Kopf stattfindet, sondern körperlich integriert ist. Spürbar. Stabil.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
@@ -191,45 +257,65 @@ export default async function TherapieFindenPage() {
       </p>
 
       {/* Hard Facts / Stats */}
-      <section className="mt-10 sm:mt-14">
-        <div className="grid gap-4 sm:grid-cols-3">
-          {/* Stat 1: Effectiveness */}
-          <div className="rounded-2xl border border-slate-200/60 bg-white p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100">
-                <TrendingUp className="h-6 w-6 text-indigo-600" />
-              </div>
-              <div className="text-3xl sm:text-4xl font-bold text-indigo-600">80%</div>
-            </div>
-            <p className="text-sm text-gray-600">
-              der Klient:innen berichten von Verbesserungen nach fünf Sitzungen
-            </p>
-          </div>
+      <section aria-labelledby="stats-heading" className="mt-10 sm:mt-14">
+        <h2 id="stats-heading" className="sr-only">Fakten auf einen Blick</h2>
+        <div className="relative rounded-2xl border border-gray-200/60 bg-white shadow-md p-6 sm:p-8">
+          {/* Subtle overlay for depth */}
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30 rounded-2xl" />
 
-          {/* Stat 2: Pricing */}
-          <div className="rounded-2xl border border-slate-200/60 bg-white p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-100">
-                <Euro className="h-6 w-6 text-cyan-600" />
+          <div className="grid gap-6 sm:grid-cols-3 sm:gap-8">
+            {/* Stat 1: Effectiveness */}
+            <div className="text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-start gap-3 mb-3">
+                <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/60 p-2.5 text-indigo-600 shadow-sm">
+                  <TrendingUp className="h-5 w-5" />
+                </div>
+                <span className="text-3xl sm:text-4xl font-bold bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  80%
+                </span>
               </div>
-              <div className="text-3xl sm:text-4xl font-bold text-cyan-600">€80-120</div>
+              <p className="text-sm text-gray-600">
+                der Klient:innen berichten von Verbesserungen nach fünf Sitzungen
+              </p>
             </div>
-            <p className="text-sm text-gray-600">
-              pro Sitzung bei Selbstzahlung
-            </p>
-          </div>
 
-          {/* Stat 3: Speed */}
-          <div className="rounded-2xl border border-slate-200/60 bg-white p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
-                <Clock className="h-6 w-6 text-emerald-600" />
+            {/* Divider (mobile: horizontal, desktop: vertical) */}
+            <div className="hidden sm:block absolute left-1/3 top-6 bottom-6 w-px bg-gradient-to-b from-gray-200/50 via-gray-300/50 to-gray-200/50" />
+            <div className="hidden sm:block absolute left-2/3 top-6 bottom-6 w-px bg-gradient-to-b from-gray-200/50 via-gray-300/50 to-gray-200/50" />
+            <div className="sm:hidden h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+
+            {/* Stat 2: Pricing */}
+            <div className="text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-start gap-3 mb-3">
+                <div className="rounded-xl bg-gradient-to-br from-sky-50 to-sky-100/60 p-2.5 text-sky-600 shadow-sm">
+                  <Euro className="h-5 w-5" />
+                </div>
+                <span className="text-3xl sm:text-4xl font-bold bg-gradient-to-br from-sky-600 via-cyan-600 to-teal-600 bg-clip-text text-transparent">
+                  €80–120
+                </span>
               </div>
-              <div className="text-3xl sm:text-4xl font-bold text-emerald-600">7 Tage</div>
+              <p className="text-sm text-gray-600">
+                pro Sitzung bei Selbstzahlung
+              </p>
             </div>
-            <p className="text-sm text-gray-600">
-              durchschnittliche Zeit bis zum Ersttermin
-            </p>
+
+            {/* Mobile divider */}
+            <div className="sm:hidden h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+
+            {/* Stat 3: Speed */}
+            <div className="text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-start gap-3 mb-3">
+                <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 p-2.5 text-emerald-600 shadow-sm">
+                  <Clock className="h-5 w-5" />
+                </div>
+                <span className="text-3xl sm:text-4xl font-bold bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
+                  7 Tage
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">
+                durchschnittliche Zeit bis zum Ersttermin
+              </p>
+            </div>
           </div>
         </div>
       </section>
