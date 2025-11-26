@@ -18,8 +18,8 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }): Promise<Metadata> {
   const params = await searchParams;
-  const title = 'Therapeut:innen finden – Heilpraktiker:in für Psychotherapie | Kaufmann Health';
-  const description = 'Therapeuten finden in 24 Stunden. Persönlich ausgewählt für dich. Online-Psychotherapie oder vor Ort in Berlin. Ohne Wartezeit.';
+  const title = 'Deutschlands erste Plattform für Körperpsychotherapie –  | Kaufmann Health';
+  const description = 'Sorgfältig ausgewählte Therapeut:innen für dich. Online oder vor Ort in Berlin. Ohne Wartezeit.';
   const v = (params?.v as string) || undefined;
   return buildLandingMetadata({
     baseUrl: baseUrl,
