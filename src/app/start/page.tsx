@@ -49,8 +49,11 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
   const rawVariantParam = params?.variant || params?.v;
   const rawVariant = typeof rawVariantParam === 'string' ? rawVariantParam.toLowerCase() : '';
   const isBrowse = rawVariant === 'browse';
+  // Test 3: Default to 'marketplace' variant for verification gating when no variant specified
+  // This ensures users from /start go through verification before seeing matches
+  const fragebogenVariant = rawVariant || 'marketplace';
   // Preserve variant when moving into the questionnaire so downstream attribution can detect origin
-  const fragebogenHref = `/fragebogen${rawVariant ? `?v=${encodeURIComponent(rawVariant)}` : ''}`;
+  const fragebogenHref = `/fragebogen?v=${encodeURIComponent(fragebogenVariant)}`;
   // Preserve variant when navigating to the directory so the variant survives into /therapeuten
   const therapeutenHref = `/therapeuten${rawVariant ? `?v=${encodeURIComponent(rawVariant)}` : ''}`;
   

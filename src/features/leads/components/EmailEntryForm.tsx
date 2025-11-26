@@ -165,9 +165,10 @@ export function ContactEntryForm({
       } catch {}
 
       // Navigate to the Fragebogen, preserving variant (?v=) if present
+      // Test 3: Default to 'marketplace' for verification gating when no variant specified
       const url = typeof window !== 'undefined' ? new URL(window.location.href) : null;
-      const v = url?.searchParams.get('v');
-      const next = v ? `/fragebogen?v=${encodeURIComponent(v)}` : '/fragebogen';
+      const v = url?.searchParams.get('v') || 'marketplace';
+      const next = `/fragebogen?v=${encodeURIComponent(v)}`;
       try { track('Lead Started'); } catch {}
       if (typeof window !== 'undefined') window.location.assign(next);
     } catch (err) {
