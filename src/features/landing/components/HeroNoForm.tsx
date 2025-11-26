@@ -75,7 +75,7 @@ export function HeroNoForm({
       )}
 
       <div className={`mx-auto w-full max-w-7xl px-6 sm:px-8 ${noBackground ? 'py-14 sm:py-16 lg:px-8 lg:py-20' : 'grid min-h-[520px] grid-rows-[1fr] py-16 sm:min-h-[640px] sm:py-24 lg:px-10 lg:py-28'}`}>
-        <div className="flex flex-col justify-center">
+        <div className="flex flex-col justify-center w-full lg:w-1/2 max-w-2xl">
           {icon ? (
             <div className="mb-4 sm:mb-6">{icon}</div>
           ) : null}
@@ -101,17 +101,17 @@ export function HeroNoForm({
               </CtaLink>
             </Button>
           </div>
-
-          {valueProps?.length ? (
-            <div className={valuePropsClass}>
-              {valueProps.map((vp, i) => (
-                <span key={i} className="inline-flex items-center font-medium">
-                  {vp}
-                </span>
-              ))}
-            </div>
-          ) : null}
         </div>
+
+        {valueProps?.length ? (
+          <div className={valuePropsClass}>
+            {valueProps.map((vp, i) => (
+              <span key={i} className="inline-flex items-center font-medium">
+                {vp}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
     </section>
   );
