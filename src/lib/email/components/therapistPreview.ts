@@ -74,7 +74,7 @@ export function renderTherapistPreviewEmail(params: {
   const photoSrc = toProxiedPhotoUrl(params.photo_url);
   const photo = photoSrc
     ? `<img src="${escapeHtml(photoSrc)}" alt="${escapeHtml(params.first_name)} ${escapeHtml(params.last_name)}" width="72" height="72" style="width:72px;height:72px;object-fit:cover;display:block;border-radius:999px;" />`
-    : `<div style="width:72px;height:72px;color:#fff !important;display:flex;align-items:center;justify-content:center;font-weight:600;border-radius:999px;">${escapeHtml(initials)}</div>`;
+    : `<div style="width:72px;height:72px;color:#fff !important;text-align:center;line-height:72px;font-size:24px;font-weight:600;border-radius:999px;">${escapeHtml(initials)}</div>`;
   // Build multiple modality badges
   const badgeItems = buildBadgeItems(params.modalities || []);
   const maxBadges = 3;
