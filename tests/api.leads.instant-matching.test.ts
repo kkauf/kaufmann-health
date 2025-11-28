@@ -11,6 +11,13 @@ vi.mock('@/lib/test-mode', () => ({ isTestRequest: () => true }));
 vi.mock('@/lib/supabase-server', () => ({ supabaseServer: { from: vi.fn() } }));
 vi.mock('@/features/leads/lib/rateLimit', () => ({ isIpRateLimited: vi.fn(async () => false) }));
 
+// Mock the shared match module - createInstantMatchesForPatient uses dynamic import
+let mockMatchResult: { matchesUrl: string; matchQuality: 'exact' | 'partial' | 'none' } | null = null;
+vi.mock('@/features/leads/lib/match', () => ({
+  createInstantMatchesForPatient: vi.fn(async () => mockMatchResult),
+  computeMismatches: vi.fn(() => ({ mismatches: {}, isPerfect: true, reasons: [] })),
+}));
+
 import { supabaseServer } from '@/lib/supabase-server';
 
 function makeReq(body: any, headers?: Record<string, string>) {
@@ -54,11 +61,13 @@ function wireSupabaseForInstantMatch({ patientMeta, therapists, slots, secureUui
 describe('Leads API - Instant Matching (EARTH-229)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockMatchResult = null; // Reset mock between tests
   });
 
   describe('Feature Flag Gating', () => {
     it('returns matchesUrl when NEXT_PUBLIC_DIRECT_BOOKING_FLOW=true', async () => {
       process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW = 'true';
+      mockMatchResult = { matchesUrl: '/matches/test-uuid', matchQuality: 'exact' };
       wireSupabaseForInstantMatch({
         patientMeta: { time_slots: ['Morgens (8-12 Uhr)'] },
         therapists: [
@@ -94,7 +103,10 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
   });
 
   describe('Match Creation', () => {
-    beforeEach(() => { process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW = 'true'; });
+    beforeEach(() => {
+      process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW = 'true';
+      mockMatchResult = { matchesUrl: '/matches/test-uuid', matchQuality: 'exact' };
+    });
 
     it('creates up to 3 match rows for matching therapists', async () => {
       wireSupabaseForInstantMatch({
@@ -113,7 +125,8 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
     });
 
     it('creates empty match when no therapists available', async () => {
-      // Test scenario where no therapists match criteria
+      // Test scenario where no therapists match criteria - still returns matchesUrl with 'none' quality
+      mockMatchResult = { matchesUrl: '/matches/empty-uuid', matchQuality: 'none' };
       wireSupabaseForInstantMatch({ patientMeta: {}, therapists: [], slots: [] });
       const res = await POST(makeReq({ type: 'patient', email: 'niche@test.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
@@ -125,6 +138,7 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
   describe('Time-of-Day Matching', () => {
     beforeEach(() => {
       process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW = 'true';
+      mockMatchResult = { matchesUrl: '/matches/time-uuid', matchQuality: 'exact' };
     });
 
     it('considers morning availability preference', async () => {
@@ -155,6 +169,7 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
   describe('Edge Cases', () => {
     beforeEach(() => {
       process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW = 'true';
+      mockMatchResult = { matchesUrl: '/matches/edge-uuid', matchQuality: 'partial' };
     });
 
     it('handles missing form_session_id gracefully', async () => {

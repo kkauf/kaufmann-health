@@ -15,6 +15,7 @@ import { renderBookingTherapistNotification } from '@/lib/email/templates/bookin
 import { renderBookingClientConfirmation } from '@/lib/email/templates/bookingClientConfirmation';
 import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
 import { getFixedWindowLimiter, extractIpFromHeaders } from '@/lib/rate-limit';
+import { createInstantMatchesForPatient } from '@/features/leads/lib/match';
 
 interface VerifyCodeRequest {
   contact: string; // email or phone
@@ -108,6 +109,25 @@ export async function POST(req: NextRequest) {
             // Mark as 'new' so phone users proceed without email confirmation
             .update({ metadata, status: 'new' })
             .eq('id', person.id);
+
+          // Create instant matches for phone-verified users (fix: was missing)
+          const variant = typeof metadata.campaign_variant === 'string' ? metadata.campaign_variant : undefined;
+          try {
+            const matchResult = await createInstantMatchesForPatient(person.id, variant);
+            if (matchResult) {
+              // Store matchesUrl in metadata for redirect after verification
+              const updatedMeta = { ...metadata, last_confirm_redirect_path: matchResult.matchesUrl };
+              await supabaseServer
+                .from('people')
+                .update({ metadata: updatedMeta })
+                .eq('id', person.id);
+              void ServerAnalytics.trackEventFromRequest(req, {
+                type: 'instant_match_created',
+                source: 'api.verification.verify-code',
+                props: { match_quality: matchResult.matchQuality, patient_id: person.id },
+              });
+            }
+          } catch { /* non-blocking */ }
 
           // Process draft contact if present
           if (draftContact) {

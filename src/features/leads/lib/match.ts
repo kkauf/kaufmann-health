@@ -1,3 +1,6 @@
+// Note: supabaseServer is imported dynamically inside createInstantMatchesForPatient
+// to avoid module-level initialization issues in test environments
+
 export type PatientMeta = {
   city?: string;
   session_preference?: 'online' | 'in_person';
@@ -77,4 +80,145 @@ export function computeMismatches(patient: PatientMeta | null | undefined, thera
   if (mismatches.modality) reasons.push('modality');
 
   return { mismatches: { ...mismatches }, isPerfect, reasons };
+}
+
+/**
+ * Create instant matches for a patient based on their preferences
+ * Returns secure match UUID for browsing therapists
+ */
+export async function createInstantMatchesForPatient(patientId: string, variant?: string): Promise<{ matchesUrl: string; matchQuality: 'exact' | 'partial' | 'none' } | null> {
+  try {
+    const isConcierge = variant === 'concierge';
+    if (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW !== 'true' && !isConcierge) return null;
+    
+    // Dynamic import to avoid module-level initialization in tests
+    const { supabaseServer } = await import('@/lib/supabase-server');
+    
+    type PersonRow = { id: string; metadata?: Record<string, unknown> | null };
+    const { data: person } = await supabaseServer
+      .from('people')
+      .select('id, metadata')
+      .eq('id', patientId)
+      .single<PersonRow>();
+    
+    const meta = (person?.metadata || {}) as Record<string, unknown>;
+    const city = typeof meta['city'] === 'string' ? (meta['city'] as string) : undefined;
+    const session_preference = typeof meta['session_preference'] === 'string' ? (meta['session_preference'] as string) as 'online' | 'in_person' : undefined;
+    const session_preferences = Array.isArray(meta['session_preferences']) ? (meta['session_preferences'] as ('online' | 'in_person')[]) : undefined;
+    const specializations = Array.isArray(meta['specializations']) ? (meta['specializations'] as string[]) : undefined;
+    const gender_preference = typeof meta['gender_preference'] === 'string' ? (meta['gender_preference'] as 'male' | 'female' | 'no_preference') : undefined;
+    const time_slots = Array.isArray(meta['time_slots']) ? (meta['time_slots'] as string[]) : [];
+    const pMeta: PatientMeta = { city, session_preference, session_preferences, specializations, gender_preference };
+
+    type TR = { id: string; gender?: string | null; city?: string | null; session_preferences?: unknown; modalities?: unknown; accepting_new?: boolean | null; metadata?: Record<string, unknown> | null };
+    const { data: trows } = await supabaseServer
+      .from('therapists')
+      .select('id, gender, city, session_preferences, modalities, accepting_new, metadata')
+      .eq('status', 'verified')
+      .limit(5000);
+    const therapists = Array.isArray(trows) ? (trows as TR[]) : [];
+
+    const tIds = therapists.map(t => t.id);
+    type SlotRow = { therapist_id: string; day_of_week: number; time_local: string; format: string; address: string | null; active: boolean | null };
+    let slotsByTid = new Map<string, SlotRow[]>();
+    try {
+      if (tIds.length > 0) {
+        const { data: srows } = await supabaseServer
+          .from('therapist_slots')
+          .select('therapist_id, day_of_week, time_local, format, address, active')
+          .in('therapist_id', tIds)
+          .eq('active', true)
+          .limit(5000);
+        if (Array.isArray(srows)) {
+          for (const s of srows as SlotRow[]) {
+            const arr = slotsByTid.get(s.therapist_id) || [];
+            arr.push(s);
+            slotsByTid.set(s.therapist_id, arr);
+          }
+        }
+      }
+    } catch { slotsByTid = new Map(); }
+
+    function slotMatchesPreferences(therapistId: string): boolean {
+      const prefs = new Set((time_slots || []).map((s) => String(s)));
+      if (prefs.size === 0 || prefs.has('Bin flexibel')) return true;
+      const wantMorning = Array.from(prefs).some((s) => s.toLowerCase().includes('morg'));
+      const wantAfternoon = Array.from(prefs).some((s) => s.toLowerCase().includes('nachmitt'));
+      const wantEvening = Array.from(prefs).some((s) => s.toLowerCase().includes('abend'));
+      const wantWeekend = Array.from(prefs).some((s) => s.toLowerCase().includes('wochen'));
+      const slots = slotsByTid.get(therapistId) || [];
+      const now = new Date();
+      for (let offset = 1; offset <= 21; offset++) {
+        const d = new Date(now.getTime());
+        d.setUTCDate(d.getUTCDate() + offset);
+        const dow = d.getUTCDay();
+        for (const s of slots) {
+          if (Number(s.day_of_week) !== (dow === 0 ? 0 : dow)) continue;
+          const h = parseInt(String(s.time_local || '').slice(0, 2), 10);
+          const isMorning = h >= 8 && h < 12;
+          const isAfternoon = h >= 12 && h < 17;
+          const isEvening = h >= 17 && h < 21;
+          const isWeekend = dow === 0 || dow === 6;
+          if ((wantMorning && isMorning) || (wantAfternoon && isAfternoon) || (wantEvening && isEvening) || (wantWeekend && isWeekend)) return true;
+        }
+      }
+      return false;
+    }
+
+    const scored: { id: string; isPerfect: boolean; reasons: string[]; accepting: boolean }[] = [];
+    for (const t of therapists) {
+      if (t.accepting_new === false) continue;
+      const tMeta = (t.metadata || {}) as Record<string, unknown>;
+      const hideFromDir = tMeta['hide_from_directory'] === true;
+      if (hideFromDir) continue;
+
+      const tRow: TherapistRowForMatch = { id: t.id, gender: t.gender || undefined, city: t.city || undefined, session_preferences: t.session_preferences, modalities: t.modalities };
+      const mm = computeMismatches(pMeta, tRow);
+      const timeOk = slotMatchesPreferences(t.id);
+      const isPerfect = mm.isPerfect && timeOk;
+      scored.push({ id: t.id, isPerfect, reasons: mm.reasons, accepting: Boolean(t.accepting_new) });
+    }
+
+    scored.sort((a, b) => {
+      if (a.isPerfect !== b.isPerfect) return a.isPerfect ? -1 : 1;
+      if (a.accepting !== b.accepting) return a.accepting ? -1 : 1;
+      return a.reasons.length - b.reasons.length;
+    });
+    const chosenScored = scored.slice(0, 2);
+    const chosen = chosenScored.map(s => s.id);
+
+    console.log(`[InstantMatch] Patient ${patientId}: Found ${therapists.length} verified therapists. Scored ${scored.length} candidates. Chosen ${chosen.length}.`);
+
+    const hasAnyPerfect = chosenScored.some(s => s.isPerfect);
+    const matchQuality = chosen.length === 0 ? 'none' : (hasAnyPerfect ? 'exact' : 'partial');
+
+    let secureUuid: string | null = null;
+    if (chosen.length === 0) {
+      const { data: ref } = await supabaseServer
+        .from('matches')
+        .insert({ patient_id: patientId, status: 'proposed', metadata: { match_quality: matchQuality } })
+        .select('secure_uuid')
+        .single();
+      secureUuid = (ref as { secure_uuid?: string | null } | null)?.secure_uuid || null;
+    } else {
+      for (let i = 0; i < chosen.length; i++) {
+        const tid = chosen[i];
+        const therapistQuality = chosenScored[i].isPerfect ? 'exact' : 'partial';
+        const { data: row } = await supabaseServer
+          .from('matches')
+          .insert({
+            patient_id: patientId,
+            therapist_id: tid,
+            status: 'proposed',
+            metadata: { match_quality: matchQuality, therapist_match_quality: therapistQuality }
+          })
+          .select('secure_uuid')
+          .single();
+        if (i === 0) secureUuid = (row as { secure_uuid?: string | null } | null)?.secure_uuid || secureUuid;
+      }
+    }
+    return secureUuid ? { matchesUrl: `/matches/${encodeURIComponent(String(secureUuid))}`, matchQuality } : null;
+  } catch {
+    return null;
+  }
 }
