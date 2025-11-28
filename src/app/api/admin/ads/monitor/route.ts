@@ -61,6 +61,30 @@ function buildWindow({ lookbackDays, excludeToday }: { lookbackDays: number; exc
   return { startStr: toYyyymmdd(start), endStr: toYyyymmdd(end) };
 }
 
+/** Retry fetch with exponential backoff for transient errors */
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  { retries = 3, baseDelayMs = 500 }: { retries?: number; baseDelayMs?: number } = {}
+): Promise<Response> {
+  let lastResp: Response | null = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const resp = await fetch(url, init);
+    // Don't retry non-500 errors
+    if (resp.status !== 500) return resp;
+    // Check if it's a transient error
+    const clone = resp.clone();
+    const body = await clone.text().catch(() => '');
+    const isTransient = body.includes('TRANSIENT_ERROR');
+    if (!isTransient) return resp;
+    lastResp = resp;
+    if (attempt < retries) {
+      await new Promise((r) => setTimeout(r, baseDelayMs * Math.pow(2, attempt)));
+    }
+  }
+  return lastResp!;
+}
+
 export async function GET(req: Request) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   const ua = req.headers.get('user-agent') || undefined;
@@ -143,7 +167,7 @@ export async function GET(req: Request) {
         AND segments.date BETWEEN '${startStr}' AND '${endStr}'
     `;
 
-    const searchResp = await fetch(
+    const searchResp = await fetchWithRetry(
       `https://googleads.googleapis.com/v21/customers/${customerId}/googleAds:search`,
       { method: 'POST', headers, body: JSON.stringify({ query }) }
     );
@@ -251,7 +275,7 @@ export async function GET(req: Request) {
           update: { resourceName: c.resourceName, status: 'PAUSED' as const },
           updateMask: 'status',
         }));
-        const mutateResp = await fetch(
+        const mutateResp = await fetchWithRetry(
           `https://googleads.googleapis.com/v21/customers/${customerId}/campaigns:mutate`,
           { method: 'POST', headers, body: JSON.stringify({ operations }) }
         );

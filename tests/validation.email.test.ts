@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getEmailError } from '@/lib/validation';
+import { getEmailError } from '@/features/leads/lib/validation';
 
 // German messages must match exactly to keep UI consistent (informal "du")
 const REQUIRED = 'Bitte gib deine E‑Mail‑Adresse ein.';
