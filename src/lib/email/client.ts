@@ -144,6 +144,10 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
         email_token: ctx['email_token'],
         kind: ctx['kind'],
         template: (ctx as Record<string, unknown>)['template'],
+        // Include digest_key for alert/digest emails to prevent deduplication across different windows
+        digest_key: ctx['digest_key'],
+        // Include stage for reminder emails to prevent deduplication across different stages
+        stage: ctx['stage'],
       };
       const raw = JSON.stringify(stable);
       return createHash('sha256').update(raw).digest('hex');
