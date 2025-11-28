@@ -70,7 +70,7 @@ export function renderFeedbackRequestEmail(params: FeedbackRequestEmailParams): 
       <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
         <tr>
           <td width="48" style="vertical-align:top;padding-right:16px;">
-            <div style="width:44px;height:44px;background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;border-radius:12px;display:flex;align-items:center;justify-content:center;">
+            <div style="width:44px;height:44px;background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;border-radius:12px;text-align:center;line-height:44px;">
               <span style="font-size:20px;">💬</span>
             </div>
           </td>
