@@ -4,8 +4,40 @@ import type { EmailContent } from '../types';
 export function renderEmailConfirmation(params: { 
   confirmUrl: string;
   isBooking?: boolean; // true when user is confirming email for a booking
+  isReminder?: boolean; // true for 24h/72h reminder emails (value-focused copy)
 }): EmailContent {
   const isBooking = params.isBooking || false;
+  const isReminder = params.isReminder || false;
+  
+  // Reminder emails: shift framing from "confirm your email" to "your matches are waiting"
+  if (isReminder && !isBooking) {
+    const contentHtml = `
+      <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important; background-image: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important; padding:24px; border-radius:12px; border:1px solid rgba(34, 197, 94, 0.2); margin:0 0 24px; box-shadow: 0 2px 8px 0 rgba(34, 197, 94, 0.08);">
+        <h1 style="color:#0f172a !important; font-size:28px; font-weight:700; margin:0 0 12px; line-height:1.3; letter-spacing:-0.02em;">Deine passenden Therapeut:innen sind bereit</h1>
+        <p style="margin:0; font-size:16px; line-height:1.65; color:#166534 !important;">Wir haben Therapeut:innen gefunden, die zu deinen Wünschen passen. Mit einem Klick siehst du deine persönliche Auswahl.</p>
+      </div>
+      <div style="text-align:center; margin: 0 0 24px;">
+        ${renderButton(params.confirmUrl, 'Jetzt ansehen')}
+      </div>
+      <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; background-image: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; padding:16px 20px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8);">
+        <p style="color:#64748b !important; font-size:14px; margin:0; line-height:1.6;">Der Link ist 24 Stunden gültig. Füge bitte <strong style="color:#475569 !important;">kontakt@kaufmann-health.de</strong> zu deinen Kontakten hinzu, damit dich deine Therapeuten‑Empfehlung sicher erreicht.</p>
+      </div>
+    `;
+    const reminderSchema = {
+      '@context': 'http://schema.org',
+      '@type': 'EmailMessage',
+      potentialAction: {
+        '@type': 'ViewAction',
+        name: 'Jetzt ansehen',
+        url: params.confirmUrl,
+      },
+      description: 'Deine Therapeutenauswahl ansehen',
+    } as const;
+    return {
+      subject: 'Deine Therapeutenauswahl wartet auf dich 🌿',
+      html: renderLayout({ title: 'Deine Therapeutenauswahl', contentHtml, preheader: 'Wir haben passende Therapeut:innen für dich gefunden.', schema: reminderSchema }),
+    };
+  }
   
   // Use booking-specific copy when user is in booking flow
   const bodyText = isBooking
