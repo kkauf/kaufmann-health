@@ -15,6 +15,7 @@ import { leadSubmissionSchema } from '@/lib/contracts';
 import { PRIVACY_VERSION } from '@/lib/privacy';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { getOrCreateSessionId } from '@/lib/attribution';
+import { fireGoogleAdsClientConversion } from '@/lib/gtag';
 
 const LS_KEYS = {
   data: 'kh_wizard_data',
@@ -1144,6 +1145,11 @@ export default function SignupWizard() {
           });
         } catch { }
       }
+
+      // Fire client-side Google Ads base conversion (Enhanced Conversions need this)
+      try {
+        fireGoogleAdsClientConversion(leadId);
+      } catch { }
 
       {
         const currentStep2 = data.contact_method === 'phone' ? 8.5 : 8;
