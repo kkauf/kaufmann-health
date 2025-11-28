@@ -382,7 +382,7 @@ export async function GET(req: Request) {
         : stage === 'day5'
         ? 'Wir helfen dir gern bei der Entscheidung'
         : stage === 'day14'
-        ? 'Sollen wir die Auswahl für dich übernehmen?'
+        ? 'Kurze Frage: Was hält dich zurück?'
         : 'Deine sorgfältig ausgewählten Therapeuten-Empfehlungen';
 
       const bannerOverrideHtml = (
@@ -391,7 +391,17 @@ export async function GET(req: Request) {
           : stage === 'day5'
           ? '<div style="background: #EEF2FF; padding: 12px; border-radius: 8px; margin-bottom: 20px;">Fällt dir die Entscheidung schwer? Wir schauen uns deine Angaben an und empfehlen dir eine passende Option – oder schlagen eine Alternative vor, wenn das hilfreicher ist.</div>'
           : stage === 'day14'
-          ? '<div style="background: #EEF2FF; padding: 12px; border-radius: 8px; margin-bottom: 20px;">Wenn du magst, übernehmen wir die Auswahl: Wir wählen auf Basis deiner Angaben die passendste Person und stellen den Kontakt her. Unverbindlich – du behältst die Entscheidung.</div>'
+          ? `<div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+              <p style="margin: 0 0 12px; color: #334155; font-size: 15px;">Wir möchten uns verbessern und würden uns über dein kurzes Feedback freuen. Was hat dich bisher zurückgehalten?</p>
+              <ul style="margin: 0; padding-left: 20px; color: #64748b; font-size: 14px; line-height: 1.8;">
+                <li>Die Auswahl passte nicht zu mir</li>
+                <li>Die Kosten (80–120 € pro Sitzung)</li>
+                <li>Noch nicht der richtige Zeitpunkt</li>
+                <li>Ich brauche mehr Infos zu den Therapeut:innen</li>
+                <li>Etwas anderes</li>
+              </ul>
+              <p style="margin: 16px 0 0; color: #334155; font-size: 14px;">Antworte einfach auf diese E‑Mail – ein Stichwort genügt. Wir lesen jede Nachricht persönlich.</p>
+            </div>`
           : '<div style="background: #EEF2FF; padding: 12px; border-radius: 8px; margin-bottom: 20px;">Wir sind für dich da. Wenn du dir noch unsicher bist, antworte einfach auf diese E‑Mail – wir helfen dir gern bei der Auswahl.</div>'
       );
 
@@ -408,13 +418,14 @@ export async function GET(req: Request) {
             await logError('admin.api.matches.selection_reminders', new Error('Email send returned false'), { stage: 'send_email_failed', patient_id, email: to }, ip, ua);
           }
         } else if (hasPhone && matchesUrl) {
+          // SMS copy with callback offer - keep under ~160 chars per segment
           const smsBody = stage === 'day2'
-            ? `Deine Therapeut:innen‑Empfehlungen sind bereit. Wir grenzen gern für dich ein. Auswahl ansehen: ${matchesUrl}`
+            ? `Deine Therapeuten-Auswahl wartet: ${matchesUrl} – Fragen? Antworte "Hilfe" für einen Rückruf.`
             : stage === 'day5'
-            ? `Entscheidungshilfe gewünscht? Wir empfehlen dir eine Option. Auswahl ansehen: ${matchesUrl}`
+            ? `Noch unsicher? Wir helfen bei der Auswahl. Antworte "Hilfe" und wir rufen dich an. ${matchesUrl}`
             : stage === 'day14'
-            ? `Wir können die Auswahl für dich übernehmen und den Kontakt herstellen. Auswahl ansehen: ${matchesUrl}`
-            : `Deine Therapeuten‑Empfehlungen sind weiterhin für dich da. Wenn du Unterstützung brauchst, melde dich gern. Auswahl ansehen: ${matchesUrl}`;
+            ? `Kurze Frage: Was hält dich zurück? (Auswahl/Preis/Timing?) Antworte kurz – wir lesen alles persönlich.`
+            : `Deine Therapeuten-Auswahl: ${matchesUrl} – Antworte "Hilfe" für persönliche Unterstützung.`;
           void track({ type: 'sms_attempted', level: 'info', source: 'admin.api.matches.selection_reminders', props: { kind: 'patient_selection_reminder', stage, patient_id } });
           const ok = await sendTransactionalSms(phoneNumber, smsBody);
           if (ok) {
