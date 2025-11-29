@@ -36,11 +36,13 @@ function FeedbackContent() {
 
     const payload = {
       type: 'feedback_response',
-      subtype: 'quick_survey',
-      patient_id: patientId,
-      reason,
-      ...(therapistId ? { therapist_id: therapistId } : {}),
-      source,
+      properties: {
+        subtype: 'quick_survey',
+        patient_id: patientId,
+        reason,
+        ...(therapistId ? { therapist_id: therapistId } : {}),
+        source,
+      },
     };
 
     // Fire-and-forget tracking
@@ -66,10 +68,12 @@ function FeedbackContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'feedback_details',
-          patient_id: patientId,
-          reason,
-          details: details.trim(),
-          source,
+          properties: {
+            patient_id: patientId,
+            reason,
+            details: details.trim(),
+            source,
+          },
         }),
       });
       setDetailsSubmitted(true);
@@ -165,8 +169,10 @@ function FeedbackContent() {
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
                             type: 'interview_interest',
-                            patient_id: patientId,
-                            source,
+                            properties: {
+                              patient_id: patientId,
+                              source,
+                            },
                           }),
                           keepalive: true,
                         }).catch(() => {});
