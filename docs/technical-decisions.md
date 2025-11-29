@@ -116,16 +116,9 @@
   - **Consequences**: Better deliverability and security; auditable timestamps (`therapist_contacted_at`, `therapist_responded_at`, `patient_confirmed_at`).
   - **Links**: `src/app/api/match/[uuid]/select/route.ts`, `docs/api.md#earth-125-patient-selection-flow`.
 
-## Session Blockers & Urgent Alert (ADR-007)
+## Session Blockers & Feedback (ADR-007) — SUPERSEDED
 
-- **Why**: Understand why sessions don’t happen and take action when therapists don’t reach out.
-- **Decision**:
-  - Data: `public.session_blockers` captures `{ match_id, reason }` with enums `scheduling|cost|changed_mind|no_contact|other`.
-  - Ingest: `GET /api/feedback` stores a blocker entry and emits `session_blocker_received`.
-  - Urgent alert: when `reason='no_contact'`, send an internal email to `LEADS_NOTIFY_EMAIL` (fire-and-forget).
-  - Survey cron: `GET /api/admin/matches/blocker-survey` scans `patient_selected` ~7 days after selection, de-dupes by checking `email_sent(kind='patient_blocker_survey')`.
-- **Consequences**: Actionable insights, privacy-first links, and timely alerts to reduce drop-off.
-- **Links**: `src/app/api/public/feedback/route.ts`, `src/app/api/admin/matches/blocker-survey/route.ts`, `docs/data-model.md#publicsession_blockers`.
+> **Note**: The original `session_blockers` table and `/api/feedback` endpoint have been replaced by the Day 10 `feedbackRequest` email that links to `/feedback/quick`. Feedback is now captured as events (`feedback_response`, `feedback_details`) rather than a dedicated table. See Email Cadence in `docs/emails.md`.
 
 ## New Patient Lead Digest (ADR-009)
 

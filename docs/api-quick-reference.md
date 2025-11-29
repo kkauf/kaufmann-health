@@ -58,9 +58,6 @@ This is a concise, high-signal overview. It complements the detailed `docs/api.m
 - Stats & Errors
   - `GET /api/admin/stats` → totals + 7-day trends + campaign stats
   - `GET /api/admin/errors` → error/event listing backend for `/admin/errors`
-- Session blockers
-  - `GET /api/feedback` → records blocker and sends urgent alert when `reason=no_contact`
-  - Blocker survey (cron): `GET /api/admin/matches/blocker-survey`
 
 ## Therapist flows (public)
 - `POST /api/public/therapists/:id/profile` → basic profile + pending photo
