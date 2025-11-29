@@ -18,6 +18,7 @@ export type ConversionData = {
   orderId?: string;
   conversionDateTime?: string; // ISO string; will be converted to Google format
   currency?: string; // default EUR
+  gclid?: string; // Google Click ID from ad click (critical for attribution)
 };
 
 export type UserIdentifier = {
@@ -31,6 +32,7 @@ export type EnhancedConversion = {
   conversion_value: number; // value in major currency units
   currency: string; // e.g., 'EUR'
   order_id?: string;
+  gclid?: string; // Google Click ID (primary attribution signal)
   user_identifiers: UserIdentifier[];
 };
 
@@ -199,6 +201,8 @@ export class GoogleAdsTracker {
       conversionValue: ec.conversion_value,
       currencyCode: ec.currency,
       ...(ec.order_id ? { orderId: ec.order_id } : {}),
+      // gclid is the primary attribution signal from ad clicks
+      ...(ec.gclid ? { gclid: ec.gclid } : {}),
       userIdentifiers: ec.user_identifiers.map((u) => ({
         ...(u.hashed_email ? { hashedEmail: u.hashed_email } : {}),
         ...(u.hashed_phone_number ? { hashedPhoneNumber: u.hashed_phone_number } : {}),
@@ -237,6 +241,7 @@ export class GoogleAdsTracker {
         conversion_value: data.conversionValue,
         currency: data.currency || 'EUR',
         order_id: data.orderId,
+        gclid: data.gclid, // Pass through gclid for attribution
         user_identifiers: identifiers,
       };
 

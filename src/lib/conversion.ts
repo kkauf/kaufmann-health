@@ -66,6 +66,9 @@ export async function maybeFirePatientConversion(ctx: ConversionContext): Promis
       return { fired: false, reason: 'already_fired' };
     }
 
+    // Retrieve gclid from metadata (captured from URL on signup)
+    const gclid = typeof metadata.gclid === 'string' ? metadata.gclid : undefined;
+
     // Determine identifiers to use for Enhanced Conversion (email and/or phone)
     const emailForConversion = ctx.email || person.email || '';
     const phoneForConversion = ctx.phone_number || person.phone_number || '';
@@ -92,6 +95,7 @@ export async function maybeFirePatientConversion(ctx: ConversionContext): Promis
       conversionAction: 'client_registration',
       conversionValue: 10,
       orderId: ctx.patient_id,
+      gclid, // Pass gclid for attribution (primary signal when available)
     });
 
     // Stamp conversion timestamp in metadata
@@ -126,6 +130,7 @@ export async function maybeFirePatientConversion(ctx: ConversionContext): Promis
         verification_method: ctx.verification_method,
         conversion_action: 'client_registration',
         value: 10,
+        has_gclid: !!gclid, // Track whether gclid was available for attribution
       },
     });
 

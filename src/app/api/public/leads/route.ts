@@ -654,9 +654,11 @@ export async function POST(req: Request) {
       // Variant: free-form string from ?variant= (or ?v=) if present
       let campaign_variant: string | undefined = campaign.campaign_variant || undefined;
       // Header overrides from client (SignupWizard)
+      let gclid: string | undefined;
       try {
         const csOver = req.headers.get('x-campaign-source-override') || undefined;
         const cvOver = req.headers.get('x-campaign-variant-override') || undefined;
+        gclid = req.headers.get('x-gclid') || undefined;
         if (csOver) campaign_source = csOver;
         if (cvOver) campaign_variant = cvOver;
       } catch { }
@@ -674,6 +676,8 @@ export async function POST(req: Request) {
         // Basic context for debugging/ops
         ...(ip ? { ip } : {}),
         ...(ua ? { user_agent: ua } : {}),
+        // Google Ads click ID for conversion attribution (critical for tracking)
+        ...(gclid ? { gclid } : {}),
         ...(sessionPreference ? { session_preference: sessionPreference } : {}),
         ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
         ...(formSessionId ? { form_session_id: formSessionId } : {}),
