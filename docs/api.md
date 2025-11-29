@@ -797,29 +797,51 @@ __UI Consistency__: Email templates reuse a small, inline-styled therapist previ
   - 200: `{ data: { ok: true }, error: null }`
   - 400/401/404/500 on failure with descriptive messages.
 
-### GET /api/admin/matches/selection-reminders
+## Email Cadence (Post-Verification Follow-up)
 
-- Purpose: Gentle follow-up sequence if no action has been taken yet after the initial selection email.
-- Auth: Admin cookie or Cron secret (`x-cron-secret` / `Authorization: Bearer`), or Vercel platform header `x-vercel-cron`, or `?token=<CRON_SECRET>`.
+Three-stage nurture sequence for patients who verified but haven't booked.
+
+### GET /api/admin/leads/rich-therapist-email
+
+- Purpose: Day 1 personalized email featuring the top therapist match with photo, modalities, and approach text.
+- Auth: Cron secret or Admin cookie.
+- Window: 20–28 hours after `email_confirmed_at`.
+- Skips: No email, already sent, has selection, no matches.
+- Tracks: `email_sent` with `kind='rich_therapist_d1'`.
+
+### GET /api/admin/leads/selection-nudge
+
+- Purpose: Day 5 reassurance email addressing common hesitations (free intro call, chemistry shows in person, can switch anytime).
+- Auth: Cron secret or Admin cookie.
+- Window: 5–6 days after `email_confirmed_at`.
+- Requires: Day 1 email was sent.
+- Tracks: `email_sent` with `kind='selection_nudge_d5'`.
+
+### GET /api/admin/leads/feedback-request
+
+- Purpose: Day 10 feedback collection with one-click options and interview incentive (€25 voucher).
+- Auth: Cron secret or Admin cookie.
+- Window: 10–11 days after `email_confirmed_at`.
+- Requires: Day 5 email was sent.
+- Links to: `/feedback/quick?patient=...&reason=...`
+- Tracks: `email_sent` with `kind='feedback_request_d10'`.
+
+### GET /api/admin/emails/preview
+
+- Purpose: QA endpoint to preview or send email templates to `LEADS_NOTIFY_EMAIL`.
+- Auth: Cron secret or Admin cookie.
 - Query Params:
-  - `stage`: `day5` | `day14`
-- Behavior:
-  - Aggregates recent `status='proposed'` matches by patient within the time window for the stage (5–6 days, 14–15 days).
-  - Skips patients who already have any `status='patient_selected'` match.
-  - Skips when any match for the patient has `metadata.patient_initiated=true` (client already contacted from `/matches`).
-  - Sends a supportive reminder with an invitation to reply directly for help; no urgency language.
-  - De-duplicates per stage and globally within 24h: checks `public.events` for `email_sent`/`sms_sent` with `kind='patient_selection_reminder'` to avoid duplicate sends on retries and to ensure we never send two reminders on the same day.
-- Responses:
-  - 200: `{ data: { processed, sent, marked, skipped_already_selected, skipped_already_contacted, skipped_missing_email, skipped_no_secure_uuid, skipped_duplicate_stage, skipped_recent_reminder }, error: null }`
-  - 401/500 on failure.
+  - `template`: `rich_therapist` | `selection_nudge` | `feedback_request` | `email_confirmation` | `all`
+  - `send`: `true` to send, omit for HTML preview
+- Example: `GET /api/admin/emails/preview?template=all&send=true&token=...`
 
 ### Cron Configuration
 
-See `vercel.json` for these cron schedules.
+See `vercel.json` for these cron schedules (9 AM / 10 AM daily).
 
 Notes:
-- Email HTML uses inline styles and the existing `renderTherapistPreviewEmail()` to ensure client compatibility.
-- All email sending is best-effort and logged via the unified logger (`email_sent`, `email_retry`, `email_timeout_retry`).
+- Email HTML uses inline styles and `renderTherapistPreviewEmail()` for client compatibility.
+- All email sending is best-effort and logged via the unified logger.
 
 ## Therapist Action Reminders (Privacy‑First)
 

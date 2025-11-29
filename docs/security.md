@@ -57,7 +57,7 @@
   - `x-vercel-cron` header (Vercel Cron invocations)
   - `x-cron-secret` or `Authorization: Bearer <CRON_SECRET>`
   - `?token=<CRON_SECRET>` (fallback for manual runs)
-- **Example**: see `src/app/api/admin/matches/selection-reminders/route.ts` and `src/app/api/admin/alerts/system/route.ts`.
+- **Example**: see `src/app/api/admin/leads/rich-therapist-email/route.ts` and `src/app/api/admin/alerts/system/route.ts`.
 
 ## Secrets & Runtime Boundaries
 
