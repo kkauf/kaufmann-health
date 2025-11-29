@@ -289,11 +289,13 @@ export async function POST(req: Request) {
       }
     }
 
-    // Parse attribution (landing page only). For quiz flow, enforce canonical source/variant.
+    // Parse attribution from referer URL
     const campaign = parseCampaignFromRequest(req);
     const landing_page = campaign.landing_page;
-    const campaign_source: string | undefined = '/start';
-    const campaign_variant: string | undefined = 'quiz';
+    // Use source from campaign if available, fallback to /start for quiz flow
+    const campaign_source: string | undefined = campaign.campaign_source || '/start';
+    // Use variant from ads (?v=marketplace, ?v=concierge) if present, fallback to 'quiz'
+    const campaign_variant: string | undefined = campaign.campaign_variant || 'quiz';
 
     // Prepare metadata with all preferences
     // Normalize gender from German UI labels to English values for matching
