@@ -11,10 +11,12 @@ export type Attribution = {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+  gclid?: string;
 };
 
 const SID_KEY = 'kh.sid';
 const UTM_KEY = 'kh.utm';
+const GCLID_KEY = 'kh.gclid';
 
 function safeGetSessionStorage(): Storage | null {
   try {
@@ -56,7 +58,8 @@ function parseUtmFromUrl(): Omit<Attribution, 'session_id' | 'referrer'> {
     const utm_source = sp.get('utm_source') || undefined;
     const utm_medium = sp.get('utm_medium') || undefined;
     const utm_campaign = sp.get('utm_campaign') || undefined;
-    return { utm_source, utm_medium, utm_campaign };
+    const gclid = sp.get('gclid') || undefined;
+    return { utm_source, utm_medium, utm_campaign, gclid };
   } catch {
     return {};
   }
@@ -77,6 +80,24 @@ function getStoredUtm(): Omit<Attribution, 'session_id' | 'referrer'> {
   } catch {
     return {};
   }
+}
+
+function getStoredGclid(): string | undefined {
+  const ss = safeGetSessionStorage();
+  if (!ss) return undefined;
+  try {
+    return ss.getItem(GCLID_KEY) || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function storeGclid(gclid: string) {
+  const ss = safeGetSessionStorage();
+  if (!ss) return;
+  try {
+    ss.setItem(GCLID_KEY, gclid);
+  } catch {}
 }
 
 function storeUtm(utm: Omit<Attribution, 'session_id' | 'referrer'>) {
@@ -106,8 +127,33 @@ export function getAttribution(): Attribution {
       storeUtm(utm);
     }
 
-    return { session_id, referrer, ...utm };
+    // Capture gclid from URL or sessionStorage (critical for Google Ads attribution)
+    const storedGclid = getStoredGclid();
+    const gclid = storedGclid || fromUrl.gclid;
+    if (!storedGclid && fromUrl.gclid) {
+      storeGclid(fromUrl.gclid);
+    }
+
+    return { session_id, referrer, ...utm, gclid };
   } catch {
     return {};
+  }
+}
+
+/** Get stored gclid (for passing to APIs) */
+export function getGclid(): string | undefined {
+  try {
+    const stored = getStoredGclid();
+    if (stored) return stored;
+    // Also check URL in case not yet stored
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      const fromUrl = sp.get('gclid') || undefined;
+      if (fromUrl) storeGclid(fromUrl);
+      return fromUrl;
+    }
+    return undefined;
+  } catch {
+    return undefined;
   }
 }

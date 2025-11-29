@@ -1,19 +1,11 @@
 'use client';
 
+import { getGclid } from '@/lib/attribution';
+
 const GA_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
 const LABEL_CLIENT = process.env.NEXT_PUBLIC_GAD_CONV_CLIENT;
 const LABEL_THERAPIST = process.env.NEXT_PUBLIC_GAD_CONV_THERAPIST;
 const LABEL_BOOKING = process.env.NEXT_PUBLIC_GAD_CONV_BOOKING;
-const COOKIES_ENABLED = (process.env.NEXT_PUBLIC_COOKIES || '').toLowerCase() === 'true';
-
-function consentGranted(): boolean {
-  if (!COOKIES_ENABLED) return true; // cookieless allowed
-  try {
-    return localStorage.getItem('ga-consent') === 'accepted';
-  } catch {
-    return false;
-  }
-}
 
 function isTestMode(): boolean {
   try {
@@ -27,32 +19,91 @@ function isTestMode(): boolean {
   }
 }
 
+/**
+ * Track conversion attempt for observability (fire-and-forget)
+ */
+function trackConversionAttempt(label: string, transactionId?: string, hasGclid?: boolean) {
+  try {
+    const body = JSON.stringify({
+      type: 'gtag_conversion_attempted',
+      props: { label, transaction_id: transactionId, has_gclid: hasGclid },
+    });
+    if (navigator.sendBeacon) {
+      const blob = new Blob([body], { type: 'application/json' });
+      navigator.sendBeacon('/api/events', blob);
+    }
+  } catch {}
+}
+
+/**
+ * Build page_location with gclid for attribution.
+ * If gclid is stored in sessionStorage but not in current URL, we construct
+ * a synthetic page_location that includes it for gtag attribution.
+ */
+function getPageLocationWithGclid(): string | undefined {
+  try {
+    const storedGclid = getGclid();
+    if (!storedGclid) return undefined;
+    
+    // Check if gclid is already in current URL
+    const currentUrl = new URL(window.location.href);
+    if (currentUrl.searchParams.has('gclid')) {
+      return undefined; // Already present, gtag will use it
+    }
+    
+    // Append stored gclid to current URL for attribution
+    currentUrl.searchParams.set('gclid', storedGclid);
+    return currentUrl.href;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Send conversion to Google Ads via gtag.
+ * 
+ * IMPORTANT: We always fire the conversion - Google's Consent Mode v2 handles privacy:
+ * - With ad_storage: 'denied' → cookieless ping sent, limited attribution
+ * - With ad_storage: 'granted' → full tracking with cookies
+ * 
+ * We pass page_location with gclid to ensure attribution works even after
+ * SPA navigation loses the gclid from the URL.
+ */
 function sendConversion({ label, value, transactionId, dedupePrefix }: { label?: string; value: number; transactionId?: string; dedupePrefix: string }) {
   try {
     if (!GA_ID || !label) return;
     if (typeof window === 'undefined') return;
-    if (!consentGranted()) return;
     if (process.env.NODE_ENV === 'production' && isTestMode()) return;
 
     const key = transactionId ? `${dedupePrefix}${transactionId}` : dedupePrefix;
     try {
-      if (window.sessionStorage.getItem(key) === '1') return;
+      if (window.sessionStorage.getItem(key) === '1') return; // Already fired
     } catch {}
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const g = (window as any).gtag as ((...args: any[]) => void) | undefined;
     const sendTo = `${GA_ID}/${label}`;
     const payload: Record<string, unknown> = { send_to: sendTo, value, currency: 'EUR' };
     if (transactionId) payload.transaction_id = transactionId;
+    
+    // Include page_location with gclid for attribution (critical for SPA)
+    const pageLocationWithGclid = getPageLocationWithGclid();
+    if (pageLocationWithGclid) {
+      payload.page_location = pageLocationWithGclid;
+    }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = (window as any).gtag as ((...args: any[]) => void) | undefined;
     if (typeof g === 'function') {
       g('event', 'conversion', payload);
     } else {
+      // Fallback: push to dataLayer (gtag.js will process when loaded)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const w = window as any;
       w.dataLayer = w.dataLayer || [];
-      w.dataLayer.push(['event', 'conversion', payload]);
+      w.dataLayer.push({ event: 'conversion', ...payload });
     }
+
+    // Track attempt for observability
+    trackConversionAttempt(label, transactionId, !!pageLocationWithGclid || !!getGclid());
 
     try {
       window.sessionStorage.setItem(key, '1');

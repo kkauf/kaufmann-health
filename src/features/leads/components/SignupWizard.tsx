@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { leadSubmissionSchema } from '@/lib/contracts';
 import { PRIVACY_VERSION } from '@/lib/privacy';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
-import { getOrCreateSessionId } from '@/lib/attribution';
+import { getOrCreateSessionId, getGclid } from '@/lib/attribution';
 import { fireGoogleAdsClientConversion } from '@/lib/gtag';
 
 const LS_KEYS = {
@@ -1113,8 +1113,10 @@ export default function SignupWizard() {
       }
 
       const sidHeader = webSessionIdRef.current || getOrCreateSessionId() || undefined;
+      const gclid = getGclid();
       const leadHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
       if (sidHeader) leadHeaders['X-Session-Id'] = sidHeader;
+      if (gclid) leadHeaders['X-Gclid'] = gclid;
       if (campaignSourceOverrideRef.current) leadHeaders['X-Campaign-Source-Override'] = campaignSourceOverrideRef.current;
       if (campaignVariantOverrideRef.current) leadHeaders['X-Campaign-Variant-Override'] = campaignVariantOverrideRef.current;
       const res = await fetch('/api/public/leads', {
