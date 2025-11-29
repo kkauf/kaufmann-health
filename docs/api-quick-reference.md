@@ -49,8 +49,12 @@ This is a concise, high-signal overview. It complements the detailed `docs/api.m
 - Matching
   - `POST /api/admin/matches` → create 1–3 proposed matches; emails enqueued; logs business opportunities on mismatch
   - `POST /api/admin/matches/email` → patient-facing emails (match found/custom)
-  - Selection reminders (cron): `GET /api/admin/matches/selection-reminders?stage=day5|day14`
   - Therapist action reminders (cron): `GET /api/admin/matches/therapist-action-reminders?stage=20h`
+- Email Cadence (post-verification nurture)
+  - Day 1: `GET /api/admin/leads/rich-therapist-email` → personalized therapist spotlight
+  - Day 5: `GET /api/admin/leads/selection-nudge` → reassurance email
+  - Day 10: `GET /api/admin/leads/feedback-request` → one-click feedback collection
+  - QA: `GET /api/admin/emails/preview?template=all&send=true` → send templates to LEADS_NOTIFY_EMAIL
 - Stats & Errors
   - `GET /api/admin/stats` → totals + 7-day trends + campaign stats
   - `GET /api/admin/errors` → error/event listing backend for `/admin/errors`

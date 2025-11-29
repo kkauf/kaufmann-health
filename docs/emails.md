@@ -101,7 +101,22 @@ Use `buildInternalLeadNotification()` to construct subject/text with type and ci
   - `tests/email.layout.test.ts`
   - `tests/email.emailConfirmation.test.ts`
   - `tests/email.patientSelection.schema.test.ts`
+  - `tests/email.new-cadence.test.ts` (Day 1/5/10 templates)
 - In tests, `sendEmail()` is a no-op when `RESEND_API_KEY` is empty, so accidental sends are avoided.
+
+### QA Preview Endpoint
+
+Send email templates to `LEADS_NOTIFY_EMAIL` for visual QA:
+
+```bash
+# Send all templates
+curl "https://www.kaufmann-health.de/api/admin/emails/preview?template=all&send=true&token=YOUR_CRON_SECRET"
+
+# Preview HTML in browser (no send)
+open "https://www.kaufmann-health.de/api/admin/emails/preview?template=rich_therapist&token=YOUR_CRON_SECRET"
+```
+
+Templates: `rich_therapist`, `selection_nudge`, `feedback_request`, `email_confirmation`, `all`
 
 ### Booking templates
 
@@ -116,6 +131,22 @@ Trigger points:
 - `POST /api/public/bookings` (direct create)
 - `POST /api/public/verification/verify-code` (when processing `draft_booking`)
 - `GET /api/public/leads/confirm` (when processing `draft_booking`)
+
+### Email Cadence (Post-Verification Nurture)
+
+Three-stage follow-up sequence for verified patients who haven't booked:
+
+| Day | Template | Purpose |
+|-----|----------|---------|
+| 1 | `richTherapistEmail` | Personalized spotlight: top match with photo, modalities, approach text |
+| 5 | `selectionNudge` | Reassurance: free intro call, chemistry shows in person, can switch |
+| 10 | `feedbackRequest` | One-click feedback options + interview incentive (€25 voucher) |
+
+Templates: `src/lib/email/templates/richTherapistEmail.ts`, `selectionNudge.ts`, `feedbackRequest.ts`
+
+Crons: `GET /api/admin/leads/rich-therapist-email`, `/selection-nudge`, `/feedback-request`
+
+Feedback landing page: `/feedback/quick?patient=...&reason=...` captures responses and offers interview scheduling.
 
 ### Deliverability test (manual)
 

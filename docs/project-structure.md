@@ -152,8 +152,13 @@ Authenticated endpoints (requires admin session cookie):
 - **`/matches`** — Match management
   - `POST /matches` — Create match(es)
   - `POST /matches/email` — Send outreach/selection emails
-  - `GET /matches/selection-reminders` — Patient selection reminders (cron)
   - `GET /matches/therapist-action-reminders` — Therapist action reminders (cron)
+- **`/leads`** — Lead management & email cadence
+  - `GET /leads/rich-therapist-email` — Day 1 personalized therapist email (cron)
+  - `GET /leads/selection-nudge` — Day 5 reassurance email (cron)
+  - `GET /leads/feedback-request` — Day 10 feedback collection (cron)
+- **`/emails`** — Email utilities
+  - `GET /emails/preview` — QA preview/send email templates
 - **`/therapists`** — Therapist management
   - `GET /therapists` — List therapists
   - `GET /therapists/[id]` — Get therapist details
