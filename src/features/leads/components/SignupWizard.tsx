@@ -52,11 +52,28 @@ export default function SignupWizard() {
   const searchParams = useSearchParams();
   // Feature flag: direct booking (5-step anonymous) vs manual curation (9-step with contact)
   const isDirectBookingFlow = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
-  const variant = searchParams.get('variant') || searchParams.get('v');
+  // IMPORTANT: Use state for variant to avoid race condition during hydration.
+  // searchParams.get() may return null briefly before hydration completes,
+  // causing marketplace/concierge users to incorrectly trigger the anonymous 5-step flow.
+  // We capture the variant on mount and use it consistently throughout the session.
+  const [capturedVariant, setCapturedVariant] = React.useState<string | null>(() => {
+    // SSR-safe initial value from searchParams (will be overwritten on mount if needed)
+    if (typeof window === 'undefined') return null;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('variant') || params.get('v') || null;
+    } catch {
+      return null;
+    }
+  });
+  // Fallback to live searchParams if capturedVariant not yet set (hydration)
+  const variant = capturedVariant || searchParams.get('variant') || searchParams.get('v');
   const isConcierge = variant === 'concierge';
   const isMarketplace = variant === 'marketplace';
-  // Test 3: Both concierge AND marketplace need verification before matches (9-step flow)
-  const needsVerificationFlow = isConcierge || isMarketplace;
+  // Default behavior: ALL users go through verification before matches (9-step flow)
+  // Only explicit opt-out variants (none currently) would skip verification
+  // This ensures we always capture contact info before showing matches
+  const needsVerificationFlow = true; // Was: isConcierge || isMarketplace
   const maxStep = (isDirectBookingFlow && !needsVerificationFlow) ? 5 : 9; // 5 steps for anonymous, 9 for contact collection
 
   const [step, setStep] = React.useState<number>(1);
