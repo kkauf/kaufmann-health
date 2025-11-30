@@ -276,22 +276,35 @@ export default function SignupWizard() {
         let src: string | null = null;
         let variant: string | undefined = undefined;
         const vParam = searchParams?.get('variant') || searchParams?.get('v') || undefined;
+        const ref = (typeof document !== 'undefined' ? document.referrer : '') || '';
+        
         if (vParam) {
-          src = '/start';
           variant = vParam;
-        }
-        // Fallback to document.referrer (was on /start before /fragebogen)
-        try {
-          const ref = (typeof document !== 'undefined' ? document.referrer : '') || '';
-          if (!src && ref.includes('/start')) {
+          // Determine source from referrer - /therapie-finden for concierge, /start for marketplace
+          if (ref.includes('/therapie-finden')) {
+            src = '/therapie-finden';
+          } else if (ref.includes('/start')) {
             src = '/start';
-            try {
-              const u = new URL(ref);
-              const vp = u.searchParams.get('variant') || u.searchParams.get('v') || undefined;
-              variant = vp || variant;
-            } catch { }
+          } else {
+            // Default based on variant: concierge → /therapie-finden, others → /start
+            src = vParam === 'concierge' ? '/therapie-finden' : '/start';
           }
-        } catch { }
+        }
+        // Fallback to document.referrer for cases without variant param
+        if (!src && !variant) {
+          try {
+            if (ref.includes('/therapie-finden')) {
+              src = '/therapie-finden';
+            } else if (ref.includes('/start')) {
+              src = '/start';
+              try {
+                const u = new URL(ref);
+                const vp = u.searchParams.get('variant') || u.searchParams.get('v') || undefined;
+                variant = vp || variant;
+              } catch { }
+            }
+          } catch { }
+        }
         if (src) campaignSourceOverrideRef.current = src;
         if (variant) campaignVariantOverrideRef.current = variant;
       } catch { }
