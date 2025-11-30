@@ -39,7 +39,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     title,
     description,
   });
-  return { ...base, robots: { index: false, follow: false } };
+  return { ...base, robots: { index: true, follow: true } };
 }
 
 export default async function StartPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {

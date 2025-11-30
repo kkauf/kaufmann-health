@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/admin/', '/api/'],
+      disallow: ['/admin/', '/api/', '/_next/static/'],
     },
     sitemap: 'https://www.kaufmann-health.de/sitemap.xml',
   }
