@@ -53,9 +53,9 @@ export default async function TherapieFindenPage() {
         backgroundSrc="/images/hero-calm.jpeg"
         valueProps={[
           '✓ Handverlesene Therapeut:innen',
-          '✓ Termine innerhalb von 7 Tagen',
-          '✓ Körperpsychotherapie',
-          '✓ Selbstzahler · €80–120 pro Sitzung',
+          '✓ Ohne Warteliste',
+          '✓ Körperpsychotherapie Berlin',
+          '✓ Berlin & Online · 80€–120€',
         ]}
       />
 
@@ -196,10 +196,10 @@ export default async function TherapieFindenPage() {
 
         <div className="text-center">
           <h2 id="approaches-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
-            Was körperorientierte Ansätze erreichen können
+            Körpertherapie Berlin: Was somatische Ansätze erreichen
           </h2>
           <p className="mt-4 text-base sm:text-lg leading-relaxed text-gray-700 max-w-2xl mx-auto">
-            Körperpsychotherapie wirkt dort, wo kognitive Methoden an Grenzen stoßen.
+            Körperpsychotherapie & Körperorientierte Therapie wirken dort, wo kognitive Methoden an Grenzen stoßen.
           </p>
         </div>
 
@@ -227,11 +227,11 @@ export default async function TherapieFindenPage() {
               <div className="rounded-xl bg-gradient-to-br from-sky-50 to-sky-100/60 p-3 text-sky-600 shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-200 w-fit">
                 <Activity className="h-6 w-6" />
               </div>
-              <CardTitle className="mt-4 text-lg text-gray-900">Blockaden lösen</CardTitle>
+              <CardTitle className="mt-4 text-lg text-gray-900">Trauma im Körper lösen</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
-                Festgehaltene Überlebensenergie kann sich entladen. Chronische Anspannung oder Taubheit beginnen sich zu lösen.
+                Festgehaltene Überlebensenergie kann sich entladen. Chronische Anspannung, Blockaden und Taubheit beginnen sich zu lösen.
               </p>
             </CardContent>
           </Card>
