@@ -292,10 +292,14 @@ export async function POST(req: Request) {
     // Parse attribution from referer URL
     const campaign = parseCampaignFromRequest(req);
     const landing_page = campaign.landing_page;
-    // Use source from campaign if available, fallback to /start for quiz flow
-    const campaign_source: string | undefined = campaign.campaign_source || '/start';
-    // Use variant from ads (?v=marketplace, ?v=concierge) if present, fallback to 'quiz'
-    const campaign_variant: string | undefined = campaign.campaign_variant || 'quiz';
+    
+    // Header overrides from client (SignupWizard stores original landing page attribution)
+    const csOverride = req.headers.get('x-campaign-source-override') || undefined;
+    const cvOverride = req.headers.get('x-campaign-variant-override') || undefined;
+    
+    // Priority: header override > referer URL param > fallback
+    const campaign_source: string | undefined = csOverride || campaign.campaign_source || '/start';
+    const campaign_variant: string | undefined = cvOverride || campaign.campaign_variant || 'quiz';
 
     // Prepare metadata with all preferences
     // Normalize gender from German UI labels to English values for matching
