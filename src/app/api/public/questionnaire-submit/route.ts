@@ -292,10 +292,14 @@ export async function POST(req: Request) {
     // Parse attribution from referer URL
     const campaign = parseCampaignFromRequest(req);
     const landing_page = campaign.landing_page;
-    // Use source from campaign if available, fallback to /start for quiz flow
-    const campaign_source: string | undefined = campaign.campaign_source || '/start';
-    // Use variant from ads (?v=marketplace, ?v=concierge) if present, fallback to 'quiz'
-    const campaign_variant: string | undefined = campaign.campaign_variant || 'quiz';
+    
+    // Header overrides from client (SignupWizard stores original landing page attribution)
+    const csOverride = req.headers.get('x-campaign-source-override') || undefined;
+    const cvOverride = req.headers.get('x-campaign-variant-override') || undefined;
+    
+    // Priority: header override > referer URL param > fallback
+    const campaign_source: string | undefined = csOverride || campaign.campaign_source || '/start';
+    const campaign_variant: string | undefined = cvOverride || campaign.campaign_variant || 'quiz';
 
     // Prepare metadata with all preferences
     // Normalize gender from German UI labels to English values for matching
@@ -324,59 +328,144 @@ export async function POST(req: Request) {
       };
     }
 
-    // Create anonymous patient
-    const { data: patient, error: insertError } = await supabaseServer
-      .from('people')
-      .insert({
-        type: 'patient',
-        status: 'anonymous',
-        metadata,
-        ...(campaign_source ? { campaign_source } : {}),
-        ...(campaign_variant ? { campaign_variant } : {}),
-      })
-      .select('id')
-      .single<{ id: string }>();
+    // Deduplicate by form_session_id: if an anonymous patient already exists for this session,
+    // update it instead of creating a duplicate. This handles page refreshes, back navigation,
+    // and race conditions that could cause multiple submissions.
+    let patient: { id: string } | null = null;
+    let isExisting = false;
 
-    if (insertError || !patient?.id) {
-      void track({
-        type: 'anonymous_patient_creation_failed',
-        level: 'error',
-        source: 'api.questionnaire-submit',
-        ip,
-        ua,
-        props: { error: insertError?.message },
-      });
-      return safeJson(
-        { data: null, error: 'Failed to create patient record' },
-        { status: 500, headers: { 'Cache-Control': 'no-store' } },
-      );
+    if (form_session_id) {
+      // Check for existing anonymous patient with this form_session_id
+      const { data: existing } = await supabaseServer
+        .from('people')
+        .select('id, metadata')
+        .eq('type', 'patient')
+        .eq('status', 'anonymous')
+        .contains('metadata', { form_session_id })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle<{ id: string; metadata?: Record<string, unknown> | null }>();
+
+      if (existing?.id) {
+        // Update existing patient with latest preferences
+        const existingMeta = (existing.metadata || {}) as Record<string, unknown>;
+        const mergedMeta = { ...existingMeta, ...metadata };
+        
+        const { error: updateError } = await supabaseServer
+          .from('people')
+          .update({
+            metadata: mergedMeta,
+            ...(campaign_source ? { campaign_source } : {}),
+            ...(campaign_variant ? { campaign_variant } : {}),
+          })
+          .eq('id', existing.id);
+
+        if (!updateError) {
+          patient = { id: existing.id };
+          isExisting = true;
+          void track({
+            type: 'anonymous_patient_updated',
+            level: 'info',
+            source: 'api.questionnaire-submit',
+            ip,
+            ua,
+            props: { patient_id: existing.id, form_session_id },
+          });
+        }
+      }
     }
 
-    // Track anonymous patient creation
-    await ServerAnalytics.trackEventFromRequest(req, {
-      type: 'anonymous_patient_created',
-      source: 'api.questionnaire-submit',
-      props: {
-        patient_id: patient.id,
-        campaign_source,
-        campaign_variant,
-        has_city: !!city,
-        has_timing: !!start_timing,
-      },
-    });
+    // Create new patient if no existing one was found/updated
+    if (!patient) {
+      const { data: newPatient, error: insertError } = await supabaseServer
+        .from('people')
+        .insert({
+          type: 'patient',
+          status: 'anonymous',
+          metadata,
+          ...(campaign_source ? { campaign_source } : {}),
+          ...(campaign_variant ? { campaign_variant } : {}),
+        })
+        .select('id')
+        .single<{ id: string }>();
 
-    // Create instant matches
-    const matchResult = await createInstantMatchesForPatient(patient.id, campaign_variant);
+      if (insertError || !newPatient?.id) {
+        void track({
+          type: 'anonymous_patient_creation_failed',
+          level: 'error',
+          source: 'api.questionnaire-submit',
+          ip,
+          ua,
+          props: { error: insertError?.message },
+        });
+        return safeJson(
+          { data: null, error: 'Failed to create patient record' },
+          { status: 500, headers: { 'Cache-Control': 'no-store' } },
+        );
+      }
+      patient = newPatient;
+    }
 
-    if (matchResult) {
-      void ServerAnalytics.trackEventFromRequest(req, {
-        type: 'instant_match_created',
+    // Track anonymous patient creation/update
+    if (!isExisting) {
+      await ServerAnalytics.trackEventFromRequest(req, {
+        type: 'anonymous_patient_created',
         source: 'api.questionnaire-submit',
         props: {
-          match_quality: matchResult.matchQuality,
           patient_id: patient.id,
+          campaign_source,
+          campaign_variant,
+          has_city: !!city,
+          has_timing: !!start_timing,
         },
       });
+    }
+
+    // For existing patients, check if they already have matches
+    let matchResult: { matchesUrl: string; matchQuality: 'exact' | 'partial' | 'none' } | null = null;
+    
+    if (isExisting) {
+      // Check for existing matches with secure_uuid
+      const { data: existingMatch } = await supabaseServer
+        .from('matches')
+        .select('secure_uuid')
+        .eq('patient_id', patient.id)
+        .not('secure_uuid', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle<{ secure_uuid: string | null }>();
+      
+      if (existingMatch?.secure_uuid) {
+        matchResult = {
+          matchesUrl: `/matches/${encodeURIComponent(existingMatch.secure_uuid)}`,
+          matchQuality: 'exact', // Assume existing match quality
+        };
+        void track({
+          type: 'existing_match_returned',
+          level: 'info',
+          source: 'api.questionnaire-submit',
+          ip,
+          ua,
+          props: { patient_id: patient.id, form_session_id },
+        });
+      }
+    }
+
+    // Create instant matches only if no existing matches found
+    if (!matchResult) {
+      matchResult = await createInstantMatchesForPatient(patient.id, campaign_variant);
+
+      if (matchResult) {
+        void ServerAnalytics.trackEventFromRequest(req, {
+          type: 'instant_match_created',
+          source: 'api.questionnaire-submit',
+          props: {
+            match_quality: matchResult.matchQuality,
+            patient_id: patient.id,
+            is_resubmission: isExisting,
+          },
+        });
+      }
     }
 
     return safeJson({

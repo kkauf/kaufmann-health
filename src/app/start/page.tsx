@@ -61,7 +61,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
   const bodyOrientedCopy = {
     hero: {
       title: 'Wenn der Kopf nicht weiterkommt, hilft der Körper',
-      subtitle: 'Erfahrene Körpertherapeut:innen, die wirklich verfügbar sind. Handverlesen, somatisch orientiert, in Berlin oder online.',
+      subtitle: 'Körperpsychotherapie Berlin & online. Ohne Warteliste. Handverlesene Therapeut:innen.',
     },
     process: {
       tagline: 'Keine Wartelisten. Persönlich ausgewählte Vorschläge in <24h. Deine Daten bleiben privat.',
