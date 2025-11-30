@@ -15,7 +15,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${baseUrl}/wieder-lebendig`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
-      priority: 0.9,
+      priority: 0.5,
     },
     {
       url: `${baseUrl}/therapie-finden`,
@@ -24,10 +24,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/ankommen-in-dir`,
+      url: `${baseUrl}/start`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/ankommen-in-dir`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.5,
     },
     {
       url: `${baseUrl}/vermittlung`,
@@ -63,7 +69,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${baseUrl}/beratung`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
-      priority: 0.5,
+      priority: 0.9,
     },
     {
       url: `${baseUrl}/impressum`,
