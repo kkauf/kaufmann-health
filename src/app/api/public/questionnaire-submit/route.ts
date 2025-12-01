@@ -328,23 +328,24 @@ export async function POST(req: Request) {
       };
     }
 
-    // Deduplicate by form_session_id: if an anonymous patient already exists for this session,
+    // Deduplicate by form_session_id: if a patient already exists for this session,
     // update it instead of creating a duplicate. This handles page refreshes, back navigation,
     // and race conditions that could cause multiple submissions.
+    // NOTE: Check ALL patient statuses, not just 'anonymous' - users may have progressed
+    // to 'pre_confirmation' or 'new' and then navigated back.
     let patient: { id: string } | null = null;
     let isExisting = false;
 
     if (form_session_id) {
-      // Check for existing anonymous patient with this form_session_id
+      // Check for existing patient with this form_session_id (any status)
       const { data: existing } = await supabaseServer
         .from('people')
-        .select('id, metadata')
+        .select('id, metadata, status')
         .eq('type', 'patient')
-        .eq('status', 'anonymous')
         .contains('metadata', { form_session_id })
         .order('created_at', { ascending: false })
         .limit(1)
-        .maybeSingle<{ id: string; metadata?: Record<string, unknown> | null }>();
+        .maybeSingle<{ id: string; metadata?: Record<string, unknown> | null; status?: string }>();
 
       if (existing?.id) {
         // Update existing patient with latest preferences

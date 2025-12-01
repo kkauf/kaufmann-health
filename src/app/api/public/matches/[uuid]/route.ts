@@ -4,6 +4,7 @@ import { ServerAnalytics } from '@/lib/server-analytics';
 import { logError } from '@/lib/logger';
 import { computeMismatches, normalizeSpec, type PatientMeta, type TherapistRowForMatch } from '@/features/leads/lib/match';
 import { computeAvailability, getBerlinDayIndex } from '@/lib/availability';
+import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -87,14 +88,33 @@ export async function GET(req: Request) {
 
     const patientId = r.patient_id;
 
-    // Load patient context (for prefill)
+    // Load patient context (for prefill + session)
     const { data: patient } = await supabaseServer
       .from('people')
-      .select('name, status, metadata')
+      .select('name, email, phone_number, status, metadata')
       .eq('id', patientId)
       .single();
 
-    type PatientRow = { name?: string | null; status?: string | null; metadata?: { issue?: string; notes?: string; additional_info?: string; city?: string; session_preference?: 'online'|'in_person'; session_preferences?: ('online'|'in_person')[]; specializations?: string[]; gender_preference?: 'male'|'female'|'no_preference'; start_timing?: string; modality_matters?: boolean; time_slots?: string[] } | null };
+    // Build client session token so the user can contact therapists
+    // Magic link access proves identity, so we issue a 30-day session cookie
+    let sessionCookieHeader: string | null = null;
+    try {
+      const contactMethod = patient?.email ? 'email' : 'phone';
+      const contactValue = patient?.email || patient?.phone_number || '';
+      if (contactValue) {
+        const token = await createClientSessionToken({
+          patient_id: patientId,
+          contact_method: contactMethod,
+          contact_value: contactValue,
+          name: patient?.name || undefined,
+        });
+        sessionCookieHeader = createClientSessionCookie(token);
+      }
+    } catch (e) {
+      await logError('api.public.matches.get', e, { stage: 'create_session', uuid, patient_id: patientId });
+    }
+
+    type PatientRow = { name?: string | null; email?: string | null; phone_number?: string | null; status?: string | null; metadata?: { issue?: string; notes?: string; additional_info?: string; city?: string; session_preference?: 'online'|'in_person'; session_preferences?: ('online'|'in_person')[]; specializations?: string[]; gender_preference?: 'male'|'female'|'no_preference'; start_timing?: string; modality_matters?: boolean; time_slots?: string[] } | null };
     const p = (patient || null) as PatientRow | null;
     const patientName = (p?.name || '') || null;
     const patientStatus = (p?.status || '') || null;
@@ -323,7 +343,7 @@ export async function GET(req: Request) {
       props: { patient_id: patientId, therapists: list.map(x => x.id) },
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       data: {
         patient: {
           name: patientName,
@@ -343,6 +363,13 @@ export async function GET(req: Request) {
       },
       error: null,
     });
+
+    // Set client session cookie so user can contact therapists
+    if (sessionCookieHeader) {
+      response.headers.set('Set-Cookie', sessionCookieHeader);
+    }
+
+    return response;
   } catch (e) {
     await logError('api.public.matches.get', e, { stage: 'exception', uuid });
     return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });
