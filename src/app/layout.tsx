@@ -11,6 +11,7 @@ import { COOKIES_ENABLED } from "@/lib/config";
 import CookieBanner from "@/components/CookieBanner";
 import GtagLoader from "@/components/GtagLoader";
 import { ErrorTracker } from "@/components/ErrorTracker";
+import ClarityLoader from "@/components/ClarityLoader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -120,6 +121,7 @@ export default function RootLayout({
         <Footer />
         <AnalyticsProvider />
         <ErrorTracker />
+        <ClarityLoader />
         {!COOKIES_ENABLED && <NoCookieToast />}
         {COOKIES_ENABLED && <CookieBanner />}
       </body>
