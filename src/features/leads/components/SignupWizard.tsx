@@ -368,13 +368,32 @@ export default function SignupWizard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // Track success render for phone users reaching step 9 (no email confirmation)
+  // Track success render for phone users reaching step 7+ (confirmation screens)
   React.useEffect(() => {
-    if (step === 9 && data.contact_method === 'phone') {
+    if (step >= 7 && data.contact_method === 'phone') {
       void trackEvent('confirm_success_rendered', { contact_method: 'phone' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, data.contact_method]);
+
+  // Auto-redirect verified phone users on confirmation screen to their matches
+  React.useEffect(() => {
+    if (step < 7) return;
+    if (data.contact_method !== 'phone') return;
+    if (!data.phone_verified) return;
+    
+    // Fetch session to get matchesUrl
+    fetch('/api/public/session')
+      .then(res => res.ok ? res.json() : null)
+      .then(json => {
+        const matchesUrl = json?.data?.matchesUrl;
+        if (matchesUrl && typeof window !== 'undefined') {
+          void trackEvent('redirect_to_matches', { contact_method: 'phone', from_confirmation: true });
+          window.location.assign(matchesUrl);
+        }
+      })
+      .catch(() => {});
+  }, [step, data.contact_method, data.phone_verified]);
 
   // If we have a session id (possibly from URL), try to load remote state once
   React.useEffect(() => {
@@ -791,9 +810,16 @@ export default function SignupWizard() {
           />
         );
       case 7:
-        // Step 7: Confirmation (was step 9)
+      case 8:
+      case 8.5:
+      case 9:
+        // Step 7+ all render confirmation (handles legacy localStorage with step=9)
         return renderConfirmationScreen();
       default:
+        // Fallback: redirect invalid steps to step 1
+        if (step > 9 || step < 1) {
+          safeGoToStep(1);
+        }
         return null;
     }
   }
