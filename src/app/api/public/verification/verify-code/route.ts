@@ -86,10 +86,10 @@ export async function POST(req: NextRequest) {
       let sessionCookie: string | null = null;
       let effectivePersonId: string | null = null;
       try {
-        type PersonRow = { id: string; name?: string | null; email?: string | null; metadata?: Record<string, unknown> | null };
+        type PersonRow = { id: string; name?: string | null; email?: string | null; campaign_variant?: string | null; metadata?: Record<string, unknown> | null };
         const { data: person, error: fetchErr } = await supabaseServer
           .from('people')
-          .select('id,name,email,metadata')
+          .select('id,name,email,campaign_variant,metadata')
           .eq('phone_number', contact)
           .eq('type', 'patient')
           .single<PersonRow>();
@@ -110,8 +110,8 @@ export async function POST(req: NextRequest) {
             .update({ metadata, status: 'new' })
             .eq('id', person.id);
 
-          // Create instant matches for phone-verified users (fix: was missing)
-          const variant = typeof metadata.campaign_variant === 'string' ? metadata.campaign_variant : undefined;
+          // Create instant matches for phone-verified users
+          const variant = person.campaign_variant || undefined;
           try {
             const matchResult = await createInstantMatchesForPatient(person.id, variant);
             if (matchResult) {
