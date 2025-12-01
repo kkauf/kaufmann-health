@@ -376,20 +376,18 @@ export default function SignupWizard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, data.contact_method]);
 
-  // Auto-redirect verified phone users on confirmation screen to their matches
+  // Fetch matchesUrl for verified phone users (for "See Matches" button)
+  const [matchesUrl, setMatchesUrl] = React.useState<string | null>(null);
   React.useEffect(() => {
     if (step < 7) return;
     if (data.contact_method !== 'phone') return;
     if (!data.phone_verified) return;
     
-    // Fetch session to get matchesUrl
     fetch('/api/public/session')
       .then(res => res.ok ? res.json() : null)
       .then(json => {
-        const matchesUrl = json?.data?.matchesUrl;
-        if (matchesUrl && typeof window !== 'undefined') {
-          void trackEvent('redirect_to_matches', { contact_method: 'phone', from_confirmation: true });
-          window.location.assign(matchesUrl);
+        if (json?.data?.matchesUrl) {
+          setMatchesUrl(json.data.matchesUrl);
         }
       })
       .catch(() => {});
@@ -917,6 +915,19 @@ export default function SignupWizard() {
                 </div>
               </div>
             </div>
+
+            {/* See Matches button */}
+            {matchesUrl && (
+              <Button
+                onClick={() => {
+                  void trackEvent('skip_to_matches', { contact_method: 'phone', email_added: !!addEmailMessage?.includes('gespeichert') });
+                  window.location.assign(matchesUrl);
+                }}
+                className="h-12 w-full text-base font-medium"
+              >
+                Weiter zu deinen Matches →
+              </Button>
+            )}
           </div>
         );
       }
