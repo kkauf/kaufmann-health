@@ -107,11 +107,25 @@ type StatsData = {
     byBudgetBucket: Array<{ option: string; started: number; completed: number; completion_rate: number }>;
   };
   funnels?: {
+    // Simple Test 3 comparison table
+    test3?: Array<{
+      variant: string;
+      landingSessions: number;
+      quizSubmitted: number;
+      startedVerification: number;
+      verified: number;
+      contactedTherapist: number;
+      landingToQuizPct: number;
+      quizToVerifyPct: number;
+      verifyCompletePct: number;
+      verifiedToContactPct: number;
+    }>;
+    // Legacy funnels (for backward compatibility)
+    test3Concierge?: { steps: Array<{ name: string; count: number; from_prev_rate: number; from_start_rate: number }>; };
+    test3Marketplace?: { steps: Array<{ name: string; count: number; from_prev_rate: number; from_start_rate: number }>; };
     quizMatches: { steps: Array<{ name: string; count: number; from_prev_rate: number; from_start_rate: number }>; };
     browseDirectory: { steps: Array<{ name: string; count: number; from_prev_rate: number; from_start_rate: number }>; };
     quizConversion?: { steps: Array<{ name: string; count: number; from_prev_rate: number; from_start_rate: number }>; };
-    landingFromStartQuiz?: { steps: Array<{ name: string; count: number; from_prev_rate: number; from_start_rate: number }>; };
-    landingFromStartDirectory?: { steps: Array<{ name: string; count: number; from_prev_rate: number; from_start_rate: number }>; };
   };
   opportunities?: {
     byReason: { gender: number; location: number; modality: number };
@@ -261,95 +275,80 @@ export default function AdminStats() {
         />
       )}
 
-      {data?.funnels && (
+      {data?.funnels?.test3 && data.funnels.test3.length > 0 && (
         <div className="grid grid-cols-1 gap-4">
-          {(() => {
-            const steps = data.funnels?.landingFromStartQuiz?.steps || [];
-            const start = steps[0]?.count || 0;
-            const sent = steps[steps.length - 1]?.count || 0;
-            return (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Landing → Quiz Funnel</CardTitle>
-                  <CardDescription>Von /start bis Nachricht gesendet (Matches). Golden Metric: {sent}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {!steps.length ? (
-                    <div className="text-sm text-muted-foreground">Keine Daten</div>
-                  ) : (
-                    <div className="space-y-2">
-                      {steps.map((s, i) => {
-                        const widthPct = start > 0 ? (s.count / start) * 100 : 0;
-                        const fromPrev = s.from_prev_rate;
-                        const fromStart = s.from_start_rate;
-                        return (
-                          <div key={`landing-quiz-${s.name}-${i}`} className="flex items-center gap-2 text-xs">
-                            <div className="w-48 text-right text-muted-foreground truncate">{s.name}</div>
-                            <div className="flex-1 bg-gray-100 rounded-sm h-6 relative overflow-hidden">
-                              <div className="bg-emerald-500 h-full transition-all duration-300 flex items-center px-2" style={{ width: `${widthPct}%` }}>
-                                {widthPct > 15 && (
-                                  <span className="text-white font-medium text-xs tabular-nums">{s.count}</span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="w-28 text-left">
-                              <div className="font-medium tabular-nums">{s.count} <span className="text-muted-foreground">({pct(s.count, start)}%)</span></div>
-                            </div>
-                            <div className="w-24 text-right text-muted-foreground tabular-nums">{fromPrev}%</div>
-                            <div className="w-24 text-right text-muted-foreground tabular-nums">{fromStart}%</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })()}
-
-          {(() => {
-            const steps = data.funnels?.landingFromStartDirectory?.steps || [];
-            const start = steps[0]?.count || 0;
-            const sent = steps[steps.length - 1]?.count || 0;
-            return (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Landing → Directory Funnel</CardTitle>
-                  <CardDescription>Von /start bis Nachricht gesendet (Verzeichnis). Golden Metric: {sent}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {!steps.length ? (
-                    <div className="text-sm text-muted-foreground">Keine Daten</div>
-                  ) : (
-                    <div className="space-y-2">
-                      {steps.map((s, i) => {
-                        const widthPct = start > 0 ? (s.count / start) * 100 : 0;
-                        const fromPrev = s.from_prev_rate;
-                        const fromStart = s.from_start_rate;
-                        return (
-                          <div key={`landing-dir-${s.name}-${i}`} className="flex items-center gap-2 text-xs">
-                            <div className="w-48 text-right text-muted-foreground truncate">{s.name}</div>
-                            <div className="flex-1 bg-gray-100 rounded-sm h-6 relative overflow-hidden">
-                              <div className="bg-blue-500 h-full transition-all duration-300 flex items-center px-2" style={{ width: `${widthPct}%` }}>
-                                {widthPct > 15 && (
-                                  <span className="text-white font-medium text-xs tabular-nums">{s.count}</span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="w-28 text-left">
-                              <div className="font-medium tabular-nums">{s.count} <span className="text-muted-foreground">({pct(s.count, start)}%)</span></div>
-                            </div>
-                            <div className="w-24 text-right text-muted-foreground tabular-nums">{fromPrev}%</div>
-                            <div className="w-24 text-right text-muted-foreground tabular-nums">{fromStart}%</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })()}
+          {/* Test 3 Comparison Table - Simple & Clear */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Test 3: Variant Comparison</CardTitle>
+              <CardDescription>
+                Landing → Quiz → Verification → Contact. Using people table as source of truth.
+                <span className="block text-amber-600 text-xs mt-1">⚠️ Concierge landing underreported (tracking gap)</span>
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2 font-medium">Stage</th>
+                      {data.funnels.test3.map(f => (
+                        <th key={f.variant} className="text-right py-2 font-medium px-3">{f.variant}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b hover:bg-muted/50">
+                      <td className="py-2 text-muted-foreground">Landing Sessions</td>
+                      {data.funnels.test3.map(f => (
+                        <td key={f.variant} className="text-right py-2 px-3 tabular-nums font-medium">{f.landingSessions}</td>
+                      ))}
+                    </tr>
+                    <tr className="border-b hover:bg-muted/50">
+                      <td className="py-2 text-muted-foreground">Quiz Submitted</td>
+                      {data.funnels.test3.map(f => (
+                        <td key={f.variant} className="text-right py-2 px-3 tabular-nums">
+                          {f.quizSubmitted} <span className="text-muted-foreground text-xs">({f.landingToQuizPct}%)</span>
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="border-b hover:bg-muted/50">
+                      <td className="py-2 text-muted-foreground">Started Verification</td>
+                      {data.funnels.test3.map(f => (
+                        <td key={f.variant} className="text-right py-2 px-3 tabular-nums">
+                          {f.startedVerification} <span className="text-muted-foreground text-xs">({f.quizToVerifyPct}%)</span>
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="border-b hover:bg-muted/50">
+                      <td className="py-2 text-muted-foreground">Verified ✓</td>
+                      {data.funnels.test3.map(f => (
+                        <td key={f.variant} className="text-right py-2 px-3 tabular-nums">
+                          <span className="font-medium text-green-600">{f.verified}</span> <span className="text-muted-foreground text-xs">({f.verifyCompletePct}%)</span>
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="hover:bg-muted/50">
+                      <td className="py-2 text-muted-foreground">Contacted Therapist 🎯</td>
+                      {data.funnels.test3.map(f => (
+                        <td key={f.variant} className="text-right py-2 px-3 tabular-nums">
+                          <span className={f.contactedTherapist > 0 ? "font-bold text-emerald-600" : "text-red-500"}>{f.contactedTherapist}</span>
+                          {f.verified > 0 && <span className="text-muted-foreground text-xs"> ({f.verifiedToContactPct}%)</span>}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Quick insights */}
+              <div className="mt-4 pt-4 border-t text-xs text-muted-foreground space-y-1">
+                <div><strong>Key Finding:</strong> Neither variant has therapist contacts yet - this is the main conversion blocker.</div>
+                <div><strong>Quiz → Verify:</strong> Concierge {data.funnels.test3[1]?.quizToVerifyPct}% vs Marketplace {data.funnels.test3[0]?.quizToVerifyPct}%</div>
+                <div><strong>Verify Complete:</strong> Concierge {data.funnels.test3[1]?.verifyCompletePct}% vs Marketplace {data.funnels.test3[0]?.verifyCompletePct}%</div>
+              </div>
+            </CardContent>
+          </Card>
 
           {(() => {
             const steps = data.funnels?.quizConversion?.steps || [];

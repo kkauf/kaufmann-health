@@ -11,6 +11,9 @@
     { "path": "/api/admin/leads/rich-therapist-email?limit=200", "schedule": "0 9 * * *" },
     { "path": "/api/admin/leads/selection-nudge?limit=200", "schedule": "0 9 * * *" },
     { "path": "/api/admin/leads/feedback-request?limit=200", "schedule": "0 10 * * *" },
+    { "path": "/api/admin/leads/sms-cadence?stage=day2&limit=100", "schedule": "30 10 * * *" },
+    { "path": "/api/admin/leads/sms-cadence?stage=day5&limit=100", "schedule": "35 10 * * *" },
+    { "path": "/api/admin/leads/sms-cadence?stage=day10&limit=100", "schedule": "40 10 * * *" },
     { "path": "/api/admin/leads/conversions/backfill?limit=200", "schedule": "15 * * * *" },
     { "path": "/api/admin/alerts/system?minutes=15", "schedule": "*/15 * * * *" },
     { "path": "/api/admin/alerts/new-leads?hours=3", "schedule": "0 */3 * * *" }

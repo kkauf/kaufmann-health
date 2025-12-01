@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import FaqAccordion from '@/components/FaqAccordion';
 import CtaLink from '@/components/CtaLink';
+import PageAnalytics from '@/components/PageAnalytics';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
   HeroNoForm,
@@ -45,6 +46,7 @@ export default async function TherapieFindenPage() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
+      <PageAnalytics qualifier="concierge" />
       <HeroNoForm
         title="Traumata lösen sich nicht von Reden allein."
         // subtitle="Dein Körper erinnert sich — auch wenn dein Kopf längst verstanden hat. Körperpsychotherapie setzt dort an, wo Gespräche nicht hinkommen."
