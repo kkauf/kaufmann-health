@@ -12,17 +12,23 @@ export async function GET(req: Request) {
 
     const { name: sessionName, contact_method, contact_value, patient_id } = session;
 
-    // Fetch current name from database (in case it was updated after the cookie was created)
+    // Fetch current name and matchesUrl from database
     let currentName = sessionName;
+    let matchesUrl: string | null = null;
     if (patient_id) {
       try {
         const { data: person } = await supabaseServer
           .from('people')
-          .select('name')
+          .select('name,metadata')
           .eq('id', patient_id)
           .single();
         if (person?.name) {
           currentName = person.name;
+        }
+        // Extract matchesUrl from metadata (stored as last_confirm_redirect_path)
+        const meta = person?.metadata as Record<string, unknown> | null;
+        if (meta?.last_confirm_redirect_path && typeof meta.last_confirm_redirect_path === 'string') {
+          matchesUrl = meta.last_confirm_redirect_path;
         }
       } catch {
         // Fall back to session name if DB fetch fails
@@ -36,6 +42,7 @@ export async function GET(req: Request) {
         contact_method,
         contact_value,
         patient_id,
+        matchesUrl,
       },
       error: null
     });
