@@ -159,7 +159,7 @@ export async function GET(req: Request) {
     }
 
     // Compute availability for selected therapists (next 3 weeks)
-    type SlotRow = { therapist_id: string; day_of_week: number; time_local: string; format: 'online'|'in_person'|string; address: string | null; active: boolean | null };
+    type SlotRow = { therapist_id: string; day_of_week: number; time_local: string; format: 'online'|'in_person'|string; address: string | null; active: boolean | null; is_recurring?: boolean | null; specific_date?: string | null; end_date?: string | null };
     const TZ = 'Europe/Berlin';
     const weekdayFmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'short' });
     const ymdFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -172,7 +172,7 @@ export async function GET(req: Request) {
       if (therapistIds.length > 0) {
         const { data: slotsData } = await supabaseServer
           .from('therapist_slots')
-          .select('therapist_id, day_of_week, time_local, format, address, active')
+          .select('therapist_id, day_of_week, time_local, format, address, active, is_recurring, specific_date, end_date')
           .in('therapist_id', therapistIds)
           .eq('active', true)
           .limit(1000);
@@ -234,6 +234,44 @@ export async function GET(req: Request) {
       if (slots.length > 0) {
         const maxDays = 21;
         const now = new Date();
+        const start = new Date(now.getTime());
+        start.setUTCDate(start.getUTCDate() + 1);
+        const end = new Date(start.getTime());
+        end.setUTCDate(end.getUTCDate() + maxDays);
+        const startYmd = getBerlinYmd(start);
+        const endYmd = getBerlinYmd(end);
+        const seen = new Set<string>();
+
+        const pushAvail = (ymd: string, time: string, fmt: 'online' | 'in_person', addr?: string) => {
+          const key = `${ymd}|${time}|${fmt}|${addr || ''}`;
+          if (seen.has(key)) return;
+          const bookedKey = `${t.id}|${ymd}|${time}`;
+          if (booked.has(bookedKey)) return;
+          seen.add(key);
+          availability.push({ date_iso: ymd, time_label: time, format: fmt, ...(fmt === 'in_person' && addr ? { address: addr } : {}) });
+        };
+
+        // One-time slots: include only on their specific_date within the window
+        for (const s of slots) {
+          if (s.is_recurring === false) {
+            const specific = String(s.specific_date || '').trim();
+            if (!specific) continue;
+            if (specific < startYmd || specific > endYmd) continue;
+            const time = String(s.time_local || '').slice(0, 5);
+            const fmtRaw = String(s.format || '').trim();
+            if (fmtRaw === 'both') {
+              const addr = String(s.address || '').trim();
+              pushAvail(specific, time, 'online');
+              pushAvail(specific, time, 'in_person', addr || undefined);
+            } else {
+              const fmt = (fmtRaw === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
+              const addr = fmt === 'in_person' ? String(s.address || '').trim() : undefined;
+              pushAvail(specific, time, fmt, addr);
+            }
+          }
+        }
+
+        // Recurring slots: expand across the window by matching day_of_week
         for (let offset = 1; offset <= maxDays; offset++) {
           if (availability.length >= 9) break;
           const d = new Date(now.getTime());
@@ -242,19 +280,22 @@ export async function GET(req: Request) {
           const ymd = getBerlinYmd(d);
           for (const s of slots) {
             if (availability.length >= 9) break;
+            // Skip one-time slots (handled above); treat missing is_recurring as recurring (legacy)
+            if (s.is_recurring === false) continue;
             if (Number(s.day_of_week) !== dow) continue;
+            // Respect optional end_date on recurring series
+            const endDate = String(s.end_date || '').trim();
+            if (endDate && ymd > endDate) continue;
             const time = String(s.time_local || '').slice(0, 5);
-            const bookedKey = `${t.id}|${ymd}|${time}`;
-            if (booked.has(bookedKey)) continue;
             const fmtRaw = String(s.format || '').trim();
             if (fmtRaw === 'both') {
               const addr = String(s.address || '').trim();
-              availability.push({ date_iso: ymd, time_label: time, format: 'online' });
-              availability.push({ date_iso: ymd, time_label: time, format: 'in_person', ...(addr ? { address: addr } : {}) });
+              pushAvail(ymd, time, 'online');
+              pushAvail(ymd, time, 'in_person', addr || undefined);
             } else {
               const fmt = (fmtRaw === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
-              const addr = fmt === 'in_person' ? String(s.address || '').trim() : '';
-              availability.push({ date_iso: ymd, time_label: time, format: fmt, ...(addr ? { address: addr } : {}) });
+              const addr = fmt === 'in_person' ? String(s.address || '').trim() : undefined;
+              pushAvail(ymd, time, fmt, addr);
             }
           }
         }
