@@ -20,12 +20,6 @@ export type Screen1Values = {
   contact_method?: ContactMethod;
 };
 
-function isMobileDevice(): boolean {
-  if (typeof window === 'undefined') return false;
-  const ua = window.navigator.userAgent.toLowerCase();
-  return /mobile|android|iphone|ipad|ipod/i.test(ua);
-}
-
 function getSavedContactMethod(): ContactMethod | null {
   if (typeof window === 'undefined') return null;
   const saved = window.localStorage.getItem('kh_contact_method');
