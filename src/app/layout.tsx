@@ -10,6 +10,7 @@ import Script from "next/script";
 import { COOKIES_ENABLED } from "@/lib/config";
 import CookieBanner from "@/components/CookieBanner";
 import GtagLoader from "@/components/GtagLoader";
+import { ErrorTracker } from "@/components/ErrorTracker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -118,6 +119,7 @@ export default function RootLayout({
         <main id="main" className="flex-1">{children}</main>
         <Footer />
         <AnalyticsProvider />
+        <ErrorTracker />
         {!COOKIES_ENABLED && <NoCookieToast />}
         {COOKIES_ENABLED && <CookieBanner />}
       </body>
