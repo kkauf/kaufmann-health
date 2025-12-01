@@ -156,7 +156,7 @@ async function createInstantMatchesForPatient(patientId: string, variant?: strin
       const payload: Record<string, unknown> = {
         patient_id: patientId,
         therapist_id: top[i].t.id,
-        status: 'suggested',
+        status: 'proposed',
       };
       if (i === 0 && secureUuid) {
         payload.secure_uuid = secureUuid;

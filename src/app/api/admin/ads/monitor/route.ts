@@ -61,7 +61,7 @@ function buildWindow({ lookbackDays, excludeToday }: { lookbackDays: number; exc
   return { startStr: toYyyymmdd(start), endStr: toYyyymmdd(end) };
 }
 
-/** Retry fetch with exponential backoff for transient errors */
+/** Retry fetch with exponential backoff for transient/internal errors */
 async function fetchWithRetry(
   url: string,
   init: RequestInit,
@@ -72,11 +72,11 @@ async function fetchWithRetry(
     const resp = await fetch(url, init);
     // Don't retry non-500 errors
     if (resp.status !== 500) return resp;
-    // Check if it's a transient error
+    // Check if it's a transient or internal error (both are retryable)
     const clone = resp.clone();
     const body = await clone.text().catch(() => '');
-    const isTransient = body.includes('TRANSIENT_ERROR');
-    if (!isTransient) return resp;
+    const isRetryable = body.includes('TRANSIENT_ERROR') || body.includes('INTERNAL_ERROR');
+    if (!isRetryable) return resp;
     lastResp = resp;
     if (attempt < retries) {
       await new Promise((r) => setTimeout(r, baseDelayMs * Math.pow(2, attempt)));

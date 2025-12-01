@@ -233,6 +233,23 @@ SMS verification can be tested in staging/dev by:
 - **Monthly Budget**: Monitor via Twilio dashboard
 - **Fallback Strategy**: Email fallback prevents blocking if budget exceeded
 
+## Post-Verification SMS (Transactional)
+
+### SMS Cadence
+Phone-only users receive a separate nurture sequence via `/api/admin/leads/sms-cadence`:
+
+| Day | Purpose |
+|-----|---------|
+| 2 | Gentle nudge with matches link + callback offer |
+| 5 | Decision help + "Antworte Hilfe" for callback |
+| 10 | Feedback request (no link, just ask what's blocking) |
+
+See `docs/emails.md` → "SMS Cadence" for full details.
+
+### Reply Handling
+- **Incoming webhook**: `/api/internal/sms/incoming` forwards replies to `LEADS_NOTIFY_EMAIL`
+- **Callback detection**: Messages containing "Hilfe", "Anruf", "Rückruf" get flagged for priority callback
+
 ## Monitoring
 
 Monitor SMS verification health:

@@ -148,6 +148,29 @@ Crons: `GET /api/admin/leads/rich-therapist-email`, `/selection-nudge`, `/feedba
 
 Feedback landing page: `/feedback/quick?patient=...&reason=...` captures responses and offers interview scheduling.
 
+### SMS Cadence (Phone-Only Patients)
+
+Separate follow-up sequence for patients who verified via SMS and have no email:
+
+| Day | SMS Template |
+|-----|--------------|
+| 2 | `Deine Therapeuten-Auswahl wartet: {url} – Fragen? Antworte "Hilfe" für einen Rückruf.` |
+| 5 | `Noch unsicher? Wir helfen bei der Auswahl. Antworte "Hilfe" und wir rufen dich an. {url}` |
+| 10 | `Kurze Frage: Was hält dich zurück? (Auswahl/Preis/Timing?) Antworte kurz – wir lesen alles persönlich.` |
+
+**Route**: `GET /api/admin/leads/sms-cadence?stage=day2|day5|day10`
+
+**Crons**: 10:30, 10:35, 10:40 daily (staggered after email cadence)
+
+**Eligibility**:
+- Has `phone_number` but NO email (or temp placeholder)
+- Has matches created
+- Hasn't selected a therapist yet
+- Hasn't received this SMS stage yet
+- No SMS sent in last 24h (spam prevention)
+
+**Reply handling**: Incoming SMS forwards to `LEADS_NOTIFY_EMAIL` via `/api/internal/sms/incoming` with callback detection ("Hilfe").
+
 ### Deliverability test (manual)
 
 - Use `scripts/send-spam-test.ts` for small, staggered sends:

@@ -36,14 +36,29 @@ function toDayKey(iso: string): string {
   return startOfDayUTC(new Date(iso)).toISOString().slice(0, 10);
 }
 
-type FunnelStep = { name: string; count: number; from_prev_rate: number; from_start_rate: number };
+// Simple funnel comparison using people table as source of truth
+type VariantFunnel = {
+  variant: string;
+  landingSessions: number;
+  quizSubmitted: number;
+  startedVerification: number;
+  verified: number;
+  contactedTherapist: number;
+  // Conversion rates
+  landingToQuizPct: number;
+  quizToVerifyPct: number;
+  verifyCompletePct: number;
+  verifiedToContactPct: number;
+};
+
 type FunnelsResponse = {
-  quizMatches: { steps: FunnelStep[] };
-  browseDirectory: { steps: FunnelStep[] };
-  quizConversion?: { steps: FunnelStep[] };
-  // New: /start-anchored funnels
-  landingFromStartQuiz: { steps: FunnelStep[] };
-  landingFromStartDirectory: { steps: FunnelStep[] };
+  test3: VariantFunnel[];  // Simple comparison table
+  // Legacy funnel types kept for backward compatibility
+  test3Concierge: { steps: { name: string; count: number; from_prev_rate: number; from_start_rate: number }[] };
+  test3Marketplace: { steps: { name: string; count: number; from_prev_rate: number; from_start_rate: number }[] };
+  quizMatches: { steps: { name: string; count: number; from_prev_rate: number; from_start_rate: number }[] };
+  browseDirectory: { steps: { name: string; count: number; from_prev_rate: number; from_start_rate: number }[] };
+  quizConversion?: { steps: { name: string; count: number; from_prev_rate: number; from_start_rate: number }[] };
 };
 
 function isTestEvent(props?: Record<string, unknown>): boolean {
@@ -91,11 +106,12 @@ function buildSequentialCounts(orderedSets: Set<string>[]): { counts: number[]; 
 
 async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
   const funnels: FunnelsResponse = {
+    test3: [],  // Simple comparison table
+    test3Concierge: { steps: [] },
+    test3Marketplace: { steps: [] },
     quizMatches: { steps: [] },
     browseDirectory: { steps: [] },
     quizConversion: { steps: [] },
-    landingFromStartQuiz: { steps: [] },
-    landingFromStartDirectory: { steps: [] },
   };
 
   const quizTypes = [
@@ -250,90 +266,131 @@ async function buildFunnels(sinceIso: string): Promise<FunnelsResponse> {
     }));
   }
 
-  // === LANDING FUNNELS FROM /start ===
-  // Anchor both quiz and directory funnels on sessions that viewed /start and clicked the respective CTA.
+  // === TEST 3 FUNNELS: Simple SQL-based approach using people table as source of truth ===
+  // This is much more reliable than session-based tracking which breaks across email verifications
   try {
-    const { data: startRows } = await supabaseServer
+    // Get landing sessions from page_view events (best effort - concierge is underreported)
+    const { data: landingRows } = await supabaseServer
       .from('events')
-      .select('type, properties')
-      .in('type', ['page_view', 'cta_click'])
+      .select('properties')
+      .eq('type', 'page_view')
       .gte('created_at', sinceIso)
       .limit(50000);
 
-    const startViews = new Set<string>();
-    const startCtaQuiz = new Set<string>();
-    const startCtaDirectory = new Set<string>();
-
-    for (const row of (startRows || []) as Array<{ type?: string; properties?: Record<string, unknown> }>) {
-      try {
-        const t = String(row.type || '').toLowerCase();
-        const props = (row.properties || {}) as Record<string, unknown>;
-        if (isTestEvent(props)) continue;
-        const sid = String((props['session_id'] as string | undefined) || '').trim();
-        if (!sid) continue;
-        const pagePath = String((props['page_path'] as string | undefined) || '').trim().toLowerCase();
-
-        if (t === 'page_view') {
-          if (pagePath === '/start') startViews.add(sid);
-        } else if (t === 'cta_click' && pagePath === '/start') {
-          const href = String((props['href'] as string | undefined) || '').trim().toLowerCase();
-          if (!href) continue;
-          if (href.includes('/fragebogen')) startCtaQuiz.add(sid);
-          if (href.includes('/therapeuten')) startCtaDirectory.add(sid);
-        }
-      } catch {}
+    let marketplaceLanding = 0;
+    let conciergeLanding = 0;
+    const seenSessions = new Set<string>();
+    
+    for (const row of (landingRows || []) as Array<{ properties?: Record<string, unknown> }>) {
+      const props = row.properties || {};
+      if (isTestEvent(props)) continue;
+      const sid = String((props['session_id'] as string | undefined) || '').trim();
+      if (!sid || seenSessions.has(sid)) continue;
+      
+      const pagePath = String((props['page_path'] as string | undefined) || '').toLowerCase();
+      const referrer = String((props['referrer'] as string | undefined) || '').toLowerCase();
+      
+      if (pagePath === '/start' || referrer.includes('v=marketplace') || referrer.includes('variant=marketplace')) {
+        marketplaceLanding++;
+        seenSessions.add(sid);
+      } else if (pagePath === '/therapie-finden' || referrer.includes('/therapie-finden') || 
+                 referrer.includes('v=concierge') || referrer.includes('variant=concierge')) {
+        conciergeLanding++;
+        seenSessions.add(sid);
+      }
     }
 
-    if (startViews.size > 0) {
-      // Landing → Quiz: /start → quiz CTA → matches contact funnel
-      {
-        const ordered = [startViews, startCtaQuiz, qRoot, qProfile, qCta, qOpen, qSlot, qDraft, qVerStart, qVerDone, qSent];
-        const names = [
-          'start_page_view',
-          'start_cta_quiz',
-          'match_page_view',
-          'therapist_profile_viewed',
-          'contact_cta_clicked',
-          'contact_modal_opened',
-          'booking_slot_selected',
-          'message_drafted',
-          'contact_verification_started',
-          'contact_verification_completed',
-          'contact_message_sent',
-        ];
-        const { counts, ratesPrev, ratesStart } = buildSequentialCounts(ordered);
-        funnels.landingFromStartQuiz.steps = names.map((name, i) => ({
-          name,
-          count: counts[i] || 0,
-          from_prev_rate: ratesPrev[i] || 0,
-          from_start_rate: ratesStart[i] || 0,
-        }));
-      }
+    // Get people stats by variant (source of truth)
+    const { data: peopleRows } = await supabaseServer
+      .from('people')
+      .select('campaign_variant, status')
+      .eq('type', 'patient')
+      .in('campaign_variant', ['concierge', 'marketplace'])
+      .gte('created_at', sinceIso);
 
-      // Landing → Directory: /start → directory CTA → directory contact funnel
-      // Note: we skip the intermediate directory_page_view step because it's almost
-      // always a technical follow-through of the CTA click, not a new decision.
+    const stats: Record<string, { quiz: number; verifyStarted: number; verified: number }> = {
+      concierge: { quiz: 0, verifyStarted: 0, verified: 0 },
+      marketplace: { quiz: 0, verifyStarted: 0, verified: 0 },
+    };
+
+    for (const row of (peopleRows || []) as Array<{ campaign_variant?: string; status?: string }>) {
+      const variant = row.campaign_variant || '';
+      const status = row.status || '';
+      if (!stats[variant]) continue;
+      
+      stats[variant].quiz++;
+      if (status !== 'anonymous') stats[variant].verifyStarted++;
+      if (status === 'new' || status === 'email_confirmed') stats[variant].verified++;
+    }
+
+    // Get contacted therapist counts from matches
+    const { data: matchRows } = await supabaseServer
+      .from('matches')
+      .select('patient_id, status, people!inner(campaign_variant, created_at)')
+      .in('status', ['contacted', 'accepted', 'declined', 'patient_selected', 'completed'])
+      .gte('people.created_at', sinceIso);
+
+    const contacted: Record<string, Set<string>> = { concierge: new Set(), marketplace: new Set() };
+    for (const row of (matchRows || []) as Array<{ patient_id?: string; people?: { campaign_variant?: string } }>) {
+      const variant = row.people?.campaign_variant || '';
+      const patientId = row.patient_id || '';
+      if (contacted[variant] && patientId) {
+        contacted[variant].add(patientId);
+      }
+    }
+
+    // Helper to calculate rate
+    const pct = (num: number, den: number) => den > 0 ? Math.round((num / den) * 1000) / 10 : 0;
+
+    // Build simple comparison table
+    funnels.test3 = [
       {
-        const ordered = [startViews, startCtaDirectory, bProfile, bCta, bOpen, bSlot, bDraft, bVerStart, bVerDone, bSent];
-        const names = [
-          'start_page_view',
-          'start_cta_directory',
-          'therapist_profile_viewed',
-          'contact_cta_clicked',
-          'contact_modal_opened',
-          'booking_slot_selected',
-          'message_drafted',
-          'contact_verification_started',
-          'contact_verification_completed',
-          'contact_message_sent',
-        ];
-        const { counts, ratesPrev, ratesStart } = buildSequentialCounts(ordered);
-        funnels.landingFromStartDirectory.steps = names.map((name, i) => ({
-          name,
-          count: counts[i] || 0,
-          from_prev_rate: ratesPrev[i] || 0,
-          from_start_rate: ratesStart[i] || 0,
-        }));
+        variant: 'Marketplace (/start)',
+        landingSessions: marketplaceLanding,
+        quizSubmitted: stats.marketplace.quiz,
+        startedVerification: stats.marketplace.verifyStarted,
+        verified: stats.marketplace.verified,
+        contactedTherapist: contacted.marketplace.size,
+        landingToQuizPct: pct(stats.marketplace.quiz, marketplaceLanding),
+        quizToVerifyPct: pct(stats.marketplace.verifyStarted, stats.marketplace.quiz),
+        verifyCompletePct: pct(stats.marketplace.verified, stats.marketplace.verifyStarted),
+        verifiedToContactPct: pct(contacted.marketplace.size, stats.marketplace.verified),
+      },
+      {
+        variant: 'Concierge (/therapie-finden)',
+        landingSessions: conciergeLanding,
+        quizSubmitted: stats.concierge.quiz,
+        startedVerification: stats.concierge.verifyStarted,
+        verified: stats.concierge.verified,
+        contactedTherapist: contacted.concierge.size,
+        landingToQuizPct: pct(stats.concierge.quiz, conciergeLanding),
+        quizToVerifyPct: pct(stats.concierge.verifyStarted, stats.concierge.quiz),
+        verifyCompletePct: pct(stats.concierge.verified, stats.concierge.verifyStarted),
+        verifiedToContactPct: pct(contacted.concierge.size, stats.concierge.verified),
+      },
+    ];
+
+    // Also populate legacy step-based format for backward compatibility
+    for (const f of funnels.test3) {
+      const steps = [
+        { name: 'landing_sessions', count: f.landingSessions },
+        { name: 'quiz_submitted', count: f.quizSubmitted },
+        { name: 'started_verification', count: f.startedVerification },
+        { name: 'verified', count: f.verified },
+        { name: 'contacted_therapist', count: f.contactedTherapist },
+      ];
+      const start = steps[0].count || 1;
+      const legacySteps = steps.map((s, i) => ({
+        name: s.name,
+        count: s.count,
+        from_prev_rate: i === 0 ? 100 : pct(s.count, steps[i - 1].count),
+        from_start_rate: pct(s.count, start),
+      }));
+      
+      if (f.variant.includes('Concierge')) {
+        funnels.test3Concierge.steps = legacySteps;
+      } else {
+        funnels.test3Marketplace.steps = legacySteps;
       }
     }
   } catch {}
