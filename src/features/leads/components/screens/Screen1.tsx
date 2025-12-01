@@ -76,12 +76,12 @@ export default function Screen1({
     } else if (mode === 'sms') {
       defaultMethod = 'phone';
     } else if (mode === 'choice') {
-      // In choice mode, prefer saved preference, then detect mobile device
+      // In choice mode, prefer saved preference, otherwise default to phone (higher conversion rate)
       const saved = getSavedContactMethod();
       if (saved) {
         defaultMethod = saved;
-      } else if (isMobileDevice()) {
-        // Default to phone on mobile devices (safe after hydration)
+      } else {
+        // Default to phone for all users - 100% vs 43% verification rate
         defaultMethod = 'phone';
       }
     }
