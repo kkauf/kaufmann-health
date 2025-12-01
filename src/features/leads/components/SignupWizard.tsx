@@ -1197,7 +1197,16 @@ export default function SignupWizard() {
       }
 
       void trackEvent('form_completed', { steps: 8 });
-      goToStep(9);
+
+      // Phone users: already verified via SMS, redirect to matches immediately
+      if (data.contact_method === 'phone' && data.phone_verified && matchesUrl) {
+        void trackEvent('redirect_to_matches', { contact_method: 'phone', instant_match: true });
+        window.location.assign(matchesUrl);
+        return;
+      }
+
+      // Email users: go to confirmation screen (step 7) to wait for email verification
+      goToStep(7);
     } catch {
       setSubmitError('Senden fehlgeschlagen. Bitte überprüfe deine Verbindung und versuche es erneut.');
     } finally {
