@@ -1,12 +1,12 @@
 {
   "crons": [
     { "path": "/api/admin/therapists/reminders?limit=200", "schedule": "15 9 * * *" },
-    { "path": "/api/admin/matches/therapist-action-reminders?stage=20h", "schedule": "0 * * * *" },
+    { "path": "/api/admin/matches/therapist-action-reminders?stage=20h", "schedule": "0 7-20 * * *" },
     { "path": "/api/admin/ads/monitor?apply=false&lookback=3&excludeToday=true&minSpendNoConv=30&budgetMultiple=2", "schedule": "0 8 * * *" },
     { "path": "/api/admin/ads/monitor?apply=false&lookback=3&excludeToday=true&minSpendNoConv=30&budgetMultiple=2", "schedule": "0 14 * * *" },
     { "path": "/api/admin/ads/monitor?apply=false&lookback=1&excludeToday=false&minSpendNoConv=30&budgetMultiple=2", "schedule": "0 20 * * *" },
     { "path": "/api/admin/ads/monitor?apply=false&lookback=1&excludeToday=false&minSpendNoConv=30&budgetMultiple=1.5", "schedule": "0 2 * * *" },
-    { "path": "/api/admin/leads/confirmation-reminders?limit=200", "schedule": "0 * * * *" },
+    { "path": "/api/admin/leads/confirmation-reminders?limit=200", "schedule": "0 7-20 * * *" },
     { "path": "/api/admin/leads/confirmation-reminders?threshold=72h&limit=200", "schedule": "30 9 * * *" },
     { "path": "/api/admin/leads/rich-therapist-email?limit=200", "schedule": "0 9 * * *" },
     { "path": "/api/admin/leads/selection-nudge?limit=200", "schedule": "0 9 * * *" },
