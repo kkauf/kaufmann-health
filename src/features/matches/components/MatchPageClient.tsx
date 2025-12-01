@@ -158,7 +158,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
 
 
 
-  // Track page view
+  // Track page view - include secure_uuid for linking to match session
   useEffect(() => {
     if (data) {
       try {
@@ -167,12 +167,16 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         const payload = {
           type: 'match_page_view',
           ...attrs,
-          properties: { page_path: pagePath, therapist_count: therapists.length },
+          properties: { 
+            page_path: pagePath, 
+            therapist_count: therapists.length,
+            secure_uuid: uuid, // For linking to specific match session
+          },
         };
         navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
       } catch { }
     }
-  }, [data, therapists.length]);
+  }, [data, therapists.length, uuid]);
 
   // Track preferences summary shown (non-PII)
   useEffect(() => {
