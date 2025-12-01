@@ -3,6 +3,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { logError } from '@/lib/logger';
 import { computeMismatches, normalizeSpec, type PatientMeta, type TherapistRowForMatch } from '@/features/leads/lib/match';
+import { computeAvailability, getBerlinDayIndex } from '@/lib/availability';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -158,56 +159,11 @@ export async function GET(req: Request) {
       if (Array.isArray(trows)) therapists = trows as TherapistRow[];
     }
 
-    // Compute availability for selected therapists (next 3 weeks)
-    type SlotRow = { therapist_id: string; day_of_week: number; time_local: string; format: 'online'|'in_person'|string; address: string | null; active: boolean | null };
-    const TZ = 'Europe/Berlin';
-    const weekdayFmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'short' });
-    const ymdFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
-    const weekdayIndex: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-    function getBerlinDayIndex(d: Date): number { const name = weekdayFmt.format(d); return weekdayIndex[name as keyof typeof weekdayIndex] ?? d.getUTCDay(); }
-    function getBerlinYmd(d: Date): string { return ymdFmt.format(d); }
-
-    let slotsByTherapist = new Map<string, SlotRow[]>();
-    try {
-      if (therapistIds.length > 0) {
-        const { data: slotsData } = await supabaseServer
-          .from('therapist_slots')
-          .select('therapist_id, day_of_week, time_local, format, address, active')
-          .in('therapist_id', therapistIds)
-          .eq('active', true)
-          .limit(1000);
-        if (Array.isArray(slotsData)) {
-          for (const s of slotsData as SlotRow[]) {
-            const arr = slotsByTherapist.get(s.therapist_id) || [];
-            arr.push(s);
-            slotsByTherapist.set(s.therapist_id, arr);
-          }
-        }
-      }
-    } catch { slotsByTherapist = new Map(); }
-
-    const booked = new Set<string>();
-    try {
-      if (therapistIds.length > 0) {
-        const now = new Date();
-        const start = new Date(now.getTime()); start.setUTCDate(start.getUTCDate() + 1);
-        const end = new Date(start.getTime()); end.setUTCDate(end.getUTCDate() + 21);
-        const startYmd = getBerlinYmd(start); const endYmd = getBerlinYmd(end);
-        const { data: bookingsData } = await supabaseServer
-          .from('bookings')
-          .select('therapist_id, date_iso, time_label')
-          .in('therapist_id', therapistIds)
-          .gte('date_iso', startYmd)
-          .lte('date_iso', endYmd)
-          .limit(5000);
-        if (Array.isArray(bookingsData)) {
-          for (const b of bookingsData as { therapist_id: string; date_iso: string; time_label: string }[]) {
-            const key = `${b.therapist_id}|${String(b.date_iso)}|${String(b.time_label).slice(0,5)}`;
-            booked.add(key);
-          }
-        }
-      }
-    } catch {}
+    // Compute availability for selected therapists using shared utility
+    const availabilityMap = await computeAvailability(therapistIds, {
+      maxDays: 21,
+      maxSlots: 9,
+    });
 
     // Compute contacted flags (patient-initiated)
     const contactedById = new Map<string, string>(); // therapist_id -> iso string
@@ -228,38 +184,8 @@ export async function GET(req: Request) {
         modalities: Array.isArray(t.modalities) ? t.modalities : [],
       };
       const mm = computeMismatches(patientMeta, tRow);
-      // Build availability list (no time-of-day filtering)
-      const slots = slotsByTherapist.get(t.id) || [];
-      const availability: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] = [];
-      if (slots.length > 0) {
-        const maxDays = 21;
-        const now = new Date();
-        for (let offset = 1; offset <= maxDays; offset++) {
-          if (availability.length >= 9) break;
-          const d = new Date(now.getTime());
-          d.setUTCDate(d.getUTCDate() + offset);
-          const dow = getBerlinDayIndex(d);
-          const ymd = getBerlinYmd(d);
-          for (const s of slots) {
-            if (availability.length >= 9) break;
-            if (Number(s.day_of_week) !== dow) continue;
-            const time = String(s.time_local || '').slice(0, 5);
-            const bookedKey = `${t.id}|${ymd}|${time}`;
-            if (booked.has(bookedKey)) continue;
-            const fmtRaw = String(s.format || '').trim();
-            if (fmtRaw === 'both') {
-              const addr = String(s.address || '').trim();
-              availability.push({ date_iso: ymd, time_label: time, format: 'online' });
-              availability.push({ date_iso: ymd, time_label: time, format: 'in_person', ...(addr ? { address: addr } : {}) });
-            } else {
-              const fmt = (fmtRaw === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
-              const addr = fmt === 'in_person' ? String(s.address || '').trim() : '';
-              availability.push({ date_iso: ymd, time_label: time, format: fmt, ...(addr ? { address: addr } : {}) });
-            }
-          }
-        }
-        availability.sort((a, b) => (a.date_iso === b.date_iso ? a.time_label.localeCompare(b.time_label) : a.date_iso.localeCompare(b.date_iso)));
-      }
+      // Get pre-computed availability from shared utility
+      const availability = availabilityMap.get(t.id) || [];
 
       function slotMatchesPreferences(): boolean {
         const prefs = new Set((timeSlots || []).map((s) => String(s)));
