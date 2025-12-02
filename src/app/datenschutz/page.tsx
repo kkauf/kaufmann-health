@@ -375,8 +375,8 @@ export default function DatenschutzPage() {
           </section>
 
           <div className="mt-8 pt-4 border-t text-sm text-gray-500">
-            <p>Stand: {new Date().toLocaleDateString('de-DE', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            <p>Version: 2.0 – Ergänzung Google Ads Tracking mit Consent Mode</p>
+            <p>Stand: September 2025</p>
+            <p>Version: 2025-09-01.v2</p>
           </div>
         </div>
       </section>

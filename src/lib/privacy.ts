@@ -1,5 +1,11 @@
-export const PRIVACY_VERSION = '2025-09-01.v2';
-
 /**
- * Reminder: keep this version in sync with `/datenschutz` content and any consent banners.
+ * Version strings for legal documents.
+ * Bump these when updating the corresponding page content.
+ * These are stored in user consent records for audit trail.
+ * 
+ * Git history preserves all changes — no need for separate version files.
  */
+
+export const PRIVACY_VERSION = '2025-09-01.v2';
+export const AGB_VERSION = '2025-08.v1';
+export const IMPRESSUM_VERSION = '2025-08.v1';

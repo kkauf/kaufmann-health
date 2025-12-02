@@ -1,5 +1,5 @@
 import { PRIVACY_VERSION } from '@/lib/privacy';
-export { PRIVACY_VERSION } from '@/lib/privacy';
+export { PRIVACY_VERSION, AGB_VERSION, IMPRESSUM_VERSION } from '@/lib/privacy';
 export { TERMS_VERSION } from '@/content/therapist-terms';
 
 export function getConsentDefaults() {

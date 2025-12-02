@@ -113,7 +113,7 @@ export default function AgbPage() {
               Es gilt deutsches Recht. Sollten einzelne Bestimmungen dieser AGB unwirksam sein, bleibt die Wirksamkeit der übrigen
               Bestimmungen unberührt.
             </p>
-            <p className="mt-6 text-sm text-gray-600">Stand: August 2025</p>
+            <p className="mt-6 text-sm text-gray-600">Stand: August 2025 (Version 2025-08.v1)</p>
             <p className="text-sm text-gray-600">Konstantin Kaufmann - Kaufmann Health</p>
           </section>
         </div>
