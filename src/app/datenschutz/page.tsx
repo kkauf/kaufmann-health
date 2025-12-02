@@ -9,183 +9,120 @@ export default function DatenschutzPage() {
         <div className="mt-6 space-y-10 text-gray-700">
           <section aria-labelledby="ueberblick">
             <h2 id="ueberblick" className="text-xl font-semibold">1. Datenschutz auf einen Blick</h2>
-            <div className="mt-3 space-y-3">
+            <p className="mt-3">
+              Diese Datenschutzerklärung informiert Sie darüber, welche personenbezogenen Daten bei der Nutzung unserer
+              Website erhoben, verarbeitet und gespeichert werden. Personenbezogene Daten sind Informationen, mit denen
+              Sie persönlich identifiziert werden können. Ein Teil der Daten wird benötigt, um die fehlerfreie
+              Bereitstellung der Website sicherzustellen. Andere Daten verwenden wir zur Bearbeitung von Anfragen, zur
+              Vertragserfüllung oder zur Optimierung unserer Werbung und Angebote. Auf dieser Website setzen wir kein
+              Cookie-Tracking ein.
+            </p>
+          </section>
+
+          <section aria-labelledby="verantwortliche">
+            <h2 id="verantwortliche" className="text-xl font-semibold">2. Verantwortliche Stelle</h2>
+            <p className="mt-3">Verantwortlich für die Datenverarbeitung:</p>
+            <address className="not-italic mt-3 space-y-1">
+              <p className="font-medium">Konstantin Kaufmann – Kaufmann Health</p>
+              <p>Billackerweg 1</p>
+              <p>64646 Heppenheim</p>
               <p>
-                Die folgenden Hinweise geben einen Überblick darüber, was mit Ihren personenbezogenen Daten passiert, wenn Sie diese
-                Website besuchen. Personenbezogene Daten sind alle Daten, mit denen Sie persönlich identifiziert werden können.
+                Telefon: <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="tel:+4915679686874">+49 156 79686874</a>
               </p>
               <p>
-                Ein Teil der Daten wird erhoben, um eine fehlerfreie Bereitstellung der Website zu gewährleisten. Sofern über die Website
-                Verträge geschlossen oder angebahnt werden, verarbeiten wir die übermittelten Daten für Vertragsangebote, Bestellungen
-                oder sonstige Auftragsanfragen.
+                E-Mail: <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="mailto:kontakt@kaufmann-health.de">kontakt@kaufmann-health.de</a>
               </p>
-              <p>
-                {COOKIES_ENABLED ? (
-                  <>
-                    Auf dieser Website setzen wir keine Analytics‑Cookies. Für die Zuordnung von Werbeklicks zu erfolgreichen Formularsendungen kann ein First‑Party‑Cookie (Google Ads Conversion Linker) gesetzt werden. Details finden Sie in den nachfolgenden Abschnitten.
-                  </>
-                ) : (
-                  <>
-                    Auf dieser Website verwenden wir server‑seitiges Tracking ohne Cookies. Details finden Sie in den nachfolgenden Abschnitten.
-                  </>
-                )}
-              </p>
-            </div>
+            </address>
           </section>
 
           <section aria-labelledby="hosting">
-            <h2 id="hosting" className="text-xl font-semibold">2. Hosting</h2>
+            <h2 id="hosting" className="text-xl font-semibold">3. Hosting</h2>
             <p className="mt-3">
-              Diese Website wird extern gehostet. Die personenbezogenen Daten, die auf dieser Website erfasst werden, werden auf den
-              Servern der folgenden Anbieter gespeichert. Das Hosting erfolgt zum Zwecke der Vertragserfüllung gegenüber unseren
-              potenziellen und bestehenden Kunden (Art. 6 Abs. 1 lit. b DSGVO) und im Interesse einer sicheren, schnellen und effizienten
-              Bereitstellung unseres Online-Angebots (Art. 6 Abs. 1 lit. f DSGVO). Sofern eine Einwilligung abgefragt wurde, erfolgt die
-              Verarbeitung zusätzlich auf Grundlage von Art. 6 Abs. 1 lit. a DSGVO und § 25 Abs. 1 TDDDG; die Einwilligung ist jederzeit widerrufbar.
+              Unsere Website wird von externen Anbietern betrieben, darunter Vercel Inc., 340 S Lemon Ave #4133, Walnut,
+              CA 91789, USA, und Supabase Inc., 9700 Great Hills Trail #150, Austin, TX 78759, USA. Die Speicherung
+              personenbezogener Daten auf deren Servern dient der sicheren und effizienten Bereitstellung unserer Website.
+              Die Verarbeitung erfolgt auf Grundlage der Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO) und unseres
+              berechtigten Interesses an einem stabilen Betrieb (Art. 6 Abs. 1 lit. f DSGVO); sofern eine Einwilligung
+              abgefragt wurde, zusätzlich auf Basis von Art. 6 Abs. 1 lit. a DSGVO und § 25 Abs. 1 TDDDG.
             </p>
-            <ul className="mt-3 list-disc space-y-1 pl-6">
-              <li>Vercel Inc., 340 S Lemon Ave #4133, Walnut, CA 91789, USA</li>
-              <li>Supabase Inc., 9700 Great Hills Trail #150, Austin, TX 78759, USA</li>
-            </ul>
+            <p className="mt-3">
+              Die Übermittlung in die USA erfolgt auf Grundlage des EU-US Data Privacy Frameworks (Vercel Inc.) oder der
+              Standardvertragsklauseln der EU-Kommission (Art. 44 ff. DSGVO) (Supabase Inc., Kopien auf Anfrage). Die
+              Speicherdauer richtet sich nach technischen Notwendigkeiten und gesetzlichen Aufbewahrungspflichten.
+            </p>
             <p className="mt-3">
               Mit den oben genannten Anbietern wurden Auftragsverarbeitungsverträge (AVV) geschlossen.
             </p>
           </section>
 
-          <section aria-labelledby="allgemeines">
-            <h2 id="allgemeines" className="text-xl font-semibold">3. Allgemeine Hinweise und Pflichtinformationen</h2>
-            <div className="mt-3 space-y-4">
-              <div>
-                <h3 className="font-medium">Datenschutz</h3>
-                <p className="mt-2">
-                  Wir behandeln Ihre personenbezogenen Daten vertraulich und entsprechend den gesetzlichen Datenschutzvorschriften sowie
-                  dieser Datenschutzerklärung. Wir weisen darauf hin, dass die Datenübertragung im Internet (z. B. bei der Kommunikation per
-                  E-Mail) Sicherheitslücken aufweisen kann.
-                </p>
-              </div>
-
-              <div>
-                <h3 className="font-medium">Hinweis zur verantwortlichen Stelle</h3>
-                <address className="not-italic mt-2 space-y-1">
-                  <p className="font-medium">Konstantin Kaufmann - Kaufmann Health</p>
-                  <p>Billackerweg 1</p>
-                  <p>64646 Heppenheim</p>
-                  <p>
-                    Telefon: <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="tel:+4915679686874">+49 156 79686874</a>
-                  </p>
-                  <p>
-                    E-Mail: <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="mailto:kontakt@kaufmann-health.de">kontakt@kaufmann-health.de</a>
-                  </p>
-                </address>
-              </div>
-
-              <div>
-                <h3 className="font-medium">Speicherdauer</h3>
-                <p className="mt-2">
-                  Soweit in dieser Datenschutzerklärung keine speziellere Speicherdauer genannt wurde, verbleiben Ihre personenbezogenen
-                  Daten bei uns, bis der Zweck für die Datenverarbeitung entfällt. Gesetzliche Aufbewahrungsfristen bleiben unberührt.
-                </p>
-              </div>
-
-              <div>
-                <h3 className="font-medium">Rechtsgrundlagen der Verarbeitung</h3>
-                <p className="mt-2">
-                  Sofern Sie in die Datenverarbeitung eingewilligt haben, verarbeiten wir Ihre Daten auf Grundlage von Art. 6 Abs. 1 lit. a DSGVO
-                  (ggf. Art. 9 Abs. 2 lit. a DSGVO). Zur Vertragserfüllung oder Durchführung vorvertraglicher Maßnahmen auf Grundlage von Art. 6
-                  Abs. 1 lit. b DSGVO, zur Erfüllung rechtlicher Pflichten nach Art. 6 Abs. 1 lit. c DSGVO und aufgrund berechtigter Interessen nach
-                  Art. 6 Abs. 1 lit. f DSGVO. Bei Zugriff auf Endgeräte-Daten außerdem gemäß § 25 Abs. 1 TDDDG (Einwilligung).
-                </p>
-              </div>
-
-              <div>
-                <h3 className="font-medium">Empfänger von personenbezogenen Daten</h3>
-                <p className="mt-2">
-                  Im Rahmen unserer Geschäftstätigkeit arbeiten wir mit externen Stellen (z. B. Hosting, E-Mail, Analytik) zusammen. Eine
-                  Übermittlung personenbezogener Daten erfolgt nur auf Grundlage einer entsprechenden Rechtsgrundlage (z. B. AVV, gemeinsame
-                  Verantwortlichkeit, gesetzliche Verpflichtung, berechtigtes Interesse).
-                </p>
-              </div>
-
-              <div>
-                <h3 className="font-medium">Widerruf und Widerspruchsrecht</h3>
-                <p className="mt-2">
-                  Sie können eine bereits erteilte Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen. Zudem haben Sie das Recht, aus
-                  Gründen, die sich aus Ihrer besonderen Situation ergeben, jederzeit Widerspruch gegen die Verarbeitung auf Grundlage von Art. 6
-                  Abs. 1 lit. e oder f DSGVO einzulegen; dies gilt auch für ein darauf gestütztes Profiling (Art. 21 DSGVO).
-                </p>
-              </div>
-
-              <div>
-                <h3 className="font-medium">Beschwerderecht</h3>
-                <p className="mt-2">
-                  Im Falle datenschutzrechtlicher Verstöße steht Ihnen ein Beschwerderecht bei einer Aufsichtsbehörde zu, insbesondere in dem
-                  Mitgliedstaat Ihres gewöhnlichen Aufenthalts, Ihres Arbeitsplatzes oder des Orts des mutmaßlichen Verstoßes.
-                </p>
-              </div>
-
-              <div>
-                <h3 className="font-medium">Weitere Betroffenenrechte</h3>
-                <ul className="mt-2 list-disc space-y-1 pl-6">
-                  <li>Recht auf Datenübertragbarkeit</li>
-                  <li>Auskunft, Berichtigung und Löschung</li>
-                  <li>Recht auf Einschränkung der Verarbeitung</li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-medium">Betroffenenrechte</h3>
-                <p className="mt-2">
-                  Für alle Anfragen zu Ihren Datenschutzrechten (Auskunft, Berichtigung,
-                  Löschung, Einschränkung, Datenübertragbarkeit, Widerspruch) wenden Sie
-                  sich bitte an:
-                </p>
-                <p className="mt-1 font-medium">
-                  E-Mail:{' '}
-                  <a
-                    className="text-blue-600 underline"
-                    href="mailto:kontakt@kaufmann-health.de"
-                  >
-                    kontakt@kaufmann-health.de
-                  </a>
-                </p>
-              </div>
-
-              <div>
-                <h3 className="font-medium">SSL-/TLS-Verschlüsselung</h3>
-                <p className="mt-2">
-                  Diese Seite nutzt aus Sicherheitsgründen und zum Schutz der Übertragung vertraulicher Inhalte eine SSL-/TLS-Verschlüsselung.
-                  Eine verschlüsselte Verbindung erkennen Sie an &quot;https://&quot; und dem Schloss-Symbol im Browser.
-                </p>
-              </div>
-            </div>
+          <section aria-labelledby="rechte-allgemein">
+            <h2 id="rechte-allgemein" className="text-xl font-semibold">4. Allgemeine Hinweise zu Ihren Rechten</h2>
+            <p className="mt-3">
+              Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit
+              und Widerruf von Einwilligungen (Art. 15 – 20, 7 DSGVO). Außerdem können Sie aus besonderen Gründen der
+              Verarbeitung widersprechen (Art. 21 DSGVO).
+            </p>
+            <p className="mt-3">
+              Im Falle datenschutzrechtlicher Verstöße steht Ihnen nach Art. 77 Abs. 1 DSGVO ein Beschwerderecht bei einer
+              Aufsichtsbehörde zu, insbesondere in dem Mitgliedstaat Ihres gewöhnlichen Aufenthalts, Ihres Arbeitsplatzes
+              oder des Orts des mutmaßlichen Verstoßes.
+            </p>
+            <p className="mt-3">
+              Unter diesem Link finden Sie eine Auflistung der Landesdatenschutzbeauftragten:{' '}
+              <a
+                className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900"
+                href="https://www.bfdi.bund.de/DE/Service/Anschriften/anschriften_table.html"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                bfdi.bund.de
+              </a>
+            </p>
+            <p className="mt-3">
+              <strong>Hessischer Beauftragter für Datenschutz und Informationsfreiheit</strong><br />
+              Gustav-Stresemann-Ring 1, 65189 Wiesbaden<br />
+              Telefon: +49 611 1408-0
+            </p>
+            <p className="mt-3">
+              Der Verantwortliche stellt eine Kopie der personenbezogenen Daten, die Gegenstand der Verarbeitung sind,
+              zur Verfügung (Art. 15 Abs. 3 S. 1 DSGVO).
+            </p>
+            <p className="mt-3">
+              Für alle Anfragen wenden Sie sich bitte an{' '}
+              <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="mailto:kontakt@kaufmann-health.de">
+                kontakt@kaufmann-health.de
+              </a>.
+            </p>
           </section>
 
           <section aria-labelledby="erfassung">
-            <h2 id="erfassung" className="text-xl font-semibold">4. Datenerfassung auf dieser Website</h2>
-            <div className="mt-3 space-y-4">
+            <h2 id="erfassung" className="text-xl font-semibold">5. Datenerfassung und Dienste</h2>
+            <div className="mt-3 space-y-6">
               <div>
                 <h3 id="cookies" className="font-medium">Cookies und Tracking-Technologien</h3>
                 <div className="mt-2 space-y-2">
                   <p>
-                    <strong>Cookie-Verwendung:</strong>{' '}
-                    {COOKIES_ENABLED
-                      ? 'Wir verwenden Cookies nur nach Ihrer ausdrücklichen Einwilligung gemäß Art. 6 Abs. 1 lit. a DSGVO und § 25 Abs. 1 TDDDG.'
-                      : 'Wir setzen auf dieser Website keine Marketing‑ oder Tracking‑Cookies. Technisch notwendige Cookies können im Admin‑Bereich zum Einsatz kommen (§ 25 Abs. 2 TDDDG).'}
+                    <strong>Cookie-Verwendung:</strong> Wir verwenden Cookies nur nach Ihrer ausdrücklichen Einwilligung
+                    gemäß Art. 6 Abs. 1 lit. a DSGVO und § 25 Abs. 1 TDDDG.
                   </p>
                   <p><strong>Arten von Cookies:</strong></p>
                   <ul className="list-disc pl-6 space-y-1">
                     <li>
-                      <strong>Notwendige Cookies:</strong> Technisch erforderlich für Grundfunktionen (z. B. Sitzungsverwaltung im Admin‑Bereich). Rechtsgrundlage: § 25 Abs. 2 TDDDG.
+                      <strong>Notwendige Cookies:</strong> Technisch erforderlich für Grundfunktionen (z. B. Sitzungsverwaltung
+                      im Admin‑Bereich). Rechtsgrundlage: § 25 Abs. 2 TDDDG.
                     </li>
                     {COOKIES_ENABLED && (
                       <li>
-                        <strong>Marketing‑Cookies:</strong> Google Ads Conversion‑Tracking zur Messung der Werbewirksamkeit. Nur mit Ihrer Einwilligung.
+                        <strong>Marketing‑Cookies:</strong> Google Ads Conversion‑Tracking zur Messung der Werbewirksamkeit.
+                        Nur mit Ihrer Einwilligung.
                       </li>
                     )}
                   </ul>
                   {COOKIES_ENABLED && (
                     <>
                       <p>
-                        <strong>Google Ads Conversion‑Tracking:</strong> Bei Einwilligung setzen wir Google Ads Conversion‑Tracking ein. Dabei können folgende Cookies gesetzt werden:
+                        <strong>Google Ads Conversion‑Tracking:</strong> Bei Einwilligung setzen wir Google Ads Conversion‑Tracking
+                        ein. Dabei können folgende Cookies gesetzt werden:
                       </p>
                       <ul className="list-disc pl-6 space-y-1">
                         <li>_gcl_au: Speicherdauer 3 Monate</li>
@@ -193,29 +130,39 @@ export default function DatenschutzPage() {
                         <li>_gac_[property-id]: Speicherdauer 90 Tage</li>
                       </ul>
                       <p>
-                        <strong>Consent Mode v2:</strong> Wir nutzen Google Consent Mode v2. Ohne Ihre Einwilligung werden keine Marketing‑Cookies gesetzt; Google erhält lediglich anonymisierte Signale zur groben Schätzung von Conversions.
+                        <strong>Consent Mode v2:</strong> Wir nutzen Google Consent Mode v2. Ohne Ihre Einwilligung werden keine
+                        Marketing‑Cookies gesetzt; Google erhält lediglich anonymisierte Signale zur groben Schätzung von Conversions.
                       </p>
                     </>
                   )}
                   <p>
-                    <strong>Zusätzlich:</strong> Zur weiteren Optimierung übermitteln wir verschlüsselte (gehashte) E‑Mail‑Adressen server‑seitig an Google Ads (Enhanced Conversions). Dies erfolgt ohne Cookies auf Ihrem Gerät.
+                    <strong>Zusätzlich:</strong> Zur weiteren Optimierung übermitteln wir verschlüsselte (gehashte) E‑Mail‑Adressen
+                    server‑seitig an Google Ads (Enhanced Conversions). Dies erfolgt ohne Cookies auf Ihrem Gerät.
                   </p>
                   <p>
-                    <strong>Widerruf:</strong> Sie können Ihre Einwilligung jederzeit widerrufen. Klicken Sie dazu auf „Cookie‑Einstellungen“ im Footer unserer Website.
+                    <strong>Widerruf:</strong> Sie können Ihre Einwilligung jederzeit widerrufen. Klicken Sie dazu auf
+                    „Cookie‑Einstellungen&quot; im Footer unserer Website.
                   </p>
                   <p>
-                    Für kleine Komfortfunktionen (z. B. damit ein Hinweis pro Sitzung nur einmal erscheint) nutzen wir ggf. den lokalen Speicher
-                    Ihres Browsers (<span className="font-mono">sessionStorage</span>/<span className="font-mono">localStorage</span>). Dabei werden keine personenbezogenen Profile erstellt,
-                    keine Daten an Dritte übermittelt und keine Cookies gesetzt.
+                    Für kleine Komfortfunktionen (z. B. damit ein Hinweis pro Sitzung nur einmal erscheint) nutzen wir ggf. den
+                    lokalen Speicher Ihres Browsers (<span className="font-mono">sessionStorage</span>/<span className="font-mono">localStorage</span>).
+                    Dabei werden keine personenbezogenen Profile erstellt, keine Daten an Dritte übermittelt und keine Cookies gesetzt.
                   </p>
                   <p>
-                    Technische Server-Logs können aus Sicherheitsgründen Informationen wie IP-Adresse und User-Agent enthalten. Es findet kein Tracking
-                    und kein Profiling statt.
+                    Technische Server-Logs können aus Sicherheitsgründen Informationen wie IP-Adresse und User-Agent enthalten.
+                    Es findet kein Tracking und kein Profiling statt.
                   </p>
                   {COOKIES_ENABLED && (
                     <p>
                       Weiterführende Informationen finden Sie in der{' '}
-                      <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="https://policies.google.com/privacy?hl=de" target="_blank" rel="noopener noreferrer">Datenschutzerklärung von Google</a>.
+                      <a
+                        className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900"
+                        href="https://policies.google.com/privacy?hl=de"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Datenschutzerklärung von Google
+                      </a>.
                     </p>
                   )}
                 </div>
@@ -223,31 +170,26 @@ export default function DatenschutzPage() {
 
               <div>
                 <h3 className="font-medium">Web-Analyse (cookieless)</h3>
-                <div className="mt-2 space-y-2">
-                  <p>
-                    Zur Verbesserung unserer Website nutzen wir eine cookielose Web-Analyse (Vercel Web Analytics). Dabei werden ausschließlich
-                    aggregierte Nutzungsdaten (z. B. Seitenaufrufe, grundlegende Performance-Metriken) erfasst. Es werden keine Tracking-Cookies gesetzt
-                    und keine personenbezogenen Profile erstellt.
-                  </p>
-                  <p>
-                    Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der Optimierung und Stabilität unseres Online-Angebots).
-                  </p>
-                </div>
+                <p className="mt-2">
+                  Zur Verbesserung unserer Website nutzen wir Vercel Web Analytics. Dabei werden ausschließlich aggregierte
+                  Nutzungsdaten, wie Seitenaufrufe oder grundlegende Performance-Metriken, erhoben. Es werden keine Cookies
+                  gesetzt, und es werden keine personenbezogenen Profile erstellt. Die Verarbeitung erfolgt auf Grundlage
+                  unseres berechtigten Interesses (Art. 6 Abs. 1 lit. f DSGVO).
+                </p>
               </div>
 
               <div>
-                <h3 className="font-medium">Kontaktformular</h3>
+                <h3 className="font-medium">Erfolgsmessung unserer Werbung</h3>
                 <p className="mt-2">
-                  Wenn Sie uns per Formular Anfragen senden, verarbeiten wir Ihre Angaben zur Bearbeitung und für Anschlussfragen. Rechtsgrundlage
-                  ist Art. 6 Abs. 1 lit. b DSGVO (Vertrag/vertragsähnlich) bzw. unser berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO) oder Ihre
-                  Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Die Daten verbleiben bei uns bis Widerruf, Löschungsverlangen oder Zweckerreichung.
+                  Zur Optimierung unserer Werbekampagnen übermitteln wir verschlüsselte E-Mail-Adressen an Google Ads, wenn
+                  Sie unser Kontaktformular nutzen. Dies erfolgt serverseitig ohne Cookies auf Ihrem Gerät.
                 </p>
                 <p className="mt-2">
-                  <strong>Erfolgsmessung unserer Werbung</strong><br />
-                  Zur Optimierung unserer Werbekampagnen übermitteln wir verschlüsselte E-Mail-Adressen an Google Ads, wenn Sie unser Kontaktformular nutzen. Dies erfolgt server-seitig ohne Cookies auf Ihrem Gerät.
-                </p>
-                <p className="mt-2">
-                  Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse). Widerspruchsrecht: kontakt@kaufmann-health.de
+                  Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung).<br />
+                  Widerrufsrecht:{' '}
+                  <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="mailto:kontakt@kaufmann-health.de">
+                    kontakt@kaufmann-health.de
+                  </a>
                 </p>
               </div>
 
@@ -255,10 +197,19 @@ export default function DatenschutzPage() {
                 <h3 className="font-medium">Datenübermittlung in die USA</h3>
                 <div className="mt-2 space-y-2">
                   <p>
-                    Bei Nutzung von Google-Diensten können Daten in die USA übertragen werden. Google LLC ist unter dem EU-US Data Privacy Framework zertifiziert. Dennoch besteht ein Restrisiko, da US-Behörden unter bestimmten Umständen Zugriff auf personenbezogene Daten nehmen können.
+                    Empfänger ist Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland, mit möglicher
+                    Übermittlung in die USA auf Grundlage des EU-US Data Privacy Frameworks oder der Standardvertragsklauseln
+                    der EU-Kommission (Art. 44 ff. DSGVO). Die Speicherdauer wird von Google bestimmt.
                   </p>
                   <p>
-                    Rechtsgrundlage: Bei Einwilligung Art. 49 Abs. 1 lit. a DSGVO. Wir informieren Sie transparent über dieses Risiko, sodass Sie eine informierte Entscheidung treffen können.
+                    <strong>Hinweis zur Rechtslage:</strong> Stand Oktober 2025 besteht der Angemessenheitsbeschluss für das
+                    EU-US Data Privacy Framework fort. Jedoch bestehen aufgrund politischer Entwicklungen in den USA rechtliche
+                    Unsicherheiten über dessen Fortbestand. Wir beobachten die Entwicklung fortlaufend und werden bei einem
+                    Wegfall des Angemessenheitsbeschlusses auf Standardvertragsklauseln der EU-Kommission ausweichen.
+                  </p>
+                  <p>
+                    Rechtsgrundlage: Bei bestehendem Angemessenheitsbeschluss: Art. 45 DSGVO. Hilfsweise, bei Wegfall:
+                    Art. 49 Abs. 1 lit. a DSGVO (Einwilligung).
                   </p>
                 </div>
               </div>
@@ -267,13 +218,14 @@ export default function DatenschutzPage() {
                 <h3 className="font-medium">Ereignis- und Fehlerprotokolle (PII-frei)</h3>
                 <div className="mt-2 space-y-2">
                   <p>
-                    Zur Sicherstellung des stabilen Betriebs, zur Fehlerdiagnose und zur Missbrauchsabwehr speichern wir technische Ereignisse und
-                    Fehlermeldungen in einem internen Protokoll. Personenbezogene Inhalte werden nicht gespeichert; Protokolldaten enthalten
-                    ausschließlich anonymisierte bzw. abgeleitete Informationen (z. B. Ereignistyp, Zeitpunkt, ggf. gekürzte Metadaten).
+                    Zur Sicherstellung des stabilen Betriebs, zur Fehlerdiagnose und zur Missbrauchsabwehr speichern wir
+                    technische Ereignisse und Fehlermeldungen in einem internen Protokoll. Personenbezogene Inhalte werden
+                    nicht gespeichert; Protokolldaten enthalten ausschließlich anonymisierte bzw. abgeleitete Informationen
+                    (z. B. Ereignistyp, Zeitpunkt, ggf. gekürzte Metadaten).
                   </p>
                   <p>
-                    IP-Adressen werden vor Speicherung mit einem sog. &quot;Salt&quot; irreversibel gehasht. Der verwendete User-Agent kann in gekürzter Form
-                    gespeichert werden. Es erfolgt kein Tracking und kein Profiling.
+                    IP-Adressen werden vor Speicherung mit einem sog. &quot;Salt&quot; irreversibel gehasht. Der verwendete User-Agent
+                    kann in gekürzter Form gespeichert werden. Es erfolgt kein Tracking und kein Profiling.
                   </p>
                   <p>
                     Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an Sicherheit/Stabilität des Dienstes).
@@ -282,101 +234,194 @@ export default function DatenschutzPage() {
               </div>
 
               <div>
-                <h3 id="vertragsdaten" className="font-medium">Vertragsdaten (Therapeuten-Registrierung)</h3>
-                <div className="mt-2 space-y-2">
-                  <p>
-                    Wenn Sie sich als Therapeut:in registrieren, wird zur schnellen Aufnahme in unser Netzwerk ein Dienstleistungsvertrag
-                    automatisch angenommen. Zum Nachweis der Wirksamkeit und zur Erfüllung gesetzlicher Pflichten verarbeiten wir dabei folgende
-                    Metadaten:
-                  </p>
-                  <ul className="list-disc space-y-1 pl-6">
-                    <li>Zeitpunkt der Vertragsannahme (Timestamp)</li>
-                    <li>IP-Adresse zum Zeitpunkt der Annahme (in gehashter Form)</li>
-                    <li>Version der zugrunde liegenden Vertragsbedingungen</li>
-                  </ul>
-                  <p>
-                    Zweck: Sicherstellung der Vertragsgültigkeit, Dokumentation der Annahme sowie rechtliche Nachweispflichten.
-                  </p>
-                  <p>
-                    Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung bzw. Durchführung vorvertraglicher Maßnahmen).
-                  </p>
-                  <p>
-                    Speicherdauer: Für die Dauer der Geschäftsbeziehung und darüber hinaus entsprechend gesetzlicher Aufbewahrungsfristen.
-                  </p>
-                  <p>
-                    Weitere Informationen zu den Vertragsbedingungen finden Sie unter
-                    {' '}
-                    <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="/therapist-terms">/therapist-terms</a>.
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <h3 id="therapeutenvermittlung" className="font-medium">
-                  Therapeutenvermittlung und Kontaktherstellung
-                </h3>
-                <div className="mt-2 space-y-2">
-                  <p>
-                    <strong>Zweck:</strong> Weitergabe Ihrer Kontakt- und Gesundheitsdaten an
-                    {' '}passende Therapeuten zur Kontaktaufnahme
-                  </p>
-                  <p>
-                    <strong>Rechtsgrundlage:</strong> Ihre Einwilligung (Art. 6 Abs. 1 lit. a DSGVO,
-                    {' '}Art. 9 Abs. 2 lit. a DSGVO für Gesundheitsdaten)
-                  </p>
-                  <p>
-                    <strong>Empfänger:</strong> Ausgewählte Heilpraktiker für Psychotherapie basierend
-                    {' '}auf Ihren Präferenzen und Ihrem Standort
-                  </p>
-                  <p>
-                    <strong>Übertragene Daten:</strong> Name, E‑Mail, Telefon, Stadt, Therapiewünsche,
-                    {' '}gesundheitsbezogene Angaben aus Ihren Formulareingaben
-                  </p>
-                  <p>
-                    <strong>Widerruf:</strong> Jederzeit per E‑Mail an{' '}
-                    <a
-                      className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900"
-                      href="mailto:kontakt@kaufmann-health.de"
-                    >
-                      kontakt@kaufmann-health.de
-                    </a>{' '}
-                    möglich. Nach Widerruf werden Ihre Daten innerhalb von 30 Tagen gelöscht.
-                  </p>
-                  <p>
-                    <strong>Speicherdauer:</strong> Daten werden gelöscht, sobald Sie Ihre Einwilligung
-                    {' '}widerrufen oder nach 2 Jahren ohne Aktivität.
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-medium">Anfrage per E-Mail, Telefon oder Telefax</h3>
+                <h3 className="font-medium">Google Workspace (E-Mail-Kommunikation)</h3>
                 <p className="mt-2">
-                  Wenn Sie uns per E-Mail, Telefon oder Telefax kontaktieren, verarbeiten wir Ihre Anfrage inkl. personenbezogener Daten zur
-                  Bearbeitung. Rechtsgrundlagen sind Art. 6 Abs. 1 lit. b DSGVO (Vertrag/Vertragsanbahnung), andernfalls Art. 6 Abs. 1 lit. f DSGVO
-                  (berechtigtes Interesse) oder Ihre Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).
+                  Für die Bearbeitung von Anfragen und die geschäftliche Kommunikation nutzen wir Google Workspace. Dabei
+                  werden personenbezogene Daten wie Name, E-Mail-Adresse und Inhalte der Kommunikation verarbeitet. Die
+                  Verarbeitung erfolgt auf Grundlage der Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO) sowie unseres
+                  berechtigten Interesses an effizienter Kommunikation (Art. 6 Abs. 1 lit. f DSGVO). Die Daten werden auf
+                  Servern von Google Ireland Limited gespeichert; eine Übermittlung in die USA erfolgt ebenfalls auf
+                  Grundlage des EU-US Data Privacy Frameworks oder der Standardvertragsklauseln. Die Speicherdauer richtet
+                  sich nach gesetzlichen Aufbewahrungspflichten (Art. 6 Abs. 1 lit. c DSGVO). Weitere Informationen finden
+                  Sie in der{' '}
+                  <a
+                    className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900"
+                    href="https://policies.google.com/privacy?hl=de"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Google Privacy Policy
+                  </a>.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-medium">Kontaktformular</h3>
+                <p className="mt-2">
+                  Wenn Sie uns über das Kontaktformular kontaktieren, speichern wir Ihre Angaben zur Bearbeitung Ihrer Anfrage.
+                  Rechtsgrundlage ist die Vertragserfüllung, berechtigtes Interesse oder Ihre Einwilligung (Art. 6 Abs. 1 lit.
+                  a, b, f DSGVO). Die Daten werden gelöscht, sobald der Zweck entfällt, spätestens nach 24 Monaten.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-medium">Therapeutenvermittlung</h3>
+                <div className="mt-2 space-y-2">
+                  <p>
+                    Bei der Therapeutenvermittlung geben wir Ihre Kontaktdaten und ggf. Gesundheitsinformationen an ausgewählte
+                    Therapeuten weiter. Dies erfolgt ausschließlich auf Grundlage Ihrer Einwilligung (Art. 6 Abs. 1 lit. a, b DSGVO,
+                    Art. 9 Abs. 2 lit. a DSGVO). Sie können diese Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen.
+                    Nach Widerruf wird die Vermittlung eingestellt und Ihre Daten innerhalb von 30 Tagen gelöscht, spätestens
+                    jedoch nach zwei Jahren ohne Aktivität.
+                  </p>
+                  <p>
+                    Es findet keine automatisierte Entscheidungsfindung einschließlich Profiling gemäß Art. 22 Abs. 1 und 4 DSGVO
+                    statt (Art. 13 Abs. 2 lit. f DSGVO). Alle Entscheidungen erfolgen manuell durch unser Team.
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-medium">Vertragsdaten (Therapeuten-Registrierung)</h3>
+                <div className="mt-2 space-y-2">
+                  <p>
+                    Bei der Registrierung von Therapeuten speichern wir die Vertragsannahme inklusive Zeitpunkt, IP-Adresse
+                    (gehasht) und Vertragsversion. Dies dient der Dokumentation der Vertragsgültigkeit und erfolgt auf
+                    Grundlage der Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO). Die Speicherdauer entspricht der Dauer der
+                    Geschäftsbeziehung und den gesetzlichen Aufbewahrungspflichten, z. B. 10 Jahre nach § 147 AO und § 257 HGB.
+                  </p>
+                  <p>
+                    Die Bereitstellung Ihrer personenbezogener Daten bei der Registrierung als Therapeut, der Kontaktaufnahme
+                    über das Formular oder für den Newsletter ist für die Bearbeitung Ihrer Anfrage bzw. für den Vertragsabschluss
+                    erforderlich (Art. 13 Abs. 2 lit. e DSGVO). Ohne diese Angaben können wir den Vertrag nicht abschließen oder
+                    Ihre Anfrage nicht bearbeiten.
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-medium">Newsletter</h3>
+                <p className="mt-2">
+                  Für den Bezug des Newsletters verarbeiten wir Ihre E-Mail-Adresse auf Grundlage Ihrer Einwilligung
+                  (Art. 6 Abs. 1 lit. a DSGVO). Sie können die Einwilligung jederzeit über den Abmelde-Link widerrufen.
+                  Nach Abmeldung kann Ihre Adresse in einer Sperrliste gespeichert werden, um weitere Zusendungen zu
+                  verhindern (Art. 6 Abs. 1 lit. f DSGVO).
                 </p>
               </div>
             </div>
           </section>
 
-          <section aria-labelledby="newsletter">
-            <h2 id="newsletter" className="text-xl font-semibold">5. Newsletter</h2>
+          <section aria-labelledby="gesundheitsdaten">
+            <h2 id="gesundheitsdaten" className="text-xl font-semibold">6. Verarbeitung von Gesundheitsdaten (Art. 9 Abs. 2 DSGVO)</h2>
             <div className="mt-3 space-y-3">
               <p>
-                Für den Bezug eines Newsletters verarbeiten wir Ihre E-Mail-Adresse sowie weitere freiwillige Angaben ausschließlich auf Grundlage
-                Ihrer Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Die Einwilligung können Sie jederzeit über den Abmelde-Link widerrufen.
+                Im Rahmen der Therapeutenvermittlung verarbeiten wir personenbezogene Gesundheitsdaten, die Sie freiwillig
+                angeben. Die Verarbeitung erfolgt ausschließlich auf Grundlage Ihrer ausdrücklichen Einwilligung
+                (Art. 9 Abs. 2 lit. a DSGVO). Es findet keine automatisierte Entscheidungsfindung einschließlich Profiling
+                nach Art. 22 DSGVO statt. Alle Entscheidungen erfolgen manuell durch unser Team.
               </p>
               <p>
-                Nach Abmeldung kann Ihre E-Mail-Adresse in einer Blacklist gespeichert werden, sofern dies zur Verhinderung künftiger Mailings
-                erforderlich ist (Art. 6 Abs. 1 lit. f DSGVO). Die Blacklist-Daten werden ausschließlich zu diesem Zweck verwendet.
+                <strong>Widerrufsrecht:</strong> Sie können diese Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen.
+                Nach Widerruf wird die Vermittlung eingestellt und Ihre Daten innerhalb von 30 Tagen gelöscht, spätestens
+                jedoch nach zwei Jahren ohne Aktivität.
               </p>
             </div>
           </section>
 
+          <section aria-labelledby="speicherdauer">
+            <h2 id="speicherdauer" className="text-xl font-semibold">7. Speicherdauer</h2>
+            <ul className="mt-3 list-disc space-y-2 pl-6">
+              <li>
+                <strong>Kontakt- und Anfragedaten</strong> (z. B. über Formular, E-Mail, Telefon): werden nach abschließender
+                Bearbeitung gelöscht, spätestens aber nach 24 Monaten, sofern keine weitere Geschäftsbeziehung entsteht oder
+                Sie nicht vorher die Löschung verlangen.
+              </li>
+              <li>
+                <strong>Daten aus der Therapeutenvermittlung:</strong> werden bei Widerruf Ihrer Einwilligung oder spätestens
+                nach zwei Jahren ohne Aktivität gelöscht.
+              </li>
+              <li>
+                <strong>Vertragsdaten</strong> (z. B. Therapeutenregistrierung): werden für die Dauer der Geschäftsbeziehung
+                gespeichert und darüber hinaus entsprechend gesetzlicher Aufbewahrungspflichten.
+              </li>
+              <li>
+                <strong>Newsletter-Daten:</strong> werden bis zu Ihrer Abmeldung gespeichert; eine Speicherung in einer
+                Sperrliste („Blacklist&quot;) erfolgt, solange dies erforderlich ist, um weitere Zusendungen zu verhindern.
+              </li>
+              <li>
+                <strong>Protokolldaten und technische Ereignisse:</strong> werden in der Regel maximal 90 Tage gespeichert
+                und danach gelöscht oder anonymisiert.
+              </li>
+              <li>
+                <strong>Gesetzliche Aufbewahrungspflichten:</strong> Nach steuer- und handelsrechtlichen Vorgaben
+                (z. B. § 147 AO, § 257 HGB) müssen bestimmte Daten, wie Rechnungen und Vertragsunterlagen, bis zu zehn Jahre
+                aufbewahrt werden. Während dieser Zeit wird die Verarbeitung eingeschränkt und die Daten ausschließlich zur
+                Erfüllung der gesetzlichen Pflichten gespeichert.
+              </li>
+            </ul>
+          </section>
+
+          <section aria-labelledby="ihre-rechte">
+            <h2 id="ihre-rechte" className="text-xl font-semibold">8. Ihre Rechte</h2>
+            <p className="mt-3">
+              Sie haben jederzeit das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung,
+              Datenübertragbarkeit sowie Widerruf von Einwilligungen. Zudem können Sie aus besonderen Gründen der
+              Verarbeitung widersprechen. Beschwerden können Sie bei der zuständigen Aufsichtsbehörde einreichen.
+            </p>
+
+            <h3 className="mt-4 font-medium">Rechte der betroffenen Person nach Art. 15–22 DSGVO</h3>
+            <ol className="mt-3 list-decimal space-y-3 pl-6">
+              <li>
+                <strong>Recht auf Auskunft (Art. 15 DSGVO):</strong> Sie haben das Recht, Auskunft darüber zu erhalten,
+                ob und welche personenbezogenen Daten von Ihnen verarbeitet werden, zu welchen Zwecken, an welche Empfänger
+                sie übermittelt wurden und wie lange sie gespeichert werden.
+              </li>
+              <li>
+                <strong>Recht auf Berichtigung (Art. 16 DSGVO):</strong> Sie können die Berichtigung unrichtiger oder
+                unvollständiger personenbezogener Daten verlangen.
+              </li>
+              <li>
+                <strong>Recht auf Löschung („Recht auf Vergessenwerden&quot;, Art. 17 DSGVO):</strong> Sie können die Löschung
+                Ihrer personenbezogenen Daten verlangen, sofern keine gesetzlichen Aufbewahrungspflichten oder berechtigten
+                Interessen zur Verarbeitung entgegenstehen.
+              </li>
+              <li>
+                <strong>Recht auf Einschränkung der Verarbeitung (Art. 18 DSGVO):</strong> Sie können unter bestimmten
+                Voraussetzungen verlangen, dass die Verarbeitung Ihrer Daten eingeschränkt wird, z. B. wenn die Richtigkeit
+                der Daten bestritten wird oder die Verarbeitung unrechtmäßig ist.
+              </li>
+              <li>
+                <strong>Recht auf Datenübertragbarkeit (Art. 20 DSGVO):</strong> Sie haben das Recht, Ihre personenbezogenen
+                Daten in einem strukturierten, gängigen und maschinenlesbaren Format zu erhalten und diese Daten an einen
+                anderen Verantwortlichen zu übertragen, soweit die Verarbeitung auf einer Einwilligung oder einem Vertrag beruht.
+              </li>
+              <li>
+                <strong>Widerspruchsrecht (Art. 21 DSGVO):</strong> Sie können aus Gründen, die sich aus Ihrer besonderen
+                Situation ergeben, jederzeit gegen die Verarbeitung Ihrer personenbezogenen Daten Widerspruch einlegen,
+                insbesondere gegen die Verarbeitung auf Grundlage berechtigter Interessen. Dies gilt auch für Profiling,
+                das auf diese Rechtsgrundlage gestützt wird.
+              </li>
+              <li>
+                <strong>Recht auf Widerruf der Einwilligung (Art. 7 Abs. 3 DSGVO):</strong> Sofern die Datenverarbeitung
+                auf einer Einwilligung basiert, können Sie diese Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen.
+              </li>
+              <li>
+                <strong>Recht auf Beschwerde bei einer Aufsichtsbehörde (Art. 77 DSGVO):</strong> Sie haben das Recht, sich
+                bei einer Datenschutzaufsichtsbehörde über die Verarbeitung Ihrer personenbezogenen Daten zu beschweren.
+              </li>
+              <li>
+                <strong>Recht auf Information über automatisierte Entscheidungen und Profiling (Art. 22 DSGVO):</strong> Sofern
+                automatisierte Entscheidungen einschließlich Profiling durchgeführt werden, haben Sie das Recht, Informationen
+                über die Logik, Tragweite und angestrebten Auswirkungen dieser Verarbeitung zu erhalten.
+                <br />
+                <em className="text-gray-600">Hinweis: Auf unserer Website finden derzeit keine automatisierten Entscheidungen oder Profiling statt.</em>
+              </li>
+            </ol>
+          </section>
+
           <div className="mt-8 pt-4 border-t text-sm text-gray-500">
-            <p>Stand: {new Date().toLocaleDateString('de-DE', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            <p>Version: 2.0 – Ergänzung Google Ads Tracking mit Consent Mode</p>
+            <p>Stand: Oktober 2025</p>
+            <p>Version: 2025-10.v1</p>
           </div>
         </div>
       </section>

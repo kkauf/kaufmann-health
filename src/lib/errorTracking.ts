@@ -70,7 +70,8 @@ function wrapFetch(): void {
       const response = await originalFetch(input, init);
       
       // Track 4xx and 5xx errors on our API endpoints
-      if (!response.ok && url.startsWith('/api/')) {
+      // Skip 410 (Gone/Expired) - this is expected behavior for expired sessions/links
+      if (!response.ok && url.startsWith('/api/') && response.status !== 410) {
         const isAuthError = response.status === 401 || response.status === 403;
         
         reportError({

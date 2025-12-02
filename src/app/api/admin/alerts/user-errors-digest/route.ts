@@ -51,11 +51,12 @@ type ErrorEvent = {
   created_at: string;
   properties: {
     error_type?: string;
-    status?: number;
+    status?: number | string;
     url?: string;
     message?: string;
     page_path?: string;
     session_id?: string;
+    is_test?: boolean | string;
   } | null;
 };
 
@@ -84,7 +85,14 @@ export async function GET(req: Request) {
       return NextResponse.json({ data: null, error: 'Database error' }, { status: 500 });
     }
 
-    const events = (data || []) as ErrorEvent[];
+    const rawEvents = (data || []) as ErrorEvent[];
+
+    // Filter out 410 (expired sessions) - this is expected behavior, not a bug
+    const events = rawEvents.filter(e => {
+      const status = e.properties?.status;
+      const statusNum = typeof status === 'string' ? parseInt(status, 10) : status;
+      return statusNum !== 410;
+    });
 
     // If no errors, log but don't send email
     if (events.length === 0) {
@@ -103,14 +111,23 @@ export async function GET(req: Request) {
     const byType: Record<string, number> = {};
     const byUrl: Record<string, number> = {};
     const authErrors: ErrorEvent[] = [];
+    let testCount = 0;
+    let realCount = 0;
 
     for (const e of events) {
       const props = e.properties || {};
       const errorType = props.error_type || 'unknown';
       const apiUrl = props.url || 'unknown';
+      const isTest = props.is_test === true || props.is_test === 'true';
 
       byType[errorType] = (byType[errorType] || 0) + 1;
       byUrl[apiUrl] = (byUrl[apiUrl] || 0) + 1;
+
+      if (isTest) {
+        testCount++;
+      } else {
+        realCount++;
+      }
 
       if (errorType === 'auth_error') {
         authErrors.push(e);
@@ -142,9 +159,11 @@ export async function GET(req: Request) {
       const props = e.properties || {};
       const time = new Date(e.created_at).toLocaleString('de-DE', { timeZone: 'Europe/Berlin' });
       const type = props.error_type || 'unknown';
+      const isTest = props.is_test === true || props.is_test === 'true';
       const typeColor = type === 'auth_error' ? '#dc2626' : type === 'api_error' ? '#d97706' : '#64748b';
+      const testBadge = isTest ? '<span style="background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-left:4px;">TEST</span>' : '';
       return `<tr>
-        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">${time}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">${time}${testBadge}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;"><span style="color:${typeColor};font-weight:600;font-size:13px;">${escapeHtml(type)}</span></td>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-family:monospace;font-size:12px;">${escapeHtml(props.url || '-')}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;">${escapeHtml(props.page_path || '-')}</td>
@@ -152,14 +171,22 @@ export async function GET(req: Request) {
     }).join('');
 
     const hasAuthErrors = authErrors.length > 0;
-    const alertLevel = hasAuthErrors ? '🔴 CRITICAL' : '⚠️ WARNING';
+    const hasRealErrors = realCount > 0;
+    const alertLevel = hasRealErrors ? (hasAuthErrors ? '🔴 CRITICAL' : '⚠️ WARNING') : '🧪 TEST ONLY';
+
+    const headerBg = !hasRealErrors ? '#e0f2fe' : (hasAuthErrors ? '#fef2f2' : '#fffbeb');
+    const headerBorder = !hasRealErrors ? '#7dd3fc' : (hasAuthErrors ? '#fecaca' : '#fde68a');
 
     const contentHtml = `
-      <div style="background:${hasAuthErrors ? '#fef2f2' : '#fffbeb'};padding:16px 20px;border-radius:12px;border:1px solid ${hasAuthErrors ? '#fecaca' : '#fde68a'};margin-bottom:24px;">
+      <div style="background:${headerBg};padding:16px 20px;border-radius:12px;border:1px solid ${headerBorder};margin-bottom:24px;">
         <h1 style="margin:0 0 8px;font-size:24px;color:#0f172a;">${alertLevel} User-Facing Errors</h1>
         <p style="margin:0;color:#475569;">
           <strong>${events.length} error${events.length === 1 ? '' : 's'}</strong> in the last ${DIGEST_HOURS} hours
           ${hasAuthErrors ? `<br><span style="color:#dc2626;font-weight:600;">${authErrors.length} auth error${authErrors.length === 1 ? '' : 's'} (session/verification failures)</span>` : ''}
+        </p>
+        <p style="margin:8px 0 0;font-size:14px;">
+          <span style="background:#16a34a;color:#fff;padding:2px 8px;border-radius:4px;font-weight:600;">${realCount} real</span>
+          <span style="background:#0ea5e9;color:#fff;padding:2px 8px;border-radius:4px;font-weight:600;margin-left:8px;">${testCount} test</span>
         </p>
       </div>
 
@@ -205,21 +232,21 @@ export async function GET(req: Request) {
       preheader: `${events.length} user-facing errors in the last ${DIGEST_HOURS}h`,
     });
 
-    const subject = hasAuthErrors
-      ? `🔴 ${events.length} User Errors (${authErrors.length} auth failures)`
-      : `⚠️ ${events.length} User-Facing Errors`;
+    const subjectPrefix = !hasRealErrors ? '🧪' : (hasAuthErrors ? '🔴' : '⚠️');
+    const subjectSuffix = realCount > 0 ? ` (${realCount} real, ${testCount} test)` : ' (all test)';
+    const subject = `${subjectPrefix} ${events.length} User Error${events.length === 1 ? '' : 's'}${subjectSuffix}`;
 
     const sent = await sendEmail({
       to: NOTIFY_EMAIL,
       subject,
       html,
-      context: { kind: 'user_errors_digest', count: events.length, auth_errors: authErrors.length },
+      context: { kind: 'user_errors_digest', count: events.length, auth_errors: authErrors.length, real: realCount, test: testCount },
     });
 
     void track({
       type: 'user_errors_digest_sent',
       source: 'admin.alerts.user-errors-digest',
-      props: { count: events.length, auth_errors: authErrors.length, sent },
+      props: { count: events.length, auth_errors: authErrors.length, real: realCount, test: testCount, sent },
     });
 
     return NextResponse.json({
@@ -228,6 +255,8 @@ export async function GET(req: Request) {
         count: events.length,
         byType,
         authErrors: authErrors.length,
+        realCount,
+        testCount,
       },
       error: null,
     });

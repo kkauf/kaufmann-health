@@ -79,16 +79,16 @@ export default function ImpressumPage() {
                   ausdrücklich widersprochen. Die Betreiber der Seiten behalten sich ausdrücklich rechtliche Schritte im Falle der unverlangten
                   Zusendung von Werbeinformationen, etwa durch Spam‑Mails, vor.
                 </p>
-                <p className="mt-2">
-                  Hinweis: Wir verwenden keine Dienste wie Google Analytics oder Google AdSense; es werden keine Cookies zu Tracking- oder
-                  Marketingzwecken gesetzt.
-                </p>
               </div>
               <p className="text-xs text-gray-500">
                 Impressum nach einem Muster von Kanzlei Hasselbach Rechtsanwälte, über WebsiteWissen.com.
               </p>
             </div>
           </section>
+
+          <div className="mt-8 pt-4 border-t text-sm text-gray-500">
+            <p>Stand: Oktober 2025 (Version 2025-10.v1)</p>
+          </div>
         </div>
       </section>
     </main>
