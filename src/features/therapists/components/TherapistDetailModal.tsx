@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import type React from 'react';
 import {
   Dialog,
@@ -55,6 +55,8 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
   const [sessionFormat, setSessionFormat] = useState<'online' | 'in_person' | ''>('');
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [weekIndex, setWeekIndex] = useState(0);
+  const [formatShake, setFormatShake] = useState(false);
+  const formatSelectorRef = useRef<HTMLDivElement>(null);
 
   const photoSrc = therapist.photo_url && !imageError ? therapist.photo_url : undefined;
   const initials = getInitials(therapist.first_name, therapist.last_name);
@@ -105,7 +107,19 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
   }, []);
 
   const handleProceedToVerification = useCallback(() => {
-    if (!selectedSlot) return;
+    // Validate: need format and slot
+    if (!sessionFormat) {
+      // Scroll to format selector and shake
+      formatSelectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setFormatShake(true);
+      setTimeout(() => setFormatShake(false), 500);
+      return;
+    }
+    if (!selectedSlot) {
+      // Format selected but no slot - just scroll to slot area (format selector is close)
+      formatSelectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
     try {
       const attrs = getAttribution();
       const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
@@ -277,6 +291,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
       setSessionFormat('');
       setSelectedSlot(null);
       setWeekIndex(0);
+      setFormatShake(false);
       onClose();
     }
   }, [onClose]);
@@ -510,7 +525,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
 
               {/* Session format selector */}
               {(hasOnlineSlots || hasInPersonSlots) && (
-                <div className="space-y-3">
+                <div ref={formatSelectorRef} className={`space-y-3 transition-all ${formatShake ? 'animate-shake' : ''}`}>
                   <Label className="text-sm font-medium">Format *</Label>
                   <div className="flex gap-2 max-w-md mx-auto">
                     {hasOnlineSlots && (
@@ -684,8 +699,11 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
             </Button>
             <Button
               onClick={handleProceedToVerification}
-              disabled={!sessionFormat || !selectedSlot}
-              className="flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200"
+              className={`flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 ${
+                !sessionFormat || !selectedSlot
+                  ? 'bg-gray-400 hover:bg-gray-500 cursor-pointer'
+                  : 'bg-emerald-600 hover:bg-emerald-700'
+              }`}
             >
               Weiter
             </Button>

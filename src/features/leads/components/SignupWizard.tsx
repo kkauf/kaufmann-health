@@ -879,54 +879,64 @@ export default function SignupWizard() {
         return (
           <div className="space-y-6">
             <div className="space-y-4">
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">✓ Geschafft! Deine Anfrage ist bei uns</h2>
-              <p className="text-base leading-relaxed text-gray-700">Du hast deine Handynummer bestätigt. Unser Team prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.</p>
-              <p className="text-base leading-relaxed text-gray-700">Du bekommst deine Matches innerhalb von 24 Stunden.</p>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">✓ Geschafft! Deine Handynummer ist bestätigt</h2>
+              <p className="text-base leading-relaxed text-gray-700">
+                {isDirectBookingFlow
+                  ? 'Du kannst jetzt Therapeut:innen kontaktieren und direkt Termine buchen.'
+                  : 'Unser Team prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich. Du bekommst deine Matches innerhalb von 24 Stunden.'}
+              </p>
             </div>
 
-            {/* Feature Highlight Panel - Optional email add */}
-            <div className="relative overflow-hidden rounded-2xl border border-indigo-200/50 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 p-6 sm:p-8 shadow-lg shadow-indigo-100/30">
-              <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(35rem_18rem_at_40%_0%,rgba(99,102,241,0.09),transparent_65%)]" />
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-base font-semibold text-gray-900">✉️ Optional: E‑Mail hinzufügen</p>
-                  <p className="text-sm leading-relaxed text-gray-700">Therapeut:innen antworten oft per E‑Mail. Wenn du möchtest, kannst du eine E‑Mail-Adresse ergänzen.</p>
-                  <p className="text-xs text-gray-600">Ohne E‑Mail kontaktieren dich Therapeut:innen per SMS oder Anruf.</p>
-                </div>
-                <div className="space-y-3">
-                  <input
-                    type="email"
-                    value={addEmail}
-                    onChange={(e) => setAddEmail(e.target.value)}
-                    placeholder="deine@email.de"
-                    className="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    aria-label="E‑Mail"
-                  />
-                  <Button
-                    onClick={handleAddEmail}
-                    disabled={addEmailSubmitting}
-                    className="h-11 w-full text-base"
-                  >
-                    {addEmailSubmitting ? 'Speichere…' : 'E‑Mail speichern'}
-                  </Button>
-                  {addEmailMessage && (
-                    <p className="text-sm text-center text-gray-700" aria-live="polite">{addEmailMessage}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* See Matches button */}
+            {/* Primary CTA - See Matches */}
             {matchesUrl && (
               <Button
                 onClick={() => {
                   void trackEvent('skip_to_matches', { contact_method: 'phone', email_added: !!addEmailMessage?.includes('gespeichert') });
                   window.location.assign(matchesUrl);
                 }}
-                className="h-12 w-full text-base font-medium"
+                className="h-14 w-full text-lg font-semibold bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200"
               >
-                Weiter zu deinen Matches →
+                Jetzt Therapeut:innen ansehen →
               </Button>
+            )}
+
+            {/* Secondary: Optional email - collapsed by default */}
+            {!addEmailMessage?.includes('gespeichert') ? (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById('email-add-section');
+                    if (el) el.classList.toggle('hidden');
+                  }}
+                  className="text-sm text-gray-500 hover:text-gray-700 underline underline-offset-2"
+                >
+                  ✉️ Optional: E‑Mail für Therapeuten-Kommunikation hinzufügen
+                </button>
+                <div id="email-add-section" className="hidden mt-4 p-4 rounded-lg border border-gray-200 bg-gray-50">
+                  <p className="text-sm text-gray-600 mb-3">Therapeut:innen kommunizieren oft per E‑Mail.</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={addEmail}
+                      onChange={(e) => setAddEmail(e.target.value)}
+                      placeholder="deine@email.de"
+                      className="h-10 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      aria-label="E‑Mail"
+                    />
+                    <Button
+                      onClick={handleAddEmail}
+                      disabled={addEmailSubmitting}
+                      variant="outline"
+                      className="h-10 text-sm whitespace-nowrap"
+                    >
+                      {addEmailSubmitting ? '...' : 'Speichern'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-center text-green-700" aria-live="polite">✓ {addEmailMessage}</p>
             )}
           </div>
         );
@@ -960,9 +970,12 @@ export default function SignupWizard() {
       return (
         <div className="space-y-6">
           <div className="space-y-4">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">✓ Geschafft! Deine Anfrage ist bei uns</h2>
-            <p className="text-base leading-relaxed text-gray-700">Unser Team von Kaufmann Health prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.</p>
-            <p className="text-base leading-relaxed text-gray-700">Du bekommst deine Matches innerhalb von 24 Stunden.</p>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">✓ Geschafft! Fast fertig</h2>
+            <p className="text-base leading-relaxed text-gray-700">
+              {isDirectBookingFlow
+                ? 'Bestätige deine E‑Mail, um Therapeut:innen zu kontaktieren und Termine zu buchen.'
+                : 'Unser Team prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich. Du bekommst deine Matches innerhalb von 24 Stunden.'}
+            </p>
           </div>
 
           {/* Feature Highlight Panel - Email confirmation callout */}
@@ -971,7 +984,9 @@ export default function SignupWizard() {
             <div className="space-y-3">
               <p className="text-base font-semibold text-gray-900">📧 Wichtig: Bitte bestätige deine E‑Mail‑Adresse</p>
               <p className="text-sm leading-relaxed text-gray-700">
-                Wir haben dir gerade eine Bestätigungs-E-Mail geschickt. Bitte prüfe deinen Posteingang und klicke auf den Link, damit wir dir deine Therapeuten-Empfehlungen zusenden können.
+                {isDirectBookingFlow
+                  ? 'Wir haben dir gerade eine Bestätigungs-E-Mail geschickt. Bitte prüfe deinen Posteingang und klicke auf den Link, um fortzufahren. Therapeut:innen kommunizieren per E‑Mail.'
+                  : 'Wir haben dir gerade eine Bestätigungs-E-Mail geschickt. Bitte prüfe deinen Posteingang und klicke auf den Link, damit wir dir deine Therapeuten-Empfehlungen zusenden können.'}
               </p>
               <p className="text-xs text-gray-600">Tipp: Falls du nichts findest, schau auch im Spam-Ordner nach.</p>
             </div>
