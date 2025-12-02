@@ -81,6 +81,8 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const [message, setMessage] = useState('');
   const [sessionFormat, setSessionFormat] = useState<'online' | 'in_person' | ''>(''); // Required for booking
   const [selectedBookingSlot, setSelectedBookingSlot] = useState<{ date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string } | null>(null);
+  const [formatShake, setFormatShake] = useState(false);
+  const formatSelectorRef = useRef<HTMLDivElement>(null);
   // Track whether the user has a verified session in this modal lifecycle
   const [isVerified, setIsVerified] = useState<boolean>(false);
 
@@ -343,6 +345,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     setMessage('');
     setSessionFormat('');
     setSelectedBookingSlot(null);
+    setFormatShake(false);
     setIsVerified(false);
     setForceSuccess(false);
     setAwaitingVerificationSend(false);
@@ -1060,7 +1063,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         {contactType === 'booking' && (
           showBookingPicker ? (
             (hasOnlineSlots || hasInPersonSlots) && (
-              <div className="space-y-3">
+              <div ref={formatSelectorRef} className={`space-y-3 transition-all ${formatShake ? 'animate-shake' : ''}`}>
                 <Label className="text-sm font-medium">Format *</Label>
                 <div className="flex gap-2 max-w-md mx-auto">
                   {hasOnlineSlots && (
@@ -1111,7 +1114,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             )
           ) : (
             // No availability → still ask for preferred format to include in outreach
-            <div className="space-y-3">
+            <div ref={formatSelectorRef} className={`space-y-3 transition-all ${formatShake ? 'animate-shake' : ''}`}>
               <Label className="text-sm font-medium">Format *</Label>
               <div className="flex gap-2 max-w-md mx-auto">
                 <Button
@@ -1283,27 +1286,68 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           {showBookingPicker ? (
             <Button
               onClick={() => {
+                // Validate: need format and slot
+                if (!sessionFormat) {
+                  formatSelectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  setFormatShake(true);
+                  setTimeout(() => setFormatShake(false), 500);
+                  return;
+                }
+                if (!selectedBookingSlot) {
+                  formatSelectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  return;
+                }
                 setStep('verify');
               }}
-              disabled={loading || !sessionFormat || !selectedBookingSlot}
-              className="flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl"
+              disabled={loading}
+              className={`flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl ${
+                !sessionFormat || !selectedBookingSlot
+                  ? 'bg-gray-400 hover:bg-gray-500 cursor-pointer'
+                  : 'bg-emerald-600 hover:bg-emerald-700'
+              }`}
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Weiter zur Eingabe'}
             </Button>
           ) : (
             (isVerified) ? (
               <Button
-                onClick={handleSendMessage}
-                disabled={loading || (!reason.trim() && !message.trim()) || (contactType === 'booking' && !sessionFormat)}
-                className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30"
+                onClick={() => {
+                  // Validate format if booking
+                  if (contactType === 'booking' && !sessionFormat) {
+                    formatSelectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setFormatShake(true);
+                    setTimeout(() => setFormatShake(false), 500);
+                    return;
+                  }
+                  handleSendMessage();
+                }}
+                disabled={loading || (!reason.trim() && !message.trim())}
+                className={`flex-1 h-11 shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 ${
+                  contactType === 'booking' && !sessionFormat
+                    ? 'bg-gray-400 hover:bg-gray-500'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Nachricht senden'}
               </Button>
             ) : (
               <Button
-                onClick={() => setStep('verify')}
-                disabled={loading || (!reason.trim() && !message.trim()) || (contactType === 'booking' && !sessionFormat)}
-                className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => {
+                  // Validate format if booking
+                  if (contactType === 'booking' && !sessionFormat) {
+                    formatSelectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setFormatShake(true);
+                    setTimeout(() => setFormatShake(false), 500);
+                    return;
+                  }
+                  setStep('verify');
+                }}
+                disabled={loading || (!reason.trim() && !message.trim())}
+                className={`flex-1 h-11 ${
+                  contactType === 'booking' && !sessionFormat
+                    ? 'bg-gray-400 hover:bg-gray-500'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Weiter'}
               </Button>
