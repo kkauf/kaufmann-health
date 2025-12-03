@@ -67,15 +67,16 @@ beforeEach(() => {
 });
 
 describe('/api/therapists/:id/profile POST', () => {
-  it('404 when therapist not found or not pending', async () => {
+  it('404 when therapist not found, 401 when verified without session', async () => {
     const { POST } = await import('@/app/api/public/therapists/[id]/profile/route');
     fetchedTherapist = null;
     let res = await POST(makeJsonReq({}), { params: Promise.resolve({ id: 'missing' }) });
     expect(res.status).toBe(404);
 
+    // Verified therapists without session get 401 (requires auth)
     fetchedTherapist = { id: 'tid-1', status: 'verified', metadata: {} };
     res = await POST(makeJsonReq({}), { params: Promise.resolve({ id: 'tid-1' }) });
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
   });
 
   it('400 for invalid gender', async () => {

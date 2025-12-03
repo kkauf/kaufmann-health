@@ -1,12 +1,15 @@
 import { safeJson } from '@/lib/http';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
+import { getTherapistSession } from '@/lib/auth/therapistSession';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const ALLOWED_PHOTO_TYPES = new Set(['image/jpeg', 'image/png']);
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4MB
+const PUBLIC_PHOTO_BUCKET = 'therapist-profiles';
+const PENDING_PHOTO_BUCKET = 'therapist-applications';
 
 function getFileExtension(fileName: string, contentType: string): string {
   if (contentType === 'image/jpeg') return '.jpg';
@@ -36,10 +39,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const ua = req.headers.get('user-agent') || undefined;
 
   try {
-    // Validate therapist exists and is pending verification
+    // Fetch therapist
     const { data: therapist, error: fetchErr } = await supabaseServer
       .from('therapists')
-      .select('id, status, metadata, gender, city, accepting_new')
+      .select('id, status, metadata, gender, city, accepting_new, session_preferences, typical_rate')
       .eq('id', id)
       .single();
 
@@ -48,9 +51,22 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return safeJson({ data: null, error: 'Not found' }, { status: 404 });
     }
 
-    if ((therapist as { status?: string }).status !== 'pending_verification') {
-      // Hide details; treat as not found to avoid information leak
-      return safeJson({ data: null, error: 'Not found' }, { status: 404 });
+    const status = (therapist as { status?: string }).status;
+    const isPending = status === 'pending_verification';
+    const isVerified = status === 'verified';
+
+    // Authorization check:
+    // - pending_verification: open access (onboarding flow)
+    // - verified: requires valid therapist session cookie matching the ID
+    if (!isPending) {
+      if (!isVerified) {
+        return safeJson({ data: null, error: 'Not found' }, { status: 404 });
+      }
+      // Verify session for verified therapists
+      const session = await getTherapistSession(req);
+      if (!session || session.therapist_id !== id) {
+        return safeJson({ data: null, error: 'Unauthorized' }, { status: 401 });
+      }
     }
 
     const contentType = req.headers.get('content-type') || '';
@@ -59,6 +75,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     let acceptingNew: boolean | undefined;
     let approachText: string | undefined;
     let profilePhoto: File | undefined;
+    // New fields for verified therapists (EARTH-234)
+    let sessionPreferences: string[] | undefined;
+    let typicalRate: number | undefined;
+    // Structured address fields
+    let practiceStreet: string | undefined;
+    let practicePostalCode: string | undefined;
+    let practiceCity: string | undefined;
 
     if (contentType.includes('multipart/form-data')) {
       const form = await req.formData();
@@ -67,6 +90,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const a = form.get('accepting_new');
       const at = form.get('approach_text');
       const pp = form.get('profile_photo');
+      const sp = form.get('session_preferences');
+      const tr = form.get('typical_rate');
+      const pStreet = form.get('practice_street');
+      const pPostal = form.get('practice_postal_code');
+      const pCity = form.get('practice_city');
 
       if (typeof g === 'string' && g.trim()) gender = g.trim();
       if (typeof c === 'string' && c.trim()) city = c.trim();
@@ -76,9 +104,29 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         if (trimmed.length > 500) {
           return safeJson({ data: null, error: 'approach_text too long (max 500 chars)' }, { status: 400 });
         }
-        if (trimmed) approachText = trimmed;
+        approachText = trimmed;
       }
       if (pp instanceof File && pp.size > 0) profilePhoto = pp as File;
+      
+      // Parse session_preferences (sent as JSON array string)
+      if (typeof sp === 'string' && sp.trim()) {
+        try {
+          const parsed = JSON.parse(sp);
+          if (Array.isArray(parsed)) {
+            sessionPreferences = parsed.filter((v): v is string => typeof v === 'string');
+          }
+        } catch {
+          // Fallback: treat as comma-separated
+          sessionPreferences = sp.split(',').map(s => s.trim()).filter(Boolean);
+        }
+      }
+      if (typeof tr === 'string' && tr.trim()) {
+        const rate = parseInt(tr, 10);
+        if (!isNaN(rate) && rate > 0) typicalRate = rate;
+      }
+      if (typeof pStreet === 'string') practiceStreet = pStreet.trim();
+      if (typeof pPostal === 'string') practicePostalCode = pPostal.trim();
+      if (typeof pCity === 'string') practiceCity = pCity.trim();
     } else {
       // Assume JSON
       const body = await req.json().catch(() => ({}));
@@ -86,6 +134,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const c = body?.city;
       const a = body?.accepting_new;
       const at = body?.approach_text;
+      const sp = body?.session_preferences;
+      const tr = body?.typical_rate;
+      const pStreet = body?.practice_street;
+      const pPostal = body?.practice_postal_code;
+      const pCity = body?.practice_city;
+      
       if (typeof g === 'string' && g.trim()) gender = g.trim();
       if (typeof c === 'string' && c.trim()) city = c.trim();
       if (typeof a === 'boolean') acceptingNew = a;
@@ -94,8 +148,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         if (trimmed.length > 500) {
           return safeJson({ data: null, error: 'approach_text too long (max 500 chars)' }, { status: 400 });
         }
-        if (trimmed) approachText = trimmed;
+        approachText = trimmed;
       }
+      if (Array.isArray(sp)) {
+        sessionPreferences = sp.filter((v): v is string => typeof v === 'string');
+      }
+      if (typeof tr === 'number' && tr > 0) typicalRate = tr;
+      if (typeof pStreet === 'string') practiceStreet = pStreet.trim();
+      if (typeof pPostal === 'string') practicePostalCode = pPostal.trim();
+      if (typeof pCity === 'string') practiceCity = pCity.trim();
     }
 
     // Validate gender if provided
@@ -103,24 +164,51 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return safeJson({ data: null, error: 'invalid gender' }, { status: 400 });
     }
 
+    // Validate session_preferences if provided
+    if (sessionPreferences) {
+      const validPrefs = new Set(['online', 'in_person']);
+      if (!sessionPreferences.every(p => validPrefs.has(p))) {
+        return safeJson({ data: null, error: 'invalid session_preferences' }, { status: 400 });
+      }
+    }
+
     // Upload profile photo if provided
+    let uploadedPhotoUrl: string | undefined;
     let uploadedProfilePhotoPath: string | undefined;
+    
     if (profilePhoto) {
       const valid = isValidPhoto(profilePhoto);
       if (!valid.ok) {
         return safeJson({ data: null, error: `profile_photo: ${valid.reason}` }, { status: 400 });
       }
       const photoExt = getFileExtension(profilePhoto.name || '', profilePhoto.type);
-      const photoPath = `applications/${id}/profile-photo-${Date.now()}${photoExt}`;
       const buf = await fileToBuffer(profilePhoto);
-      const { error: upErr } = await supabaseServer.storage
-        .from('therapist-applications')
-        .upload(photoPath, buf, { contentType: profilePhoto.type, upsert: false });
-      if (upErr) {
-        await logError('api.therapists.profile', upErr, { stage: 'upload_profile_photo', therapist_id: id, path: photoPath }, ip, ua);
-        return safeJson({ data: null, error: 'Failed to upload profile photo' }, { status: 500 });
+      
+      if (isVerified) {
+        // Verified therapists: upload directly to public bucket
+        const photoPath = `profiles/${id}/photo-${Date.now()}${photoExt}`;
+        const { error: upErr } = await supabaseServer.storage
+          .from(PUBLIC_PHOTO_BUCKET)
+          .upload(photoPath, buf, { contentType: profilePhoto.type, upsert: true });
+        if (upErr) {
+          await logError('api.therapists.profile', upErr, { stage: 'upload_profile_photo_public', therapist_id: id, path: photoPath }, ip, ua);
+          return safeJson({ data: null, error: 'Failed to upload profile photo' }, { status: 500 });
+        }
+        // Get public URL
+        const { data: urlData } = supabaseServer.storage.from(PUBLIC_PHOTO_BUCKET).getPublicUrl(photoPath);
+        uploadedPhotoUrl = urlData?.publicUrl;
+      } else {
+        // Pending therapists: upload to applications bucket for admin review
+        const photoPath = `applications/${id}/profile-photo-${Date.now()}${photoExt}`;
+        const { error: upErr } = await supabaseServer.storage
+          .from(PENDING_PHOTO_BUCKET)
+          .upload(photoPath, buf, { contentType: profilePhoto.type, upsert: false });
+        if (upErr) {
+          await logError('api.therapists.profile', upErr, { stage: 'upload_profile_photo', therapist_id: id, path: photoPath }, ip, ua);
+          return safeJson({ data: null, error: 'Failed to upload profile photo' }, { status: 500 });
+        }
+        uploadedProfilePhotoPath = photoPath;
       }
-      uploadedProfilePhotoPath = photoPath;
     }
 
     // Prepare metadata merge
@@ -131,25 +219,62 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     if (typeof approachText === 'string') profile.approach_text = approachText;
     if (uploadedProfilePhotoPath) profile.photo_pending_path = uploadedProfilePhotoPath;
+    // Save structured address fields
+    if (typeof practiceStreet === 'string') profile.practice_street = practiceStreet;
+    if (typeof practicePostalCode === 'string') profile.practice_postal_code = practicePostalCode;
+    if (typeof practiceCity === 'string') profile.practice_city = practiceCity;
+    // Also save combined address for backward compatibility (used by slots)
+    const combinedAddress = [practiceStreet, practicePostalCode, practiceCity].filter(Boolean).join(', ');
+    if (combinedAddress) profile.practice_address = combinedAddress;
     metaObj.profile = profile;
 
-    const updates: Record<string, unknown> = {};
+    const updates: Record<string, unknown> = { metadata: metaObj };
     if (typeof gender === 'string') updates.gender = gender;
     if (typeof city === 'string') updates.city = city;
     if (typeof acceptingNew === 'boolean') updates.accepting_new = acceptingNew;
+    if (sessionPreferences) updates.session_preferences = sessionPreferences;
+    if (typeof typicalRate === 'number') updates.typical_rate = typicalRate;
+    if (uploadedPhotoUrl) updates.photo_url = uploadedPhotoUrl;
 
     const { error: updateErr } = await supabaseServer
       .from('therapists')
-      .update({ ...updates, metadata: metaObj })
+      .update(updates)
       .eq('id', id);
     if (updateErr) {
       await logError('api.therapists.profile', updateErr, { stage: 'update_metadata', therapist_id: id }, ip, ua);
       return safeJson({ data: null, error: 'Failed to update' }, { status: 500 });
     }
 
-    void track({ type: 'therapist_profile_updated', level: 'info', source: 'api.therapists.profile', ip, ua, props: { therapist_id: id, fields: { gender: Boolean(gender), city: Boolean(city), accepting_new: typeof acceptingNew === 'boolean', approach_text: Boolean(approachText), profile_photo: Boolean(uploadedProfilePhotoPath) } } });
+    void track({ 
+      type: 'therapist_profile_updated', 
+      level: 'info', 
+      source: 'api.therapists.profile', 
+      ip, 
+      ua, 
+      props: { 
+        therapist_id: id, 
+        is_verified: isVerified,
+        fields: { 
+          gender: Boolean(gender), 
+          city: Boolean(city), 
+          accepting_new: typeof acceptingNew === 'boolean', 
+          approach_text: Boolean(approachText), 
+          profile_photo: Boolean(uploadedPhotoUrl || uploadedProfilePhotoPath),
+          session_preferences: Boolean(sessionPreferences),
+          typical_rate: Boolean(typicalRate),
+          practice_street: Boolean(practiceStreet),
+          practice_postal_code: Boolean(practicePostalCode),
+          practice_city: Boolean(practiceCity),
+        } 
+      } 
+    });
 
-    return safeJson({ data: { ok: true, nextStep: `/therapists/upload-documents/${id}` }, error: null });
+    // Response varies based on status
+    if (isPending) {
+      return safeJson({ data: { ok: true, nextStep: `/therapists/upload-documents/${id}` }, error: null });
+    } else {
+      return safeJson({ data: { ok: true, photo_url: uploadedPhotoUrl }, error: null });
+    }
   } catch (e) {
     await logError('api.therapists.profile', e, { stage: 'exception', therapist_id: id }, ip, ua);
     return safeJson({ data: null, error: 'Unexpected error' }, { status: 500 });

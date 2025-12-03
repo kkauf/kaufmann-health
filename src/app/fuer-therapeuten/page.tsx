@@ -5,7 +5,8 @@ import { Card } from "@/components/ui/card";
 import PageAnalytics from "@/components/PageAnalytics";
 import FaqAccordion from "@/components/FaqAccordion";
 import TherapistApplicationForm from "@/features/leads/components/TherapistApplicationForm";
-import { CheckCircle2, Target, Users, Clock, Shield, TrendingUp, ShieldCheck, Lock, UserCheck } from "lucide-react";
+import { CheckCircle2, Target, Users, Clock, Shield, TrendingUp, ShieldCheck, Lock, UserCheck, LogIn } from "lucide-react";
+import Link from "next/link";
 import CtaLink from "@/components/CtaLink";
 import { COOKIES_ENABLED } from "@/lib/config";
 
@@ -132,7 +133,7 @@ export default function TherapistsPage() {
             Transparente Datenverarbeitung
           </span>
         </div>
-        <div className="mt-8">
+        <div className="mt-8 flex flex-wrap items-center gap-4">
           <Button
             size="lg"
             asChild
@@ -144,6 +145,13 @@ export default function TherapistsPage() {
               Jetzt bewerben →
             </CtaLink>
           </Button>
+          <Link 
+            href="/portal/login" 
+            className="inline-flex items-center gap-2 h-12 sm:h-14 px-5 sm:px-6 text-sm sm:text-base font-medium text-gray-700 hover:text-gray-900 bg-white/80 hover:bg-white border border-gray-200 rounded-lg shadow-sm transition-all duration-200"
+          >
+            <LogIn className="h-4 w-4" />
+            Mitglieder-Login
+          </Link>
         </div>
       </section>
 
