@@ -452,24 +452,75 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
               </div>
             )}
 
-            {/* Approach text */}
-            {therapist.approach_text && (
-              <div className="border-b pb-6">
-                <h3 className="mb-3 text-lg font-semibold text-gray-900">Über mich & meinen Ansatz</h3>
-                <div className="prose prose-sm max-w-none overflow-wrap-anywhere text-gray-700">
-                  {therapist.approach_text.split('\n').map((paragraph, idx) => (
-                    paragraph.trim() && <p key={idx} className="mb-3 break-words">{paragraph}</p>
-                  ))}
-                </div>
-                {/* Session price badge */}
-                <div className="mt-4">
-                  <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
-                    <Tag className="h-3.5 w-3.5" />
-                    {formatSessionPrice(therapist.typical_rate)}
-                  </Badge>
-                </div>
-              </div>
-            )}
+            {/* Profile Sections - New structured fields with fallback to legacy */}
+            {(() => {
+              const whoComesToMe = profile?.who_comes_to_me;
+              const sessionFocusText = profile?.session_focus;
+              const firstSessionText = profile?.first_session;
+              const aboutMeText = profile?.about_me;
+              const hasNewFields = whoComesToMe || sessionFocusText || firstSessionText || aboutMeText;
+              
+              if (hasNewFields) {
+                return (
+                  <div className="border-b pb-6 space-y-6">
+                    {whoComesToMe && (
+                      <div>
+                        <h3 className="mb-2 text-base font-semibold text-gray-900">Zu mir kommen Menschen, die...</h3>
+                        <p className="text-sm text-gray-700 leading-relaxed">{whoComesToMe}</p>
+                      </div>
+                    )}
+                    {sessionFocusText && (
+                      <div>
+                        <h3 className="mb-2 text-base font-semibold text-gray-900">In unserer Arbeit geht es oft um...</h3>
+                        <p className="text-sm text-gray-700 leading-relaxed">{sessionFocusText}</p>
+                      </div>
+                    )}
+                    {firstSessionText && (
+                      <div>
+                        <h3 className="mb-2 text-base font-semibold text-gray-900">Das erste Gespräch</h3>
+                        <p className="text-sm text-gray-700 leading-relaxed">{firstSessionText}</p>
+                      </div>
+                    )}
+                    {aboutMeText && (
+                      <div>
+                        <h3 className="mb-2 text-base font-semibold text-gray-900">Über mich</h3>
+                        <p className="text-sm text-gray-700 leading-relaxed">{aboutMeText}</p>
+                      </div>
+                    )}
+                    {/* Session price badge */}
+                    <div className="pt-2">
+                      <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
+                        <Tag className="h-3.5 w-3.5" />
+                        {formatSessionPrice(therapist.typical_rate)}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              }
+              
+              // Fallback to legacy approach_text
+              if (therapist.approach_text) {
+                return (
+                  <div className="border-b pb-6">
+                    <h3 className="mb-3 text-lg font-semibold text-gray-900">Über mich & meinen Ansatz</h3>
+                    <div className="prose prose-sm max-w-none overflow-wrap-anywhere text-gray-700">
+                      {therapist.approach_text.split('\n').map((paragraph, idx) => (
+                        paragraph.trim() && <p key={idx} className="mb-3 break-words">{paragraph}</p>
+                      ))}
+                    </div>
+                    {/* Session price badge */}
+                    <div className="mt-4">
+                      <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
+                        <Tag className="h-3.5 w-3.5" />
+                        {formatSessionPrice(therapist.typical_rate)}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              }
+              
+              return null;
+            })()}
 
             {/* Modality Descriptions */}
             {therapist.modalities && therapist.modalities.length > 0 && (

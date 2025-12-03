@@ -87,10 +87,17 @@ export async function GET() {
             ? (profileUnknown as Record<string, unknown>)
             : {};
 
+        // Legacy approach_text (fallback)
         const approach_text =
           typeof profile['approach_text'] === 'string'
             ? (profile['approach_text'] as string)
             : '';
+
+        // New structured profile fields
+        const who_comes_to_me = typeof profile['who_comes_to_me'] === 'string' ? profile['who_comes_to_me'] : undefined;
+        const session_focus = typeof profile['session_focus'] === 'string' ? profile['session_focus'] : undefined;
+        const first_session = typeof profile['first_session'] === 'string' ? profile['first_session'] : undefined;
+        const about_me = typeof profile['about_me'] === 'string' ? profile['about_me'] : undefined;
 
         const languages = Array.isArray(profile['languages'])
           ? (profile['languages'] as string[])
@@ -99,6 +106,8 @@ export async function GET() {
           typeof profile['years_experience'] === 'number'
             ? (profile['years_experience'] as number)
             : undefined;
+        const practice_address = typeof profile['practice_address'] === 'string' ? profile['practice_address'] : undefined;
+        
         // Get pre-computed availability from shared utility
         const availability = availabilityMap.get(row.id) || [];
 
@@ -115,9 +124,16 @@ export async function GET() {
           typical_rate: row.typical_rate,
           metadata: {
             profile: {
+              // New structured fields
+              ...(who_comes_to_me ? { who_comes_to_me } : {}),
+              ...(session_focus ? { session_focus } : {}),
+              ...(first_session ? { first_session } : {}),
+              ...(about_me ? { about_me } : {}),
+              // Existing fields
               ...(languages.length > 0 ? { languages } : {}),
               ...(typeof years_experience === 'number' ? { years_experience } : {}),
               ...(typeof profile['qualification'] === 'string' ? { qualification: profile['qualification'] } : {}),
+              ...(practice_address ? { practice_address } : {}),
             },
           },
           availability,

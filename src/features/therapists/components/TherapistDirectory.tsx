@@ -27,6 +27,11 @@ export type TherapistData = {
   metadata?: {
     profile?: {
       approach_text?: string;
+      // New structured profile fields
+      who_comes_to_me?: string;
+      session_focus?: string;
+      first_session?: string;
+      about_me?: string;
       languages?: string[];
       years_experience?: number;
       practice_address?: string;

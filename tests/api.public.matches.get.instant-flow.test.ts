@@ -37,9 +37,13 @@ function makeSupabaseMock({
               eq(col: string, val: any) {
                 if (col === 'secure_uuid') {
                   return {
-                    async single() { return { data: ref, error: ref ? null : { message: 'not found' } }; },
-                    order() { return this; },
-                    limit() { return { data: [], error: null }; },
+                    order() {
+                      return {
+                        limit() {
+                          return Promise.resolve({ data: ref ? [ref] : [], error: null });
+                        },
+                      } as any;
+                    },
                   } as any;
                 }
                 if (col === 'patient_id') {
@@ -50,8 +54,6 @@ function makeSupabaseMock({
                 }
                 return { single: async () => ({ data: null, error: { message: 'not found' } }) } as any;
               },
-              order() { return Promise.resolve({ data: [ref], error: null }); },
-              limit() { return Promise.resolve({ data: [ref], error: null }); },
             } as any;
           },
         } as any;

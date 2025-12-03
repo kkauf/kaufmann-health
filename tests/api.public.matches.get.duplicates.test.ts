@@ -8,21 +8,20 @@ vi.mock('@/lib/logger', () => ({ logError: vi.fn() }));
 
 vi.mock('@/lib/supabase-server', () => ({ supabaseServer: { from: () => ({}) } }));
 
-describe('GET /api/public/matches/:uuid duplicate secure_uuid fallback', () => {
+describe('GET /api/public/matches/:uuid duplicate secure_uuid handling', () => {
   beforeEach(() => {
     vi.resetModules();
   });
 
-  it('falls back to latest row when .single() fails to coerce', async () => {
+  it('picks latest row when multiple rows share the same secure_uuid', async () => {
     const uuid = 'dup-uuid-1';
     const patientId = 'patient-x';
     const therapistId = 'therapist-y';
+    // Simulate duplicate rows - query returns array, we pick first (latest due to order desc)
     const ref = { id: 'ref-x', created_at: new Date().toISOString(), patient_id: patientId };
     const list = [{ id: 'm1', therapist_id: therapistId, created_at: new Date().toISOString(), metadata: { patient_initiated: true } }];
     const therapists = [{ id: therapistId, first_name: 'Anna', last_name: 'Schmidt', city: 'Berlin', accepting_new: true }];
     const patient = { name: 'Max', metadata: { issue: 'Panik' } };
-
-    let secureUuidCalls = 0;
 
     const supabase = {
       from(table: string) {
@@ -30,17 +29,14 @@ describe('GET /api/public/matches/:uuid duplicate secure_uuid fallback', () => {
           return {
             select() {
               return {
-                eq(col: string, val: any) {
+                eq(col: string) {
                   if (col === 'secure_uuid') {
-                    secureUuidCalls += 1;
-                    if (secureUuidCalls === 1) {
-                      return { single: async () => ({ data: null, error: { message: 'Cannot coerce the result to a single JSON object' } }) } as any;
-                    }
                     return {
                       order() {
                         return {
                           limit() {
-                            return Promise.resolve({ data: [ref], error: null });
+                            // Return multiple rows (simulating duplicates) - we pick first
+                            return Promise.resolve({ data: [ref, { ...ref, id: 'ref-older' }], error: null });
                           },
                         } as any;
                       },

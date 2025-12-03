@@ -80,7 +80,17 @@ export default async function PortalPage({
 
   // Extract profile metadata
   const profileMeta = therapist.metadata?.profile as Record<string, unknown> | undefined;
-  const approachText = typeof profileMeta?.approach_text === 'string' ? profileMeta.approach_text : '';
+  
+  // Extract new structured profile fields
+  const whoComesToMe = typeof profileMeta?.who_comes_to_me === 'string' ? profileMeta.who_comes_to_me : '';
+  const sessionFocus = typeof profileMeta?.session_focus === 'string' ? profileMeta.session_focus : '';
+  const firstSession = typeof profileMeta?.first_session === 'string' ? profileMeta.first_session : '';
+  const aboutMe = typeof profileMeta?.about_me === 'string' ? profileMeta.about_me : '';
+  
+  // Legacy approach_text (read-only if present and no new fields filled)
+  const legacyApproachText = typeof profileMeta?.approach_text === 'string' ? profileMeta.approach_text : '';
+  // Only show legacy text if it exists AND the new fields are empty (hasn't migrated yet)
+  const showLegacy = legacyApproachText && !whoComesToMe && !sessionFocus && !firstSession;
   
   // Extract structured address fields (with fallback parsing for legacy data)
   let practiceStreet = typeof profileMeta?.practice_street === 'string' ? profileMeta.practice_street : '';
@@ -113,7 +123,13 @@ export default async function PortalPage({
   // Prepare initial data for the form
   const initialData = {
     photo_url: therapist.photo_url || undefined,
-    approach_text: approachText,
+    // New structured profile fields
+    who_comes_to_me: whoComesToMe,
+    session_focus: sessionFocus,
+    first_session: firstSession,
+    about_me: aboutMe,
+    // Legacy field (only if hasn't migrated to new fields)
+    approach_text_legacy: showLegacy ? legacyApproachText : undefined,
     session_preferences: Array.isArray(therapist.session_preferences) ? therapist.session_preferences : [],
     typical_rate: therapist.typical_rate ?? undefined,
     practice_street: practiceStreet,

@@ -18,8 +18,12 @@ function makeSupabaseMock(ref: any, list: any[], therapists: any[], patient: any
               eq(col: string, val: any) {
                 if (col === 'secure_uuid') {
                   return {
-                    async single() {
-                      return { data: ref, error: ref ? null : { message: 'not found' } };
+                    order() {
+                      return {
+                        limit() {
+                          return Promise.resolve({ data: ref ? [ref] : [], error: null });
+                        },
+                      } as any;
                     },
                   } as any;
                 }

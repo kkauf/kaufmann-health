@@ -267,7 +267,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             </p>
             <div className="mt-4 flex gap-3">
               <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
-                <a href="/therapie-finden">Neue Empfehlungen anfordern</a>
+                <a href="/fragebogen?restart=1">Neue Empfehlungen anfordern</a>
               </Button>
               <Button variant="outline" asChild>
                 <CtaLink href="/therapeuten" eventType="cta_click" eventId="alle-therapeuten" data-cta="alle-therapeuten">

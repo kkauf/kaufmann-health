@@ -276,12 +276,17 @@ export function TherapistCard({
             )}
           </div>
 
-          {/* Approach text preview */}
-          {therapist.approach_text && (
-            <p className="mb-5 line-clamp-3 text-sm text-gray-700">
-              {therapist.approach_text}
-            </p>
-          )}
+          {/* Profile text preview - prefer new structured fields, fallback to legacy */}
+          {(() => {
+            const profile = therapist.metadata?.profile;
+            const previewText = profile?.who_comes_to_me || profile?.session_focus || therapist.approach_text;
+            if (!previewText) return null;
+            return (
+              <p className="mb-5 line-clamp-3 text-sm text-gray-700">
+                {previewText}
+              </p>
+            );
+          })()}
 
         </div>
 

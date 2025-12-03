@@ -6,14 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar } from "lucide-react";
+import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Info, Lock } from "lucide-react";
 import SlotsManager from "./SlotsManager";
 
 type Props = {
   therapistId: string;
   initialData: {
     photo_url?: string;
-    approach_text: string;
+    // New structured profile fields
+    who_comes_to_me: string;
+    session_focus: string;
+    first_session: string;
+    about_me: string;
+    // Legacy field (read-only if present)
+    approach_text_legacy?: string;
     session_preferences: string[];
     typical_rate?: number;
     practice_street: string;
@@ -22,6 +28,14 @@ type Props = {
     accepting_new: boolean;
     city: string;
   };
+};
+
+// Profile field character limits
+const PROFILE_LIMITS = {
+  who_comes_to_me: 200,
+  session_focus: 250,
+  first_session: 200,
+  about_me: 150,
 };
 
 // German postal code validation (5 digits)
@@ -38,8 +52,11 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
 
-  // Form state
-  const [approachText, setApproachText] = useState(initialData.approach_text);
+  // Form state - New profile sections
+  const [whoComesToMe, setWhoComesToMe] = useState(initialData.who_comes_to_me);
+  const [sessionFocus, setSessionFocus] = useState(initialData.session_focus);
+  const [firstSession, setFirstSession] = useState(initialData.first_session);
+  const [aboutMe, setAboutMe] = useState(initialData.about_me);
   const [offersOnline, setOffersOnline] = useState(initialData.session_preferences.includes('online'));
   const [offersInPerson, setOffersInPerson] = useState(initialData.session_preferences.includes('in_person'));
   const [typicalRate, setTypicalRate] = useState<string>(initialData.typical_rate?.toString() ?? '');
@@ -59,20 +76,40 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const currentPhotoUrl = photoPreview || initialData.photo_url;
 
-  // Track if form has unsaved changes
+  // Track baseline values (updated after save)
+  const baselineRef = useRef({
+    who_comes_to_me: initialData.who_comes_to_me,
+    session_focus: initialData.session_focus,
+    first_session: initialData.first_session,
+    about_me: initialData.about_me,
+    offersOnline: initialData.session_preferences.includes('online'),
+    offersInPerson: initialData.session_preferences.includes('in_person'),
+    typicalRate: initialData.typical_rate?.toString() ?? '',
+    practiceStreet: initialData.practice_street,
+    practicePostalCode: initialData.practice_postal_code,
+    practiceCity: initialData.practice_city,
+    acceptingNew: initialData.accepting_new,
+    city: initialData.city,
+  });
+
+  // Track if form has unsaved changes (compare to baseline, not initialData)
   const hasUnsavedChanges = useMemo(() => {
+    const b = baselineRef.current;
     if (photoFile) return true;
-    if (approachText !== initialData.approach_text) return true;
-    if (offersOnline !== initialData.session_preferences.includes('online')) return true;
-    if (offersInPerson !== initialData.session_preferences.includes('in_person')) return true;
-    if (typicalRate !== (initialData.typical_rate?.toString() ?? '')) return true;
-    if (practiceStreet !== initialData.practice_street) return true;
-    if (practicePostalCode !== initialData.practice_postal_code) return true;
-    if (practiceCity !== initialData.practice_city) return true;
-    if (acceptingNew !== initialData.accepting_new) return true;
-    if (city !== initialData.city) return true;
+    if (whoComesToMe !== b.who_comes_to_me) return true;
+    if (sessionFocus !== b.session_focus) return true;
+    if (firstSession !== b.first_session) return true;
+    if (aboutMe !== b.about_me) return true;
+    if (offersOnline !== b.offersOnline) return true;
+    if (offersInPerson !== b.offersInPerson) return true;
+    if (typicalRate !== b.typicalRate) return true;
+    if (practiceStreet !== b.practiceStreet) return true;
+    if (practicePostalCode !== b.practicePostalCode) return true;
+    if (practiceCity !== b.practiceCity) return true;
+    if (acceptingNew !== b.acceptingNew) return true;
+    if (city !== b.city) return true;
     return false;
-  }, [photoFile, approachText, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city, initialData]);
+  }, [photoFile, whoComesToMe, sessionFocus, firstSession, aboutMe, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city]);
 
   // Warn before leaving with unsaved changes
   useEffect(() => {
@@ -136,8 +173,12 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
       if (offersOnline) sessionPrefs.push('online');
       if (offersInPerson) sessionPrefs.push('in_person');
 
-      // Add form fields
-      form.set('approach_text', approachText);
+      // Add profile text fields
+      form.set('who_comes_to_me', whoComesToMe.trim());
+      form.set('session_focus', sessionFocus.trim());
+      form.set('first_session', firstSession.trim());
+      form.set('about_me', aboutMe.trim());
+      
       form.set('session_preferences', JSON.stringify(sessionPrefs));
       form.set('accepting_new', acceptingNew ? 'true' : 'false');
       form.set('city', city.trim());
@@ -175,6 +216,21 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
         throw new Error(json?.error || 'Speichern fehlgeschlagen');
       }
 
+      // Update baseline to current values so "unsaved changes" clears
+      baselineRef.current = {
+        who_comes_to_me: whoComesToMe,
+        session_focus: sessionFocus,
+        first_session: firstSession,
+        about_me: aboutMe,
+        offersOnline,
+        offersInPerson,
+        typicalRate,
+        practiceStreet,
+        practicePostalCode,
+        practiceCity,
+        acceptingNew,
+        city,
+      };
       setSaved(true);
       setPhotoFile(null);
       setPhotoPending(false);
@@ -185,7 +241,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [therapistId, approachText, offersOnline, offersInPerson, typicalRate, practiceAddress, acceptingNew, city, photoFile, photoError]);
+  }, [therapistId, whoComesToMe, sessionFocus, firstSession, aboutMe, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city, photoFile, photoError]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -195,8 +251,6 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     }
     window.location.href = '/portal/login';
   }, []);
-
-  const remaining = 500 - approachText.length;
 
   return (
     <div className="space-y-6">
@@ -321,30 +375,132 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
             </div>
           </Card>
 
-          {/* Approach Text */}
+          {/* Profile Text Sections */}
           <Card className="border border-gray-200/60 shadow-md bg-white/80 backdrop-blur-sm">
             <div className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Über mich</h2>
-              <div className="space-y-2">
-                <Label htmlFor="approach_text" className="text-sm font-medium text-gray-700">
-                  Dein therapeutischer Ansatz
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Dein Profil</h2>
+              <p className="text-sm text-gray-500 mb-6">
+                Diese Texte erscheinen auf deiner Profilseite und helfen Patient:innen, dich kennenzulernen.
+              </p>
+              
+              {/* Section 1: Who comes to me */}
+              <div className="space-y-2 mb-6">
+                <Label htmlFor="who_comes_to_me" className="text-sm font-medium text-gray-900">
+                  Zu mir kommen Menschen, die...
                 </Label>
+                <p className="text-xs text-gray-500 mb-1">
+                  Beschreibe, welche Menschen zu dir finden — nicht Diagnosen, sondern wie sie sich fühlen oder was sie erleben.
+                </p>
                 <textarea
-                  id="approach_text"
-                  rows={5}
-                  maxLength={500}
-                  value={approachText}
-                  onChange={(e) => setApproachText(e.target.value)}
-                  placeholder="Beschreibe deinen therapeutischen Ansatz und wie du mit Klient:innen arbeitest..."
+                  id="who_comes_to_me"
+                  rows={3}
+                  maxLength={PROFILE_LIMITS.who_comes_to_me}
+                  value={whoComesToMe}
+                  onChange={(e) => setWhoComesToMe(e.target.value)}
+                  placeholder="...merken, dass Gespräche allein nicht reichen und der Körper noch festhält"
                   className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>Wird auf deinem Profil angezeigt</span>
-                  <span className={remaining < 50 ? 'text-amber-600 font-medium' : ''}>{remaining} Zeichen</span>
+                <div className="flex justify-end text-xs text-gray-500">
+                  <span className={whoComesToMe.length > PROFILE_LIMITS.who_comes_to_me - 30 ? 'text-amber-600 font-medium' : ''}>
+                    {PROFILE_LIMITS.who_comes_to_me - whoComesToMe.length} Zeichen
+                  </span>
+                </div>
+              </div>
+
+              {/* Section 2: Session focus */}
+              <div className="space-y-2 mb-6">
+                <Label htmlFor="session_focus" className="text-sm font-medium text-gray-900">
+                  In unserer Arbeit geht es oft um...
+                </Label>
+                <p className="text-xs text-gray-500 mb-1">
+                  Was passiert in euren Sitzungen? Welche Themen tauchen auf, welche Prozesse?
+                </p>
+                <textarea
+                  id="session_focus"
+                  rows={4}
+                  maxLength={PROFILE_LIMITS.session_focus}
+                  value={sessionFocus}
+                  onChange={(e) => setSessionFocus(e.target.value)}
+                  placeholder="...langsamer werden und spüren, was der Körper eigentlich will"
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <div className="flex justify-end text-xs text-gray-500">
+                  <span className={sessionFocus.length > PROFILE_LIMITS.session_focus - 30 ? 'text-amber-600 font-medium' : ''}>
+                    {PROFILE_LIMITS.session_focus - sessionFocus.length} Zeichen
+                  </span>
+                </div>
+              </div>
+
+              {/* Section 3: First session */}
+              <div className="space-y-2 mb-6">
+                <Label htmlFor="first_session" className="text-sm font-medium text-gray-900">
+                  Das erste Gespräch
+                </Label>
+                <p className="text-xs text-gray-500 mb-1">
+                  Wie läuft ein Erstgespräch bei dir ab? Was erwartet jemanden?
+                </p>
+                <textarea
+                  id="first_session"
+                  rows={3}
+                  maxLength={PROFILE_LIMITS.first_session}
+                  value={firstSession}
+                  onChange={(e) => setFirstSession(e.target.value)}
+                  placeholder="Wir lernen uns kennen. Du erzählst, was dich herbringt — so viel oder wenig du möchtest."
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <div className="flex justify-end text-xs text-gray-500">
+                  <span className={firstSession.length > PROFILE_LIMITS.first_session - 30 ? 'text-amber-600 font-medium' : ''}>
+                    {PROFILE_LIMITS.first_session - firstSession.length} Zeichen
+                  </span>
+                </div>
+              </div>
+
+              {/* Section 4: About me (optional) */}
+              <div className="space-y-2">
+                <Label htmlFor="about_me" className="text-sm font-medium text-gray-900">
+                  Über mich <span className="text-gray-400 font-normal">(optional)</span>
+                </Label>
+                <p className="text-xs text-gray-500 mb-1">
+                  Was sollten Menschen über dich wissen, das nicht in Qualifikationen steht?
+                </p>
+                <textarea
+                  id="about_me"
+                  rows={2}
+                  maxLength={PROFILE_LIMITS.about_me}
+                  value={aboutMe}
+                  onChange={(e) => setAboutMe(e.target.value)}
+                  placeholder="Nur ausfüllen, wenn du etwas Echtes zu erzählen hast"
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <div className="flex justify-end text-xs text-gray-500">
+                  <span className={aboutMe.length > PROFILE_LIMITS.about_me - 20 ? 'text-amber-600 font-medium' : ''}>
+                    {PROFILE_LIMITS.about_me - aboutMe.length} Zeichen
+                  </span>
                 </div>
               </div>
             </div>
           </Card>
+
+          {/* Legacy Approach Text (read-only) */}
+          {initialData.approach_text_legacy && (
+            <Card className="border border-gray-200/60 shadow-md bg-gray-50/80 backdrop-blur-sm">
+              <div className="p-6">
+                <div className="flex items-start gap-3 mb-3">
+                  <Lock className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700">Bisheriger Profiltext</h3>
+                    <p className="text-xs text-gray-500">
+                      Dieser Text wird weiterhin angezeigt, kann aber nicht mehr bearbeitet werden. 
+                      Die neuen Felder oben ersetzen ihn nach und nach.
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-white/60 rounded-lg border border-gray-200 p-3">
+                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{initialData.approach_text_legacy}</p>
+                </div>
+              </div>
+            </Card>
+          )}
 
           {/* Session Details */}
           <Card className="border border-gray-200/60 shadow-md bg-white/80 backdrop-blur-sm">

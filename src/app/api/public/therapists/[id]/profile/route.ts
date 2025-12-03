@@ -73,40 +73,79 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     let gender: string | undefined;
     let city: string | undefined;
     let acceptingNew: boolean | undefined;
-    let approachText: string | undefined;
     let profilePhoto: File | undefined;
-    // New fields for verified therapists (EARTH-234)
+    // Session fields
     let sessionPreferences: string[] | undefined;
     let typicalRate: number | undefined;
     // Structured address fields
     let practiceStreet: string | undefined;
     let practicePostalCode: string | undefined;
     let practiceCity: string | undefined;
+    // New profile text sections (EARTH-234)
+    let whoComesToMe: string | undefined;
+    let sessionFocus: string | undefined;
+    let firstSession: string | undefined;
+    let aboutMe: string | undefined;
+
+    // Character limits for profile fields
+    const LIMITS = {
+      who_comes_to_me: 200,
+      session_focus: 250,
+      first_session: 200,
+      about_me: 150,
+    };
 
     if (contentType.includes('multipart/form-data')) {
       const form = await req.formData();
       const g = form.get('gender');
       const c = form.get('city');
       const a = form.get('accepting_new');
-      const at = form.get('approach_text');
       const pp = form.get('profile_photo');
       const sp = form.get('session_preferences');
       const tr = form.get('typical_rate');
       const pStreet = form.get('practice_street');
       const pPostal = form.get('practice_postal_code');
       const pCity = form.get('practice_city');
+      // New profile text fields
+      const wctm = form.get('who_comes_to_me');
+      const sf = form.get('session_focus');
+      const fs = form.get('first_session');
+      const am = form.get('about_me');
 
       if (typeof g === 'string' && g.trim()) gender = g.trim();
       if (typeof c === 'string' && c.trim()) city = c.trim();
       if (typeof a === 'string') acceptingNew = a === 'true' || a === '1' || a.toLowerCase() === 'yes';
-      if (typeof at === 'string') {
-        const trimmed = at.trim();
-        if (trimmed.length > 500) {
-          return safeJson({ data: null, error: 'approach_text too long (max 500 chars)' }, { status: 400 });
-        }
-        approachText = trimmed;
-      }
       if (pp instanceof File && pp.size > 0) profilePhoto = pp as File;
+      
+      // Parse new profile text fields with length validation
+      if (typeof wctm === 'string') {
+        const trimmed = wctm.trim();
+        if (trimmed.length > LIMITS.who_comes_to_me) {
+          return safeJson({ data: null, error: `who_comes_to_me too long (max ${LIMITS.who_comes_to_me} chars)` }, { status: 400 });
+        }
+        whoComesToMe = trimmed;
+      }
+      if (typeof sf === 'string') {
+        const trimmed = sf.trim();
+        if (trimmed.length > LIMITS.session_focus) {
+          return safeJson({ data: null, error: `session_focus too long (max ${LIMITS.session_focus} chars)` }, { status: 400 });
+        }
+        sessionFocus = trimmed;
+      }
+      if (typeof fs === 'string') {
+        const trimmed = fs.trim();
+        if (trimmed.length > LIMITS.first_session) {
+          return safeJson({ data: null, error: `first_session too long (max ${LIMITS.first_session} chars)` }, { status: 400 });
+        }
+        firstSession = trimmed;
+      }
+      if (typeof am === 'string') {
+        const trimmed = am.trim();
+        if (trimmed.length > LIMITS.about_me) {
+          return safeJson({ data: null, error: `about_me too long (max ${LIMITS.about_me} chars)` }, { status: 400 });
+        }
+        aboutMe = trimmed;
+      }
       
       // Parse session_preferences (sent as JSON array string)
       if (typeof sp === 'string' && sp.trim()) {
@@ -133,22 +172,49 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const g = body?.gender;
       const c = body?.city;
       const a = body?.accepting_new;
-      const at = body?.approach_text;
       const sp = body?.session_preferences;
       const tr = body?.typical_rate;
       const pStreet = body?.practice_street;
       const pPostal = body?.practice_postal_code;
       const pCity = body?.practice_city;
+      // New profile text fields
+      const wctm = body?.who_comes_to_me;
+      const sf = body?.session_focus;
+      const fs = body?.first_session;
+      const am = body?.about_me;
       
       if (typeof g === 'string' && g.trim()) gender = g.trim();
       if (typeof c === 'string' && c.trim()) city = c.trim();
       if (typeof a === 'boolean') acceptingNew = a;
-      if (typeof at === 'string') {
-        const trimmed = at.trim();
-        if (trimmed.length > 500) {
-          return safeJson({ data: null, error: 'approach_text too long (max 500 chars)' }, { status: 400 });
+      
+      // Parse new profile text fields with length validation (JSON)
+      if (typeof wctm === 'string') {
+        const trimmed = wctm.trim();
+        if (trimmed.length > LIMITS.who_comes_to_me) {
+          return safeJson({ data: null, error: `who_comes_to_me too long (max ${LIMITS.who_comes_to_me} chars)` }, { status: 400 });
         }
-        approachText = trimmed;
+        whoComesToMe = trimmed;
+      }
+      if (typeof sf === 'string') {
+        const trimmed = sf.trim();
+        if (trimmed.length > LIMITS.session_focus) {
+          return safeJson({ data: null, error: `session_focus too long (max ${LIMITS.session_focus} chars)` }, { status: 400 });
+        }
+        sessionFocus = trimmed;
+      }
+      if (typeof fs === 'string') {
+        const trimmed = fs.trim();
+        if (trimmed.length > LIMITS.first_session) {
+          return safeJson({ data: null, error: `first_session too long (max ${LIMITS.first_session} chars)` }, { status: 400 });
+        }
+        firstSession = trimmed;
+      }
+      if (typeof am === 'string') {
+        const trimmed = am.trim();
+        if (trimmed.length > LIMITS.about_me) {
+          return safeJson({ data: null, error: `about_me too long (max ${LIMITS.about_me} chars)` }, { status: 400 });
+        }
+        aboutMe = trimmed;
       }
       if (Array.isArray(sp)) {
         sessionPreferences = sp.filter((v): v is string => typeof v === 'string');
@@ -217,7 +283,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const profileUnknown = (metaObj as { profile?: unknown }).profile;
     const profile: Record<string, unknown> = isObject(profileUnknown) ? (profileUnknown as Record<string, unknown>) : {};
 
-    if (typeof approachText === 'string') profile.approach_text = approachText;
+    // Save new profile text sections
+    if (typeof whoComesToMe === 'string') profile.who_comes_to_me = whoComesToMe;
+    if (typeof sessionFocus === 'string') profile.session_focus = sessionFocus;
+    if (typeof firstSession === 'string') profile.first_session = firstSession;
+    if (typeof aboutMe === 'string') profile.about_me = aboutMe;
+    
     if (uploadedProfilePhotoPath) profile.photo_pending_path = uploadedProfilePhotoPath;
     // Save structured address fields
     if (typeof practiceStreet === 'string') profile.practice_street = practiceStreet;
@@ -258,7 +329,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           gender: Boolean(gender), 
           city: Boolean(city), 
           accepting_new: typeof acceptingNew === 'boolean', 
-          approach_text: Boolean(approachText), 
+          who_comes_to_me: Boolean(whoComesToMe),
+          session_focus: Boolean(sessionFocus),
+          first_session: Boolean(firstSession),
+          about_me: Boolean(aboutMe),
           profile_photo: Boolean(uploadedPhotoUrl || uploadedProfilePhotoPath),
           session_preferences: Boolean(sessionPreferences),
           typical_rate: Boolean(typicalRate),

@@ -2,7 +2,9 @@ import { test, expect, request } from '@playwright/test';
 import { adminLogin, setPracticeAddress, upsertSlots, deleteSlot, getBerlinDayIndex, tomorrowInBerlin, fmtYmd, resetTherapistSlots } from './utils';
 
 const base = process.env.E2E_BASE_URL || 'http://127.0.0.1:3000';
-const therapistId = process.env.E2E_THERAPIST_ID;
+const hideIdsEnv = (process.env.HIDE_THERAPIST_IDS || '').trim();
+const defaultTherapistId = hideIdsEnv ? hideIdsEnv.split(',').map((s) => s.trim()).filter(Boolean)[0] : undefined;
+const therapistId = process.env.E2E_THERAPIST_ID || defaultTherapistId;
 const verificationMode = process.env.NEXT_PUBLIC_VERIFICATION_MODE || 'email';
 const smsBypass = process.env.E2E_SMS_BYPASS === 'true';
 const smsCode = process.env.E2E_SMS_CODE || '000000';
@@ -17,7 +19,7 @@ const allowSmsFlow = verificationMode === 'sms' && smsBypass;
 test.skip(!(allowEmailFlow || allowSmsFlow), 'Enable either RESEND_API_KEY (email flow) or set NEXT_PUBLIC_VERIFICATION_MODE=sms and E2E_SMS_BYPASS=true to run booking E2E tests.');
 
 async function createVerifiedClientSessionCookie(): Promise<string> {
-  const ctx = await request.newContext({ baseURL: base });
+  const ctx = await request.newContext({ baseURL: base, extraHTTPHeaders: { Cookie: 'kh_test=1' } });
   // Prefer SMS bypass when configured
   if (verificationMode === 'sms' && smsBypass) {
     const phone = `+49151${Math.floor(1000000 + Math.random() * 8999999)}`;

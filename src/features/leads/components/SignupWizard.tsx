@@ -201,6 +201,25 @@ export default function SignupWizard() {
   // Load from localStorage on mount
   React.useEffect(() => {
     try {
+      // Check for restart param - clears session and starts fresh
+      const restartParam = searchParams?.get('restart');
+      if (restartParam === '1') {
+        localStorage.removeItem(LS_KEYS.data);
+        localStorage.removeItem(LS_KEYS.step);
+        localStorage.removeItem(LS_KEYS.sessionId);
+        sessionIdRef.current = null;
+        // Remove restart param from URL without reload
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('restart');
+          window.history.replaceState({}, '', url.pathname + url.search);
+        }
+        setStep(1);
+        setData({ name: '' });
+        setInitialized(true);
+        return;
+      }
+
       const saved = localStorage.getItem(LS_KEYS.data);
       if (saved) {
         const parsed = JSON.parse(saved);

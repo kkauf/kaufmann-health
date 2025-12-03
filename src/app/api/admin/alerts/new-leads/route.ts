@@ -130,7 +130,7 @@ export async function GET(req: Request) {
     const sinceIso = hoursAgoISO(hours);
 
     // Fetch patient leads that are actionable (status=new) in the window
-    const selectCols = 'id,status,metadata,campaign_source,campaign_variant,created_at,updated_at';
+    const selectCols = 'id,status,metadata,campaign_source,campaign_variant,created_at';
 
     let rows: PersonRow[] = [];
     {
@@ -139,10 +139,9 @@ export async function GET(req: Request) {
         .select(selectCols)
         .eq('type', 'patient')
         .eq('status', 'new')
-        // Consider either updated_at/created_at or key metadata timestamps within the window
+        // Consider created_at or key metadata timestamps within the window
         .or(
           [
-            `updated_at.gt.${sinceIso}`,
             `created_at.gt.${sinceIso}`,
             `metadata->>email_confirmed_at.gt.${sinceIso}`,
             `metadata->>confirmed_at.gt.${sinceIso}`,
@@ -161,7 +160,14 @@ export async function GET(req: Request) {
             .select('id,status,metadata,created_at')
             .eq('type', 'patient')
             .eq('status', 'new')
-            .gt('created_at', sinceIso)
+            .or(
+              [
+                `created_at.gt.${sinceIso}`,
+                `metadata->>email_confirmed_at.gt.${sinceIso}`,
+                `metadata->>confirmed_at.gt.${sinceIso}`,
+                `metadata->>form_completed_at.gt.${sinceIso}`,
+              ].join(',')
+            )
             .order('created_at', { ascending: true })
             .limit(500);
           if (res2.error) {
