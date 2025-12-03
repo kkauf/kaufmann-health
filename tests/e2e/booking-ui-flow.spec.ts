@@ -2,7 +2,9 @@ import { test, expect } from '@playwright/test';
 import { adminLogin, setPracticeAddress, upsertSlots, deleteSlot, getBerlinDayIndex, tomorrowInBerlin, fmtYmd, resetTherapistSlots } from './utils';
 
 const base = process.env.E2E_BASE_URL || 'http://127.0.0.1:3000';
-const therapistId = process.env.E2E_THERAPIST_ID;
+const hideIdsEnv = (process.env.HIDE_THERAPIST_IDS || '').trim();
+const defaultTherapistId = hideIdsEnv ? hideIdsEnv.split(',').map((s) => s.trim()).filter(Boolean)[0] : undefined;
+const therapistId = process.env.E2E_THERAPIST_ID || defaultTherapistId;
 
 test.skip(!therapistId, 'Set E2E_THERAPIST_ID to run booking UI E2E tests.');
 

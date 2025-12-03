@@ -1,7 +1,9 @@
 import { test, expect, request } from '@playwright/test';
 
 const base = process.env.E2E_BASE_URL || 'http://127.0.0.1:3000';
-const therapistId = process.env.E2E_THERAPIST_ID;
+const hideIdsEnv = (process.env.HIDE_THERAPIST_IDS || '').trim();
+const defaultTherapistId = hideIdsEnv ? hideIdsEnv.split(',').map((s) => s.trim()).filter(Boolean)[0] : undefined;
+const therapistId = process.env.E2E_THERAPIST_ID || defaultTherapistId;
 
 // Helper to create a unique key per test run
 const uid = () => Math.random().toString(36).slice(2);
@@ -12,7 +14,7 @@ test.skip(!therapistId, 'Set E2E_THERAPIST_ID to a verified therapist UUID to ru
 // These tests exercise the endpoint behavior with idempotency and validation.
 
 test('contact accepts message when reason is empty', async () => {
-  const ctx = await request.newContext();
+  const ctx = await request.newContext({ extraHTTPHeaders: { Cookie: 'kh_test=1' } });
   const payload = {
     therapist_id: therapistId,
     contact_type: 'booking',
@@ -30,7 +32,7 @@ test('contact accepts message when reason is empty', async () => {
 });
 
 test('contact rejects when both reason and message are empty', async () => {
-  const ctx = await request.newContext();
+  const ctx = await request.newContext({ extraHTTPHeaders: { Cookie: 'kh_test=1' } });
   const payload = {
     therapist_id: therapistId,
     contact_type: 'consultation',
@@ -45,7 +47,7 @@ test('contact rejects when both reason and message are empty', async () => {
 });
 
 test('idempotency: repeated contact with same key returns same match', async () => {
-  const ctx = await request.newContext();
+  const ctx = await request.newContext({ extraHTTPHeaders: { Cookie: 'kh_test=1' } });
   const key = `e2e:${uid()}:${therapistId}:booking`;
   const basePayload = {
     therapist_id: therapistId,

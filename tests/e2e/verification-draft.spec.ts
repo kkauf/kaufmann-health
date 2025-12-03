@@ -1,7 +1,9 @@
 import { test, expect, request } from '@playwright/test';
 
 const base = process.env.E2E_BASE_URL || 'http://127.0.0.1:3000';
-const therapistId = process.env.E2E_THERAPIST_ID;
+const hideIdsEnv = (process.env.HIDE_THERAPIST_IDS || '').trim();
+const defaultTherapistId = hideIdsEnv ? hideIdsEnv.split(',').map((s) => s.trim()).filter(Boolean)[0] : undefined;
+const therapistId = process.env.E2E_THERAPIST_ID || defaultTherapistId;
 const smsBypass = process.env.E2E_SMS_BYPASS === 'true';
 const smsCode = process.env.E2E_SMS_CODE || '000000';
 
@@ -14,7 +16,7 @@ test.skip(!therapistId, 'Set E2E_THERAPIST_ID to a verified therapist UUID to ru
 // Flow: send-code(email + draft_contact) → leads/confirm → contact(idempotent) returns same match on repeat
 // This indirectly verifies that the draft was processed server-side during confirm.
 test('email draft auto-send: confirm processes draft and idempotency holds', async () => {
-  const ctx = await request.newContext();
+  const ctx = await request.newContext({ extraHTTPHeaders: { Cookie: 'kh_test=1' } });
   const email = `e2e-${uid()}@example.com`;
 
   // 1) send-code with draft_contact
@@ -78,7 +80,7 @@ test('email draft auto-send: confirm processes draft and idempotency holds', asy
 test.skip(!smsBypass, 'Set E2E_SMS_BYPASS=true and NEXT_PUBLIC_VERIFICATION_MODE=sms to run SMS draft auto-send test.');
 
 test('sms draft auto-send: verify-code processes draft and idempotency holds', async () => {
-  const ctx = await request.newContext();
+  const ctx = await request.newContext({ extraHTTPHeaders: { Cookie: 'kh_test=1' } });
   const phone = '+4915212345678';
 
   const draft = {
