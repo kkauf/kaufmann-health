@@ -87,18 +87,27 @@ describe('/api/therapists/:id/profile POST', () => {
     expect(json.error).toContain('invalid gender');
   });
 
-  it('400 when approach_text too long', async () => {
+  it('400 when profile field too long', async () => {
     const { POST } = await import('@/app/api/public/therapists/[id]/profile/route');
-    const big = 'x'.repeat(2001);
-    const res = await POST(makeJsonReq({ approach_text: big }), { params: Promise.resolve({ id: 'tid-1' }) });
+    // who_comes_to_me limit is 200 chars
+    const big = 'x'.repeat(201);
+    const res = await POST(makeJsonReq({ who_comes_to_me: big }), { params: Promise.resolve({ id: 'tid-1' }) });
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toContain('approach_text too long');
+    expect(json.error).toContain('who_comes_to_me too long');
   });
 
-  it('JSON: updates basic fields and profile approach_text', async () => {
+  it('JSON: updates basic fields and profile sections', async () => {
     const { POST } = await import('@/app/api/public/therapists/[id]/profile/route');
-    const res = await POST(makeJsonReq({ gender: 'female', city: 'Berlin', accepting_new: true, approach_text: 'Hello' }), { params: Promise.resolve({ id: 'tid-1' }) });
+    const res = await POST(makeJsonReq({ 
+      gender: 'female', 
+      city: 'Berlin', 
+      accepting_new: true, 
+      who_comes_to_me: 'Hello',
+      session_focus: 'Focus',
+      first_session: 'First',
+      about_me: 'About'
+    }), { params: Promise.resolve({ id: 'tid-1' }) });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data.ok).toBe(true);
@@ -108,14 +117,17 @@ describe('/api/therapists/:id/profile POST', () => {
     expect(lastUpdate.accepting_new).toBe(true);
     const meta = lastUpdate.metadata || {};
     expect(meta.profile).toBeTruthy();
-    expect(meta.profile.approach_text).toBe('Hello');
+    expect(meta.profile.who_comes_to_me).toBe('Hello');
+    expect(meta.profile.session_focus).toBe('Focus');
+    expect(meta.profile.first_session).toBe('First');
+    expect(meta.profile.about_me).toBe('About');
   });
 
   it('Multipart: uploads photo to applications bucket and sets metadata.profile.photo_pending_path', async () => {
     const { POST } = await import('@/app/api/public/therapists/[id]/profile/route');
     const form = new FormData();
     form.set('profile_photo', new File([new Uint8Array([1,2,3])], 'photo.jpg', { type: 'image/jpeg' }));
-    form.set('approach_text', 'Desc');
+    form.set('who_comes_to_me', 'Desc');
     const res = await POST(makeFormReq(form), { params: Promise.resolve({ id: 'tid-1' }) });
     expect(res.status).toBe(200);
     expect(uploads.some(u => u.bucket === 'therapist-applications' && u.path.includes('applications/tid-1/profile-photo-'))).toBe(true);
@@ -123,6 +135,6 @@ describe('/api/therapists/:id/profile POST', () => {
     const meta = lastUpdate.metadata || {};
     expect(meta.profile).toBeTruthy();
     expect(typeof meta.profile.photo_pending_path).toBe('string');
-    expect(meta.profile.approach_text).toBe('Desc');
+    expect(meta.profile.who_comes_to_me).toBe('Desc');
   });
 });

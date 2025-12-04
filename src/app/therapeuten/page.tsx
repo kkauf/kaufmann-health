@@ -8,6 +8,7 @@ import VerifiedFloatingWhatsApp from '@/components/VerifiedFloatingWhatsApp';
 import DirectoryAnalytics from '@/features/therapists/components/DirectoryAnalytics';
 
 export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health.de';
 

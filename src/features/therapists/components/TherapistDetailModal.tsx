@@ -414,45 +414,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
 
         {viewMode === 'profile' ? (
           <>
-            {/* Modalities */}
-            {therapist.modalities && therapist.modalities.length > 0 && (
-              <div className="border-b pb-6">
-                <h3 className="mb-3 text-lg font-semibold text-gray-900">Modalitäten</h3>
-                <div className="flex flex-wrap gap-2">
-                  {therapist.modalities.map((modality, idx) => {
-                    const modalityInfo = getModalityInfo(modality);
-                    const scrollToDescription = () => {
-                      const element = document.getElementById(`modality-${modalityInfo.id}`);
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                    };
-                    return (
-                      <Badge
-                        key={idx}
-                        variant="outline"
-                        role="button"
-                        tabIndex={0}
-                        onClick={scrollToDescription}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            scrollToDescription();
-                          }
-                        }}
-                        className={`rounded-full gap-1.5 shadow-sm cursor-pointer ${modalityInfo.cls} transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md active:shadow-sm active:translate-y-0`}
-                        aria-label={`Zur Beschreibung von ${modalityInfo.label} springen`}
-                      >
-                        <modalityInfo.Icon className="h-3 w-3 opacity-90" />
-                        {modalityInfo.label}
-                      </Badge>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Profile Sections - New structured fields with fallback to legacy */}
+            {/* Profile Sections - Lead with human connection */}
             {(() => {
               const whoComesToMe = profile?.who_comes_to_me;
               const sessionFocusText = profile?.session_focus;
@@ -521,6 +483,44 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
               
               return null;
             })()}
+
+            {/* Modalities - Supporting detail */}
+            {therapist.modalities && therapist.modalities.length > 0 && (
+              <div className="border-b pb-6">
+                <h3 className="mb-3 text-lg font-semibold text-gray-900">Modalitäten</h3>
+                <div className="flex flex-wrap gap-2">
+                  {therapist.modalities.map((modality, idx) => {
+                    const modalityInfo = getModalityInfo(modality);
+                    const scrollToDescription = () => {
+                      const element = document.getElementById(`modality-${modalityInfo.id}`);
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
+                    };
+                    return (
+                      <Badge
+                        key={idx}
+                        variant="outline"
+                        role="button"
+                        tabIndex={0}
+                        onClick={scrollToDescription}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            scrollToDescription();
+                          }
+                        }}
+                        className={`rounded-full gap-1.5 shadow-sm cursor-pointer ${modalityInfo.cls} transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md active:shadow-sm active:translate-y-0`}
+                        aria-label={`Zur Beschreibung von ${modalityInfo.label} springen`}
+                      >
+                        <modalityInfo.Icon className="h-3 w-3 opacity-90" />
+                        {modalityInfo.label}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Modality Descriptions */}
             {therapist.modalities && therapist.modalities.length > 0 && (
