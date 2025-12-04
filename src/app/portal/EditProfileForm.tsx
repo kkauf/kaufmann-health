@@ -125,6 +125,24 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoFile, whoComesToMe, sessionFocus, firstSession, aboutMe, schwerpunkte, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city, saveCount]);
 
+  // Profile completeness check
+  const profileCompleteness = useMemo(() => {
+    const missing: string[] = [];
+    if (!whoComesToMe) missing.push('Zu mir kommen Menschen...');
+    if (!sessionFocus) missing.push('In unserer Arbeit...');
+    if (!firstSession) missing.push('Das erste Gespräch');
+    if (schwerpunkte.length < THERAPIST_SCHWERPUNKTE_MIN) missing.push('Schwerpunkte');
+    if (!typicalRate) missing.push('Preis pro Sitzung');
+    if (!currentPhotoUrl) missing.push('Profilbild');
+    
+    const total = 6;
+    const completed = total - missing.length;
+    const percentage = Math.round((completed / total) * 100);
+    const isComplete = missing.length === 0;
+    
+    return { missing, completed, total, percentage, isComplete };
+  }, [whoComesToMe, sessionFocus, firstSession, schwerpunkte, typicalRate, currentPhotoUrl]);
+
   // Warn before leaving with unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -273,6 +291,30 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Profile Completeness Indicator */}
+      {!profileCompleteness.isComplete && activeTab === 'profile' && (
+        <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-amber-900">
+              Profil {profileCompleteness.percentage}% vollständig
+            </span>
+            <span className="text-xs text-amber-700">
+              {profileCompleteness.completed}/{profileCompleteness.total} Felder
+            </span>
+          </div>
+          <div className="h-2 bg-amber-100 rounded-full overflow-hidden mb-2">
+            <div 
+              className="h-full bg-gradient-to-r from-amber-400 to-emerald-500 rounded-full transition-all duration-500"
+              style={{ width: `${profileCompleteness.percentage}%` }}
+            />
+          </div>
+          <p className="text-xs text-amber-700">
+            <span className="font-medium">Noch offen:</span>{' '}
+            {profileCompleteness.missing.join(', ')}
+          </p>
+        </div>
+      )}
+
       {/* Unsaved Changes Banner */}
       {hasUnsavedChanges && activeTab === 'profile' && (
         <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm" role="status">
@@ -620,19 +662,21 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
                 </div>
               )}
 
-              {/* City */}
-              <div className="space-y-2 mb-6">
-                <Label htmlFor="city" className="text-sm font-medium text-gray-700">
-                  Stadt
-                </Label>
-                <Input
-                  id="city"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="z.B. Berlin"
-                  className="border-gray-200"
-                />
-              </div>
+              {/* City (only when NOT offering in-person, since practiceCity is used otherwise) */}
+              {!offersInPerson && (
+                <div className="space-y-2 mb-6">
+                  <Label htmlFor="city" className="text-sm font-medium text-gray-700">
+                    Stadt
+                  </Label>
+                  <Input
+                    id="city"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="z.B. Berlin"
+                    className="border-gray-200"
+                  />
+                </div>
+              )}
 
               {/* Typical Rate */}
               <div className="space-y-2">

@@ -6,17 +6,19 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, Calendar, MessageCircle, User, ShieldCheck, ChevronRight, Euro } from 'lucide-react';
+import { MapPin, Video, Calendar, MessageCircle, User, ShieldCheck, ChevronRight } from 'lucide-react';
 import type { TherapistData } from './TherapistDirectory';
 import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
 import { getModalityInfo } from '@/lib/modalities';
+import { getSchwerpunktLabel } from '@/lib/schwerpunkte';
 
 interface TherapistCardProps {
   therapist: TherapistData;
   onViewDetails: () => void;
   // Optional match-specific props
   showModalities?: boolean; // Control whether to show modality badges (default: true)
+  showSchwerpunkte?: boolean; // Show schwerpunkte instead of modalities (feature toggle)
   matchBadge?: { text: string; className?: string } | null; // Optional badge for top matches
   contactedAt?: string | null; // ISO date string if therapist was already contacted
   onContactClick?: (type: 'booking' | 'consultation') => void; // Custom contact handler
@@ -39,6 +41,7 @@ export function TherapistCard({
   therapist,
   onViewDetails,
   showModalities = true,
+  showSchwerpunkte = false,
   matchBadge = null,
   contactedAt = null,
   onContactClick: customContactHandler,
@@ -198,8 +201,29 @@ export function TherapistCard({
             </div>
           </div>
 
-          {/* Modalities (conditional based on showModalities prop) */}
-          {showModalities && therapist.modalities && therapist.modalities.length > 0 && (
+          {/* Schwerpunkte (shown when showSchwerpunkte is true) */}
+          {showSchwerpunkte && therapist.schwerpunkte && therapist.schwerpunkte.length > 0 && (
+            <div className="mb-3">
+              <div className="flex flex-wrap gap-1.5">
+                {therapist.schwerpunkte.slice(0, 3).map((id) => (
+                  <Badge
+                    key={id}
+                    variant="secondary"
+                    className="rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer transition-all"
+                    onClick={(e) => { e.stopPropagation(); openDetails(); }}
+                  >
+                    {getSchwerpunktLabel(id)}
+                  </Badge>
+                ))}
+                {therapist.schwerpunkte.length > 3 && (
+                  <Badge variant="secondary" className="rounded-full">+{therapist.schwerpunkte.length - 3}</Badge>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Modalities (shown when showModalities is true and showSchwerpunkte is false) */}
+          {showModalities && !showSchwerpunkte && therapist.modalities && therapist.modalities.length > 0 && (
             <div className="mb-3">
               <div className="relative -mx-4">
                 <div
@@ -297,16 +321,6 @@ export function TherapistCard({
               </p>
             );
           })()}
-
-          {/* Price badge */}
-          {therapist.typical_rate && (
-            <div className="mb-5">
-              <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
-                <Euro className="h-3.5 w-3.5" />
-                {therapist.typical_rate}€ pro Sitzung
-              </Badge>
-            </div>
-          )}
 
         </div>
 
