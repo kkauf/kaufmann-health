@@ -19,6 +19,7 @@ export type TherapistData = {
   last_name: string;
   photo_url?: string;
   modalities: string[];
+  schwerpunkte?: string[];
   session_preferences?: string[];
   approach_text: string;
   accepting_new: boolean;

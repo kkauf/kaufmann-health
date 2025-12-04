@@ -38,9 +38,6 @@
     "smoke": "tsx scripts/smoke-test.ts",
     "smoke:local": "tsx scripts/smoke-test.ts --base-url=http://localhost:3000",
     "smoke:preview": "tsx scripts/smoke-test.ts --base-url=$PREVIEW_URL",
-    "git:sync": "./scripts/git-water.sh sync",
-    "git:status": "./scripts/git-water.sh status",
-    "git:rescue": "./scripts/git-water.sh rescue",
     "prepare": "husky install"
   },
   "dependencies": {

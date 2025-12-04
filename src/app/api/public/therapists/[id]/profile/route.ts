@@ -2,6 +2,7 @@ import { safeJson } from '@/lib/http';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 import { getTherapistSession } from '@/lib/auth/therapistSession';
+import { isValidSchwerpunktId, THERAPIST_SCHWERPUNKTE_MIN, THERAPIST_SCHWERPUNKTE_MAX } from '@/lib/schwerpunkte';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -86,6 +87,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     let sessionFocus: string | undefined;
     let firstSession: string | undefined;
     let aboutMe: string | undefined;
+    // Schwerpunkte (focus areas)
+    let schwerpunkte: string[] | undefined;
 
     // Character limits for profile fields
     const LIMITS = {
@@ -111,6 +114,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const sf = form.get('session_focus');
       const fs = form.get('first_session');
       const am = form.get('about_me');
+      // Schwerpunkte
+      const spkt = form.get('schwerpunkte');
 
       if (typeof g === 'string' && g.trim()) gender = g.trim();
       if (typeof c === 'string' && c.trim()) city = c.trim();
@@ -145,6 +150,22 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           return safeJson({ data: null, error: `about_me too long (max ${LIMITS.about_me} chars)` }, { status: 400 });
         }
         aboutMe = trimmed;
+      }
+      
+      // Parse schwerpunkte (sent as JSON array string)
+      if (typeof spkt === 'string' && spkt.trim()) {
+        try {
+          const parsed = JSON.parse(spkt);
+          if (Array.isArray(parsed)) {
+            const validIds = parsed.filter((v): v is string => typeof v === 'string' && isValidSchwerpunktId(v));
+            if (validIds.length !== parsed.length) {
+              return safeJson({ data: null, error: 'Invalid schwerpunkte IDs' }, { status: 400 });
+            }
+            schwerpunkte = validIds;
+          }
+        } catch {
+          return safeJson({ data: null, error: 'Invalid schwerpunkte format' }, { status: 400 });
+        }
       }
       
       // Parse session_preferences (sent as JSON array string)
@@ -182,6 +203,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const sf = body?.session_focus;
       const fs = body?.first_session;
       const am = body?.about_me;
+      // Schwerpunkte
+      const spkt = body?.schwerpunkte;
       
       if (typeof g === 'string' && g.trim()) gender = g.trim();
       if (typeof c === 'string' && c.trim()) city = c.trim();
@@ -215,6 +238,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           return safeJson({ data: null, error: `about_me too long (max ${LIMITS.about_me} chars)` }, { status: 400 });
         }
         aboutMe = trimmed;
+      }
+      // Parse schwerpunkte (JSON path)
+      if (Array.isArray(spkt)) {
+        const validIds = spkt.filter((v): v is string => typeof v === 'string' && isValidSchwerpunktId(v));
+        if (validIds.length !== spkt.length) {
+          return safeJson({ data: null, error: 'Invalid schwerpunkte IDs' }, { status: 400 });
+        }
+        schwerpunkte = validIds;
       }
       if (Array.isArray(sp)) {
         sessionPreferences = sp.filter((v): v is string => typeof v === 'string');
@@ -304,6 +335,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (typeof city === 'string') updates.city = city;
     if (typeof acceptingNew === 'boolean') updates.accepting_new = acceptingNew;
     if (sessionPreferences) updates.session_preferences = sessionPreferences;
+    if (schwerpunkte) updates.schwerpunkte = schwerpunkte;
     if (typeof typicalRate === 'number') updates.typical_rate = typicalRate;
     if (uploadedPhotoUrl) updates.photo_url = uploadedPhotoUrl;
 
@@ -333,6 +365,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           session_focus: Boolean(sessionFocus),
           first_session: Boolean(firstSession),
           about_me: Boolean(aboutMe),
+          schwerpunkte: Boolean(schwerpunkte),
           profile_photo: Boolean(uploadedPhotoUrl || uploadedProfilePhotoPath),
           session_preferences: Boolean(sessionPreferences),
           typical_rate: Boolean(typicalRate),

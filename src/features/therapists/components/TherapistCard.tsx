@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, Calendar, MessageCircle, User, ShieldCheck, ChevronRight } from 'lucide-react';
+import { MapPin, Video, Calendar, MessageCircle, User, ShieldCheck, ChevronRight, Euro } from 'lucide-react';
 import type { TherapistData } from './TherapistDirectory';
 import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
@@ -282,7 +282,7 @@ export function TherapistCard({
             // Prefer who_comes_to_me with prefix for context
             if (profile?.who_comes_to_me) {
               return (
-                <p className="mb-5 line-clamp-3 text-sm text-gray-700">
+                <p className="mb-4 line-clamp-3 text-sm text-gray-700">
                   <span className="font-medium">Zu mir kommen Menschen, die </span>
                   {profile.who_comes_to_me}
                 </p>
@@ -292,11 +292,21 @@ export function TherapistCard({
             const fallbackText = profile?.session_focus || therapist.approach_text;
             if (!fallbackText) return null;
             return (
-              <p className="mb-5 line-clamp-3 text-sm text-gray-700">
+              <p className="mb-4 line-clamp-3 text-sm text-gray-700">
                 {fallbackText}
               </p>
             );
           })()}
+
+          {/* Price badge */}
+          {therapist.typical_rate && (
+            <div className="mb-5">
+              <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
+                <Euro className="h-3.5 w-3.5" />
+                {therapist.typical_rate}€ pro Sitzung
+              </Badge>
+            </div>
+          )}
 
         </div>
 

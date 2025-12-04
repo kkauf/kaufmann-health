@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Info, Lock } from "lucide-react";
+import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Lock, Target } from "lucide-react";
 import SlotsManager from "./SlotsManager";
+import { SchwerpunkteSelector } from "@/components/SchwerpunkteSelector";
+import { THERAPIST_SCHWERPUNKTE_MIN, THERAPIST_SCHWERPUNKTE_MAX } from "@/lib/schwerpunkte";
 
 type Props = {
   therapistId: string;
@@ -21,6 +23,8 @@ type Props = {
     // Legacy field (read-only if present)
     approach_text_legacy?: string;
     session_preferences: string[];
+    modalities: string[];
+    schwerpunkte: string[];
     typical_rate?: number;
     practice_street: string;
     practice_postal_code: string;
@@ -57,6 +61,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
   const [sessionFocus, setSessionFocus] = useState(initialData.session_focus);
   const [firstSession, setFirstSession] = useState(initialData.first_session);
   const [aboutMe, setAboutMe] = useState(initialData.about_me);
+  const [schwerpunkte, setSchwerpunkte] = useState<string[]>(initialData.schwerpunkte);
   const [offersOnline, setOffersOnline] = useState(initialData.session_preferences.includes('online'));
   const [offersInPerson, setOffersInPerson] = useState(initialData.session_preferences.includes('in_person'));
   const [typicalRate, setTypicalRate] = useState<string>(initialData.typical_rate?.toString() ?? '');
@@ -82,6 +87,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     session_focus: initialData.session_focus,
     first_session: initialData.first_session,
     about_me: initialData.about_me,
+    schwerpunkte: initialData.schwerpunkte,
     offersOnline: initialData.session_preferences.includes('online'),
     offersInPerson: initialData.session_preferences.includes('in_person'),
     typicalRate: initialData.typical_rate?.toString() ?? '',
@@ -100,6 +106,8 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     if (sessionFocus !== b.session_focus) return true;
     if (firstSession !== b.first_session) return true;
     if (aboutMe !== b.about_me) return true;
+    // Compare schwerpunkte arrays
+    if (schwerpunkte.length !== b.schwerpunkte.length || schwerpunkte.some((s, i) => s !== b.schwerpunkte[i])) return true;
     if (offersOnline !== b.offersOnline) return true;
     if (offersInPerson !== b.offersInPerson) return true;
     if (typicalRate !== b.typicalRate) return true;
@@ -109,7 +117,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     if (acceptingNew !== b.acceptingNew) return true;
     if (city !== b.city) return true;
     return false;
-  }, [photoFile, whoComesToMe, sessionFocus, firstSession, aboutMe, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city]);
+  }, [photoFile, whoComesToMe, sessionFocus, firstSession, aboutMe, schwerpunkte, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city]);
 
   // Warn before leaving with unsaved changes
   useEffect(() => {
@@ -179,6 +187,9 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
       form.set('first_session', firstSession.trim());
       form.set('about_me', aboutMe.trim());
       
+      // Add schwerpunkte
+      form.set('schwerpunkte', JSON.stringify(schwerpunkte));
+      
       form.set('session_preferences', JSON.stringify(sessionPrefs));
       form.set('accepting_new', acceptingNew ? 'true' : 'false');
       form.set('city', city.trim());
@@ -222,6 +233,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
         session_focus: sessionFocus,
         first_session: firstSession,
         about_me: aboutMe,
+        schwerpunkte,
         offersOnline,
         offersInPerson,
         typicalRate,
@@ -241,7 +253,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [therapistId, whoComesToMe, sessionFocus, firstSession, aboutMe, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city, photoFile, photoError]);
+  }, [therapistId, whoComesToMe, sessionFocus, firstSession, aboutMe, schwerpunkte, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city, photoFile, photoError]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -478,6 +490,25 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
                   </span>
                 </div>
               </div>
+            </div>
+          </Card>
+
+          {/* Schwerpunkte */}
+          <Card className="border border-gray-200/60 shadow-md bg-white/80 backdrop-blur-sm">
+            <div className="p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="h-5 w-5 text-emerald-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Schwerpunkte</h2>
+              </div>
+              <p className="text-sm text-gray-500 mb-4">
+                Wähle {THERAPIST_SCHWERPUNKTE_MIN}–{THERAPIST_SCHWERPUNKTE_MAX} Themenbereiche, in denen du besonders erfahren bist.
+                Diese helfen Klient:innen, dich zu finden.
+              </p>
+              <SchwerpunkteSelector
+                value={schwerpunkte}
+                onChange={setSchwerpunkte}
+                role="therapist"
+              />
             </div>
           </Card>
 

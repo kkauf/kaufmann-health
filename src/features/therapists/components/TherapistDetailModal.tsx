@@ -19,6 +19,7 @@ import { getAttribution } from '@/lib/attribution';
 import { getModalityInfo } from '@/lib/modalities';
 import { cn } from '@/lib/utils';
 import { formatSessionPrice } from '@/lib/pricing';
+import { getSchwerpunktLabel } from '@/lib/schwerpunkte';
 
 interface TherapistDetailModalProps {
   therapist: TherapistData;
@@ -414,6 +415,24 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
 
         {viewMode === 'profile' ? (
           <>
+            {/* Schwerpunkte - Prominent display for focus areas */}
+            {therapist.schwerpunkte && therapist.schwerpunkte.length > 0 && (
+              <div className="border-b pb-6">
+                <h3 className="mb-3 text-lg font-semibold text-gray-900">Schwerpunkte</h3>
+                <div className="flex flex-wrap gap-2">
+                  {therapist.schwerpunkte.map((id: string, idx: number) => (
+                    <Badge
+                      key={idx}
+                      variant="secondary"
+                      className="rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                    >
+                      {getSchwerpunktLabel(id)}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Profile Sections - Lead with human connection */}
             {(() => {
               const whoComesToMe = profile?.who_comes_to_me;
