@@ -568,7 +568,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
                   id="who_comes_to_me"
                   label="Zu mir kommen Menschen, die..."
                   hint="Beschreibe, welche Menschen zu dir finden — nicht Diagnosen, sondern wie sie sich fühlen oder was sie erleben."
-                  placeholder="...merken, dass Gespräche allein nicht reichen und der Körper noch festhält"
+                  placeholder="...in bestimmten Momenten explodieren — und sich danach schämen. Die spüren, dass da etwas Altes getriggert wird, aber nicht wissen, wie sie da rauskommen."
                   value={whoComesToMe}
                   onChange={setWhoComesToMe}
                   recommended={PROFILE_LIMITS.who_comes_to_me.recommended}
@@ -580,7 +580,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
                   id="session_focus"
                   label="In unserer Arbeit geht es oft um..."
                   hint="Was passiert in euren Sitzungen? Welche Themen tauchen auf, welche Prozesse?"
-                  placeholder="...langsamer werden und spüren, was der Körper eigentlich will"
+                  placeholder="...langsamer werden. Spüren, was der Körper eigentlich sagen will. Nicht sofort lösen oder wegmachen, sondern erstmal verstehen, was da ist — und warum es vielleicht mal wichtig war."
                   value={sessionFocus}
                   onChange={setSessionFocus}
                   recommended={PROFILE_LIMITS.session_focus.recommended}
@@ -592,7 +592,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
                   id="first_session"
                   label="Das erste Gespräch"
                   hint="Wie läuft ein Erstgespräch bei dir ab? Was erwartet jemanden?"
-                  placeholder="Wir lernen uns kennen. Du erzählst, was dich herbringt — so viel oder wenig du möchtest."
+                  placeholder="Wir lernen uns kennen. Du erzählst, was dich herbringt — so viel oder wenig du möchtest. Ich höre zu und frage nach. Am Ende weißt du, ob du dir vorstellen kannst, mit mir zu arbeiten."
                   value={firstSession}
                   onChange={setFirstSession}
                   recommended={PROFILE_LIMITS.first_session.recommended}
@@ -604,7 +604,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
                   id="about_me"
                   label="Über mich"
                   hint="Was sollten Menschen über dich wissen, das nicht in Qualifikationen steht?"
-                  placeholder="Nur ausfüllen, wenn du etwas Echtes zu erzählen hast"
+                  placeholder="Ursprünglich bin ich Volkswirtin — bis ich gemerkt habe, dass mich Menschen mehr interessieren als Zahlen. Ich habe ein Jahr in einem Ashram in Indien verbracht."
                   value={aboutMe}
                   onChange={setAboutMe}
                   recommended={PROFILE_LIMITS.about_me.recommended}

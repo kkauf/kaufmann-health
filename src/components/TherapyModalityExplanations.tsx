@@ -30,9 +30,9 @@ export default function TherapyModalityExplanations() {
               </div>
             </div>
             <p className="mt-4 text-sm sm:text-base leading-relaxed text-gray-600">
-              NARM fokussiert auf Entwicklungstraumata und die Fähigkeit zur Selbstregulation. Der Ansatz verbindet
-              achtsame Körperwahrnehmung mit der Arbeit an Mustern in Beziehungen – ohne re-traumatisierende
-              Detailschilderungen.
+              NARM ist ein therapeutischer Ansatz für Entwicklungstrauma — frühe Verletzungen, die unsere Beziehungs- und
+              Regulationsfähigkeit geprägt haben. In der Arbeit verbinden sich Gespräch und Körperwahrnehmung, um alte
+              Überlebensmuster zu erkennen und zu verändern. Ohne belastende Detailschilderungen.
             </p>
             <a
               href="/therapie/narm"
@@ -56,8 +56,9 @@ export default function TherapyModalityExplanations() {
               </div>
             </div>
             <p className="mt-4 text-sm sm:text-base leading-relaxed text-gray-600">
-              SE arbeitet mit der natürlichen Stressreaktion des Körpers. Durch fein dosierte Annäherung an belastende
-              Empfindungen wird das Nervensystem behutsam entladen, sodass festgehaltene Energie wieder in Fluss kommt.
+              SE ist eine körperorientierte Traumatherapie, die auf der Neurobiologie von Stress aufbaut. Der Ansatz hilft,
+              im Nervensystem gebundene Stressreaktionen schrittweise zu lösen — besonders bei Schock, Unfällen oder
+              chronischer Überforderung. Die Arbeit erfolgt behutsam und im eigenen Tempo.
             </p>
             <a
               href="/therapie/somatic-experiencing"
@@ -80,8 +81,9 @@ export default function TherapyModalityExplanations() {
               </div>
             </div>
             <p className="mt-4 text-sm sm:text-base leading-relaxed text-gray-600">
-              Hakomi ist eine achtsamkeitsbasierte Methode, die unbewusste Muster über den Körper erfahrbar macht.
-              In respektvoller, langsamer Arbeit entstehen neue Erfahrungen, die alte Überzeugungen sanft verändern.
+              Hakomi ist eine achtsamkeitsbasierte Psychotherapie, die unbewusste Überzeugungen und Schutzmuster über den
+              Körper zugänglich macht. Im therapeutischen Gespräch entstehen neue Erfahrungen, die tief verankerte Muster
+              verändern können — ohne Konfrontation oder Druck.
             </p>
             <a
               href="/therapie/hakomi"
@@ -104,8 +106,9 @@ export default function TherapyModalityExplanations() {
               </div>
             </div>
             <p className="mt-4 text-sm sm:text-base leading-relaxed text-gray-600">
-              Core Energetics verbindet körperliche Ausdrucksarbeit mit emotionaler Integration. Über Haltung, Atmung und
-              Bewegung werden festgehaltene Spannungen gelöst und Lebendigkeit sowie Kontaktfähigkeit gestärkt.
+              Core Energetics ist eine tiefenpsychologisch fundierte Körperpsychotherapie. Sie verbindet die Arbeit mit
+              Emotionen, Körperhaltung und Atem, um verdrängte Gefühle bewusst zu machen und zu integrieren. Der Ansatz
+              eignet sich besonders für Menschen, die emotionale Blockaden oder chronische Anspannung lösen möchten.
             </p>
             <a
               href="/therapie/core-energetics"

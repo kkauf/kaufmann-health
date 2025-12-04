@@ -32,10 +32,11 @@ export const META_CATEGORIES: MetaCategory[] = [
     label: 'Seelische Belastung',
     icon: 'Heart',
     color: {
-      bg: 'bg-rose-50',
-      text: 'text-rose-700',
-      border: 'border-rose-200',
-      iconBg: 'bg-gradient-to-br from-rose-50 to-rose-100/60',
+      // Violet/purple: healing, introspection, calm - avoids "red = bad" association
+      bg: 'bg-violet-50',
+      text: 'text-violet-700',
+      border: 'border-violet-200',
+      iconBg: 'bg-gradient-to-br from-violet-50 to-violet-100/60',
     },
   },
   {

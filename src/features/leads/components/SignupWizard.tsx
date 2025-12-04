@@ -761,7 +761,7 @@ export default function SignupWizard() {
               methods: data.methods,
             }}
             onChange={saveLocal}
-            onBack={() => safeGoToStep(2)}
+            onBack={() => safeGoToStep(SHOW_SCHWERPUNKTE ? 2.5 : 2)}
             onNext={() => safeGoToStep(4)}
             suppressAutoAdvance={suppressAutoStep === 3}
             disabled={navLock || submitting}
