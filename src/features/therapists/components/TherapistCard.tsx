@@ -11,7 +11,7 @@ import type { TherapistData } from './TherapistDirectory';
 import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
 import { getModalityInfo } from '@/lib/modalities';
-import { getSchwerpunktLabel } from '@/lib/schwerpunkte';
+import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpunkte';
 
 interface TherapistCardProps {
   therapist: TherapistData;
@@ -208,8 +208,8 @@ export function TherapistCard({
                 {therapist.schwerpunkte.slice(0, 3).map((id) => (
                   <Badge
                     key={id}
-                    variant="secondary"
-                    className="rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer transition-all"
+                    variant="outline"
+                    className={`rounded-full border cursor-pointer transition-all hover:shadow-sm ${getSchwerpunktColorClasses(id)}`}
                     onClick={(e) => { e.stopPropagation(); openDetails(); }}
                   >
                     {getSchwerpunktLabel(id)}

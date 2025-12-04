@@ -19,7 +19,7 @@ import { getAttribution } from '@/lib/attribution';
 import { getModalityInfo } from '@/lib/modalities';
 import { cn } from '@/lib/utils';
 import { formatSessionPrice } from '@/lib/pricing';
-import { getSchwerpunktLabel } from '@/lib/schwerpunkte';
+import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpunkte';
 
 interface TherapistDetailModalProps {
   therapist: TherapistData;
@@ -423,8 +423,8 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
                   {therapist.schwerpunkte.map((id: string, idx: number) => (
                     <Badge
                       key={idx}
-                      variant="secondary"
-                      className="rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                      variant="outline"
+                      className={`rounded-full border ${getSchwerpunktColorClasses(id)}`}
                     >
                       {getSchwerpunktLabel(id)}
                     </Badge>

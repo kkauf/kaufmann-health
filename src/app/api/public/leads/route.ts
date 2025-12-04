@@ -590,6 +590,36 @@ export async function POST(req: Request) {
     const confirmRedirectPathRaw = sanitize(payload.confirm_redirect_path as string | undefined);
     const confirmRedirectPath = isSafeRelativePath(confirmRedirectPathRaw) ? confirmRedirectPathRaw : undefined;
 
+    // Fetch form session data to extract schwerpunkte and other wizard preferences
+    let formSessionSchwerpunkte: string[] | undefined;
+    let formSessionTimeSlots: string[] | undefined;
+    let formSessionMethods: string[] | undefined;
+    let formSessionStartTiming: string | undefined;
+    if (formSessionId) {
+      try {
+        const { data: fsRow } = await supabaseServer
+          .from('form_sessions')
+          .select('data')
+          .eq('id', formSessionId)
+          .single();
+        if (fsRow && typeof fsRow.data === 'object' && fsRow.data !== null) {
+          const fsData = fsRow.data as Record<string, unknown>;
+          if (Array.isArray(fsData.schwerpunkte)) {
+            formSessionSchwerpunkte = fsData.schwerpunkte as string[];
+          }
+          if (Array.isArray(fsData.time_slots)) {
+            formSessionTimeSlots = fsData.time_slots as string[];
+          }
+          if (Array.isArray(fsData.methods)) {
+            formSessionMethods = fsData.methods as string[];
+          }
+          if (typeof fsData.start_timing === 'string') {
+            formSessionStartTiming = fsData.start_timing;
+          }
+        }
+      } catch { /* ignore form session fetch errors */ }
+    }
+
     // Detect verified phone via client session cookie (set by verify-code)
     const clientSession = await getClientSession(req);
     const cookieVerifiedPhone = Boolean(
@@ -681,6 +711,10 @@ export async function POST(req: Request) {
         ...(sessionPreference ? { session_preference: sessionPreference } : {}),
         ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
         ...(formSessionId ? { form_session_id: formSessionId } : {}),
+        ...(formSessionSchwerpunkte?.length ? { schwerpunkte: formSessionSchwerpunkte } : {}),
+        ...(formSessionTimeSlots?.length ? { time_slots: formSessionTimeSlots } : {}),
+        ...(formSessionMethods?.length ? { methods: formSessionMethods } : {}),
+        ...(formSessionStartTiming ? { start_timing: formSessionStartTiming } : {}),
         ...(city ? { city } : {}),
         ...(issue ? { issue } : {}),
         ...(availability ? { availability } : {}),

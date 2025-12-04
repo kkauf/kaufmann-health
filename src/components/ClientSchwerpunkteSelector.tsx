@@ -203,31 +203,38 @@ function AccordionGroup({
               const isDisabled = atMax && !isSelected;
 
               return (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() => onSelectCategory(category.id)}
-                  disabled={isDisabled}
-                  className={cn(
-                    // Base - 44px min touch target
-                    'inline-flex items-center gap-1.5 px-4 py-2.5 min-h-[44px]',
-                    'rounded-full text-sm font-medium',
-                    'border transition-all duration-150',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2',
-                    // States
-                    isSelected
-                      ? 'bg-emerald-500 text-white border-emerald-500 shadow-md'
-                      : isDisabled
-                        ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed'
-                        : cn(
-                            'bg-white border-gray-200 text-gray-700',
-                            'hover:border-emerald-300 hover:bg-emerald-50 active:bg-emerald-100'
-                          )
+                <div key={category.id} className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => onSelectCategory(category.id)}
+                    disabled={isDisabled}
+                    className={cn(
+                      // Base - 44px min touch target
+                      'inline-flex items-center gap-1.5 px-4 py-2.5 min-h-[44px]',
+                      'rounded-full text-sm font-medium',
+                      'border transition-all duration-150',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2',
+                      // States
+                      isSelected
+                        ? 'bg-emerald-500 text-white border-emerald-500 shadow-md'
+                        : isDisabled
+                          ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed'
+                          : cn(
+                              'bg-white border-gray-200 text-gray-700',
+                              'hover:border-emerald-300 hover:bg-emerald-50 active:bg-emerald-100'
+                            )
+                    )}
+                  >
+                    {isSelected && <Check className="h-4 w-4" />}
+                    {category.label}
+                  </button>
+                  {/* Show keywords when selected */}
+                  {isSelected && category.keywords.length > 0 && (
+                    <p className="text-xs text-gray-500 pl-4 pb-1">
+                      z.B. {category.keywords.slice(0, 3).join(', ')}
+                    </p>
                   )}
-                >
-                  {isSelected && <Check className="h-4 w-4" />}
-                  {category.label}
-                </button>
+                </div>
               );
             })}
           </div>

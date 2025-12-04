@@ -717,19 +717,23 @@ export default function SignupWizard() {
           <NewScreen2_Timeline
             values={{ start_timing: data.start_timing }}
             onChange={saveLocal}
-            onNext={() => safeGoToStep(2)}
+            onNext={() => safeGoToStep(SHOW_SCHWERPUNKTE ? 2.5 : 2)}
             suppressAutoAdvance={suppressAutoStep === 1}
             disabled={navLock || submitting}
           />
         );
       case 2:
-        // Step 2: What Brings You (truly optional)
+        // Step 2: What Brings You (skipped when SHOW_SCHWERPUNKTE=true)
+        if (SHOW_SCHWERPUNKTE) {
+          safeGoToStep(3);
+          return null;
+        }
         return (
           <NewScreen3_WhatBringsYou
             values={{ additional_info: data.additional_info }}
             onChange={saveLocal}
             onBack={() => safeGoToStep(1)}
-            onNext={() => safeGoToStep(SHOW_SCHWERPUNKTE ? 2.5 : 3)}
+            onNext={() => safeGoToStep(3)}
             disabled={navLock || submitting}
           />
         );
@@ -743,7 +747,7 @@ export default function SignupWizard() {
           <ScreenSchwerpunkte
             values={{ schwerpunkte: data.schwerpunkte }}
             onChange={saveLocal}
-            onBack={() => safeGoToStep(2)}
+            onBack={() => safeGoToStep(1)}
             onNext={() => safeGoToStep(3)}
             disabled={navLock || submitting}
           />

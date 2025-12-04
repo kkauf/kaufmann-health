@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Lock, Target, Eye } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { getSchwerpunktLabel } from "@/lib/schwerpunkte";
+import { getSchwerpunktLabel, getSchwerpunktColorClasses } from "@/lib/schwerpunkte";
 import SlotsManager from "./SlotsManager";
 import { SchwerpunkteSelector } from "@/components/SchwerpunkteSelector";
 import { THERAPIST_SCHWERPUNKTE_MIN, THERAPIST_SCHWERPUNKTE_MAX } from "@/lib/schwerpunkte";
@@ -219,12 +219,18 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoFile, whoComesToMe, sessionFocus, firstSession, aboutMe, schwerpunkte, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city, saveCount]);
 
-  // Profile completeness check
+  // Minimum character count for required text fields
+  const MIN_CHARS = 50;
+
+  // Profile completeness check (min 50 chars for required fields)
   const profileCompleteness = useMemo(() => {
     const missing: string[] = [];
-    if (!whoComesToMe) missing.push('Zu mir kommen Menschen...');
-    if (!sessionFocus) missing.push('In unserer Arbeit...');
-    if (!firstSession) missing.push('Das erste Gespräch');
+    if (!whoComesToMe || whoComesToMe.length < MIN_CHARS) 
+      missing.push(`Zu mir kommen Menschen... (mind. ${MIN_CHARS} Zeichen)`);
+    if (!sessionFocus || sessionFocus.length < MIN_CHARS) 
+      missing.push(`In unserer Arbeit... (mind. ${MIN_CHARS} Zeichen)`);
+    if (!firstSession || firstSession.length < MIN_CHARS) 
+      missing.push(`Das erste Gespräch (mind. ${MIN_CHARS} Zeichen)`);
     if (schwerpunkte.length < THERAPIST_SCHWERPUNKTE_MIN) missing.push('Schwerpunkte');
     if (!typicalRate) missing.push('Preis pro Sitzung');
     if (!currentPhotoUrl) missing.push('Profilbild');
@@ -289,6 +295,23 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     setError(null);
     setPhotoError(null);
     setSaved(false);
+
+    // Validate min character requirements for required fields
+    const validationErrors: string[] = [];
+    if (whoComesToMe.trim().length < MIN_CHARS) {
+      validationErrors.push(`"Zu mir kommen Menschen..." benötigt mind. ${MIN_CHARS} Zeichen`);
+    }
+    if (sessionFocus.trim().length < MIN_CHARS) {
+      validationErrors.push(`"In unserer Arbeit..." benötigt mind. ${MIN_CHARS} Zeichen`);
+    }
+    if (firstSession.trim().length < MIN_CHARS) {
+      validationErrors.push(`"Das erste Gespräch" benötigt mind. ${MIN_CHARS} Zeichen`);
+    }
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join('. '));
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -908,7 +931,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
                 <h4 className="text-sm font-semibold text-gray-900 mb-2">Schwerpunkte</h4>
                 <div className="flex flex-wrap gap-2">
                   {schwerpunkte.map((id) => (
-                    <Badge key={id} variant="secondary" className="rounded-full bg-emerald-50 text-emerald-700">
+                    <Badge key={id} variant="outline" className={`rounded-full border ${getSchwerpunktColorClasses(id)}`}>
                       {getSchwerpunktLabel(id)}
                     </Badge>
                   ))}
@@ -956,13 +979,13 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
             )}
 
             {/* Completeness Warning */}
-            {(!whoComesToMe || !sessionFocus || !firstSession || schwerpunkte.length === 0 || !typicalRate) && (
+            {(whoComesToMe.length < MIN_CHARS || sessionFocus.length < MIN_CHARS || firstSession.length < MIN_CHARS || schwerpunkte.length === 0 || !typicalRate) && (
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="text-sm text-amber-800 font-medium mb-1">Profil unvollständig</p>
                 <ul className="text-xs text-amber-700 space-y-0.5">
-                  {!whoComesToMe && <li>• &quot;Zu mir kommen Menschen...&quot; fehlt</li>}
-                  {!sessionFocus && <li>• &quot;In unserer Arbeit...&quot; fehlt</li>}
-                  {!firstSession && <li>• &quot;Das erste Gespräch&quot; fehlt</li>}
+                  {whoComesToMe.length < MIN_CHARS && <li>• &quot;Zu mir kommen Menschen...&quot; mind. {MIN_CHARS} Zeichen</li>}
+                  {sessionFocus.length < MIN_CHARS && <li>• &quot;In unserer Arbeit...&quot; mind. {MIN_CHARS} Zeichen</li>}
+                  {firstSession.length < MIN_CHARS && <li>• &quot;Das erste Gespräch&quot; mind. {MIN_CHARS} Zeichen</li>}
                   {schwerpunkte.length === 0 && <li>• Keine Schwerpunkte ausgewählt</li>}
                   {!typicalRate && <li>• Preis pro Sitzung fehlt</li>}
                 </ul>

@@ -329,3 +329,17 @@ export function getCategoriesByMeta(metaId: MetaCategory['id']): SchwerpunktCate
 export function getMetaCategoryById(id: MetaCategory['id']): MetaCategory | undefined {
   return META_CATEGORIES.find((m) => m.id === id);
 }
+
+/**
+ * Get color classes for a schwerpunkt category badge
+ */
+export function getSchwerpunktColorClasses(categoryId: string): string {
+  const category = getSchwerpunktById(categoryId);
+  if (!category) return 'bg-gray-50 text-gray-700 border-gray-200';
+  
+  const meta = getMetaCategoryById(category.metaCategory);
+  if (!meta) return 'bg-gray-50 text-gray-700 border-gray-200';
+  
+  // Return Tailwind classes for badge styling
+  return `${meta.color.bg} ${meta.color.text} ${meta.color.border}`;
+}
