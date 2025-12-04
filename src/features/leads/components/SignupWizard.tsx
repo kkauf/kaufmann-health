@@ -10,6 +10,7 @@ import Screen4 from './screens/Screen4';
 import NewScreen2_Timeline, { type NewScreen2Values } from './screens/NewScreen2_Timeline';
 import NewScreen3_WhatBringsYou, { type NewScreen3Values } from './screens/NewScreen3_WhatBringsYou';
 import NewScreen5_Modality from './screens/NewScreen5_Modality';
+import ScreenSchwerpunkte, { type ScreenSchwerpunkteValues } from './screens/ScreenSchwerpunkte';
 import { Button } from '@/components/ui/button';
 import { leadSubmissionSchema } from '@/lib/contracts';
 import { PRIVACY_VERSION } from '@/lib/privacy';
@@ -17,18 +18,23 @@ import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { getOrCreateSessionId, getGclid } from '@/lib/attribution';
 import { fireGoogleAdsClientConversion } from '@/lib/gtag';
 
+// Feature toggle for schwerpunkte
+const SHOW_SCHWERPUNKTE = process.env.NEXT_PUBLIC_SHOW_SCHWERPUNKTE === 'true';
+
 const LS_KEYS = {
   data: 'kh_wizard_data',
   step: 'kh_wizard_step',
   sessionId: 'kh_form_session_id',
 } as const;
 
-export type WizardData = Omit<Screen1Values, 'email'> & Screen1_5Values & {
+export type WizardData = Omit<Screen1Values, 'email'> & Screen1_5Values & ScreenSchwerpunkteValues & {
   email?: string; // Make email optional since we might use phone instead
   // Step 1: Timeline
   start_timing?: NewScreen2Values['start_timing'];
   // Step 2: What Brings You (optional)
   additional_info?: NewScreen3Values['additional_info'];
+  // Step 2.5: Schwerpunkte (feature-toggled)
+  schwerpunkte?: string[];
   // Step 3: Modality
   modality_matters?: boolean;
   methods?: string[];
@@ -723,6 +729,21 @@ export default function SignupWizard() {
             values={{ additional_info: data.additional_info }}
             onChange={saveLocal}
             onBack={() => safeGoToStep(1)}
+            onNext={() => safeGoToStep(SHOW_SCHWERPUNKTE ? 2.5 : 3)}
+            disabled={navLock || submitting}
+          />
+        );
+      case 2.5:
+        // Step 2.5: Schwerpunkte (feature-toggled)
+        if (!SHOW_SCHWERPUNKTE) {
+          safeGoToStep(3);
+          return null;
+        }
+        return (
+          <ScreenSchwerpunkte
+            values={{ schwerpunkte: data.schwerpunkte }}
+            onChange={saveLocal}
+            onBack={() => safeGoToStep(2)}
             onNext={() => safeGoToStep(3)}
             disabled={navLock || submitting}
           />

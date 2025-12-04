@@ -37,13 +37,107 @@ type Props = {
   };
 };
 
-// Profile field character limits
+// Profile field character limits (recommended, with 10% leniency for max)
 const PROFILE_LIMITS = {
-  who_comes_to_me: 200,
-  session_focus: 250,
-  first_session: 200,
-  about_me: 150,
+  who_comes_to_me: { recommended: 200, max: 220 },
+  session_focus: { recommended: 250, max: 275 },
+  first_session: { recommended: 200, max: 220 },
+  about_me: { recommended: 150, max: 165 },
 };
+
+// Strength level based on content length relative to recommended
+type StrengthLevel = 'empty' | 'minimal' | 'developing' | 'good' | 'excellent';
+
+function getStrengthLevel(length: number, recommended: number): StrengthLevel {
+  const ratio = length / recommended;
+  if (length === 0) return 'empty';
+  if (ratio < 0.25) return 'minimal';
+  if (ratio < 0.5) return 'developing';
+  if (ratio < 0.75) return 'good';
+  return 'excellent';
+}
+
+const strengthConfig: Record<StrengthLevel, { color: string; border: string; bg: string; label: string; emoji: string }> = {
+  empty: { color: 'text-gray-400', border: 'border-gray-200', bg: 'bg-gray-200', label: 'Noch leer', emoji: '' },
+  minimal: { color: 'text-red-500', border: 'border-red-300', bg: 'bg-red-400', label: 'Kurz', emoji: '' },
+  developing: { color: 'text-amber-500', border: 'border-amber-300', bg: 'bg-amber-400', label: 'Gut', emoji: '' },
+  good: { color: 'text-emerald-500', border: 'border-emerald-300', bg: 'bg-emerald-400', label: 'Sehr gut', emoji: '' },
+  excellent: { color: 'text-emerald-600', border: 'border-emerald-400', bg: 'bg-emerald-500', label: 'Ausgezeichnet', emoji: '\u2728' },
+};
+
+// Reusable profile text field with strength indicator
+function ProfileTextField({
+  id,
+  label,
+  hint,
+  placeholder,
+  value,
+  onChange,
+  recommended,
+  max,
+  rows = 3,
+  optional = false,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  recommended: number;
+  max: number;
+  rows?: number;
+  optional?: boolean;
+}) {
+  const strength = getStrengthLevel(value.length, recommended);
+  const config = strengthConfig[strength];
+  const remaining = max - value.length;
+  const isOverRecommended = value.length > recommended;
+  
+  // Calculate fill percentage for the strength bar (cap at 100%)
+  const fillPercent = Math.min((value.length / recommended) * 100, 100);
+  
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id} className="text-sm font-medium text-gray-900">
+        {label}{optional && <span className="text-gray-400 font-normal"> (optional)</span>}
+      </Label>
+      <p className="text-xs text-gray-500">{hint}</p>
+      <div className="relative">
+        <textarea
+          id={id}
+          rows={rows}
+          maxLength={max}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={`w-full rounded-lg border-2 bg-white px-3 py-2 text-sm shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 ${
+            value.length === 0
+              ? 'border-gray-200 focus:border-gray-300 focus:ring-gray-200'
+              : `${config.border} focus:ring-emerald-200`
+          }`}
+        />
+      </div>
+      
+      {/* Strength indicator bar and label */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ease-out ${config.bg}`}
+            style={{ width: `${fillPercent}%` }}
+          />
+        </div>
+        <div className={`flex items-center gap-1 text-xs font-medium ${config.color} transition-colors duration-300`}>
+          {config.emoji && <span>{config.emoji}</span>}
+          <span>{config.label}</span>
+          {isOverRecommended && (
+            <span className="text-amber-500 ml-1">({remaining})</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // German postal code validation (5 digits)
 const isValidPostalCode = (code: string): boolean => /^\d{5}$/.test(code.trim());
@@ -445,100 +539,56 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
                 Diese Texte erscheinen auf deiner Profilseite und helfen Patient:innen, dich kennenzulernen.
               </p>
               
-              {/* Section 1: Who comes to me */}
-              <div className="space-y-2 mb-6">
-                <Label htmlFor="who_comes_to_me" className="text-sm font-medium text-gray-900">
-                  Zu mir kommen Menschen, die...
-                </Label>
-                <p className="text-xs text-gray-500 mb-1">
-                  Beschreibe, welche Menschen zu dir finden — nicht Diagnosen, sondern wie sie sich fühlen oder was sie erleben.
-                </p>
-                <textarea
+              {/* Profile text fields with strength indicators */}
+              <div className="space-y-6">
+                <ProfileTextField
                   id="who_comes_to_me"
-                  rows={3}
-                  maxLength={PROFILE_LIMITS.who_comes_to_me}
-                  value={whoComesToMe}
-                  onChange={(e) => setWhoComesToMe(e.target.value)}
+                  label="Zu mir kommen Menschen, die..."
+                  hint="Beschreibe, welche Menschen zu dir finden — nicht Diagnosen, sondern wie sie sich fühlen oder was sie erleben."
                   placeholder="...merken, dass Gespräche allein nicht reichen und der Körper noch festhält"
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-                <div className="flex justify-end text-xs text-gray-500">
-                  <span className={whoComesToMe.length > PROFILE_LIMITS.who_comes_to_me - 30 ? 'text-amber-600 font-medium' : ''}>
-                    {PROFILE_LIMITS.who_comes_to_me - whoComesToMe.length} Zeichen
-                  </span>
-                </div>
-              </div>
-
-              {/* Section 2: Session focus */}
-              <div className="space-y-2 mb-6">
-                <Label htmlFor="session_focus" className="text-sm font-medium text-gray-900">
-                  In unserer Arbeit geht es oft um...
-                </Label>
-                <p className="text-xs text-gray-500 mb-1">
-                  Was passiert in euren Sitzungen? Welche Themen tauchen auf, welche Prozesse?
-                </p>
-                <textarea
-                  id="session_focus"
-                  rows={4}
-                  maxLength={PROFILE_LIMITS.session_focus}
-                  value={sessionFocus}
-                  onChange={(e) => setSessionFocus(e.target.value)}
-                  placeholder="...langsamer werden und spüren, was der Körper eigentlich will"
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-                <div className="flex justify-end text-xs text-gray-500">
-                  <span className={sessionFocus.length > PROFILE_LIMITS.session_focus - 30 ? 'text-amber-600 font-medium' : ''}>
-                    {PROFILE_LIMITS.session_focus - sessionFocus.length} Zeichen
-                  </span>
-                </div>
-              </div>
-
-              {/* Section 3: First session */}
-              <div className="space-y-2 mb-6">
-                <Label htmlFor="first_session" className="text-sm font-medium text-gray-900">
-                  Das erste Gespräch
-                </Label>
-                <p className="text-xs text-gray-500 mb-1">
-                  Wie läuft ein Erstgespräch bei dir ab? Was erwartet jemanden?
-                </p>
-                <textarea
-                  id="first_session"
+                  value={whoComesToMe}
+                  onChange={setWhoComesToMe}
+                  recommended={PROFILE_LIMITS.who_comes_to_me.recommended}
+                  max={PROFILE_LIMITS.who_comes_to_me.max}
                   rows={3}
-                  maxLength={PROFILE_LIMITS.first_session}
-                  value={firstSession}
-                  onChange={(e) => setFirstSession(e.target.value)}
-                  placeholder="Wir lernen uns kennen. Du erzählst, was dich herbringt — so viel oder wenig du möchtest."
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
-                <div className="flex justify-end text-xs text-gray-500">
-                  <span className={firstSession.length > PROFILE_LIMITS.first_session - 30 ? 'text-amber-600 font-medium' : ''}>
-                    {PROFILE_LIMITS.first_session - firstSession.length} Zeichen
-                  </span>
-                </div>
-              </div>
 
-              {/* Section 4: About me (optional) */}
-              <div className="space-y-2">
-                <Label htmlFor="about_me" className="text-sm font-medium text-gray-900">
-                  Über mich <span className="text-gray-400 font-normal">(optional)</span>
-                </Label>
-                <p className="text-xs text-gray-500 mb-1">
-                  Was sollten Menschen über dich wissen, das nicht in Qualifikationen steht?
-                </p>
-                <textarea
-                  id="about_me"
-                  rows={2}
-                  maxLength={PROFILE_LIMITS.about_me}
-                  value={aboutMe}
-                  onChange={(e) => setAboutMe(e.target.value)}
-                  placeholder="Nur ausfüllen, wenn du etwas Echtes zu erzählen hast"
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                <ProfileTextField
+                  id="session_focus"
+                  label="In unserer Arbeit geht es oft um..."
+                  hint="Was passiert in euren Sitzungen? Welche Themen tauchen auf, welche Prozesse?"
+                  placeholder="...langsamer werden und spüren, was der Körper eigentlich will"
+                  value={sessionFocus}
+                  onChange={setSessionFocus}
+                  recommended={PROFILE_LIMITS.session_focus.recommended}
+                  max={PROFILE_LIMITS.session_focus.max}
+                  rows={4}
                 />
-                <div className="flex justify-end text-xs text-gray-500">
-                  <span className={aboutMe.length > PROFILE_LIMITS.about_me - 20 ? 'text-amber-600 font-medium' : ''}>
-                    {PROFILE_LIMITS.about_me - aboutMe.length} Zeichen
-                  </span>
-                </div>
+
+                <ProfileTextField
+                  id="first_session"
+                  label="Das erste Gespräch"
+                  hint="Wie läuft ein Erstgespräch bei dir ab? Was erwartet jemanden?"
+                  placeholder="Wir lernen uns kennen. Du erzählst, was dich herbringt — so viel oder wenig du möchtest."
+                  value={firstSession}
+                  onChange={setFirstSession}
+                  recommended={PROFILE_LIMITS.first_session.recommended}
+                  max={PROFILE_LIMITS.first_session.max}
+                  rows={3}
+                />
+
+                <ProfileTextField
+                  id="about_me"
+                  label="Über mich"
+                  hint="Was sollten Menschen über dich wissen, das nicht in Qualifikationen steht?"
+                  placeholder="Nur ausfüllen, wenn du etwas Echtes zu erzählen hast"
+                  value={aboutMe}
+                  onChange={setAboutMe}
+                  recommended={PROFILE_LIMITS.about_me.recommended}
+                  max={PROFILE_LIMITS.about_me.max}
+                  rows={2}
+                  optional
+                />
               </div>
             </div>
           </Card>

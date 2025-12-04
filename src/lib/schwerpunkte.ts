@@ -11,12 +11,74 @@ export type SchwerpunktCategory = {
   id: string;
   label: string;
   keywords: string[];
+  metaCategory: 'seelisch' | 'koerper' | 'beziehung' | 'lebenswege';
 };
 
+export type MetaCategory = {
+  id: 'seelisch' | 'koerper' | 'beziehung' | 'lebenswege';
+  label: string;
+  icon: 'Heart' | 'Activity' | 'UsersRound' | 'Compass';
+  color: {
+    bg: string;
+    text: string;
+    border: string;
+    iconBg: string;
+  };
+};
+
+export const META_CATEGORIES: MetaCategory[] = [
+  {
+    id: 'seelisch',
+    label: 'Seelische Belastung',
+    icon: 'Heart',
+    color: {
+      bg: 'bg-rose-50',
+      text: 'text-rose-700',
+      border: 'border-rose-200',
+      iconBg: 'bg-gradient-to-br from-rose-50 to-rose-100/60',
+    },
+  },
+  {
+    id: 'koerper',
+    label: 'Körper & Verhalten',
+    icon: 'Activity',
+    color: {
+      bg: 'bg-amber-50',
+      text: 'text-amber-700',
+      border: 'border-amber-200',
+      iconBg: 'bg-gradient-to-br from-amber-50 to-amber-100/60',
+    },
+  },
+  {
+    id: 'beziehung',
+    label: 'Beziehungen',
+    icon: 'UsersRound',
+    color: {
+      bg: 'bg-sky-50',
+      text: 'text-sky-700',
+      border: 'border-sky-200',
+      iconBg: 'bg-gradient-to-br from-sky-50 to-sky-100/60',
+    },
+  },
+  {
+    id: 'lebenswege',
+    label: 'Lebenswege',
+    icon: 'Compass',
+    color: {
+      bg: 'bg-emerald-50',
+      text: 'text-emerald-700',
+      border: 'border-emerald-200',
+      iconBg: 'bg-gradient-to-br from-emerald-50 to-emerald-100/60',
+    },
+  },
+];
+
 export const SCHWERPUNKT_CATEGORIES: SchwerpunktCategory[] = [
+  // === Seelische Belastung (5) ===
   {
     id: 'trauma',
     label: 'Trauma / PTBS',
+    metaCategory: 'seelisch',
     keywords: [
       'Trauma',
       'Bindungstrauma',
@@ -31,6 +93,7 @@ export const SCHWERPUNKT_CATEGORIES: SchwerpunktCategory[] = [
   {
     id: 'angst',
     label: 'Angst / Panik',
+    metaCategory: 'seelisch',
     keywords: [
       'Angst',
       'Angststörung',
@@ -42,6 +105,7 @@ export const SCHWERPUNKT_CATEGORIES: SchwerpunktCategory[] = [
   {
     id: 'depression',
     label: 'Depression / Erschöpfung',
+    metaCategory: 'seelisch',
     keywords: [
       'Depression',
       'Depressive Verstimmung',
@@ -54,27 +118,29 @@ export const SCHWERPUNKT_CATEGORIES: SchwerpunktCategory[] = [
     ],
   },
   {
-    id: 'beziehung',
-    label: 'Beziehungsprobleme',
+    id: 'selbstwert',
+    label: 'Selbstwert / Scham',
+    metaCategory: 'seelisch',
     keywords: [
-      'Beziehungsprobleme',
-      'Trennung',
-      'Emotionale Abhängigkeit',
-      'Bindungsangst',
-      'Nähe-Distanz-Probleme',
-      'Co-Abhängigkeit',
-      'Einsamkeit',
-      'Schwierigkeiten mit Grenzen setzen',
+      'Geringes Selbstwertgefühl',
+      'Selbstkritik / Innerer Kritiker',
+      'Scham',
+      'Schuldgefühle',
+      'Perfektionismus',
+      'People Pleasing',
     ],
   },
   {
-    id: 'wut',
-    label: 'Wut / Emotionsregulation',
-    keywords: ['Wut', 'Aggression', 'Impulskontrolle', 'Überwältigung'],
+    id: 'trauer',
+    label: 'Trauer / Verlust',
+    metaCategory: 'seelisch',
+    keywords: ['Trauer', 'Verlust', 'Lebenskrise'],
   },
+  // === Körper & Verhalten (5) ===
   {
     id: 'psychosomatik',
     label: 'Psychosomatik / Körper',
+    metaCategory: 'koerper',
     keywords: [
       'Psychosomatische Beschwerden',
       'Chronische Schmerzen',
@@ -90,6 +156,7 @@ export const SCHWERPUNKT_CATEGORIES: SchwerpunktCategory[] = [
   {
     id: 'essstoerung',
     label: 'Essstörungen / Körperbild',
+    metaCategory: 'koerper',
     keywords: [
       'Essstörungen',
       'Anorexie',
@@ -100,35 +167,21 @@ export const SCHWERPUNKT_CATEGORIES: SchwerpunktCategory[] = [
     ],
   },
   {
-    id: 'trauer',
-    label: 'Trauer / Verlust',
-    keywords: ['Trauer', 'Verlust', 'Lebenskrise'],
-  },
-  {
-    id: 'selbstwert',
-    label: 'Selbstwert / Scham',
-    keywords: [
-      'Geringes Selbstwertgefühl',
-      'Selbstkritik / Innerer Kritiker',
-      'Scham',
-      'Schuldgefühle',
-      'Perfektionismus',
-      'People Pleasing',
-    ],
+    id: 'wut',
+    label: 'Wut / Emotionsregulation',
+    metaCategory: 'koerper',
+    keywords: ['Wut', 'Aggression', 'Impulskontrolle', 'Überwältigung'],
   },
   {
     id: 'zwang',
     label: 'Kontrolle / Zwang',
+    metaCategory: 'koerper',
     keywords: ['Zwangsgedanken', 'Kontrollthemen', 'Hypochondrie'],
-  },
-  {
-    id: 'neurodivergenz',
-    label: 'ADHS / Autismus',
-    keywords: ['ADHS', 'Autismus / Autismus-Spektrum', 'Hochsensibilität (HSP)'],
   },
   {
     id: 'sexualitaet',
     label: 'Sexualität',
+    metaCategory: 'koerper',
     keywords: [
       'Sexuelle Probleme',
       'Sexuelles Trauma',
@@ -136,9 +189,38 @@ export const SCHWERPUNKT_CATEGORIES: SchwerpunktCategory[] = [
       'Körperliche Blockaden bei Intimität',
     ],
   },
+  // === Beziehungen (2) ===
+  {
+    id: 'beziehung',
+    label: 'Beziehungsprobleme',
+    metaCategory: 'beziehung',
+    keywords: [
+      'Beziehungsprobleme',
+      'Trennung',
+      'Emotionale Abhängigkeit',
+      'Bindungsangst',
+      'Nähe-Distanz-Probleme',
+      'Co-Abhängigkeit',
+      'Einsamkeit',
+      'Schwierigkeiten mit Grenzen setzen',
+    ],
+  },
+  {
+    id: 'paare',
+    label: 'Paare / Familie',
+    metaCategory: 'beziehung',
+    keywords: [
+      'Paartherapie',
+      'Kommunikation in Beziehungen',
+      'Familienkonflikte',
+      'Elternschaft',
+    ],
+  },
+  // === Lebenswege (4) ===
   {
     id: 'krisen',
     label: 'Krisen',
+    metaCategory: 'lebenswege',
     keywords: [
       'Krisenintervention',
       'Suizidalität',
@@ -149,6 +231,7 @@ export const SCHWERPUNKT_CATEGORIES: SchwerpunktCategory[] = [
   {
     id: 'identitaet',
     label: 'Identität',
+    metaCategory: 'lebenswege',
     keywords: [
       'Identitätsfragen',
       'Geschlechtsidentität',
@@ -158,18 +241,15 @@ export const SCHWERPUNKT_CATEGORIES: SchwerpunktCategory[] = [
     ],
   },
   {
-    id: 'paare',
-    label: 'Paare / Familie',
-    keywords: [
-      'Paartherapie',
-      'Kommunikation in Beziehungen',
-      'Familienkonflikte',
-      'Elternschaft',
-    ],
+    id: 'neurodivergenz',
+    label: 'ADHS / Autismus',
+    metaCategory: 'lebenswege',
+    keywords: ['ADHS', 'Autismus / Autismus-Spektrum', 'Hochsensibilität (HSP)'],
   },
   {
     id: 'entwicklung',
     label: 'Persönliche Entwicklung',
+    metaCategory: 'lebenswege',
     keywords: [
       'Selbstbewusstsein',
       'Persönlichkeitsentwicklung',
@@ -234,4 +314,18 @@ export function calculateSchwerpunkteOverlap(
 ): number {
   const clientSet = new Set(clientSchwerpunkte);
   return therapistSchwerpunkte.filter((id) => clientSet.has(id)).length;
+}
+
+/**
+ * Get all categories for a meta-category
+ */
+export function getCategoriesByMeta(metaId: MetaCategory['id']): SchwerpunktCategory[] {
+  return SCHWERPUNKT_CATEGORIES.filter((c) => c.metaCategory === metaId);
+}
+
+/**
+ * Get meta-category info by ID
+ */
+export function getMetaCategoryById(id: MetaCategory['id']): MetaCategory | undefined {
+  return META_CATEGORIES.find((m) => m.id === id);
 }
