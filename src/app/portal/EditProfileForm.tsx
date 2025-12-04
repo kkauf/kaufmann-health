@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Lock, Target } from "lucide-react";
+import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Lock, Target, Eye } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { getSchwerpunktLabel } from "@/lib/schwerpunkte";
 import SlotsManager from "./SlotsManager";
 import { SchwerpunkteSelector } from "@/components/SchwerpunkteSelector";
 import { THERAPIST_SCHWERPUNKTE_MIN, THERAPIST_SCHWERPUNKTE_MAX } from "@/lib/schwerpunkte";
@@ -55,6 +58,8 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [saveCount, setSaveCount] = useState(0); // Trigger re-evaluation of hasUnsavedChanges
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Form state - New profile sections
   const [whoComesToMe, setWhoComesToMe] = useState(initialData.who_comes_to_me);
@@ -87,7 +92,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     session_focus: initialData.session_focus,
     first_session: initialData.first_session,
     about_me: initialData.about_me,
-    schwerpunkte: initialData.schwerpunkte,
+    schwerpunkte: [...initialData.schwerpunkte], // Clone array for stable comparison
     offersOnline: initialData.session_preferences.includes('online'),
     offersInPerson: initialData.session_preferences.includes('in_person'),
     typicalRate: initialData.typical_rate?.toString() ?? '',
@@ -117,7 +122,8 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     if (acceptingNew !== b.acceptingNew) return true;
     if (city !== b.city) return true;
     return false;
-  }, [photoFile, whoComesToMe, sessionFocus, firstSession, aboutMe, schwerpunkte, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photoFile, whoComesToMe, sessionFocus, firstSession, aboutMe, schwerpunkte, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city, saveCount]);
 
   // Warn before leaving with unsaved changes
   useEffect(() => {
@@ -233,7 +239,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
         session_focus: sessionFocus,
         first_session: firstSession,
         about_me: aboutMe,
-        schwerpunkte,
+        schwerpunkte: [...schwerpunkte], // Clone array for baseline
         offersOnline,
         offersInPerson,
         typicalRate,
@@ -243,6 +249,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
         acceptingNew,
         city,
       };
+      setSaveCount(c => c + 1); // Trigger hasUnsavedChanges re-evaluation
       setSaved(true);
       setPhotoFile(null);
       setPhotoPending(false);
@@ -673,7 +680,18 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
           <div className="sticky bottom-0 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent pt-4 pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4 rounded-xl bg-white border border-gray-200 shadow-lg">
               <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={() => setPreviewOpen(true)}
+                className="h-11 px-4 font-medium"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Vorschau
+              </Button>
+              <Button
                 type="submit"
+                size="lg"
                 disabled={loading}
                 className="h-11 px-6 font-semibold shadow-md hover:shadow-lg transition-all"
               >
@@ -744,6 +762,126 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
           Abmelden
         </button>
       </div>
+
+      {/* Profile Preview Modal */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">Profilvorschau</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-5 py-2">
+            {/* Photo & Name Header */}
+            <div className="flex items-center gap-4">
+              <div className="relative h-20 w-20 rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                {currentPhotoUrl ? (
+                  <Image src={currentPhotoUrl} alt="Profilbild" fill className="object-cover" />
+                ) : (
+                  <Camera className="h-8 w-8" />
+                )}
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">So sehen Klient:innen dein Profil</p>
+              </div>
+            </div>
+
+            {/* Location & Format Badges */}
+            <div className="flex flex-wrap gap-2">
+              {city && (
+                <Badge variant="secondary" className="gap-1.5">
+                  <MapPin className="h-3 w-3" />
+                  {city}
+                </Badge>
+              )}
+              {offersOnline && (
+                <Badge variant="secondary" className="gap-1 bg-sky-50 text-sky-700">
+                  <Video className="h-3 w-3" />
+                  Online
+                </Badge>
+              )}
+              {offersInPerson && (
+                <Badge variant="secondary" className="gap-1 bg-slate-50 text-slate-700">
+                  <Building2 className="h-3 w-3" />
+                  Vor Ort
+                </Badge>
+              )}
+            </div>
+
+            {/* Schwerpunkte */}
+            {schwerpunkte.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 mb-2">Schwerpunkte</h4>
+                <div className="flex flex-wrap gap-2">
+                  {schwerpunkte.map((id) => (
+                    <Badge key={id} variant="secondary" className="rounded-full bg-emerald-50 text-emerald-700">
+                      {getSchwerpunktLabel(id)}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Profile Sections */}
+            {whoComesToMe && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 mb-1">Zu mir kommen Menschen, die...</h4>
+                <p className="text-sm text-gray-700">{whoComesToMe}</p>
+              </div>
+            )}
+
+            {sessionFocus && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 mb-1">In unserer Arbeit geht es oft um...</h4>
+                <p className="text-sm text-gray-700">{sessionFocus}</p>
+              </div>
+            )}
+
+            {firstSession && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 mb-1">Das erste Gespräch</h4>
+                <p className="text-sm text-gray-700">{firstSession}</p>
+              </div>
+            )}
+
+            {aboutMe && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 mb-1">Über mich</h4>
+                <p className="text-sm text-gray-700">{aboutMe}</p>
+              </div>
+            )}
+
+            {/* Price */}
+            {typicalRate && (
+              <div className="pt-2 border-t">
+                <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
+                  <Euro className="h-3.5 w-3.5" />
+                  {typicalRate}€ pro Sitzung
+                </Badge>
+              </div>
+            )}
+
+            {/* Completeness Warning */}
+            {(!whoComesToMe || !sessionFocus || !firstSession || schwerpunkte.length === 0 || !typicalRate) && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-800 font-medium mb-1">Profil unvollständig</p>
+                <ul className="text-xs text-amber-700 space-y-0.5">
+                  {!whoComesToMe && <li>• &quot;Zu mir kommen Menschen...&quot; fehlt</li>}
+                  {!sessionFocus && <li>• &quot;In unserer Arbeit...&quot; fehlt</li>}
+                  {!firstSession && <li>• &quot;Das erste Gespräch&quot; fehlt</li>}
+                  {schwerpunkte.length === 0 && <li>• Keine Schwerpunkte ausgewählt</li>}
+                  {!typicalRate && <li>• Preis pro Sitzung fehlt</li>}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end pt-2 border-t">
+            <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+              Schließen
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
