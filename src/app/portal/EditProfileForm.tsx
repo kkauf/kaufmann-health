@@ -216,7 +216,8 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
       
       form.set('session_preferences', JSON.stringify(sessionPrefs));
       form.set('accepting_new', acceptingNew ? 'true' : 'false');
-      form.set('city', city.trim());
+      // Use practiceCity as city when offering in-person; standalone city field only for online-only therapists
+      form.set('city', offersInPerson ? practiceCity.trim() : city.trim());
 
       if (typicalRate.trim()) {
         const rate = parseInt(typicalRate, 10);
