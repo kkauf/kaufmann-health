@@ -13,6 +13,9 @@ if (!process.env.EMAIL_SUPPRESS_OUTBOUND) {
 // Prefer explicit E2E_BASE_URL, else align with the running Next.js base URL if provided
 const base = process.env.E2E_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://127.0.0.1:3000';
 
+// Vercel Protection Bypass for CI/CD (set via VERCEL_AUTOMATION_BYPASS_SECRET)
+const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+
 export default defineConfig({
   testDir: './tests/e2e',
   timeout: 30_000,
@@ -21,6 +24,12 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: base,
+    // Pass Vercel bypass header if secret is configured (for protected staging/preview deployments)
+    ...(bypassSecret ? {
+      extraHTTPHeaders: {
+        'x-vercel-protection-bypass': bypassSecret,
+      },
+    } : {}),
   },
   webServer: {
     // Allow override, but default to the normal dev command

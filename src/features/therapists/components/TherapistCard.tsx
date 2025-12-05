@@ -11,12 +11,14 @@ import type { TherapistData } from './TherapistDirectory';
 import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
 import { getModalityInfo } from '@/lib/modalities';
+import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpunkte';
 
 interface TherapistCardProps {
   therapist: TherapistData;
   onViewDetails: () => void;
   // Optional match-specific props
   showModalities?: boolean; // Control whether to show modality badges (default: true)
+  showSchwerpunkte?: boolean; // Show schwerpunkte instead of modalities (feature toggle)
   matchBadge?: { text: string; className?: string } | null; // Optional badge for top matches
   contactedAt?: string | null; // ISO date string if therapist was already contacted
   onContactClick?: (type: 'booking' | 'consultation') => void; // Custom contact handler
@@ -39,6 +41,7 @@ export function TherapistCard({
   therapist,
   onViewDetails,
   showModalities = true,
+  showSchwerpunkte = false,
   matchBadge = null,
   contactedAt = null,
   onContactClick: customContactHandler,
@@ -198,8 +201,29 @@ export function TherapistCard({
             </div>
           </div>
 
-          {/* Modalities (conditional based on showModalities prop) */}
-          {showModalities && therapist.modalities && therapist.modalities.length > 0 && (
+          {/* Schwerpunkte (shown when showSchwerpunkte is true) */}
+          {showSchwerpunkte && therapist.schwerpunkte && therapist.schwerpunkte.length > 0 && (
+            <div className="mb-3">
+              <div className="flex flex-wrap gap-1.5">
+                {therapist.schwerpunkte.slice(0, 3).map((id) => (
+                  <Badge
+                    key={id}
+                    variant="outline"
+                    className={`rounded-full border cursor-pointer transition-all hover:shadow-sm ${getSchwerpunktColorClasses(id)}`}
+                    onClick={(e) => { e.stopPropagation(); openDetails(); }}
+                  >
+                    {getSchwerpunktLabel(id)}
+                  </Badge>
+                ))}
+                {therapist.schwerpunkte.length > 3 && (
+                  <Badge variant="secondary" className="rounded-full">+{therapist.schwerpunkte.length - 3}</Badge>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Modalities (shown when showModalities is true and showSchwerpunkte is false) */}
+          {showModalities && !showSchwerpunkte && therapist.modalities && therapist.modalities.length > 0 && (
             <div className="mb-3">
               <div className="relative -mx-4">
                 <div
@@ -282,7 +306,7 @@ export function TherapistCard({
             // Prefer who_comes_to_me with prefix for context
             if (profile?.who_comes_to_me) {
               return (
-                <p className="mb-5 line-clamp-3 text-sm text-gray-700">
+                <p className="mb-4 line-clamp-3 text-sm text-gray-700">
                   <span className="font-medium">Zu mir kommen Menschen, die </span>
                   {profile.who_comes_to_me}
                 </p>
@@ -292,7 +316,7 @@ export function TherapistCard({
             const fallbackText = profile?.session_focus || therapist.approach_text;
             if (!fallbackText) return null;
             return (
-              <p className="mb-5 line-clamp-3 text-sm text-gray-700">
+              <p className="mb-4 line-clamp-3 text-sm text-gray-700">
                 {fallbackText}
               </p>
             );

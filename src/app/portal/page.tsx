@@ -23,13 +23,15 @@ type TherapistRow = {
   accepting_new: boolean | null;
   session_preferences: string[] | null;
   typical_rate: number | null;
+  modalities: string[] | null;
+  schwerpunkte: string[] | null;
   metadata: Record<string, unknown> | null;
 };
 
 async function getTherapistData(therapistId: string): Promise<TherapistRow | null> {
   const { data, error } = await supabaseServer
     .from('therapists')
-    .select('id, first_name, last_name, email, photo_url, city, accepting_new, session_preferences, typical_rate, metadata')
+    .select('id, first_name, last_name, email, photo_url, city, accepting_new, session_preferences, typical_rate, modalities, schwerpunkte, metadata')
     .eq('id', therapistId)
     .eq('status', 'verified')
     .single();
@@ -131,6 +133,8 @@ export default async function PortalPage({
     // Legacy field (only if hasn't migrated to new fields)
     approach_text_legacy: showLegacy ? legacyApproachText : undefined,
     session_preferences: Array.isArray(therapist.session_preferences) ? therapist.session_preferences : [],
+    modalities: Array.isArray(therapist.modalities) ? therapist.modalities : [],
+    schwerpunkte: Array.isArray(therapist.schwerpunkte) ? therapist.schwerpunkte : [],
     typical_rate: therapist.typical_rate ?? undefined,
     practice_street: practiceStreet,
     practice_postal_code: practicePostalCode,

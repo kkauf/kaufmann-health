@@ -19,6 +19,7 @@ export type TherapistData = {
   last_name: string;
   photo_url?: string;
   modalities: string[];
+  schwerpunkte?: string[];
   session_preferences?: string[];
   approach_text: string;
   accepting_new: boolean;
@@ -50,6 +51,9 @@ const BASE_MODALITY_STYLE: Record<string, { cls: string; Icon: React.ElementType
 };
 
 const DEFAULT_MODALITY_STYLE = { cls: 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100', Icon: Target };
+
+// Feature toggle: show schwerpunkte instead of modalities in card preview
+const SHOW_SCHWERPUNKTE = process.env.NEXT_PUBLIC_SHOW_SCHWERPUNKTE === 'true';
 
 export function TherapistDirectory({ initialTherapists = [], emptyState, disableClientFetch = false, restrictToIds }: { initialTherapists?: TherapistData[]; emptyState?: { title: string; description?: string; ctaHref: string; ctaText: string }; disableClientFetch?: boolean; restrictToIds?: string[] }) {
   const [therapists, setTherapists] = useState<TherapistData[]>(initialTherapists);
@@ -524,6 +528,7 @@ export function TherapistDirectory({ initialTherapists = [], emptyState, disable
             key={therapist.id}
             therapist={therapist}
             onViewDetails={() => setSelectedTherapist(therapist)}
+            showSchwerpunkte={SHOW_SCHWERPUNKTE}
           />
         ))}
         {/* Desktop/Tablet: Load more tile occupies a grid cell */}

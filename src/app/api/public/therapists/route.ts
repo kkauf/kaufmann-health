@@ -8,6 +8,7 @@ type TherapistRow = {
   last_name: string | null;
   city: string | null;
   modalities: unknown;
+  schwerpunkte: unknown;
   session_preferences: unknown;
   accepting_new: boolean | null;
   photo_url: string | null;
@@ -30,7 +31,7 @@ export async function GET() {
 
     const { data, error } = await supabaseServer
       .from('therapists')
-      .select('id, first_name, last_name, city, modalities, session_preferences, accepting_new, photo_url, status, metadata, typical_rate')
+      .select('id, first_name, last_name, city, modalities, schwerpunkte, session_preferences, accepting_new, photo_url, status, metadata, typical_rate')
       .eq('status', 'verified')
       .order('created_at', { ascending: false });
 
@@ -117,6 +118,7 @@ export async function GET() {
           last_name: String(row.last_name || ''),
           city: String(row.city || ''),
           modalities: Array.isArray(row.modalities) ? (row.modalities as string[]) : [],
+          schwerpunkte: Array.isArray(row.schwerpunkte) ? (row.schwerpunkte as string[]) : [],
           session_preferences: Array.isArray(row.session_preferences) ? (row.session_preferences as string[]) : [],
           accepting_new: Boolean(row.accepting_new),
           photo_url: row.photo_url || undefined,

@@ -6,8 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Info, Lock } from "lucide-react";
+import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Lock, Target, Eye } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { getSchwerpunktLabel, getSchwerpunktColorClasses } from "@/lib/schwerpunkte";
 import SlotsManager from "./SlotsManager";
+import { SchwerpunkteSelector } from "@/components/SchwerpunkteSelector";
+import { THERAPIST_SCHWERPUNKTE_MIN, THERAPIST_SCHWERPUNKTE_MAX } from "@/lib/schwerpunkte";
 
 type Props = {
   therapistId: string;
@@ -21,6 +26,8 @@ type Props = {
     // Legacy field (read-only if present)
     approach_text_legacy?: string;
     session_preferences: string[];
+    modalities: string[];
+    schwerpunkte: string[];
     typical_rate?: number;
     practice_street: string;
     practice_postal_code: string;
@@ -30,13 +37,107 @@ type Props = {
   };
 };
 
-// Profile field character limits
+// Profile field character limits (recommended, with 10% leniency for max)
 const PROFILE_LIMITS = {
-  who_comes_to_me: 200,
-  session_focus: 250,
-  first_session: 200,
-  about_me: 150,
+  who_comes_to_me: { recommended: 200, max: 220 },
+  session_focus: { recommended: 250, max: 275 },
+  first_session: { recommended: 200, max: 220 },
+  about_me: { recommended: 150, max: 165 },
 };
+
+// Strength level based on content length relative to recommended
+type StrengthLevel = 'empty' | 'minimal' | 'developing' | 'good' | 'excellent';
+
+function getStrengthLevel(length: number, recommended: number): StrengthLevel {
+  const ratio = length / recommended;
+  if (length === 0) return 'empty';
+  if (ratio < 0.25) return 'minimal';
+  if (ratio < 0.5) return 'developing';
+  if (ratio < 0.75) return 'good';
+  return 'excellent';
+}
+
+const strengthConfig: Record<StrengthLevel, { color: string; border: string; bg: string; label: string; emoji: string }> = {
+  empty: { color: 'text-gray-400', border: 'border-gray-200', bg: 'bg-gray-200', label: 'Noch leer', emoji: '' },
+  minimal: { color: 'text-red-500', border: 'border-red-300', bg: 'bg-red-400', label: 'Kurz', emoji: '' },
+  developing: { color: 'text-amber-500', border: 'border-amber-300', bg: 'bg-amber-400', label: 'Gut', emoji: '' },
+  good: { color: 'text-emerald-500', border: 'border-emerald-300', bg: 'bg-emerald-400', label: 'Sehr gut', emoji: '' },
+  excellent: { color: 'text-emerald-600', border: 'border-emerald-400', bg: 'bg-emerald-500', label: 'Ausgezeichnet', emoji: '\u2728' },
+};
+
+// Reusable profile text field with strength indicator
+function ProfileTextField({
+  id,
+  label,
+  hint,
+  placeholder,
+  value,
+  onChange,
+  recommended,
+  max,
+  rows = 3,
+  optional = false,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  recommended: number;
+  max: number;
+  rows?: number;
+  optional?: boolean;
+}) {
+  const strength = getStrengthLevel(value.length, recommended);
+  const config = strengthConfig[strength];
+  const remaining = max - value.length;
+  const isOverRecommended = value.length > recommended;
+  
+  // Calculate fill percentage for the strength bar (cap at 100%)
+  const fillPercent = Math.min((value.length / recommended) * 100, 100);
+  
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id} className="text-sm font-medium text-gray-900">
+        {label}{optional && <span className="text-gray-400 font-normal"> (optional)</span>}
+      </Label>
+      <p className="text-xs text-gray-500">{hint}</p>
+      <div className="relative">
+        <textarea
+          id={id}
+          rows={rows}
+          maxLength={max}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={`w-full rounded-lg border-2 bg-white px-3 py-2 text-sm shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 ${
+            value.length === 0
+              ? 'border-gray-200 focus:border-gray-300 focus:ring-gray-200'
+              : `${config.border} focus:ring-emerald-200`
+          }`}
+        />
+      </div>
+      
+      {/* Strength indicator bar and label */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ease-out ${config.bg}`}
+            style={{ width: `${fillPercent}%` }}
+          />
+        </div>
+        <div className={`flex items-center gap-1 text-xs font-medium ${config.color} transition-colors duration-300`}>
+          {config.emoji && <span>{config.emoji}</span>}
+          <span>{config.label}</span>
+          {isOverRecommended && (
+            <span className="text-amber-500 ml-1">({remaining})</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // German postal code validation (5 digits)
 const isValidPostalCode = (code: string): boolean => /^\d{5}$/.test(code.trim());
@@ -51,12 +152,15 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [saveCount, setSaveCount] = useState(0); // Trigger re-evaluation of hasUnsavedChanges
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Form state - New profile sections
   const [whoComesToMe, setWhoComesToMe] = useState(initialData.who_comes_to_me);
   const [sessionFocus, setSessionFocus] = useState(initialData.session_focus);
   const [firstSession, setFirstSession] = useState(initialData.first_session);
   const [aboutMe, setAboutMe] = useState(initialData.about_me);
+  const [schwerpunkte, setSchwerpunkte] = useState<string[]>(initialData.schwerpunkte);
   const [offersOnline, setOffersOnline] = useState(initialData.session_preferences.includes('online'));
   const [offersInPerson, setOffersInPerson] = useState(initialData.session_preferences.includes('in_person'));
   const [typicalRate, setTypicalRate] = useState<string>(initialData.typical_rate?.toString() ?? '');
@@ -82,6 +186,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     session_focus: initialData.session_focus,
     first_session: initialData.first_session,
     about_me: initialData.about_me,
+    schwerpunkte: [...initialData.schwerpunkte], // Clone array for stable comparison
     offersOnline: initialData.session_preferences.includes('online'),
     offersInPerson: initialData.session_preferences.includes('in_person'),
     typicalRate: initialData.typical_rate?.toString() ?? '',
@@ -100,6 +205,8 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     if (sessionFocus !== b.session_focus) return true;
     if (firstSession !== b.first_session) return true;
     if (aboutMe !== b.about_me) return true;
+    // Compare schwerpunkte arrays
+    if (schwerpunkte.length !== b.schwerpunkte.length || schwerpunkte.some((s, i) => s !== b.schwerpunkte[i])) return true;
     if (offersOnline !== b.offersOnline) return true;
     if (offersInPerson !== b.offersInPerson) return true;
     if (typicalRate !== b.typicalRate) return true;
@@ -109,7 +216,32 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     if (acceptingNew !== b.acceptingNew) return true;
     if (city !== b.city) return true;
     return false;
-  }, [photoFile, whoComesToMe, sessionFocus, firstSession, aboutMe, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photoFile, whoComesToMe, sessionFocus, firstSession, aboutMe, schwerpunkte, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city, saveCount]);
+
+  // Minimum character count for required text fields
+  const MIN_CHARS = 50;
+
+  // Profile completeness check (min 50 chars for required fields)
+  const profileCompleteness = useMemo(() => {
+    const missing: string[] = [];
+    if (!whoComesToMe || whoComesToMe.length < MIN_CHARS) 
+      missing.push(`Zu mir kommen Menschen... (mind. ${MIN_CHARS} Zeichen)`);
+    if (!sessionFocus || sessionFocus.length < MIN_CHARS) 
+      missing.push(`In unserer Arbeit... (mind. ${MIN_CHARS} Zeichen)`);
+    if (!firstSession || firstSession.length < MIN_CHARS) 
+      missing.push(`Das erste Gespräch (mind. ${MIN_CHARS} Zeichen)`);
+    if (schwerpunkte.length < THERAPIST_SCHWERPUNKTE_MIN) missing.push('Schwerpunkte');
+    if (!typicalRate) missing.push('Preis pro Sitzung');
+    if (!currentPhotoUrl) missing.push('Profilbild');
+    
+    const total = 6;
+    const completed = total - missing.length;
+    const percentage = Math.round((completed / total) * 100);
+    const isComplete = missing.length === 0;
+    
+    return { missing, completed, total, percentage, isComplete };
+  }, [whoComesToMe, sessionFocus, firstSession, schwerpunkte, typicalRate, currentPhotoUrl]);
 
   // Warn before leaving with unsaved changes
   useEffect(() => {
@@ -163,6 +295,23 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     setError(null);
     setPhotoError(null);
     setSaved(false);
+
+    // Validate min character requirements for required fields
+    const validationErrors: string[] = [];
+    if (whoComesToMe.trim().length < MIN_CHARS) {
+      validationErrors.push(`"Zu mir kommen Menschen..." benötigt mind. ${MIN_CHARS} Zeichen`);
+    }
+    if (sessionFocus.trim().length < MIN_CHARS) {
+      validationErrors.push(`"In unserer Arbeit..." benötigt mind. ${MIN_CHARS} Zeichen`);
+    }
+    if (firstSession.trim().length < MIN_CHARS) {
+      validationErrors.push(`"Das erste Gespräch" benötigt mind. ${MIN_CHARS} Zeichen`);
+    }
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join('. '));
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -179,9 +328,13 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
       form.set('first_session', firstSession.trim());
       form.set('about_me', aboutMe.trim());
       
+      // Add schwerpunkte
+      form.set('schwerpunkte', JSON.stringify(schwerpunkte));
+      
       form.set('session_preferences', JSON.stringify(sessionPrefs));
       form.set('accepting_new', acceptingNew ? 'true' : 'false');
-      form.set('city', city.trim());
+      // Use practiceCity as city when offering in-person; standalone city field only for online-only therapists
+      form.set('city', offersInPerson ? practiceCity.trim() : city.trim());
 
       if (typicalRate.trim()) {
         const rate = parseInt(typicalRate, 10);
@@ -222,6 +375,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
         session_focus: sessionFocus,
         first_session: firstSession,
         about_me: aboutMe,
+        schwerpunkte: [...schwerpunkte], // Clone array for baseline
         offersOnline,
         offersInPerson,
         typicalRate,
@@ -231,6 +385,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
         acceptingNew,
         city,
       };
+      setSaveCount(c => c + 1); // Trigger hasUnsavedChanges re-evaluation
       setSaved(true);
       setPhotoFile(null);
       setPhotoPending(false);
@@ -241,7 +396,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [therapistId, whoComesToMe, sessionFocus, firstSession, aboutMe, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city, photoFile, photoError]);
+  }, [therapistId, whoComesToMe, sessionFocus, firstSession, aboutMe, schwerpunkte, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city, photoFile, photoError]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -254,6 +409,30 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Profile Completeness Indicator */}
+      {!profileCompleteness.isComplete && activeTab === 'profile' && (
+        <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-amber-900">
+              Profil {profileCompleteness.percentage}% vollständig
+            </span>
+            <span className="text-xs text-amber-700">
+              {profileCompleteness.completed}/{profileCompleteness.total} Felder
+            </span>
+          </div>
+          <div className="h-2 bg-amber-100 rounded-full overflow-hidden mb-2">
+            <div 
+              className="h-full bg-gradient-to-r from-amber-400 to-emerald-500 rounded-full transition-all duration-500"
+              style={{ width: `${profileCompleteness.percentage}%` }}
+            />
+          </div>
+          <p className="text-xs text-amber-700">
+            <span className="font-medium">Noch offen:</span>{' '}
+            {profileCompleteness.missing.join(', ')}
+          </p>
+        </div>
+      )}
+
       {/* Unsaved Changes Banner */}
       {hasUnsavedChanges && activeTab === 'profile' && (
         <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm" role="status">
@@ -383,101 +562,76 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
                 Diese Texte erscheinen auf deiner Profilseite und helfen Patient:innen, dich kennenzulernen.
               </p>
               
-              {/* Section 1: Who comes to me */}
-              <div className="space-y-2 mb-6">
-                <Label htmlFor="who_comes_to_me" className="text-sm font-medium text-gray-900">
-                  Zu mir kommen Menschen, die...
-                </Label>
-                <p className="text-xs text-gray-500 mb-1">
-                  Beschreibe, welche Menschen zu dir finden — nicht Diagnosen, sondern wie sie sich fühlen oder was sie erleben.
-                </p>
-                <textarea
+              {/* Profile text fields with strength indicators */}
+              <div className="space-y-6">
+                <ProfileTextField
                   id="who_comes_to_me"
-                  rows={3}
-                  maxLength={PROFILE_LIMITS.who_comes_to_me}
+                  label="Zu mir kommen Menschen, die..."
+                  hint="Beschreibe, welche Menschen zu dir finden — nicht Diagnosen, sondern wie sie sich fühlen oder was sie erleben."
+                  placeholder="...in bestimmten Momenten explodieren — und sich danach schämen. Die spüren, dass da etwas Altes getriggert wird, aber nicht wissen, wie sie da rauskommen."
                   value={whoComesToMe}
-                  onChange={(e) => setWhoComesToMe(e.target.value)}
-                  placeholder="...merken, dass Gespräche allein nicht reichen und der Körper noch festhält"
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-                <div className="flex justify-end text-xs text-gray-500">
-                  <span className={whoComesToMe.length > PROFILE_LIMITS.who_comes_to_me - 30 ? 'text-amber-600 font-medium' : ''}>
-                    {PROFILE_LIMITS.who_comes_to_me - whoComesToMe.length} Zeichen
-                  </span>
-                </div>
-              </div>
-
-              {/* Section 2: Session focus */}
-              <div className="space-y-2 mb-6">
-                <Label htmlFor="session_focus" className="text-sm font-medium text-gray-900">
-                  In unserer Arbeit geht es oft um...
-                </Label>
-                <p className="text-xs text-gray-500 mb-1">
-                  Was passiert in euren Sitzungen? Welche Themen tauchen auf, welche Prozesse?
-                </p>
-                <textarea
-                  id="session_focus"
-                  rows={4}
-                  maxLength={PROFILE_LIMITS.session_focus}
-                  value={sessionFocus}
-                  onChange={(e) => setSessionFocus(e.target.value)}
-                  placeholder="...langsamer werden und spüren, was der Körper eigentlich will"
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-                <div className="flex justify-end text-xs text-gray-500">
-                  <span className={sessionFocus.length > PROFILE_LIMITS.session_focus - 30 ? 'text-amber-600 font-medium' : ''}>
-                    {PROFILE_LIMITS.session_focus - sessionFocus.length} Zeichen
-                  </span>
-                </div>
-              </div>
-
-              {/* Section 3: First session */}
-              <div className="space-y-2 mb-6">
-                <Label htmlFor="first_session" className="text-sm font-medium text-gray-900">
-                  Das erste Gespräch
-                </Label>
-                <p className="text-xs text-gray-500 mb-1">
-                  Wie läuft ein Erstgespräch bei dir ab? Was erwartet jemanden?
-                </p>
-                <textarea
-                  id="first_session"
+                  onChange={setWhoComesToMe}
+                  recommended={PROFILE_LIMITS.who_comes_to_me.recommended}
+                  max={PROFILE_LIMITS.who_comes_to_me.max}
                   rows={3}
-                  maxLength={PROFILE_LIMITS.first_session}
-                  value={firstSession}
-                  onChange={(e) => setFirstSession(e.target.value)}
-                  placeholder="Wir lernen uns kennen. Du erzählst, was dich herbringt — so viel oder wenig du möchtest."
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
-                <div className="flex justify-end text-xs text-gray-500">
-                  <span className={firstSession.length > PROFILE_LIMITS.first_session - 30 ? 'text-amber-600 font-medium' : ''}>
-                    {PROFILE_LIMITS.first_session - firstSession.length} Zeichen
-                  </span>
-                </div>
-              </div>
 
-              {/* Section 4: About me (optional) */}
-              <div className="space-y-2">
-                <Label htmlFor="about_me" className="text-sm font-medium text-gray-900">
-                  Über mich <span className="text-gray-400 font-normal">(optional)</span>
-                </Label>
-                <p className="text-xs text-gray-500 mb-1">
-                  Was sollten Menschen über dich wissen, das nicht in Qualifikationen steht?
-                </p>
-                <textarea
-                  id="about_me"
-                  rows={2}
-                  maxLength={PROFILE_LIMITS.about_me}
-                  value={aboutMe}
-                  onChange={(e) => setAboutMe(e.target.value)}
-                  placeholder="Nur ausfüllen, wenn du etwas Echtes zu erzählen hast"
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                <ProfileTextField
+                  id="session_focus"
+                  label="In unserer Arbeit geht es oft um..."
+                  hint="Was passiert in euren Sitzungen? Welche Themen tauchen auf, welche Prozesse?"
+                  placeholder="...langsamer werden. Spüren, was der Körper eigentlich sagen will. Nicht sofort lösen oder wegmachen, sondern erstmal verstehen, was da ist — und warum es vielleicht mal wichtig war."
+                  value={sessionFocus}
+                  onChange={setSessionFocus}
+                  recommended={PROFILE_LIMITS.session_focus.recommended}
+                  max={PROFILE_LIMITS.session_focus.max}
+                  rows={4}
                 />
-                <div className="flex justify-end text-xs text-gray-500">
-                  <span className={aboutMe.length > PROFILE_LIMITS.about_me - 20 ? 'text-amber-600 font-medium' : ''}>
-                    {PROFILE_LIMITS.about_me - aboutMe.length} Zeichen
-                  </span>
-                </div>
+
+                <ProfileTextField
+                  id="first_session"
+                  label="Das erste Gespräch"
+                  hint="Wie läuft ein Erstgespräch bei dir ab? Was erwartet jemanden?"
+                  placeholder="Wir lernen uns kennen. Du erzählst, was dich herbringt — so viel oder wenig du möchtest. Ich höre zu und frage nach. Am Ende weißt du, ob du dir vorstellen kannst, mit mir zu arbeiten."
+                  value={firstSession}
+                  onChange={setFirstSession}
+                  recommended={PROFILE_LIMITS.first_session.recommended}
+                  max={PROFILE_LIMITS.first_session.max}
+                  rows={3}
+                />
+
+                <ProfileTextField
+                  id="about_me"
+                  label="Über mich"
+                  hint="Was sollten Menschen über dich wissen, das nicht in Qualifikationen steht?"
+                  placeholder="Ursprünglich bin ich Volkswirtin — bis ich gemerkt habe, dass mich Menschen mehr interessieren als Zahlen. Ich habe ein Jahr in einem Ashram in Indien verbracht."
+                  value={aboutMe}
+                  onChange={setAboutMe}
+                  recommended={PROFILE_LIMITS.about_me.recommended}
+                  max={PROFILE_LIMITS.about_me.max}
+                  rows={2}
+                  optional
+                />
               </div>
+            </div>
+          </Card>
+
+          {/* Schwerpunkte */}
+          <Card className="border border-gray-200/60 shadow-md bg-white/80 backdrop-blur-sm">
+            <div className="p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="h-5 w-5 text-emerald-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Schwerpunkte</h2>
+              </div>
+              <p className="text-sm text-gray-500 mb-4">
+                Wähle {THERAPIST_SCHWERPUNKTE_MIN}–{THERAPIST_SCHWERPUNKTE_MAX} Themenbereiche, in denen du besonders erfahren bist.
+                Diese helfen Klient:innen, dich zu finden.
+              </p>
+              <SchwerpunkteSelector
+                value={schwerpunkte}
+                onChange={setSchwerpunkte}
+                role="therapist"
+              />
             </div>
           </Card>
 
@@ -582,19 +736,21 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
                 </div>
               )}
 
-              {/* City */}
-              <div className="space-y-2 mb-6">
-                <Label htmlFor="city" className="text-sm font-medium text-gray-700">
-                  Stadt
-                </Label>
-                <Input
-                  id="city"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="z.B. Berlin"
-                  className="border-gray-200"
-                />
-              </div>
+              {/* City (only when NOT offering in-person, since practiceCity is used otherwise) */}
+              {!offersInPerson && (
+                <div className="space-y-2 mb-6">
+                  <Label htmlFor="city" className="text-sm font-medium text-gray-700">
+                    Stadt
+                  </Label>
+                  <Input
+                    id="city"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="z.B. Berlin"
+                    className="border-gray-200"
+                  />
+                </div>
+              )}
 
               {/* Typical Rate */}
               <div className="space-y-2">
@@ -642,7 +798,18 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
           <div className="sticky bottom-0 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent pt-4 pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4 rounded-xl bg-white border border-gray-200 shadow-lg">
               <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={() => setPreviewOpen(true)}
+                className="h-11 px-4 font-medium"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Vorschau
+              </Button>
+              <Button
                 type="submit"
+                size="lg"
                 disabled={loading}
                 className="h-11 px-6 font-semibold shadow-md hover:shadow-lg transition-all"
               >
@@ -713,6 +880,126 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
           Abmelden
         </button>
       </div>
+
+      {/* Profile Preview Modal */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">Profilvorschau</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-5 py-2">
+            {/* Photo & Name Header */}
+            <div className="flex items-center gap-4">
+              <div className="relative h-20 w-20 rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                {currentPhotoUrl ? (
+                  <Image src={currentPhotoUrl} alt="Profilbild" fill className="object-cover" />
+                ) : (
+                  <Camera className="h-8 w-8" />
+                )}
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">So sehen Klient:innen dein Profil</p>
+              </div>
+            </div>
+
+            {/* Location & Format Badges */}
+            <div className="flex flex-wrap gap-2">
+              {city && (
+                <Badge variant="secondary" className="gap-1.5">
+                  <MapPin className="h-3 w-3" />
+                  {city}
+                </Badge>
+              )}
+              {offersOnline && (
+                <Badge variant="secondary" className="gap-1 bg-sky-50 text-sky-700">
+                  <Video className="h-3 w-3" />
+                  Online
+                </Badge>
+              )}
+              {offersInPerson && (
+                <Badge variant="secondary" className="gap-1 bg-slate-50 text-slate-700">
+                  <Building2 className="h-3 w-3" />
+                  Vor Ort
+                </Badge>
+              )}
+            </div>
+
+            {/* Schwerpunkte */}
+            {schwerpunkte.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 mb-2">Schwerpunkte</h4>
+                <div className="flex flex-wrap gap-2">
+                  {schwerpunkte.map((id) => (
+                    <Badge key={id} variant="outline" className={`rounded-full border ${getSchwerpunktColorClasses(id)}`}>
+                      {getSchwerpunktLabel(id)}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Profile Sections */}
+            {whoComesToMe && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 mb-1">Zu mir kommen Menschen, die...</h4>
+                <p className="text-sm text-gray-700">{whoComesToMe}</p>
+              </div>
+            )}
+
+            {sessionFocus && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 mb-1">In unserer Arbeit geht es oft um...</h4>
+                <p className="text-sm text-gray-700">{sessionFocus}</p>
+              </div>
+            )}
+
+            {firstSession && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 mb-1">Das erste Gespräch</h4>
+                <p className="text-sm text-gray-700">{firstSession}</p>
+              </div>
+            )}
+
+            {aboutMe && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 mb-1">Über mich</h4>
+                <p className="text-sm text-gray-700">{aboutMe}</p>
+              </div>
+            )}
+
+            {/* Price */}
+            {typicalRate && (
+              <div className="pt-2 border-t">
+                <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
+                  <Euro className="h-3.5 w-3.5" />
+                  {typicalRate}€ pro Sitzung
+                </Badge>
+              </div>
+            )}
+
+            {/* Completeness Warning */}
+            {(whoComesToMe.length < MIN_CHARS || sessionFocus.length < MIN_CHARS || firstSession.length < MIN_CHARS || schwerpunkte.length === 0 || !typicalRate) && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-800 font-medium mb-1">Profil unvollständig</p>
+                <ul className="text-xs text-amber-700 space-y-0.5">
+                  {whoComesToMe.length < MIN_CHARS && <li>• &quot;Zu mir kommen Menschen...&quot; mind. {MIN_CHARS} Zeichen</li>}
+                  {sessionFocus.length < MIN_CHARS && <li>• &quot;In unserer Arbeit...&quot; mind. {MIN_CHARS} Zeichen</li>}
+                  {firstSession.length < MIN_CHARS && <li>• &quot;Das erste Gespräch&quot; mind. {MIN_CHARS} Zeichen</li>}
+                  {schwerpunkte.length === 0 && <li>• Keine Schwerpunkte ausgewählt</li>}
+                  {!typicalRate && <li>• Preis pro Sitzung fehlt</li>}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end pt-2 border-t">
+            <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+              Schließen
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

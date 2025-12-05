@@ -7,6 +7,7 @@ export type PatientMeta = {
   session_preferences?: ('online' | 'in_person')[];
   issue?: string;
   specializations?: string[];
+  schwerpunkte?: string[]; // New: client focus area selections
   gender_preference?: 'male' | 'female' | 'no_preference';
 };
 
@@ -16,12 +17,14 @@ export type TherapistRowForMatch = {
   city?: string | null;
   session_preferences?: unknown;
   modalities?: unknown;
+  schwerpunkte?: unknown; // New: therapist focus areas
 };
 
 export type MismatchResult = {
-  mismatches: { gender: boolean; location: boolean; modality: boolean };
+  mismatches: { gender: boolean; location: boolean; modality: boolean; schwerpunkte: boolean };
   isPerfect: boolean;
   reasons: string[];
+  schwerpunkteOverlap: number; // Number of matching categories
 };
 
 export function normalizeSpec(v: string): string {
@@ -71,15 +74,32 @@ export function computeMismatches(patient: PatientMeta | null | undefined, thera
     }
   }
 
-  const mismatches = { gender: genderMismatch, location: locationMismatch, modality: modalityMismatch } as const;
-  const isPerfect = !mismatches.gender && !mismatches.location && !mismatches.modality;
+  // Calculate schwerpunkte overlap
+  const patientSchwerpunkte = new Set<string>(
+    Array.isArray(meta.schwerpunkte) ? meta.schwerpunkte : []
+  );
+  const therapistSchwerpunkte = new Set<string>(
+    Array.isArray(t.schwerpunkte) ? (t.schwerpunkte as string[]) : []
+  );
+  
+  let schwerpunkteOverlap = 0;
+  for (const s of patientSchwerpunkte) {
+    if (therapistSchwerpunkte.has(s)) schwerpunkteOverlap++;
+  }
+  
+  // Schwerpunkte mismatch: patient selected schwerpunkte but therapist has none matching
+  const schwerpunkteMismatch = patientSchwerpunkte.size > 0 && schwerpunkteOverlap === 0;
+
+  const mismatches = { gender: genderMismatch, location: locationMismatch, modality: modalityMismatch, schwerpunkte: schwerpunkteMismatch } as const;
+  const isPerfect = !mismatches.gender && !mismatches.location && !mismatches.modality && !mismatches.schwerpunkte;
 
   const reasons: string[] = [];
   if (mismatches.gender) reasons.push('gender');
   if (mismatches.location) reasons.push('location');
   if (mismatches.modality) reasons.push('modality');
+  if (mismatches.schwerpunkte) reasons.push('schwerpunkte');
 
-  return { mismatches: { ...mismatches }, isPerfect, reasons };
+  return { mismatches: { ...mismatches }, isPerfect, reasons, schwerpunkteOverlap };
 }
 
 /**
@@ -106,14 +126,15 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
     const session_preference = typeof meta['session_preference'] === 'string' ? (meta['session_preference'] as string) as 'online' | 'in_person' : undefined;
     const session_preferences = Array.isArray(meta['session_preferences']) ? (meta['session_preferences'] as ('online' | 'in_person')[]) : undefined;
     const specializations = Array.isArray(meta['specializations']) ? (meta['specializations'] as string[]) : undefined;
+    const schwerpunkte = Array.isArray(meta['schwerpunkte']) ? (meta['schwerpunkte'] as string[]) : undefined;
     const gender_preference = typeof meta['gender_preference'] === 'string' ? (meta['gender_preference'] as 'male' | 'female' | 'no_preference') : undefined;
     const time_slots = Array.isArray(meta['time_slots']) ? (meta['time_slots'] as string[]) : [];
-    const pMeta: PatientMeta = { city, session_preference, session_preferences, specializations, gender_preference };
+    const pMeta: PatientMeta = { city, session_preference, session_preferences, specializations, schwerpunkte, gender_preference };
 
-    type TR = { id: string; gender?: string | null; city?: string | null; session_preferences?: unknown; modalities?: unknown; accepting_new?: boolean | null; metadata?: Record<string, unknown> | null };
+    type TR = { id: string; gender?: string | null; city?: string | null; session_preferences?: unknown; modalities?: unknown; schwerpunkte?: unknown; accepting_new?: boolean | null; metadata?: Record<string, unknown> | null };
     const { data: trows } = await supabaseServer
       .from('therapists')
-      .select('id, gender, city, session_preferences, modalities, accepting_new, metadata')
+      .select('id, gender, city, session_preferences, modalities, schwerpunkte, accepting_new, metadata')
       .eq('status', 'verified')
       .limit(5000);
     const therapists = Array.isArray(trows) ? (trows as TR[]) : [];
@@ -165,23 +186,25 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
       return false;
     }
 
-    const scored: { id: string; isPerfect: boolean; reasons: string[]; accepting: boolean }[] = [];
+    const scored: { id: string; isPerfect: boolean; reasons: string[]; accepting: boolean; schwerpunkteOverlap: number }[] = [];
     for (const t of therapists) {
       if (t.accepting_new === false) continue;
       const tMeta = (t.metadata || {}) as Record<string, unknown>;
       const hideFromDir = tMeta['hide_from_directory'] === true;
       if (hideFromDir) continue;
 
-      const tRow: TherapistRowForMatch = { id: t.id, gender: t.gender || undefined, city: t.city || undefined, session_preferences: t.session_preferences, modalities: t.modalities };
+      const tRow: TherapistRowForMatch = { id: t.id, gender: t.gender || undefined, city: t.city || undefined, session_preferences: t.session_preferences, modalities: t.modalities, schwerpunkte: t.schwerpunkte };
       const mm = computeMismatches(pMeta, tRow);
       const timeOk = slotMatchesPreferences(t.id);
       const isPerfect = mm.isPerfect && timeOk;
-      scored.push({ id: t.id, isPerfect, reasons: mm.reasons, accepting: Boolean(t.accepting_new) });
+      scored.push({ id: t.id, isPerfect, reasons: mm.reasons, accepting: Boolean(t.accepting_new), schwerpunkteOverlap: mm.schwerpunkteOverlap });
     }
 
     scored.sort((a, b) => {
       if (a.isPerfect !== b.isPerfect) return a.isPerfect ? -1 : 1;
       if (a.accepting !== b.accepting) return a.accepting ? -1 : 1;
+      // Sort by schwerpunkte overlap (descending - more matches first)
+      if (a.schwerpunkteOverlap !== b.schwerpunkteOverlap) return b.schwerpunkteOverlap - a.schwerpunkteOverlap;
       return a.reasons.length - b.reasons.length;
     });
     const chosenScored = scored.slice(0, 2);
