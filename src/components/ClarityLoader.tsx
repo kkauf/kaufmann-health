@@ -11,7 +11,7 @@ declare global {
 
 /**
  * Controls Clarity recording based on current route.
- * Script is loaded early in layout.tsx via beforeInteractive.
+ * Script is loaded in layout.tsx with afterInteractive + delay.
  * This component stops recording on sensitive pages (/admin/*, /match/*).
  * /matches/* (patient flow) is intentionally tracked.
  */
@@ -19,18 +19,26 @@ export default function ClarityLoader() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.clarity) return;
-
     // Stop Clarity on admin pages and therapist acceptance flow (/match/[uuid])
     // Note: /matches/* (patient flow) is intentionally tracked
     const isExcluded = pathname?.startsWith('/admin') || 
       (pathname?.startsWith('/match/') && !pathname?.startsWith('/matches/'));
 
-    if (isExcluded) {
-      window.clarity('stop');
-    } else {
-      // Resume if navigating back to a tracked page
-      window.clarity('start');
+    const applyClarity = () => {
+      if (typeof window === 'undefined' || !window.clarity) return false;
+      
+      if (isExcluded) {
+        window.clarity('stop');
+      } else {
+        window.clarity('start');
+      }
+      return true;
+    };
+
+    // Try immediately, then retry after Clarity loads (1.5s to account for init delay)
+    if (!applyClarity()) {
+      const timer = setTimeout(applyClarity, 1500);
+      return () => clearTimeout(timer);
     }
   }, [pathname]);
 
