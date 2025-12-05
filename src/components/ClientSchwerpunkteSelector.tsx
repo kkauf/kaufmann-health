@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Heart, Activity, UsersRound, Compass, ChevronDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   META_CATEGORIES,
   getCategoriesByMeta,
+  getSchwerpunktById,
   CLIENT_SCHWERPUNKTE_MAX,
   type MetaCategory,
 } from '@/lib/schwerpunkte';
@@ -16,6 +17,9 @@ const ICON_MAP = {
   UsersRound,
   Compass,
 } as const;
+
+// Tooltip auto-dismiss duration in ms
+const TOOLTIP_DURATION = 3000;
 
 interface ClientSchwerpunkteSelectorProps {
   selected: string[];
@@ -32,6 +36,26 @@ export function ClientSchwerpunkteSelector({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     new Set([META_CATEGORIES[0].id])
   );
+  
+  // Track which tooltip is visible (category id) - for click/tap
+  const [clickedTooltip, setClickedTooltip] = useState<string | null>(null);
+  // Track hover state separately for desktop
+  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+  const tooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Auto-dismiss clicked tooltip after duration (but not if hovering)
+  useEffect(() => {
+    if (clickedTooltip && clickedTooltip !== hoveredCategory) {
+      tooltipTimerRef.current = setTimeout(() => {
+        setClickedTooltip(null);
+      }, TOOLTIP_DURATION);
+    }
+    return () => {
+      if (tooltipTimerRef.current) {
+        clearTimeout(tooltipTimerRef.current);
+      }
+    };
+  }, [clickedTooltip, hoveredCategory]);
 
   const toggleGroup = useCallback((groupId: string) => {
     setExpandedGroups((prev) => {
@@ -50,12 +74,23 @@ export function ClientSchwerpunkteSelector({
       const isSelected = selected.includes(categoryId);
       if (isSelected) {
         onChange(selected.filter((id) => id !== categoryId));
+        setClickedTooltip(null); // Hide tooltip on deselection
       } else if (selected.length < maxSelections) {
         onChange([...selected, categoryId]);
+        setClickedTooltip(categoryId); // Show tooltip on selection
       }
     },
     [selected, onChange, maxSelections]
   );
+  
+  // Hover handlers for desktop
+  const handleMouseEnter = useCallback((categoryId: string) => {
+    setHoveredCategory(categoryId);
+  }, []);
+  
+  const handleMouseLeave = useCallback(() => {
+    setHoveredCategory(null);
+  }, []);
 
   const atMax = selected.length >= maxSelections;
 
@@ -102,6 +137,8 @@ export function ClientSchwerpunkteSelector({
             selected={selected}
             onSelectCategory={toggleCategory}
             atMax={atMax}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
           />
         ))}
       </div>
@@ -112,6 +149,30 @@ export function ClientSchwerpunkteSelector({
           Maximum erreicht – tippe auf ein Thema, um es zu entfernen
         </p>
       )}
+
+      {/* Snackbar tooltip - shows keywords for hovered/clicked category */}
+      {(() => {
+        const activeId = hoveredCategory || clickedTooltip;
+        const category = activeId ? getSchwerpunktById(activeId) : null;
+        if (!category || !category.keywords.length) return null;
+        
+        return (
+          <div 
+            className={cn(
+              'fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md',
+              'bg-gray-900 text-white text-sm rounded-xl px-4 py-3',
+              'shadow-2xl',
+              'animate-in fade-in slide-in-from-bottom-4 duration-200',
+              'pointer-events-none'
+            )}
+          >
+            <p className="font-medium text-gray-300 text-xs mb-1">{category.label}</p>
+            <p className="leading-relaxed text-gray-100">
+              {category.keywords.join(' · ')}
+            </p>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -123,6 +184,8 @@ interface AccordionGroupProps {
   selected: string[];
   onSelectCategory: (id: string) => void;
   atMax: boolean;
+  onMouseEnter: (id: string) => void;
+  onMouseLeave: () => void;
 }
 
 function AccordionGroup({
@@ -132,6 +195,8 @@ function AccordionGroup({
   selected,
   onSelectCategory,
   atMax,
+  onMouseEnter,
+  onMouseLeave,
 }: AccordionGroupProps) {
   const Icon = ICON_MAP[meta.icon];
   const categories = getCategoriesByMeta(meta.id);
@@ -197,13 +262,17 @@ function AccordionGroup({
         )}
       >
         <div className="overflow-hidden">
-          <div className="p-3 pt-0 flex flex-wrap gap-2">
+          <div className="p-3 pt-1 pb-4 flex flex-wrap gap-2 bg-white">
             {categories.map((category) => {
               const isSelected = selected.includes(category.id);
               const isDisabled = atMax && !isSelected;
 
               return (
-                <div key={category.id} className="flex flex-col gap-1">
+                <div 
+                  key={category.id}
+                  onMouseEnter={() => onMouseEnter(category.id)}
+                  onMouseLeave={onMouseLeave}
+                >
                   <button
                     type="button"
                     onClick={() => onSelectCategory(category.id)}
@@ -228,12 +297,6 @@ function AccordionGroup({
                     {isSelected && <Check className="h-4 w-4" />}
                     {category.label}
                   </button>
-                  {/* Show keywords when selected */}
-                  {isSelected && category.keywords.length > 0 && (
-                    <p className="text-xs text-gray-500 pl-4 pb-1">
-                      z.B. {category.keywords.slice(0, 3).join(', ')}
-                    </p>
-                  )}
                 </div>
               );
             })}
