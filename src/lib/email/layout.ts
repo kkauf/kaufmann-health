@@ -1,8 +1,24 @@
 import { BASE_URL } from '@/lib/constants';
 
 export function renderButton(href: string, label: string) {
+  // Use table-based button for maximum email client compatibility (incl. Yahoo Mail iOS, Outlook)
+  // VML fallback provides rounded corners in Outlook Windows
   return `
-    <a href="${href}" role="button" style="display:block; width:100%; box-sizing:border-box; background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; color:#ffffff !important; padding:16px 24px; border-radius:12px; text-decoration:none; font-weight:700; text-align:center; font-size:17px; line-height:1.3; border:none; box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.25);">${label}</a>
+    <!--[if mso]>
+    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(href)}" style="height:52px;v-text-anchor:middle;width:100%;" arcsize="23%" strokecolor="#059669" fillcolor="#10b981">
+    <w:anchorlock/>
+    <center style="color:#ffffff;font-family:sans-serif;font-size:17px;font-weight:bold;">${escapeHtml(label)}</center>
+    </v:roundrect>
+    <![endif]-->
+    <!--[if !mso]><!-->
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">
+      <tr>
+        <td align="center" style="background-color:#10b981; border-radius:12px; padding:0;">
+          <a href="${escapeHtml(href)}" target="_blank" style="display:inline-block; width:100%; padding:16px 24px; box-sizing:border-box; background-color:#10b981; color:#ffffff; text-decoration:none; font-weight:700; text-align:center; font-size:17px; line-height:1.3; border-radius:12px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">${escapeHtml(label)}</a>
+        </td>
+      </tr>
+    </table>
+    <!--<![endif]-->
   `;
 }
 
