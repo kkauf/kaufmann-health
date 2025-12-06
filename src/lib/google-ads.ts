@@ -348,6 +348,7 @@ export class GoogleAdsTracker {
       const partial = getObject(raw, 'partialFailureError');
 
       if (partial) {
+        // Log failure and skip success event to avoid double-counting in diagnostics
         await track({
           type: 'google_ads_partial_failure',
           source: 'google_ads',
@@ -362,19 +363,20 @@ export class GoogleAdsTracker {
             })(),
           },
         });
+      } else {
+        // Only log success when there was no partial failure
+        await track({
+          type: 'google_ads_uploaded',
+          source: 'google_ads',
+          level: 'info',
+          props: {
+            count: conversions.length,
+            received,
+            actions,
+            order_ids: orderIds,
+          },
+        });
       }
-
-      await track({
-        type: 'google_ads_uploaded',
-        source: 'google_ads',
-        level: 'info',
-        props: {
-          count: conversions.length,
-          received,
-          actions,
-          order_ids: orderIds,
-        },
-      });
     } catch (e) {
       await logError('google_ads', e, { stage: 'upload_enhanced_conversions' ,
         actions: (conversions || []).map((c) => c.conversion_action),
