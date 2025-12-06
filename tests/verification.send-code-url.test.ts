@@ -25,6 +25,11 @@ vi.mock('@/lib/verification/config', () => ({
   getVerificationMode: vi.fn().mockReturnValue('email'),
 }));
 
+// Helper to decode HTML entities in URLs extracted from email HTML
+function decodeHtmlEntities(str: string): string {
+  return str.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+}
+
 describe('EARTH-204: send-code URL generation (the actual bug)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -76,7 +81,7 @@ describe('EARTH-204: send-code URL generation (the actual bug)', () => {
     const hrefMatch = htmlContent.match(/href="([^"]+)"/);
     expect(hrefMatch).toBeTruthy();
     
-    const confirmUrl = hrefMatch![1];
+    const confirmUrl = decodeHtmlEntities(hrefMatch![1]);
     const url = new URL(confirmUrl);
 
     // THIS IS THE CRITICAL TEST: Both token AND id must be present
@@ -151,7 +156,7 @@ describe('EARTH-204: send-code URL generation (the actual bug)', () => {
     const hrefMatch = htmlContent.match(/href="([^"]+)"/);
     expect(hrefMatch).toBeTruthy();
     
-    const confirmUrl = hrefMatch![1];
+    const confirmUrl = decodeHtmlEntities(hrefMatch![1]);
     const url = new URL(confirmUrl);
 
     // Both must be present
@@ -299,7 +304,7 @@ describe('EARTH-204: send-code URL generation (the actual bug)', () => {
     const htmlContent = emailCall.html as string;
 
     const hrefMatch = htmlContent.match(/href="([^"]+)"/);
-    const confirmUrl = hrefMatch![1];
+    const confirmUrl = decodeHtmlEntities(hrefMatch![1]);
     const url = new URL(confirmUrl);
 
     // Should use the provided lead_id
