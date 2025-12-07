@@ -126,4 +126,26 @@ jobs:
 
       - name: Run Playwright E2E tests against staging
         run: npm run test:e2e
+        continue-on-error: true
+        id: e2e
 
+      - name: Upload E2E test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+      - name: Fail if E2E tests failed
+        if: steps.e2e.outcome == 'failure'
+        run: |
+          echo "## E2E Test Failures" >> $GITHUB_STEP_SUMMARY
+          if [ -f test-results/results.json ]; then
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat test-results/results.json | jq '.suites[].specs[] | select(.ok == false) | {title: .title, file: .file}' >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+          exit 1

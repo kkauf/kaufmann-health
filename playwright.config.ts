@@ -21,7 +21,12 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
-  reporter: [['list']],
+  // Reporters: list for console, html for detailed report, json for CI parsing
+  reporter: process.env.CI 
+    ? [['list'], ['json', { outputFile: 'test-results/results.json' }], ['html', { open: 'never' }]]
+    : [['list']],
+  // Don't stop on first failure - run all tests and report summary
+  retries: 0,
   use: {
     baseURL: base,
     // Pass Vercel bypass header if secret is configured (for protected staging/preview deployments)
