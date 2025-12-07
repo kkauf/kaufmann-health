@@ -58,3 +58,5 @@ next-env.d.ts
 
 # signature
 signature.html
+# Playwright auth state
+tests/e2e/.auth/

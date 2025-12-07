@@ -1106,6 +1106,7 @@ export default function SignupWizard() {
         additional_info: data.additional_info,
         modality_matters: data.modality_matters,
         methods: data.methods || [],
+        schwerpunkte: data.schwerpunkte || [],
         city: data.city,
         session_preference: sessionPref,
         gender: data.gender,

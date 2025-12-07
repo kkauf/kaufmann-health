@@ -28,9 +28,13 @@ export default defineConfig({
     ...(bypassSecret ? {
       extraHTTPHeaders: {
         'x-vercel-protection-bypass': bypassSecret,
+        'x-vercel-set-bypass-cookie': bypassSecret,
       },
+      storageState: './tests/e2e/.auth/vercel-bypass.json',
     } : {}),
   },
+  // Global setup to inject Vercel bypass cookie before tests run
+  ...(bypassSecret ? { globalSetup: './tests/e2e/global-setup.ts' } : {}),
   webServer: {
     // Allow override, but default to the normal dev command
     command: process.env.E2E_WEB_COMMAND || 'npm run dev',

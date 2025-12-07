@@ -56,15 +56,16 @@ async function createInstantMatchesForPatient(patientId: string, variant?: strin
     const session_preference = typeof meta['session_preference'] === 'string' ? (meta['session_preference'] as string) as 'online' | 'in_person' : undefined;
     const session_preferences = Array.isArray(meta['session_preferences']) ? (meta['session_preferences'] as ('online' | 'in_person')[]) : undefined;
     const specializations = Array.isArray(meta['specializations']) ? (meta['specializations'] as string[]) : undefined;
+    const schwerpunkteFromMeta = Array.isArray(meta['schwerpunkte']) ? (meta['schwerpunkte'] as string[]) : undefined;
     const gender_preference = typeof meta['gender_preference'] === 'string' ? (meta['gender_preference'] as 'male' | 'female' | 'no_preference') : undefined;
     const time_slots = Array.isArray(meta['time_slots']) ? (meta['time_slots'] as string[]) : [];
-    const pMeta: PatientMeta = { city, session_preference, session_preferences, specializations, gender_preference };
+    const pMeta: PatientMeta = { city, session_preference, session_preferences, specializations, schwerpunkte: schwerpunkteFromMeta, gender_preference };
 
     // Fetch all verified therapists
-    type TR = { id: string; gender?: string | null; city?: string | null; session_preferences?: unknown; modalities?: unknown; accepting_new?: boolean | null; metadata?: Record<string, unknown> | null };
+    type TR = { id: string; gender?: string | null; city?: string | null; session_preferences?: unknown; modalities?: unknown; schwerpunkte?: unknown; accepting_new?: boolean | null; metadata?: Record<string, unknown> | null };
     const { data: trows } = await supabaseServer
       .from('therapists')
-      .select('id, gender, city, session_preferences, modalities, accepting_new, metadata')
+      .select('id, gender, city, session_preferences, modalities, schwerpunkte, accepting_new, metadata')
       .eq('status', 'verified')
       .limit(1000);
     const therapists = Array.isArray(trows) ? (trows as TR[]) : [];
@@ -131,6 +132,7 @@ async function createInstantMatchesForPatient(patientId: string, variant?: strin
         city: t.city ?? undefined,
         session_preferences: Array.isArray(t.session_preferences) ? (t.session_preferences as ('online' | 'in_person')[]) : [],
         modalities: Array.isArray(t.modalities) ? (t.modalities as string[]) : [],
+        schwerpunkte: Array.isArray(t.schwerpunkte) ? (t.schwerpunkte as string[]) : [],
       };
       const result = computeMismatches(pMeta, tRow);
       const hasSlots = slotMatchesPreferences(t.id);
@@ -255,6 +257,7 @@ export async function POST(req: Request) {
       additional_info,
       modality_matters,
       methods,
+      schwerpunkte,
       city,
       session_preference,
       gender,
@@ -310,6 +313,7 @@ export async function POST(req: Request) {
       additional_info,
       modality_matters,
       methods: methods || [],
+      schwerpunkte: schwerpunkte || [],
       city,
       session_preference,
       gender_preference: normalizedGender,
