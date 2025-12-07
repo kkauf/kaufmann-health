@@ -58,7 +58,7 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
   async function completeQuestionnaire(page: Page) {
     // Step 1: Timeline
     await page.getByRole('button', { name: 'Innerhalb des nächsten Monats' }).click();
-    await expect(page.getByText('Was bringt dich zur Therapie?')).toBeVisible();
+    await expect(page.getByText(/Was bringt dich zur Therapie/i)).toBeVisible();
 
     // Step 2: Topic (skip)
     await page.getByRole('button', { name: 'Überspringen' }).click();

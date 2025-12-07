@@ -25,7 +25,7 @@ test.describe('Booking Submission + Verification (EARTH-233)', () => {
     // Step 1: Timeline
     await page.getByRole('button', { name: 'Innerhalb der nächsten Woche' }).click();
     // Wait for step 2 to be visible
-    await expect(page.getByText('Was bringt dich zur Therapie?')).toBeVisible();
+    await expect(page.getByText(/Was bringt dich zur Therapie/i)).toBeVisible();
     // Step 2: continue
     await page.getByRole('button', { name: 'Weiter →' }).click();
     // Wait for step 3 header (Therapiemethode)
@@ -57,7 +57,7 @@ test.describe('Booking Submission + Verification (EARTH-233)', () => {
 
     await page.goto('/fragebogen');
     await page.getByRole('button', { name: 'Innerhalb der nächsten Woche' }).click();
-    await expect(page.getByText('Was bringt dich zur Therapie?')).toBeVisible();
+    await expect(page.getByText(/Was bringt dich zur Therapie/i)).toBeVisible();
     await page.getByRole('button', { name: 'Weiter →' }).click();
     await expect(page.getByText(/Therapiemethode/i)).toBeVisible();
     await page.getByRole('button', { name: 'Nein' }).click();
