@@ -136,6 +136,8 @@ type StatsData = {
       preferredGender: Array<{ option: string; count: number }>;
       wantsInPerson: Array<{ option: string; count: number }>;
     };
+    /** Actionable demand signals - specific therapist needs */
+    demandSignals?: Array<{ signal: string; count: number }>;
   };
   communicationFunnel?: {
     emailConfirmation: {
@@ -1063,22 +1065,44 @@ export default function AdminStats() {
       {data?.opportunities && (
         <Card>
           <CardHeader>
-            <CardTitle>Business Opportunities</CardTitle>
-            <CardDescription>Signals from mismatches and supply gaps in the selected window</CardDescription>
+            <CardTitle>🎯 Recruiting Priorities</CardTitle>
+            <CardDescription>Actionable demand signals - what therapists we need to recruit</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-sm text-muted-foreground">Filter</div>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={modalityOnly}
-                  onChange={(e) => setModalityOnly(e.target.checked)}
-                />
-                Only show insights where modality matters
-              </label>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            {/* Demand Signals - Most Important, shown first */}
+            {data.opportunities.demandSignals && data.opportunities.demandSignals.length > 0 && (
+              <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="text-sm font-semibold text-amber-800 mb-3">🔥 Unmet Demand ({data.opportunities.demandSignals.reduce((sum, d) => sum + d.count, 0)} requests)</div>
+                <div className="space-y-2">
+                  {data.opportunities.demandSignals.slice(0, 10).map((d, i) => (
+                    <div key={`${d.signal}-${i}`} className="flex items-center justify-between">
+                      <span className="text-sm text-amber-900">{d.signal || '(unbekannt)'}</span>
+                      <span className="text-sm font-semibold text-amber-700 tabular-nums bg-amber-100 px-2 py-0.5 rounded">{d.count}×</span>
+                    </div>
+                  ))}
+                </div>
+                {data.opportunities.demandSignals.length > 10 && (
+                  <div className="text-xs text-amber-600 mt-2">+ {data.opportunities.demandSignals.length - 10} weitere...</div>
+                )}
+              </div>
+            )}
+
+            {/* Legacy insights - collapsed by default */}
+            <details className="mb-4">
+              <summary className="cursor-pointer text-sm text-muted-foreground">Details: Supply Gap Analysis</summary>
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="text-sm text-muted-foreground">Filter</div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={modalityOnly}
+                      onChange={(e) => setModalityOnly(e.target.checked)}
+                    />
+                    Only show insights where modality matters
+                  </label>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="p-3 border rounded-md">
                 <div className="text-sm text-muted-foreground">Gender</div>
                 <div className="text-2xl font-semibold tabular-nums">{data.opportunities.byReason.gender}</div>
@@ -1202,6 +1226,8 @@ export default function AdminStats() {
                 )}
               </div>
             </div>
+              </div>
+            </details>
           </CardContent>
         </Card>
       )}

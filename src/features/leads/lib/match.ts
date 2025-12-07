@@ -240,6 +240,117 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
         if (i === 0) secureUuid = (row as { secure_uuid?: string | null } | null)?.secure_uuid || secureUuid;
       }
     }
+
+    // Business opportunity tracking - log supply gaps for analytics
+    try {
+      const { track } = await import('@/lib/logger');
+      const wantsInPerson = Boolean(
+        (Array.isArray(session_preferences) && session_preferences.includes('in_person')) ||
+        session_preference === 'in_person'
+      );
+
+      // Gather mismatch reasons from chosen therapists
+      const uniqueReasons = new Set<string>();
+      for (const s of chosenScored) {
+        for (const reason of s.reasons) uniqueReasons.add(reason);
+      }
+      const reasonsArr = Array.from(uniqueReasons).filter(r => r === 'gender' || r === 'location' || r === 'modality');
+
+      // Calculate slot availability for chosen therapists
+      let total_in_person_slots = 0;
+      let total_online_slots = 0;
+      for (const s of chosenScored) {
+        const rows = slotsByTid.get(s.id) || [];
+        for (const row of rows) {
+          const fmt = String(row.format || '').trim();
+          if (fmt === 'in_person' || fmt === 'both') total_in_person_slots++;
+          if (fmt === 'online' || fmt === 'both') total_online_slots++;
+        }
+      }
+
+      // Analyze supply gaps
+      const topTherapists = therapists.filter(t => chosen.includes(t.id));
+      const topGenders = Array.from(new Set(topTherapists.map(t => String(t.gender || '').toLowerCase()).filter(Boolean)));
+      const topModalitiesRaw: string[] = Array.from(new Set(topTherapists.flatMap(t => Array.isArray(t.modalities) ? (t.modalities as string[]) : []))).filter(Boolean);
+      const topModalities = Array.from(new Set(topModalitiesRaw.map(m => normalizeSpec(String(m)))));
+      const wantedSpecs = Array.isArray(specializations) ? specializations.map(s => normalizeSpec(String(s))) : [];
+      const hasGenderPref = gender_preference === 'male' || gender_preference === 'female';
+      const preferredGender = hasGenderPref ? String(gender_preference) : undefined;
+      const missingPreferredGender = Boolean(hasGenderPref && preferredGender && !topGenders.includes(preferredGender));
+      const missingRequestedModalities = wantedSpecs.filter(w => !topModalities.includes(w));
+
+      const insights: string[] = [];
+      if (wantsInPerson && total_in_person_slots === 0) insights.push('in_person_supply_gap');
+      if (missingPreferredGender) insights.push('gender_supply_gap');
+      if (missingRequestedModalities.length > 0) insights.push('modality_supply_gap');
+      if (missingPreferredGender && missingRequestedModalities.length > 0) insights.push('combo_gender_modality_gap');
+      if (missingPreferredGender && wantsInPerson && total_in_person_slots === 0) insights.push('combo_gender_in_person_gap');
+
+      // Check for schwerpunkte gaps
+      const wantedSchwerpunkte = schwerpunkte || [];
+      const topSchwerpunkteRaw: string[] = Array.from(new Set(topTherapists.flatMap(t => Array.isArray(t.schwerpunkte) ? (t.schwerpunkte as string[]) : []))).filter(Boolean);
+      const missingSchwerpunkte = wantedSchwerpunkte.filter(s => !topSchwerpunkteRaw.includes(s));
+      if (missingSchwerpunkte.length > 0) insights.push('schwerpunkte_supply_gap');
+
+      // Generate actionable demand signals for recruiting
+      const demandSignals: string[] = [];
+      const locationPart = city ? ` in ${city}` : '';
+      const formatPart = wantsInPerson && total_in_person_slots === 0 ? ' (vor Ort)' : '';
+      const genderPart = missingPreferredGender && preferredGender ? (preferredGender === 'male' ? 'männlichen ' : 'weibliche ') : '';
+      
+      // Generate specific demand signals for each missing combination
+      if (missingRequestedModalities.length > 0) {
+        for (const mod of missingRequestedModalities) {
+          demandSignals.push(`${genderPart}${mod}-Therapeut:in${formatPart}${locationPart}`);
+        }
+      }
+      if (missingSchwerpunkte.length > 0) {
+        for (const sp of missingSchwerpunkte) {
+          demandSignals.push(`Spezialist:in für ${sp}${formatPart}${locationPart}`);
+        }
+      }
+      // Gender-only demand
+      if (missingPreferredGender && missingRequestedModalities.length === 0 && missingSchwerpunkte.length === 0) {
+        demandSignals.push(`${genderPart}Therapeut:in${formatPart}${locationPart}`);
+      }
+      // In-person-only demand
+      if (wantsInPerson && total_in_person_slots === 0 && !missingPreferredGender && missingRequestedModalities.length === 0 && missingSchwerpunkte.length === 0) {
+        demandSignals.push(`Therapeut:in vor Ort${locationPart}`);
+      }
+
+      // Insert business opportunities
+      if (reasonsArr.length > 0) {
+        const rows = reasonsArr.map((r) => ({ patient_id: patientId, mismatch_type: r as 'gender' | 'location' | 'modality', city: city || null }));
+        await supabaseServer.from('business_opportunities').insert(rows).select('id').limit(1).maybeSingle();
+      }
+
+      // Log tracking event with actionable demand signals
+      if (reasonsArr.length > 0 || insights.length > 0 || demandSignals.length > 0) {
+        void track({
+          type: 'business_opportunity_logged',
+          source: 'match.createInstantMatchesForPatient',
+          props: {
+            patient_id: patientId,
+            reasons: reasonsArr,
+            insights,
+            demand_signals: demandSignals,
+            details: {
+              wants_in_person: wantsInPerson,
+              total_in_person_slots,
+              total_online_slots,
+              preferred_gender: preferredGender || null,
+              top_genders: topGenders,
+              top_modalities: topModalities,
+              missing_requested_modalities: missingRequestedModalities,
+              missing_schwerpunkte: missingSchwerpunkte,
+              wanted_schwerpunkte: wantedSchwerpunkte,
+              city: city || null,
+            },
+          },
+        });
+      }
+    } catch { /* Tracking failure should not break matching */ }
+
     return secureUuid ? { matchesUrl: `/matches/${encodeURIComponent(String(secureUuid))}`, matchQuality } : null;
   } catch {
     return null;
