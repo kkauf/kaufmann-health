@@ -21,6 +21,7 @@ import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSessio
 import { logError, track } from '@/lib/logger';
 import { sendTransactionalSms } from '@/lib/sms/client';
 import { BASE_URL } from '@/lib/constants';
+import { createShortLinkOrFallback } from '@/lib/short-links';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -255,7 +256,15 @@ export async function GET(req: Request) {
         continue;
       }
 
-      const matchesUrl = `${BASE_URL}/matches/${secureUuid}`;
+      // Create short link for cleaner SMS
+      const fullMatchesUrl = `${BASE_URL}/matches/${secureUuid}`;
+      const matchesUrl = await createShortLinkOrFallback({
+        targetUrl: fullMatchesUrl,
+        utmSource: 'sms',
+        utmMedium: 'transactional',
+        utmCampaign: `sms_cadence_${stage}`,
+        patientId: patient.id,
+      });
       const smsBody = config.smsTemplate(matchesUrl);
 
       if (dryRun) {

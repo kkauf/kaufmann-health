@@ -594,6 +594,49 @@ type StatsResponse = {
       wantsInPerson: Array<{ option: string; count: number }>;
     };
   };
+  communicationFunnel?: {
+    emailConfirmation: {
+      initialSent: number;
+      reminder24hSent: number;
+      reminder72hSent: number;
+      confirmed: number;
+      avgTimeToConfirmHours: number | null;
+      avgRemindersBeforeConfirm: number | null;
+      confirmationRate: number;
+    };
+    smsConfirmation: {
+      initialSent: number;
+      verified: number;
+      avgTimeToVerifyHours: number | null;
+      verificationRate: number;
+    };
+    postVerificationEmail: {
+      day1: { sent: number; clicked: number; clickRate: number };
+      day5: { sent: number; clicked: number; clickRate: number };
+      day10: { sent: number; clicked: number; clickRate: number };
+    };
+    postVerificationSms: {
+      day2: { sent: number; clicked: number; clickRate: number };
+      day5: { sent: number; clicked: number; clickRate: number };
+      day10: { sent: number }; // no link on day10
+    };
+    engagementByChannel: {
+      email: {
+        matchPageView: number;
+        profileOpened: number;
+        contactCtaClicked: number;
+        bookingSlotSelected: number;
+        messageSent: number;
+      };
+      sms: {
+        matchPageView: number;
+        profileOpened: number;
+        contactCtaClicked: number;
+        bookingSlotSelected: number;
+        messageSent: number;
+      };
+    };
+  };
 };
 
 export async function GET(req: Request) {
@@ -1780,6 +1823,309 @@ export async function GET(req: Request) {
       await logError('admin.api.stats', e, { stage: 'opportunities' });
     }
 
+    // === COMMUNICATION FUNNEL (Email & SMS Journey Analytics) ===
+    let communicationFunnel: StatsResponse['communicationFunnel'] = undefined;
+    try {
+      // Fetch all email/sms events for the window
+      const { data: commEvents } = await supabaseServer
+        .from('events')
+        .select('type, properties, created_at')
+        .in('type', ['email_sent', 'email_attempted', 'sms_sent', 'verification_code_sent', 'page_view', 'match_page_view', 'short_link_clicked', 'profile_modal_opened', 'contact_cta_clicked', 'booking_slot_selected', 'contact_message_sent'])
+        .gte('created_at', sinceIso)
+        .limit(50000);
+
+      // Fetch people data to correlate contact_method with engagement
+      const { data: peopleForComm } = await supabaseServer
+        .from('people')
+        .select('id, email, phone_number, status, created_at, metadata')
+        .eq('type', 'patient')
+        .or('metadata->>is_test.is.null,metadata->>is_test.eq.false')
+        .gte('created_at', sinceIso)
+        .limit(50000);
+
+      type CommEvent = { type?: string; properties?: Record<string, unknown>; created_at?: string };
+      type PersonComm = { id: string; email?: string | null; phone_number?: string | null; status?: string | null; created_at?: string | null; metadata?: Record<string, unknown> | null };
+      
+      const events = (commEvents || []) as CommEvent[];
+      const people = (peopleForComm || []) as PersonComm[];
+
+      // Build patient_id -> contact_method map from people
+      const patientContactMethod = new Map<string, 'email' | 'phone' | 'unknown'>();
+      const patientConfirmTimes = new Map<string, number>(); // patient_id -> ms to confirm
+      const _patientReminderCounts = new Map<string, number>(); // patient_id -> # reminders before confirm (reserved for future use)
+      const patientVerifyTimes = new Map<string, number>(); // patient_id -> ms to verify (SMS)
+
+      for (const p of people) {
+        const meta = (p.metadata || {}) as Record<string, unknown>;
+        const cmRaw = String((meta['contact_method'] as string | undefined) || '').toLowerCase();
+        const hasEmail = !!(p.email && !p.email.startsWith('temp_'));
+        const hasPhone = !!p.phone_number;
+        
+        let cm: 'email' | 'phone' | 'unknown' = 'unknown';
+        if (cmRaw === 'email' || (hasEmail && !hasPhone)) cm = 'email';
+        else if (cmRaw === 'phone' || (hasPhone && !hasEmail)) cm = 'phone';
+        else if (hasEmail) cm = 'email'; // default to email if both
+        
+        patientContactMethod.set(p.id, cm);
+
+        // Calculate time to confirm for email users
+        if (cm === 'email' && meta['email_confirmed_at'] && p.created_at) {
+          const confirmedAt = new Date(meta['email_confirmed_at'] as string).getTime();
+          const createdAt = new Date(p.created_at).getTime();
+          if (!Number.isNaN(confirmedAt) && !Number.isNaN(createdAt) && confirmedAt > createdAt) {
+            patientConfirmTimes.set(p.id, confirmedAt - createdAt);
+          }
+        }
+
+        // Calculate time to verify for phone users
+        if (cm === 'phone' && meta['phone_verified'] === true && meta['phone_verified_at'] && p.created_at) {
+          const verifiedAt = new Date(meta['phone_verified_at'] as string).getTime();
+          const createdAt = new Date(p.created_at).getTime();
+          if (!Number.isNaN(verifiedAt) && !Number.isNaN(createdAt) && verifiedAt > createdAt) {
+            patientVerifyTimes.set(p.id, verifiedAt - createdAt);
+          }
+        }
+      }
+
+      // Initialize counters
+      const emailConf = { initialSent: 0, reminder24hSent: 0, reminder72hSent: 0, confirmed: 0 };
+      const smsConf = { initialSent: 0, verified: 0 };
+      const postEmail = {
+        day1: { sent: 0, clicked: new Set<string>() },
+        day5: { sent: 0, clicked: new Set<string>() },
+        day10: { sent: 0, clicked: new Set<string>() },
+      };
+      const postSms = {
+        day2: { sent: 0, clicked: new Set<string>() },
+        day5: { sent: 0, clicked: new Set<string>() },
+        day10: { sent: 0 },
+      };
+      const engagementEmail = { matchPageView: new Set<string>(), profileOpened: new Set<string>(), contactCtaClicked: new Set<string>(), bookingSlotSelected: new Set<string>(), messageSent: new Set<string>() };
+      const engagementSms = { matchPageView: new Set<string>(), profileOpened: new Set<string>(), contactCtaClicked: new Set<string>(), bookingSlotSelected: new Set<string>(), messageSent: new Set<string>() };
+
+      // Track which patients received which reminders (for avg calculation)
+      const remindersByPatient = new Map<string, Set<string>>();
+
+      for (const ev of events) {
+        const t = String(ev.type || '').toLowerCase();
+        const props = (ev.properties || {}) as Record<string, unknown>;
+        if (isTestEvent(props)) continue;
+
+        const patientId = String((props['patient_id'] as string | undefined) || (props['lead_id'] as string | undefined) || '').trim();
+        const kind = String((props['kind'] as string | undefined) || '').toLowerCase();
+        const stage = String((props['stage'] as string | undefined) || '').toLowerCase();
+        const template = String((props['template'] as string | undefined) || '').toLowerCase();
+
+        // Email confirmation tracking
+        if (t === 'email_sent' && template === 'email_confirmation') {
+          // Initial confirmation: stage='email_confirmation' or stage='email_confirmation_resend'
+          // 24h reminder: stage='patient_confirmation_reminder_24h'
+          // 72h reminder: stage='patient_confirmation_reminder_72h'
+          if (stage === 'patient_confirmation_reminder_24h') {
+            emailConf.reminder24hSent++;
+            if (patientId) {
+              if (!remindersByPatient.has(patientId)) remindersByPatient.set(patientId, new Set());
+              remindersByPatient.get(patientId)!.add('24h');
+            }
+          } else if (stage === 'patient_confirmation_reminder_72h') {
+            emailConf.reminder72hSent++;
+            if (patientId) {
+              if (!remindersByPatient.has(patientId)) remindersByPatient.set(patientId, new Set());
+              remindersByPatient.get(patientId)!.add('72h');
+            }
+          } else if (stage === 'email_confirmation' || stage === 'email_confirmation_resend') {
+            emailConf.initialSent++;
+          }
+        }
+
+        // Post-verification email cadence (rich_therapist, selection_nudge, feedback_request)
+        if (t === 'email_sent') {
+          if (kind === 'rich_therapist_d1' || template === 'rich_therapist') postEmail.day1.sent++;
+          if (kind === 'selection_nudge_d5' || template === 'selection_nudge') postEmail.day5.sent++;
+          if (kind === 'feedback_request_d10' || template === 'feedback_request') postEmail.day10.sent++;
+        }
+
+        // SMS tracking
+        if (t === 'sms_sent') {
+          if (kind === 'sms_cadence') {
+            if (stage === 'day2') postSms.day2.sent++;
+            else if (stage === 'day5') postSms.day5.sent++;
+            else if (stage === 'day10') postSms.day10.sent++;
+          }
+        }
+        
+        // Phone verification SMS - tracked as verification_code_sent with contact_type='phone'
+        // Only count events with a valid SID (from api.verification.send-code) to avoid duplicates
+        if (t === 'verification_code_sent') {
+          const contactType = String((props['contact_type'] as string | undefined) || '').toLowerCase();
+          const twilioSid = String((props['sid'] as string | undefined) || '').trim();
+          // Only count if it's a phone verification with a valid Twilio SID (starts with VE)
+          if (contactType === 'phone' && twilioSid && twilioSid.startsWith('VE')) {
+            smsConf.initialSent++;
+          }
+        }
+
+        // Engagement tracking - correlate with patient contact method
+        const sessionId = String((props['session_id'] as string | undefined) || '').trim();
+        const utmCampaign = String((props['utm_campaign'] as string | undefined) || '').toLowerCase();
+        const utmSource = String((props['utm_source'] as string | undefined) || '').toLowerCase();
+        
+        // Track email clicks via UTM campaign parameters on page views
+        if ((t === 'match_page_view' || t === 'page_view') && utmSource === 'email') {
+          const trackingId = patientId || sessionId || 'anon';
+          if (utmCampaign === 'rich_therapist_d1') {
+            postEmail.day1.clicked.add(trackingId);
+          } else if (utmCampaign === 'selection_nudge_d5' || utmCampaign === 'selection_nudge') {
+            postEmail.day5.clicked.add(trackingId);
+          } else if (utmCampaign === 'feedback_request_d10' || utmCampaign === 'feedback_request') {
+            postEmail.day10.clicked.add(trackingId);
+          }
+        }
+        
+        // SMS cadence click tracking (via short_link_clicked events or page views with UTM)
+        if (t === 'short_link_clicked' || ((t === 'match_page_view' || t === 'page_view') && utmSource === 'sms')) {
+          const trackingId = patientId || sessionId || 'anon';
+          if (utmCampaign === 'sms_cadence_day2') {
+            postSms.day2.clicked.add(trackingId);
+          } else if (utmCampaign === 'sms_cadence_day5') {
+            postSms.day5.clicked.add(trackingId);
+          }
+        }
+
+        if (t === 'match_page_view' && pathLikeMatches(props)) {
+          // Try to get patient_id from props or via secure_uuid lookup
+          if (patientId) {
+            const cm = patientContactMethod.get(patientId);
+            if (cm === 'email') engagementEmail.matchPageView.add(patientId);
+            else if (cm === 'phone') engagementSms.matchPageView.add(patientId);
+          } else if (sessionId) {
+            // Fallback: count by session (will be approximate)
+            engagementEmail.matchPageView.add(`sid:${sessionId}`);
+          }
+        }
+        if (t === 'profile_modal_opened' && pathLikeMatches(props)) {
+          if (patientId) {
+            const cm = patientContactMethod.get(patientId);
+            if (cm === 'email') engagementEmail.profileOpened.add(patientId);
+            else if (cm === 'phone') engagementSms.profileOpened.add(patientId);
+          }
+        }
+        if (t === 'contact_cta_clicked' && pathLikeMatches(props)) {
+          if (patientId) {
+            const cm = patientContactMethod.get(patientId);
+            if (cm === 'email') engagementEmail.contactCtaClicked.add(patientId);
+            else if (cm === 'phone') engagementSms.contactCtaClicked.add(patientId);
+          }
+        }
+        if (t === 'booking_slot_selected' && pathLikeMatches(props)) {
+          if (patientId) {
+            const cm = patientContactMethod.get(patientId);
+            if (cm === 'email') engagementEmail.bookingSlotSelected.add(patientId);
+            else if (cm === 'phone') engagementSms.bookingSlotSelected.add(patientId);
+          }
+        }
+        if (t === 'contact_message_sent') {
+          if (patientId) {
+            const cm = patientContactMethod.get(patientId);
+            if (cm === 'email') engagementEmail.messageSent.add(patientId);
+            else if (cm === 'phone') engagementSms.messageSent.add(patientId);
+          }
+        }
+      }
+
+      // Count confirmed patients
+      for (const p of people) {
+        const meta = (p.metadata || {}) as Record<string, unknown>;
+        const cm = patientContactMethod.get(p.id);
+        if (cm === 'email' && (p.status === 'new' || p.status === 'email_confirmed') && meta['email_confirmed_at']) {
+          emailConf.confirmed++;
+        }
+        if (cm === 'phone' && p.status === 'new' && meta['phone_verified'] === true) {
+          smsConf.verified++;
+        }
+      }
+
+      // Calculate averages
+      let avgConfirmHours: number | null = null;
+      if (patientConfirmTimes.size > 0) {
+        const totalMs = Array.from(patientConfirmTimes.values()).reduce((a, b) => a + b, 0);
+        avgConfirmHours = Math.round((totalMs / patientConfirmTimes.size / (1000 * 60 * 60)) * 10) / 10;
+      }
+
+      let avgVerifyHours: number | null = null;
+      if (patientVerifyTimes.size > 0) {
+        const totalMs = Array.from(patientVerifyTimes.values()).reduce((a, b) => a + b, 0);
+        avgVerifyHours = Math.round((totalMs / patientVerifyTimes.size / (1000 * 60 * 60)) * 10) / 10;
+      }
+
+      let avgReminders: number | null = null;
+      // Only count reminders for patients who confirmed
+      const confirmedPatientIds = new Set<string>();
+      for (const p of people) {
+        const meta = (p.metadata || {}) as Record<string, unknown>;
+        const cm = patientContactMethod.get(p.id);
+        if (cm === 'email' && meta['email_confirmed_at']) {
+          confirmedPatientIds.add(p.id);
+        }
+      }
+      if (confirmedPatientIds.size > 0) {
+        let totalReminders = 0;
+        for (const pid of confirmedPatientIds) {
+          const reminders = remindersByPatient.get(pid);
+          totalReminders += reminders ? reminders.size : 0;
+        }
+        avgReminders = Math.round((totalReminders / confirmedPatientIds.size) * 10) / 10;
+      }
+
+      const pctCalc = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 1000) / 10 : 0);
+
+      communicationFunnel = {
+        emailConfirmation: {
+          initialSent: emailConf.initialSent,
+          reminder24hSent: emailConf.reminder24hSent,
+          reminder72hSent: emailConf.reminder72hSent,
+          confirmed: emailConf.confirmed,
+          avgTimeToConfirmHours: avgConfirmHours,
+          avgRemindersBeforeConfirm: avgReminders,
+          confirmationRate: pctCalc(emailConf.confirmed, emailConf.initialSent),
+        },
+        smsConfirmation: {
+          initialSent: smsConf.initialSent,
+          verified: smsConf.verified,
+          avgTimeToVerifyHours: avgVerifyHours,
+          verificationRate: pctCalc(smsConf.verified, smsConf.initialSent),
+        },
+        postVerificationEmail: {
+          day1: { sent: postEmail.day1.sent, clicked: postEmail.day1.clicked.size, clickRate: pctCalc(postEmail.day1.clicked.size, postEmail.day1.sent) },
+          day5: { sent: postEmail.day5.sent, clicked: postEmail.day5.clicked.size, clickRate: pctCalc(postEmail.day5.clicked.size, postEmail.day5.sent) },
+          day10: { sent: postEmail.day10.sent, clicked: postEmail.day10.clicked.size, clickRate: pctCalc(postEmail.day10.clicked.size, postEmail.day10.sent) },
+        },
+        postVerificationSms: {
+          day2: { sent: postSms.day2.sent, clicked: postSms.day2.clicked.size, clickRate: pctCalc(postSms.day2.clicked.size, postSms.day2.sent) },
+          day5: { sent: postSms.day5.sent, clicked: postSms.day5.clicked.size, clickRate: pctCalc(postSms.day5.clicked.size, postSms.day5.sent) },
+          day10: { sent: postSms.day10.sent },
+        },
+        engagementByChannel: {
+          email: {
+            matchPageView: engagementEmail.matchPageView.size,
+            profileOpened: engagementEmail.profileOpened.size,
+            contactCtaClicked: engagementEmail.contactCtaClicked.size,
+            bookingSlotSelected: engagementEmail.bookingSlotSelected.size,
+            messageSent: engagementEmail.messageSent.size,
+          },
+          sms: {
+            matchPageView: engagementSms.matchPageView.size,
+            profileOpened: engagementSms.profileOpened.size,
+            contactCtaClicked: engagementSms.contactCtaClicked.size,
+            bookingSlotSelected: engagementSms.bookingSlotSelected.size,
+            messageSent: engagementSms.messageSent.size,
+          },
+        },
+      };
+    } catch (e) {
+      await logError('admin.api.stats', e, { stage: 'communication_funnel' });
+    }
+
     const data: StatsResponse = {
       totals,
       pageTraffic,
@@ -1794,6 +2140,7 @@ export async function GET(req: Request) {
       wizardSegments: segments,
       funnels,
       opportunities,
+      communicationFunnel,
     };
 
     return NextResponse.json({ data, error: null }, { status: 200 });

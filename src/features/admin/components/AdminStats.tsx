@@ -137,6 +137,49 @@ type StatsData = {
       wantsInPerson: Array<{ option: string; count: number }>;
     };
   };
+  communicationFunnel?: {
+    emailConfirmation: {
+      initialSent: number;
+      reminder24hSent: number;
+      reminder72hSent: number;
+      confirmed: number;
+      avgTimeToConfirmHours: number | null;
+      avgRemindersBeforeConfirm: number | null;
+      confirmationRate: number;
+    };
+    smsConfirmation: {
+      initialSent: number;
+      verified: number;
+      avgTimeToVerifyHours: number | null;
+      verificationRate: number;
+    };
+    postVerificationEmail: {
+      day1: { sent: number; clicked: number; clickRate: number };
+      day5: { sent: number; clicked: number; clickRate: number };
+      day10: { sent: number; clicked: number; clickRate: number };
+    };
+    postVerificationSms: {
+      day2: { sent: number; clicked: number; clickRate: number };
+      day5: { sent: number; clicked: number; clickRate: number };
+      day10: { sent: number };
+    };
+    engagementByChannel: {
+      email: {
+        matchPageView: number;
+        profileOpened: number;
+        contactCtaClicked: number;
+        bookingSlotSelected: number;
+        messageSent: number;
+      };
+      sms: {
+        matchPageView: number;
+        profileOpened: number;
+        contactCtaClicked: number;
+        bookingSlotSelected: number;
+        messageSent: number;
+      };
+    };
+  };
 };
 
 export default function AdminStats() {
@@ -1157,6 +1200,272 @@ export default function AdminStats() {
                     </table>
                   </div>
                 )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Communication Funnel - Email & SMS Journey Analytics */}
+      {data?.communicationFunnel && (
+        <Card>
+          <CardHeader>
+            <CardTitle>📧 Communication Funnel</CardTitle>
+            <CardDescription>
+              Email & SMS journey analytics: confirmation reminders, post-verification nurture emails, and engagement by channel.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-8">
+              {/* Confirmation Journey - Side by Side */}
+              <div>
+                <h4 className="text-sm font-semibold text-muted-foreground mb-4 uppercase tracking-wide">Verification Journey</h4>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Email Confirmation Funnel */}
+                  <div className="p-4 border rounded-lg bg-emerald-50/50">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-lg">✉️</span>
+                      <h5 className="font-medium">Email Confirmation</h5>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center py-2 border-b">
+                        <span className="text-sm text-muted-foreground">Initial Sent</span>
+                        <span className="font-semibold tabular-nums">{data.communicationFunnel.emailConfirmation.initialSent}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b">
+                        <span className="text-sm text-muted-foreground">24h Reminder Sent</span>
+                        <span className="font-semibold tabular-nums">{data.communicationFunnel.emailConfirmation.reminder24hSent}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b">
+                        <span className="text-sm text-muted-foreground">72h Reminder Sent</span>
+                        <span className="font-semibold tabular-nums">{data.communicationFunnel.emailConfirmation.reminder72hSent}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b bg-emerald-100/50 -mx-2 px-2 rounded">
+                        <span className="text-sm font-medium text-emerald-700">Confirmed ✓</span>
+                        <span className="font-bold tabular-nums text-emerald-700">{data.communicationFunnel.emailConfirmation.confirmed}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 pt-2 text-xs">
+                        <div>
+                          <div className="text-muted-foreground">Confirmation Rate</div>
+                          <div className="text-lg font-semibold tabular-nums">{data.communicationFunnel.emailConfirmation.confirmationRate}%</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Avg Time to Confirm</div>
+                          <div className="text-lg font-semibold tabular-nums">
+                            {data.communicationFunnel.emailConfirmation.avgTimeToConfirmHours != null 
+                              ? `${data.communicationFunnel.emailConfirmation.avgTimeToConfirmHours}h`
+                              : '—'}
+                          </div>
+                        </div>
+                        <div className="col-span-2">
+                          <div className="text-muted-foreground">Avg Reminders Before Confirm</div>
+                          <div className="text-lg font-semibold tabular-nums">
+                            {data.communicationFunnel.emailConfirmation.avgRemindersBeforeConfirm != null 
+                              ? data.communicationFunnel.emailConfirmation.avgRemindersBeforeConfirm
+                              : '—'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SMS Confirmation Funnel */}
+                  <div className="p-4 border rounded-lg bg-blue-50/50">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-lg">📱</span>
+                      <h5 className="font-medium">SMS Verification</h5>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center py-2 border-b">
+                        <span className="text-sm text-muted-foreground">Verification Sent</span>
+                        <span className="font-semibold tabular-nums">{data.communicationFunnel.smsConfirmation.initialSent}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b bg-blue-100/50 -mx-2 px-2 rounded">
+                        <span className="text-sm font-medium text-blue-700">Verified ✓</span>
+                        <span className="font-bold tabular-nums text-blue-700">{data.communicationFunnel.smsConfirmation.verified}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 pt-2 text-xs">
+                        <div>
+                          <div className="text-muted-foreground">Verification Rate</div>
+                          <div className="text-lg font-semibold tabular-nums">{data.communicationFunnel.smsConfirmation.verificationRate}%</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Avg Time to Verify</div>
+                          <div className="text-lg font-semibold tabular-nums">
+                            {data.communicationFunnel.smsConfirmation.avgTimeToVerifyHours != null 
+                              ? `${data.communicationFunnel.smsConfirmation.avgTimeToVerifyHours}h`
+                              : '—'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Comparison indicator */}
+                    <div className="mt-4 pt-4 border-t text-xs text-muted-foreground">
+                      <div className="flex justify-between">
+                        <span>Email vs SMS Confirmation:</span>
+                        <span className="font-medium">
+                          {data.communicationFunnel.emailConfirmation.confirmed} vs {data.communicationFunnel.smsConfirmation.verified}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Post-Verification Nurture Cadence */}
+              <div>
+                <h4 className="text-sm font-semibold text-muted-foreground mb-4 uppercase tracking-wide">Post-Verification Nurture Sequence</h4>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Email Cadence */}
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-lg">✉️</span>
+                      <h5 className="font-medium">Email Cadence (Day 1 / 5 / 10)</h5>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-muted-foreground border-b">
+                            <th className="py-2 pr-3">Day</th>
+                            <th className="py-2 pr-3">Type</th>
+                            <th className="py-2 pr-3 text-right">Sent</th>
+                            <th className="py-2 pr-3 text-right">Clicked</th>
+                            <th className="py-2 text-right">Rate</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-b hover:bg-muted/50">
+                            <td className="py-2 pr-3 font-medium">Day 1</td>
+                            <td className="py-2 pr-3 text-muted-foreground text-xs">Rich Therapist</td>
+                            <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.postVerificationEmail.day1.sent}</td>
+                            <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.postVerificationEmail.day1.clicked}</td>
+                            <td className="py-2 text-right tabular-nums font-medium">{data.communicationFunnel.postVerificationEmail.day1.clickRate}%</td>
+                          </tr>
+                          <tr className="border-b hover:bg-muted/50">
+                            <td className="py-2 pr-3 font-medium">Day 5</td>
+                            <td className="py-2 pr-3 text-muted-foreground text-xs">Selection Nudge</td>
+                            <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.postVerificationEmail.day5.sent}</td>
+                            <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.postVerificationEmail.day5.clicked}</td>
+                            <td className="py-2 text-right tabular-nums font-medium">{data.communicationFunnel.postVerificationEmail.day5.clickRate}%</td>
+                          </tr>
+                          <tr className="hover:bg-muted/50">
+                            <td className="py-2 pr-3 font-medium">Day 10</td>
+                            <td className="py-2 pr-3 text-muted-foreground text-xs">Feedback Request</td>
+                            <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.postVerificationEmail.day10.sent}</td>
+                            <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.postVerificationEmail.day10.clicked}</td>
+                            <td className="py-2 text-right tabular-nums font-medium">{data.communicationFunnel.postVerificationEmail.day10.clickRate}%</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* SMS Cadence */}
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-lg">📱</span>
+                      <h5 className="font-medium">SMS Cadence (Day 2 / 5 / 10)</h5>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-muted-foreground border-b">
+                            <th className="py-2 pr-3">Day</th>
+                            <th className="py-2 pr-3">Type</th>
+                            <th className="py-2 pr-3 text-right">Sent</th>
+                            <th className="py-2 pr-3 text-right">Clicked</th>
+                            <th className="py-2 text-right">Rate</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-b hover:bg-muted/50">
+                            <td className="py-2 pr-3 font-medium">Day 2</td>
+                            <td className="py-2 pr-3 text-muted-foreground text-xs">Selection Link</td>
+                            <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.postVerificationSms.day2.sent}</td>
+                            <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.postVerificationSms.day2.clicked}</td>
+                            <td className="py-2 text-right tabular-nums font-medium">{data.communicationFunnel.postVerificationSms.day2.clickRate}%</td>
+                          </tr>
+                          <tr className="border-b hover:bg-muted/50">
+                            <td className="py-2 pr-3 font-medium">Day 5</td>
+                            <td className="py-2 pr-3 text-muted-foreground text-xs">Help Offer</td>
+                            <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.postVerificationSms.day5.sent}</td>
+                            <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.postVerificationSms.day5.clicked}</td>
+                            <td className="py-2 text-right tabular-nums font-medium">{data.communicationFunnel.postVerificationSms.day5.clickRate}%</td>
+                          </tr>
+                          <tr className="hover:bg-muted/50">
+                            <td className="py-2 pr-3 font-medium">Day 10</td>
+                            <td className="py-2 pr-3 text-muted-foreground text-xs">Feedback (no link)</td>
+                            <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.postVerificationSms.day10.sent}</td>
+                            <td className="py-2 pr-3 text-right tabular-nums text-muted-foreground">—</td>
+                            <td className="py-2 text-right tabular-nums text-muted-foreground">—</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Engagement by Channel */}
+              <div>
+                <h4 className="text-sm font-semibold text-muted-foreground mb-4 uppercase tracking-wide">Therapist Profile Engagement by Channel</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-muted-foreground border-b">
+                        <th className="py-2 pr-3">Funnel Step</th>
+                        <th className="py-2 pr-3 text-right">✉️ Email Users</th>
+                        <th className="py-2 pr-3 text-right">📱 SMS Users</th>
+                        <th className="py-2 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b hover:bg-muted/50">
+                        <td className="py-2 pr-3">Matches Page View</td>
+                        <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.engagementByChannel.email.matchPageView}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.engagementByChannel.sms.matchPageView}</td>
+                        <td className="py-2 text-right tabular-nums font-medium">
+                          {data.communicationFunnel.engagementByChannel.email.matchPageView + data.communicationFunnel.engagementByChannel.sms.matchPageView}
+                        </td>
+                      </tr>
+                      <tr className="border-b hover:bg-muted/50">
+                        <td className="py-2 pr-3">Profile Opened</td>
+                        <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.engagementByChannel.email.profileOpened}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.engagementByChannel.sms.profileOpened}</td>
+                        <td className="py-2 text-right tabular-nums font-medium">
+                          {data.communicationFunnel.engagementByChannel.email.profileOpened + data.communicationFunnel.engagementByChannel.sms.profileOpened}
+                        </td>
+                      </tr>
+                      <tr className="border-b hover:bg-muted/50">
+                        <td className="py-2 pr-3">Contact CTA Clicked</td>
+                        <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.engagementByChannel.email.contactCtaClicked}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.engagementByChannel.sms.contactCtaClicked}</td>
+                        <td className="py-2 text-right tabular-nums font-medium">
+                          {data.communicationFunnel.engagementByChannel.email.contactCtaClicked + data.communicationFunnel.engagementByChannel.sms.contactCtaClicked}
+                        </td>
+                      </tr>
+                      <tr className="border-b hover:bg-muted/50">
+                        <td className="py-2 pr-3">Booking Slot Selected</td>
+                        <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.engagementByChannel.email.bookingSlotSelected}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums">{data.communicationFunnel.engagementByChannel.sms.bookingSlotSelected}</td>
+                        <td className="py-2 text-right tabular-nums font-medium">
+                          {data.communicationFunnel.engagementByChannel.email.bookingSlotSelected + data.communicationFunnel.engagementByChannel.sms.bookingSlotSelected}
+                        </td>
+                      </tr>
+                      <tr className="hover:bg-emerald-50">
+                        <td className="py-2 pr-3 font-medium text-emerald-700">Message Sent ✓</td>
+                        <td className="py-2 pr-3 text-right tabular-nums font-semibold text-emerald-700">{data.communicationFunnel.engagementByChannel.email.messageSent}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums font-semibold text-emerald-700">{data.communicationFunnel.engagementByChannel.sms.messageSent}</td>
+                        <td className="py-2 text-right tabular-nums font-bold text-emerald-700">
+                          {data.communicationFunnel.engagementByChannel.email.messageSent + data.communicationFunnel.engagementByChannel.sms.messageSent}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-3 text-xs text-muted-foreground">
+                  Note: Engagement is attributed to channel based on patient contact_method. Sessions without patient_id linkage are counted as email (approximate).
+                </div>
               </div>
             </div>
           </CardContent>
