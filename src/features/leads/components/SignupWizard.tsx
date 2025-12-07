@@ -931,18 +931,17 @@ export default function SignupWizard() {
               </p>
             </div>
 
-            {/* Primary CTA - See Matches */}
-            {matchesUrl && (
-              <Button
-                onClick={() => {
-                  void trackEvent('skip_to_matches', { contact_method: 'phone', email_added: !!addEmailMessage?.includes('gespeichert') });
-                  window.location.assign(matchesUrl);
-                }}
-                className="h-14 w-full text-lg font-semibold bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200"
-              >
-                Jetzt Therapeut:innen ansehen →
-              </Button>
-            )}
+            {/* Primary CTA - See Matches (or fallback to directory) */}
+            <Button
+              onClick={() => {
+                const target = matchesUrl || '/therapeuten';
+                void trackEvent('skip_to_matches', { contact_method: 'phone', email_added: !!addEmailMessage?.includes('gespeichert'), has_matches_url: !!matchesUrl });
+                window.location.assign(target);
+              }}
+              className="h-14 w-full text-lg font-semibold bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200"
+            >
+              Jetzt Therapeut:innen ansehen →
+            </Button>
 
             {/* Secondary: Optional email - collapsed by default */}
             {!addEmailMessage?.includes('gespeichert') ? (
