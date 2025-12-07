@@ -593,6 +593,8 @@ type StatsResponse = {
       preferredGender: Array<{ option: string; count: number }>;
       wantsInPerson: Array<{ option: string; count: number }>;
     };
+    /** Actionable demand signals - what specific therapists are needed */
+    demandSignals: Array<{ signal: string; count: number }>;
   };
   communicationFunnel?: {
     emailConfirmation: {
@@ -1750,6 +1752,7 @@ export async function GET(req: Request) {
       insightsModalityMatters: [],
       topCities: [],
       breakdowns: { preferredGender: [], wantsInPerson: [] },
+      demandSignals: [],
     };
     try {
       const [boRes, evRes] = await Promise.all([
@@ -1779,6 +1782,7 @@ export async function GET(req: Request) {
       const insightCountsModality = new Map<string, number>();
       const preferredGenderCounts = new Map<string, number>();
       const inPersonCounts = new Map<string, number>();
+      const demandSignalCounts = new Map<string, number>();
       for (const row of ((evRes.data || []) as Array<{ properties?: Record<string, unknown> }>)) {
         const props = (row.properties || {}) as Record<string, unknown>;
         const isTest = String((props['is_test'] as unknown) ?? '').toLowerCase() === 'true';
@@ -1802,6 +1806,13 @@ export async function GET(req: Request) {
         if (arr.includes('in_person_supply_gap')) {
           inPersonCounts.set(wantsInPerson, (inPersonCounts.get(wantsInPerson) || 0) + 1);
         }
+
+        // Aggregate actionable demand signals
+        const signals = Array.isArray(props['demand_signals']) ? (props['demand_signals'] as unknown[]).map(String) : [];
+        for (const sig of signals) {
+          const s = String(sig || '').trim();
+          if (s) demandSignalCounts.set(s, (demandSignalCounts.get(s) || 0) + 1);
+        }
       }
 
       const insightsArr = Array.from(insightCounts.entries()).map(([type, count]) => ({ type, count }));
@@ -1811,6 +1822,7 @@ export async function GET(req: Request) {
       const topCities = Array.from(cityCounts.entries()).map(([city, count]) => ({ city, count })).sort((a, b) => b.count - a.count).slice(0, 10);
       const preferredGender = Array.from(preferredGenderCounts.entries()).map(([option, count]) => ({ option, count })).sort((a, b) => b.count - a.count);
       const wantsInPerson = Array.from(inPersonCounts.entries()).map(([option, count]) => ({ option, count })).sort((a, b) => b.count - a.count);
+      const demandSignals = Array.from(demandSignalCounts.entries()).map(([signal, count]) => ({ signal, count })).sort((a, b) => b.count - a.count).slice(0, 20);
 
       opportunities = {
         byReason: { gender: reasonCounts['gender'] || 0, location: reasonCounts['location'] || 0, modality: reasonCounts['modality'] || 0 },
@@ -1818,6 +1830,7 @@ export async function GET(req: Request) {
         insightsModalityMatters: insightsModalityArr,
         topCities,
         breakdowns: { preferredGender, wantsInPerson },
+        demandSignals,
       };
     } catch (e) {
       await logError('admin.api.stats', e, { stage: 'opportunities' });

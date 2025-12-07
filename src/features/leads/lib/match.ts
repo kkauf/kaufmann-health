@@ -286,14 +286,46 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
       if (missingPreferredGender && missingRequestedModalities.length > 0) insights.push('combo_gender_modality_gap');
       if (missingPreferredGender && wantsInPerson && total_in_person_slots === 0) insights.push('combo_gender_in_person_gap');
 
+      // Check for schwerpunkte gaps
+      const wantedSchwerpunkte = schwerpunkte || [];
+      const topSchwerpunkteRaw: string[] = Array.from(new Set(topTherapists.flatMap(t => Array.isArray(t.schwerpunkte) ? (t.schwerpunkte as string[]) : []))).filter(Boolean);
+      const missingSchwerpunkte = wantedSchwerpunkte.filter(s => !topSchwerpunkteRaw.includes(s));
+      if (missingSchwerpunkte.length > 0) insights.push('schwerpunkte_supply_gap');
+
+      // Generate actionable demand signals for recruiting
+      const demandSignals: string[] = [];
+      const locationPart = city ? ` in ${city}` : '';
+      const formatPart = wantsInPerson && total_in_person_slots === 0 ? ' (vor Ort)' : '';
+      const genderPart = missingPreferredGender && preferredGender ? (preferredGender === 'male' ? 'männlichen ' : 'weibliche ') : '';
+      
+      // Generate specific demand signals for each missing combination
+      if (missingRequestedModalities.length > 0) {
+        for (const mod of missingRequestedModalities) {
+          demandSignals.push(`${genderPart}${mod}-Therapeut:in${formatPart}${locationPart}`);
+        }
+      }
+      if (missingSchwerpunkte.length > 0) {
+        for (const sp of missingSchwerpunkte) {
+          demandSignals.push(`Spezialist:in für ${sp}${formatPart}${locationPart}`);
+        }
+      }
+      // Gender-only demand
+      if (missingPreferredGender && missingRequestedModalities.length === 0 && missingSchwerpunkte.length === 0) {
+        demandSignals.push(`${genderPart}Therapeut:in${formatPart}${locationPart}`);
+      }
+      // In-person-only demand
+      if (wantsInPerson && total_in_person_slots === 0 && !missingPreferredGender && missingRequestedModalities.length === 0 && missingSchwerpunkte.length === 0) {
+        demandSignals.push(`Therapeut:in vor Ort${locationPart}`);
+      }
+
       // Insert business opportunities
       if (reasonsArr.length > 0) {
         const rows = reasonsArr.map((r) => ({ patient_id: patientId, mismatch_type: r as 'gender' | 'location' | 'modality', city: city || null }));
         await supabaseServer.from('business_opportunities').insert(rows).select('id').limit(1).maybeSingle();
       }
 
-      // Log tracking event
-      if (reasonsArr.length > 0 || insights.length > 0) {
+      // Log tracking event with actionable demand signals
+      if (reasonsArr.length > 0 || insights.length > 0 || demandSignals.length > 0) {
         void track({
           type: 'business_opportunity_logged',
           source: 'match.createInstantMatchesForPatient',
@@ -301,6 +333,7 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
             patient_id: patientId,
             reasons: reasonsArr,
             insights,
+            demand_signals: demandSignals,
             details: {
               wants_in_person: wantsInPerson,
               total_in_person_slots,
@@ -309,6 +342,8 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
               top_genders: topGenders,
               top_modalities: topModalities,
               missing_requested_modalities: missingRequestedModalities,
+              missing_schwerpunkte: missingSchwerpunkte,
+              wanted_schwerpunkte: wantedSchwerpunkte,
               city: city || null,
             },
           },
