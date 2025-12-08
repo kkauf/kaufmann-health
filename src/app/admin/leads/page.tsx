@@ -953,7 +953,7 @@ export default function AdminLeadsPage() {
                             <>
                               <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 px-1.5 py-0">Teilweise</Badge>
                               {mm.reasons.map((r) => {
-                                const map: Record<string, string> = { city: 'Stadt', gender: 'Geschlecht', location: 'Nur Online', modality: 'Methode', schwerpunkte: 'Schwerpunkte' };
+                                const map: Record<string, string> = { gender: 'Geschlecht', location: 'Ort/Sitzung', modality: 'Methode' };
                                 const label = map[r] || r;
                                 return (
                                   <Badge key={r} variant="secondary" className="px-1.5 py-0 text-[10px]" title="Nicht passend zur Klientenpräferenz">{label}</Badge>

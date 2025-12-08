@@ -68,20 +68,6 @@ export async function PATCH(req: Request) {
     return safeJson({ data: null, error: 'Invalid data' }, { status: 400 });
   }
 
-  // Check if session exists and is not expired before updating
-  const { data: existing, error: fetchErr } = await supabaseServer
-    .from('form_sessions')
-    .select('id,expires_at')
-    .eq('id', id)
-    .single<{ id: string; expires_at?: string | null }>();
-
-  if (fetchErr || !existing) {
-    return safeJson({ data: null, error: 'Not found' }, { status: 404 });
-  }
-  if (existing.expires_at && Date.parse(existing.expires_at) < Date.now()) {
-    return safeJson({ data: null, error: 'Expired' }, { status: 410 });
-  }
-
   const nowIso = new Date().toISOString();
   const { error } = await supabaseServer
     .from('form_sessions')

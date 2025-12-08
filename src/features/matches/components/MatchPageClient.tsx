@@ -77,7 +77,6 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     selectedSlot?: { date_iso: string; time_label: string; format: 'online' | 'in_person' };
   } | null>(null);
   const [detailModalTherapist, setDetailModalTherapist] = useState<TherapistItem | null>(null);
-  const [autoOpenedTherapist, setAutoOpenedTherapist] = useState(false);
   const isDirectBookingFlow = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
 
   useEffect(() => {
@@ -123,37 +122,6 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     return s === 'email_confirmed' || s === 'new';
   }, [data?.patient?.status]);
   const matchType = data?.metadata?.match_type || 'exact';
-
-  // Auto-open therapist profile modal when ?therapist=<id> param is present (from rich email)
-  useEffect(() => {
-    if (!data || autoOpenedTherapist || loading) return;
-    if (typeof window === 'undefined') return;
-    
-    const params = new URLSearchParams(window.location.search);
-    const therapistId = params.get('therapist');
-    if (!therapistId) return;
-
-    const therapist = therapists.find(t => t.id === therapistId);
-    if (therapist) {
-      setDetailModalTherapist(therapist);
-      setAutoOpenedTherapist(true);
-      
-      // Track auto-open event
-      try {
-        const attrs = getAttribution();
-        const payload = {
-          type: 'therapist_profile_auto_opened',
-          ...attrs,
-          properties: { 
-            page_path: window.location.pathname,
-            therapist_id: therapistId,
-            source: params.get('utm_campaign') || 'unknown',
-          },
-        };
-        navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
-      } catch { }
-    }
-  }, [data, therapists, autoOpenedTherapist, loading]);
 
   // Compute match quality for each therapist (used for badges and contradiction checks)
   const therapistsWithQuality = useMemo(() => {

@@ -138,9 +138,9 @@ export function renderRichTherapistEmail(params: RichTherapistEmailParams): Emai
   // Modality badges
   const modalityBadges = buildModalityBadges(therapist.modalities || []);
 
-  // URLs with tracking - include therapist ID to auto-open profile modal
-  const profileUrl = `${matchesUrl}?therapist=${encodeURIComponent(therapist.id)}&utm_source=email&utm_medium=transactional&utm_campaign=rich_therapist_d1`;
-  const otherMatchesUrl = `${matchesUrl}?view=all&utm_source=email&utm_medium=transactional&utm_campaign=rich_therapist_d1`;
+  // URLs with tracking
+  const profileUrl = `${matchesUrl}?utm_source=email&utm_medium=transactional&utm_campaign=rich_therapist_d1`;
+  const otherMatchesUrl = `${matchesUrl}?utm_source=email&utm_medium=transactional&utm_campaign=rich_therapist_d1&view=all`;
   const feedbackUrl = `${BASE_URL}/feedback/quick?patient=${encodeURIComponent(patientId)}&reason=match_dissatisfied&therapist=${encodeURIComponent(therapist.id)}&utm_source=email&utm_campaign=rich_therapist_d1`;
 
   const contentHtml = `

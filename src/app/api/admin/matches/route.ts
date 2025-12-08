@@ -372,13 +372,13 @@ export async function POST(req: Request) {
     }
 
     // Fetch additional details for mismatch logging (best-effort)
-    type TherapistDetails = { id: string; gender?: string | null; city?: string | null; modalities?: unknown; session_preferences?: unknown };
+    type TherapistDetails = { id: string; gender?: string | null; modalities?: unknown; session_preferences?: unknown };
     const detailsById = new Map<string, TherapistDetails>();
     try {
       if (therapist_ids.length === 1) {
         const { data } = await supabaseServer
           .from('therapists')
-          .select('id, gender, city, modalities, session_preferences')
+          .select('id, gender, modalities, session_preferences')
           .eq('id', therapist_ids[0])
           .single();
         if (data) {
@@ -388,7 +388,7 @@ export async function POST(req: Request) {
       } else {
         const { data } = await supabaseServer
           .from('therapists')
-          .select('id, gender, city, modalities, session_preferences')
+          .select('id, gender, modalities, session_preferences')
           .in('id', therapist_ids);
         const arr = (data as TherapistDetails[]) || [];
         for (const d of arr) detailsById.set(String(d.id), d);
@@ -490,17 +490,15 @@ export async function POST(req: Request) {
           {
             id: tid,
             gender: tRow.gender || null,
-            city: tRow.city || null,
+            city: undefined,
             session_preferences: Array.isArray(tRow.session_preferences) ? (tRow.session_preferences as string[]) : [],
             modalities: Array.isArray(tRow.modalities) ? (tRow.modalities as string[]) : [],
           }
         );
-        const reasons = mm.reasons; // ['city','gender','location','modality','schwerpunkte'] subset
-        // Filter to only types supported by DB constraint (city support requires migration)
-        const dbReasons = reasons.filter(r => r === 'gender' || r === 'location' || r === 'modality' || r === 'city');
-        if (dbReasons.length > 0) {
-          type BusinessOpportunityInsert = { patient_id: string; mismatch_type: 'gender' | 'location' | 'modality' | 'city'; city?: string | null };
-          const rows: BusinessOpportunityInsert[] = dbReasons.map((r) => ({ patient_id, mismatch_type: r as 'gender' | 'location' | 'modality' | 'city', city: typeof pMeta.city === 'string' ? pMeta.city : null }));
+        const reasons = mm.reasons; // ['gender','location','modality'] subset
+        if (reasons.length > 0) {
+          type BusinessOpportunityInsert = { patient_id: string; mismatch_type: 'gender' | 'location' | 'modality'; city?: string | null };
+          const rows: BusinessOpportunityInsert[] = reasons.map((r) => ({ patient_id, mismatch_type: r as 'gender' | 'location' | 'modality', city: typeof pMeta.city === 'string' ? pMeta.city : null }));
           // Insert; ignore failures
           await supabaseServer.from('business_opportunities').insert(rows).select('id').limit(1).maybeSingle();
           void ServerAnalytics.trackEventFromRequest(req, { type: 'business_opportunity_logged', source: 'admin.api.matches', props: { patient_id, reasons } });

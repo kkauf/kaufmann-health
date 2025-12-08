@@ -9,7 +9,6 @@ import { FoundersValuesSection } from '@/features/landing/components/FoundersVal
 import { TherapistTeaserSection } from '@/features/landing/components/TherapistTeaserSection';
 import { FinalCtaSection } from '@/features/landing/components/FinalCtaSection';
 import { buildLandingMetadata, buildFaqJsonLd, buildLocalBusinessJsonLd } from '@/lib/seo';
-import { parseKeyword, parseAdGroup, getLandingPageCopy } from '@/lib/ads-landing';
 import { MessageCircle, UserCheck, PhoneCall, Shield, Lock, FileCheck, Search } from 'lucide-react';
 
 export const revalidate = 3600;
@@ -46,12 +45,10 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 export default async function StartPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const params = await searchParams;
   const variant = normalizeVariant(params?.variant);
-  // Test 1/3/4: decide CTA routing from raw variant param (supports both ?variant= and ?v=)
+  // Test 1/3: decide CTA routing from raw variant param (supports both ?variant= and ?v=)
   const rawVariantParam = params?.variant || params?.v;
   const rawVariant = typeof rawVariantParam === 'string' ? rawVariantParam.toLowerCase() : '';
   const isBrowse = rawVariant === 'browse';
-  // Test 4: Concierge variant forces manual curation flow (24h) regardless of instantFlow flag
-  const isConcierge = rawVariant === 'concierge';
   // Test 3: Default to 'marketplace' variant for verification gating when no variant specified
   // This ensures users from /start go through verification before seeing matches
   const fragebogenVariant = rawVariant || 'marketplace';
@@ -59,13 +56,6 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
   const fragebogenHref = `/fragebogen?v=${encodeURIComponent(fragebogenVariant)}`;
   // Preserve variant when navigating to the directory so the variant survives into /therapeuten
   const therapeutenHref = `/therapeuten${rawVariant ? `?v=${encodeURIComponent(rawVariant)}` : ''}`;
-  
-  // Test 4: Keyword-echo for QS optimization
-  // Priority: ?kw={keyword} (ValueTrack) > ?adgroup= > page defaults
-  // Google Ads Final URL: ?variant=marketplace&kw={keyword}
-  const keyword = parseKeyword(params?.kw);
-  const adgroup = parseAdGroup(params?.adgroup);
-  const landingCopy = getLandingPageCopy(keyword, adgroup);
   
   // Variant A: Body-Oriented Specialist
   const bodyOrientedCopy = {
@@ -156,14 +146,12 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
     ? 'Sofort verfügbare Therapeut:innen – geprüftes Netzwerk in Berlin oder online.'
     : 'Erfahrene Körpertherapeut:innen, die wirklich verfügbar sind. Geprüftes Netzwerk – Berlin oder online.';
 
-  // Variant-specific timeline ("So funktioniert") for Test 1/4
-  // Test 4: isConcierge forces manual curation (24h) regardless of instantFlow
-  const useInstantFlow = instantFlow && !isConcierge;
+  // Variant-specific timeline ("So funktioniert") for Test 1
   const timelineTagline = isBrowse
     ? 'Verzeichnis durchsuchen. Profil ansehen. Direkt Kontakt aufnehmen – privat und ohne Wartezeit.'
-    : (useInstantFlow
+    : (instantFlow
       ? 'Sofort passende Profile und freie Termine. Deine Daten bleiben privat.'
-      : 'Handverlesene Vorschläge innerhalb von 24 Stunden. Deine Daten bleiben privat.');
+      : 'Bis zu 3 passende Therapeut:innen-Vorschläge in <24h. Deine Daten bleiben privat. Du entscheidest, wie du kontaktiert werden möchtest.');
   const timelineItems = isBrowse
     ? [
         {
@@ -186,7 +174,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
         },
       ]
     : (
-      useInstantFlow
+      instantFlow
         ? [
             {
               icon: <MessageCircle className="h-5 w-5" />,
@@ -224,7 +212,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
               icon: <PhoneCall className="h-5 w-5" />,
               title: 'Du entscheidest',
               caption: 'Direkter Kontakt',
-              bullets: ['Wunschtherapeut:in wählen und direkt Termin vereinbaren'],
+              bullets: ['Wunschtherapeut:in wählen und direkt Termin vereinbaren', 'Vorschläge per E‑Mail oder SMS – du entscheidest'],
             },
           ]
     );
@@ -233,14 +221,13 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
     <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
       <PageAnalytics qualifier={`LP-Start-${variant}`} />
 
-      {/* HERO (no form) - Use keyword/adgroup copy when available for QS optimization */}
+      {/* HERO (no form) */}
       <HeroNoForm
-        title={landingCopy?.title ?? copy.hero.title}
-        subtitle={landingCopy?.subtitle ?? (instantFlow ? neutralHeroSubtitle : copy.hero.subtitle)}
+        title={copy.hero.title}
+        subtitle={instantFlow ? neutralHeroSubtitle : copy.hero.subtitle}
         ctaLabel={isBrowse ? 'Therapeut:innen ansehen' : 'Jetzt Therapeut:in finden'}
         ctaHref={isBrowse ? therapeutenHref : fragebogenHref}
         backgroundSrc="/images/hero.jpg"
-        valueProps={landingCopy?.valueProps}
       />
 
       {/* Process timeline (mobile‑first) */}

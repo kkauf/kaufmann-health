@@ -115,50 +115,17 @@ export default function RootLayout({
         {process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID ? (
           <Script id="clarity-init" strategy="afterInteractive">
             {`
-              // Wait for page to be fully loaded (CSS, fonts, images) before initializing Clarity
-              function initClarity() {
+              // Delay Clarity init to ensure Next.js CSS chunks are loaded
+              setTimeout(function() {
                 (function(c,l,a,r,i,t,y){
                   c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
                   t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
                   y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
                 })(window, document, "clarity", "script", "${process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID}");
-              }
-              
-              // Check if all stylesheets are loaded
-              function stylesheetsReady() {
-                var sheets = document.querySelectorAll('link[rel="stylesheet"]');
-                for (var i = 0; i < sheets.length; i++) {
-                  if (sheets[i].sheet === null) return false;
-                }
-                return true;
-              }
-              
-              function tryInit() {
-                if (document.readyState === 'complete' && stylesheetsReady()) {
-                  initClarity();
-                } else {
-                  // Retry until ready, max 5s
-                  setTimeout(tryInit, 200);
-                }
-              }
-              
-              if (document.readyState === 'complete' && stylesheetsReady()) {
-                initClarity();
-              } else {
-                window.addEventListener('load', function() {
-                  // Extra delay after load to ensure Next.js hydration + CSS injection complete
-                  setTimeout(tryInit, 500);
-                });
-              }
+              }, 1000);
             `}
           </Script>
         ) : null}
-        {/* Hotjar / Contentsquare - session recordings */}
-        <Script
-          id="hotjar-init"
-          src="https://t.contentsquare.net/uxa/72ed21e97b29d.js"
-          strategy="afterInteractive"
-        />
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-gray-900 focus:px-3 focus:py-2 focus:text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-900">
           Zum Inhalt springen
         </a>
