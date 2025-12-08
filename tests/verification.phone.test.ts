@@ -27,7 +27,7 @@ describe('Phone validation and formatting', () => {
 
     it('rejects invalid prefixes for German numbers', () => {
       expect(normalizePhoneNumber('01234567890')).toBeNull(); // Invalid prefix
-      expect(normalizePhoneNumber('030123456')).toBeNull(); // Landline
+      expect(normalizePhoneNumber('030123456')).toBeNull(); // Landline (domestic format)
     });
 
     it('accepts valid international E.164 numbers', () => {
