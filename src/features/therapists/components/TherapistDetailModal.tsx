@@ -21,6 +21,9 @@ import { cn } from '@/lib/utils';
 import { formatSessionPrice } from '@/lib/pricing';
 import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpunkte';
 
+// Feature toggle: show schwerpunkte in therapist detail modal
+const SHOW_SCHWERPUNKTE = process.env.NEXT_PUBLIC_SHOW_SCHWERPUNKTE === 'true';
+
 interface TherapistDetailModalProps {
   therapist: TherapistData;
   open: boolean;
@@ -415,8 +418,8 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
 
         {viewMode === 'profile' ? (
           <>
-            {/* Schwerpunkte - Prominent display for focus areas */}
-            {therapist.schwerpunkte && therapist.schwerpunkte.length > 0 && (
+            {/* Schwerpunkte - Prominent display for focus areas (gated by feature toggle) */}
+            {SHOW_SCHWERPUNKTE && therapist.schwerpunkte && therapist.schwerpunkte.length > 0 && (
               <div className="border-b pb-6">
                 <h3 className="mb-3 text-lg font-semibold text-gray-900">Schwerpunkte</h3>
                 <div className="flex flex-wrap gap-2">
