@@ -13,6 +13,7 @@ import { getSchwerpunktLabel, getSchwerpunktColorClasses } from "@/lib/schwerpun
 import SlotsManager from "./SlotsManager";
 import { SchwerpunkteSelector } from "@/components/SchwerpunkteSelector";
 import { THERAPIST_SCHWERPUNKTE_MIN, THERAPIST_SCHWERPUNKTE_MAX } from "@/lib/schwerpunkte";
+import { PROFILE_LIMITS } from "@/lib/config/profileLimits";
 
 type Props = {
   therapistId: string;
@@ -37,13 +38,6 @@ type Props = {
   };
 };
 
-// Profile field character limits (recommended, with 10% leniency for max)
-const PROFILE_LIMITS = {
-  who_comes_to_me: { recommended: 200, max: 220 },
-  session_focus: { recommended: 250, max: 275 },
-  first_session: { recommended: 200, max: 220 },
-  about_me: { recommended: 150, max: 165 },
-};
 
 // Strength level based on content length relative to recommended
 type StrengthLevel = 'empty' | 'minimal' | 'developing' | 'good' | 'excellent';

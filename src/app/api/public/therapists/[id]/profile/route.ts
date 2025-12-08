@@ -3,6 +3,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 import { getTherapistSession } from '@/lib/auth/therapistSession';
 import { isValidSchwerpunktId, THERAPIST_SCHWERPUNKTE_MIN, THERAPIST_SCHWERPUNKTE_MAX } from '@/lib/schwerpunkte';
+import { SERVER_PROFILE_LIMITS } from '@/lib/config/profileLimits';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -90,13 +91,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     // Schwerpunkte (focus areas)
     let schwerpunkte: string[] | undefined;
 
-    // Character limits for profile fields
-    const LIMITS = {
-      who_comes_to_me: 200,
-      session_focus: 250,
-      first_session: 200,
-      about_me: 150,
-    };
+    // Character limits for profile fields (shared with client config)
+    const LIMITS = SERVER_PROFILE_LIMITS;
 
     if (contentType.includes('multipart/form-data')) {
       const form = await req.formData();
