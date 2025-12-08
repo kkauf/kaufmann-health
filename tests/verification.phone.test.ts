@@ -40,6 +40,14 @@ describe('Phone validation and formatting', () => {
       expect(normalizePhoneNumber('0176123')).toBeNull(); // Too short
       expect(normalizePhoneNumber('0176123456789012')).toBeNull(); // Too long
     });
+
+    it('handles malformed +0 prefix (user typed + before domestic number)', () => {
+      // Users sometimes type +0176... which is malformed E.164
+      // Should strip + and process as domestic German number
+      expect(normalizePhoneNumber('+017657021141')).toBe('+4917657021141');
+      expect(normalizePhoneNumber('+0176 123 45678')).toBe('+4917612345678');
+      expect(normalizePhoneNumber('+0151 12345678')).toBe('+4915112345678');
+    });
   });
 
   describe('formatPhoneForDisplay', () => {

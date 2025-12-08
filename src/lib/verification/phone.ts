@@ -10,7 +10,13 @@
  */
 export function normalizePhoneNumber(input: string): string | null {
   // Remove all non-digit characters except leading +
-  const cleaned = input.replace(/[^\d+]/g, '');
+  let cleaned = input.replace(/[^\d+]/g, '');
+  
+  // Handle malformed +0... (user typed + followed by domestic prefix)
+  // E.164 country codes never start with 0, so strip the + and treat as domestic
+  if (cleaned.startsWith('+0')) {
+    cleaned = cleaned.slice(1); // Remove + to process as domestic
+  }
   
   // Handle German-specific formats first
   if (!cleaned.startsWith('+')) {
