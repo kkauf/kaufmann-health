@@ -89,8 +89,8 @@ describe('/api/therapists/:id/profile POST', () => {
 
   it('400 when profile field too long', async () => {
     const { POST } = await import('@/app/api/public/therapists/[id]/profile/route');
-    // who_comes_to_me limit is 200 chars
-    const big = 'x'.repeat(201);
+    // who_comes_to_me limit is 220 chars (shared with client)
+    const big = 'x'.repeat(221);
     const res = await POST(makeJsonReq({ who_comes_to_me: big }), { params: Promise.resolve({ id: 'tid-1' }) });
     expect(res.status).toBe(400);
     const json = await res.json();
