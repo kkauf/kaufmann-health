@@ -54,34 +54,49 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     });
 
-  // Helper to complete the 5-question questionnaire
+  /**
+   * Helper to complete the questionnaire flow.
+   * Handles both SHOW_SCHWERPUNKTE=true (Schwerpunkte step) and false (What Brings You step).
+   * NOTE: Staging has SHOW_SCHWERPUNKTE=true, so flow is:
+   * Timeline → Schwerpunkte → Modality → Location → Preferences
+   */
   async function completeQuestionnaire(page: Page) {
-    // Step 1: Timeline
-    await page.getByRole('button', { name: 'Innerhalb des nächsten Monats' }).click();
-    await expect(page.getByText(/Was bringt dich zur Therapie/i)).toBeVisible();
-
-    // Step 2: Topic (skip)
-    await page.getByRole('button', { name: 'Überspringen' }).click();
-    await expect(page.getByText(/Therapiemethode/i)).toBeVisible();
-
-    // Step 3: Modality
-    await page.getByRole('button', { name: 'Nein' }).click();
-    await page.getByRole('button', { name: 'Weiter →' }).click();
-    await expect(page.getByText('Wie möchtest du die Sitzungen machen?')).toBeVisible();
-
-    // Step 4: Location
-    await page.getByRole('button', { name: 'Online (Video)' }).click();
-    await page.getByRole('button', { name: 'Weiter →' }).click();
-    await expect(page.getByText('Wann hast du Zeit für Termine?')).toBeVisible();
-
-    // Step 5: Preferences
-    await page.getByRole('button', { name: 'Bin flexibel' }).click();
-    await page.getByRole('button', { name: 'Weiter →' }).click();
+    // Step 1: Timeline - select timing
+    await page.getByRole('button', { name: /Innerhalb des nächsten Monats|nächsten Monats/i }).click();
+    
+    // After Timeline, either Schwerpunkte or "What Brings You" appears
+    // Wait a moment for the transition, then check which screen we're on
+    await page.waitForTimeout(1000);
+    const schwerpunkteVisible = await page.getByText(/Was beschäftigt dich/i).isVisible().catch(() => false);
+    const whatBringsYouVisible = await page.getByText(/Was bringt dich zur Therapie/i).isVisible().catch(() => false);
+    
+    if (schwerpunkteVisible) {
+      // SHOW_SCHWERPUNKTE=true flow: skip Schwerpunkte selection
+      await page.getByRole('button', { name: /Überspringen/i }).click();
+    } else if (whatBringsYouVisible) {
+      // SHOW_SCHWERPUNKTE=false flow: skip What Brings You
+      await page.getByRole('button', { name: /Überspringen/i }).click();
+    }
+    
+    // Step 3: Modality - wait for it and select "Nein"
+    await expect(page.getByText(/Therapiemethode|Weißt du welche/i)).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: /Nein/i }).click();
+    await page.getByRole('button', { name: /Weiter/i }).click();
+    
+    // Step 4: Location/Session preference
+    await expect(page.getByText(/Wie möchtest du die Sitzungen/i)).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: /Online/i }).click();
+    await page.getByRole('button', { name: /Weiter/i }).click();
+    
+    // Step 5: Time preferences
+    await expect(page.getByText(/Wann hast du Zeit/i)).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: /Bin flexibel|flexibel/i }).click();
+    await page.getByRole('button', { name: /Weiter/i }).click();
   }
 
   test.describe('Concierge Flow (/fragebogen?v=concierge)', () => {
     test('shows contact collection after questionnaire', async ({ page }) => {
-      await page.goto('/fragebogen?v=concierge');
+      await page.goto('/fragebogen?v=concierge&restart=1');
       await completeQuestionnaire(page);
 
       // Should show contact collection (step 6)
@@ -92,7 +107,7 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
 
     test('submits to leads API and stays on fragebogen for verification', async ({ page }) => {
       await mockLeadsApi(page);
-      await page.goto('/fragebogen?v=concierge');
+      await page.goto('/fragebogen?v=concierge&restart=1');
       await completeQuestionnaire(page);
 
       // Fill contact info
@@ -138,7 +153,7 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
     });
 
     test('shows contact collection after questionnaire', async ({ page }) => {
-      await page.goto('/fragebogen?v=marketplace');
+      await page.goto('/fragebogen?v=marketplace&restart=1');
       await completeQuestionnaire(page);
 
       // Should show contact collection (step 6) - same as concierge
@@ -148,7 +163,7 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
 
     test('submits to leads API and stays on fragebogen for verification', async ({ page }) => {
       await mockLeadsApi(page);
-      await page.goto('/fragebogen?v=marketplace');
+      await page.goto('/fragebogen?v=marketplace&restart=1');
       await completeQuestionnaire(page);
 
       // Fill contact info
@@ -183,13 +198,13 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
 
   test.describe('Variant Parity', () => {
     test('concierge requires verification before matches', async ({ page }) => {
-      await page.goto('/fragebogen?v=concierge');
+      await page.goto('/fragebogen?v=concierge&restart=1');
       await completeQuestionnaire(page);
       await expect(page.getByText('Fast geschafft!')).toBeVisible();
     });
 
     test('marketplace requires verification before matches', async ({ page }) => {
-      await page.goto('/fragebogen?v=marketplace');
+      await page.goto('/fragebogen?v=marketplace&restart=1');
       await completeQuestionnaire(page);
       await expect(page.getByText('Fast geschafft!')).toBeVisible();
     });
@@ -198,21 +213,10 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
   test.describe('Mobile Experience', () => {
     test('concierge flow works on mobile', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
-      await page.goto('/fragebogen?v=concierge');
+      await page.goto('/fragebogen?v=concierge&restart=1');
       
-      // Step 1
-      await page.getByRole('button', { name: /nächsten Monats/i }).click();
-      // Step 2 skip
-      await page.getByRole('button', { name: /Überspringen/i }).click();
-      // Step 3
-      await page.getByRole('button', { name: /Nein/i }).click();
-      await page.getByRole('button', { name: /Weiter/i }).click();
-      // Step 4
-      await page.getByRole('button', { name: /Online/i }).click();
-      await page.getByRole('button', { name: /Weiter/i }).click();
-      // Step 5
-      await page.getByRole('button', { name: /flexibel/i }).click();
-      await page.getByRole('button', { name: /Weiter/i }).click();
+      // Use the shared helper for consistent flow handling
+      await completeQuestionnaire(page);
       
       // Should reach contact collection
       await expect(page.getByText('Fast geschafft!')).toBeVisible();
@@ -220,16 +224,10 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
 
     test('marketplace flow works on mobile', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
-      await page.goto('/fragebogen?v=marketplace');
+      await page.goto('/fragebogen?v=marketplace&restart=1');
       
-      await page.getByRole('button', { name: /nächsten Monats/i }).click();
-      await page.getByRole('button', { name: /Überspringen/i }).click();
-      await page.getByRole('button', { name: /Nein/i }).click();
-      await page.getByRole('button', { name: /Weiter/i }).click();
-      await page.getByRole('button', { name: /Online/i }).click();
-      await page.getByRole('button', { name: /Weiter/i }).click();
-      await page.getByRole('button', { name: /flexibel/i }).click();
-      await page.getByRole('button', { name: /Weiter/i }).click();
+      // Use the shared helper for consistent flow handling
+      await completeQuestionnaire(page);
       
       await expect(page.getByText('Fast geschafft!')).toBeVisible();
     });
