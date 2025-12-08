@@ -25,8 +25,34 @@ interface VerifyCodeResult {
   classification?: 'config' | 'auth' | 'provider' | 'unexpected';
 }
 
+/**
+ * Map Twilio errors to user-friendly German messages
+ * Twilio is the source of truth for phone validation - we just translate their errors
+ */
+function mapTwilioErrorToUserMessage(rawMessage: string): string {
+  // Landline detection - Twilio tells us
+  if (/cannot be a landline/i.test(rawMessage)) {
+    return 'Festnetznummern können keine SMS empfangen. Bitte gib eine Handynummer ein.';
+  }
+  // Invalid phone number format
+  if (/invalid.*parameter.*to/i.test(rawMessage) || /invalid.*phone/i.test(rawMessage)) {
+    return 'Bitte gib eine gültige Handynummer ein.';
+  }
+  // Unverified destination (Twilio trial limitation)
+  if (/unverified/i.test(rawMessage)) {
+    return 'Diese Nummer kann derzeit keine SMS empfangen. Bitte versuche es mit einer anderen Nummer.';
+  }
+  // Rate limiting
+  if (/too many/i.test(rawMessage) || /rate limit/i.test(rawMessage)) {
+    return 'Zu viele Versuche. Bitte warte einen Moment und versuche es erneut.';
+  }
+  // Default: generic error
+  return 'SMS konnte nicht gesendet werden. Bitte versuche es erneut.';
+}
+
 function extractTwilioError(err: unknown): {
   message: string;
+  userMessage: string;
   status?: number;
   code?: number;
   classification: 'auth' | 'provider' | 'unexpected';
@@ -40,6 +66,7 @@ function extractTwilioError(err: unknown): {
   const isAuth = status === 401 || code === 20003 || /authenticate/i.test(msg);
   return {
     message: msg,
+    userMessage: mapTwilioErrorToUserMessage(msg),
     status,
     code,
     classification: isAuth ? 'auth' : 'provider',
@@ -106,10 +133,10 @@ export async function sendSmsCode(phoneNumber: string): Promise<SendCodeResult> 
       twilio_code: info.code,
       classification: info.classification,
     });
-    // Return user-friendly error
+    // Return user-friendly error (translated from Twilio's response)
     return {
       success: false,
-      error: `SMS delivery failed: ${info.message}`,
+      error: info.userMessage,
       twilio_status: info.status,
       twilio_code: info.code,
       classification: info.classification,
