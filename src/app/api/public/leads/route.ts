@@ -987,22 +987,37 @@ export async function POST(req: Request) {
         },
       });
 
-      const matchResult = await createInstantMatchesForPatient(effectiveId!, campaign_variant || undefined);
-      if (matchResult) {
+      // Test 4: Concierge variant skips auto-matching (admin does manual curation)
+      // Self-Service and other variants get instant matches
+      const skipAutoMatch = campaign_variant === 'concierge';
+      let matchResult: { matchesUrl: string; matchQuality: 'exact' | 'partial' | 'none' } | null = null;
+      
+      if (!skipAutoMatch) {
+        matchResult = await createInstantMatchesForPatient(effectiveId!, campaign_variant || undefined);
+        if (matchResult) {
+          void ServerAnalytics.trackEventFromRequest(req, {
+            type: 'instant_match_created',
+            source: 'api.leads',
+            props: { match_quality: matchResult.matchQuality, patient_id: effectiveId! },
+          });
+          // Store matchesUrl as redirect path so after verification user goes to their matches
+          // This ensures conversion fires at verification (Test 3 requirement)
+          try {
+            await supabaseServer
+              .from('people')
+              .update({ metadata: { ...((await supabaseServer.from('people').select('metadata').eq('id', effectiveId!).single()).data?.metadata || {}), last_confirm_redirect_path: matchResult.matchesUrl } })
+              .eq('id', effectiveId!);
+          } catch { /* Non-blocking */ }
+        }
+      } else {
+        // Concierge: Track that this lead requires manual matching
         void ServerAnalytics.trackEventFromRequest(req, {
-          type: 'instant_match_created',
+          type: 'concierge_lead_created',
           source: 'api.leads',
-          props: { match_quality: matchResult.matchQuality, patient_id: effectiveId! },
+          props: { patient_id: effectiveId!, requires_manual_matching: true },
         });
-        // Store matchesUrl as redirect path so after verification user goes to their matches
-        // This ensures conversion fires at verification (Test 3 requirement)
-        try {
-          await supabaseServer
-            .from('people')
-            .update({ metadata: { ...((await supabaseServer.from('people').select('metadata').eq('id', effectiveId!).single()).data?.metadata || {}), last_confirm_redirect_path: matchResult.matchesUrl } })
-            .eq('id', effectiveId!);
-        } catch { /* Non-blocking */ }
       }
+      
       return safeJson(
         { data: { id: effectiveId!, requiresConfirmation: true, ...(matchResult ? { matchesUrl: matchResult.matchesUrl } : {}) }, error: null },
         { headers: { 'Cache-Control': 'no-store' } },

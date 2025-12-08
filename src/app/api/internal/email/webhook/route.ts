@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 import { sendSmsCode } from '@/lib/verification/sms';
+import { sendEmail } from '@/lib/email/client';
+import { renderLayout } from '@/lib/email/layout';
 import { Webhook as SvixWebhook } from 'svix';
+
+const NOTIFY_EMAIL = process.env.LEADS_NOTIFY_EMAIL || 'kontakt@kaufmann-health.de';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -155,7 +159,59 @@ export async function POST(req: Request) {
         }
       }
 
-      void track({ type: 'email_bounced', level: 'warn', source: 'internal.email.webhook', ip, ua, props: { email, reason, event: evt, person_found: Boolean(person) } });
+      // Check if bounced email belongs to a therapist
+      type Therapist = { id: string; email?: string | null; name?: string | null; status?: string | null; metadata?: Record<string, unknown> | null };
+      let therapist: Therapist | null = null;
+      if (email) {
+        const { data } = await supabaseServer
+          .from('therapists')
+          .select('id,email,name,status,metadata')
+          .eq('email', email)
+          .limit(1);
+        if (Array.isArray(data) && data[0]) therapist = data[0] as Therapist;
+      }
+
+      if (therapist) {
+        // Update therapist metadata with bounce info
+        const meta = { ...(therapist.metadata || {}) } as Record<string, unknown>;
+        meta['email_bounce_at'] = new Date().toISOString();
+        if (reason) meta['email_bounce_reason'] = reason;
+        await supabaseServer
+          .from('therapists')
+          .update({ metadata: meta })
+          .eq('id', therapist.id);
+
+        // Send immediate admin alert for therapist bounces
+        const time = new Date().toLocaleString('de-DE', { timeZone: 'Europe/Berlin' });
+        const contentHtml = `
+          <div style="background:#fef2f2;padding:16px 20px;border-radius:12px;border:1px solid #fecaca;margin-bottom:24px;">
+            <h1 style="margin:0 0 8px;font-size:20px;color:#0f172a;">⚠️ Therapist Email Bounce</h1>
+            <p style="margin:0;color:#475569;">An email to a therapist bounced and may need manual follow-up.</p>
+          </div>
+          <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+            <tr><td style="padding:12px;border-bottom:1px solid #e2e8f0;font-weight:600;width:140px;">Therapist</td><td style="padding:12px;border-bottom:1px solid #e2e8f0;">${therapist.name || '-'}</td></tr>
+            <tr><td style="padding:12px;border-bottom:1px solid #e2e8f0;font-weight:600;">Email</td><td style="padding:12px;border-bottom:1px solid #e2e8f0;">${email}</td></tr>
+            <tr><td style="padding:12px;border-bottom:1px solid #e2e8f0;font-weight:600;">Status</td><td style="padding:12px;border-bottom:1px solid #e2e8f0;">${therapist.status || '-'}</td></tr>
+            <tr><td style="padding:12px;border-bottom:1px solid #e2e8f0;font-weight:600;">Bounce Reason</td><td style="padding:12px;border-bottom:1px solid #e2e8f0;">${reason || 'Unknown'}</td></tr>
+            <tr><td style="padding:12px;font-weight:600;">Time</td><td style="padding:12px;">${time}</td></tr>
+          </table>
+          <div style="margin-top:20px;padding:16px;background:#f8fafc;border-radius:8px;">
+            <p style="margin:0;font-size:14px;color:#64748b;">
+              <strong>Action needed:</strong> Contact the therapist to resolve the email issue, then re-trigger the notification from the Admin dashboard.
+            </p>
+          </div>
+        `;
+        void sendEmail({
+          to: NOTIFY_EMAIL,
+          subject: `⚠️ Therapist Email Bounce: ${therapist.name || email}`,
+          html: renderLayout({ contentHtml, preheader: `Email to ${therapist.name || email} bounced` }),
+          context: { kind: 'therapist_bounce_alert', therapist_id: therapist.id, reason },
+        });
+
+        void track({ type: 'therapist_email_bounced', level: 'warn', source: 'internal.email.webhook', ip, ua, props: { email, reason, event: evt, therapist_id: therapist.id, therapist_name: therapist.name } });
+      }
+
+      void track({ type: 'email_bounced', level: 'warn', source: 'internal.email.webhook', ip, ua, props: { email, reason, event: evt, person_found: Boolean(person), therapist_found: Boolean(therapist) } });
     }
 
     return NextResponse.json({ data: { ok: true }, error: null });

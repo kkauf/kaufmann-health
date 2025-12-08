@@ -31,7 +31,13 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   });
 }
 
-export default async function TherapieFindenPage() {
+export default async function TherapieFindenPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const params = await searchParams;
+  // Test 4: Read variant from URL params (from Google Ads) - defaults to concierge for backward compatibility
+  const rawVariant = params?.variant || params?.v;
+  const variant = typeof rawVariant === 'string' ? rawVariant : 'concierge';
+  const fragebogenHref = `/fragebogen?variant=${encodeURIComponent(variant)}`;
+  
   // FAQs (low on page; non-blocking for conversion)
   const faqs = [
     { id: 'prices', question: 'Was kosten die Sitzungen?', answer: 'In der Regel 80–120€ pro 60 Minuten. Den genauen Satz sprichst du direkt mit deiner Therapeut:in ab.' },
@@ -51,7 +57,7 @@ export default async function TherapieFindenPage() {
         title="Traumata lösen sich nicht von Reden allein."
         // subtitle="Dein Körper erinnert sich — auch wenn dein Kopf längst verstanden hat. Körperpsychotherapie setzt dort an, wo Gespräche nicht hinkommen."
         ctaLabel="Therapeut:in finden"
-        ctaHref="/fragebogen?variant=concierge"
+        ctaHref={fragebogenHref}
         backgroundSrc="/images/hero-calm.jpeg"
         valueProps={[
           '✓ Handverlesene Therapeut:innen',
@@ -92,7 +98,7 @@ export default async function TherapieFindenPage() {
             {/* CTA area */}
             <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <CtaLink
-                href="/fragebogen?variant=concierge"
+                href={fragebogenHref}
                 eventType="cta_click"
                 eventId="therapie-finden-recognition-cta"
                 data-cta="recognition-hook"
@@ -170,7 +176,7 @@ export default async function TherapieFindenPage() {
             {/* Mid-bridge CTA */}
             <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <CtaLink
-                href="/fragebogen?variant=concierge"
+                href={fragebogenHref}
                 eventType="cta_click"
                 eventId="therapie-finden-bridge-cta"
                 data-cta="bridge-section"
@@ -317,7 +323,7 @@ export default async function TherapieFindenPage() {
       {/* Mid-page CTA - after process, before stats */}
       <div className="mt-10 sm:mt-12 text-center">
         <CtaLink
-          href="/fragebogen?variant=concierge"
+          href={fragebogenHref}
           eventType="cta_click"
           eventId="therapie-finden-process-cta"
           data-cta="after-process"
@@ -417,8 +423,8 @@ export default async function TherapieFindenPage() {
         heading="Bereit für den ersten Schritt?"
         subtitle="100% kostenlos & unverbindlich. Wir schlagen dir passende Therapeut:innen vor — du entscheidest, mit wem du Kontakt aufnehmen möchtest."
         buttonLabel="Jetzt Therapeut:in finden"
-        targetId="/fragebogen?variant=concierge"
-        targetBasePath="/fragebogen?variant=concierge"
+        targetId={fragebogenHref}
+        targetBasePath={fragebogenHref}
         align="center"
         variant="tinted"
         showAvailabilityNote={false}

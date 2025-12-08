@@ -75,7 +75,13 @@ export default function SignupWizard() {
   // Fallback to live searchParams if capturedVariant not yet set (hydration)
   const variant = capturedVariant || searchParams.get('variant') || searchParams.get('v');
   const isConcierge = variant === 'concierge';
-  const isMarketplace = variant === 'marketplace';
+  const _isMarketplace = variant === 'marketplace'; // Kept for potential future use
+  const isSelfService = variant === 'self-service';
+  // Test 4: Variant-aware step routing
+  // - Concierge: uses open text field (step 2) for manual curation
+  // - Self-Service: uses Schwerpunkte selector (step 2.5) for auto-filtering
+  // - Default (marketplace/other): follows SHOW_SCHWERPUNKTE feature flag
+  const usesSchwerpunkteStep = isSelfService || (!isConcierge && SHOW_SCHWERPUNKTE);
   // Default behavior: ALL users go through verification before matches (9-step flow)
   // Only explicit opt-out variants (none currently) would skip verification
   // This ensures we always capture contact info before showing matches
@@ -717,14 +723,14 @@ export default function SignupWizard() {
           <NewScreen2_Timeline
             values={{ start_timing: data.start_timing }}
             onChange={saveLocal}
-            onNext={() => safeGoToStep(SHOW_SCHWERPUNKTE ? 2.5 : 2)}
+            onNext={() => safeGoToStep(usesSchwerpunkteStep ? 2.5 : 2)}
             suppressAutoAdvance={suppressAutoStep === 1}
             disabled={navLock || submitting}
           />
         );
       case 2:
-        // Step 2: What Brings You (skipped when SHOW_SCHWERPUNKTE=true)
-        if (SHOW_SCHWERPUNKTE) {
+        // Step 2: What Brings You (Concierge variant uses this; Self-Service skips to Schwerpunkte)
+        if (usesSchwerpunkteStep) {
           safeGoToStep(3);
           return null;
         }
@@ -738,8 +744,8 @@ export default function SignupWizard() {
           />
         );
       case 2.5:
-        // Step 2.5: Schwerpunkte (feature-toggled)
-        if (!SHOW_SCHWERPUNKTE) {
+        // Step 2.5: Schwerpunkte (Self-Service variant uses this for auto-filtering)
+        if (!usesSchwerpunkteStep) {
           safeGoToStep(3);
           return null;
         }
@@ -761,7 +767,7 @@ export default function SignupWizard() {
               methods: data.methods,
             }}
             onChange={saveLocal}
-            onBack={() => safeGoToStep(SHOW_SCHWERPUNKTE ? 2.5 : 2)}
+            onBack={() => safeGoToStep(usesSchwerpunkteStep ? 2.5 : 2)}
             onNext={() => safeGoToStep(4)}
             suppressAutoAdvance={suppressAutoStep === 3}
             disabled={navLock || submitting}
@@ -871,15 +877,52 @@ export default function SignupWizard() {
       const confirmParam = searchParams?.get('confirm');
       const isConfirmed = confirmParam === '1' || confirmParam === 'success';
       const isPhoneUser = data.contact_method === 'phone' && !!data.phone_number;
+      
+      // Test 4: Variant-specific confirmation screens
+      // - Concierge: Show waiting screen (manual curation, 24h)
+      // - Self-Service: Redirect to matches or show CTA
+      
       if (isConfirmed) {
+        // Email confirmed - different behavior per variant
+        if (isConcierge) {
+          // Concierge: Show waiting screen
+          return (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-semibold">✓ E‑Mail bestätigt – wir bereiten deine persönliche Auswahl vor</h2>
+              <p>Unser Team von Kaufmann Health prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.</p>
+              <p>Du bekommst deine handverlesene Auswahl innerhalb von 24 Stunden per E‑Mail.</p>
+              <div className="rounded-md border p-3 bg-emerald-50 border-emerald-200">
+                <p className="text-sm">Was als Nächstes passiert: Wir gleichen deine Präferenzen mit unserem Netzwerk ab und senden dir deine persönliche Auswahl mit einem 1‑Klick‑Bestätigungslink.</p>
+              </div>
+            </div>
+          );
+        }
+        // Self-Service / other: Show matches CTA or redirect
         return (
           <div className="space-y-4">
-            <h2 className="text-2xl font-semibold">✓ E‑Mail bestätigt – wir bereiten deine Empfehlungen vor</h2>
-            <p>Unser Team von Kaufmann Health prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.</p>
-            <p>Du bekommst deine Matches innerhalb von 24 Stunden.</p>
-            <div className="rounded-md border p-3 bg-emerald-50 border-emerald-200">
-              <p className="text-sm">Was als Nächstes passiert: Wir gleichen deine Präferenzen ab und senden dir deine Auswahl mit einem 1‑Klick‑Bestätigungslink.</p>
-            </div>
+            <h2 className="text-2xl font-semibold">✓ E‑Mail bestätigt – deine Matches sind bereit!</h2>
+            <p>Basierend auf deinen Präferenzen haben wir passende Therapeut:innen für dich gefunden.</p>
+            {matchesUrl ? (
+              <Button
+                onClick={() => {
+                  void trackEvent('matches_cta_clicked', { contact_method: 'email', has_matches_url: true });
+                  window.location.assign(matchesUrl);
+                }}
+                className="h-14 w-full text-lg font-semibold bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200"
+              >
+                Jetzt Therapeut:innen ansehen →
+              </Button>
+            ) : (
+              <Button
+                onClick={() => {
+                  void trackEvent('directory_fallback_clicked', { contact_method: 'email', has_matches_url: false });
+                  window.location.assign('/therapeuten');
+                }}
+                className="h-14 w-full text-lg font-semibold bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200"
+              >
+                Jetzt Therapeut:innen ansehen →
+              </Button>
+            )}
           </div>
         );
       }
@@ -920,6 +963,27 @@ export default function SignupWizard() {
           }
         }
 
+        // Test 4: Concierge phone users see waiting screen, self-service sees matches CTA
+        if (isConcierge) {
+          return (
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">✓ Geschafft! Deine Handynummer ist bestätigt</h2>
+                <p className="text-base leading-relaxed text-gray-700">
+                  Unser Team prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich.
+                </p>
+                <p className="text-base leading-relaxed text-gray-700">
+                  Du bekommst deine handverlesene Auswahl innerhalb von 24 Stunden per SMS.
+                </p>
+              </div>
+              <div className="rounded-md border p-4 bg-emerald-50 border-emerald-200">
+                <p className="text-sm text-gray-700">Was als Nächstes passiert: Wir gleichen deine Präferenzen mit unserem Netzwerk ab und senden dir deine persönliche Auswahl mit einem 1‑Klick‑Bestätigungslink.</p>
+              </div>
+            </div>
+          );
+        }
+
+        // Self-Service phone users: show CTA to matches
         return (
           <div className="space-y-6">
             <div className="space-y-4">
@@ -927,7 +991,7 @@ export default function SignupWizard() {
               <p className="text-base leading-relaxed text-gray-700">
                 {isDirectBookingFlow
                   ? 'Du kannst jetzt Therapeut:innen kontaktieren und direkt Termine buchen.'
-                  : 'Unser Team prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich. Du bekommst deine Matches innerhalb von 24 Stunden.'}
+                  : 'Basierend auf deinen Präferenzen haben wir passende Therapeut:innen für dich gefunden.'}
               </p>
             </div>
 

@@ -62,6 +62,9 @@
 - __Behavior__:
   - Patients: insert minimal row with `status='pre_confirmation'`, attribution metadata (`campaign_source`, `campaign_variant`), confirmation token + timestamp, and consent footprint. Confirmation email is sent fire-and-forget.
   - Consent: stores `consent_share_with_therapists=true`, `consent_share_with_therapists_at`, `consent_privacy_version`, and `consent_terms_version` under `people.metadata`. Emits `consent_captured` with `{ method: 'email'|'phone', privacy_version }`.
+  - **Test 4 Variant Gating**: Auto-matching behavior depends on `campaign_variant`:
+    - `concierge`: Skips `createInstantMatchesForPatient()` — leads require manual admin matching. Emits `concierge_lead_created` event.
+    - `self-service` / `marketplace` / default: Calls `createInstantMatchesForPatient()` — returns `matchesUrl` in response. Emits `instant_match_created` event.
   - Therapists (JSON): insert `people` row in `therapists` table with `status='pending_verification'`, optional metadata, and enqueue welcome email + internal notification.
   - Multipart therapist submissions are handled inside this route (documents & profile photo go to private storage; metadata merged as pending — see POST `/api/public/therapists/:id/documents`).
   - Google Ads Enhanced Conversions are fired at form completion for patient leads (see `POST /api/public/leads/:id/form-completed`) and at document upload for therapists (`POST /api/public/therapists/:id/documents`).

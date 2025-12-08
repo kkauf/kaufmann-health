@@ -58,16 +58,28 @@ export async function GET(req: Request) {
       return q;
     };
 
-    // Try selecting with phone_number (new schema). If the column doesn't exist, fallback to legacy phone.
+    // Try selecting with phone_number and campaign_variant (new schema). Fallback for older schemas.
     let data: unknown[] | null = null;
     let fetchError: unknown = null;
-    const first = await buildQuery('id, name, email, phone_number, type, status, metadata, created_at');
+    // Try with all columns including campaign_variant for Test 4
+    const first = await buildQuery('id, name, email, phone_number, type, status, metadata, created_at, campaign_variant');
     if (first.error) {
       const msg = String(first.error?.message || '');
-      if (/column\s+"?phone_number"?\s+does not exist/i.test(msg)) {
-        const second = await buildQuery('id, name, email, phone, type, status, metadata, created_at');
+      // Fallback if campaign_variant or phone_number columns don't exist
+      if (/column\s+"?(phone_number|campaign_variant)"?\s+does not exist/i.test(msg)) {
+        const second = await buildQuery('id, name, email, phone_number, type, status, metadata, created_at');
         if (second.error) {
-          fetchError = second.error;
+          const msg2 = String(second.error?.message || '');
+          if (/column\s+"?phone_number"?\s+does not exist/i.test(msg2)) {
+            const third = await buildQuery('id, name, email, phone, type, status, metadata, created_at');
+            if (third.error) {
+              fetchError = third.error;
+            } else {
+              data = (third.data || []) as unknown[];
+            }
+          } else {
+            fetchError = second.error;
+          }
         } else {
           data = (second.data || []) as unknown[];
         }

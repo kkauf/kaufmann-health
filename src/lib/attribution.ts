@@ -18,10 +18,10 @@ const SID_KEY = 'kh.sid';
 const UTM_KEY = 'kh.utm';
 const GCLID_KEY = 'kh.gclid';
 
-function safeGetSessionStorage(): Storage | null {
+function safeGetStorage(type: 'session' | 'local'): Storage | null {
   try {
     if (typeof window === 'undefined') return null;
-    return window.sessionStorage;
+    return type === 'session' ? window.sessionStorage : window.localStorage;
   } catch {
     return null;
   }
@@ -39,14 +39,24 @@ function randomId(): string {
 }
 
 export function getOrCreateSessionId(): string | undefined {
-  const ss = safeGetSessionStorage();
-  if (!ss) return undefined;
-  let sid = ss.getItem(SID_KEY) || undefined;
+  const ss = safeGetStorage('session');
+  // Also try local storage for session ID persistence
+  const ls = safeGetStorage('local');
+
+  if (!ss && !ls) return undefined;
+
+  let sid = ss?.getItem(SID_KEY) || ls?.getItem(SID_KEY) || undefined;
+
   if (!sid) {
     sid = randomId();
     try {
-      ss.setItem(SID_KEY, sid);
-    } catch {}
+      ss?.setItem(SID_KEY, sid);
+      ls?.setItem(SID_KEY, sid);
+    } catch { }
+  } else {
+    // Sync if missing in one
+    if (!ss?.getItem(SID_KEY)) ss?.setItem(SID_KEY, sid);
+    if (!ls?.getItem(SID_KEY)) ls?.setItem(SID_KEY, sid);
   }
   return sid;
 }
@@ -66,10 +76,12 @@ function parseUtmFromUrl(): Omit<Attribution, 'session_id' | 'referrer'> {
 }
 
 function getStoredUtm(): Omit<Attribution, 'session_id' | 'referrer'> {
-  const ss = safeGetSessionStorage();
-  if (!ss) return {};
+  const ss = safeGetStorage('session');
+  const ls = safeGetStorage('local');
+  if (!ss && !ls) return {};
+
   try {
-    const raw = ss.getItem(UTM_KEY);
+    const raw = ss?.getItem(UTM_KEY) || ls?.getItem(UTM_KEY);
     if (!raw) return {};
     const obj = JSON.parse(raw) as Record<string, unknown>;
     return {
@@ -83,29 +95,32 @@ function getStoredUtm(): Omit<Attribution, 'session_id' | 'referrer'> {
 }
 
 function getStoredGclid(): string | undefined {
-  const ss = safeGetSessionStorage();
-  if (!ss) return undefined;
+  const ss = safeGetStorage('session');
+  const ls = safeGetStorage('local');
   try {
-    return ss.getItem(GCLID_KEY) || undefined;
+    return ss?.getItem(GCLID_KEY) || ls?.getItem(GCLID_KEY) || undefined;
   } catch {
     return undefined;
   }
 }
 
 function storeGclid(gclid: string) {
-  const ss = safeGetSessionStorage();
-  if (!ss) return;
+  const ss = safeGetStorage('session');
+  const ls = safeGetStorage('local');
   try {
-    ss.setItem(GCLID_KEY, gclid);
-  } catch {}
+    ss?.setItem(GCLID_KEY, gclid);
+    ls?.setItem(GCLID_KEY, gclid);
+  } catch { }
 }
 
 function storeUtm(utm: Omit<Attribution, 'session_id' | 'referrer'>) {
-  const ss = safeGetSessionStorage();
-  if (!ss) return;
+  const ss = safeGetStorage('session');
+  const ls = safeGetStorage('local');
   try {
-    ss.setItem(UTM_KEY, JSON.stringify(utm));
-  } catch {}
+    const val = JSON.stringify(utm);
+    ss?.setItem(UTM_KEY, val);
+    ls?.setItem(UTM_KEY, val);
+  } catch { }
 }
 
 export function getAttribution(): Attribution {

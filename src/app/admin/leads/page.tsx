@@ -29,6 +29,9 @@ type PersonMeta = {
   // Selection email signals (patient-driven selection, Option B)
   selection_email_sent_at?: string; // ISO timestamp of last selection email sent
   selection_email_count?: number;   // optional: how many therapists were in that email
+  // Test 4: Additional fields for matching
+  schwerpunkte?: string[]; // Focus areas selected by client
+  additional_info?: string; // Open text (Concierge variant)
 };
 
 type Person = {
@@ -43,6 +46,7 @@ type Person = {
   accepting_new?: boolean;
   gender?: string | null;
   photo_url?: string | null; // public profile photo (if approved)
+  campaign_variant?: string | null; // Test 4: concierge | self-service | marketplace
 };
 
 function formatDate(iso?: string) {
@@ -703,11 +707,42 @@ export default function AdminLeadsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 gap-2 text-sm">
+                      {/* Test 4: Campaign variant badge */}
+                      {p.campaign_variant && (
+                        <div className="col-span-2 mb-2">
+                          <Badge
+                            variant="outline"
+                            className={
+                              p.campaign_variant === 'concierge'
+                                ? 'border-purple-200 bg-purple-50 text-purple-700'
+                                : p.campaign_variant === 'self-service'
+                                  ? 'border-teal-200 bg-teal-50 text-teal-700'
+                                  : 'border-gray-200 bg-gray-50 text-gray-700'
+                            }
+                          >
+                            {p.campaign_variant === 'concierge' ? '🎯 Concierge' : p.campaign_variant === 'self-service' ? '⚡ Self-Service' : p.campaign_variant}
+                          </Badge>
+                        </div>
+                      )}
                       <div><span className="text-gray-500">Stadt:</span> {city || '—'}</div>
                       <div><span className="text-gray-500">Geschlecht:</span> {genderPref}</div>
                       <div><span className="text-gray-500">Thema:</span> {issue}</div>
                       <div><span className="text-gray-500">Sitzung:</span> {pref}</div>
                       <div><span className="text-gray-500">Methode:</span> {specs.length ? specs.join(', ') : '—'}</div>
+                      {/* Test 4: Schwerpunkte */}
+                      {meta.schwerpunkte && meta.schwerpunkte.length > 0 && (
+                        <div className="col-span-2">
+                          <span className="text-gray-500">Schwerpunkte:</span>{' '}
+                          <span className="text-indigo-700">{meta.schwerpunkte.join(', ')}</span>
+                        </div>
+                      )}
+                      {/* Test 4: Additional info (Concierge open text) */}
+                      {meta.additional_info && meta.additional_info.trim() && (
+                        <div className="col-span-2">
+                          <span className="text-gray-500">Freitext:</span>{' '}
+                          <span className="italic text-gray-700">&quot;{meta.additional_info.slice(0, 200)}{meta.additional_info.length > 200 ? '...' : ''}&quot;</span>
+                        </div>
+                      )}
                       {p.type === 'patient' && (
                         <>
                           <div><span className="text-gray-500">Einwilligung:</span> {meta.consent_share_with_therapists ? 'Ja' : 'Nein'}</div>
