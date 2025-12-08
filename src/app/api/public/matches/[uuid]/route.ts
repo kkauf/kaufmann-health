@@ -267,9 +267,10 @@ export async function GET(req: Request) {
       if (wantsInPerson && total_in_person_slots === 0) {
         uniqueReasons.add('location');
       }
-      const reasonsArr = Array.from(uniqueReasons).filter(r => r === 'gender' || r === 'location' || r === 'modality');
+      const reasonsArr = Array.from(uniqueReasons).filter(r => r === 'city' || r === 'gender' || r === 'location' || r === 'modality');
 
       const top3Genders = Array.from(new Set(top3.map(s => String(s.t.gender || '').toLowerCase()).filter(Boolean)));
+      const top3Cities = Array.from(new Set(top3.map(s => normalizeSpec(s.t.city || '')).filter(Boolean)));
       const top3ModalitiesRaw: string[] = Array.from(new Set(top3.flatMap(s => Array.isArray(s.t.modalities) ? s.t.modalities : []))).filter(Boolean) as string[];
       const top3Modalities = Array.from(new Set(top3ModalitiesRaw.map(m => normalizeSpec(String(m)))));
       const wantedSpecs = Array.isArray(patientMeta.specializations) ? patientMeta.specializations.map(s => normalizeSpec(String(s))) : [];
@@ -277,16 +278,20 @@ export async function GET(req: Request) {
       const preferredGender = hasGenderPref ? String(patientMeta.gender_preference) : undefined;
       const missingPreferredGender = Boolean(hasGenderPref && preferredGender && !top3Genders.includes(preferredGender));
       const missingRequestedModalities = wantedSpecs.filter(w => !top3Modalities.includes(w));
+      const patientCityNorm = normalizeSpec(patientMeta.city || '');
+      const cityMismatchInTop3 = Boolean(wantsInPerson && patientCityNorm && !top3Cities.includes(patientCityNorm));
 
       const insights: string[] = [];
       if (wantsInPerson && total_in_person_slots === 0) insights.push('in_person_supply_gap');
+      if (cityMismatchInTop3) insights.push('city_supply_gap');
       if (missingPreferredGender) insights.push('gender_supply_gap');
       if (missingRequestedModalities.length > 0) insights.push('modality_supply_gap');
       if (missingPreferredGender && missingRequestedModalities.length > 0) insights.push('combo_gender_modality_gap');
       if (missingPreferredGender && wantsInPerson && total_in_person_slots === 0) insights.push('combo_gender_in_person_gap');
+      if (cityMismatchInTop3 && missingPreferredGender) insights.push('combo_city_gender_gap');
 
       if (reasonsArr.length > 0) {
-        const rows = reasonsArr.map((r) => ({ patient_id: patientId, mismatch_type: r as 'gender' | 'location' | 'modality', city: patientMeta.city || null }));
+        const rows = reasonsArr.map((r) => ({ patient_id: patientId, mismatch_type: r as 'city' | 'gender' | 'location' | 'modality', city: patientMeta.city || null }));
         await supabaseServer.from('business_opportunities').insert(rows).select('id').limit(1).maybeSingle();
       }
       if (reasonsArr.length > 0 || insights.length > 0) {

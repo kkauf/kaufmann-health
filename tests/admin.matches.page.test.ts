@@ -72,6 +72,69 @@ describe('EARTH-206: Match Page End-to-End', () => {
       expect(result.mismatches.location).toBe(true);
     });
 
+    it('should detect city mismatch (patient wants in-person in Berlin, therapist is in Freiburg)', () => {
+      const patient = {
+        city: 'Berlin',
+        session_preference: 'in_person' as const,
+      };
+
+      const therapist = {
+        id: 't1',
+        gender: null,
+        city: 'Freiburg', // Different city
+        session_preferences: ['in_person'], // Offers in-person
+        modalities: [],
+      };
+
+      const result = computeMismatches(patient, therapist);
+      
+      expect(result.isPerfect).toBe(false);
+      expect(result.reasons).toContain('city');
+      expect(result.mismatches.city).toBe(true);
+      // City should be first reason (highest priority for in-person)
+      expect(result.reasons[0]).toBe('city');
+    });
+
+    it('should NOT flag city mismatch when patient wants online', () => {
+      const patient = {
+        city: 'Berlin',
+        session_preference: 'online' as const, // Patient only wants online
+      };
+
+      const therapist = {
+        id: 't1',
+        gender: null,
+        city: 'Freiburg', // Different city, but doesn't matter for online
+        session_preferences: ['online', 'in_person'],
+        modalities: [],
+      };
+
+      const result = computeMismatches(patient, therapist);
+      
+      expect(result.mismatches.city).toBe(false);
+    });
+
+    it('should NOT flag city mismatch when therapist is online-only', () => {
+      const patient = {
+        city: 'Berlin',
+        session_preference: 'in_person' as const,
+      };
+
+      const therapist = {
+        id: 't1',
+        gender: null,
+        city: 'Freiburg',
+        session_preferences: ['online'], // Online only - location mismatch, not city
+        modalities: [],
+      };
+
+      const result = computeMismatches(patient, therapist);
+      
+      // Should flag location (online-only), not city
+      expect(result.mismatches.location).toBe(true);
+      expect(result.mismatches.city).toBe(false);
+    });
+
     it('should detect modality mismatch', () => {
       const patient = {
         specializations: ['hakomi'],

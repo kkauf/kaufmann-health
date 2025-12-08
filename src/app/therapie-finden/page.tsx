@@ -10,6 +10,7 @@ import {
   FinalCtaSection,
 } from '@/features/landing/components';
 import { buildLandingMetadata, buildLocalBusinessJsonLd, buildFaqJsonLd } from '@/lib/seo';
+import { parseKeyword, parseAdGroup, getLandingPageCopy } from '@/lib/ads-landing';
 import { Lock, MessageCircle, UserCheck, FileCheck, Shield, Clock, CalendarCheck, TrendingUp, Euro, Brain, Activity, Heart, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 
@@ -36,7 +37,29 @@ export default async function TherapieFindenPage({ searchParams }: { searchParam
   // Test 4: Read variant from URL params (from Google Ads) - defaults to concierge for backward compatibility
   const rawVariant = params?.variant || params?.v;
   const variant = typeof rawVariant === 'string' ? rawVariant : 'concierge';
+  const isConcierge = variant === 'concierge';
   const fragebogenHref = `/fragebogen?variant=${encodeURIComponent(variant)}`;
+  
+  // Test 4: Keyword-echo for QS optimization
+  // Priority: ?kw={keyword} (ValueTrack) > ?adgroup= > page defaults
+  // Google Ads Final URL: ?variant=concierge&kw={keyword}
+  const keyword = parseKeyword(params?.kw);
+  const adgroup = parseAdGroup(params?.adgroup);
+  const landingCopy = getLandingPageCopy(keyword, adgroup);
+  
+  // Default copy (used when no keyword or adgroup param)
+  const defaultTitle = 'Traumata lösen sich nicht von Reden allein.';
+  const defaultValueProps = [
+    '✓ Handverlesene Therapeut:innen',
+    '✓ Ohne Warteliste',
+    '✓ Körperpsychotherapie Berlin',
+    '✓ Berlin & Online · 80€–120€',
+  ];
+  
+  // Use keyword/adgroup copy if available, otherwise defaults
+  const heroTitle = landingCopy?.title ?? defaultTitle;
+  const heroSubtitle = landingCopy?.subtitle;
+  const heroValueProps = landingCopy?.valueProps ?? defaultValueProps;
   
   // FAQs (low on page; non-blocking for conversion)
   const faqs = [
@@ -54,17 +77,12 @@ export default async function TherapieFindenPage({ searchParams }: { searchParam
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
       <PageAnalytics qualifier="concierge" />
       <HeroNoForm
-        title="Traumata lösen sich nicht von Reden allein."
-        // subtitle="Dein Körper erinnert sich — auch wenn dein Kopf längst verstanden hat. Körperpsychotherapie setzt dort an, wo Gespräche nicht hinkommen."
+        title={heroTitle}
+        subtitle={heroSubtitle}
         ctaLabel="Therapeut:in finden"
         ctaHref={fragebogenHref}
         backgroundSrc="/images/hero-calm.jpeg"
-        valueProps={[
-          '✓ Handverlesene Therapeut:innen',
-          '✓ Ohne Warteliste',
-          '✓ Körperpsychotherapie Berlin',
-          '✓ Berlin & Online · 80€–120€',
-        ]}
+        valueProps={heroValueProps}
       />
 
       {/* Recognition Hook */}
@@ -278,30 +296,54 @@ export default async function TherapieFindenPage({ searchParams }: { searchParam
         </div>
       </section>
 
-      {/* Process - 3 Steps */}
+      {/* Process - 3 Steps (variant-aware for Test 4) */}
       <ProcessTimeline
         heading="In drei Schritten zur passenden Therapeut:in"
-        tagline="Sofort passende Vorschläge basierend auf deinen Angaben. Deine Daten bleiben privat."
-        items={[
-          {
-            icon: <MessageCircle className="h-5 w-5" />,
-            title: 'Deine Präferenzen',
-            caption: '3 Minuten',
-            bullets: ['Du sagst uns, was dir wichtig ist — online oder vor Ort, zeitliche Verfügbarkeit, was dich belastet.'],
-          },
-          {
-            icon: <UserCheck className="h-5 w-5" />,
-            title: 'Passende Ergebnisse',
-            caption: 'Sofort',
-            bullets: ['Wir zeigen dir bis zu 3 passende Profile aus unserem geprüften Netzwerk.'],
-          },
-          {
-            icon: <CalendarCheck className="h-5 w-5" />,
-            title: 'Termin buchen',
-            caption: 'Direkt online',
-            bullets: ['Buche deinen ersten Termin direkt online. Keine Überweisung nötig. Start als Selbstzahler:in.'],
-          },
-        ]}
+        tagline={isConcierge
+          ? 'Handverlesene Vorschläge innerhalb von 24 Stunden. Deine Daten bleiben privat.'
+          : 'Sofort passende Vorschläge basierend auf deinen Angaben. Deine Daten bleiben privat.'}
+        items={isConcierge
+          ? [
+              {
+                icon: <MessageCircle className="h-5 w-5" />,
+                title: 'Deine Präferenzen',
+                caption: '3 Minuten',
+                bullets: ['Du sagst uns, was dir wichtig ist — online oder vor Ort, zeitliche Verfügbarkeit, was dich belastet.'],
+              },
+              {
+                icon: <UserCheck className="h-5 w-5" />,
+                title: 'Unsere persönliche Auswahl',
+                caption: '24 Stunden',
+                bullets: ['Bis zu 3 passende Profile, von uns handverlesen für deine Situation.'],
+              },
+              {
+                icon: <CalendarCheck className="h-5 w-5" />,
+                title: 'Du entscheidest',
+                caption: 'Direkter Kontakt',
+                bullets: ['Wunschtherapeut:in wählen und direkt Termin vereinbaren.'],
+              },
+            ]
+          : [
+              {
+                icon: <MessageCircle className="h-5 w-5" />,
+                title: 'Deine Präferenzen',
+                caption: '3 Minuten',
+                bullets: ['Du sagst uns, was dir wichtig ist — online oder vor Ort, zeitliche Verfügbarkeit, was dich belastet.'],
+              },
+              {
+                icon: <UserCheck className="h-5 w-5" />,
+                title: 'Passende Ergebnisse',
+                caption: 'Sofort',
+                bullets: ['Wir zeigen dir bis zu 3 passende Profile aus unserem geprüften Netzwerk.'],
+              },
+              {
+                icon: <CalendarCheck className="h-5 w-5" />,
+                title: 'Termin buchen',
+                caption: 'Direkt online',
+                bullets: ['Buche deinen ersten Termin direkt online. Keine Überweisung nötig. Start als Selbstzahler:in.'],
+              },
+            ]
+        }
       />
       <p className="mt-6 sm:mt-7 text-sm sm:text-base text-gray-700 leading-relaxed flex flex-wrap items-center justify-center gap-3 sm:gap-4">
         <span className="inline-flex items-center gap-2">

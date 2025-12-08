@@ -21,7 +21,7 @@ export type TherapistRowForMatch = {
 };
 
 export type MismatchResult = {
-  mismatches: { gender: boolean; location: boolean; modality: boolean; schwerpunkte: boolean };
+  mismatches: { gender: boolean; location: boolean; city: boolean; modality: boolean; schwerpunkte: boolean };
   isPerfect: boolean;
   reasons: string[];
   schwerpunkteOverlap: number; // Number of matching categories
@@ -64,7 +64,22 @@ export function computeMismatches(patient: PatientMeta | null | undefined, thera
 
   const patientWantsInPerson = patientPrefs.has('in_person');
   const therapistOnlineOnly = tPrefs.size > 0 && tPrefs.has('online') && !tPrefs.has('in_person');
+  const therapistOffersInPerson = tPrefs.has('in_person');
+  
+  // Location mismatch: therapist is online-only but patient wants in-person
   const locationMismatch = patientWantsInPerson && therapistOnlineOnly;
+  
+  // City mismatch: patient wants in-person, therapist offers in-person, but cities don't match
+  // This is the most critical mismatch for in-person therapy - traveling to another city is a dealbreaker
+  const patientCity = normalizeSpec(meta.city || '');
+  const therapistCity = normalizeSpec(t.city || '');
+  const cityMismatch = Boolean(
+    patientWantsInPerson && 
+    therapistOffersInPerson && 
+    patientCity && 
+    therapistCity && 
+    patientCity !== therapistCity
+  );
 
   let modalityMismatch = false;
   if (patientSpecs.size > 0) {
@@ -90,10 +105,12 @@ export function computeMismatches(patient: PatientMeta | null | undefined, thera
   // Schwerpunkte mismatch: patient selected schwerpunkte but therapist has none matching
   const schwerpunkteMismatch = patientSchwerpunkte.size > 0 && schwerpunkteOverlap === 0;
 
-  const mismatches = { gender: genderMismatch, location: locationMismatch, modality: modalityMismatch, schwerpunkte: schwerpunkteMismatch } as const;
-  const isPerfect = !mismatches.gender && !mismatches.location && !mismatches.modality && !mismatches.schwerpunkte;
+  const mismatches = { gender: genderMismatch, location: locationMismatch, city: cityMismatch, modality: modalityMismatch, schwerpunkte: schwerpunkteMismatch } as const;
+  const isPerfect = !mismatches.gender && !mismatches.location && !mismatches.city && !mismatches.modality && !mismatches.schwerpunkte;
 
   const reasons: string[] = [];
+  // City mismatch is the most severe for in-person - list it first
+  if (mismatches.city) reasons.push('city');
   if (mismatches.gender) reasons.push('gender');
   if (mismatches.location) reasons.push('location');
   if (mismatches.modality) reasons.push('modality');
@@ -254,7 +271,7 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
       for (const s of chosenScored) {
         for (const reason of s.reasons) uniqueReasons.add(reason);
       }
-      const reasonsArr = Array.from(uniqueReasons).filter(r => r === 'gender' || r === 'location' || r === 'modality');
+      const reasonsArr = Array.from(uniqueReasons).filter(r => r === 'city' || r === 'gender' || r === 'location' || r === 'modality');
 
       // Calculate slot availability for chosen therapists
       let total_in_person_slots = 0;
@@ -271,6 +288,7 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
       // Analyze supply gaps
       const topTherapists = therapists.filter(t => chosen.includes(t.id));
       const topGenders = Array.from(new Set(topTherapists.map(t => String(t.gender || '').toLowerCase()).filter(Boolean)));
+      const topCities = Array.from(new Set(topTherapists.map(t => normalizeSpec(t.city || '')).filter(Boolean)));
       const topModalitiesRaw: string[] = Array.from(new Set(topTherapists.flatMap(t => Array.isArray(t.modalities) ? (t.modalities as string[]) : []))).filter(Boolean);
       const topModalities = Array.from(new Set(topModalitiesRaw.map(m => normalizeSpec(String(m)))));
       const wantedSpecs = Array.isArray(specializations) ? specializations.map(s => normalizeSpec(String(s))) : [];
@@ -278,13 +296,17 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
       const preferredGender = hasGenderPref ? String(gender_preference) : undefined;
       const missingPreferredGender = Boolean(hasGenderPref && preferredGender && !topGenders.includes(preferredGender));
       const missingRequestedModalities = wantedSpecs.filter(w => !topModalities.includes(w));
+      const patientCityNorm = normalizeSpec(city || '');
+      const cityMismatchInTop = Boolean(wantsInPerson && patientCityNorm && !topCities.includes(patientCityNorm));
 
       const insights: string[] = [];
       if (wantsInPerson && total_in_person_slots === 0) insights.push('in_person_supply_gap');
+      if (cityMismatchInTop) insights.push('city_supply_gap');
       if (missingPreferredGender) insights.push('gender_supply_gap');
       if (missingRequestedModalities.length > 0) insights.push('modality_supply_gap');
       if (missingPreferredGender && missingRequestedModalities.length > 0) insights.push('combo_gender_modality_gap');
       if (missingPreferredGender && wantsInPerson && total_in_person_slots === 0) insights.push('combo_gender_in_person_gap');
+      if (cityMismatchInTop && missingPreferredGender) insights.push('combo_city_gender_gap');
 
       // Check for schwerpunkte gaps
       const wantedSchwerpunkte = schwerpunkte || [];
@@ -320,7 +342,7 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
 
       // Insert business opportunities
       if (reasonsArr.length > 0) {
-        const rows = reasonsArr.map((r) => ({ patient_id: patientId, mismatch_type: r as 'gender' | 'location' | 'modality', city: city || null }));
+        const rows = reasonsArr.map((r) => ({ patient_id: patientId, mismatch_type: r as 'city' | 'gender' | 'location' | 'modality', city: city || null }));
         await supabaseServer.from('business_opportunities').insert(rows).select('id').limit(1).maybeSingle();
       }
 
