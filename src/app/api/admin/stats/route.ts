@@ -1757,19 +1757,14 @@ export async function GET(req: Request) {
       demandSignals: [],
     };
     try {
-      const [boRes, evRes, supplyGapsRes] = await Promise.all([
-        supabaseServer
-          .from('business_opportunities')
-          .select('mismatch_type, city, created_at')
-          .gte('created_at', sinceIso)
-          .limit(50000),
+      const [evRes, supplyGapsRes] = await Promise.all([
         supabaseServer
           .from('events')
           .select('properties')
           .eq('type', 'business_opportunity_logged')
           .gte('created_at', sinceIso)
           .limit(50000),
-        // New: actionable supply gaps
+        // Actionable supply gaps (replaces business_opportunities)
         supabaseServer
           .from('supply_gaps')
           .select('city, gender, modality, schwerpunkt, session_type')
@@ -1777,11 +1772,10 @@ export async function GET(req: Request) {
           .limit(50000),
       ]);
 
-      const reasonCounts: Record<string, number> = { gender: 0, location: 0, modality: 0 };
+      // Derive top cities from supply_gaps instead of old business_opportunities
       const cityCounts = new Map<string, number>();
-      for (const row of ((boRes.data || []) as Array<{ mismatch_type?: string | null; city?: string | null }>)) {
-        const r = String(row.mismatch_type || '').toLowerCase();
-        if (r === 'gender' || r === 'location' || r === 'modality') reasonCounts[r] = (reasonCounts[r] || 0) + 1;
+      type SupplyGapRow = { city?: string | null; gender?: string | null; modality?: string | null; schwerpunkt?: string | null; session_type?: string | null };
+      for (const row of ((supplyGapsRes.data || []) as SupplyGapRow[])) {
         const c = String((row.city || '').trim());
         if (c) cityCounts.set(c, (cityCounts.get(c) || 0) + 1);
       }
@@ -1832,10 +1826,9 @@ export async function GET(req: Request) {
       const wantsInPerson = Array.from(inPersonCounts.entries()).map(([option, count]) => ({ option, count })).sort((a, b) => b.count - a.count);
       const demandSignals = Array.from(demandSignalCounts.entries()).map(([signal, count]) => ({ signal, count })).sort((a, b) => b.count - a.count).slice(0, 20);
 
-      // Aggregate actionable supply gaps from new table
+      // Aggregate actionable supply gaps from supply_gaps table
       // E.g., "Female NARM therapist in Berlin (in-person)" → count
       const actionableGapCounts = new Map<string, number>();
-      type SupplyGapRow = { city?: string | null; gender?: string | null; modality?: string | null; schwerpunkt?: string | null; session_type?: string | null };
       for (const row of ((supplyGapsRes.data || []) as SupplyGapRow[])) {
         // Build human-readable gap description
         const parts: string[] = [];
@@ -1854,7 +1847,7 @@ export async function GET(req: Request) {
         .slice(0, 20);
 
       opportunities = {
-        byReason: { gender: reasonCounts['gender'] || 0, location: reasonCounts['location'] || 0, modality: reasonCounts['modality'] || 0 },
+        byReason: { gender: 0, location: 0, modality: 0 }, // Deprecated: use actionableGaps instead
         insights: insightsArr,
         insightsModalityMatters: insightsModalityArr,
         topCities,

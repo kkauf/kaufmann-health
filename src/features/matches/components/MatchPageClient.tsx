@@ -515,7 +515,12 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       )}
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {therapistsWithQuality.map((t) => {
+        {/* Sort so highlighted/recommended therapist appears first */}
+        {[...therapistsWithQuality].sort((a, b) => {
+          if (a.id === highlightedTherapistId) return -1;
+          if (b.id === highlightedTherapistId) return 1;
+          return 0;
+        }).map((t) => {
           const isHighlighted = t.id === highlightedTherapistId;
 
           // Convert TherapistItem to TherapistData for the card component

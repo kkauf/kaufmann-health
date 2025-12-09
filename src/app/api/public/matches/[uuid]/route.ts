@@ -287,10 +287,6 @@ export async function GET(req: Request) {
       if (missingPreferredGender && missingRequestedModalities.length > 0) insights.push('combo_gender_modality_gap');
       if (missingPreferredGender && wantsInPerson && total_in_person_slots === 0) insights.push('combo_gender_in_person_gap');
 
-      if (reasonsArr.length > 0) {
-        const rows = reasonsArr.map((r) => ({ patient_id: patientId, mismatch_type: r as 'gender' | 'location' | 'modality', city: patientMeta.city || null }));
-        await supabaseServer.from('business_opportunities').insert(rows).select('id').limit(1).maybeSingle();
-      }
       if (reasonsArr.length > 0 || insights.length > 0) {
         void ServerAnalytics.trackEventFromRequest(req, {
           type: 'business_opportunity_logged',
