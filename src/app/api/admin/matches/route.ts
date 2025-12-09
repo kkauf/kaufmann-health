@@ -7,7 +7,6 @@ import { renderTherapistNotification } from '@/lib/email/templates/therapistNoti
 import { BASE_URL } from '@/lib/constants';
 import { createTherapistOptOutToken } from '@/lib/signed-links';
 import { ServerAnalytics } from '@/lib/server-analytics';
-import { computeMismatches } from '@/features/leads/lib/match';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -465,47 +464,7 @@ export async function POST(req: Request) {
         }
       }
 
-      // Business opportunity logging (best-effort)
-      try {
-        type PatientMetaServer = {
-          city?: string;
-          session_preference?: 'online' | 'in_person';
-          session_preferences?: ('online' | 'in_person')[];
-          issue?: string;
-          specializations?: string[];
-          gender_preference?: 'male' | 'female' | 'no_preference';
-        };
-        type PatientRow = { metadata?: PatientMetaServer | null };
-        const pMeta: PatientMetaServer = ((patient as PatientRow)?.metadata) || {};
-        const tRow: TherapistDetails = (detailsById.get(tid) || { id: tid });
-        const mm = computeMismatches(
-          {
-            city: pMeta.city,
-            session_preference: pMeta.session_preference,
-            session_preferences: pMeta.session_preferences,
-            issue: pMeta.issue,
-            specializations: pMeta.specializations,
-            gender_preference: pMeta.gender_preference,
-          },
-          {
-            id: tid,
-            gender: tRow.gender || null,
-            city: undefined,
-            session_preferences: Array.isArray(tRow.session_preferences) ? (tRow.session_preferences as string[]) : [],
-            modalities: Array.isArray(tRow.modalities) ? (tRow.modalities as string[]) : [],
-          }
-        );
-        const reasons = mm.reasons; // ['gender','location','modality'] subset
-        if (reasons.length > 0) {
-          type BusinessOpportunityInsert = { patient_id: string; mismatch_type: 'gender' | 'location' | 'modality'; city?: string | null };
-          const rows: BusinessOpportunityInsert[] = reasons.map((r) => ({ patient_id, mismatch_type: r as 'gender' | 'location' | 'modality', city: typeof pMeta.city === 'string' ? pMeta.city : null }));
-          // Insert; ignore failures
-          await supabaseServer.from('business_opportunities').insert(rows).select('id').limit(1).maybeSingle();
-          void ServerAnalytics.trackEventFromRequest(req, { type: 'business_opportunity_logged', source: 'admin.api.matches', props: { patient_id, reasons } });
-        }
-      } catch (e) {
-        void logError('admin.api.matches', e, { stage: 'log_business_opportunity', patient_id, therapist_id: tid });
-      }
+      // Note: Supply gap logging is now handled by instant matching flow (supply_gaps table)
     }
 
     if (created.length === 0) {

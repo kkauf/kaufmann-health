@@ -544,7 +544,6 @@ __Deliverability Note__: We intentionally send only one reminder at 24h to prote
 - __Behavior__:
   - Inserts one `matches` row per therapist with `status='proposed'`.
   - Enqueues therapist outreach emails (best-effort) with magic link, identical to single-create behavior.
-  - Side-effect: logs business opportunity records when a selection contains preference mismatches (see `business_opportunities` in Data Model).
 - __Response__:
   - 200: when 1 match created → `{ data: { id: uuid }, error: null }`
   - 200: when 2–3 matches created → `{ data: { ids: uuid[] }, error: null }`
