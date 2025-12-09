@@ -99,13 +99,20 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       setLoading(true);
       setError(null);
       const start = Date.now();
+      
+      // Check if coming from email link (has ?therapist= param) - skip loading animation
+      const isFromEmail = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('therapist');
+      
       try {
         const res = await fetch(`/api/public/matches/${encodeURIComponent(uuid)}`);
         const json = await res.json();
 
-        // Ensure at least 3s loading animation for "searching" feel
-        const elapsed = Date.now() - start;
-        if (elapsed < 3000) await new Promise(r => setTimeout(r, 3000 - elapsed));
+        // Ensure at least 3s loading animation ONLY for /fragebogen redirects (fresh quiz completions)
+        // Skip delay for email links (?therapist=...) - user already knows their match
+        if (!isFromEmail) {
+          const elapsed = Date.now() - start;
+          if (elapsed < 3000) await new Promise(r => setTimeout(r, 3000 - elapsed));
+        }
 
         if (!res.ok) {
           if (!cancelled) {
@@ -201,9 +208,20 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     [matchType, hasPerfect]
   );
   
-  // Find the SINGLE best perfect match to highlight
-  // Criteria: isPerfect, then prefer those with booking slots, else first
+  // Find the SINGLE best therapist to highlight with premium styling
+  // Priority: 1) Email link (?therapist=...) - always highlight that one
+  //           2) Perfect match with booking slots
+  //           3) First perfect match
   const highlightedTherapistId = useMemo(() => {
+    // Check for email link - if ?therapist= param present, highlight that therapist
+    if (typeof window !== 'undefined') {
+      const emailTherapistId = new URLSearchParams(window.location.search).get('therapist');
+      if (emailTherapistId && therapistsWithQuality.some(t => t.id === emailTherapistId)) {
+        return emailTherapistId;
+      }
+    }
+    
+    // Otherwise, find best perfect match
     const perfectMatches = therapistsWithQuality.filter(t => t.matchQuality?.isPerfect === true);
     if (perfectMatches.length === 0) return null;
     if (perfectMatches.length === 1) return perfectMatches[0].id;
