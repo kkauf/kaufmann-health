@@ -7,9 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Lock, Target, Eye } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { getSchwerpunktLabel, getSchwerpunktColorClasses } from "@/lib/schwerpunkte";
+import { TherapistDetailModal } from "@/features/therapists/components/TherapistDetailModal";
+import type { TherapistData } from "@/features/therapists/components/TherapistDirectory";
 import SlotsManager from "./SlotsManager";
 import { SchwerpunkteSelector } from "@/components/SchwerpunkteSelector";
 import { THERAPIST_SCHWERPUNKTE_MIN, THERAPIST_SCHWERPUNKTE_MAX } from "@/lib/schwerpunkte";
@@ -18,6 +17,8 @@ import { PROFILE_LIMITS } from "@/lib/config/profileLimits";
 type Props = {
   therapistId: string;
   initialData: {
+    first_name: string;
+    last_name: string;
     photo_url?: string;
     // New structured profile fields
     who_comes_to_me: string;
@@ -215,6 +216,56 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
 
   // Minimum character count for required text fields
   const MIN_CHARS = 50;
+
+  // Transform form state to TherapistData for preview modal
+  const previewTherapistData: TherapistData = useMemo(() => ({
+    id: therapistId,
+    first_name: initialData.first_name,
+    last_name: initialData.last_name,
+    photo_url: currentPhotoUrl,
+    modalities: initialData.modalities,
+    schwerpunkte: schwerpunkte,
+    session_preferences: [
+      ...(offersOnline ? ['online'] : []),
+      ...(offersInPerson ? ['in_person'] : []),
+    ],
+    approach_text: initialData.approach_text_legacy || '',
+    accepting_new: acceptingNew,
+    city: offersInPerson ? practiceCity : city,
+    typical_rate: typicalRate ? parseInt(typicalRate, 10) : null,
+    metadata: {
+      profile: {
+        who_comes_to_me: whoComesToMe,
+        session_focus: sessionFocus,
+        first_session: firstSession,
+        about_me: aboutMe,
+        practice_address: offersInPerson
+          ? [practiceStreet, practicePostalCode, practiceCity].filter(Boolean).join(', ')
+          : undefined,
+      },
+    },
+    availability: [], // No slots in preview - therapist manages these separately
+  }), [
+    therapistId,
+    initialData.first_name,
+    initialData.last_name,
+    initialData.modalities,
+    initialData.approach_text_legacy,
+    currentPhotoUrl,
+    schwerpunkte,
+    offersOnline,
+    offersInPerson,
+    acceptingNew,
+    practiceCity,
+    city,
+    typicalRate,
+    whoComesToMe,
+    sessionFocus,
+    firstSession,
+    aboutMe,
+    practiceStreet,
+    practicePostalCode,
+  ]);
 
   // Profile completeness check (min 50 chars for required fields)
   const profileCompleteness = useMemo(() => {
@@ -875,125 +926,13 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
         </button>
       </div>
 
-      {/* Profile Preview Modal */}
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold">Profilvorschau</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-5 py-2">
-            {/* Photo & Name Header */}
-            <div className="flex items-center gap-4">
-              <div className="relative h-20 w-20 rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-                {currentPhotoUrl ? (
-                  <Image src={currentPhotoUrl} alt="Profilbild" fill className="object-cover" />
-                ) : (
-                  <Camera className="h-8 w-8" />
-                )}
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">So sehen Klient:innen dein Profil</p>
-              </div>
-            </div>
-
-            {/* Location & Format Badges */}
-            <div className="flex flex-wrap gap-2">
-              {city && (
-                <Badge variant="secondary" className="gap-1.5">
-                  <MapPin className="h-3 w-3" />
-                  {city}
-                </Badge>
-              )}
-              {offersOnline && (
-                <Badge variant="secondary" className="gap-1 bg-sky-50 text-sky-700">
-                  <Video className="h-3 w-3" />
-                  Online
-                </Badge>
-              )}
-              {offersInPerson && (
-                <Badge variant="secondary" className="gap-1 bg-slate-50 text-slate-700">
-                  <Building2 className="h-3 w-3" />
-                  Vor Ort
-                </Badge>
-              )}
-            </div>
-
-            {/* Schwerpunkte */}
-            {schwerpunkte.length > 0 && (
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-2">Schwerpunkte</h4>
-                <div className="flex flex-wrap gap-2">
-                  {schwerpunkte.map((id) => (
-                    <Badge key={id} variant="outline" className={`rounded-full border ${getSchwerpunktColorClasses(id)}`}>
-                      {getSchwerpunktLabel(id)}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Profile Sections */}
-            {whoComesToMe && (
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-1">Zu mir kommen Menschen, die...</h4>
-                <p className="text-sm text-gray-700">{whoComesToMe}</p>
-              </div>
-            )}
-
-            {sessionFocus && (
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-1">In unserer Arbeit geht es oft um...</h4>
-                <p className="text-sm text-gray-700">{sessionFocus}</p>
-              </div>
-            )}
-
-            {firstSession && (
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-1">Das erste Gespräch</h4>
-                <p className="text-sm text-gray-700">{firstSession}</p>
-              </div>
-            )}
-
-            {aboutMe && (
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-1">Über mich</h4>
-                <p className="text-sm text-gray-700">{aboutMe}</p>
-              </div>
-            )}
-
-            {/* Price */}
-            {typicalRate && (
-              <div className="pt-2 border-t">
-                <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
-                  <Euro className="h-3.5 w-3.5" />
-                  {typicalRate}€ pro Sitzung
-                </Badge>
-              </div>
-            )}
-
-            {/* Completeness Warning */}
-            {(whoComesToMe.length < MIN_CHARS || sessionFocus.length < MIN_CHARS || firstSession.length < MIN_CHARS || schwerpunkte.length === 0 || !typicalRate) && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-sm text-amber-800 font-medium mb-1">Profil unvollständig</p>
-                <ul className="text-xs text-amber-700 space-y-0.5">
-                  {whoComesToMe.length < MIN_CHARS && <li>• &quot;Zu mir kommen Menschen...&quot; mind. {MIN_CHARS} Zeichen</li>}
-                  {sessionFocus.length < MIN_CHARS && <li>• &quot;In unserer Arbeit...&quot; mind. {MIN_CHARS} Zeichen</li>}
-                  {firstSession.length < MIN_CHARS && <li>• &quot;Das erste Gespräch&quot; mind. {MIN_CHARS} Zeichen</li>}
-                  {schwerpunkte.length === 0 && <li>• Keine Schwerpunkte ausgewählt</li>}
-                  {!typicalRate && <li>• Preis pro Sitzung fehlt</li>}
-                </ul>
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-end pt-2 border-t">
-            <Button variant="outline" onClick={() => setPreviewOpen(false)}>
-              Schließen
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Profile Preview Modal - reuses the public-facing TherapistDetailModal */}
+      <TherapistDetailModal
+        therapist={previewTherapistData}
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        previewMode
+      />
     </div>
   );
 }

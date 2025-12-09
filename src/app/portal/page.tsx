@@ -124,6 +124,9 @@ export default async function PortalPage({
 
   // Prepare initial data for the form
   const initialData = {
+    // Identity fields for preview
+    first_name: therapist.first_name || '',
+    last_name: therapist.last_name || '',
     photo_url: therapist.photo_url || undefined,
     // New structured profile fields
     who_comes_to_me: whoComesToMe,
