@@ -31,6 +31,19 @@ type TherapistItem = {
   approach_text?: string;
   gender?: string;
   availability?: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[];
+  /** Rich profile data for detail modal (qualification, sections, pricing) */
+  metadata?: {
+    profile?: {
+      qualification?: string;
+      approach_text?: string;
+      approach_text_sections?: Record<string, string>;
+      practice_address?: string;
+      pricing?: string;
+      languages?: string[];
+      years_experience?: number;
+    };
+    [k: string]: unknown;
+  };
 };
 
 type MatchApiData = {
@@ -588,6 +601,8 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             approach_text: detailModalTherapist.approach_text || '',
             accepting_new: detailModalTherapist.accepting_new ?? true,
             city: detailModalTherapist.city || '',
+            // Include metadata for rich profile display (qualification, sections, pricing)
+            metadata: detailModalTherapist.metadata,
           } as TherapistData}
           open={!!detailModalTherapist}
           onClose={() => setDetailModalTherapist(null)}

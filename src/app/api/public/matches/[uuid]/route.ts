@@ -232,6 +232,8 @@ export async function GET(req: Request) {
       gender: t.gender || undefined,
       availability,
       is_perfect: Boolean(isPerfect),
+      // Include full metadata for rich profile display (qualification, sections, pricing, etc.)
+      metadata: t.metadata || undefined,
     }));
 
     // Compute overall match_type for banner logic
