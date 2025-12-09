@@ -341,10 +341,47 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
         demandSignals.push(`Therapeut:in vor Ort${locationPart}`);
       }
 
-      // Insert business opportunities
-      if (reasonsArr.length > 0) {
-        const rows = reasonsArr.map((r) => ({ patient_id: patientId, mismatch_type: r as 'gender' | 'location' | 'modality', city: city || null }));
-        await supabaseServer.from('business_opportunities').insert(rows).select('id').limit(1).maybeSingle();
+      // Insert actionable supply gaps (what specific combination couldn't be fulfilled)
+      // E.g., "female NARM therapist in Berlin (in-person)"
+      const supplyGapRows: { city?: string; gender?: string; modality?: string; schwerpunkt?: string; session_type?: string; patient_id: string }[] = [];
+      
+      const sessionTypeForGap = wantsInPerson ? 'in_person' : 'online';
+      const cityForGap = (wantsInPerson && city) ? city : undefined;
+      
+      // Log each missing modality as a gap
+      for (const mod of missingRequestedModalities) {
+        supplyGapRows.push({
+          city: cityForGap,
+          gender: missingPreferredGender ? preferredGender : undefined,
+          modality: mod,
+          session_type: sessionTypeForGap,
+          patient_id: patientId,
+        });
+      }
+      
+      // Log each missing schwerpunkt as a gap
+      for (const sp of missingSchwerpunkte) {
+        supplyGapRows.push({
+          city: cityForGap,
+          gender: missingPreferredGender ? preferredGender : undefined,
+          schwerpunkt: sp,
+          session_type: sessionTypeForGap,
+          patient_id: patientId,
+        });
+      }
+      
+      // If only gender mismatch (no modality/schwerpunkt), log gender-only gap
+      if (missingPreferredGender && missingRequestedModalities.length === 0 && missingSchwerpunkte.length === 0) {
+        supplyGapRows.push({
+          city: cityForGap,
+          gender: preferredGender,
+          session_type: sessionTypeForGap,
+          patient_id: patientId,
+        });
+      }
+      
+      if (supplyGapRows.length > 0) {
+        await supabaseServer.from('supply_gaps').insert(supplyGapRows).select('id').limit(1).maybeSingle();
       }
 
       // Log tracking event with actionable demand signals

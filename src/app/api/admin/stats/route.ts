@@ -595,6 +595,8 @@ type StatsResponse = {
     };
     /** Actionable demand signals - what specific therapists are needed */
     demandSignals: Array<{ signal: string; count: number }>;
+    /** Structured supply gaps - e.g., "Female NARM therapist in Berlin (in-person)" */
+    actionableGaps?: Array<{ gap: string; count: number }>;
   };
   communicationFunnel?: {
     emailConfirmation: {
@@ -1755,7 +1757,7 @@ export async function GET(req: Request) {
       demandSignals: [],
     };
     try {
-      const [boRes, evRes] = await Promise.all([
+      const [boRes, evRes, supplyGapsRes] = await Promise.all([
         supabaseServer
           .from('business_opportunities')
           .select('mismatch_type, city, created_at')
@@ -1765,6 +1767,12 @@ export async function GET(req: Request) {
           .from('events')
           .select('properties')
           .eq('type', 'business_opportunity_logged')
+          .gte('created_at', sinceIso)
+          .limit(50000),
+        // New: actionable supply gaps
+        supabaseServer
+          .from('supply_gaps')
+          .select('city, gender, modality, schwerpunkt, session_type')
           .gte('created_at', sinceIso)
           .limit(50000),
       ]);
@@ -1824,6 +1832,27 @@ export async function GET(req: Request) {
       const wantsInPerson = Array.from(inPersonCounts.entries()).map(([option, count]) => ({ option, count })).sort((a, b) => b.count - a.count);
       const demandSignals = Array.from(demandSignalCounts.entries()).map(([signal, count]) => ({ signal, count })).sort((a, b) => b.count - a.count).slice(0, 20);
 
+      // Aggregate actionable supply gaps from new table
+      // E.g., "Female NARM therapist in Berlin (in-person)" → count
+      const actionableGapCounts = new Map<string, number>();
+      type SupplyGapRow = { city?: string | null; gender?: string | null; modality?: string | null; schwerpunkt?: string | null; session_type?: string | null };
+      for (const row of ((supplyGapsRes.data || []) as SupplyGapRow[])) {
+        // Build human-readable gap description
+        const parts: string[] = [];
+        if (row.gender) parts.push(row.gender === 'female' ? 'Female' : 'Male');
+        if (row.modality) parts.push(row.modality.toUpperCase());
+        if (row.schwerpunkt) parts.push(`(${row.schwerpunkt})`);
+        parts.push('therapist');
+        if (row.city) parts.push(`in ${row.city}`);
+        if (row.session_type === 'in_person') parts.push('(in-person)');
+        const gap = parts.join(' ');
+        actionableGapCounts.set(gap, (actionableGapCounts.get(gap) || 0) + 1);
+      }
+      const actionableGaps = Array.from(actionableGapCounts.entries())
+        .map(([gap, count]) => ({ gap, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20);
+
       opportunities = {
         byReason: { gender: reasonCounts['gender'] || 0, location: reasonCounts['location'] || 0, modality: reasonCounts['modality'] || 0 },
         insights: insightsArr,
@@ -1831,6 +1860,7 @@ export async function GET(req: Request) {
         topCities,
         breakdowns: { preferredGender, wantsInPerson },
         demandSignals,
+        actionableGaps,
       };
     } catch (e) {
       await logError('admin.api.stats', e, { stage: 'opportunities' });
