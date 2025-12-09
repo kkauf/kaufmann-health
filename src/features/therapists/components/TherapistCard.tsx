@@ -22,6 +22,8 @@ interface TherapistCardProps {
   matchBadge?: { text: string; className?: string } | null; // Optional badge for top matches
   contactedAt?: string | null; // ISO date string if therapist was already contacted
   onContactClick?: (type: 'booking' | 'consultation') => void; // Custom contact handler
+  /** Highlight as the single best/perfect match with premium styling */
+  highlighted?: boolean;
 }
 
 function getInitials(firstName: string, lastName: string) {
@@ -45,6 +47,7 @@ export function TherapistCard({
   matchBadge = null,
   contactedAt = null,
   onContactClick: customContactHandler,
+  highlighted = false,
 }: TherapistCardProps) {
   const [imageError, setImageError] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
@@ -124,7 +127,21 @@ export function TherapistCard({
   };
 
   return (
-    <Card className="group relative flex h-full flex-col overflow-hidden border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5">
+    <Card className={`group relative flex h-full flex-col overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 ${
+      highlighted 
+        ? 'border-2 border-emerald-400/60 bg-gradient-to-br from-emerald-50 via-white to-teal-50 ring-2 ring-emerald-200/50 shadow-emerald-100/50' 
+        : 'border border-gray-200/60 bg-white/80 backdrop-blur-sm'
+    }`}>
+      {/* Premium highlight banner for perfect match */}
+      {highlighted && (
+        <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 px-4 py-2 text-center">
+          <span className="text-sm font-semibold text-white tracking-wide flex items-center justify-center gap-2">
+            <span className="text-lg">✨</span>
+            Dein perfekter Match
+            <span className="text-lg">✨</span>
+          </span>
+        </div>
+      )}
       <CardContent className="flex flex-1 flex-col p-5 sm:p-7">
         {/* Clickable summary area (opens profile) */}
         <div

@@ -188,6 +188,23 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     [matchType, hasPerfect]
   );
   
+  // Find the SINGLE best perfect match to highlight
+  // Criteria: isPerfect, then prefer those with booking slots, else first
+  const highlightedTherapistId = useMemo(() => {
+    const perfectMatches = therapistsWithQuality.filter(t => t.matchQuality?.isPerfect === true);
+    if (perfectMatches.length === 0) return null;
+    if (perfectMatches.length === 1) return perfectMatches[0].id;
+    
+    // Multiple perfect matches - prefer one with booking slots
+    const withSlots = perfectMatches.filter(t => 
+      Array.isArray(t.availability) && t.availability.length > 0
+    );
+    if (withSlots.length > 0) return withSlots[0].id;
+    
+    // No slots available, return first perfect match
+    return perfectMatches[0].id;
+  }, [therapistsWithQuality]);
+  
   // Smart messaging: check if patient accepts online therapy
   const patientAcceptsOnline = useMemo(
     () => data?.patient?.session_preferences?.includes('online') || data?.patient?.session_preference === 'online',
@@ -485,8 +502,8 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       )}
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {therapistsWithQuality.map((t, idx) => {
-          const isTopMatch = idx === 0 || t.matchQuality.isPerfect;
+        {therapistsWithQuality.map((t) => {
+          const isHighlighted = t.id === highlightedTherapistId;
 
           // Convert TherapistItem to TherapistData for the card component
           const therapistData: TherapistData = {
@@ -508,10 +525,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
               therapist={therapistData}
               onViewDetails={() => setDetailModalTherapist(t)}
               showModalities={data?.patient?.modality_matters ?? false}
-              matchBadge={isTopMatch ? {
-                text: t.matchQuality.isPerfect ? '⭐ Perfekte Übereinstimmung' : 'Top-Empfehlung',
-                className: 'mt-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
-              } : null}
+              highlighted={isHighlighted}
               contactedAt={t.contacted_at || null}
               onContactClick={(type) => handleOpen(t, type)}
             />
