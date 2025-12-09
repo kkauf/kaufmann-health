@@ -8,6 +8,7 @@ import { maybeFirePatientConversion } from '@/lib/conversion';
 import { sendEmail } from '@/lib/email/client';
 import { renderBookingTherapistNotification } from '@/lib/email/templates/bookingTherapistNotification';
 import { renderBookingClientConfirmation } from '@/lib/email/templates/bookingClientConfirmation';
+import { processDraftContact, clearDraftContact } from '@/features/leads/lib/processDraftContact';
 
 export const runtime = 'nodejs';
 
@@ -144,7 +145,7 @@ export async function GET(req: Request) {
     newMetadata['email_confirmed_at'] = nowIso;
 
     // Read draft_contact if present (therapist directory flow). Do NOT remove yet; only clear after successful processing.
-    const _draftContact = (metadata?.['draft_contact'] as Record<string, unknown> | undefined) || undefined;
+    const draftContact = (metadata?.['draft_contact'] as Record<string, unknown> | undefined) || undefined;
     const draftBooking = (metadata?.['draft_booking'] as Record<string, unknown> | undefined) || undefined;
 
     // If the questionnaire was completed already, the lead is actionable: mark as 'new'.
@@ -199,6 +200,54 @@ export async function GET(req: Request) {
     } catch {}
 
     // Enhanced Conversions handled by maybeFirePatientConversion above
+
+    // Process draft_contact if present (therapist directory flow)
+    if (draftContact) {
+      try {
+        const therapistId = typeof draftContact.therapist_id === 'string' ? draftContact.therapist_id : null;
+        const contactType = (draftContact.contact_type === 'booking' || draftContact.contact_type === 'consultation') ? draftContact.contact_type : 'consultation';
+        const patientReason = typeof draftContact.patient_reason === 'string' ? draftContact.patient_reason : '';
+        const patientMessage = typeof draftContact.patient_message === 'string' ? draftContact.patient_message : '';
+        const sessionFormat = (draftContact.session_format === 'online' || draftContact.session_format === 'in_person') ? draftContact.session_format : undefined;
+        const isTestDraft = draftContact.is_test === true;
+
+        if (therapistId && (patientReason || patientMessage)) {
+          const result = await processDraftContact({
+            patientId: id,
+            patientName: person.name || '',
+            patientEmail: person.email,
+            contactMethod: 'email',
+            draftContact: {
+              therapist_id: therapistId,
+              contact_type: contactType,
+              patient_reason: patientReason,
+              patient_message: patientMessage,
+              session_format: sessionFormat,
+            },
+            isTest: isTestDraft,
+          });
+
+          if (result.success) {
+            await clearDraftContact(id);
+            await ServerAnalytics.trackEventFromRequest(req, {
+              type: 'draft_contact_processed',
+              source: 'api.leads.confirm',
+              session_id: sessionIdHeader,
+              props: { therapist_id: therapistId, contact_type: contactType, match_id: result.matchId },
+            });
+          } else {
+            await ServerAnalytics.trackEventFromRequest(req, {
+              type: 'draft_contact_failed',
+              source: 'api.leads.confirm',
+              session_id: sessionIdHeader,
+              props: { therapist_id: therapistId, error: result.error },
+            });
+          }
+        }
+      } catch (err) {
+        await logError('api.leads.confirm', err, { stage: 'draft_contact_processing' });
+      }
+    }
 
     // Process draft booking if present (therapist directory flow)
     if (draftBooking) {

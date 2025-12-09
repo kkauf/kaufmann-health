@@ -113,7 +113,7 @@ beforeEach(() => {
 });
 
 describe('POST /api/public/contact (consent)', () => {
-  it('stores consent markers in metadata for new patients and tracks consent_captured', async () => {
+  it('stores consent markers in metadata for new patients and requires verification', async () => {
     const { POST } = await import('@/app/api/public/contact/route');
     const req = makeReq({
       therapist_id: THERAPIST_ID,
@@ -126,6 +126,10 @@ describe('POST /api/public/contact (consent)', () => {
     });
     const res = await POST(req as any);
     expect(res?.status).toBe(200);
+    
+    const data = await res.json();
+    // New patients now require verification before match is created
+    expect(data.data.requires_verification).toBe(true);
 
     // Insert path has metadata with consent markers
     expect(lastPeopleInsert?.metadata?.consent_share_with_therapists).toBe(true);
@@ -133,17 +137,16 @@ describe('POST /api/public/contact (consent)', () => {
     expect(typeof lastPeopleInsert?.metadata?.consent_share_with_therapists_at).toBe('string');
     expect(lastPeopleInsert?.metadata?.consent_terms_version).toEqual(PRIVACY_VERSION ? expect.any(String) : undefined);
 
-    // Update path merges consent markers
-    expect(lastPeopleUpdate?.metadata?.consent_share_with_therapists).toBe(true);
-    expect(lastPeopleUpdate?.metadata?.consent_privacy_version).toBe(PRIVACY_VERSION);
-    expect(typeof lastPeopleUpdate?.metadata?.consent_terms_version).toBe('string');
+    // Update path stores draft_contact for processing after verification
+    expect(lastPeopleUpdate?.metadata?.draft_contact).toBeDefined();
+    expect(lastPeopleUpdate?.metadata?.draft_contact?.therapist_id).toBe(THERAPIST_ID);
 
-    // Analytics
-    const hasConsentCaptured = lastTracked.some((e) => e.type === 'consent_captured' && (e.props as any)?.privacy_version === PRIVACY_VERSION);
-    expect(hasConsentCaptured).toBe(true);
+    // Analytics: draft_contact_stored instead of consent_captured (consent is in insert)
+    const hasDraftStored = lastTracked.some((e) => e.type === 'draft_contact_stored');
+    expect(hasDraftStored).toBe(true);
   });
 
-  it('merges consent markers for existing patients and tracks consent_captured', async () => {
+  it('stores draft_contact for existing unverified patients and requires verification', async () => {
     existingPatientId = 'p_exist';
     const { POST } = await import('@/app/api/public/contact/route');
     const req = makeReq({
@@ -157,14 +160,18 @@ describe('POST /api/public/contact (consent)', () => {
     });
     const res = await POST(req as any);
     expect(res?.status).toBe(200);
+    
+    const data = await res.json();
+    // Existing patients without verified session also require verification
+    expect(data.data.requires_verification).toBe(true);
 
-    // No insert in this path
+    // No insert in this path (patient already exists)
     expect(lastPeopleInsert).toBeNull();
-    // Update path merges consent markers
-    expect(lastPeopleUpdate?.metadata?.consent_share_with_therapists).toBe(true);
-    expect(lastPeopleUpdate?.metadata?.consent_privacy_version).toBe(PRIVACY_VERSION);
+    // Update path stores draft_contact for processing after verification
+    expect(lastPeopleUpdate?.metadata?.draft_contact).toBeDefined();
+    expect(lastPeopleUpdate?.metadata?.draft_contact?.therapist_id).toBe(THERAPIST_ID);
 
-    const hasConsentCaptured = lastTracked.some((e) => e.type === 'consent_captured' && (e.props as any)?.method === 'email');
-    expect(hasConsentCaptured).toBe(true);
+    const hasDraftStored = lastTracked.some((e) => e.type === 'draft_contact_stored');
+    expect(hasDraftStored).toBe(true);
   });
 });

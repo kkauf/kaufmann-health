@@ -111,6 +111,13 @@ export default function SignupWizard() {
   const [resendSubmitting, setResendSubmitting] = React.useState(false);
   const [resendMessage, setResendMessage] = React.useState<string>('');
   const [showResendForm, setShowResendForm] = React.useState(false);
+  const [resendAttempts, setResendAttempts] = React.useState(0);
+  // SMS fallback for email users who can't receive email
+  const [smsFallbackStep, setSmsFallbackStep] = React.useState<'phone' | 'code' | null>(null);
+  const [smsFallbackPhone, setSmsFallbackPhone] = React.useState('');
+  const [smsFallbackCode, setSmsFallbackCode] = React.useState('');
+  const [smsFallbackSubmitting, setSmsFallbackSubmitting] = React.useState(false);
+  const [smsFallbackMessage, setSmsFallbackMessage] = React.useState('');
 
   // Step 9 (phone users): optional email add state
   const [addEmail, setAddEmail] = React.useState('');
@@ -325,6 +332,7 @@ export default function SignupWizard() {
         let variant: string | undefined = undefined;
         const vParam = searchParams?.get('variant') || searchParams?.get('v') || undefined;
         const ref = (typeof document !== 'undefined' ? document.referrer : '') || '';
+        const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
         
         if (vParam) {
           variant = vParam;
@@ -352,6 +360,19 @@ export default function SignupWizard() {
               } catch { }
             }
           } catch { }
+        }
+        // Final fallback: use current pathname if still no source detected
+        // This captures direct /fragebogen visits that bypass landing pages
+        if (!src) {
+          if (currentPath.includes('/fragebogen')) {
+            src = '/fragebogen';
+            // Mark as direct visit for analytics clarity
+            variant = variant || 'direct';
+          } else if (currentPath.includes('/therapie-finden')) {
+            src = '/therapie-finden';
+          } else if (currentPath.includes('/start')) {
+            src = '/start';
+          }
         }
         if (src) campaignSourceOverrideRef.current = src;
         if (variant) campaignVariantOverrideRef.current = variant;
@@ -1056,10 +1077,16 @@ export default function SignupWizard() {
           setResendMessage('Bitte eine gültige E‑Mail eingeben.');
           return;
         }
+        // Check connectivity before attempting
+        if (!isOnline) {
+          setResendMessage('Keine Internetverbindung. Bitte prüfe deine Verbindung und versuche es erneut.');
+          return;
+        }
         setResendSubmitting(true);
         setResendMessage('');
         try {
-          await fetch('/api/public/leads/resend-confirmation', {
+          void trackEvent('resend_attempted', { step: 9, email_domain: email.split('@')[1] });
+          const res = await fetch('/api/public/leads/resend-confirmation', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1067,13 +1094,104 @@ export default function SignupWizard() {
               form_session_id: sessionIdRef.current || undefined,
             }),
           });
-          setResendMessage('E‑Mail versendet. Bitte Posteingang prüfen.');
-        } catch {
-          setResendMessage('Bitte später erneut versuchen.');
+          if (res.ok) {
+            setResendAttempts((prev) => prev + 1);
+            setResendMessage('E‑Mail versendet. Bitte Posteingang (auch Spam-Ordner) prüfen.');
+          } else {
+            setResendMessage('Anfrage fehlgeschlagen. Bitte versuche es erneut.');
+          }
+        } catch (err) {
+          // Network error - fetch didn't complete
+          const isNetworkError = err instanceof TypeError && (err.message.includes('fetch') || err.message.includes('network') || err.message.includes('Load failed'));
+          if (isNetworkError || !navigator.onLine) {
+            setResendMessage('Netzwerkfehler. Bitte prüfe deine Verbindung und versuche es erneut.');
+          } else {
+            setResendMessage('Etwas ist schiefgelaufen. Bitte versuche es erneut.');
+          }
         } finally {
           setResendSubmitting(false);
         }
       }
+
+      // SMS fallback handlers for email users
+      async function handleSmsFallbackSendCode() {
+        const phone = smsFallbackPhone.trim();
+        if (!phone || !/^\+?[0-9\s\-()]{8,}$/.test(phone)) {
+          setSmsFallbackMessage('Bitte gib eine gültige Telefonnummer ein.');
+          return;
+        }
+        if (!isOnline) {
+          setSmsFallbackMessage('Keine Internetverbindung.');
+          return;
+        }
+        setSmsFallbackSubmitting(true);
+        setSmsFallbackMessage('');
+        try {
+          void trackEvent('sms_fallback_send_code', { step: 9 });
+          const res = await fetch('/api/public/verification/send-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              phone_number: phone,
+              form_session_id: sessionIdRef.current || undefined,
+              lead_id: localStorage.getItem('leadId') || undefined,
+            }),
+          });
+          if (res.ok) {
+            setSmsFallbackStep('code');
+            setSmsFallbackMessage('');
+          } else {
+            const j = await res.json().catch(() => ({}));
+            setSmsFallbackMessage(j?.error || 'SMS konnte nicht gesendet werden.');
+          }
+        } catch {
+          setSmsFallbackMessage('Netzwerkfehler. Bitte versuche es erneut.');
+        } finally {
+          setSmsFallbackSubmitting(false);
+        }
+      }
+
+      async function handleSmsFallbackVerify() {
+        const code = smsFallbackCode.trim();
+        if (!code || code.length < 4) {
+          setSmsFallbackMessage('Bitte gib den Code ein.');
+          return;
+        }
+        setSmsFallbackSubmitting(true);
+        setSmsFallbackMessage('');
+        try {
+          void trackEvent('sms_fallback_verify', { step: 9 });
+          const res = await fetch('/api/public/verification/verify-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              phone_number: smsFallbackPhone.trim(),
+              code,
+              form_session_id: sessionIdRef.current || undefined,
+              lead_id: localStorage.getItem('leadId') || undefined,
+            }),
+          });
+          const j = await res.json().catch(() => ({}));
+          if (res.ok && j?.data?.verified) {
+            // Success - redirect to matches
+            void trackEvent('sms_fallback_verified', { step: 9 });
+            const matchesUrl = j?.data?.matches_url || localStorage.getItem('matchesUrl');
+            if (matchesUrl) {
+              window.location.assign(matchesUrl);
+            } else {
+              // Fallback to directory
+              window.location.assign('/therapeuten');
+            }
+          } else {
+            setSmsFallbackMessage(j?.error || 'Ungültiger Code. Bitte versuche es erneut.');
+          }
+        } catch {
+          setSmsFallbackMessage('Netzwerkfehler. Bitte versuche es erneut.');
+        } finally {
+          setSmsFallbackSubmitting(false);
+        }
+      }
+
       return (
         <div className="space-y-6">
           <div className="space-y-4">
@@ -1113,7 +1231,87 @@ export default function SignupWizard() {
                 E-Mail nicht erhalten?
               </Button>
             </div>
+          ) : smsFallbackStep === 'phone' ? (
+            // SMS fallback: phone input
+            <div className="space-y-3 rounded-xl border border-emerald-200/60 bg-emerald-50/50 p-4 sm:p-5 shadow-sm">
+              <p className="text-sm font-medium text-gray-700">📱 Bestätigung per SMS</p>
+              <p className="text-xs text-gray-600">Gib deine Handynummer ein. Wir senden dir einen Bestätigungscode.</p>
+              <div className="space-y-3">
+                <input
+                  type="tel"
+                  value={smsFallbackPhone}
+                  onChange={(e) => setSmsFallbackPhone(e.target.value)}
+                  placeholder="+49 170 1234567"
+                  className="h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  aria-label="Telefonnummer"
+                />
+                <Button
+                  onClick={handleSmsFallbackSendCode}
+                  disabled={smsFallbackSubmitting}
+                  className="h-11 w-full text-base bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {smsFallbackSubmitting ? 'Wird gesendet…' : 'Code per SMS senden'}
+                </Button>
+                {smsFallbackMessage && (
+                  <p className="text-sm text-center text-red-600" aria-live="polite">{smsFallbackMessage}</p>
+                )}
+                <Button
+                  variant="ghost"
+                  onClick={() => setSmsFallbackStep(null)}
+                  className="w-full text-sm text-gray-500"
+                >
+                  Zurück zur E-Mail-Bestätigung
+                </Button>
+              </div>
+            </div>
+          ) : smsFallbackStep === 'code' ? (
+            // SMS fallback: code verification
+            <div className="space-y-3 rounded-xl border border-emerald-200/60 bg-emerald-50/50 p-4 sm:p-5 shadow-sm">
+              <p className="text-sm font-medium text-gray-700">📱 Code eingeben</p>
+              <p className="text-xs text-gray-600">Wir haben einen Code an {smsFallbackPhone} gesendet.</p>
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={smsFallbackCode}
+                  onChange={(e) => setSmsFallbackCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="123456"
+                  className="h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-center tracking-widest focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  aria-label="Bestätigungscode"
+                  autoComplete="one-time-code"
+                />
+                <Button
+                  onClick={handleSmsFallbackVerify}
+                  disabled={smsFallbackSubmitting}
+                  className="h-11 w-full text-base bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {smsFallbackSubmitting ? 'Wird geprüft…' : 'Bestätigen'}
+                </Button>
+                {smsFallbackMessage && (
+                  <p className="text-sm text-center text-red-600" aria-live="polite">{smsFallbackMessage}</p>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => { setSmsFallbackCode(''); handleSmsFallbackSendCode(); }}
+                    disabled={smsFallbackSubmitting}
+                    className="flex-1 text-sm text-gray-500"
+                  >
+                    Code erneut senden
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => { setSmsFallbackStep('phone'); setSmsFallbackCode(''); setSmsFallbackMessage(''); }}
+                    className="flex-1 text-sm text-gray-500"
+                  >
+                    Andere Nummer
+                  </Button>
+                </div>
+              </div>
+            </div>
           ) : (
+            // Default: email resend form
             <div className="space-y-3 rounded-xl border border-gray-200/60 bg-white/80 p-4 sm:p-5 shadow-sm">
               <p className="text-sm font-medium text-gray-700">E-Mail erneut senden oder Adresse korrigieren:</p>
               <div className="space-y-3">
@@ -1134,6 +1332,22 @@ export default function SignupWizard() {
                 </Button>
                 {resendMessage && (
                   <p className="text-sm text-center text-gray-600" aria-live="polite">{resendMessage}</p>
+                )}
+                {/* Show SMS fallback option after 1+ resend attempts */}
+                {resendAttempts >= 1 && (
+                  <div className="pt-2 border-t border-gray-200">
+                    <p className="text-xs text-gray-500 mb-2">Noch immer keine E-Mail erhalten?</p>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSmsFallbackStep('phone');
+                        void trackEvent('sms_fallback_started', { step: 9, resend_attempts: resendAttempts });
+                      }}
+                      className="w-full text-sm"
+                    >
+                      📱 Lieber per SMS bestätigen
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>

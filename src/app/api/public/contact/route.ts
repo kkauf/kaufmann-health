@@ -216,33 +216,46 @@ export async function POST(req: Request) {
       // New patient: create or find existing record
       isNewPatient = true;
       
-      // Normalize contact value
-      const normalizedContact: string = contact_method === 'phone' 
-        ? normalizePhoneNumber(contactValue) || contactValue
-        : contactValue.toLowerCase().trim();
+      // Normalize and validate contact value
+      let normalizedContact: string;
+      if (contact_method === 'phone') {
+        const normalized = normalizePhoneNumber(contactValue);
+        if (!normalized) {
+          return NextResponse.json(
+            { error: 'Bitte gib eine gültige Handynummer ein. Festnetznummern werden nicht unterstützt.' },
+            { status: 400 }
+          );
+        }
+        normalizedContact = normalized;
+      } else {
+        normalizedContact = contactValue.toLowerCase().trim();
+      }
       
       // Check if patient already exists by contact method
       const lookupField = contact_method === 'email' ? 'email' : 'phone_number';
       const { data: existing } = await supabase
         .from('people')
-        .select('id, metadata')
+        .select('id, metadata, status')
         .eq('type', 'patient')
         .eq(lookupField, normalizedContact)
         .single();
       
       if (existing) {
         patientId = existing.id;
+        // Patient exists - check if they're already verified (status = 'new' or better)
+        const existingStatus = (existing as { status?: string }).status || '';
+        isNewPatient = existingStatus !== 'new' && existingStatus !== 'email_confirmed';
         try {
           const meta = (existing.metadata || {}) as Record<string, unknown>;
           const v = meta['is_test'];
           isTestFromPatientMeta = v === true || String(v).toLowerCase() === 'true';
         } catch {}
       } else {
-        // Create new patient record
+        // Create new patient record with pre_confirmation status (needs verification)
         const insertData: Record<string, unknown> = {
           type: 'patient',
           name: patient_name,
-          status: 'new',
+          status: 'pre_confirmation',
           campaign_source: campaign_source || '/start',
           campaign_variant: (campaign_variant || undefined) as string | undefined,
           landing_page: landing_page || undefined,
@@ -395,6 +408,65 @@ export async function POST(req: Request) {
 
     const isTestFinal = isTest || isTestFromPatientMeta;
 
+    // Check if user needs verification (new patients without verified status)
+    // Only process immediately if user has valid session (already verified via kh_client cookie)
+    const needsVerification = isNewPatient;
+
+    if (needsVerification) {
+      // Store draft_contact in metadata for processing after verification
+      const draftContact = {
+        therapist_id: therapist.id,
+        contact_type,
+        patient_reason: patientReasonEffective,
+        patient_message: patient_message || '',
+        session_format: session_format || null,
+        ...(isTestFinal ? { is_test: true } : {}),
+        created_at: new Date().toISOString(),
+      };
+
+      // Get current metadata and add draft_contact
+      const { data: currentPerson } = await supabase
+        .from('people')
+        .select('metadata')
+        .eq('id', patientId)
+        .single();
+      
+      const currentMeta = (currentPerson?.metadata || {}) as Record<string, unknown>;
+      const updatedMeta = {
+        ...currentMeta,
+        draft_contact: draftContact,
+      };
+
+      await supabase
+        .from('people')
+        .update({ metadata: updatedMeta })
+        .eq('id', patientId);
+
+      void track({
+        type: 'draft_contact_stored',
+        source: 'api.public.contact',
+        props: {
+          therapist_id: therapist.id,
+          patient_id: patientId,
+          contact_type,
+          contact_method,
+        },
+      });
+
+      // Return response indicating verification is needed
+      // The client (ContactModal) will handle triggering verification
+      return NextResponse.json({
+        data: {
+          patient_id: patientId,
+          therapist_name: `${therapist.first_name} ${therapist.last_name}`,
+          requires_verification: true,
+          contact_method,
+          success: true,
+        },
+      });
+    }
+
+    // User is already verified (has session) - process immediately
     // Create match record
     const matchMetadata = {
       patient_initiated: true,
@@ -438,7 +510,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // Log a dedicated conversion event for directory contact, including session attribution
+    // Log a dedicated conversion event for directory contact
     try {
       let conversion_path: string | undefined;
       try {
@@ -463,10 +535,10 @@ export async function POST(req: Request) {
       });
     } catch {}
 
-    // Fire Enhanced Conversion (idempotent via maybeFirePatientConversion)
+    // Fire Enhanced Conversion for verified users only
     try {
       const ipAddr = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined;
-      const ua = req.headers.get('user-agent') || undefined;
+      const uaHeader = req.headers.get('user-agent') || undefined;
       const emailForConv = contact_method === 'email' ? (patient_email || undefined) : undefined;
       const phoneForConv = contact_method === 'phone' ? (normalizePhoneNumber(patient_phone || '') || patient_phone || undefined) : undefined;
       await maybeFirePatientConversion({
@@ -475,11 +547,11 @@ export async function POST(req: Request) {
         phone_number: phoneForConv,
         verification_method: contact_method === 'email' ? 'email' : 'sms',
         ip: ipAddr,
-        ua,
+        ua: uaHeader,
       });
     } catch {}
     
-    // Send notification email to therapist (EARTH-205: include message and contact type)
+    // Send notification email to therapist
     try {
       const hideIdsEnv = (process.env.HIDE_THERAPIST_IDS || '').trim();
       const hideIds = new Set(
@@ -537,7 +609,7 @@ export async function POST(req: Request) {
       }, ip, ua);
     }
     
-    // Prepare response
+    // Prepare response for verified users
     const response = NextResponse.json({
       data: {
         match_id: match.id,
@@ -545,11 +617,6 @@ export async function POST(req: Request) {
         success: true,
       },
     });
-    
-    // Set session cookie for new patients
-    if (isNewPatient && sessionCookie) {
-      response.headers.set('Set-Cookie', sessionCookie);
-    }
     
     return response;
     
