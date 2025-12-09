@@ -1879,11 +1879,28 @@ export async function GET(req: Request) {
         .gte('created_at', sinceIso)
         .limit(50000);
 
+      // Fetch secure_uuid -> patient_id mapping from matches for engagement attribution
+      const { data: matchesForMapping } = await supabaseServer
+        .from('matches')
+        .select('secure_uuid, patient_id')
+        .gte('created_at', sinceIso)
+        .limit(50000);
+
       type CommEvent = { type?: string; properties?: Record<string, unknown>; created_at?: string };
       type PersonComm = { id: string; email?: string | null; phone_number?: string | null; status?: string | null; created_at?: string | null; metadata?: Record<string, unknown> | null };
+      type MatchMapping = { secure_uuid?: string | null; patient_id?: string | null };
       
       const events = (commEvents || []) as CommEvent[];
       const people = (peopleForComm || []) as PersonComm[];
+      const matchMappings = (matchesForMapping || []) as MatchMapping[];
+
+      // Build secure_uuid -> patient_id map for engagement attribution
+      const secureUuidToPatient = new Map<string, string>();
+      for (const m of matchMappings) {
+        if (m.secure_uuid && m.patient_id) {
+          secureUuidToPatient.set(m.secure_uuid, m.patient_id);
+        }
+      }
 
       // Build patient_id -> contact_method map from people
       const patientContactMethod = new Map<string, 'email' | 'phone' | 'unknown'>();
@@ -2028,43 +2045,51 @@ export async function GET(req: Request) {
           }
         }
 
+        // Resolve patient_id: direct from props, or via secure_uuid lookup
+        const secureUuid = String((props['secure_uuid'] as string | undefined) || '').trim();
+        const resolvedPatientId = patientId || (secureUuid ? secureUuidToPatient.get(secureUuid) : undefined) || '';
+
         if (t === 'match_page_view' && pathLikeMatches(props)) {
-          // Try to get patient_id from props or via secure_uuid lookup
-          if (patientId) {
-            const cm = patientContactMethod.get(patientId);
-            if (cm === 'email') engagementEmail.matchPageView.add(patientId);
-            else if (cm === 'phone') engagementSms.matchPageView.add(patientId);
+          if (resolvedPatientId) {
+            const cm = patientContactMethod.get(resolvedPatientId);
+            if (cm === 'email') engagementEmail.matchPageView.add(resolvedPatientId);
+            else if (cm === 'phone') engagementSms.matchPageView.add(resolvedPatientId);
+            else engagementEmail.matchPageView.add(resolvedPatientId); // Default to email if unknown
           } else if (sessionId) {
             // Fallback: count by session (will be approximate)
             engagementEmail.matchPageView.add(`sid:${sessionId}`);
           }
         }
         if (t === 'profile_modal_opened' && pathLikeMatches(props)) {
-          if (patientId) {
-            const cm = patientContactMethod.get(patientId);
-            if (cm === 'email') engagementEmail.profileOpened.add(patientId);
-            else if (cm === 'phone') engagementSms.profileOpened.add(patientId);
+          if (resolvedPatientId) {
+            const cm = patientContactMethod.get(resolvedPatientId);
+            if (cm === 'email') engagementEmail.profileOpened.add(resolvedPatientId);
+            else if (cm === 'phone') engagementSms.profileOpened.add(resolvedPatientId);
+            else engagementEmail.profileOpened.add(resolvedPatientId);
           }
         }
         if (t === 'contact_cta_clicked' && pathLikeMatches(props)) {
-          if (patientId) {
-            const cm = patientContactMethod.get(patientId);
-            if (cm === 'email') engagementEmail.contactCtaClicked.add(patientId);
-            else if (cm === 'phone') engagementSms.contactCtaClicked.add(patientId);
+          if (resolvedPatientId) {
+            const cm = patientContactMethod.get(resolvedPatientId);
+            if (cm === 'email') engagementEmail.contactCtaClicked.add(resolvedPatientId);
+            else if (cm === 'phone') engagementSms.contactCtaClicked.add(resolvedPatientId);
+            else engagementEmail.contactCtaClicked.add(resolvedPatientId);
           }
         }
         if (t === 'booking_slot_selected' && pathLikeMatches(props)) {
-          if (patientId) {
-            const cm = patientContactMethod.get(patientId);
-            if (cm === 'email') engagementEmail.bookingSlotSelected.add(patientId);
-            else if (cm === 'phone') engagementSms.bookingSlotSelected.add(patientId);
+          if (resolvedPatientId) {
+            const cm = patientContactMethod.get(resolvedPatientId);
+            if (cm === 'email') engagementEmail.bookingSlotSelected.add(resolvedPatientId);
+            else if (cm === 'phone') engagementSms.bookingSlotSelected.add(resolvedPatientId);
+            else engagementEmail.bookingSlotSelected.add(resolvedPatientId);
           }
         }
         if (t === 'contact_message_sent') {
-          if (patientId) {
-            const cm = patientContactMethod.get(patientId);
-            if (cm === 'email') engagementEmail.messageSent.add(patientId);
-            else if (cm === 'phone') engagementSms.messageSent.add(patientId);
+          if (resolvedPatientId) {
+            const cm = patientContactMethod.get(resolvedPatientId);
+            if (cm === 'email') engagementEmail.messageSent.add(resolvedPatientId);
+            else if (cm === 'phone') engagementSms.messageSent.add(resolvedPatientId);
+            else engagementEmail.messageSent.add(resolvedPatientId);
           }
         }
       }
