@@ -251,6 +251,17 @@ export async function GET(req: Request) {
         continue;
       }
 
+      // Fetch slot availability to prefer therapists with booking options (consistency with UI)
+      const { data: slotRows } = await supabaseServer
+        .from('therapist_slots')
+        .select('therapist_id')
+        .in('therapist_id', therapistIds)
+        .eq('active', true)
+        .limit(500);
+      const therapistsWithSlots = new Set(
+        (slotRows as Array<{ therapist_id: string }> | null)?.map(s => s.therapist_id) || []
+      );
+
       // Score therapists to find best match
       const patientMeta: PatientMeta = {
         city: typeof meta['city'] === 'string' ? meta['city'] : undefined,
@@ -277,12 +288,16 @@ export async function GET(req: Request) {
           ? (tMeta['profile'] as Record<string, unknown>)['approach_text'] as string
           : '';
 
-        return { therapist: t, mm, approachText };
+        const hasSlots = therapistsWithSlots.has(t.id);
+
+        return { therapist: t, mm, approachText, hasSlots };
       });
 
-      // Sort: perfect matches first, then by fewest mismatches
+      // Sort: perfect matches first, then prefer those with booking slots, then by fewest mismatches
+      // This matches the UI highlight logic in MatchPageClient.tsx
       scored.sort((a, b) => {
         if (a.mm.isPerfect !== b.mm.isPerfect) return a.mm.isPerfect ? -1 : 1;
+        if (a.hasSlots !== b.hasSlots) return a.hasSlots ? -1 : 1;
         return a.mm.reasons.length - b.mm.reasons.length;
       });
 
