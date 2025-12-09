@@ -92,6 +92,66 @@ describe('EARTH-206: Match Page End-to-End', () => {
       expect(result.mismatches.modality).toBe(true);
     });
 
+    it('should detect city mismatch ONLY when patient EXCLUSIVELY wants in-person', () => {
+      const patient = {
+        city: 'Berlin',
+        session_preference: 'in_person' as const,
+        // NOT also accepting online - this is the key
+      };
+
+      const therapist = {
+        id: 't1',
+        gender: null,
+        city: 'Freiburg', // Different city
+        session_preferences: ['in_person'], // Offers in-person
+        modalities: [],
+      };
+
+      const result = computeMismatches(patient, therapist);
+      
+      expect(result.mismatches.city).toBe(true);
+      expect(result.reasons).toContain('city');
+    });
+
+    it('should NOT flag city mismatch when patient accepts BOTH online and in-person', () => {
+      const patient = {
+        city: 'Oelsnitz',
+        session_preferences: ['online', 'in_person'] as ('online' | 'in_person')[], // Accepts both!
+      };
+
+      const therapist = {
+        id: 't1',
+        gender: null,
+        city: 'Berlin', // Different city, but patient can do online
+        session_preferences: ['online', 'in_person'],
+        modalities: [],
+      };
+
+      const result = computeMismatches(patient, therapist);
+      
+      // Should NOT flag city mismatch - patient can work with anyone online
+      expect(result.mismatches.city).toBe(false);
+    });
+
+    it('should NOT flag city mismatch when patient only wants online', () => {
+      const patient = {
+        city: 'Berlin',
+        session_preference: 'online' as const,
+      };
+
+      const therapist = {
+        id: 't1',
+        gender: null,
+        city: 'Freiburg',
+        session_preferences: ['online', 'in_person'],
+        modalities: [],
+      };
+
+      const result = computeMismatches(patient, therapist);
+      
+      expect(result.mismatches.city).toBe(false);
+    });
+
     it('should handle no gender preference (no mismatch)', () => {
       const patient = {
         gender_preference: 'no_preference' as const,

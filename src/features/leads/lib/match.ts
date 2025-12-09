@@ -69,12 +69,13 @@ export function computeMismatches(patient: PatientMeta | null | undefined, thera
   // Location mismatch: therapist is online-only but patient wants in-person
   const locationMismatch = patientWantsInPerson && therapistOnlineOnly;
   
-  // City mismatch: patient wants in-person, therapist offers in-person, but cities don't match
-  // This is the most critical mismatch for in-person therapy - traveling to another city is a dealbreaker
+  // City mismatch: only matters if patient ONLY wants in-person (not also accepting online)
+  // If patient accepts online, city is irrelevant since they can work with anyone online
   const patientCity = normalizeSpec(meta.city || '');
   const therapistCity = normalizeSpec(t.city || '');
+  const patientOnlyWantsInPerson = patientWantsInPerson && !patientPrefs.has('online');
   const cityMismatch = Boolean(
-    patientWantsInPerson && 
+    patientOnlyWantsInPerson && 
     therapistOffersInPerson && 
     patientCity && 
     therapistCity && 
@@ -220,11 +221,16 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
     scored.sort((a, b) => {
       if (a.isPerfect !== b.isPerfect) return a.isPerfect ? -1 : 1;
       if (a.accepting !== b.accepting) return a.accepting ? -1 : 1;
+      // Modality match is most important - penalize modality mismatch heavily
+      const aModality = a.reasons.includes('modality') ? 1 : 0;
+      const bModality = b.reasons.includes('modality') ? 1 : 0;
+      if (aModality !== bModality) return aModality - bModality;
       // Sort by schwerpunkte overlap (descending - more matches first)
       if (a.schwerpunkteOverlap !== b.schwerpunkteOverlap) return b.schwerpunkteOverlap - a.schwerpunkteOverlap;
+      // Then by total reasons count
       return a.reasons.length - b.reasons.length;
     });
-    const chosenScored = scored.slice(0, 2);
+    const chosenScored = scored.slice(0, 3);
     const chosen = chosenScored.map(s => s.id);
 
     console.log(`[InstantMatch] Patient ${patientId}: Found ${therapists.length} verified therapists. Scored ${scored.length} candidates. Chosen ${chosen.length}.`);
