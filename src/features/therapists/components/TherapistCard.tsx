@@ -132,13 +132,12 @@ export function TherapistCard({
         ? 'border-2 border-emerald-400/60 bg-gradient-to-br from-emerald-50 via-white to-teal-50 ring-2 ring-emerald-200/50 shadow-emerald-100/50' 
         : 'border border-gray-200/60 bg-white/80 backdrop-blur-sm'
     }`}>
-      {/* Premium highlight banner for perfect match */}
+      {/* Premium highlight banner for recommended match */}
       {highlighted && (
         <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 px-4 py-2 text-center">
           <span className="text-sm font-semibold text-white tracking-wide flex items-center justify-center gap-2">
-            <span className="text-lg">✨</span>
-            Dein perfekter Match
-            <span className="text-lg">✨</span>
+            <span className="text-base">⭐</span>
+            Für dich empfohlen
           </span>
         </div>
       )}
