@@ -29,7 +29,9 @@ interface TherapistDetailModalProps {
   open: boolean;
   onClose: () => void;
   initialScrollTarget?: string;
-  onOpenContactModal: (
+  /** When true, hides contact CTAs and booking - used for therapist portal preview */
+  previewMode?: boolean;
+  onOpenContactModal?: (
     therapist: TherapistData,
     type: 'booking' | 'consultation',
     selectedSlot?: { date_iso: string; time_label: string; format: 'online' | 'in_person' }
@@ -51,7 +53,7 @@ function hashCode(s: string) {
   return Math.abs(h);
 }
 
-export function TherapistDetailModal({ therapist, open, onClose, initialScrollTarget, onOpenContactModal }: TherapistDetailModalProps) {
+export function TherapistDetailModal({ therapist, open, onClose, initialScrollTarget, previewMode = false, onOpenContactModal }: TherapistDetailModalProps) {
   const [imageError, setImageError] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -95,11 +97,11 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
         setWeekIndex(0);
       } else {
         // No slots: open ContactModal for messaging
-        onOpenContactModal(therapist, 'booking', undefined);
+        onOpenContactModal?.(therapist, 'booking', undefined);
       }
     } else {
       // For consultation, call parent to open ContactModal
-      onOpenContactModal(therapist, type, undefined);
+      onOpenContactModal?.(therapist, type, undefined);
     }
   };
 
@@ -142,7 +144,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
     } catch { }
     // Close this modal and open ContactModal with selected slot
     // This creates a smoother transition since Contact Modal shows the same therapist header + slot
-    onOpenContactModal(therapist, 'booking', {
+    onOpenContactModal?.(therapist, 'booking', {
       date_iso: selectedSlot.date_iso,
       time_label: selectedSlot.time_label,
       format: selectedSlot.format
@@ -739,8 +741,8 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
           </>
         )}
 
-        {/* Action buttons */}
-        {viewMode === 'profile' ? (
+        {/* Action buttons - hidden in preview mode */}
+        {!previewMode && viewMode === 'profile' ? (
           <div className="sticky bottom-0 flex flex-col gap-3 pt-4 sm:flex-row">
             <Button
               className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
@@ -761,7 +763,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
               <span className="break-words">Kostenloses Erstgespräch (15 min)</span>
             </Button>
           </div>
-        ) : viewMode === 'booking' ? (
+        ) : !previewMode && viewMode === 'booking' ? (
           <div className="sticky bottom-0 flex gap-3 pt-4">
             <Button
               variant="outline"
