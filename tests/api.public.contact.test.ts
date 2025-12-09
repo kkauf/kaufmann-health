@@ -33,11 +33,14 @@ describe('POST /api/public/contact', () => {
     vi.clearAllMocks();
   });
 
-  it('creates a new patient and match for first-time contact', async () => {
+  it('stores draft_contact and requires verification for new patients', async () => {
     const mockPatientId = 'patient-123';
     const mockTherapistId = 'therapist-456';
-    const mockMatchId = 'match-789';
-    const mockSecureUuid = 'secure-uuid-abc';
+
+    // Track update calls to verify draft_contact is stored
+    const updateMock = vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+    });
 
     (supabaseServer.from as ReturnType<typeof vi.fn>).mockImplementation((table: string) => {
       if (table === 'people') {
@@ -47,6 +50,7 @@ describe('POST /api/public/contact', () => {
               eq: vi.fn().mockReturnValue({
                 single: vi.fn().mockResolvedValue({ data: null, error: null }),
               }),
+              single: vi.fn().mockResolvedValue({ data: { metadata: {} }, error: null }),
             }),
           }),
           insert: vi.fn().mockReturnValue({
@@ -57,6 +61,7 @@ describe('POST /api/public/contact', () => {
               }),
             }),
           }),
+          update: updateMock,
         };
       }
       if (table === 'therapists') {
@@ -84,14 +89,6 @@ describe('POST /api/public/contact', () => {
             eq: vi.fn().mockReturnValue({
               gte: vi.fn().mockResolvedValue({
                 data: [],
-                error: null,
-              }),
-            }),
-          }),
-          insert: vi.fn().mockReturnValue({
-            select: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: { id: mockMatchId, secure_uuid: mockSecureUuid },
                 error: null,
               }),
             }),
@@ -130,7 +127,9 @@ describe('POST /api/public/contact', () => {
 
     expect(response.status).toBe(200);
     expect(data.data).toBeDefined();
-    expect(data.data.match_id).toBe(mockMatchId);
+    expect(data.data.requires_verification).toBe(true);
+    expect(data.data.patient_id).toBe(mockPatientId);
+    expect(data.data.contact_method).toBe('email');
     expect(data.data.success).toBe(true);
   });
 

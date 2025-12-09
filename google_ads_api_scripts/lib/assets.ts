@@ -104,15 +104,28 @@ export async function ensureCalloutAssetsForCampaign(customer: any, campaignRn: 
   }
 }
 
-export async function ensureStructuredSnippetsForCampaign(customer: any, campaignRn: string, snippets: Array<{ header: string; values: string[] }>, dryRun: boolean) {
+export async function ensureStructuredSnippetsForCampaign(
+  customer: any,
+  campaignRn: string,
+  snippets: Array<{ header: string; values: string[]; language?: string }>,
+  dryRun: boolean
+) {
   if (!Array.isArray(snippets) || snippets.length === 0) return;
   if (dryRun) {
     console.log(`  [DRY] Would create & attach ${snippets.length} structured snippets`);
+    for (const s of snippets) {
+      console.log(`    • ${s.header} (${s.language || 'de'}): ${s.values.join(', ')}`);
+    }
     return;
   }
   try {
+    // Structured snippets require: header (predefined), values (min 3), language code
     const creates = snippets.map((s) => ({
-      structured_snippet_asset: { header: s.header, values: (s.values || []).map((v) => ({ value: v })) },
+      structured_snippet_asset: {
+        header: s.header,
+        values: (s.values || []).slice(0, 10), // max 10 values
+        language: s.language || 'de', // default to German
+      },
     }));
     const created: any = await customer.assets.create(creates, { partial_failure: true });
     const rns: string[] = (created?.results || []).map((r: any) => r?.resource_name).filter(Boolean);

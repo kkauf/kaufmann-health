@@ -107,9 +107,51 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Handle SMS fallback: update existing email lead with phone number
+      // This enables email users who can't receive email to switch to SMS verification
+      if (lead_id) {
+        try {
+          const normalized = normalizePhoneNumber(contact) || contact;
+          const { data: existingLead, error: leadErr } = await supabaseServer
+            .from('people')
+            .select('id, name, metadata, status')
+            .eq('id', lead_id)
+            .eq('type', 'patient')
+            .single();
+
+          if (!leadErr && existingLead && existingLead.status === 'pre_confirmation') {
+            // Update the lead with phone number for SMS fallback
+            const meta = (existingLead.metadata as Record<string, unknown>) || {};
+            meta['sms_fallback'] = true;
+            meta['sms_fallback_at'] = new Date().toISOString();
+            if (isTestCookie) meta['is_test'] = true;
+            
+            await supabaseServer
+              .from('people')
+              .update({
+                phone_number: normalized,
+                metadata: meta,
+              })
+              .eq('id', lead_id);
+
+            void ServerAnalytics.trackEventFromRequest(req, {
+              type: 'sms_fallback_phone_added',
+              source: 'api.verification.send-code',
+              props: { lead_id },
+            });
+          }
+        } catch (err) {
+          void track({
+            type: 'sms_fallback_update_failed',
+            source: 'api.verification.send-code',
+            props: { lead_id, error: err instanceof Error ? err.message : 'unknown' },
+          });
+        }
+      }
+
       // Create or update person record with name (if provided) before sending SMS
       // This ensures the name is available when the user verifies and creates a session
-      if (name) {
+      if (name && !lead_id) {
         try {
           const normalized = normalizePhoneNumber(contact) || contact;
           // Check if person already exists for this phone number

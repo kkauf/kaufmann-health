@@ -187,6 +187,12 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     () => (matchType === 'partial' || matchType === 'none') && !hasPerfect,
     [matchType, hasPerfect]
   );
+  
+  // Smart messaging: check if patient accepts online therapy
+  const patientAcceptsOnline = useMemo(
+    () => data?.patient?.session_preferences?.includes('online') || data?.patient?.session_preference === 'online',
+    [data?.patient?.session_preferences, data?.patient?.session_preference]
+  );
 
 
 
@@ -406,10 +412,18 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         </div>
       )}
 
-      {/* Partial match banner */}
+      {/* Match info banner - positive framing */}
       {shouldShowPartialBanner && (
-        <div className="mb-6 rounded-xl border border-amber-200/70 bg-amber-50/80 p-4 text-sm text-amber-900">
-          Wir konnten keine exakten Treffer mit all deinen Präferenzen finden, aber diese Therapeut:innen könnten gut passen.
+        <div className={`mb-6 rounded-xl border p-4 text-sm ${
+          patientAcceptsOnline 
+            ? 'border-emerald-200/70 bg-emerald-50/80 text-emerald-900'
+            : 'border-amber-200/70 bg-amber-50/80 text-amber-900'
+        }`}>
+          {patientAcceptsOnline ? (
+            <>🎉 Gute Nachrichten! {therapists.length > 1 ? `Wir haben ${therapists.length} passende Therapeut:innen` : 'Wir haben passende Therapeut:innen'} für dich gefunden, die Online-Therapie anbieten.</>  
+          ) : (
+            <>Diese Therapeut:innen könnten gut zu dir passen. Schau dir ihre Profile an!</>
+          )}
         </div>
       )}
 

@@ -16,6 +16,7 @@ import { renderBookingClientConfirmation } from '@/lib/email/templates/bookingCl
 import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
 import { getFixedWindowLimiter, extractIpFromHeaders } from '@/lib/rate-limit';
 import { createInstantMatchesForPatient } from '@/features/leads/lib/match';
+import { processDraftContact, clearDraftContact } from '@/features/leads/lib/processDraftContact';
 
 interface VerifyCodeRequest {
   contact: string; // email or phone
@@ -133,67 +134,55 @@ export async function POST(req: NextRequest) {
           if (draftContact) {
             try {
               const therapistId = typeof draftContact.therapist_id === 'string' ? draftContact.therapist_id : null;
-              const contactType = (draftContact.contact_type === 'booking' || draftContact.contact_type === 'consultation') ? draftContact.contact_type : 'booking';
+              const contactType = (draftContact.contact_type === 'booking' || draftContact.contact_type === 'consultation') ? draftContact.contact_type : 'consultation';
               const patientReason = typeof draftContact.patient_reason === 'string' ? draftContact.patient_reason : '';
               const patientMessage = typeof draftContact.patient_message === 'string' ? draftContact.patient_message : '';
               const sessionFormat = (draftContact.session_format === 'online' || draftContact.session_format === 'in_person') ? draftContact.session_format : undefined;
+              const isTestDraft = draftContact.is_test === true;
 
               if (therapistId && (patientReason || patientMessage)) {
-                const origin = new URL(req.url).origin;
-                const idempotencyKey = `${person.id}:${therapistId}:${contactType}`;
-                const contactPayload = {
-                  therapist_id: therapistId,
-                  contact_type: contactType,
-                  patient_name: person.name || '',
-                  patient_phone: contact,
-                  contact_method: 'phone' as const,
-                  patient_reason: patientReason,
-                  patient_message: patientMessage,
-                  session_format: sessionFormat,
-                  idempotency_key: idempotencyKey,
-                };
-
-                const contactRes = await fetch(`${origin}/api/public/contact`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'x-forwarded-for': req.headers.get('x-forwarded-for') || '',
-                    'user-agent': req.headers.get('user-agent') || '',
+                const result = await processDraftContact({
+                  patientId: person.id,
+                  patientName: person.name || '',
+                  patientPhone: contact,
+                  contactMethod: 'phone',
+                  draftContact: {
+                    therapist_id: therapistId,
+                    contact_type: contactType,
+                    patient_reason: patientReason,
+                    patient_message: patientMessage,
+                    session_format: sessionFormat,
                   },
-                  body: JSON.stringify(contactPayload),
+                  isTest: isTestDraft,
                 });
 
-                if (!contactRes.ok) {
-                  await logError('api.verification.verify-code', new Error('Draft contact creation failed'), {
+                if (result.success) {
+                  await clearDraftContact(person.id);
+                  try {
+                    await ServerAnalytics.trackEventFromRequest(req, {
+                      type: 'draft_contact_processed',
+                      source: 'api.verification.verify-code',
+                      props: { therapist_id: therapistId, contact_type: contactType, match_id: result.matchId },
+                    });
+                  } catch {}
+                } else {
+                  await logError('api.verification.verify-code', new Error(result.error || 'Draft contact processing failed'), {
                     stage: 'draft_contact',
-                    status: contactRes.status,
                     therapistId,
                   });
                   try {
                     await ServerAnalytics.trackEventFromRequest(req, {
                       type: 'draft_contact_failed',
                       source: 'api.verification.verify-code',
-                      props: { therapist_id: therapistId, contact_type: contactType, status: contactRes.status },
-                    });
-                  } catch {}
-                } else {
-                  // Clear draft_contact only after success
-                  try {
-                    const clearedMeta: Record<string, unknown> = { ...(metadata || {}) };
-                    delete clearedMeta['draft_contact'];
-                    await supabaseServer
-                      .from('people')
-                      .update({ metadata: clearedMeta })
-                      .eq('id', person.id);
-                  } catch {}
-                  try {
-                    await ServerAnalytics.trackEventFromRequest(req, {
-                      type: 'draft_contact_processed',
-                      source: 'api.verification.verify-code',
-                      props: { therapist_id: therapistId, contact_type: contactType },
+                      props: { therapist_id: therapistId, contact_type: contactType, error: result.error },
                     });
                   } catch {}
                 }
+              }
+            } catch (err) {
+              await logError('api.verification.verify-code', err, { stage: 'draft_contact_processing' });
+            }
+          }
 
           // Process draft booking if present
           if (draftBooking) {
@@ -443,11 +432,6 @@ export async function POST(req: NextRequest) {
               await logError('api.verification.verify-code', err, { stage: 'draft_booking_processing' });
             }
           }
-              }
-            } catch (err) {
-              await logError('api.verification.verify-code', err, { stage: 'draft_contact_processing' });
-            }
-          }
 
           // Fire Google Ads conversion
           const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined;
@@ -527,6 +511,21 @@ export async function POST(req: NextRequest) {
       const respData: Record<string, unknown> = { verified: true, method: 'sms' };
       if (process.env.NODE_ENV !== 'production' && effectivePersonId) {
         respData.person_id = effectivePersonId;
+      }
+      // Include matches_url for SMS fallback users (read from metadata)
+      if (effectivePersonId) {
+        try {
+          const { data: personMeta } = await supabaseServer
+            .from('people')
+            .select('metadata')
+            .eq('id', effectivePersonId)
+            .single();
+          const meta = (personMeta?.metadata as Record<string, unknown>) || {};
+          const matchesUrl = meta['last_confirm_redirect_path'] as string | undefined;
+          if (matchesUrl) {
+            respData.matches_url = matchesUrl;
+          }
+        } catch { /* ignore */ }
       }
       const response = NextResponse.json({
         data: respData,
