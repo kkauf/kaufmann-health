@@ -2,16 +2,17 @@ import type { Metadata } from 'next';
 import FaqAccordion from '@/components/FaqAccordion';
 import CtaLink from '@/components/CtaLink';
 import PageAnalytics from '@/components/PageAnalytics';
+import { FlowVariantInit } from '@/components/FlowVariantInit';
+import { VariantAwareTimeline } from '@/components/VariantAwareTimeline';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
   HeroNoForm,
   TherapistTeaserSection,
-  ProcessTimeline,
   FinalCtaSection,
 } from '@/features/landing/components';
 import { buildLandingMetadata, buildLocalBusinessJsonLd, buildFaqJsonLd } from '@/lib/seo';
 import { parseKeyword, parseAdGroup, getLandingPageCopy } from '@/lib/ads-landing';
-import { Lock, MessageCircle, UserCheck, FileCheck, Shield, Clock, CalendarCheck, TrendingUp, Euro, Brain, Activity, Heart, Sparkles } from 'lucide-react';
+import { Lock, FileCheck, Shield, Clock, TrendingUp, Euro, Brain, Activity, Heart, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 
 export const revalidate = 3600;
@@ -34,10 +35,10 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 
 export default async function TherapieFindenPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const params = await searchParams;
-  // Test 4: Read variant from URL params (from Google Ads) - defaults to concierge for backward compatibility
+  // Test 4: Read variant from URL params (from Google Ads)
+  // If no variant param, FlowVariantInit will randomize client-side and update URL
   const rawVariant = params?.variant || params?.v;
   const variant = typeof rawVariant === 'string' ? rawVariant : 'concierge';
-  const isConcierge = variant === 'concierge';
   const fragebogenHref = `/fragebogen?variant=${encodeURIComponent(variant)}`;
   
   // Test 4: Keyword-echo for QS optimization
@@ -76,6 +77,8 @@ export default async function TherapieFindenPage({ searchParams }: { searchParam
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
       <PageAnalytics qualifier="concierge" />
+      {/* Test 4: Initialize flow variant (randomizes if no ?variant= param) */}
+      <FlowVariantInit landingPage="therapie-finden" />
       <HeroNoForm
         title={heroTitle}
         subtitle={heroSubtitle}
@@ -297,53 +300,9 @@ export default async function TherapieFindenPage({ searchParams }: { searchParam
       </section>
 
       {/* Process - 3 Steps (variant-aware for Test 4) */}
-      <ProcessTimeline
+      <VariantAwareTimeline
+        landingPage="therapie-finden"
         heading="In drei Schritten zur passenden Therapeut:in"
-        tagline={isConcierge
-          ? 'Handverlesene Vorschläge innerhalb von 24 Stunden. Deine Daten bleiben privat.'
-          : 'Sofort passende Vorschläge basierend auf deinen Angaben. Deine Daten bleiben privat.'}
-        items={isConcierge
-          ? [
-              {
-                icon: <MessageCircle className="h-5 w-5" />,
-                title: 'Deine Präferenzen',
-                caption: '3 Minuten',
-                bullets: ['Du sagst uns, was dir wichtig ist — online oder vor Ort, zeitliche Verfügbarkeit, was dich belastet.'],
-              },
-              {
-                icon: <UserCheck className="h-5 w-5" />,
-                title: 'Unsere persönliche Auswahl',
-                caption: '24 Stunden',
-                bullets: ['Bis zu 3 passende Profile, von uns handverlesen für deine Situation.'],
-              },
-              {
-                icon: <CalendarCheck className="h-5 w-5" />,
-                title: 'Du entscheidest',
-                caption: 'Direkter Kontakt',
-                bullets: ['Wunschtherapeut:in wählen und direkt Termin vereinbaren.'],
-              },
-            ]
-          : [
-              {
-                icon: <MessageCircle className="h-5 w-5" />,
-                title: 'Deine Präferenzen',
-                caption: '3 Minuten',
-                bullets: ['Du sagst uns, was dir wichtig ist — online oder vor Ort, zeitliche Verfügbarkeit, was dich belastet.'],
-              },
-              {
-                icon: <UserCheck className="h-5 w-5" />,
-                title: 'Passende Ergebnisse',
-                caption: 'Sofort',
-                bullets: ['Wir zeigen dir bis zu 3 passende Profile aus unserem geprüften Netzwerk.'],
-              },
-              {
-                icon: <CalendarCheck className="h-5 w-5" />,
-                title: 'Termin buchen',
-                caption: 'Direkt online',
-                bullets: ['Buche deinen ersten Termin direkt online. Keine Überweisung nötig. Start als Selbstzahler:in.'],
-              },
-            ]
-        }
       />
       <p className="mt-6 sm:mt-7 text-sm sm:text-base text-gray-700 leading-relaxed flex flex-wrap items-center justify-center gap-3 sm:gap-4">
         <span className="inline-flex items-center gap-2">
