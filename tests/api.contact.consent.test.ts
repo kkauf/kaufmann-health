@@ -80,7 +80,9 @@ vi.mock('@/lib/supabase-server', () => {
     return {
       select: (_sel: string) => ({
         eq: (_col: string, _val: unknown) => ({
-          gte: (_c2: string, _v2: unknown) => ({ async then(resolve: any) { resolve({ data: [], error: null }); } }),
+          contains: (_meta: unknown) => ({
+            gte: (_c2: string, _v2: unknown) => ({ async then(resolve: any) { resolve({ data: [], error: null }); } }),
+          }),
         }),
       }),
       insert: (_payload: any) => ({ select: (_sel: string) => ({ single: async () => ({ data: { id: 'm1', secure_uuid: 's1' }, error: null }) }) }),
