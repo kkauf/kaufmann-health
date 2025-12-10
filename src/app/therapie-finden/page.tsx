@@ -76,7 +76,7 @@ export default async function TherapieFindenPage({ searchParams }: { searchParam
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
-      <PageAnalytics qualifier="concierge" />
+      <PageAnalytics qualifier="concierge" keyword={keyword ?? undefined} />
       {/* Test 4: Initialize flow variant (randomizes if no ?variant= param) */}
       <FlowVariantInit landingPage="therapie-finden" />
       <HeroNoForm

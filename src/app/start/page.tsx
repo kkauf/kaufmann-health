@@ -232,7 +232,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
-      <PageAnalytics qualifier={`LP-Start-${variant}`} />
+      <PageAnalytics qualifier={`LP-Start-${variant}`} keyword={keyword ?? undefined} />
       {/* Test 4: Initialize flow variant (randomizes if no ?variant= param) */}
       <FlowVariantInit landingPage="start" />
 
