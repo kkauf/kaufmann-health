@@ -36,7 +36,7 @@ export default function NewScreen5_Modality({
     if (suppressAutoAdvance && !userInteracted) return;
     const timer = setTimeout(() => {
       onNext();
-    }, 1200); // Longer delay to read affirmation message
+    }, 2500); // Allow time to read affirmation message
     return () => clearTimeout(timer);
   }, [values.modality_matters, disabled, onNext, suppressAutoAdvance, userInteracted]);
 
@@ -101,7 +101,7 @@ export default function NewScreen5_Modality({
         {values.modality_matters === false && (
           <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4">
             <p className="text-sm text-emerald-900">
-              ✓ Perfekt! Wir kümmern uns darum und empfehlen dir Therapeut:innen, die zu deinen Bedürfnissen passen.
+              ✓ Perfekt! Wir übernehmen für dich die Wahl der Therapiemethode.
             </p>
           </div>
         )}

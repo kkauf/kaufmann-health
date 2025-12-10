@@ -838,6 +838,7 @@ export default function SignupWizard() {
               contact_method: data.contact_method,
             }}
             initialized={initialized}
+            isConcierge={isConcierge}
             onChange={saveLocal}
             onBack={() => safeGoToStep(5)}
             onNext={async () => {

@@ -24,6 +24,8 @@ interface TherapistCardProps {
   onContactClick?: (type: 'booking' | 'consultation') => void; // Custom contact handler
   /** Highlight as the single best/perfect match with premium styling */
   highlighted?: boolean;
+  /** Patient's city for match context - when provided, in-person badge only shows if cities match */
+  patientCity?: string;
 }
 
 function getInitials(firstName: string, lastName: string) {
@@ -48,6 +50,7 @@ export function TherapistCard({
   contactedAt = null,
   onContactClick: customContactHandler,
   highlighted = false,
+  patientCity,
 }: TherapistCardProps) {
   const [imageError, setImageError] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
@@ -59,9 +62,14 @@ export function TherapistCard({
 
   // EARTH-225: Derive format badges from actual availability slots when present,
   // fall back to session_preferences when no slots exist (e.g., message-only therapists)
+  // When patientCity is provided (match context), only show in-person if cities match
   const { offersOnline, offersInPerson } = useMemo(() => {
     const availability = therapist.availability || [];
     const hasSlots = Array.isArray(availability) && availability.length > 0;
+
+    // Check if in-person is relevant for this patient (city match)
+    const cityMatches = !patientCity || 
+      (therapist.city && patientCity.toLowerCase().trim() === therapist.city.toLowerCase().trim());
 
     if (hasSlots) {
       // Derive from actual slot availability
@@ -69,7 +77,8 @@ export function TherapistCard({
       const hasInPersonSlots = availability.some(s => s.format === 'in_person');
       return {
         offersOnline: hasOnlineSlots,
-        offersInPerson: hasInPersonSlots,
+        // Only show in-person badge if city matches (or no patientCity filter)
+        offersInPerson: hasInPersonSlots && cityMatches,
       };
     }
 
@@ -83,9 +92,10 @@ export function TherapistCard({
     const hasEither = normalizedPrefs.has('either') || normalizedPrefs.has('both');
     return {
       offersOnline: normalizedPrefs.has('online') || hasEither,
-      offersInPerson: normalizedPrefs.has('in_person') || normalizedPrefs.has('inperson') || hasEither,
+      // Only show in-person badge if city matches (or no patientCity filter)
+      offersInPerson: (normalizedPrefs.has('in_person') || normalizedPrefs.has('inperson') || hasEither) && cityMatches,
     };
-  }, [therapist.availability, therapist.session_preferences]);
+  }, [therapist.availability, therapist.session_preferences, therapist.city, patientCity]);
 
   // Memoize modality info lookups to prevent recalculation on every render
   const modalityInfos = useMemo(() => {

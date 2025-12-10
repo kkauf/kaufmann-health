@@ -564,6 +564,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
               highlighted={isHighlighted}
               contactedAt={t.contacted_at || null}
               onContactClick={(type) => handleOpen(t, type)}
+              patientCity={data?.patient?.city}
             />
           );
         })}
