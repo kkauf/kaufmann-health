@@ -1,0 +1,27 @@
+import { z } from 'zod';
+import { UUID } from './shared';
+
+// ============================================================================
+// THERAPIST RESPOND TO MATCH
+// POST /api/public/match/[uuid]/respond
+// ============================================================================
+
+export const MatchAction = z.enum(['accept', 'decline']);
+export type MatchAction = z.infer<typeof MatchAction>;
+
+export const TherapistRespondInput = z.object({
+  action: MatchAction,
+});
+
+export type TherapistRespondInput = z.infer<typeof TherapistRespondInput>;
+
+// ============================================================================
+// PATIENT SELECT THERAPIST
+// POST /api/public/match/[uuid]/select
+// ============================================================================
+
+export const PatientSelectInput = z.object({
+  therapist_id: UUID,
+});
+
+export type PatientSelectInput = z.infer<typeof PatientSelectInput>;
