@@ -333,7 +333,7 @@ export default function SignupWizard() {
         const vParam = searchParams?.get('variant') || searchParams?.get('v') || undefined;
         const ref = (typeof document !== 'undefined' ? document.referrer : '') || '';
         const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-        
+
         if (vParam) {
           variant = vParam;
           // Determine source from referrer - /therapie-finden for concierge, /start for marketplace
@@ -437,7 +437,7 @@ export default function SignupWizard() {
     // Fetch for phone-verified users OR email-confirmed users
     const isPhoneVerified = data.contact_method === 'phone' && data.phone_verified;
     if (!isPhoneVerified && !isEmailConfirmed) return;
-    
+
     fetch('/api/public/session')
       .then(res => res.ok ? res.json() : null)
       .then(json => {
@@ -445,7 +445,7 @@ export default function SignupWizard() {
           setMatchesUrl(json.data.matchesUrl);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [step, data.contact_method, data.phone_verified, isEmailConfirmed]);
 
   // If we have a session id (possibly from URL), try to load remote state once
@@ -901,11 +901,11 @@ export default function SignupWizard() {
       const confirmParam = searchParams?.get('confirm');
       const isConfirmed = confirmParam === '1' || confirmParam === 'success';
       const isPhoneUser = data.contact_method === 'phone' && !!data.phone_number;
-      
+
       // Test 4: Variant-specific confirmation screens
       // - Concierge: Show waiting screen (manual curation, 24h)
       // - Self-Service: Redirect to matches or show CTA
-      
+
       if (isConfirmed) {
         // Email confirmed - different behavior per variant
         if (isConcierge) {
@@ -1382,6 +1382,13 @@ export default function SignupWizard() {
       if (campaignVariantOverrideRef.current) headers['X-Campaign-Variant-Override'] = campaignVariantOverrideRef.current;
 
       const sessionPref = data.session_preference;
+      // Map UI gender values to database enum values
+      let backendGender = data.gender;
+      if (data.gender === 'Frau') backendGender = 'female' as any;
+      else if (data.gender === 'Mann') backendGender = 'male' as any;
+      else if (data.gender === 'Keine Präferenz') backendGender = 'no_preference' as any;
+      // 'Divers/non-binär' maps to nothing or stays as is (custom handling depending on backend, but let's stick to known enums for now or leave as undefined if not strictly mapped)
+
       const payload = {
         start_timing: data.start_timing,
         additional_info: data.additional_info,
@@ -1390,7 +1397,7 @@ export default function SignupWizard() {
         schwerpunkte: data.schwerpunkte || [],
         city: data.city,
         session_preference: sessionPref,
-        gender: data.gender,
+        gender: backendGender, // Use mapped value
         time_slots: data.time_slots || [],
         form_session_id: sessionIdRef.current || undefined,
       };

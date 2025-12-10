@@ -83,6 +83,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const [selectedBookingSlot, setSelectedBookingSlot] = useState<{ date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string } | null>(null);
   const [formatShake, setFormatShake] = useState(false);
   const formatSelectorRef = useRef<HTMLDivElement>(null);
+  const [userEditedMessage, setUserEditedMessage] = useState(false);
   // Track whether the user has a verified session in this modal lifecycle
   const [isVerified, setIsVerified] = useState<boolean>(false);
 
@@ -1037,7 +1038,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                   ? 'ich möchte gerne einen Termin vereinbaren'
                   : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
                 const signature = name ? `\n\nViele Grüße\n${name}` : '';
-                setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei ${e.target.value || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
+
+                // Only auto-update message if the user hasn't manually edited it
+                if (!userEditedMessage) {
+                  setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei ${e.target.value || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
+                }
+
                 try {
                   if (!draftTrackedRef.current) {
                     const len = (`${e.target.value}` + `${message || ''}`).trim().length;
@@ -1225,6 +1231,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
               value={message}
               onChange={(e) => {
                 setMessage(e.target.value);
+                setUserEditedMessage(true);
                 try {
                   if (!draftTrackedRef.current) {
                     const len = (`${reason || ''}` + `${e.target.value}`).trim().length;
@@ -1300,11 +1307,10 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                 setStep('verify');
               }}
               disabled={loading}
-              className={`flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl ${
-                !sessionFormat || !selectedBookingSlot
-                  ? 'bg-gray-400 hover:bg-gray-500 cursor-pointer'
-                  : 'bg-emerald-600 hover:bg-emerald-700'
-              }`}
+              className={`flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl ${!sessionFormat || !selectedBookingSlot
+                ? 'bg-gray-400 hover:bg-gray-500 cursor-pointer'
+                : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Weiter zur Eingabe'}
             </Button>
@@ -1322,11 +1328,10 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                   handleSendMessage();
                 }}
                 disabled={loading || (!reason.trim() && !message.trim())}
-                className={`flex-1 h-11 shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 ${
-                  contactType === 'booking' && !sessionFormat
-                    ? 'bg-gray-400 hover:bg-gray-500'
-                    : 'bg-emerald-600 hover:bg-emerald-700'
-                }`}
+                className={`flex-1 h-11 shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 ${contactType === 'booking' && !sessionFormat
+                  ? 'bg-gray-400 hover:bg-gray-500'
+                  : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Nachricht senden'}
               </Button>
@@ -1343,11 +1348,10 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                   setStep('verify');
                 }}
                 disabled={loading || (!reason.trim() && !message.trim())}
-                className={`flex-1 h-11 ${
-                  contactType === 'booking' && !sessionFormat
-                    ? 'bg-gray-400 hover:bg-gray-500'
-                    : 'bg-emerald-600 hover:bg-emerald-700'
-                }`}
+                className={`flex-1 h-11 ${contactType === 'booking' && !sessionFormat
+                  ? 'bg-gray-400 hover:bg-gray-500'
+                  : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Weiter'}
               </Button>
