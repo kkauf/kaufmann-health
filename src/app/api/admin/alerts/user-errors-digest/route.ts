@@ -87,11 +87,24 @@ export async function GET(req: Request) {
 
     const rawEvents = (data || []) as ErrorEvent[];
 
-    // Filter out 410 (expired sessions) - this is expected behavior, not a bug
+    // Filter out errors that are expected client-side issues, not actionable server bugs
     const events = rawEvents.filter(e => {
-      const status = e.properties?.status;
+      const props = e.properties || {};
+      const status = props.status;
       const statusNum = typeof status === 'string' ? parseInt(status, 10) : status;
-      return statusNum !== 410;
+      const errorType = props.error_type || '';
+      const message = props.message || '';
+      
+      // 410 = expired sessions - expected behavior
+      if (statusNum === 410) return false;
+      
+      // network_error = client lost connection (mobile, flaky wifi, etc.)
+      if (errorType === 'network_error') return false;
+      
+      // ChunkLoadError = browser failed to load Next.js static chunks (network/CDN issues)
+      if (errorType === 'unhandled' && message.includes('ChunkLoadError')) return false;
+      
+      return true;
     });
 
     // If no errors, log but don't send email
