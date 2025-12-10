@@ -119,7 +119,13 @@ const eurosToMicros = (eur: number): number => {
 };
 
 // Basic shape we expect for input config
-type KeywordTier = { maxCpc: number; terms: string[] };
+type KeywordTier = { 
+  maxCpc: number; 
+  terms: string[]; 
+  headlines?: string[]; 
+  descriptions?: string[]; 
+  landing_page?: string;
+};
 export type CampaignConfig = {
   name: string;
   budget_euros: number;
@@ -438,19 +444,20 @@ async function main() {
       const rsasPer = c.ads?.rsas_per_adgroup ?? 2;
       // Prepare RSA assets: auto-complete to 15/4, add CTAs/benefits, optional keyword insertion, include top KW tokens
       const kwTokensFromTier = Array.from(new Set([...(tier.terms || [])])).slice(0, 5);
+      // Use tier-level headlines/descriptions if provided, otherwise fall back to campaign-level
+      const tierHeadlines = tier.headlines || c.headlines;
+      const tierDescriptions = tier.descriptions || c.descriptions;
       const prepared = prepareRsaAssetsLib(
-        c.headlines,
-        c.descriptions,
+        tierHeadlines,
+        tierDescriptions,
         { useKeywordInsertion: c.ads?.use_keyword_insertion ?? true, autoComplete: c.ads?.auto_complete_assets ?? true, kwTokens: kwTokensFromTier }
       );
-      // Use the landing_page from config as the canonical URL; final_url_params
-      // are a generic way to tack on additional static query params (e.g. v=browse).
-      // The script itself has no understanding of variants beyond whatever is
-      // already encoded in c.landing_page.
+      // Use tier-level landing_page if provided, otherwise fall back to campaign-level
+      const tierLandingPage = tier.landing_page || c.landing_page;
       await addRSAsLib(
         customer,
         adGroupRn,
-        c.landing_page,
+        tierLandingPage,
         prepared.headlines,
         prepared.descriptions,
         c.ads?.final_url_params,
@@ -478,12 +485,12 @@ async function main() {
       // Ensure at least one RSA exists — create fallbacks only if provided in private templates
       {
         const t = templates?.[c.name] as any;
-        const fallbackH = Array.isArray(t?.headlines) ? (t.headlines as string[]) : [];
-        const fallbackD = Array.isArray(t?.descriptions) ? (t.descriptions as string[]) : [];
+        const fallbackH = Array.isArray(t?.headlines) ? (t.headlines as string[]) : (tierHeadlines || []);
+        const fallbackD = Array.isArray(t?.descriptions) ? (t.descriptions as string[]) : (tierDescriptions || []);
         await ensureAtLeastOneRSALib(
           customer,
           adGroupRn,
-          c.landing_page,
+          tierLandingPage,
           c.ads?.final_url_params,
           fallbackH,
           fallbackD,
