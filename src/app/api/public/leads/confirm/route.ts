@@ -90,6 +90,8 @@ export async function GET(req: Request) {
     const statusLower = (person.status || '').toLowerCase();
     if (statusLower === 'email_confirmed' || statusLower === 'new') {
       // Set client session cookie so the user is treated as verified (EARTH-204)
+      // Preserve variant for correct confirmation screen (concierge vs self-service)
+      const earlyVariantParam = person.campaign_variant ? `&variant=${encodeURIComponent(person.campaign_variant)}` : '';
       try {
         const token = await createClientSessionToken({
           patient_id: id,
@@ -101,22 +103,22 @@ export async function GET(req: Request) {
         if (effectiveRedirect) {
           const hasQuery = effectiveRedirect.includes('?');
           const separator = hasQuery ? '&' : '?';
-          const suffix = `${separator}confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
+          const suffix = `${separator}confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}${earlyVariantParam}`;
           const resp = NextResponse.redirect(`${origin}${effectiveRedirect}${suffix}`, 302);
           resp.headers.set('Set-Cookie', cookie);
           return resp;
         }
-        const resp = NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`, 302);
+        const resp = NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}${earlyVariantParam}`, 302);
         resp.headers.set('Set-Cookie', cookie);
         return resp;
       } catch {
         if (effectiveRedirect) {
           const hasQuery = effectiveRedirect.includes('?');
           const separator = hasQuery ? '&' : '?';
-          const suffix = `${separator}confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
+          const suffix = `${separator}confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}${earlyVariantParam}`;
           return NextResponse.redirect(`${origin}${effectiveRedirect}${suffix}`, 302);
         }
-        return NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`, 302);
+        return NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}${earlyVariantParam}`, 302);
       }
     }
 
@@ -469,6 +471,8 @@ export async function GET(req: Request) {
     }
 
     // Success → set client session cookie (EARTH-204)
+    // Build redirect suffix with variant preserved for correct confirmation screen
+    const variantParam = person.campaign_variant ? `&variant=${encodeURIComponent(person.campaign_variant)}` : '';
     try {
       const token = await createClientSessionToken({
         patient_id: id,
@@ -480,22 +484,22 @@ export async function GET(req: Request) {
       if (effectiveRedirect) {
         const hasQuery = effectiveRedirect.includes('?');
         const separator = hasQuery ? '&' : '?';
-        const suffix = `${separator}confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
+        const suffix = `${separator}confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}${variantParam}`;
         const resp = NextResponse.redirect(`${origin}${effectiveRedirect}${suffix}`, 302);
         resp.headers.set('Set-Cookie', cookie);
         return resp;
       }
-      const resp = NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`, 302);
+      const resp = NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}${variantParam}`, 302);
       resp.headers.set('Set-Cookie', cookie);
       return resp;
     } catch {
       if (effectiveRedirect) {
         const hasQuery = effectiveRedirect.includes('?');
         const separator = hasQuery ? '&' : '?';
-        const suffix = `${separator}confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`;
+        const suffix = `${separator}confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}${variantParam}`;
         return NextResponse.redirect(`${origin}${effectiveRedirect}${suffix}`, 302);
       }
-      return NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}`, 302);
+      return NextResponse.redirect(`${origin}/fragebogen?confirm=1&id=${id}${fs ? `&fs=${encodeURIComponent(fs)}` : ''}${variantParam}`, 302);
     }
   } catch (e) {
     await logError('api.leads.confirm', e, { stage: 'unhandled' });

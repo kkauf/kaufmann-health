@@ -184,7 +184,7 @@ export default function SignupWizard() {
         const hasCity = !!(d.city && d.city.trim());
         const pref = d.session_preference;
         if (!pref) miss.push('session_preference');
-        if (pref === 'in_person' && !hasCity) miss.push('city');
+        if ((pref === 'in_person' || pref === 'either') && !hasCity) miss.push('city');
         return miss;
       }
       case 5: {
