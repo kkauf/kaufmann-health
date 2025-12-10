@@ -43,7 +43,7 @@ export type WizardData = Omit<Screen1Values, 'email'> & Screen1_5Values & Screen
   online_ok?: boolean;
   session_preference?: 'online' | 'in_person' | 'either';
   // Step 5: Preferences (gender, time_slots only)
-  gender?: 'Frau' | 'Mann' | 'Keine Präferenz' | 'Divers/non-binär';
+  gender?: 'Frau' | 'Mann' | 'Keine Präferenz';
   time_slots?: string[];
   // Step 6: Contact Info
   name: string;
@@ -1387,7 +1387,6 @@ export default function SignupWizard() {
       if (data.gender === 'Frau') backendGender = 'female';
       else if (data.gender === 'Mann') backendGender = 'male';
       else if (data.gender === 'Keine Präferenz') backendGender = 'no_preference';
-      // 'Divers/non-binär' maps to nothing or stays as is (custom handling depending on backend, but let's stick to known enums for now or leave as undefined if not strictly mapped)
 
       const payload = {
         start_timing: data.start_timing,

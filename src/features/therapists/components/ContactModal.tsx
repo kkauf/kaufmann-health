@@ -1261,8 +1261,9 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         )}
         {!showBookingPicker && (
           <>
-            <ConsentSection actor="directory" className="-mt-2" />
-            <p className="mt-2 text-xs sm:text-sm text-gray-600 leading-relaxed flex flex-wrap items-center gap-3">
+            {/* Skip consent section for verified users - they already accepted T&Cs during questionnaire */}
+            {!isVerified && <ConsentSection actor="directory" className="-mt-2" />}
+            <p className={`${isVerified ? '' : 'mt-2'} text-xs sm:text-sm text-gray-600 leading-relaxed flex flex-wrap items-center gap-3`}>
               <span className="inline-flex items-center gap-1.5">
                 <Shield className="h-3.5 w-3.5 text-emerald-600" />
                 <span>DSGVO‑konform</span>
