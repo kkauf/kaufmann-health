@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Lock } from 'lucide-react';
 
 export type NewScreen3Values = {
   additional_info?: string;
@@ -67,9 +66,8 @@ export default function NewScreen3_WhatBringsYou({
           maxLength={500}
           disabled={disabled}
         />
-        <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-          <Lock className="h-3.5 w-3.5 flex-shrink-0" />
-          <span>Nur Katherine sieht deine Angaben – sie werden nicht an Therapeut:innen weitergegeben.</span>
+        <p className="text-sm text-muted-foreground">
+          So können wir sicherstellen, dass du Therapeut:innen vorgeschlagen bekommst, die wirklich zu dir passen.
         </p>
       </div>
 
