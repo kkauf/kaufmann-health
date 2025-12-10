@@ -66,9 +66,19 @@ export default function NewScreen3_WhatBringsYou({
           maxLength={500}
           disabled={disabled}
         />
-        <p className="text-sm text-muted-foreground">
-          So können wir sicherstellen, dass du Therapeut:innen vorgeschlagen bekommst, die wirklich zu dir passen.
-        </p>
+        <div className="flex items-center justify-between text-sm">
+          <p className="text-muted-foreground">
+            Ein paar Stichworte reichen – z.B. Thema, Auslöser oder wie du dich fühlst.
+          </p>
+          {text.length > 0 && !isValid && (
+            <span className="text-muted-foreground tabular-nums">
+              noch {MIN_LENGTH - text.length} Zeichen
+            </span>
+          )}
+          {isValid && (
+            <span className="text-emerald-600 font-medium">✓</span>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center justify-between pt-2">

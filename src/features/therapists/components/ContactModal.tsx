@@ -1305,7 +1305,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                   formatSelectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   return;
                 }
-                setStep('verify');
+                // For verified users, skip verification and send booking directly
+                if (isVerified) {
+                  handleSendMessage();
+                } else {
+                  setStep('verify');
+                }
               }}
               disabled={loading}
               className={`flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl ${!sessionFormat || !selectedBookingSlot
@@ -1313,7 +1318,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                 : 'bg-emerald-600 hover:bg-emerald-700'
                 }`}
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Weiter zur Eingabe'}
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (isVerified ? 'Termin buchen' : 'Weiter zur Eingabe')}
             </Button>
           ) : (
             (isVerified) ? (
