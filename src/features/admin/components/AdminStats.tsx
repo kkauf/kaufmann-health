@@ -136,8 +136,10 @@ type StatsData = {
       preferredGender: Array<{ option: string; count: number }>;
       wantsInPerson: Array<{ option: string; count: number }>;
     };
-    /** Actionable demand signals - specific therapist needs */
+    /** Actionable demand signals - specific therapist needs (from events) */
     demandSignals?: Array<{ signal: string; count: number }>;
+    /** Supply gaps from supply_gaps table - more structured data */
+    actionableGaps?: Array<{ gap: string; count: number }>;
   };
   communicationFunnel?: {
     emailConfirmation: {
@@ -1069,8 +1071,27 @@ export default function AdminStats() {
             <CardDescription>Actionable demand signals - what therapists we need to recruit</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Demand Signals - Most Important, shown first */}
-            {data.opportunities.demandSignals && data.opportunities.demandSignals.length > 0 && (
+            {/* Actionable Supply Gaps - from supply_gaps table (preferred) */}
+            {data.opportunities.actionableGaps && data.opportunities.actionableGaps.length > 0 && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="text-sm font-semibold text-red-800 mb-3">🚨 Supply Gaps ({data.opportunities.actionableGaps.reduce((sum, g) => sum + g.count, 0)} unmet requests)</div>
+                <div className="space-y-2">
+                  {data.opportunities.actionableGaps.slice(0, 15).map((g, i) => (
+                    <div key={`${g.gap}-${i}`} className="flex items-center justify-between">
+                      <span className="text-sm text-red-900">{g.gap || '(unbekannt)'}</span>
+                      <span className="text-sm font-semibold text-red-700 tabular-nums bg-red-100 px-2 py-0.5 rounded">{g.count}×</span>
+                    </div>
+                  ))}
+                </div>
+                {data.opportunities.actionableGaps.length > 15 && (
+                  <div className="text-xs text-red-600 mt-2">+ {data.opportunities.actionableGaps.length - 15} weitere...</div>
+                )}
+              </div>
+            )}
+
+            {/* Fallback: Legacy Demand Signals from events (shown if no supply gaps) */}
+            {(!data.opportunities.actionableGaps || data.opportunities.actionableGaps.length === 0) && 
+             data.opportunities.demandSignals && data.opportunities.demandSignals.length > 0 && (
               <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                 <div className="text-sm font-semibold text-amber-800 mb-3">🔥 Unmet Demand ({data.opportunities.demandSignals.reduce((sum, d) => sum + d.count, 0)} requests)</div>
                 <div className="space-y-2">
