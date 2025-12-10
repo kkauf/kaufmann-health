@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 import { logError } from '@/lib/logger';
+import { isLocalhostRequest, isStagingRequest } from '@/lib/test-mode';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,14 +42,20 @@ export async function GET(req: Request) {
     const statusParam = (url.searchParams.get('status') || 'new').trim();
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 200);
 
+    // In non-production environments, show test leads for debugging
+    const showTestLeads = isLocalhostRequest(req) || isStagingRequest(req);
+
     // Helper to build the base query with selectable columns to support schema fallbacks
     const buildQuery = (selectCols: string) => {
       let q = supabaseServer
         .from('people')
         .select(selectCols)
-        .eq('type', 'patient')
-        .or('metadata->>is_test.is.null,metadata->>is_test.eq.false')
-        .order('created_at', { ascending: false })
+        .eq('type', 'patient');
+      // Only filter out test leads in production
+      if (!showTestLeads) {
+        q = q.or('metadata->>is_test.is.null,metadata->>is_test.eq.false');
+      }
+      q = q.order('created_at', { ascending: false })
         .limit(limit);
       if (statusParam && statusParam !== 'all') q = q.eq('status', statusParam);
       if (city) {
@@ -98,19 +105,21 @@ export async function GET(req: Request) {
     // Map phone_number/phone -> phone for UI backward compatibility
     type Row = { phone_number?: string | null; phone?: string | null; metadata?: unknown } & Record<string, unknown>;
     let result = ((data || []) as Row[]).map((r) => ({ ...r, phone: (r.phone_number ?? r.phone ?? null) }));
-    // Fallback filter: exclude E2E/test leads by metadata flag or recognizable patterns
-    result = result.filter((r) => {
-      try {
-        const meta = (r?.metadata ?? {}) as Record<string, unknown>;
-        const isTestVal: unknown = meta ? (meta as Record<string, unknown>)['is_test'] : undefined;
-        if (isTestVal === true) return false;
-        const email = String(((r as Record<string, unknown>)['email'] as string | undefined) || '').trim();
-        const name = String(((r as Record<string, unknown>)['name'] as string | undefined) || '').trim();
-        if (/^e2e-[a-z0-9]+@example\.com$/i.test(email)) return false;
-        if (/^e2e\b/i.test(name)) return false;
-      } catch {}
-      return true;
-    });
+    // Fallback filter: exclude E2E/test leads by metadata flag or recognizable patterns (production only)
+    if (!showTestLeads) {
+      result = result.filter((r) => {
+        try {
+          const meta = (r?.metadata ?? {}) as Record<string, unknown>;
+          const isTestVal: unknown = meta ? (meta as Record<string, unknown>)['is_test'] : undefined;
+          if (isTestVal === true) return false;
+          const email = String(((r as Record<string, unknown>)['email'] as string | undefined) || '').trim();
+          const name = String(((r as Record<string, unknown>)['name'] as string | undefined) || '').trim();
+          if (/^e2e-[a-z0-9]+@example\.com$/i.test(email)) return false;
+          if (/^e2e\b/i.test(name)) return false;
+        } catch {}
+        return true;
+      });
+    }
     if (sessionPref === 'online' || sessionPref === 'in_person') {
       result = result.filter((p) => {
         const meta = (p?.metadata ?? {}) as { session_preference?: 'online' | 'in_person'; session_preferences?: ('online' | 'in_person')[] };
