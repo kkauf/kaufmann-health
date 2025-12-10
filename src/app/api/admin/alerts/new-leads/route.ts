@@ -91,18 +91,21 @@ type PersonRow = {
   updated_at?: string | null;
 };
 
-// Test 4: Leads that require manual admin intervention (concierge flow)
-// Self-service and marketplace leads are auto-matched and don't need admin action
-function requiresManualMatching(row: PersonRow): boolean {
-  // Concierge variant always requires manual matching
-  if (row.campaign_variant === 'concierge') return true;
-  // Self-service leads are auto-matched
-  if (row.campaign_variant === 'self-service') return false;
-  // Marketplace leads are also auto-matched
-  if (row.campaign_variant === 'marketplace') return false;
-  // For leads without explicit variant, check if they have auto-matching enabled
-  // Default to requiring manual matching for backward compatibility
-  return true;
+// Check if a lead needs manual matching based on match count
+// A lead needs action if they're verified (status=new) but have zero matches
+async function getLeadsWithoutMatches(leadIds: string[]): Promise<Set<string>> {
+  if (leadIds.length === 0) return new Set();
+  
+  // Get all patient IDs that have at least one match
+  const { data } = await supabaseServer
+    .from('matches')
+    .select('patient_id')
+    .in('patient_id', leadIds);
+  
+  const hasMatches = new Set((data || []).map(m => m.patient_id));
+  
+  // Return IDs that have NO matches
+  return new Set(leadIds.filter(id => !hasMatches.has(id)));
 }
 
 function get(obj: unknown, path: string): unknown {
@@ -204,9 +207,10 @@ export async function GET(req: Request) {
       return !(meta && typeof meta === 'object' && (meta as { is_test?: unknown }).is_test === true);
     });
 
-    // Test 4: Filter to only include leads requiring manual admin intervention
-    // Self-service and marketplace leads are auto-matched and don't need admin action
-    const actionableRows = rows.filter(requiresManualMatching);
+    // Filter to only include leads that need manual matching (verified but no matches yet)
+    const leadIds = rows.map(r => r.id);
+    const leadsNeedingMatches = await getLeadsWithoutMatches(leadIds);
+    const actionableRows = rows.filter(r => leadsNeedingMatches.has(r.id));
     const autoMatchedCount = rows.length - actionableRows.length;
 
     if (actionableRows.length === 0) {
@@ -273,7 +277,7 @@ export async function GET(req: Request) {
     lines.push('Next steps:');
     lines.push('- Review and match: /admin/leads');
 
-    // Test 4: Subject clarifies these are leads requiring manual matching
+    // Subject clarifies these are verified leads with no matches yet
     const subject = `[KH] ${total} lead${total !== 1 ? 's' : ''} requiring manual matching (${hours}h)`;
 
     try {
