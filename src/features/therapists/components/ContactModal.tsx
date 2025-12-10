@@ -200,7 +200,10 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             ? 'ich möchte gerne einen Termin vereinbaren'
             : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
           const signature = userName ? `\n\nViele Grüße\n${userName}` : '';
-          setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei [beschreibe dein Anliegen] und fand dein Profil sehr ansprechend.${signature}`);
+          // Use preAuth.defaultReason if available (e.g., from matches page)
+          const initialReason = (preAuth?.defaultReason || '').trim();
+          if (initialReason) setReason(initialReason);
+          setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei ${initialReason || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
 
           if (forceSuccess || awaitingVerificationSend) {
             // After magic-link verification we show success to mirror directory behavior

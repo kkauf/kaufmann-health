@@ -51,10 +51,12 @@ export function renderPatientSelectionEmail(params: {
   `;
  
   // Primary CTA to view matches page (prominent when matchesUrl provided)
-  const matchesCta = params.matchesUrl
+  // Add ?direct=1 to skip loading animation on the matches page
+  const matchesCtaUrl = params.matchesUrl ? `${params.matchesUrl}?direct=1` : null;
+  const matchesCta = matchesCtaUrl
     ? `
       <div style="margin: 0 0 32px; text-align: center; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important; background-image: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important; padding:24px; border-radius:12px; border:1px solid rgba(34, 197, 94, 0.3); box-shadow: 0 2px 8px 0 rgba(34, 197, 94, 0.1);">
-        ${renderButton(params.matchesUrl, 'Deine persönliche Therapeutenauswahl ansehen')}
+        ${renderButton(matchesCtaUrl, 'Deine persönliche Therapeutenauswahl ansehen')}
       </div>
     `
     : '';

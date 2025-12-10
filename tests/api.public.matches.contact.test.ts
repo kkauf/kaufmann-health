@@ -55,7 +55,7 @@ describe('POST /api/public/matches/:uuid/contact', () => {
         return {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
-          contains: vi.fn().mockReturnThis(),
+          filter: vi.fn().mockReturnThis(),
           gte: vi.fn().mockResolvedValue({ data: [], error: null }),
         };
       } else if (callCount === 3) {
@@ -148,7 +148,7 @@ describe('POST /api/public/matches/:uuid/contact', () => {
         return {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
-          contains: vi.fn().mockReturnThis(),
+          filter: vi.fn().mockReturnThis(),
           gte: vi.fn().mockResolvedValue({
             data: [{ id: 'm1' }, { id: 'm2' }, { id: 'm3' }],
             error: null,
@@ -181,7 +181,7 @@ describe('POST /api/public/matches/:uuid/contact', () => {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       gte: vi.fn().mockReturnThis(),
-      contains: vi.fn().mockReturnThis(),
+      filter: vi.fn().mockReturnThis(),
       single: vi.fn()
         .mockResolvedValueOnce({
           data: { id: 'match-ref-id', created_at: new Date().toISOString(), patient_id: 'patient-123' },

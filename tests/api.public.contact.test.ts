@@ -87,7 +87,7 @@ describe('POST /api/public/contact', () => {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              contains: vi.fn().mockReturnValue({
+              filter: vi.fn().mockReturnValue({
                 gte: vi.fn().mockResolvedValue({
                   data: [],
                   error: null,
@@ -167,7 +167,7 @@ describe('POST /api/public/contact', () => {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              contains: vi.fn().mockReturnValue({
+              filter: vi.fn().mockReturnValue({
                 gte: vi.fn().mockResolvedValue({
                   data: [{ id: '1' }, { id: '2' }, { id: '3' }],
                   error: null,
@@ -269,7 +269,7 @@ describe('POST /api/public/contact', () => {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              contains: vi.fn().mockReturnValue({
+              filter: vi.fn().mockReturnValue({
                 gte: vi.fn().mockResolvedValue({
                   data: [],
                   error: null,

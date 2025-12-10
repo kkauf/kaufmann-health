@@ -100,8 +100,12 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       setError(null);
       const start = Date.now();
       
-      // Check if coming from email link (has ?therapist= param) - skip loading animation
-      const isFromEmail = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('therapist');
+      // Check if coming from email/SMS link - skip loading animation
+      // ?therapist= for rich emails, ?direct=1 for selection emails/SMS
+      const isFromEmail = typeof window !== 'undefined' && (() => {
+        const params = new URLSearchParams(window.location.search);
+        return params.has('therapist') || params.get('direct') === '1';
+      })();
       
       try {
         const res = await fetch(`/api/public/matches/${encodeURIComponent(uuid)}`);

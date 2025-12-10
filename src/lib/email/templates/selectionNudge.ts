@@ -19,7 +19,7 @@ export function renderSelectionNudgeEmail(params: SelectionNudgeEmailParams): Em
   const { patientName, matchesUrl } = params;
   const name = (patientName || '').trim();
 
-  const profileUrl = `${matchesUrl}?utm_source=email&utm_medium=transactional&utm_campaign=selection_nudge_d5`;
+  const profileUrl = `${matchesUrl}?direct=1&utm_source=email&utm_medium=transactional&utm_campaign=selection_nudge_d5`;
   const helpEmail = 'kontakt@kaufmann-health.de';
 
   const contentHtml = `
