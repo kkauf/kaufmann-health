@@ -80,9 +80,9 @@ export default async function HakomiPage() {
     { id: "difference-se", question: "Wie unterscheidet sich Hakomi von Somatic Experiencing?", answer: "SE fokussiert auf Trauma-Entladung im Nervensystem, Hakomi auf Erforschung unbewusster Überzeugungen durch Achtsamkeit. Beide sind körperorientiert, aber mit unterschiedlichem Fokus." },
     { id: "childhood-memory", question: "Muss ich über meine Kindheit sprechen?", answer: "Nein. Hakomi arbeitet mit dem, was jetzt im Körper präsent ist. Erinnerungen können auftauchen, müssen aber nicht verbal erzählt werden." },
     { id: "duration", question: "Wie lange dauert eine Hakomi-Therapie?", answer: "Hakomi ist ein Prozess ohne festgelegtes Ende. Viele Klient:innen berichten von spürbaren Veränderungen nach 10-20 Sitzungen, die Arbeit kann aber auch länger dauern." },
-    { id: "achtsamkeit", question: "Muss ich Achtsamkeit können?", answer: "Nein. Der Therapeut führt Sie sanft in den Achtsamkeitszustand. Es ist ein natürlicher Zustand, den jeder Mensch kennt." },
-    { id: "kosten", question: "Was kostet eine Hakomi-Sitzung?", answer: "Die meisten Hakomi-Therapeut:innen arbeiten privat. Rechnen Sie mit 80-120€ pro Sitzung. Manche Zusatzversicherungen übernehmen Anteile." },
-    { id: "therapeut-finden", question: "Wie finde ich einen qualifizierten Hakomi-Therapeuten?", answer: "Achten Sie auf abgeschlossene Hakomi-Ausbildung. Unsere Therapeut:innen sind alle zertifiziert." },
+    { id: "achtsamkeit", question: "Muss ich Achtsamkeit können?", answer: "Nein. Der Therapeut führt dich sanft in den Achtsamkeitszustand. Es ist ein natürlicher Zustand, den jeder Mensch kennt." },
+    { id: "kosten", question: "Was kostet eine Hakomi-Sitzung?", answer: "Die meisten Hakomi-Therapeut:innen arbeiten privat. Rechnen mit 80-120€ pro Sitzung. Manche Zusatzversicherungen übernehmen Anteile." },
+    { id: "therapeut-finden", question: "Wie finde ich einen qualifizierten Hakomi-Therapeuten?", answer: "Achte auf abgeschlossene Hakomi-Ausbildung. Unsere Therapeut:innen sind alle zertifiziert." },
   ];
 
   const therapySchema = {

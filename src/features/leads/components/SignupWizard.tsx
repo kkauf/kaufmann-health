@@ -428,12 +428,15 @@ export default function SignupWizard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, data.contact_method]);
 
-  // Fetch matchesUrl for verified phone users (for "See Matches" button)
+  // Fetch matchesUrl for verified users (phone or email) on confirmation screen
   const [matchesUrl, setMatchesUrl] = React.useState<string | null>(null);
+  const confirmParam = searchParams?.get('confirm');
+  const isEmailConfirmed = confirmParam === '1' || confirmParam === 'success';
   React.useEffect(() => {
     if (step < 7) return;
-    if (data.contact_method !== 'phone') return;
-    if (!data.phone_verified) return;
+    // Fetch for phone-verified users OR email-confirmed users
+    const isPhoneVerified = data.contact_method === 'phone' && data.phone_verified;
+    if (!isPhoneVerified && !isEmailConfirmed) return;
     
     fetch('/api/public/session')
       .then(res => res.ok ? res.json() : null)
@@ -443,7 +446,7 @@ export default function SignupWizard() {
         }
       })
       .catch(() => {});
-  }, [step, data.contact_method, data.phone_verified]);
+  }, [step, data.contact_method, data.phone_verified, isEmailConfirmed]);
 
   // If we have a session id (possibly from URL), try to load remote state once
   React.useEffect(() => {

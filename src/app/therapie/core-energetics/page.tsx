@@ -78,11 +78,11 @@ function PrinciplesGrid() {
 export default async function CoreEnergeticsPage() {
   const faqs = [
     { id: "difference-bioenergetik", question: "Wie unterscheidet sich Core Energetics von Bioenergetik?", answer: "Core Energetics erweitert Bioenergetik um die spirituelle Dimension und die Arbeit mit dem 'Core' (authentisches Selbst). Beide arbeiten mit Körperpanzerung, aber CE integriert mehr Ebenen." },
-    { id: "intensity", question: "Ist Core Energetics sehr intensiv?", answer: "Ja. CE arbeitet aktiv mit Körper und Emotionen. Es kann intensiv sein, wird aber immer an Ihr Tempo angepasst." },
+    { id: "intensity", question: "Ist Core Energetics sehr intensiv?", answer: "Ja. CE arbeitet aktiv mit Körper und Emotionen. Es kann intensiv sein, wird aber immer an dein Tempo angepasst." },
     { id: "duration", question: "Wie lange dauert eine Core Energetics Therapie?", answer: "CE ist ein Prozess ohne festgelegtes Ende. Viele Klient:innen berichten von spürbaren Veränderungen nach 15-30 Sitzungen, tiefgreifende Charakterarbeit kann länger dauern." },
-    { id: "physical", question: "Muss ich körperlich fit sein?", answer: "Nein. Die Übungen werden an Ihre Möglichkeiten angepasst. Wichtiger ist die Bereitschaft, mit dem Körper zu arbeiten." },
-    { id: "kosten", question: "Was kostet eine Core Energetics Sitzung?", answer: "Die meisten CE-Therapeut:innen arbeiten privat. Rechnen Sie mit 80-120€ pro Sitzung. Manche Zusatzversicherungen übernehmen Anteile." },
-    { id: "therapeut-finden", question: "Wie finde ich einen qualifizierten Core Energetics Therapeuten?", answer: "Achten Sie auf abgeschlossene Core Energetics Ausbildung. Unsere Therapeut:innen sind alle zertifiziert." },
+    { id: "physical", question: "Muss ich körperlich fit sein?", answer: "Nein. Die Übungen werden an deine Möglichkeiten angepasst. Wichtiger ist die Bereitschaft, mit dem Körper zu arbeiten." },
+    { id: "kosten", question: "Was kostet eine Core Energetics Sitzung?", answer: "Die meisten CE-Therapeut:innen arbeiten privat. Rechnen mit 80-120€ pro Sitzung. Manche Zusatzversicherungen übernehmen Anteile." },
+    { id: "therapeut-finden", question: "Wie finde ich einen qualifizierten Core Energetics Therapeuten?", answer: "Achte auf abgeschlossene Core Energetics Ausbildung. Unsere Therapeut:innen sind alle zertifiziert." },
   ];
 
   const therapySchema = {

@@ -153,7 +153,7 @@ export default async function KoerpertherapiePage() {
     { 
       id: "anzahl", 
       question: "Wie viele Sitzungen brauche ich?", 
-      answer: "Sehr individuell. Viele Menschen spüren erste Veränderungen nach 6–10 Sitzungen. Bei komplexen Themen entsprechend länger. Das Tempo und die Tiefe bestimmen Sie – es gibt keine Verpflichtung zu einem bestimmten Umfang." 
+      answer: "Sehr individuell. Viele Menschen spüren erste Veränderungen nach 6–10 Sitzungen. Bei komplexen Themen entsprechend länger. Das Tempo und die Tiefe bestimmst du – es gibt keine Verpflichtung zu einem bestimmten Umfang." 
     },
     { 
       id: "termine", 

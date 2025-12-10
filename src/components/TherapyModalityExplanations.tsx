@@ -13,8 +13,8 @@ export default function TherapyModalityExplanations() {
           Körperorientierte Therapieverfahren erklärt
         </h2>
         <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-700">
-          Vier bewährte Ansätze, die direkt mit dem Nervensystem arbeiten. Kurz erklärt, damit Sie die passende
-          Herangehensweise finden.
+          Vier bewährte Ansätze, die direkt mit dem Nervensystem arbeiten. Kurz erklärt, damit du die passende
+          Herangehensweise findest.
         </p>
         
         <div className="mt-8 sm:mt-10 grid grid-cols-1 gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-2 lg:grid-cols-2">

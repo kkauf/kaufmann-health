@@ -595,6 +595,7 @@ export async function POST(req: Request) {
     let formSessionTimeSlots: string[] | undefined;
     let formSessionMethods: string[] | undefined;
     let formSessionStartTiming: string | undefined;
+    let formSessionGenderPref: 'male' | 'female' | 'no_preference' | undefined;
     if (formSessionId) {
       try {
         const { data: fsRow } = await supabaseServer
@@ -616,9 +617,18 @@ export async function POST(req: Request) {
           if (typeof fsData.start_timing === 'string') {
             formSessionStartTiming = fsData.start_timing;
           }
+          // Convert German gender to English preference (SignupWizard uses German values)
+          if (typeof fsData.gender === 'string') {
+            const g = fsData.gender.toLowerCase();
+            if (g.includes('mann')) formSessionGenderPref = 'male';
+            else if (g.includes('frau')) formSessionGenderPref = 'female';
+            else if (g.includes('keine') || g.includes('divers')) formSessionGenderPref = 'no_preference';
+          }
         }
       } catch { /* ignore form session fetch errors */ }
     }
+    // Use form session gender preference if not provided directly in payload
+    const effectiveGenderPref = genderPreference || formSessionGenderPref;
 
     // Detect verified phone via client session cookie (set by verify-code)
     const clientSession = await getClientSession(req);
@@ -719,7 +729,7 @@ export async function POST(req: Request) {
         ...(issue ? { issue } : {}),
         ...(availability ? { availability } : {}),
         ...(budget ? { budget } : {}),
-        ...(genderPreference ? { gender_preference: genderPreference } : {}),
+        ...(effectiveGenderPref ? { gender_preference: effectiveGenderPref } : {}),
         ...(contactMethod ? { contact_method: contactMethod } : {}),
         ...(cookieVerifiedPhone ? { phone_verified: true } : {}),
         ...(landing_page ? { landing_page } : {}),
@@ -879,7 +889,7 @@ export async function POST(req: Request) {
               ...(issue ? { issue } : {}),
               ...(availability ? { availability } : {}),
               ...(budget ? { budget } : {}),
-              ...(genderPreference ? { gender_preference: genderPreference } : {}),
+              ...(effectiveGenderPref ? { gender_preference: effectiveGenderPref } : {}),
               ...(confirmRedirectPath ? { last_confirm_redirect_path: confirmRedirectPath } : {}),
               consent_share_with_therapists: true,
               consent_share_with_therapists_at: new Date().toISOString(),
