@@ -1383,10 +1383,10 @@ export default function SignupWizard() {
 
       const sessionPref = data.session_preference;
       // Map UI gender values to database enum values
-      let backendGender = data.gender;
-      if (data.gender === 'Frau') backendGender = 'female' as any;
-      else if (data.gender === 'Mann') backendGender = 'male' as any;
-      else if (data.gender === 'Keine Präferenz') backendGender = 'no_preference' as any;
+      let backendGender: string | undefined = data.gender;
+      if (data.gender === 'Frau') backendGender = 'female';
+      else if (data.gender === 'Mann') backendGender = 'male';
+      else if (data.gender === 'Keine Präferenz') backendGender = 'no_preference';
       // 'Divers/non-binär' maps to nothing or stays as is (custom handling depending on backend, but let's stick to known enums for now or leave as undefined if not strictly mapped)
 
       const payload = {
