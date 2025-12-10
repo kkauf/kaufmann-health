@@ -35,11 +35,11 @@ export async function POST(req: Request) {
       });
     }
 
-    // Look up therapist by email
+    // Look up therapist by email (case-insensitive)
     const { data: therapist, error: fetchErr } = await supabaseServer
       .from('therapists')
       .select('id, email, first_name, last_name, status')
-      .eq('email', email)
+      .ilike('email', email)
       .single();
 
     if (fetchErr || !therapist) {
