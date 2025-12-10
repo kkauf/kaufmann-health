@@ -913,6 +913,8 @@ export async function POST(req: Request) {
                 .update({ metadata: merged, ...(data.name ? { name: data.name } : {}) })
                 .eq('id', existing.id);
             }
+            // Set effectiveId so email confirmation uses the correct ID
+            effectiveId = existing.id;
           }
         } else if (existing && existing.id) {
           if (selErr) {
