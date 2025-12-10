@@ -593,10 +593,8 @@ type StatsResponse = {
       preferredGender: Array<{ option: string; count: number }>;
       wantsInPerson: Array<{ option: string; count: number }>;
     };
-    /** Actionable demand signals - what specific therapists are needed */
-    demandSignals: Array<{ signal: string; count: number }>;
-    /** Structured supply gaps - e.g., "Female NARM therapist in Berlin (in-person)" */
-    actionableGaps?: Array<{ gap: string; count: number }>;
+    /** Supply gaps from supply_gaps table */
+    actionableGaps: Array<{ gap: string; count: number }>;
   };
   communicationFunnel?: {
     emailConfirmation: {
@@ -1754,90 +1752,60 @@ export async function GET(req: Request) {
       insightsModalityMatters: [],
       topCities: [],
       breakdowns: { preferredGender: [], wantsInPerson: [] },
-      demandSignals: [],
+      actionableGaps: [],
     };
     try {
-      const [evRes, supplyGapsRes] = await Promise.all([
-        supabaseServer
-          .from('events')
-          .select('properties')
-          .eq('type', 'business_opportunity_logged')
-          .gte('created_at', sinceIso)
-          .limit(50000),
-        // Actionable supply gaps (replaces business_opportunities)
-        supabaseServer
-          .from('supply_gaps')
-          .select('city, gender, modality, schwerpunkt, session_type')
-          .gte('created_at', sinceIso)
-          .limit(50000),
-      ]);
+      // Fetch supply gaps from supply_gaps table
+      const supplyGapsRes = await supabaseServer
+        .from('supply_gaps')
+        .select('city, gender, modality, schwerpunkt, session_type')
+        .gte('created_at', sinceIso)
+        .limit(50000);
 
-      // Derive top cities from supply_gaps instead of old business_opportunities
-      const cityCounts = new Map<string, number>();
       type SupplyGapRow = { city?: string | null; gender?: string | null; modality?: string | null; schwerpunkt?: string | null; session_type?: string | null };
-      for (const row of ((supplyGapsRes.data || []) as SupplyGapRow[])) {
+      const rows = (supplyGapsRes.data || []) as SupplyGapRow[];
+
+      // Aggregate supply gaps by city
+      const cityCounts = new Map<string, number>();
+      for (const row of rows) {
         const c = String((row.city || '').trim());
         if (c) cityCounts.set(c, (cityCounts.get(c) || 0) + 1);
       }
+      const topCities = Array.from(cityCounts.entries())
+        .map(([city, count]) => ({ city, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
 
-      const insightCounts = new Map<string, number>();
-      const insightCountsModality = new Map<string, number>();
-      const preferredGenderCounts = new Map<string, number>();
-      const inPersonCounts = new Map<string, number>();
-      const demandSignalCounts = new Map<string, number>();
-      for (const row of ((evRes.data || []) as Array<{ properties?: Record<string, unknown> }>)) {
-        const props = (row.properties || {}) as Record<string, unknown>;
-        const isTest = String((props['is_test'] as unknown) ?? '').toLowerCase() === 'true';
-        if (isTest) continue;
-        const arr = Array.isArray(props['insights']) ? (props['insights'] as unknown[]).map(String) : [];
-        const details = (props['details'] || {}) as Record<string, unknown>;
-        const missingMods = Array.isArray(details['missing_requested_modalities']) ? (details['missing_requested_modalities'] as unknown[]) : [];
-        const modalityMatters = missingMods.length > 0;
-        const preferredGender = String((details['preferred_gender'] as unknown) || '').toLowerCase() || 'none';
-        const wantsInPerson = String(Boolean(details['wants_in_person'])) as 'true' | 'false';
-        for (const x of arr) {
-          const k = String(x || '').trim();
-          if (!k) continue;
-          insightCounts.set(k, (insightCounts.get(k) || 0) + 1);
-          if (modalityMatters) insightCountsModality.set(k, (insightCountsModality.get(k) || 0) + 1);
-        }
-
-        if (arr.includes('gender_supply_gap')) {
-          preferredGenderCounts.set(preferredGender, (preferredGenderCounts.get(preferredGender) || 0) + 1);
-        }
-        if (arr.includes('in_person_supply_gap')) {
-          inPersonCounts.set(wantsInPerson, (inPersonCounts.get(wantsInPerson) || 0) + 1);
-        }
-
-        // Aggregate actionable demand signals
-        const signals = Array.isArray(props['demand_signals']) ? (props['demand_signals'] as unknown[]).map(String) : [];
-        for (const sig of signals) {
-          const s = String(sig || '').trim();
-          if (s) demandSignalCounts.set(s, (demandSignalCounts.get(s) || 0) + 1);
-        }
+      // Aggregate by gender preference
+      const genderCounts = new Map<string, number>();
+      for (const row of rows) {
+        const g = String((row.gender || 'none').trim());
+        genderCounts.set(g, (genderCounts.get(g) || 0) + 1);
       }
+      const preferredGender = Array.from(genderCounts.entries())
+        .map(([option, count]) => ({ option, count }))
+        .sort((a, b) => b.count - a.count);
 
-      const insightsArr = Array.from(insightCounts.entries()).map(([type, count]) => ({ type, count }));
-      insightsArr.sort((a, b) => b.count - a.count);
-      const insightsModalityArr = Array.from(insightCountsModality.entries()).map(([type, count]) => ({ type, count }));
-      insightsModalityArr.sort((a, b) => b.count - a.count);
-      const topCities = Array.from(cityCounts.entries()).map(([city, count]) => ({ city, count })).sort((a, b) => b.count - a.count).slice(0, 10);
-      const preferredGender = Array.from(preferredGenderCounts.entries()).map(([option, count]) => ({ option, count })).sort((a, b) => b.count - a.count);
-      const wantsInPerson = Array.from(inPersonCounts.entries()).map(([option, count]) => ({ option, count })).sort((a, b) => b.count - a.count);
-      const demandSignals = Array.from(demandSignalCounts.entries()).map(([signal, count]) => ({ signal, count })).sort((a, b) => b.count - a.count).slice(0, 20);
+      // Aggregate by session type (in_person vs online)
+      const sessionTypeCounts = new Map<string, number>();
+      for (const row of rows) {
+        const st = String((row.session_type || 'unknown').trim());
+        sessionTypeCounts.set(st, (sessionTypeCounts.get(st) || 0) + 1);
+      }
+      const wantsInPerson = Array.from(sessionTypeCounts.entries())
+        .map(([option, count]) => ({ option, count }))
+        .sort((a, b) => b.count - a.count);
 
-      // Aggregate actionable supply gaps from supply_gaps table
-      // E.g., "Female NARM therapist in Berlin (in-person)" → count
+      // Build human-readable gap descriptions
       const actionableGapCounts = new Map<string, number>();
-      for (const row of ((supplyGapsRes.data || []) as SupplyGapRow[])) {
-        // Build human-readable gap description
+      for (const row of rows) {
         const parts: string[] = [];
-        if (row.gender) parts.push(row.gender === 'female' ? 'Female' : 'Male');
-        if (row.modality) parts.push(row.modality.toUpperCase());
-        if (row.schwerpunkt) parts.push(`(${row.schwerpunkt})`);
-        parts.push('therapist');
+        if (row.gender) parts.push(row.gender === 'female' ? 'Weibliche' : 'Männlicher');
+        if (row.modality) parts.push(row.modality);
+        if (row.schwerpunkt) parts.push(`Spezialist:in für ${row.schwerpunkt}`);
+        if (parts.length === 0 || (parts.length === 1 && row.gender)) parts.push('Therapeut:in');
         if (row.city) parts.push(`in ${row.city}`);
-        if (row.session_type === 'in_person') parts.push('(in-person)');
+        if (row.session_type === 'in_person') parts.push('(vor Ort)');
         const gap = parts.join(' ');
         actionableGapCounts.set(gap, (actionableGapCounts.get(gap) || 0) + 1);
       }
@@ -1847,12 +1815,11 @@ export async function GET(req: Request) {
         .slice(0, 20);
 
       opportunities = {
-        byReason: { gender: 0, location: 0, modality: 0 }, // Deprecated: use actionableGaps instead
-        insights: insightsArr,
-        insightsModalityMatters: insightsModalityArr,
+        byReason: { gender: 0, location: 0, modality: 0 }, // Deprecated
+        insights: [],
+        insightsModalityMatters: [],
         topCities,
         breakdowns: { preferredGender, wantsInPerson },
-        demandSignals,
         actionableGaps,
       };
     } catch (e) {

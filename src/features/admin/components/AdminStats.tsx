@@ -136,8 +136,8 @@ type StatsData = {
       preferredGender: Array<{ option: string; count: number }>;
       wantsInPerson: Array<{ option: string; count: number }>;
     };
-    /** Actionable demand signals - specific therapist needs */
-    demandSignals?: Array<{ signal: string; count: number }>;
+    /** Supply gaps from supply_gaps table */
+    actionableGaps?: Array<{ gap: string; count: number }>;
   };
   communicationFunnel?: {
     emailConfirmation: {
@@ -1069,21 +1069,25 @@ export default function AdminStats() {
             <CardDescription>Actionable demand signals - what therapists we need to recruit</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Demand Signals - Most Important, shown first */}
-            {data.opportunities.demandSignals && data.opportunities.demandSignals.length > 0 && (
-              <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="text-sm font-semibold text-amber-800 mb-3">🔥 Unmet Demand ({data.opportunities.demandSignals.reduce((sum, d) => sum + d.count, 0)} requests)</div>
+            {/* Supply Gaps - from supply_gaps table */}
+            {data.opportunities.actionableGaps && data.opportunities.actionableGaps.length > 0 ? (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="text-sm font-semibold text-red-800 mb-3">🚨 Supply Gaps ({data.opportunities.actionableGaps.reduce((sum, g) => sum + g.count, 0)} unmet requests)</div>
                 <div className="space-y-2">
-                  {data.opportunities.demandSignals.slice(0, 10).map((d, i) => (
-                    <div key={`${d.signal}-${i}`} className="flex items-center justify-between">
-                      <span className="text-sm text-amber-900">{d.signal || '(unbekannt)'}</span>
-                      <span className="text-sm font-semibold text-amber-700 tabular-nums bg-amber-100 px-2 py-0.5 rounded">{d.count}×</span>
+                  {data.opportunities.actionableGaps.slice(0, 15).map((g, i) => (
+                    <div key={`${g.gap}-${i}`} className="flex items-center justify-between">
+                      <span className="text-sm text-red-900">{g.gap || '(unbekannt)'}</span>
+                      <span className="text-sm font-semibold text-red-700 tabular-nums bg-red-100 px-2 py-0.5 rounded">{g.count}×</span>
                     </div>
                   ))}
                 </div>
-                {data.opportunities.demandSignals.length > 10 && (
-                  <div className="text-xs text-amber-600 mt-2">+ {data.opportunities.demandSignals.length - 10} weitere...</div>
+                {data.opportunities.actionableGaps.length > 15 && (
+                  <div className="text-xs text-red-600 mt-2">+ {data.opportunities.actionableGaps.length - 15} weitere...</div>
                 )}
+              </div>
+            ) : (
+              <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <div className="text-sm text-gray-600">Keine Supply Gaps im gewählten Zeitraum. Neue Signups mit unerfüllten Präferenzen werden hier angezeigt.</div>
               </div>
             )}
 

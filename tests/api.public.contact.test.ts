@@ -87,9 +87,11 @@ describe('POST /api/public/contact', () => {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              gte: vi.fn().mockResolvedValue({
-                data: [],
-                error: null,
+              contains: vi.fn().mockReturnValue({
+                gte: vi.fn().mockResolvedValue({
+                  data: [],
+                  error: null,
+                }),
               }),
             }),
           }),
@@ -165,9 +167,11 @@ describe('POST /api/public/contact', () => {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              gte: vi.fn().mockResolvedValue({
-                data: [{ id: '1' }, { id: '2' }, { id: '3' }],
-                error: null,
+              contains: vi.fn().mockReturnValue({
+                gte: vi.fn().mockResolvedValue({
+                  data: [{ id: '1' }, { id: '2' }, { id: '3' }],
+                  error: null,
+                }),
               }),
             }),
           }),
@@ -265,9 +269,11 @@ describe('POST /api/public/contact', () => {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              gte: vi.fn().mockResolvedValue({
-                data: [],
-                error: null,
+              contains: vi.fn().mockReturnValue({
+                gte: vi.fn().mockResolvedValue({
+                  data: [],
+                  error: null,
+                }),
               }),
             }),
           }),

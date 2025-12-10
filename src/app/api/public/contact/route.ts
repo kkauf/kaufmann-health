@@ -37,7 +37,7 @@ interface ContactRequestBody {
 }
 
 /**
- * Check rate limit for user (by session or IP)
+ * Check rate limit for user - only counts PATIENT-INITIATED contacts, not auto-generated matches
  */
 async function checkRateLimit(
   patientId: string,
@@ -50,11 +50,12 @@ async function checkRateLimit(
   const supabase = supabaseServer;
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  // Count matches created by this patient in last 24h
+  // Count only matches where patient actually initiated contact (not auto-generated proposed matches)
   const { data: matches, error } = await supabase
     .from('matches')
     .select('id')
     .eq('patient_id', patientId)
+    .contains('metadata', { patient_initiated: true })
     .gte('created_at', oneDayAgo);
 
   if (error) {
