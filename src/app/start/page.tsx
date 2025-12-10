@@ -13,7 +13,7 @@ import { buildLandingMetadata, buildFaqJsonLd, buildLocalBusinessJsonLd } from '
 import { parseKeyword, parseAdGroup, getLandingPageCopy } from '@/lib/ads-landing';
 import { MessageCircle, UserCheck, PhoneCall, Shield, Lock, FileCheck, Search } from 'lucide-react';
 
-export const revalidate = 3600;
+export const revalidate = 300; // 5 minutes - keep therapist previews relatively fresh
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health.de';
 
