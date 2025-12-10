@@ -21,6 +21,9 @@ import { fireGoogleAdsClientConversion } from '@/lib/gtag';
 type ContactType = 'booking' | 'consultation';
 type Slot = { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string };
 
+// SessionStorage key for persisting consultation messages across therapists
+const CONSULTATION_DRAFT_KEY = 'kh_consultation_draft';
+
 interface ContactModalProps {
   therapist: {
     id: string;
@@ -168,6 +171,27 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       setSessionFormat('online');
     }
   }, [open, contactType]);
+
+  // Restore saved consultation message for quick multi-therapist contact
+  useEffect(() => {
+    if (!open || contactType !== 'consultation') return;
+    try {
+      const saved = sessionStorage.getItem(CONSULTATION_DRAFT_KEY);
+      if (saved) {
+        const draft = JSON.parse(saved) as { reason?: string; message?: string };
+        // Only restore if we have actual content and current fields are empty/default
+        if (draft.reason && !reason) {
+          setReason(draft.reason);
+        }
+        if (draft.message) {
+          // Replace therapist name in saved message with current therapist
+          const updatedMessage = draft.message.replace(/^Guten Tag \S+/, `Guten Tag ${therapist.first_name}`);
+          setMessage(updatedMessage);
+          setUserEditedMessage(true); // Prevent auto-update from overwriting
+        }
+      }
+    } catch { /* ignore parse errors */ }
+  }, [open, contactType, therapist.first_name, reason]);
 
   // If a verified client session exists (kh_client), skip verification
   useEffect(() => {
@@ -533,6 +557,14 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       }
 
       setStep('success');
+      
+      // Save consultation message for quick multi-therapist contact
+      if (contactType === 'consultation' && reason && message) {
+        try {
+          sessionStorage.setItem(CONSULTATION_DRAFT_KEY, JSON.stringify({ reason, message }));
+        } catch { /* ignore storage errors */ }
+      }
+      
       if (!preAuth) {
         trackEvent('contact_message_sent');
       } else {
@@ -1014,6 +1046,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                   <p className="text-gray-600">
                     {contactType === 'booking' ? 'Termin vereinbaren' : 'Erstgespräch (15 Min)'}
                   </p>
+                  {contactType === 'consultation' && (
+                    <Badge className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 hover:bg-blue-100">
+                      <Video className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>Online</span>
+                    </Badge>
+                  )}
                   {therapist.accepting_new ? (
                     <Badge className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
                       <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden="true" />

@@ -92,6 +92,14 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   const [detailModalTherapist, setDetailModalTherapist] = useState<TherapistItem | null>(null);
   const [autoOpenedTherapist, setAutoOpenedTherapist] = useState(false);
   const isDirectBookingFlow = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
+  
+  // Check if coming from email/SMS link - skip loading animation entirely
+  // ?therapist= for rich emails, ?direct=1 for selection emails/SMS
+  const [isDirectLink] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.has('therapist') || params.get('direct') === '1';
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -100,20 +108,13 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       setError(null);
       const start = Date.now();
       
-      // Check if coming from email/SMS link - skip loading animation
-      // ?therapist= for rich emails, ?direct=1 for selection emails/SMS
-      const isFromEmail = typeof window !== 'undefined' && (() => {
-        const params = new URLSearchParams(window.location.search);
-        return params.has('therapist') || params.get('direct') === '1';
-      })();
-      
       try {
         const res = await fetch(`/api/public/matches/${encodeURIComponent(uuid)}`);
         const json = await res.json();
 
         // Ensure at least 3s loading animation ONLY for /fragebogen redirects (fresh quiz completions)
-        // Skip delay for email links (?therapist=...) - user already knows their match
-        if (!isFromEmail) {
+        // Skip delay for email/SMS links - user already knows their match
+        if (!isDirectLink) {
           const elapsed = Date.now() - start;
           if (elapsed < 3000) await new Promise(r => setTimeout(r, 3000 - elapsed));
         }
@@ -139,7 +140,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     return () => {
       cancelled = true;
     };
-  }, [uuid]);
+  }, [uuid, isDirectLink]);
 
   const therapists = useMemo(() => data?.therapists || [], [data]);
   const _isVerified = useMemo(() => {
@@ -326,6 +327,15 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   }, [modalFor]);
 
   if (loading) {
+    // For direct links (from email/SMS), show minimal loading or nothing
+    if (isDirectLink) {
+      return (
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
+        </div>
+      );
+    }
+    // Full animation for fresh /fragebogen completions
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
         <div className="relative mb-8 h-24 w-24">
@@ -577,6 +587,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       {/* Contact modal (pre-auth) */}
       {modalFor && (
         <ContactModal
+          key={modalFor.therapist.id}
           therapist={{
             id: modalFor.therapist.id,
             first_name: modalFor.therapist.first_name,
@@ -618,6 +629,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       {/* Detail modal */}
       {detailModalTherapist && (
         <TherapistDetailModal
+          key={detailModalTherapist.id}
           therapist={{
             id: detailModalTherapist.id,
             first_name: detailModalTherapist.first_name,
