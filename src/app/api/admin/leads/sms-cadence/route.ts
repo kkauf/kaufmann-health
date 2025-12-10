@@ -257,7 +257,8 @@ export async function GET(req: Request) {
       }
 
       // Create short link for cleaner SMS
-      const fullMatchesUrl = `${BASE_URL}/matches/${secureUuid}`;
+      // ?direct=1 skips loading animation on the matches page
+      const fullMatchesUrl = `${BASE_URL}/matches/${secureUuid}?direct=1`;
       const matchesUrl = await createShortLinkOrFallback({
         targetUrl: fullMatchesUrl,
         utmSource: 'sms',

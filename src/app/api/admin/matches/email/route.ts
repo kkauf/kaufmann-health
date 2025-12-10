@@ -299,7 +299,7 @@ export async function POST(req: Request) {
         // SMS fallback
         try {
           void track({ type: 'sms_attempted', level: 'info', source: 'admin.api.matches.email', props: { template: 'selection', patient_id } });
-          const ok = await sendTransactionalSms(patientPhone, `Deine handverlesene Therapeuten-Auswahl ist bereit: ${matchesUrl}`);
+          const ok = await sendTransactionalSms(patientPhone, `Deine handverlesene Therapeuten-Auswahl ist bereit: ${matchesUrl}?direct=1`);
           if (ok) {
             void track({ type: 'sms_sent', level: 'info', source: 'admin.api.matches.email', props: { template: 'selection', patient_id } });
             // Also mark metadata like email path for UI consistency

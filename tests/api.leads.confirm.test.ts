@@ -74,7 +74,7 @@ describe('EARTH-146 GET /api/public/leads/confirm', () => {
     const { GET } = await import('@/app/api/public/leads/confirm/route');
     const res = await GET(new Request(makeUrl('p1', 't1')));
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('http://localhost/fragebogen?confirm=1&id=p1');
+    expect(res.headers.get('location')).toBe('http://localhost/fragebogen?confirm=1&id=p1&variant=B');
     // status update
     expect(updateArgs).toBeTruthy();
     expect(updateArgs.status).toBe('email_confirmed');
@@ -113,7 +113,7 @@ describe('EARTH-146 GET /api/public/leads/confirm', () => {
     const { GET } = await import('@/app/api/public/leads/confirm/route');
     const res = await GET(new Request(makeUrl('p1', 't1')));
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('http://localhost/fragebogen?confirm=1&id=p1');
+    expect(res.headers.get('location')).toBe('http://localhost/fragebogen?confirm=1&id=p1&variant=B');
     // no update since it's already confirmed
     expect(updateArgs).toBeNull();
   });

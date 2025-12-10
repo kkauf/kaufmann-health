@@ -3,6 +3,7 @@ import FaqAccordion from '@/components/FaqAccordion';
 import PageAnalytics from '@/components/PageAnalytics';
 import CtaLink from '@/components/CtaLink';
 import TherapyModalityExplanations from '@/components/TherapyModalityExplanations';
+import { FlowVariantInit } from '@/components/FlowVariantInit';
 import { HeroNoForm } from '@/features/landing/components/HeroNoForm';
 import { ProcessTimeline } from '@/features/landing/components/ProcessTimeline';
 import { FoundersValuesSection } from '@/features/landing/components/FoundersValuesSection';
@@ -232,6 +233,8 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
       <PageAnalytics qualifier={`LP-Start-${variant}`} />
+      {/* Test 4: Initialize flow variant (randomizes if no ?variant= param) */}
+      <FlowVariantInit landingPage="start" />
 
       {/* HERO (no form) - Use keyword/adgroup copy when available for QS optimization */}
       <HeroNoForm

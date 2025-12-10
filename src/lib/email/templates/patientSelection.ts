@@ -51,10 +51,12 @@ export function renderPatientSelectionEmail(params: {
   `;
  
   // Primary CTA to view matches page (prominent when matchesUrl provided)
-  const matchesCta = params.matchesUrl
+  // Add ?direct=1 to skip loading animation on the matches page
+  const matchesCtaUrl = params.matchesUrl ? `${params.matchesUrl}?direct=1` : null;
+  const matchesCta = matchesCtaUrl
     ? `
       <div style="margin: 0 0 32px; text-align: center; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important; background-image: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important; padding:24px; border-radius:12px; border:1px solid rgba(34, 197, 94, 0.3); box-shadow: 0 2px 8px 0 rgba(34, 197, 94, 0.1);">
-        ${renderButton(params.matchesUrl, 'Deine persönliche Therapeutenauswahl ansehen')}
+        ${renderButton(matchesCtaUrl, 'Deine persönliche Therapeutenauswahl ansehen')}
       </div>
     `
     : '';
@@ -111,27 +113,13 @@ export function renderPatientSelectionEmail(params: {
     <p style="margin:12px 0 0; font-size:15px; line-height:1.65; color:#64748b !important;">Mit einem Klick auf „Auswählen" reservierst du unverbindlich den nächsten Schritt. Wir stellen den Kontakt direkt her.</p>
   `;
  
-  // Modalities explanation (concise, email-friendly)
-  const modalitiesHtml = `
-    <div style="margin-top:32px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; background-image: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; padding:20px 24px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8);">
-      <h2 style="color:#0f172a !important; font-size:20px; font-weight:700; margin:0 0 16px; line-height:1.3;">Körperorientierte Therapieverfahren – kurz erklärt</h2>
-      <div style="font-size:15px; color:#475569 !important; line-height:1.65;">
-        <p style="margin:12px 0; color:#475569 !important;"><strong style="color:#0f172a !important; font-weight:600;">NARM (Neuroaffektives Beziehungsmodell):</strong> Fokussiert auf Entwicklungs- und Bindungstrauma sowie Selbstregulation. Achtsame Körperwahrnehmung ohne re-traumatisierende Details.</p>
-        <p style="margin:12px 0; color:#475569 !important;"><strong style="color:#0f172a !important; font-weight:600;">Somatic Experiencing (SE):</strong> Arbeitet mit der natürlichen Stressreaktion des Körpers. Durch dosierte Annäherung wird das Nervensystem behutsam entlastet.</p>
-        <p style="margin:12px 0; color:#475569 !important;"><strong style="color:#0f172a !important; font-weight:600;">Hakomi:</strong> Achtsamkeitsbasierte Methode, die unbewusste Muster über den Körper erfahrbar macht. Neue korrigierende Erfahrungen entstehen sanft.</p>
-        <p style="margin:12px 0; color:#475569 !important;"><strong style="color:#0f172a !important; font-weight:600;">Core Energetics:</strong> Verbindet körperlichen Ausdruck mit emotionaler Integration. Über Haltung, Atmung und Bewegung werden Spannungen gelöst.</p>
-        <small style="display:block; margin-top:12px; color:#64748b !important; font-size:13px; line-height:1.5;">Kurzbeschreibungen dienen der Orientierung und ersetzen keine individuelle therapeutische Beratung.</small>
-      </div>
-    </div>
-  `;
-
   const closingHtml = `
     <p style="margin:24px 0 0; font-size:16px; line-height:1.65; color:#475569 !important;">Herzliche Grüße<br/><strong style="color:#0f172a !important;">Dein Team von Kaufmann Health</strong></p>
   `;
  
   // Only show cards if no matchesUrl (backward compatibility)
   const cardsSection = params.matchesUrl ? '' : [matchingLine, cardsHtml, actionGuidance, qualityBox].join('\n');
-  const contentHtml = [header, greetingHtml, matchesCta, trustBox, cardsSection, modalitiesHtml, closingHtml].join('\n');
+  const contentHtml = [header, greetingHtml, matchesCta, trustBox, cardsSection, closingHtml].join('\n');
 
   const actionTarget = items[0]?.selectUrl;
   const schema = actionTarget

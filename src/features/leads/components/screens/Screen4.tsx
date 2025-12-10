@@ -5,12 +5,12 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 
 export type Screen4Values = {
-  gender?: 'Frau' | 'Mann' | 'Keine Präferenz' | 'Divers/non-binär';
+  gender?: 'Frau' | 'Mann' | 'Keine Präferenz';
   time_slots?: string[]; // e.g., 'Morgens (8-12 Uhr)'
   methods?: string[]; // Still here for compatibility, but modality is handled in NewScreen5
 };
 
-const GENDER: NonNullable<Screen4Values['gender']>[] = ['Frau', 'Mann', 'Keine Präferenz', 'Divers/non-binär'];
+const GENDER: NonNullable<Screen4Values['gender']>[] = ['Frau', 'Mann', 'Keine Präferenz'];
 const TIMES = ['Morgens (8-12 Uhr)', 'Nachmittags (12-17 Uhr)', 'Abends (17-21 Uhr)', 'Wochenende', 'Bin flexibel'];
 
 export default function Screen4({

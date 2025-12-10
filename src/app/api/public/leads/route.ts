@@ -845,6 +845,8 @@ export async function POST(req: Request) {
             );
           } else if (!isTest && existingStatus && existingStatus !== 'pre_confirmation') {
             // Already confirmed or other terminal state — upsert missing attributes, then treat as success
+            // For concierge variant: treat as returning user needing fresh manual matching
+            const isReturningConcierge = campaign_variant === 'concierge';
             try {
               const updateData: Record<string, unknown> = {};
               if (data.name && (!existing.name || existing.name.trim() !== data.name.trim())) {
@@ -860,6 +862,19 @@ export async function POST(req: Request) {
               meta['consent_share_with_therapists_at'] = new Date().toISOString(); metaChanged = true;
               meta['consent_privacy_version'] = privacyVersion; metaChanged = true;
               meta['consent_terms_version'] = TERMS_VERSION; metaChanged = true;
+              // Mark returning concierge request with timestamp so admin can identify and action
+              if (isReturningConcierge) {
+                meta['returning_concierge_at'] = new Date().toISOString();
+                metaChanged = true;
+                // Also update latest form session data for fresh preferences
+                if (formSessionSchwerpunkte?.length) { meta['schwerpunkte'] = formSessionSchwerpunkte; }
+                if (formSessionTimeSlots?.length) { meta['time_slots'] = formSessionTimeSlots; }
+                if (formSessionMethods?.length) { meta['methods'] = formSessionMethods; }
+                if (formSessionStartTiming) { meta['start_timing'] = formSessionStartTiming; }
+                if (effectiveGenderPref) { meta['gender_preference'] = effectiveGenderPref; }
+                if (city) { meta['city'] = city; }
+                if (issue) { meta['issue'] = issue; }
+              }
               if (metaChanged || Object.keys(updateData).length > 0) {
                 await supabaseServer
                   .from('people')
@@ -870,8 +885,31 @@ export async function POST(req: Request) {
             await ServerAnalytics.trackEventFromRequest(req, {
               type: 'contact_submitted',
               source: 'api.leads',
-              props: { campaign_source, campaign_variant, requires_confirmation: false, is_test: isTest, contact_method: contactMethod },
+              props: { campaign_source, campaign_variant, requires_confirmation: false, is_test: isTest, contact_method: contactMethod, returning_user: true },
             });
+            // For concierge: track event and send internal notification so admin knows to create matches
+            if (isReturningConcierge) {
+              void ServerAnalytics.trackEventFromRequest(req, {
+                type: 'concierge_lead_created',
+                source: 'api.leads',
+                props: { patient_id: existing.id, requires_manual_matching: true, returning_user: true },
+              });
+              // Send internal notification for returning concierge user
+              try {
+                const to = process.env.LEADS_NOTIFY_EMAIL;
+                if (to) {
+                  const cityVal = city || (existing.metadata as Record<string, unknown> | undefined)?.['city'] as string | undefined || 'unknown';
+                  const subject = `Rückkehrender Klient (Concierge): ${cityVal}`;
+                  const text = [
+                    `Rückkehrender Klient benötigt neue Therapeuten-Auswahl (Concierge-Flow)`,
+                    `Lead ID: ${existing.id}`,
+                    `Stadt: ${cityVal}`,
+                    'Bitte in /admin/leads prüfen und Matches erstellen.',
+                  ].join('\n');
+                  void sendEmail({ to, subject, text, context: { stage: 'returning_concierge_notification', lead_id: existing.id } }).catch(() => {});
+                }
+              } catch { }
+            }
             return safeJson(
               { data: { id: existing.id, requiresConfirmation: false }, error: null },
               { headers: { 'Cache-Control': 'no-store' } },
@@ -913,6 +951,8 @@ export async function POST(req: Request) {
                 .update({ metadata: merged, ...(data.name ? { name: data.name } : {}) })
                 .eq('id', existing.id);
             }
+            // Set effectiveId so email confirmation uses the correct ID
+            effectiveId = existing.id;
           }
         } else if (existing && existing.id) {
           if (selErr) {

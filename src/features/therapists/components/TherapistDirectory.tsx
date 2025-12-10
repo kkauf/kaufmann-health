@@ -581,6 +581,7 @@ export function TherapistDirectory({ initialTherapists = [], emptyState, disable
       {/* Detail modal */}
       {selectedTherapist && (
         <TherapistDetailModal
+          key={selectedTherapist.id}
           therapist={selectedTherapist}
           open={!!selectedTherapist}
           onClose={() => setSelectedTherapist(null)}
@@ -591,6 +592,7 @@ export function TherapistDirectory({ initialTherapists = [], emptyState, disable
       {/* Contact modal - managed independently from detail modal (EARTH-227) */}
       {contactTherapist && (
         <ContactModal
+          key={contactTherapist.id}
           therapist={contactTherapist}
           contactType={contactType}
           open={contactModalOpen}
@@ -602,6 +604,7 @@ export function TherapistDirectory({ initialTherapists = [], emptyState, disable
       {/* Auto-open ContactModal when returning from magic link (verified state handled by EARTH-204 cookie). */}
       {autoContactTherapist && (
         <ContactModal
+          key={`auto-${autoContactTherapist.id}`}
           therapist={autoContactTherapist}
           contactType={autoContactType}
           open={autoContactOpen}

@@ -80,7 +80,7 @@ vi.mock('@/lib/supabase-server', () => {
     return {
       select: (_sel: string) => ({
         eq: (_col: string, _val: unknown) => ({
-          contains: (_meta: unknown) => ({
+          filter: (_col2: string, _op: string, _val2: unknown) => ({
             gte: (_c2: string, _v2: unknown) => ({ async then(resolve: any) { resolve({ data: [], error: null }); } }),
           }),
         }),

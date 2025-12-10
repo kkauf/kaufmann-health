@@ -34,7 +34,7 @@ export default function Screen3({
     const pref = values.session_preference;
     if (!pref) e.session = 'Bitte wähle: Online, Vor Ort oder Beides.';
     const hasCity = !!(values.city && values.city.trim().length > 0);
-    if (pref === 'in_person' && !hasCity) e.location = 'Bitte gib deine Stadt an.';
+    if ((pref === 'in_person' || pref === 'either') && !hasCity) e.location = 'Bitte gib deine Stadt an.';
     setErrors(e);
     return Object.keys(e).length === 0;
   }

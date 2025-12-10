@@ -43,7 +43,7 @@ export type WizardData = Omit<Screen1Values, 'email'> & Screen1_5Values & Screen
   online_ok?: boolean;
   session_preference?: 'online' | 'in_person' | 'either';
   // Step 5: Preferences (gender, time_slots only)
-  gender?: 'Frau' | 'Mann' | 'Keine Präferenz' | 'Divers/non-binär';
+  gender?: 'Frau' | 'Mann' | 'Keine Präferenz';
   time_slots?: string[];
   // Step 6: Contact Info
   name: string;
@@ -72,6 +72,21 @@ export default function SignupWizard() {
       return null;
     }
   });
+
+  // CRITICAL: Re-capture variant from URL after mount to handle hydration correctly.
+  // During SSR, window is undefined so capturedVariant is null. During hydration,
+  // React doesn't re-run useState initializer, so we need useEffect to capture it.
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlVariant = params.get('variant') || params.get('v') || null;
+      if (urlVariant && urlVariant !== capturedVariant) {
+        setCapturedVariant(urlVariant);
+      }
+    } catch { /* ignore */ }
+  }, [capturedVariant]);
+
   // Fallback to live searchParams if capturedVariant not yet set (hydration)
   const variant = capturedVariant || searchParams.get('variant') || searchParams.get('v');
   const isConcierge = variant === 'concierge';
@@ -184,7 +199,7 @@ export default function SignupWizard() {
         const hasCity = !!(d.city && d.city.trim());
         const pref = d.session_preference;
         if (!pref) miss.push('session_preference');
-        if (pref === 'in_person' && !hasCity) miss.push('city');
+        if ((pref === 'in_person' || pref === 'either') && !hasCity) miss.push('city');
         return miss;
       }
       case 5: {
@@ -333,7 +348,7 @@ export default function SignupWizard() {
         const vParam = searchParams?.get('variant') || searchParams?.get('v') || undefined;
         const ref = (typeof document !== 'undefined' ? document.referrer : '') || '';
         const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-        
+
         if (vParam) {
           variant = vParam;
           // Determine source from referrer - /therapie-finden for concierge, /start for marketplace
@@ -351,12 +366,18 @@ export default function SignupWizard() {
           try {
             if (ref.includes('/therapie-finden')) {
               src = '/therapie-finden';
+              // Try to extract variant from referrer URL (browsers may strip query params)
+              try {
+                const u = new URL(ref);
+                const vp = u.searchParams.get('variant') || u.searchParams.get('v') || undefined;
+                variant = vp || undefined;
+              } catch { }
             } else if (ref.includes('/start')) {
               src = '/start';
               try {
                 const u = new URL(ref);
                 const vp = u.searchParams.get('variant') || u.searchParams.get('v') || undefined;
-                variant = vp || variant;
+                variant = vp || undefined;
               } catch { }
             }
           } catch { }
@@ -373,6 +394,21 @@ export default function SignupWizard() {
           } else if (currentPath.includes('/start')) {
             src = '/start';
           }
+        }
+        // Ensure variant has a sensible default when source is known but variant wasn't captured
+        // This handles cases where browsers strip query params from referrer
+        // First, try to retrieve variant from localStorage (captured by PageAnalytics on landing pages)
+        if (src && !variant) {
+          try {
+            const storedVariant = localStorage.getItem('test1_variant');
+            if (storedVariant) {
+              variant = storedVariant;
+            }
+          } catch { }
+        }
+        // Final fallback: mark as direct only if truly unknown
+        if (src && !variant && src === '/fragebogen') {
+          variant = 'direct';
         }
         if (src) campaignSourceOverrideRef.current = src;
         if (variant) campaignVariantOverrideRef.current = variant;
@@ -437,7 +473,7 @@ export default function SignupWizard() {
     // Fetch for phone-verified users OR email-confirmed users
     const isPhoneVerified = data.contact_method === 'phone' && data.phone_verified;
     if (!isPhoneVerified && !isEmailConfirmed) return;
-    
+
     fetch('/api/public/session')
       .then(res => res.ok ? res.json() : null)
       .then(json => {
@@ -445,7 +481,7 @@ export default function SignupWizard() {
           setMatchesUrl(json.data.matchesUrl);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [step, data.contact_method, data.phone_verified, isEmailConfirmed]);
 
   // If we have a session id (possibly from URL), try to load remote state once
@@ -838,6 +874,7 @@ export default function SignupWizard() {
               contact_method: data.contact_method,
             }}
             initialized={initialized}
+            isConcierge={isConcierge}
             onChange={saveLocal}
             onBack={() => safeGoToStep(5)}
             onNext={async () => {
@@ -901,11 +938,11 @@ export default function SignupWizard() {
       const confirmParam = searchParams?.get('confirm');
       const isConfirmed = confirmParam === '1' || confirmParam === 'success';
       const isPhoneUser = data.contact_method === 'phone' && !!data.phone_number;
-      
+
       // Test 4: Variant-specific confirmation screens
       // - Concierge: Show waiting screen (manual curation, 24h)
       // - Self-Service: Redirect to matches or show CTA
-      
+
       if (isConfirmed) {
         // Email confirmed - different behavior per variant
         if (isConcierge) {
@@ -1382,6 +1419,12 @@ export default function SignupWizard() {
       if (campaignVariantOverrideRef.current) headers['X-Campaign-Variant-Override'] = campaignVariantOverrideRef.current;
 
       const sessionPref = data.session_preference;
+      // Map UI gender values to database enum values
+      let backendGender: string | undefined = data.gender;
+      if (data.gender === 'Frau') backendGender = 'female';
+      else if (data.gender === 'Mann') backendGender = 'male';
+      else if (data.gender === 'Keine Präferenz') backendGender = 'no_preference';
+
       const payload = {
         start_timing: data.start_timing,
         additional_info: data.additional_info,
@@ -1390,7 +1433,7 @@ export default function SignupWizard() {
         schwerpunkte: data.schwerpunkte || [],
         city: data.city,
         session_preference: sessionPref,
-        gender: data.gender,
+        gender: backendGender, // Use mapped value
         time_slots: data.time_slots || [],
         form_session_id: sessionIdRef.current || undefined,
       };

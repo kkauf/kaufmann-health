@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
-import { ExternalLink, HeartHandshake, Shell, Wind, Target } from 'lucide-react';
+import { ExternalLink, HeartHandshake, Shell, Wind, Target, HandHelping } from 'lucide-react';
+import CtaLink from '@/components/CtaLink';
 
 export default function TherapyModalityExplanations() {
   return (
@@ -119,6 +120,21 @@ export default function TherapyModalityExplanations() {
               <ExternalLink className="h-4 w-4" aria-hidden />
             </a>
           </div>
+        </div>
+
+        {/* Escape route CTA for overwhelmed users */}
+        <div className="mt-8 sm:mt-10 pt-6 sm:pt-8 border-t border-gray-200/60 text-center">
+          <p className="text-gray-600 mb-4">Überfordert von der Auswahl?</p>
+          <CtaLink
+            href="/fragebogen?v=concierge"
+            eventType="cta_click"
+            eventId="modalities-escape-concierge"
+            data-cta="modalities-escape"
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-5 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all duration-200"
+          >
+            <HandHelping className="h-4 w-4" aria-hidden />
+            Lass uns für dich suchen
+          </CtaLink>
         </div>
       </div>
     </section>

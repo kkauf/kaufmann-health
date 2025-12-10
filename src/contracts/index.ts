@@ -9,3 +9,6 @@ export * from './shared';
 export * from './leads';
 export * from './therapist-profile';
 export * from './contact';
+export * from './match';
+export * from './booking';
+export * from './verification';

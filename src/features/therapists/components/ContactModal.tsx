@@ -21,6 +21,9 @@ import { fireGoogleAdsClientConversion } from '@/lib/gtag';
 type ContactType = 'booking' | 'consultation';
 type Slot = { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string };
 
+// SessionStorage key for persisting consultation messages across therapists
+const CONSULTATION_DRAFT_KEY = 'kh_consultation_draft';
+
 interface ContactModalProps {
   therapist: {
     id: string;
@@ -83,6 +86,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const [selectedBookingSlot, setSelectedBookingSlot] = useState<{ date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string } | null>(null);
   const [formatShake, setFormatShake] = useState(false);
   const formatSelectorRef = useRef<HTMLDivElement>(null);
+  const [userEditedMessage, setUserEditedMessage] = useState(false);
   // Track whether the user has a verified session in this modal lifecycle
   const [isVerified, setIsVerified] = useState<boolean>(false);
 
@@ -168,6 +172,27 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     }
   }, [open, contactType]);
 
+  // Restore saved consultation message for quick multi-therapist contact
+  useEffect(() => {
+    if (!open || contactType !== 'consultation') return;
+    try {
+      const saved = sessionStorage.getItem(CONSULTATION_DRAFT_KEY);
+      if (saved) {
+        const draft = JSON.parse(saved) as { reason?: string; message?: string };
+        // Only restore if we have actual content and current fields are empty/default
+        if (draft.reason && !reason) {
+          setReason(draft.reason);
+        }
+        if (draft.message) {
+          // Replace therapist name in saved message with current therapist
+          const updatedMessage = draft.message.replace(/^Guten Tag \S+/, `Guten Tag ${therapist.first_name}`);
+          setMessage(updatedMessage);
+          setUserEditedMessage(true); // Prevent auto-update from overwriting
+        }
+      }
+    } catch { /* ignore parse errors */ }
+  }, [open, contactType, therapist.first_name, reason]);
+
   // If a verified client session exists (kh_client), skip verification
   useEffect(() => {
     let cancelled = false;
@@ -199,7 +224,10 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             ? 'ich möchte gerne einen Termin vereinbaren'
             : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
           const signature = userName ? `\n\nViele Grüße\n${userName}` : '';
-          setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei [beschreibe dein Anliegen] und fand dein Profil sehr ansprechend.${signature}`);
+          // Use preAuth.defaultReason if available (e.g., from matches page)
+          const initialReason = (preAuth?.defaultReason || '').trim();
+          if (initialReason) setReason(initialReason);
+          setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei ${initialReason || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
 
           if (forceSuccess || awaitingVerificationSend) {
             // After magic-link verification we show success to mirror directory behavior
@@ -529,6 +557,14 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       }
 
       setStep('success');
+      
+      // Save consultation message for quick multi-therapist contact
+      if (contactType === 'consultation' && reason && message) {
+        try {
+          sessionStorage.setItem(CONSULTATION_DRAFT_KEY, JSON.stringify({ reason, message }));
+        } catch { /* ignore storage errors */ }
+      }
+      
       if (!preAuth) {
         trackEvent('contact_message_sent');
       } else {
@@ -1010,6 +1046,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                   <p className="text-gray-600">
                     {contactType === 'booking' ? 'Termin vereinbaren' : 'Erstgespräch (15 Min)'}
                   </p>
+                  {contactType === 'consultation' && (
+                    <Badge className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 hover:bg-blue-100">
+                      <Video className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>Online</span>
+                    </Badge>
+                  )}
                   {therapist.accepting_new ? (
                     <Badge className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
                       <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1037,7 +1079,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                   ? 'ich möchte gerne einen Termin vereinbaren'
                   : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
                 const signature = name ? `\n\nViele Grüße\n${name}` : '';
-                setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei ${e.target.value || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
+
+                // Only auto-update message if the user hasn't manually edited it
+                if (!userEditedMessage) {
+                  setMessage(`${greeting}, ${intent}. Ich suche Unterstützung bei ${e.target.value || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
+                }
+
                 try {
                   if (!draftTrackedRef.current) {
                     const len = (`${e.target.value}` + `${message || ''}`).trim().length;
@@ -1225,6 +1272,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
               value={message}
               onChange={(e) => {
                 setMessage(e.target.value);
+                setUserEditedMessage(true);
                 try {
                   if (!draftTrackedRef.current) {
                     const len = (`${reason || ''}` + `${e.target.value}`).trim().length;
@@ -1254,8 +1302,9 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         )}
         {!showBookingPicker && (
           <>
-            <ConsentSection actor="directory" className="-mt-2" />
-            <p className="mt-2 text-xs sm:text-sm text-gray-600 leading-relaxed flex flex-wrap items-center gap-3">
+            {/* Skip consent section for verified users - they already accepted T&Cs during questionnaire */}
+            {!isVerified && <ConsentSection actor="directory" className="-mt-2" />}
+            <p className={`${isVerified ? '' : 'mt-2'} text-xs sm:text-sm text-gray-600 leading-relaxed flex flex-wrap items-center gap-3`}>
               <span className="inline-flex items-center gap-1.5">
                 <Shield className="h-3.5 w-3.5 text-emerald-600" />
                 <span>DSGVO‑konform</span>
@@ -1297,16 +1346,20 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                   formatSelectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   return;
                 }
-                setStep('verify');
+                // For verified users, skip verification and send booking directly
+                if (isVerified) {
+                  handleSendMessage();
+                } else {
+                  setStep('verify');
+                }
               }}
               disabled={loading}
-              className={`flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl ${
-                !sessionFormat || !selectedBookingSlot
-                  ? 'bg-gray-400 hover:bg-gray-500 cursor-pointer'
-                  : 'bg-emerald-600 hover:bg-emerald-700'
-              }`}
+              className={`flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl ${!sessionFormat || !selectedBookingSlot
+                ? 'bg-gray-400 hover:bg-gray-500 cursor-pointer'
+                : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Weiter zur Eingabe'}
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (isVerified ? 'Termin buchen' : 'Weiter zur Eingabe')}
             </Button>
           ) : (
             (isVerified) ? (
@@ -1322,11 +1375,10 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                   handleSendMessage();
                 }}
                 disabled={loading || (!reason.trim() && !message.trim())}
-                className={`flex-1 h-11 shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 ${
-                  contactType === 'booking' && !sessionFormat
-                    ? 'bg-gray-400 hover:bg-gray-500'
-                    : 'bg-emerald-600 hover:bg-emerald-700'
-                }`}
+                className={`flex-1 h-11 shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 ${contactType === 'booking' && !sessionFormat
+                  ? 'bg-gray-400 hover:bg-gray-500'
+                  : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Nachricht senden'}
               </Button>
@@ -1343,11 +1395,10 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                   setStep('verify');
                 }}
                 disabled={loading || (!reason.trim() && !message.trim())}
-                className={`flex-1 h-11 ${
-                  contactType === 'booking' && !sessionFormat
-                    ? 'bg-gray-400 hover:bg-gray-500'
-                    : 'bg-emerald-600 hover:bg-emerald-700'
-                }`}
+                className={`flex-1 h-11 ${contactType === 'booking' && !sessionFormat
+                  ? 'bg-gray-400 hover:bg-gray-500'
+                  : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Weiter'}
               </Button>

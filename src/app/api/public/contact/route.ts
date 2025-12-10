@@ -51,11 +51,12 @@ async function checkRateLimit(
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
   // Count only matches where patient actually initiated contact (not auto-generated proposed matches)
+  // Note: Use explicit JSON string for containment to ensure PostgREST applies the filter correctly
   const { data: matches, error } = await supabase
     .from('matches')
     .select('id')
     .eq('patient_id', patientId)
-    .contains('metadata', { patient_initiated: true })
+    .filter('metadata', 'cs', JSON.stringify({ patient_initiated: true }))
     .gte('created_at', oneDayAgo);
 
   if (error) {
@@ -393,7 +394,7 @@ export async function POST(req: Request) {
           .select('id')
           .eq('patient_id', patientId)
           .eq('therapist_id', therapist.id)
-          .contains('metadata', { idempotency_key: idempotencyKey })
+          .filter('metadata', 'cs', JSON.stringify({ idempotency_key: idempotencyKey }))
           .limit(1)
           .maybeSingle();
         if (existingMatch) {

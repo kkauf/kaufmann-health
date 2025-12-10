@@ -39,6 +39,7 @@ export default function Screen1({
   onBack,
   disabled,
   initialized = false,
+  isConcierge = false,
 }: {
   values: Screen1Values;
   onChange: (patch: Partial<Screen1Values>) => void;
@@ -46,6 +47,7 @@ export default function Screen1({
   onBack?: () => void;
   disabled?: boolean;
   initialized?: boolean;
+  isConcierge?: boolean;
 }) {
   const mode = getVerificationModeClient();
   const [emailError, setEmailError] = React.useState<string | null>(null);
@@ -153,7 +155,11 @@ export default function Screen1({
         )}
       </div>
 
-      <p className="text-sm text-muted-foreground">Um dir deine Vorschläge anzuzeigen und später Kontaktaufnahme zu ermöglichen, benötigen wir noch Kontaktdaten von dir.</p>
+      <p className="text-sm text-muted-foreground">
+          {isConcierge
+            ? 'Innerhalb von 24h erhältst du deine persönliche Therapeuten-Auswahl per E-Mail.'
+            : 'Gleich siehst du, wer zu dir passt – und kannst direkt schreiben.'}
+        </p>
 
       {/* Contact field - email or phone based on mode */}
       {canSwitchMethod && mounted && (

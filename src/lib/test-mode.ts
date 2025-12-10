@@ -19,9 +19,18 @@ export function isLocalhostRequest(req: Request): boolean {
   }
 }
 
+export function isStagingRequest(req: Request): boolean {
+  try {
+    const { hostname } = new URL(req.url);
+    return hostname === 'staging.kaufmann-health.de';
+  } catch {
+    return false;
+  }
+}
+
 export function isTestRequest(req: Request, email?: string | null): boolean {
   // In Vitest/Jest, many requests originate from localhost.
   // Preserve test expectations by not flagging test-mode during NODE_ENV==='test'.
   if (process.env.NODE_ENV === 'test') return false;
-  return isLocalhostRequest(req) || isTestEmail(email);
+  return isLocalhostRequest(req) || isStagingRequest(req) || isTestEmail(email);
 }
