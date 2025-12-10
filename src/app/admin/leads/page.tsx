@@ -32,6 +32,7 @@ type PersonMeta = {
   // Test 4: Additional fields for matching
   schwerpunkte?: string[]; // Focus areas selected by client
   additional_info?: string; // Open text (Concierge variant)
+  returning_concierge_at?: string; // ISO timestamp when returning user re-submitted via concierge
 };
 
 type Person = {
@@ -672,6 +673,18 @@ export default function AdminLeadsPage() {
                             title={meta.lost_reason_at ? `Verloren seit: ${formatDate(meta.lost_reason_at)}` : 'Verloren'}
                           >
                             Verloren
+                          </Badge>
+                        </div>
+                      )}
+                      {/* Returning concierge user badge */}
+                      {meta.returning_concierge_at && (
+                        <div className="mt-1">
+                          <Badge
+                            variant="outline"
+                            className="border-orange-300 bg-orange-50 text-orange-700"
+                            title={`Rückkehr: ${formatDate(meta.returning_concierge_at)}`}
+                          >
+                            Rückkehrend
                           </Badge>
                         </div>
                       )}

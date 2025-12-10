@@ -72,6 +72,21 @@ export default function SignupWizard() {
       return null;
     }
   });
+
+  // CRITICAL: Re-capture variant from URL after mount to handle hydration correctly.
+  // During SSR, window is undefined so capturedVariant is null. During hydration,
+  // React doesn't re-run useState initializer, so we need useEffect to capture it.
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlVariant = params.get('variant') || params.get('v') || null;
+      if (urlVariant && urlVariant !== capturedVariant) {
+        setCapturedVariant(urlVariant);
+      }
+    } catch { /* ignore */ }
+  }, [capturedVariant]);
+
   // Fallback to live searchParams if capturedVariant not yet set (hydration)
   const variant = capturedVariant || searchParams.get('variant') || searchParams.get('v');
   const isConcierge = variant === 'concierge';
@@ -351,12 +366,18 @@ export default function SignupWizard() {
           try {
             if (ref.includes('/therapie-finden')) {
               src = '/therapie-finden';
+              // Try to extract variant from referrer URL (browsers may strip query params)
+              try {
+                const u = new URL(ref);
+                const vp = u.searchParams.get('variant') || u.searchParams.get('v') || undefined;
+                variant = vp || undefined;
+              } catch { }
             } else if (ref.includes('/start')) {
               src = '/start';
               try {
                 const u = new URL(ref);
                 const vp = u.searchParams.get('variant') || u.searchParams.get('v') || undefined;
-                variant = vp || variant;
+                variant = vp || undefined;
               } catch { }
             }
           } catch { }
@@ -373,6 +394,21 @@ export default function SignupWizard() {
           } else if (currentPath.includes('/start')) {
             src = '/start';
           }
+        }
+        // Ensure variant has a sensible default when source is known but variant wasn't captured
+        // This handles cases where browsers strip query params from referrer
+        // First, try to retrieve variant from localStorage (captured by PageAnalytics on landing pages)
+        if (src && !variant) {
+          try {
+            const storedVariant = localStorage.getItem('test1_variant');
+            if (storedVariant) {
+              variant = storedVariant;
+            }
+          } catch { }
+        }
+        // Final fallback: mark as direct only if truly unknown
+        if (src && !variant && src === '/fragebogen') {
+          variant = 'direct';
         }
         if (src) campaignSourceOverrideRef.current = src;
         if (variant) campaignVariantOverrideRef.current = variant;

@@ -62,12 +62,12 @@ export async function GET(req: Request) {
       error = res.error;
       const msg = getErrorMessage(res.error);
       if (msg && msg.includes('schema cache')) {
-        // Retry without optional columns (campaign_source/variant)
+        // Retry with campaign_source/variant in select (they should exist in production)
         const res2 = await supabaseServer
           .from('people')
-          .select('id,email,name,status,metadata')
+          .select('id,email,name,status,metadata,campaign_source,campaign_variant')
           .eq('id', id)
-          .single<Pick<PersonRow, 'id' | 'email' | 'status' | 'metadata'>>();
+          .single<PersonRow>();
         person = (res2.data as PersonRow) ?? null;
         error = res2.error;
       }
