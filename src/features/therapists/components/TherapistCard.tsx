@@ -115,6 +115,19 @@ export function TherapistCard({
   // Show schwerpunkte if: legacy prop is true (directory) OR patient selected any (matches page)
   const shouldShowSchwerpunkte = (_legacyShowSchwerpunkte || patientSchwerpunkte.length > 0) && therapist.schwerpunkte && therapist.schwerpunkte.length > 0;
 
+  // Sort schwerpunkte: patient-matching ones first, then others
+  const sortedSchwerpunkte = useMemo(() => {
+    if (!therapist.schwerpunkte) return [];
+    const patientSet = new Set(patientSchwerpunkte);
+    return [...therapist.schwerpunkte].sort((a, b) => {
+      const aMatches = patientSet.has(a);
+      const bMatches = patientSet.has(b);
+      if (aMatches && !bMatches) return -1;
+      if (!aMatches && bMatches) return 1;
+      return 0;
+    });
+  }, [therapist.schwerpunkte, patientSchwerpunkte]);
+
   const handleContactClick = (type: 'booking' | 'consultation') => {
     try {
       const attrs = getAttribution();
@@ -294,11 +307,11 @@ export function TherapistCard({
             </div>
           )}
 
-          {/* Schwerpunkte SECOND (shown when patient selected any - shows ALL therapist schwerpunkte) */}
+          {/* Schwerpunkte SECOND (sorted: patient-matching first) */}
           {shouldShowSchwerpunkte && (
             <div className="mb-3">
               <div className="flex flex-wrap gap-1.5">
-                {therapist.schwerpunkte!.slice(0, 3).map((id) => (
+                {sortedSchwerpunkte.slice(0, 3).map((id) => (
                   <Badge
                     key={id}
                     variant="outline"
