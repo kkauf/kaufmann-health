@@ -548,7 +548,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
               therapist={therapistData}
               onViewDetails={() => setDetailModalTherapist(t)}
               patientModalities={data?.patient?.specializations || []}
-              patientSchwerpunkte={data?.patient?.schwerpunkte || []}
+              showSchwerpunkte={true}
               highlighted={isHighlighted}
               contactedAt={t.contacted_at || null}
               onContactClick={(type) => handleOpen(t, type)}
