@@ -53,11 +53,9 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
   const isBrowse = rawVariant === 'browse';
   // Test 4: Concierge variant forces manual curation flow (24h) regardless of instantFlow flag
   const isConcierge = rawVariant === 'concierge';
-  // Test 3: Default to 'marketplace' variant for verification gating when no variant specified
-  // This ensures users from /start go through verification before seeing matches
-  const fragebogenVariant = rawVariant || 'marketplace';
-  // Preserve variant when moving into the questionnaire so downstream attribution can detect origin
-  const fragebogenHref = `/fragebogen?v=${encodeURIComponent(fragebogenVariant)}`;
+  // Test 4: Only pass variant if explicitly specified in URL - let fragebogen handle client-side randomization
+  // This ensures users get proper concierge/self-service attribution instead of stale 'marketplace'
+  const fragebogenHref = rawVariant ? `/fragebogen?v=${encodeURIComponent(rawVariant)}` : '/fragebogen';
   // Preserve variant when navigating to the directory so the variant survives into /therapeuten
   const therapeutenHref = `/therapeuten${rawVariant ? `?v=${encodeURIComponent(rawVariant)}` : ''}`;
   

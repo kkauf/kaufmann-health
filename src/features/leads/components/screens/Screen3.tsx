@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { MapPin } from 'lucide-react';
 
 export type Screen3Values = {
   city?: string;
@@ -13,6 +13,8 @@ export type Screen3Values = {
   session_preference?: 'online' | 'in_person' | 'either';
 };
 
+// Currently only active in Berlin
+const DEFAULT_CITY = 'Berlin';
 
 export default function Screen3({
   values,
@@ -27,14 +29,19 @@ export default function Screen3({
   onBack: () => void;
   disabled?: boolean;
 }) {
-  const [errors, setErrors] = React.useState<{ location?: string; session?: string }>({});
+  const [errors, setErrors] = React.useState<{ session?: string }>({});
+
+  // Set default city on mount if not already set
+  React.useEffect(() => {
+    if (!values.city) {
+      onChange({ city: DEFAULT_CITY });
+    }
+  }, []);
 
   function validate() {
-    const e: { location?: string; session?: string } = {};
+    const e: { session?: string } = {};
     const pref = values.session_preference;
     if (!pref) e.session = 'Bitte wähle: Online, Vor Ort oder Beides.';
-    const hasCity = !!(values.city && values.city.trim().length > 0);
-    if ((pref === 'in_person' || pref === 'either') && !hasCity) e.location = 'Bitte gib deine Stadt an.';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -46,19 +53,13 @@ export default function Screen3({
         <div className="space-y-2">
           <p className="font-medium">Wo suchst du Unterstützung?</p>
           <div className="grid gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="city" className="text-sm">Stadt</Label>
-              <Input
-                id="city"
-                type="text"
-                inputMode="text"
-                autoComplete="address-level2"
-                placeholder="z. B. Berlin"
-                className="h-11"
-                value={values.city || ''}
-                onChange={(e) => onChange({ city: e.target.value })}
-                disabled={!!disabled}
-              />
+            <div className="space-y-1">
+              <Label className="text-sm">Stadt</Label>
+              <div className="flex items-center gap-2 h-11 px-3 rounded border border-gray-200 bg-gray-50 text-gray-700">
+                <MapPin className="h-4 w-4 text-gray-400" />
+                <span>{DEFAULT_CITY}</span>
+              </div>
+              <p className="text-xs text-gray-500">Wir sind aktuell nur in Berlin aktiv.</p>
             </div>
             <div className="space-y-2">
               <Label className="text-sm">Wie möchtest du die Sitzungen machen?</Label>
@@ -85,7 +86,6 @@ export default function Screen3({
               </div>
               {errors.session && <p className="text-sm text-red-600">{errors.session}</p>}
             </div>
-            {errors.location && <p className="text-sm text-red-600">{errors.location}</p>}
           </div>
         </div>
       </div>
