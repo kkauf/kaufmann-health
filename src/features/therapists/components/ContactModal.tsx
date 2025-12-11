@@ -114,7 +114,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       const greeting = `Guten Tag ${therapist.first_name}`;
       const intent = contactType === 'booking'
         ? 'ich möchte gerne einen Termin vereinbaren'
-        : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
+        : 'ich würde gerne ein kostenloses Kennenlerngespräch (15 Min) vereinbaren';
       const initialReason = (preAuth.defaultReason || '').trim();
       if (initialReason) setReason(initialReason);
       const signature = preAuth.patientName ? `\n\nViele Grüße\n${preAuth.patientName}` : '';
@@ -222,7 +222,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           const greeting = `Guten Tag ${therapist.first_name}`;
           const intent = contactType === 'booking'
             ? 'ich möchte gerne einen Termin vereinbaren'
-            : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
+            : 'ich würde gerne ein kostenloses Kennenlerngespräch (15 Min) vereinbaren';
           const signature = userName ? `\n\nViele Grüße\n${userName}` : '';
           // Use preAuth.defaultReason if available (e.g., from matches page)
           const initialReason = (preAuth?.defaultReason || '').trim();
@@ -1044,7 +1044,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
               ) : (
                 <>
                   <p className="text-gray-600">
-                    {contactType === 'booking' ? 'Termin vereinbaren' : 'Erstgespräch (15 Min)'}
+                    {contactType === 'booking' ? 'Termin vereinbaren' : 'Kennenlernen (15 Min)'}
                   </p>
                   {contactType === 'consultation' && (
                     <Badge className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 hover:bg-blue-100">
@@ -1077,7 +1077,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                 const greeting = `Guten Tag ${therapist.first_name}`;
                 const intent = contactType === 'booking'
                   ? 'ich möchte gerne einen Termin vereinbaren'
-                  : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
+                  : 'ich würde gerne ein kostenloses Kennenlerngespräch (15 Min) vereinbaren';
                 const signature = name ? `\n\nViele Grüße\n${name}` : '';
 
                 // Only auto-update message if the user hasn't manually edited it

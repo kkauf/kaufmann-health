@@ -264,10 +264,22 @@ export default function SignupWizard() {
           }));
         }
       }
+      
+      // Handle ?startStep= param (e.g., from Katherine's CTA to skip to step 2)
+      const startStepParam = searchParams?.get('startStep');
       const savedStep = Number(localStorage.getItem(LS_KEYS.step) || '1');
+      // Use startStep if provided, otherwise use saved step
+      const targetStep = startStepParam ? Number(startStepParam) : savedStep;
       // Clamp to valid range: 1-5 for direct booking, 1-9 for manual curation
-      const clampedStep = Math.max(1, Math.min(maxStep, savedStep));
+      const clampedStep = Math.max(1, Math.min(maxStep, targetStep));
       setStep(clampedStep);
+      
+      // Clean up startStep from URL to avoid re-triggering on refresh
+      if (startStepParam && typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('startStep');
+        window.history.replaceState({}, '', url.pathname + url.search);
+      }
 
       // Check for existing verified session (kh_client cookie from EARTH-204)
       // Only prefill contact info in manual curation flow (steps 6-9 exist)
