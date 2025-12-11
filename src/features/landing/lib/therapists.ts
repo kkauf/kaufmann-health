@@ -1,10 +1,10 @@
 import { supabaseServer } from '@/lib/supabase-server';
 import {
-  type TherapistRow,
   type TherapistData,
   mapTherapistRow,
   getHiddenTherapistIds,
   isTherapistHidden,
+  parseTherapistRows,
   THERAPIST_SELECT_COLUMNS,
 } from '@/lib/therapist-mapper';
 
@@ -27,7 +27,8 @@ export async function getTherapistsByIds(ids: string[]): Promise<TherapistData[]
     return [];
   }
 
-  return ((data as TherapistRow[] | null) || [])
+  // Validate with Zod schema
+  return parseTherapistRows(data || [])
     .filter((row) => !isTherapistHidden(row, hideIds))
     .map((row) => mapTherapistRow(row));
 }
@@ -64,7 +65,8 @@ export async function getTherapistsForLanding(options?: {
     return [];
   }
 
-  const mapped = ((data as TherapistRow[] | null) || [])
+  // Validate with Zod schema
+  const mapped = parseTherapistRows(data || [])
     .filter((row) => !isTherapistHidden(row, hideIds))
     .map((row) => mapTherapistRow(row));
 

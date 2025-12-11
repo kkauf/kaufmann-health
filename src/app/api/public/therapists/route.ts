@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { computeAvailability } from '@/lib/availability';
 import {
-  type TherapistRow,
   mapTherapistRow,
   getHiddenTherapistIds,
   isTherapistHidden,
+  parseTherapistRows,
   THERAPIST_SELECT_COLUMNS,
 } from '@/lib/therapist-mapper';
 
@@ -27,7 +27,8 @@ export async function GET() {
       );
     }
 
-    const rows = (data as TherapistRow[] | null) || [];
+    // Validate rows with Zod schema - logs warnings for invalid rows in dev
+    const rows = parseTherapistRows(data || []);
 
     // Build list of therapist ids for availability lookup
     const therapistIds = rows.map((r) => r.id);

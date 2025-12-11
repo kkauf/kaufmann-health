@@ -1,74 +1,35 @@
 /**
- * Shared therapist data types and mapping utilities.
+ * Shared therapist data mapping utilities.
  * 
- * Consolidates the therapist row → display data transformation
- * so it's consistent across: directory, teaser, matches, admin.
+ * Types are defined in src/contracts/therapist.ts (single source of truth).
+ * This module provides the mapping logic to transform raw DB rows to display data.
  * 
  * Rule: if we touch this 3+ times, it belongs here.
  */
 
-// Raw database row type (what Supabase returns)
-export type TherapistRow = {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  city: string | null;
-  modalities: unknown;
-  schwerpunkte: unknown;
-  session_preferences: unknown;
-  accepting_new: boolean | null;
-  photo_url: string | null;
-  status: string | null;
-  metadata: unknown;
-  typical_rate?: number | null;
-  gender?: string | null;
-};
+// Import types for local use
+import type {
+  TherapistRow,
+  TherapistData,
+  TherapistProfile,
+  AvailabilitySlot,
+} from '@/contracts/therapist';
 
-// Availability slot (returned from computeAvailability)
-export type AvailabilitySlot = {
-  date_iso: string;
-  time_label: string;
-  format: 'online' | 'in_person';
-  address?: string;
-};
-
-// Structured profile fields from metadata.profile
-export type TherapistProfile = {
-  approach_text?: string;
-  who_comes_to_me?: string;
-  session_focus?: string;
-  first_session?: string;
-  about_me?: string;
-  languages?: string[];
-  years_experience?: number;
-  practice_address?: string;
-  qualification?: string;
-};
-
-// The unified therapist data shape used by all display components
-export type TherapistData = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  photo_url?: string;
-  modalities: string[];
-  schwerpunkte: string[];
-  session_preferences: string[];
-  approach_text: string;
-  accepting_new: boolean;
-  city: string;
-  typical_rate?: number | null;
-  metadata?: {
-    profile?: TherapistProfile;
-  };
-  availability?: AvailabilitySlot[];
-  // Admin-only fields
-  gender?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  status?: string | null;
-  created_at?: string | null;
-};
+// Re-export types and constants from contracts (single source of truth)
+export {
+  type TherapistRow,
+  type TherapistData,
+  type TherapistProfile,
+  type AvailabilitySlot,
+  TherapistRowSchema,
+  TherapistDataSchema,
+  parseTherapistRow,
+  parseTherapistRows,
+  parseTherapistData,
+  safeParseTherapistRow,
+  THERAPIST_SELECT_COLUMNS,
+  THERAPIST_SELECT_COLUMNS_WITH_GENDER,
+} from '@/contracts/therapist';
 
 /**
  * Parse HIDE_THERAPIST_IDS env var into a Set
@@ -172,12 +133,3 @@ export function mapTherapistRow(
   return result;
 }
 
-/**
- * Standard select string for therapist queries.
- * Avoids duplicating the column list everywhere.
- */
-export const THERAPIST_SELECT_COLUMNS = 
-  'id, first_name, last_name, city, modalities, schwerpunkte, session_preferences, accepting_new, photo_url, status, metadata, typical_rate';
-
-export const THERAPIST_SELECT_COLUMNS_WITH_GENDER = 
-  THERAPIST_SELECT_COLUMNS + ', gender';
