@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { track } from '@vercel/analytics';
 import { getVerificationModeClient } from '@/lib/verification/config';
+import { getFlowVariant } from '@/lib/flow-randomization';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { validatePhone } from '@/lib/verification/usePhoneValidation';
 import ConsentSection from '@/components/ConsentSection';
@@ -165,9 +166,10 @@ export function ContactEntryForm({
       } catch {}
 
       // Navigate to the Fragebogen, preserving variant (?v=) if present
-      // Test 3: Default to 'marketplace' for verification gating when no variant specified
+      // Test 4: Use flow randomization (concierge/self-service) when no variant specified
       const url = typeof window !== 'undefined' ? new URL(window.location.href) : null;
-      const v = url?.searchParams.get('v') || 'marketplace';
+      const urlVariant = url?.searchParams.get('v');
+      const v = urlVariant || getFlowVariant(urlVariant);
       const next = `/fragebogen?v=${encodeURIComponent(v)}`;
       try { track('Lead Started'); } catch {}
       if (typeof window !== 'undefined') window.location.assign(next);
