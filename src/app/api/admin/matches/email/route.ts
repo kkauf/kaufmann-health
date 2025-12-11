@@ -9,6 +9,7 @@ import { BASE_URL } from '@/lib/constants';
 import { computeMismatches } from '@/features/leads/lib/match';
 import { sendTransactionalSms } from '@/lib/sms/client';
 import type { EmailContent } from '@/lib/email/types';
+import { THERAPIST_SELECT_COLUMNS_WITH_GENDER } from '@/lib/therapist-mapper';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -204,13 +205,13 @@ export async function POST(req: Request) {
       };
       const { data: therapistRows, error: tErr } = await supabaseServer
         .from('therapists')
-        .select('id, first_name, last_name, city, photo_url, gender, modalities, metadata, accepting_new')
+        .select(THERAPIST_SELECT_COLUMNS_WITH_GENDER)
         .in('id', therapistIds);
       if (tErr) {
         await logError('admin.api.matches.email', tErr, { stage: 'load_therapists_for_selection', patient_id });
         return NextResponse.json({ data: null, error: 'Failed to load therapists' }, { status: 500 });
       }
-      const list = (therapistRows || []) as TherapistRow[];
+      const list = (therapistRows || []) as unknown as TherapistRow[];
 
       // Build sorted items using mismatch scoring
       const pMeta: PatientMetaServer = ((): PatientMetaServer => {
