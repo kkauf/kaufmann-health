@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { buildEventId } from "@/lib/analytics";
 import { getAttribution } from "@/lib/attribution";
 
-export default function PageAnalytics({ qualifier }: { qualifier?: string } = {}) {
+export default function PageAnalytics({ qualifier, keyword }: { qualifier?: string; keyword?: string } = {}) {
   const sent = useRef<{ view?: boolean; depths: Record<number, boolean> }>({
     view: false,
     depths: {},
@@ -40,7 +40,7 @@ export default function PageAnalytics({ qualifier }: { qualifier?: string } = {}
         id,
         title: id,
         ...attrs,
-        properties: { page_path: pagePath, qualifier, variant: getVariant() },
+        properties: { page_path: pagePath, qualifier, variant: getVariant(), keyword },
       };
       fetch("/api/events", {
         method: "POST",
@@ -132,7 +132,7 @@ export default function PageAnalytics({ qualifier }: { qualifier?: string } = {}
       window.removeEventListener("scroll", onScroll);
       document.removeEventListener('click', onClick, true);
     };
-  }, [qualifier]);
+  }, [qualifier, keyword]);
 
   return null;
 }
