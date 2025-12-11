@@ -10,6 +10,8 @@ type TherapistRow = {
   last_name: string | null;
   city: string | null;
   modalities: unknown;
+  schwerpunkte: unknown;
+  session_preferences: unknown;
   accepting_new: boolean | null;
   photo_url: string | null;
   status: string | null;
@@ -21,6 +23,8 @@ export function mapTherapistRow(row: TherapistRow): AppTherapist {
   const profileUnknown = mdObj['profile'];
   const profile: Record<string, unknown> = profileUnknown && typeof profileUnknown === 'object' ? (profileUnknown as Record<string, unknown>) : {};
   const approach_text = typeof profile['approach_text'] === 'string' ? (profile['approach_text'] as string) : '';
+  const who_comes_to_me = typeof profile['who_comes_to_me'] === 'string' ? profile['who_comes_to_me'] : undefined;
+  const session_focus = typeof profile['session_focus'] === 'string' ? profile['session_focus'] : undefined;
 
   return {
     id: row.id,
@@ -28,9 +32,17 @@ export function mapTherapistRow(row: TherapistRow): AppTherapist {
     last_name: String(row.last_name || ''),
     city: String(row.city || ''),
     modalities: Array.isArray(row.modalities) ? (row.modalities as string[]) : [],
+    schwerpunkte: Array.isArray(row.schwerpunkte) ? (row.schwerpunkte as string[]) : [],
+    session_preferences: Array.isArray(row.session_preferences) ? (row.session_preferences as string[]) : [],
     accepting_new: Boolean(row.accepting_new),
     photo_url: row.photo_url || undefined,
     approach_text,
+    metadata: (who_comes_to_me || session_focus) ? {
+      profile: {
+        ...(who_comes_to_me ? { who_comes_to_me } : {}),
+        ...(session_focus ? { session_focus } : {}),
+      },
+    } : undefined,
   };
 }
 
@@ -47,7 +59,7 @@ export async function getTherapistsByIds(ids: string[]): Promise<AppTherapist[]>
   );
   const { data, error } = await supabaseServer
     .from('therapists')
-    .select('id, first_name, last_name, city, modalities, accepting_new, photo_url, status, metadata')
+    .select('id, first_name, last_name, city, modalities, schwerpunkte, session_preferences, accepting_new, photo_url, status, metadata')
     .in('id', ids)
     .eq('status', 'verified')
     .not('photo_url', 'is', null);
@@ -87,7 +99,7 @@ export async function getTherapistsForLanding(options?: {
   );
   let query = supabaseServer
     .from('therapists')
-    .select('id, first_name, last_name, city, modalities, accepting_new, photo_url, status, metadata')
+    .select('id, first_name, last_name, city, modalities, schwerpunkte, session_preferences, accepting_new, photo_url, status, metadata')
     .eq('status', 'verified')
     .not('photo_url', 'is', null);
 
@@ -98,7 +110,8 @@ export async function getTherapistsForLanding(options?: {
     query = query.eq('accepting_new', options.accepting_new);
   }
   const limit = options?.limit && options.limit > 0 ? options.limit : 3;
-  const poolLimit = options?.modalities && options.modalities.length > 0 ? Math.max(limit * 5, 20) : limit;
+  const hasModalityFilter = Array.isArray(options?.modalities) && options.modalities.length > 0;
+  const poolLimit = hasModalityFilter ? Math.max(limit * 5, 20) : Math.max(limit * 3, 10);
   query = query.limit(poolLimit);
 
   const { data, error } = await query;

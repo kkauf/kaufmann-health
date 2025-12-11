@@ -16,6 +16,7 @@ export function TherapistTeaserClient({
   showViewAllButton = false,
   viewAllButtonText = "Alle Therapeut:innen ansehen",
   viewAllButtonHref = "/therapeuten",
+  showSchwerpunkte = false,
 }: {
   therapists: Therapist[];
   title: string;
@@ -24,6 +25,8 @@ export function TherapistTeaserClient({
   showViewAllButton?: boolean;
   viewAllButtonText?: string;
   viewAllButtonHref?: string;
+  /** When true, show schwerpunkte badges instead of modality badges */
+  showSchwerpunkte?: boolean;
 }) {
   const [selectedTherapist, setSelectedTherapist] = useState<TherapistData | null>(null);
   const [scrollTarget, setScrollTarget] = useState<string | undefined>(undefined);
@@ -36,6 +39,7 @@ export function TherapistTeaserClient({
       last_name: therapist.last_name,
       city: therapist.city,
       modalities: therapist.modalities,
+      schwerpunkte: therapist.schwerpunkte,
       accepting_new: therapist.accepting_new,
       photo_url: therapist.photo_url,
       approach_text: therapist.approach_text,
@@ -69,7 +73,7 @@ export function TherapistTeaserClient({
               className="cursor-pointer transition-all duration-200 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-xl"
               aria-label={`Profil von ${t.first_name} ${t.last_name} ansehen`}
             >
-              <TherapistPreview therapist={t} />
+              <TherapistPreview therapist={t} showSchwerpunkte={showSchwerpunkte} />
             </div>
           ))}
         </div>

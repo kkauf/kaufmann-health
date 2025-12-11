@@ -12,6 +12,7 @@ export async function TherapistTeaserSection({
   showViewAllButton = false,
   viewAllButtonText = "Alle Therapeut:innen ansehen",
   viewAllButtonHref = "/therapeuten",
+  showSchwerpunkte = false,
 }: {
   title?: string;
   subtitle?: string;
@@ -23,6 +24,8 @@ export async function TherapistTeaserSection({
   showViewAllButton?: boolean;
   viewAllButtonText?: string;
   viewAllButtonHref?: string;
+  /** When true, show schwerpunkte badges instead of modality badges */
+  showSchwerpunkte?: boolean;
 }) {
   // Fetch therapists on the server
   const data = ids && ids.length > 0
@@ -50,6 +53,7 @@ export async function TherapistTeaserSection({
       showViewAllButton={showViewAllButton}
       viewAllButtonText={viewAllButtonText}
       viewAllButtonHref={viewAllButtonHref}
+      showSchwerpunkte={showSchwerpunkte}
     />
   );
 }

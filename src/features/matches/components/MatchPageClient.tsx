@@ -480,12 +480,6 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
               <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
               <span>Wir prüfen die Qualifikationen der Therapeut:innen gründlich.</span>
             </li>
-            {data?.patient?.modality_matters && (
-              <li className="flex items-start gap-2">
-                <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-                <span>Spezielle Ausbildungen (NARM, Somatic Experiencing, Hakomi, Core Energetics) sind in den farbigen Abzeichen sichtbar.</span>
-              </li>
-            )}
           </ul>
           <p className="mt-4 font-semibold text-gray-900">Sorgfältig geprüfte Profile – passend für dich.</p>
         </div>
@@ -506,12 +500,6 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
               <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
               <span>Profile und Qualifikationen verifiziert.</span>
             </li>
-            {data?.patient?.modality_matters && (
-              <li className="flex items-start gap-2">
-                <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-                <span>Spezielle Ausbildungen (NARM, Somatic Experiencing, Hakomi, Core Energetics) sind in den farbigen Abzeichen sichtbar.</span>
-              </li>
-            )}
           </ul>
           <p className="mt-4 font-semibold text-gray-900">Sorgfältig geprüfte Profile.</p>
         </div>

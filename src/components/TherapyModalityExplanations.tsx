@@ -17,7 +17,23 @@ export default function TherapyModalityExplanations() {
           Vier bewährte Ansätze, die direkt mit dem Nervensystem arbeiten. Kurz erklärt, damit du die passende
           Herangehensweise findest.
         </p>
-        
+        {/* Escape route CTA for overwhelmed users */}
+        <div className="mt-6 sm:mt-8 flex flex-col items-stretch sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <p className="text-sm sm:text-base text-gray-700">
+            Noch nicht sicher, welche Methode für dich die richtige ist?
+          </p>
+          <CtaLink
+            href="/fragebogen?v=concierge"
+            eventType="cta_click"
+            eventId="modalities-escape-concierge"
+            data-cta="modalities-escape"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-5 py-3 text-sm sm:text-base font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all duration-200 min-h-[44px]"
+          >
+            <HandHelping className="h-4 w-4" aria-hidden />
+            Wir helfen dir gerne dabei
+          </CtaLink>
+        </div>
+
         <div className="mt-8 sm:mt-10 grid grid-cols-1 gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-2 lg:grid-cols-2">
           <div className="relative rounded-xl border border-teal-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 p-5 sm:p-6 h-full flex flex-col">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-teal-50/30 rounded-xl" />
@@ -120,21 +136,6 @@ export default function TherapyModalityExplanations() {
               <ExternalLink className="h-4 w-4" aria-hidden />
             </a>
           </div>
-        </div>
-
-        {/* Escape route CTA for overwhelmed users */}
-        <div className="mt-8 sm:mt-10 pt-6 sm:pt-8 border-t border-gray-200/60 text-center">
-          <p className="text-gray-600 mb-4">Überfordert von der Auswahl?</p>
-          <CtaLink
-            href="/fragebogen?v=concierge"
-            eventType="cta_click"
-            eventId="modalities-escape-concierge"
-            data-cta="modalities-escape"
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-5 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-all duration-200"
-          >
-            <HandHelping className="h-4 w-4" aria-hidden />
-            Lass uns für dich suchen
-          </CtaLink>
         </div>
       </div>
     </section>
