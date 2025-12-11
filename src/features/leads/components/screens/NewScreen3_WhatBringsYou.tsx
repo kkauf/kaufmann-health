@@ -47,7 +47,7 @@ export default function NewScreen3_WhatBringsYou({
             &bdquo;Ich lese jede Anfrage persönlich und schlage dir Therapeut:innen vor, die wirklich zu deiner Situation passen.&ldquo;
           </p>
           <p className="mt-1.5 text-xs sm:text-sm text-gray-500">
-            – Katherine, Gründerin
+            – Katherine Kaufmann, Gründerin und Therapeutin
           </p>
         </div>
       </div>
