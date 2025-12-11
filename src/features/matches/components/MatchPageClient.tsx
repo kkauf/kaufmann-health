@@ -92,32 +92,16 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   const [detailModalTherapist, setDetailModalTherapist] = useState<TherapistItem | null>(null);
   const [autoOpenedTherapist, setAutoOpenedTherapist] = useState(false);
   const isDirectBookingFlow = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
-  
-  // Check if coming from email/SMS link - skip loading animation entirely
-  // ?therapist= for rich emails, ?direct=1 for selection emails/SMS
-  const [isDirectLink] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    const params = new URLSearchParams(window.location.search);
-    return params.has('therapist') || params.get('direct') === '1';
-  });
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoading(true);
       setError(null);
-      const start = Date.now();
       
       try {
         const res = await fetch(`/api/public/matches/${encodeURIComponent(uuid)}`);
         const json = await res.json();
-
-        // Ensure at least 3s loading animation ONLY for /fragebogen redirects (fresh quiz completions)
-        // Skip delay for email/SMS links - user already knows their match
-        if (!isDirectLink) {
-          const elapsed = Date.now() - start;
-          if (elapsed < 3000) await new Promise(r => setTimeout(r, 3000 - elapsed));
-        }
 
         if (!res.ok) {
           if (!cancelled) {
@@ -140,7 +124,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     return () => {
       cancelled = true;
     };
-  }, [uuid, isDirectLink]);
+  }, [uuid]);
 
   const therapists = useMemo(() => data?.therapists || [], [data]);
   const _isVerified = useMemo(() => {
@@ -327,26 +311,11 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   }, [modalFor]);
 
   if (loading) {
-    // For direct links (from email/SMS), show minimal loading or nothing
-    if (isDirectLink) {
-      return (
-        <div className="flex min-h-[40vh] items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
-        </div>
-      );
-    }
-    // Full animation for fresh /fragebogen completions
+    // Simple spinner - no elaborate animation here
+    // The "searching" animation belongs in /fragebogen during form completion, not here
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
-        <div className="relative mb-8 h-24 w-24">
-          <div className="absolute inset-0 animate-ping rounded-full bg-emerald-100 opacity-75 duration-1000"></div>
-          <div className="absolute inset-0 m-4 animate-pulse rounded-full bg-emerald-200 opacity-75"></div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Sparkles className="h-8 w-8 text-emerald-600 animate-bounce" />
-          </div>
-        </div>
-        <h2 className="text-2xl font-semibold text-gray-900">Wir suchen den passenden Experten für dein Anliegen...</h2>
-        <p className="mt-2 text-gray-600">Dies kann einen Moment dauern.</p>
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
       </div>
     );
   }
