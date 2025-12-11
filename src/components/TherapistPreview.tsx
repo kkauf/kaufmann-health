@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarCheck2, HeartHandshake, Shell, Wind, Target, Sparkles, Video, User } from "lucide-react";
+import { CalendarCheck2, HeartHandshake, Shell, Wind, Target, Video, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { getSchwerpunktLabel, getSchwerpunktColorClasses } from "@/lib/schwerpunkte";

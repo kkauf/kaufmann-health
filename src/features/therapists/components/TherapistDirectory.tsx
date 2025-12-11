@@ -12,35 +12,10 @@ import { TherapistDetailModal } from './TherapistDetailModal';
 import { ContactModal } from './ContactModal';
 import { cn } from '@/lib/utils';
 import CtaLink from '@/components/CtaLink';
+import { type TherapistData } from '@/lib/therapist-mapper';
 
-export type TherapistData = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  photo_url?: string;
-  modalities: string[];
-  schwerpunkte?: string[];
-  session_preferences?: string[];
-  approach_text: string;
-  accepting_new: boolean;
-  city: string;
-  typical_rate?: number | null;
-  metadata?: {
-    profile?: {
-      approach_text?: string;
-      // New structured profile fields
-      who_comes_to_me?: string;
-      session_focus?: string;
-      first_session?: string;
-      about_me?: string;
-      languages?: string[];
-      years_experience?: number;
-      practice_address?: string;
-      qualification?: string;
-    };
-  };
-  availability?: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[];
-};
+// Re-export for backwards compatibility with imports from this file
+export type { TherapistData } from '@/lib/therapist-mapper';
 
 // Static modality style configuration (moved outside component to prevent recreation)
 const BASE_MODALITY_STYLE: Record<string, { cls: string; Icon: React.ElementType; label: string }> = {
