@@ -612,6 +612,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             photo_url: detailModalTherapist.photo_url,
             availability: Array.isArray(detailModalTherapist.availability) ? detailModalTherapist.availability as { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] : [],
             modalities: data?.patient?.modality_matters ? (detailModalTherapist.modalities || []) : [],
+            schwerpunkte: detailModalTherapist.schwerpunkte || [],
             session_preferences: detailModalTherapist.session_preferences || [],
             approach_text: detailModalTherapist.approach_text || '',
             accepting_new: detailModalTherapist.accepting_new ?? true,
