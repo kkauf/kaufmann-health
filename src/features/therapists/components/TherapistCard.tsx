@@ -17,8 +17,14 @@ interface TherapistCardProps {
   therapist: TherapistData;
   onViewDetails: () => void;
   // Optional match-specific props
-  showModalities?: boolean; // Control whether to show modality badges (default: true)
-  showSchwerpunkte?: boolean; // Show schwerpunkte instead of modalities (feature toggle)
+  /** @deprecated Use patientModalities instead for conditional display */
+  showModalities?: boolean;
+  /** @deprecated Use patientSchwerpunkte instead for conditional display */
+  showSchwerpunkte?: boolean;
+  /** Patient's selected modalities - if non-empty, shows matching modality badges */
+  patientModalities?: string[];
+  /** Patient's selected schwerpunkte - if non-empty, shows matching schwerpunkte badges */
+  patientSchwerpunkte?: string[];
   matchBadge?: { text: string; className?: string } | null; // Optional badge for top matches
   contactedAt?: string | null; // ISO date string if therapist was already contacted
   onContactClick?: (type: 'booking' | 'consultation') => void; // Custom contact handler
@@ -44,8 +50,10 @@ function hashCode(s: string) {
 export function TherapistCard({
   therapist,
   onViewDetails,
-  showModalities = true,
-  showSchwerpunkte = false,
+  showModalities: _legacyShowModalities,
+  showSchwerpunkte: _legacyShowSchwerpunkte,
+  patientModalities = [],
+  patientSchwerpunkte = [],
   matchBadge = null,
   contactedAt = null,
   onContactClick: customContactHandler,
@@ -101,6 +109,11 @@ export function TherapistCard({
   const modalityInfos = useMemo(() => {
     return (therapist.modalities || []).slice(0, 3).map(m => getModalityInfo(m));
   }, [therapist.modalities]);
+
+  // Conditional display: show modalities if patient has modality preferences
+  const shouldShowModalities = patientModalities.length > 0 && therapist.modalities && therapist.modalities.length > 0;
+  // Show schwerpunkte if: legacy prop is true (directory) OR patient selected any (matches page)
+  const shouldShowSchwerpunkte = (_legacyShowSchwerpunkte || patientSchwerpunkte.length > 0) && therapist.schwerpunkte && therapist.schwerpunkte.length > 0;
 
   const handleContactClick = (type: 'booking' | 'consultation') => {
     try {
@@ -227,29 +240,8 @@ export function TherapistCard({
             </div>
           </div>
 
-          {/* Schwerpunkte (shown when showSchwerpunkte is true) */}
-          {showSchwerpunkte && therapist.schwerpunkte && therapist.schwerpunkte.length > 0 && (
-            <div className="mb-3">
-              <div className="flex flex-wrap gap-1.5">
-                {therapist.schwerpunkte.slice(0, 3).map((id) => (
-                  <Badge
-                    key={id}
-                    variant="outline"
-                    className={`rounded-full border cursor-pointer transition-all hover:shadow-sm ${getSchwerpunktColorClasses(id)}`}
-                    onClick={(e) => { e.stopPropagation(); openDetails(); }}
-                  >
-                    {getSchwerpunktLabel(id)}
-                  </Badge>
-                ))}
-                {therapist.schwerpunkte.length > 3 && (
-                  <Badge variant="secondary" className="rounded-full">+{therapist.schwerpunkte.length - 3}</Badge>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Modalities (shown when showModalities is true and showSchwerpunkte is false) */}
-          {showModalities && !showSchwerpunkte && therapist.modalities && therapist.modalities.length > 0 && (
+          {/* Modalities FIRST (shown when patient has modality preferences) */}
+          {shouldShowModalities && (
             <div className="mb-3">
               <div className="relative -mx-4">
                 <div
@@ -298,6 +290,27 @@ export function TherapistCard({
                 {/* Edge fades */}
                 <div className="pointer-events-none absolute left-0 top-0 h-full w-4 bg-gradient-to-r from-white to-transparent"></div>
                 <div className="pointer-events-none absolute right-0 top-0 h-full w-4 bg-gradient-to-l from-white to-transparent"></div>
+              </div>
+            </div>
+          )}
+
+          {/* Schwerpunkte SECOND (shown when patient selected any - shows ALL therapist schwerpunkte) */}
+          {shouldShowSchwerpunkte && (
+            <div className="mb-3">
+              <div className="flex flex-wrap gap-1.5">
+                {therapist.schwerpunkte!.slice(0, 3).map((id) => (
+                  <Badge
+                    key={id}
+                    variant="outline"
+                    className={`rounded-full border cursor-pointer transition-all hover:shadow-sm ${getSchwerpunktColorClasses(id)}`}
+                    onClick={(e) => { e.stopPropagation(); openDetails(); }}
+                  >
+                    {getSchwerpunktLabel(id)}
+                  </Badge>
+                ))}
+                {therapist.schwerpunkte!.length > 3 && (
+                  <Badge variant="secondary" className="rounded-full">+{therapist.schwerpunkte!.length - 3}</Badge>
+                )}
               </div>
             </div>
           )}

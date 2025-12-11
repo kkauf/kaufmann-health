@@ -55,6 +55,7 @@ type MatchApiData = {
     city?: string;
     session_preferences?: ('online' | 'in_person')[];
     specializations?: string[];
+    schwerpunkte?: string[];
     gender_preference?: 'male' | 'female' | 'no_preference';
     start_timing?: string;
     modality_matters?: boolean;
@@ -546,8 +547,9 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
               key={t.id}
               therapist={therapistData}
               onViewDetails={() => setDetailModalTherapist(t)}
-              showModalities={true}
-              showSchwerpunkte={(process.env.NEXT_PUBLIC_SHOW_SCHWERPUNKTE || '').toLowerCase() === 'true'}
+              patientModalities={data?.patient?.specializations || []}
+              showSchwerpunkte={true}
+              patientSchwerpunkte={data?.patient?.schwerpunkte || []}
               highlighted={isHighlighted}
               contactedAt={t.contacted_at || null}
               onContactClick={(type) => handleOpen(t, type)}

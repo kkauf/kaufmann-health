@@ -163,15 +163,19 @@ export async function POST(req: NextRequest) {
             .single();
 
           if (existing) {
-            // Update name and persist draft_contact if provided
+            // Update name and persist draft_contact/form_session_id if provided
             const updateData: Record<string, unknown> = {};
+            const meta = (existing.metadata as Record<string, unknown>) || {};
             if (!existing.name || existing.name !== name) {
               updateData.name = name;
             }
+            // Store form_session_id so verify-code can merge preferences
+            if (form_session_id) {
+              meta['form_session_id'] = form_session_id;
+              updateData.metadata = meta;
+            }
             if (draft_contact) {
-              const meta = (existing.metadata as Record<string, unknown>) || {};
               meta['draft_contact'] = draft_contact;
-              if (isTestCookie) meta['is_test'] = true;
               updateData.metadata = meta;
               try {
                 await ServerAnalytics.trackEventFromRequest(req, {
@@ -182,7 +186,6 @@ export async function POST(req: NextRequest) {
               } catch {}
             }
             if (draft_booking) {
-              const meta = (updateData.metadata as Record<string, unknown>) || ((existing.metadata as Record<string, unknown>) || {});
               meta['draft_booking'] = draft_booking;
               if (isTestCookie) meta['is_test'] = true;
               updateData.metadata = meta;
@@ -194,8 +197,7 @@ export async function POST(req: NextRequest) {
                 });
               } catch {}
             }
-            if (isTestCookie && !updateData.metadata) {
-              const meta = (existing.metadata as Record<string, unknown>) || {};
+            if (isTestCookie) {
               meta['is_test'] = true;
               updateData.metadata = meta;
             }
@@ -210,6 +212,7 @@ export async function POST(req: NextRequest) {
             const metadata: Record<string, unknown> = {
               contact_method: 'phone',
               source: 'directory_contact',
+              ...(form_session_id ? { form_session_id } : {}),
               ...(isTestCookie ? { is_test: true } : {}),
             };
             // Store draft contact data if provided (therapist directory flow)
