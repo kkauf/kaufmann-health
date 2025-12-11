@@ -17,6 +17,7 @@ import { PRIVACY_VERSION } from '@/lib/privacy';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { getOrCreateSessionId, getGclid } from '@/lib/attribution';
 import { fireGoogleAdsClientConversion } from '@/lib/gtag';
+import { getFlowVariant } from '@/lib/flow-randomization';
 
 // Feature toggle for schwerpunkte
 const SHOW_SCHWERPUNKTE = process.env.NEXT_PUBLIC_SHOW_SCHWERPUNKTE === 'true';
@@ -409,13 +410,10 @@ export default function SignupWizard() {
         }
         // Ensure variant has a sensible default when source is known but variant wasn't captured
         // This handles cases where browsers strip query params from referrer
-        // First, try to retrieve variant from localStorage (captured by PageAnalytics on landing pages)
+        // Test 4: Use flow randomization (concierge/self-service) for consistent attribution
         if (src && !variant) {
           try {
-            const storedVariant = localStorage.getItem('test1_variant');
-            if (storedVariant) {
-              variant = storedVariant;
-            }
+            variant = getFlowVariant(null);
           } catch { }
         }
         // Final fallback: mark as direct only if truly unknown
