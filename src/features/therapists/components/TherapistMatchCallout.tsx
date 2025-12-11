@@ -6,31 +6,49 @@ import { Button } from '@/components/ui/button';
 import CtaLink from '@/components/CtaLink';
 import Image from 'next/image';
 
+const LS_KEYS = {
+  data: 'kh_wizard_data',
+  step: 'kh_wizard_step',
+} as const;
+
 /**
  * Subtle callout inviting users to use the questionnaire for better matching.
  * Placed at the top of the therapeuten directory to offer help without being intrusive.
+ * 
+ * Always initiates concierge flow. If user previously completed self-service,
+ * skips to the "Was bringt dich zur Therapie?" step (step 2).
  */
 export function TherapistMatchCallout() {
-  const [href, setHref] = React.useState<string>('/fragebogen');
+  const [href, setHref] = React.useState<string>('/fragebogen?variant=concierge');
   React.useEffect(() => {
     try {
-      let v: string | null = null;
-      // Prefer current URL params
-      try {
-        const sp = new URLSearchParams(window.location.search);
-        v = sp.get('variant') || sp.get('v');
-      } catch {}
-      // Fallback to document.referrer (user likely arrived from /start?variant=...)
-      if (!v) {
+      // Always use concierge variant for Katherine's CTA
+      const params = new URLSearchParams();
+      params.set('variant', 'concierge');
+
+      // Check if user has previously completed self-service flow
+      // If so, skip to step 2 ("Was bringt dich zur Therapie?") which is the concierge-specific step
+      const savedData = localStorage.getItem(LS_KEYS.data);
+      const savedStep = Number(localStorage.getItem(LS_KEYS.step) || '0');
+      
+      if (savedData || savedStep > 1) {
         try {
-          const ref = document.referrer || '';
-          if (ref) {
-            const u = new URL(ref);
-            v = u.searchParams.get('variant') || u.searchParams.get('v');
+          const parsed = savedData ? JSON.parse(savedData) : {};
+          // User has progressed past step 1, or has self-service data (schwerpunkte)
+          // Skip to step 2 so they can add the open text for concierge curation
+          const hasSelfServiceData = parsed.schwerpunkte?.length > 0 || 
+                                     parsed.modality_matters !== undefined ||
+                                     parsed.methods?.length > 0 ||
+                                     parsed.city ||
+                                     parsed.session_preference;
+          
+          if (hasSelfServiceData || savedStep > 1) {
+            params.set('startStep', '2');
           }
         } catch {}
       }
-      setHref(`/fragebogen${v ? `?variant=${encodeURIComponent(v)}` : ''}`);
+
+      setHref(`/fragebogen?${params.toString()}`);
     } catch {}
   }, []);
 

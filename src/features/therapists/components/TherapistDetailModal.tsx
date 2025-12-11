@@ -746,21 +746,21 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
           <div className="sticky bottom-0 flex flex-col gap-3 pt-4 sm:flex-row">
             <Button
               className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
-              onClick={() => handleContactClick('booking')}
+              onClick={() => handleContactClick('consultation')}
               disabled={!therapist.accepting_new}
             >
-              <Calendar className="mr-2 h-5 w-5 shrink-0" />
-              <span className="break-words">Therapeut:in buchen</span>
+              <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
+              <span className="break-words">Kostenloses Kennenlernen (15 min)</span>
             </Button>
 
             <Button
               variant="outline"
               className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
-              onClick={() => handleContactClick('consultation')}
+              onClick={() => handleContactClick('booking')}
               disabled={!therapist.accepting_new}
             >
-              <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
-              <span className="break-words">Kostenloses Erstgespräch (15 min)</span>
+              <Calendar className="mr-2 h-5 w-5 shrink-0" />
+              <span className="break-words">Direkt buchen</span>
             </Button>
           </div>
         ) : !previewMode && viewMode === 'booking' ? (

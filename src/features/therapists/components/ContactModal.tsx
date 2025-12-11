@@ -114,7 +114,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       const greeting = `Guten Tag ${therapist.first_name}`;
       const intent = contactType === 'booking'
         ? 'ich möchte gerne einen Termin vereinbaren'
-        : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
+        : 'ich würde gerne ein kostenloses Kennenlerngespräch (15 Min) vereinbaren';
       const initialReason = (preAuth.defaultReason || '').trim();
       if (initialReason) setReason(initialReason);
       const signature = preAuth.patientName ? `\n\nViele Grüße\n${preAuth.patientName}` : '';
@@ -222,7 +222,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           const greeting = `Guten Tag ${therapist.first_name}`;
           const intent = contactType === 'booking'
             ? 'ich möchte gerne einen Termin vereinbaren'
-            : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
+            : 'ich würde gerne ein kostenloses Kennenlerngespräch (15 Min) vereinbaren';
           const signature = userName ? `\n\nViele Grüße\n${userName}` : '';
           // Use preAuth.defaultReason if available (e.g., from matches page)
           const initialReason = (preAuth?.defaultReason || '').trim();
@@ -289,7 +289,35 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   // Draft restoration no longer needed - server processes draft_contact on verification
   // Message is auto-sent after email/SMS confirmation via /api/public/leads/confirm or /api/public/verification/verify-code
 
+  // Pre-populate message immediately when modal opens (10x UX: no blank state)
+  // This runs for new users who don't have preAuth, verified session, or saved draft
+  useEffect(() => {
+    if (!open) return;
+    // Skip if message already has content (from preAuth, verified session, or saved draft)
+    if (message.trim()) return;
+    
+    const greeting = `Guten Tag ${therapist.first_name}`;
+    const intent = contactType === 'booking'
+      ? 'ich möchte gerne einen Termin vereinbaren'
+      : 'ich interessiere mich für ein kostenloses Kennenlerngespräch (15 Min)';
+    const defaultMessage = `${greeting}, ${intent} und fand dein Profil sehr ansprechend.`;
+    setMessage(defaultMessage);
+  }, [open, therapist.first_name, contactType, message]);
 
+  // Save draft when modal closes (for multi-therapist contact)
+  const prevOpenRef = useRef(open);
+  useEffect(() => {
+    // Detect close: was open, now closed
+    if (prevOpenRef.current && !open && contactType === 'consultation') {
+      // Save current draft to sessionStorage
+      if (reason || message) {
+        try {
+          sessionStorage.setItem(CONSULTATION_DRAFT_KEY, JSON.stringify({ reason, message }));
+        } catch { /* ignore storage errors */ }
+      }
+    }
+    prevOpenRef.current = open;
+  }, [open, contactType, reason, message]);
 
   // Track modal open
   useEffect(() => {
@@ -1044,7 +1072,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
               ) : (
                 <>
                   <p className="text-gray-600">
-                    {contactType === 'booking' ? 'Termin vereinbaren' : 'Erstgespräch (15 Min)'}
+                    {contactType === 'booking' ? 'Termin vereinbaren' : 'Kennenlernen (15 Min)'}
                   </p>
                   {contactType === 'consultation' && (
                     <Badge className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 hover:bg-blue-100">
@@ -1068,7 +1096,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
 
         {!showBookingPicker && (
           <div className="space-y-2">
-            <Label htmlFor="reason" className="text-sm font-medium">Worum geht es? *</Label>
+            <Label htmlFor="reason" className="text-sm font-medium">Worum geht es? <span className="text-gray-400 font-normal">(optional)</span></Label>
             <Input
               id="reason"
               value={reason}
@@ -1077,7 +1105,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                 const greeting = `Guten Tag ${therapist.first_name}`;
                 const intent = contactType === 'booking'
                   ? 'ich möchte gerne einen Termin vereinbaren'
-                  : 'ich würde gerne ein kostenloses Erstgespräch (15 Min) vereinbaren';
+                  : 'ich würde gerne ein kostenloses Kennenlerngespräch (15 Min) vereinbaren';
                 const signature = name ? `\n\nViele Grüße\n${name}` : '';
 
                 // Only auto-update message if the user hasn't manually edited it
@@ -1098,10 +1126,9 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
               placeholder="z.B. Panikattacken, Überforderung im Alltag, Beziehungsproblemen"
               disabled={loading}
               className="h-11"
-              autoFocus
             />
             <p className="text-xs text-gray-500 leading-relaxed">
-              Beschreibe kurz, wobei du Unterstützung suchst
+              Hilft Therapeut:innen, sich auf das Gespräch vorzubereiten
             </p>
           </div>
         )}
@@ -1391,6 +1418,12 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                     setFormatShake(true);
                     setTimeout(() => setFormatShake(false), 500);
                     return;
+                  }
+                  // Save draft for multi-therapist contact (restore when switching therapists)
+                  if (contactType === 'consultation' && (reason || message)) {
+                    try {
+                      sessionStorage.setItem(CONSULTATION_DRAFT_KEY, JSON.stringify({ reason, message }));
+                    } catch { /* ignore storage errors */ }
                   }
                   setStep('verify');
                 }}

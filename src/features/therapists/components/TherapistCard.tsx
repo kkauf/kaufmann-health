@@ -355,22 +355,22 @@ export function TherapistCard({
           <Button
             size="lg"
             className="w-full bg-emerald-600 hover:bg-emerald-700"
-            onClick={() => handleContactClick('booking')}
+            onClick={() => handleContactClick('consultation')}
             disabled={!therapist.accepting_new}
           >
-            <Calendar className="mr-2 h-4 w-4" />
-            {contactedAt ? 'Erneut kontaktieren' : 'Therapeut:in buchen'}
+            <MessageCircle className="mr-2 h-4 w-4" />
+            Kostenloses Kennenlernen (15 min)
           </Button>
 
           <Button
             size="lg"
             variant="outline"
             className="w-full text-sm"
-            onClick={() => handleContactClick('consultation')}
+            onClick={() => handleContactClick('booking')}
             disabled={!therapist.accepting_new}
           >
-            <MessageCircle className="mr-2 h-4 w-4 shrink-0" />
-            <span className="truncate">Kostenloses Erstgespräch (15 min)</span>
+            <Calendar className="mr-2 h-4 w-4 shrink-0" />
+            <span className="truncate">{contactedAt ? 'Erneut buchen' : 'Direkt buchen'}</span>
           </Button>
         </div>
       </CardContent>
