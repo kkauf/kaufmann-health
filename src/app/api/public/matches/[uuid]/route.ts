@@ -5,6 +5,11 @@ import { logError } from '@/lib/logger';
 import { computeMismatches, normalizeSpec, type PatientMeta, type TherapistRowForMatch } from '@/features/leads/lib/match';
 import { computeAvailability, getBerlinDayIndex } from '@/lib/availability';
 import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
+import {
+  type TherapistRow,
+  mapTherapistRow,
+  THERAPIST_SELECT_COLUMNS_WITH_GENDER,
+} from '@/lib/therapist-mapper';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -133,11 +138,12 @@ export async function GET(req: Request) {
     }
     const therapistIds = chosen.map(m => m.therapist_id);
 
-    // Fetch therapist profiles (include fields needed for mismatch scoring + rich display)
-    type TherapistRow = {
+    // Fetch therapist profiles using shared select columns
+    // Local type for mismatch scoring (extends shared fields with match-specific access patterns)
+    type MatchTherapistRow = {
       id: string;
-      first_name: string;
-      last_name: string;
+      first_name: string | null;
+      last_name: string | null;
       gender?: string | null;
       photo_url?: string | null;
       city?: string | null;
@@ -145,16 +151,16 @@ export async function GET(req: Request) {
       schwerpunkte?: string[] | null;
       session_preferences?: string[] | null;
       accepting_new?: boolean | null;
-      approach_text?: string | null;
-      metadata?: { session_preferences?: string[] | null; profile?: { approach_text?: string }; [k: string]: unknown } | null;
+      typical_rate?: number | null;
+      metadata?: { session_preferences?: string[] | null; profile?: { approach_text?: string; who_comes_to_me?: string; session_focus?: string; qualification?: string }; [k: string]: unknown } | null;
     };
-    let therapists: TherapistRow[] = [];
+    let therapistRows: MatchTherapistRow[] = [];
     if (therapistIds.length > 0) {
       const { data: trows } = await supabaseServer
         .from('therapists')
-        .select('id, first_name, last_name, gender, photo_url, city, modalities, schwerpunkte, session_preferences, accepting_new, approach_text, metadata')
+        .select(THERAPIST_SELECT_COLUMNS_WITH_GENDER)
         .in('id', therapistIds);
-      if (Array.isArray(trows)) therapists = trows as TherapistRow[];
+      if (Array.isArray(trows)) therapistRows = trows as unknown as MatchTherapistRow[];
     }
 
     // Compute availability for selected therapists using shared utility
@@ -173,7 +179,7 @@ export async function GET(req: Request) {
     }
 
     // Rank therapists using admin mismatch logic
-    const scored = therapists.map((t) => {
+    const scored = therapistRows.map((t) => {
       const tRow: TherapistRowForMatch = {
         id: t.id,
         gender: t.gender || undefined,
@@ -230,7 +236,7 @@ export async function GET(req: Request) {
       modalities: Array.isArray(t.modalities) ? t.modalities : [],
       schwerpunkte: Array.isArray(t.schwerpunkte) ? t.schwerpunkte : [],
       session_preferences: Array.isArray(t.session_preferences) ? t.session_preferences : (Array.isArray(t.metadata?.session_preferences) ? t.metadata?.session_preferences : []),
-      approach_text: t.approach_text || t.metadata?.profile?.approach_text || '',
+      approach_text: t.metadata?.profile?.approach_text || '',
       gender: t.gender || undefined,
       availability,
       is_perfect: Boolean(isPerfect),

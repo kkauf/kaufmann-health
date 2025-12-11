@@ -39,7 +39,7 @@ export function TherapistTeaserClient({
       last_name: therapist.last_name,
       city: therapist.city,
       modalities: therapist.modalities,
-      schwerpunkte: therapist.schwerpunkte,
+      schwerpunkte: therapist.schwerpunkte || [],
       accepting_new: therapist.accepting_new,
       photo_url: therapist.photo_url,
       approach_text: therapist.approach_text,

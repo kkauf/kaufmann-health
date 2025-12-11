@@ -1,37 +1,21 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { computeAvailability } from '@/lib/availability';
-
-type TherapistRow = {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  city: string | null;
-  modalities: unknown;
-  schwerpunkte: unknown;
-  session_preferences: unknown;
-  accepting_new: boolean | null;
-  photo_url: string | null;
-  status: string | null;
-  metadata: unknown;
-  typical_rate: number | null;
-};
+import {
+  mapTherapistRow,
+  getHiddenTherapistIds,
+  isTherapistHidden,
+  parseTherapistRows,
+  THERAPIST_SELECT_COLUMNS,
+} from '@/lib/therapist-mapper';
 
 export async function GET() {
   try {
-    const hideIdsEnv = (process.env.HIDE_THERAPIST_IDS || '').trim();
-    const hideIds = new Set(
-      hideIdsEnv
-        ? hideIdsEnv
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-        : []
-    );
+    const hideIds = getHiddenTherapistIds();
 
     const { data, error } = await supabaseServer
       .from('therapists')
-      .select('id, first_name, last_name, city, modalities, schwerpunkte, session_preferences, accepting_new, photo_url, status, metadata, typical_rate')
+      .select(THERAPIST_SELECT_COLUMNS)
       .eq('status', 'verified')
       .order('created_at', { ascending: false });
 
@@ -43,7 +27,8 @@ export async function GET() {
       );
     }
 
-    const rows = (data as TherapistRow[] | null) || [];
+    // Validate rows with Zod schema - logs warnings for invalid rows in dev
+    const rows = parseTherapistRows(data || []);
 
     // Build list of therapist ids for availability lookup
     const therapistIds = rows.map((r) => r.id);
@@ -65,81 +50,10 @@ export async function GET() {
     });
 
     const therapists = rows
-      .filter((row) => {
-        if (hideIds.has(row.id)) return false;
-        try {
-          const md = (row.metadata || {}) as Record<string, unknown>;
-          const hiddenVal: unknown = md ? (md as Record<string, unknown>)['hidden'] : undefined;
-          const hidden = hiddenVal === true || String(hiddenVal).toLowerCase() === 'true';
-          return !hidden;
-        } catch {
-          return true;
-        }
-      })
+      .filter((row) => !isTherapistHidden(row, hideIds))
       .map((row) => {
-        const mdObj: Record<string, unknown> =
-          row?.metadata && typeof row.metadata === 'object'
-            ? (row.metadata as Record<string, unknown>)
-            : {};
-
-        const profileUnknown = mdObj['profile'];
-        const profile: Record<string, unknown> =
-          profileUnknown && typeof profileUnknown === 'object'
-            ? (profileUnknown as Record<string, unknown>)
-            : {};
-
-        // Legacy approach_text (fallback)
-        const approach_text =
-          typeof profile['approach_text'] === 'string'
-            ? (profile['approach_text'] as string)
-            : '';
-
-        // New structured profile fields
-        const who_comes_to_me = typeof profile['who_comes_to_me'] === 'string' ? profile['who_comes_to_me'] : undefined;
-        const session_focus = typeof profile['session_focus'] === 'string' ? profile['session_focus'] : undefined;
-        const first_session = typeof profile['first_session'] === 'string' ? profile['first_session'] : undefined;
-        const about_me = typeof profile['about_me'] === 'string' ? profile['about_me'] : undefined;
-
-        const languages = Array.isArray(profile['languages'])
-          ? (profile['languages'] as string[])
-          : [];
-        const years_experience =
-          typeof profile['years_experience'] === 'number'
-            ? (profile['years_experience'] as number)
-            : undefined;
-        const practice_address = typeof profile['practice_address'] === 'string' ? profile['practice_address'] : undefined;
-        
-        // Get pre-computed availability from shared utility
         const availability = availabilityMap.get(row.id) || [];
-
-        return {
-          id: row.id,
-          first_name: String(row.first_name || ''),
-          last_name: String(row.last_name || ''),
-          city: String(row.city || ''),
-          modalities: Array.isArray(row.modalities) ? (row.modalities as string[]) : [],
-          schwerpunkte: Array.isArray(row.schwerpunkte) ? (row.schwerpunkte as string[]) : [],
-          session_preferences: Array.isArray(row.session_preferences) ? (row.session_preferences as string[]) : [],
-          accepting_new: Boolean(row.accepting_new),
-          photo_url: row.photo_url || undefined,
-          approach_text,
-          typical_rate: row.typical_rate,
-          metadata: {
-            profile: {
-              // New structured fields
-              ...(who_comes_to_me ? { who_comes_to_me } : {}),
-              ...(session_focus ? { session_focus } : {}),
-              ...(first_session ? { first_session } : {}),
-              ...(about_me ? { about_me } : {}),
-              // Existing fields
-              ...(languages.length > 0 ? { languages } : {}),
-              ...(typeof years_experience === 'number' ? { years_experience } : {}),
-              ...(typeof profile['qualification'] === 'string' ? { qualification: profile['qualification'] } : {}),
-              ...(practice_address ? { practice_address } : {}),
-            },
-          },
-          availability,
-        };
+        return mapTherapistRow(row, { availability });
       });
     return NextResponse.json(
       { therapists },
