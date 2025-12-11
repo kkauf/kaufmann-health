@@ -98,7 +98,8 @@ export async function getTherapistsForLanding(options?: {
     query = query.eq('accepting_new', options.accepting_new);
   }
   const limit = options?.limit && options.limit > 0 ? options.limit : 3;
-  const poolLimit = options?.modalities && options.modalities.length > 0 ? Math.max(limit * 5, 20) : limit;
+  const hasModalityFilter = Array.isArray(options?.modalities) && options.modalities.length > 0;
+  const poolLimit = hasModalityFilter ? Math.max(limit * 5, 20) : Math.max(limit * 3, 10);
   query = query.limit(poolLimit);
 
   const { data, error } = await query;
