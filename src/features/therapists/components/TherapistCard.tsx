@@ -112,14 +112,8 @@ export function TherapistCard({
 
   // Conditional display: show modalities if patient has modality preferences
   const shouldShowModalities = patientModalities.length > 0 && therapist.modalities && therapist.modalities.length > 0;
-  // Conditional display: show schwerpunkte if patient selected specific ones
-  const shouldShowSchwerpunkte = patientSchwerpunkte.length > 0 && therapist.schwerpunkte && therapist.schwerpunkte.length > 0;
-  // Filter to matching schwerpunkte only
-  const matchingSchwerpunkte = useMemo(() => {
-    if (!shouldShowSchwerpunkte) return [];
-    const patientSet = new Set(patientSchwerpunkte.map(s => s.toLowerCase()));
-    return (therapist.schwerpunkte || []).filter(s => patientSet.has(s.toLowerCase()));
-  }, [shouldShowSchwerpunkte, patientSchwerpunkte, therapist.schwerpunkte]);
+  // Show schwerpunkte if: legacy prop is true (directory) OR patient selected any (matches page)
+  const shouldShowSchwerpunkte = (_legacyShowSchwerpunkte || patientSchwerpunkte.length > 0) && therapist.schwerpunkte && therapist.schwerpunkte.length > 0;
 
   const handleContactClick = (type: 'booking' | 'consultation') => {
     try {
@@ -300,11 +294,11 @@ export function TherapistCard({
             </div>
           )}
 
-          {/* Schwerpunkte SECOND (shown when patient selected specific ones, only matching ones) */}
-          {shouldShowSchwerpunkte && matchingSchwerpunkte.length > 0 && (
+          {/* Schwerpunkte SECOND (shown when patient selected any - shows ALL therapist schwerpunkte) */}
+          {shouldShowSchwerpunkte && (
             <div className="mb-3">
               <div className="flex flex-wrap gap-1.5">
-                {matchingSchwerpunkte.slice(0, 3).map((id) => (
+                {therapist.schwerpunkte!.slice(0, 3).map((id) => (
                   <Badge
                     key={id}
                     variant="outline"
@@ -314,8 +308,8 @@ export function TherapistCard({
                     {getSchwerpunktLabel(id)}
                   </Badge>
                 ))}
-                {matchingSchwerpunkte.length > 3 && (
-                  <Badge variant="secondary" className="rounded-full">+{matchingSchwerpunkte.length - 3}</Badge>
+                {therapist.schwerpunkte!.length > 3 && (
+                  <Badge variant="secondary" className="rounded-full">+{therapist.schwerpunkte!.length - 3}</Badge>
                 )}
               </div>
             </div>

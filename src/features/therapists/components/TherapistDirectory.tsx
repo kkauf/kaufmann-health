@@ -528,8 +528,7 @@ export function TherapistDirectory({ initialTherapists = [], emptyState, disable
             key={therapist.id}
             therapist={therapist}
             onViewDetails={() => setSelectedTherapist(therapist)}
-            patientModalities={selectedModality !== 'all' ? [selectedModality] : []}
-            patientSchwerpunkte={[]}
+            showSchwerpunkte={SHOW_SCHWERPUNKTE}
           />
         ))}
         {/* Desktop/Tablet: Load more tile occupies a grid cell */}
