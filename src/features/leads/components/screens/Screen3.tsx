@@ -46,48 +46,51 @@ export default function Screen3({
     return Object.keys(e).length === 0;
   }
 
+  const needsLocation = values.session_preference === 'in_person' || values.session_preference === 'either';
+
   return (
     <div className="space-y-8">
-      <div className="space-y-3">
+      <div className="space-y-4">
         <Label className="text-base">Fast geschafft - noch ein paar praktische Details</Label>
+        
+        {/* Session preference - ask first */}
         <div className="space-y-2">
-          <p className="font-medium">Wo suchst du Unterstützung?</p>
-          <div className="grid gap-3">
-            <div className="space-y-1">
-              <Label className="text-sm">Stadt</Label>
-              <div className="flex items-center gap-2 h-11 px-3 rounded border border-gray-200 bg-gray-50 text-gray-700">
-                <MapPin className="h-4 w-4 text-gray-400" />
-                <span>{DEFAULT_CITY}</span>
-              </div>
-              <p className="text-xs text-gray-500">Wir sind aktuell nur in Berlin aktiv.</p>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm">Wie möchtest du die Sitzungen machen?</Label>
-              <div className="grid gap-2">
-                {([
-                  { value: 'online', label: 'Online (Video)' },
-                  { value: 'in_person', label: 'Vor Ort (in Präsenz)' },
-                  { value: 'either', label: 'Beides ist okay' },
-                ] as const).map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    className={`h-11 rounded border px-4 text-left ${values.session_preference === opt.value ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
-                    onClick={() => {
-                      const derivedOnlineOk = opt.value === 'online' || opt.value === 'either';
-                      onChange({ session_preference: opt.value, online_ok: derivedOnlineOk });
-                    }}
-                    disabled={!!disabled}
-                    aria-disabled={disabled}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              {errors.session && <p className="text-sm text-red-600">{errors.session}</p>}
+          <p className="font-medium">Wie möchtest du die Sitzungen machen?</p>
+          <div className="grid gap-2">
+            {([
+              { value: 'online', label: 'Online (Video)', subtitle: 'Deutschlandweit verfügbar' },
+              { value: 'in_person', label: 'Vor Ort (in Präsenz)', subtitle: 'Aktuell nur in Berlin' },
+              { value: 'either', label: 'Beides ist okay', subtitle: 'Online + Vor Ort in Berlin' },
+            ] as const).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`h-auto py-3 rounded border px-4 text-left ${values.session_preference === opt.value ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
+                onClick={() => {
+                  const derivedOnlineOk = opt.value === 'online' || opt.value === 'either';
+                  onChange({ session_preference: opt.value, online_ok: derivedOnlineOk });
+                }}
+                disabled={!!disabled}
+                aria-disabled={disabled}
+              >
+                <span className="block font-medium">{opt.label}</span>
+                <span className="block text-xs text-gray-500">{opt.subtitle}</span>
+              </button>
+            ))}
+          </div>
+          {errors.session && <p className="text-sm text-red-600">{errors.session}</p>}
+        </div>
+
+        {/* City - only show when in_person or either selected */}
+        {needsLocation && (
+          <div className="space-y-1 pt-2">
+            <Label className="text-sm">Standort für Präsenz-Sitzungen</Label>
+            <div className="flex items-center gap-2 h-11 px-3 rounded border border-gray-200 bg-gray-50 text-gray-700">
+              <MapPin className="h-4 w-4 text-emerald-600" />
+              <span>{DEFAULT_CITY}</span>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between pt-2">
