@@ -105,13 +105,63 @@ export async function POST(req: NextRequest) {
           // Update metadata with phone_verified flag and mark actionable (keep draft until processed)
           const metadata: Record<string, unknown> = { ...(person.metadata || {}), phone_verified: true };
 
+          // Merge form session data if available (returning users with new preferences)
+          const fsid = typeof metadata['form_session_id'] === 'string' ? (metadata['form_session_id'] as string) : undefined;
+          if (fsid) {
+            try {
+              const { data: fs } = await supabaseServer
+                .from('form_sessions')
+                .select('data')
+                .eq('id', fsid)
+                .single<{ data: Record<string, unknown> }>();
+              if (fs?.data) {
+                const d = fs.data;
+                const maybeString = (k: string) => (typeof d[k] === 'string' ? (d[k] as string).trim() : undefined);
+                const maybeArray = (k: string) => (Array.isArray(d[k]) ? (d[k] as unknown[]) : undefined);
+                // Merge preferences from form session
+                const cityVal = maybeString('city');
+                if (cityVal) metadata.city = cityVal;
+                const sessionPref = maybeString('session_preference');
+                if (sessionPref) {
+                  const s = sessionPref.toLowerCase();
+                  if (s === 'online' || s.startsWith('online')) metadata.session_preference = 'online';
+                  else if (s === 'in_person' || s.includes('vor ort')) metadata.session_preference = 'in_person';
+                  else if (s.startsWith('beides') || s.includes('beides ist okay')) {
+                    metadata.session_preferences = ['online', 'in_person'];
+                    delete metadata['session_preference'];
+                  }
+                }
+                const spArray = maybeArray('session_preferences');
+                if (Array.isArray(spArray)) metadata.session_preferences = spArray;
+                const gender = maybeString('gender');
+                if (gender) {
+                  const g = gender.toLowerCase();
+                  if (g.includes('mann')) metadata.gender_preference = 'male';
+                  else if (g.includes('frau')) metadata.gender_preference = 'female';
+                  else if (g.includes('keine')) metadata.gender_preference = 'no_preference';
+                }
+                const methods = maybeArray('methods');
+                if (methods) metadata.specializations = methods;
+                const schwerpunkte = maybeArray('schwerpunkte');
+                if (schwerpunkte) metadata.schwerpunkte = schwerpunkte;
+                const time_slots = maybeArray('time_slots');
+                if (time_slots) metadata.time_slots = time_slots;
+                void ServerAnalytics.trackEventFromRequest(req, {
+                  type: 'form_session_merged',
+                  source: 'api.verification.verify-code',
+                  props: { form_session_id: fsid, patient_id: person.id },
+                });
+              }
+            } catch { /* non-blocking */ }
+          }
+
           await supabaseServer
             .from('people')
             // Mark as 'new' so phone users proceed without email confirmation
             .update({ metadata, status: 'new' })
             .eq('id', person.id);
 
-          // Create instant matches for phone-verified users
+          // Create instant matches for phone-verified users (uses merged metadata)
           const variant = person.campaign_variant || undefined;
           try {
             const matchResult = await createInstantMatchesForPatient(person.id, variant);

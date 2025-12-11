@@ -91,7 +91,7 @@ export async function GET(req: Request) {
       await logError('api.public.matches.get', e, { stage: 'create_session', uuid, patient_id: patientId });
     }
 
-    type PatientRow = { name?: string | null; email?: string | null; phone_number?: string | null; status?: string | null; metadata?: { issue?: string; notes?: string; additional_info?: string; city?: string; session_preference?: 'online'|'in_person'; session_preferences?: ('online'|'in_person')[]; specializations?: string[]; gender_preference?: 'male'|'female'|'no_preference'; start_timing?: string; modality_matters?: boolean; time_slots?: string[] } | null };
+    type PatientRow = { name?: string | null; email?: string | null; phone_number?: string | null; status?: string | null; metadata?: { issue?: string; notes?: string; additional_info?: string; city?: string; session_preference?: 'online'|'in_person'; session_preferences?: ('online'|'in_person')[]; specializations?: string[]; schwerpunkte?: string[]; gender_preference?: 'male'|'female'|'no_preference'; start_timing?: string; modality_matters?: boolean; time_slots?: string[] } | null };
     const p = (patient || null) as PatientRow | null;
     const patientName = (p?.name || '') || null;
     const patientStatus = (p?.status || '') || null;
@@ -329,6 +329,7 @@ export async function GET(req: Request) {
           city: patientMeta.city,
           session_preferences: patientMeta.session_preferences,
           specializations: patientMeta.specializations,
+          schwerpunkte: Array.isArray(p?.metadata?.schwerpunkte) ? p!.metadata!.schwerpunkte : [],
           gender_preference: patientMeta.gender_preference,
           start_timing: startTiming,
           modality_matters: modalityMatters,

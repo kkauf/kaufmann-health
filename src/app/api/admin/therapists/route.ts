@@ -60,7 +60,7 @@ export async function GET(req: Request) {
 
     let query = supabaseServer
       .from('therapists')
-      .select('id, first_name, last_name, email, phone, gender, city, session_preferences, modalities, accepting_new, status, created_at, metadata, photo_url')
+      .select('id, first_name, last_name, email, phone, gender, city, session_preferences, modalities, schwerpunkte, typical_rate, accepting_new, status, created_at, metadata, photo_url')
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -94,6 +94,8 @@ export async function GET(req: Request) {
       city?: string | null;
       session_preferences?: unknown;
       modalities?: unknown;
+      schwerpunkte?: unknown;
+      typical_rate?: number | null;
       accepting_new?: boolean | null;
       status?: 'pending_verification' | 'verified' | 'rejected' | null;
       created_at?: string | null;
@@ -146,6 +148,21 @@ export async function GET(req: Request) {
       const notificationsObj = isObject(notificationsVal) ? (notificationsVal as Record<string, unknown>) : {};
       const opted_out = Boolean((notificationsObj as { reminders_opt_out?: unknown }).reminders_opt_out === true);
       const requires_action = Boolean(has_license_doc || has_specialization_docs || has_photo_pending || has_approach_text);
+      
+      // Extract practice address from profile metadata
+      const practiceStreet = typeof profileMeta.practice_street === 'string' ? profileMeta.practice_street : '';
+      const practicePostalCode = typeof profileMeta.practice_postal_code === 'string' ? profileMeta.practice_postal_code : '';
+      const practiceCity = typeof profileMeta.practice_city === 'string' ? profileMeta.practice_city : '';
+      const practiceAddress = [practiceStreet, practicePostalCode, practiceCity].filter(Boolean).join(', ') ||
+        (typeof profileMeta.practice_address === 'string' ? profileMeta.practice_address : '');
+      
+      // Extract profile text fields for preview
+      const whoComesToMe = typeof profileMeta.who_comes_to_me === 'string' ? profileMeta.who_comes_to_me : '';
+      const sessionFocus = typeof profileMeta.session_focus === 'string' ? profileMeta.session_focus : '';
+      const firstSession = typeof profileMeta.first_session === 'string' ? profileMeta.first_session : '';
+      const aboutMe = typeof profileMeta.about_me === 'string' ? profileMeta.about_me : '';
+      const approachText = typeof profileMeta.approach_text === 'string' ? profileMeta.approach_text : '';
+      
       const metadata = {
         city: r.city || undefined,
         session_preferences: Array.isArray(r.session_preferences)
@@ -157,6 +174,8 @@ export async function GET(req: Request) {
       } as const;
       return {
         id: r.id,
+        first_name: r.first_name || null,
+        last_name: r.last_name || null,
         name,
         email: r.email || null,
         phone: r.phone || null,
@@ -167,10 +186,23 @@ export async function GET(req: Request) {
         metadata,
         created_at: r.created_at || null,
         opted_out,
+        // Enhanced profile data for admin display
+        schwerpunkte: Array.isArray(r.schwerpunkte) ? (r.schwerpunkte as string[]) : [],
+        typical_rate: r.typical_rate || null,
+        practice_address: practiceAddress || null,
+        // Backward compatible profile flags
         profile: {
           has_photo_pending,
           has_photo_public,
           has_approach_text,
+        },
+        // Extended profile data for preview
+        profile_data: {
+          who_comes_to_me: whoComesToMe,
+          session_focus: sessionFocus,
+          first_session: firstSession,
+          about_me: aboutMe,
+          approach_text: approachText,
         },
         documents: {
           has_license_doc,

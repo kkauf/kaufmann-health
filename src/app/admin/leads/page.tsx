@@ -9,7 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TherapistPreview } from '@/components/TherapistPreview';
+import { TherapistDetailModal } from '@/features/therapists/components/TherapistDetailModal';
+import type { TherapistData } from '@/features/therapists/components/TherapistDirectory';
 import { computeMismatches } from '@/features/leads/lib/match';
+import { getSchwerpunktLabel } from '@/lib/schwerpunkte';
+import { Video, User, MapPin, Eye } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +42,8 @@ type PersonMeta = {
 type Person = {
   id: string;
   name: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
   email: string | null;
   phone: string | null;
   type: 'patient' | 'therapist';
@@ -48,6 +54,17 @@ type Person = {
   gender?: string | null;
   photo_url?: string | null; // public profile photo (if approved)
   campaign_variant?: string | null; // Test 4: concierge | self-service | marketplace
+  // Enhanced therapist profile data
+  schwerpunkte?: string[];
+  typical_rate?: number | null;
+  practice_address?: string | null;
+  profile_data?: {
+    who_comes_to_me?: string;
+    session_focus?: string;
+    first_session?: string;
+    about_me?: string;
+    approach_text?: string;
+  };
 };
 
 function formatDate(iso?: string) {
@@ -77,6 +94,8 @@ export default function AdminLeadsPage() {
   const [leadError, setLeadError] = useState<string | null>(null);
   // EARTH-131: filter to focus on actionable leads by default
   const [viewFilter, setViewFilter] = useState<'action' | 'all'>('action');
+  // Filter for concierge leads that need manual matching
+  const [onlyConcierge, setOnlyConcierge] = useState<boolean>(true);
 
   const [selectedPatient, setSelectedPatient] = useState<Person | null>(null);
 
@@ -124,6 +143,9 @@ export default function AdminLeadsPage() {
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [sendingSelection, setSendingSelection] = useState(false);
+
+  // Therapist profile preview modal
+  const [previewTherapist, setPreviewTherapist] = useState<Person | null>(null);
 
   // Prefill therapist filters when a patient is selected
   useEffect(() => {
@@ -494,8 +516,13 @@ export default function AdminLeadsPage() {
   }, [therapists, selectedPatient]);
 
   // Sort: leads needing action first, those with active matches to the bottom
+  // Filter by concierge when enabled (leads that need manual matching)
   const leadsSorted = useMemo(() => {
-    const base = hideLost ? leads.filter((p) => p.status !== 'rejected') : leads;
+    let base = hideLost ? leads.filter((p) => p.status !== 'rejected') : leads;
+    // Filter for concierge leads only when checkbox is checked
+    if (onlyConcierge) {
+      base = base.filter((p) => p.campaign_variant === 'concierge');
+    }
     if (!deprioritizedPatients || deprioritizedPatients.size === 0) return base;
     const needs: Person[] = [];
     const noAction: Person[] = [];
@@ -504,7 +531,7 @@ export default function AdminLeadsPage() {
     }
     if (viewFilter === 'action') return needs;
     return [...needs, ...noAction];
-  }, [leads, deprioritizedPatients, hideLost, viewFilter]);
+  }, [leads, deprioritizedPatients, hideLost, viewFilter, onlyConcierge]);
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -545,6 +572,16 @@ export default function AdminLeadsPage() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-4 items-center">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    id="only-concierge"
+                    type="checkbox"
+                    className="h-4 w-4 accent-purple-600"
+                    checked={onlyConcierge}
+                    onChange={(e) => setOnlyConcierge(e.target.checked)}
+                  />
+                  <span className="text-purple-700 font-medium">Nur Concierge</span>
+                </label>
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     id="only-action"
@@ -871,14 +908,18 @@ export default function AdminLeadsPage() {
             {(therapistItems.filter((it) => (onlyPerfect ? it.mm.isPerfect : true))).map(({ t, city, specs, mm }) => {
               const checked = selectedTherapists.has(t.id);
               // Map Admin API shape to TherapistPreview props
-              const [first, ...rest] = (t.name || '').trim().split(/\s+/);
-              const previewTherapist = {
+              const firstName = t.first_name || (t.name || '').trim().split(/\s+/)[0] || '';
+              const lastName = t.last_name || (t.name || '').trim().split(/\s+/).slice(1).join(' ') || '';
+              const sessionPrefs = t.metadata?.session_preferences || [];
+              const offersOnline = Array.isArray(sessionPrefs) && sessionPrefs.includes('online');
+              const offersInPerson = Array.isArray(sessionPrefs) && sessionPrefs.includes('in_person');
+              const previewTherapistData = {
                 id: t.id,
-                first_name: first || (t.name || ''),
-                last_name: rest.join(' '),
+                first_name: firstName,
+                last_name: lastName,
                 photo_url: t.photo_url || undefined,
                 modalities: specs,
-                approach_text: '',
+                approach_text: '', // Profile text shown in modal only
                 accepting_new: Boolean(t.accepting_new),
                 city,
                 email: t.email || null,
@@ -899,36 +940,87 @@ export default function AdminLeadsPage() {
                   </div>
                   <div className="flex-1">
                     <TherapistPreview
-                      therapist={previewTherapist}
+                      therapist={previewTherapistData}
                       variant="admin"
                       actionButton={(
-                        <div className="flex items-center gap-2">
-                          {/* Match quality badges */}
-                          {mm.isPerfect ? (
-                            <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 px-1.5 py-0">Perfekt</Badge>
-                          ) : (
-                            <>
-                              <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 px-1.5 py-0">Teilweise</Badge>
-                              {mm.reasons.map((r) => {
-                                const map: Record<string, string> = { gender: 'Geschlecht', location: 'Ort/Sitzung', modality: 'Methode' };
-                                const label = map[r] || r;
-                                return (
-                                  <Badge key={r} variant="secondary" className="px-1.5 py-0 text-[10px]" title="Nicht passend zur Klientenpräferenz">{label}</Badge>
-                                );
-                              })}
-                            </>
+                        <div className="flex flex-col gap-2">
+                          {/* Session format and address */}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {offersOnline && (
+                              <Badge variant="outline" className="gap-1 border-sky-200 bg-sky-50 text-sky-700 px-1.5 py-0 text-[10px]">
+                                <Video className="h-3 w-3" />
+                                Online
+                              </Badge>
+                            )}
+                            {offersInPerson && (
+                              <Badge variant="outline" className="gap-1 border-slate-200 bg-slate-50 text-slate-700 px-1.5 py-0 text-[10px]">
+                                <User className="h-3 w-3" />
+                                Vor Ort
+                              </Badge>
+                            )}
+                            {t.practice_address && (
+                              <Badge variant="outline" className="gap-1 border-slate-200 bg-slate-50 text-slate-600 px-1.5 py-0 text-[10px]" title={t.practice_address}>
+                                <MapPin className="h-3 w-3" />
+                                <span className="truncate max-w-[120px]">{t.practice_address}</span>
+                              </Badge>
+                            )}
+                            {t.typical_rate && (
+                              <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600 px-1.5 py-0 text-[10px]">
+                                {t.typical_rate}€/Sitzung
+                              </Badge>
+                            )}
+                          </div>
+                          {/* Schwerpunkte */}
+                          {t.schwerpunkte && t.schwerpunkte.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {t.schwerpunkte.map((s: string, idx: number) => (
+                                <Badge key={idx} variant="secondary" className="px-1.5 py-0 text-[9px] bg-indigo-50 text-indigo-700 border-indigo-200">
+                                  {getSchwerpunktLabel(s)}
+                                </Badge>
+                              ))}
+                            </div>
                           )}
-                          <Button
-                            size="sm"
-                            disabled={!selectedPatient}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void proposeTherapist(t.id);
-                            }}
-                            title="Als Vorschlag vormerken (ohne E-Mail an Therapeut*in)"
-                          >
-                            Vormerken
-                          </Button>
+                          {/* Match quality badges and actions */}
+                          <div className="flex items-center gap-2">
+                            {mm.isPerfect ? (
+                              <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 px-1.5 py-0">Perfekt</Badge>
+                            ) : (
+                              <>
+                                <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 px-1.5 py-0">Teilweise</Badge>
+                                {mm.reasons.map((r) => {
+                                  const map: Record<string, string> = { gender: 'Geschlecht', location: 'Ort/Sitzung', modality: 'Methode' };
+                                  const label = map[r] || r;
+                                  return (
+                                    <Badge key={r} variant="secondary" className="px-1.5 py-0 text-[10px]" title="Nicht passend zur Klientenpräferenz">{label}</Badge>
+                                  );
+                                })}
+                              </>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPreviewTherapist(t);
+                              }}
+                              title="Vollständiges Profil anzeigen"
+                              className="gap-1 h-7"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              Profil
+                            </Button>
+                            <Button
+                              size="sm"
+                              disabled={!selectedPatient}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void proposeTherapist(t.id);
+                              }}
+                              title="Als Vorschlag vormerken (ohne E-Mail an Therapeut*in)"
+                            >
+                              Vormerken
+                            </Button>
+                          </div>
                         </div>
                       )}
                     />
@@ -1002,6 +1094,44 @@ export default function AdminLeadsPage() {
           </div>
         </div>
       )}
+
+      {/* Therapist Profile Preview Modal */}
+      {previewTherapist && (() => {
+        const firstName = previewTherapist.first_name || (previewTherapist.name || '').trim().split(/\s+/)[0] || '';
+        const lastName = previewTherapist.last_name || (previewTherapist.name || '').trim().split(/\s+/).slice(1).join(' ') || '';
+        const sessionPrefs = previewTherapist.metadata?.session_preferences || [];
+        const therapistDataForPreview: TherapistData = {
+          id: previewTherapist.id,
+          first_name: firstName,
+          last_name: lastName,
+          photo_url: previewTherapist.photo_url || undefined,
+          modalities: Array.isArray(previewTherapist.metadata?.specializations) ? previewTherapist.metadata.specializations : [],
+          schwerpunkte: previewTherapist.schwerpunkte || [],
+          session_preferences: Array.isArray(sessionPrefs) ? sessionPrefs : [],
+          approach_text: previewTherapist.profile_data?.approach_text || '',
+          accepting_new: Boolean(previewTherapist.accepting_new),
+          city: previewTherapist.metadata?.city || '',
+          typical_rate: previewTherapist.typical_rate || null,
+          metadata: {
+            profile: {
+              who_comes_to_me: previewTherapist.profile_data?.who_comes_to_me || '',
+              session_focus: previewTherapist.profile_data?.session_focus || '',
+              first_session: previewTherapist.profile_data?.first_session || '',
+              about_me: previewTherapist.profile_data?.about_me || '',
+              practice_address: previewTherapist.practice_address || '',
+            },
+          },
+          availability: [],
+        };
+        return (
+          <TherapistDetailModal
+            therapist={therapistDataForPreview}
+            open={true}
+            onClose={() => setPreviewTherapist(null)}
+            previewMode={true}
+          />
+        );
+      })()}
     </main>
   );
 }
