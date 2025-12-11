@@ -142,6 +142,7 @@ export async function GET(req: Request) {
       photo_url?: string | null;
       city?: string | null;
       modalities?: string[] | null;
+      schwerpunkte?: string[] | null;
       session_preferences?: string[] | null;
       accepting_new?: boolean | null;
       approach_text?: string | null;
@@ -151,7 +152,7 @@ export async function GET(req: Request) {
     if (therapistIds.length > 0) {
       const { data: trows } = await supabaseServer
         .from('therapists')
-        .select('id, first_name, last_name, gender, photo_url, city, modalities, session_preferences, accepting_new, approach_text, metadata')
+        .select('id, first_name, last_name, gender, photo_url, city, modalities, schwerpunkte, session_preferences, accepting_new, approach_text, metadata')
         .in('id', therapistIds);
       if (Array.isArray(trows)) therapists = trows as TherapistRow[];
     }
@@ -227,6 +228,7 @@ export async function GET(req: Request) {
       accepting_new: (t.accepting_new === false ? false : true),
       contacted_at: contactedById.get(t.id) || null,
       modalities: Array.isArray(t.modalities) ? t.modalities : [],
+      schwerpunkte: Array.isArray(t.schwerpunkte) ? t.schwerpunkte : [],
       session_preferences: Array.isArray(t.session_preferences) ? t.session_preferences : (Array.isArray(t.metadata?.session_preferences) ? t.metadata?.session_preferences : []),
       approach_text: t.approach_text || t.metadata?.profile?.approach_text || '',
       gender: t.gender || undefined,

@@ -27,6 +27,7 @@ type TherapistItem = {
   accepting_new?: boolean | null;
   contacted_at?: string | null;
   modalities?: string[];
+  schwerpunkte?: string[];
   session_preferences?: string[];
   approach_text?: string;
   gender?: string;
@@ -533,9 +534,11 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             city: t.city || '',
             accepting_new: t.accepting_new ?? true,
             modalities: t.modalities || [],
+            schwerpunkte: t.schwerpunkte || [],
             session_preferences: t.session_preferences || [],
             approach_text: t.approach_text || '',
             availability: Array.isArray(t.availability) ? t.availability as { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] : [],
+            metadata: t.metadata,
           };
 
           return (
@@ -543,7 +546,8 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
               key={t.id}
               therapist={therapistData}
               onViewDetails={() => setDetailModalTherapist(t)}
-              showModalities={data?.patient?.modality_matters ?? false}
+              showModalities={true}
+              showSchwerpunkte={(process.env.NEXT_PUBLIC_SHOW_SCHWERPUNKTE || '').toLowerCase() === 'true'}
               highlighted={isHighlighted}
               contactedAt={t.contacted_at || null}
               onContactClick={(type) => handleOpen(t, type)}
