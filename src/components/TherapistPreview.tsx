@@ -4,9 +4,10 @@
 import * as React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarCheck2, HeartHandshake, Shell, Wind, Target } from "lucide-react";
+import { CalendarCheck2, HeartHandshake, Shell, Wind, Target, Sparkles, Video, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { getSchwerpunktLabel, getSchwerpunktColorClasses } from "@/lib/schwerpunkte";
 
 export type Therapist = {
   id: string;
@@ -14,9 +15,17 @@ export type Therapist = {
   last_name: string;
   photo_url?: string;
   modalities: string[];
+  schwerpunkte?: string[];
+  session_preferences?: string[];
   approach_text: string;
   accepting_new: boolean;
   city: string;
+  metadata?: {
+    profile?: {
+      who_comes_to_me?: string;
+      session_focus?: string;
+    };
+  };
   // Admin-only optional fields
   email?: string | null;
   phone?: string | null;
@@ -29,6 +38,8 @@ export interface TherapistPreviewProps {
   actionButton?: React.ReactNode;
   variant?: "email" | "web" | "admin";
   className?: string;
+  /** When true, show schwerpunkte badges instead of modality badges */
+  showSchwerpunkte?: boolean;
 }
 
 function normalizeModality(v: string): string {
@@ -55,7 +66,7 @@ const MODALITY_MAP: Record<string, { label: string; cls: string; Icon: React.Ele
   'core-energetics': { label: 'Core Energetics', cls: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 hover:border-fuchsia-300 hover:bg-fuchsia-100', Icon: Target },
 };
 
-export function TherapistPreview({ therapist, actionButton, variant = "web", className }: TherapistPreviewProps) {
+export function TherapistPreview({ therapist, actionButton, variant = "web", className, showSchwerpunkte = false }: TherapistPreviewProps) {
   const [imageError, setImageError] = React.useState(false);
   const photoSrc = therapist.photo_url && !imageError ? therapist.photo_url : undefined;
 
@@ -63,6 +74,16 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
   const avatarColor = React.useMemo(() => `hsl(${hashCode(therapist.id) % 360}, 70%, 50%)`, [therapist.id]);
   // Build badge items with shared classes and icons
   const badgeItems = React.useMemo(() => {
+    // Show schwerpunkte if requested and available, otherwise modalities
+    if (showSchwerpunkte && Array.isArray(therapist.schwerpunkte) && therapist.schwerpunkte.length > 0) {
+      return therapist.schwerpunkte.map((id, i) => {
+        const label = getSchwerpunktLabel(id);
+        const cls = getSchwerpunktColorClasses(id) + ' hover:shadow-sm';
+        // No icon for schwerpunkte - matches TherapistCard design
+        return { key: `schwerpunkt-${id}-${i}`, label, cls, Icon: null, modalityId: `schwerpunkt-${id}` };
+      });
+    }
+    // Default: show modalities
     const list = Array.isArray(therapist.modalities) ? therapist.modalities : [];
     const items = list.map((m, i) => {
       const slug = normalizeModality(String(m));
@@ -80,7 +101,7 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
       seen.add(k);
       return true;
     });
-  }, [therapist.modalities]);
+  }, [therapist.modalities, therapist.schwerpunkte, showSchwerpunkte]);
 
   if (variant === "email") {
     // Build simple color-based badges for email rendering (inline styles only)
@@ -203,7 +224,7 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
                               b.cls,
                             )}
                           >
-                            <b.Icon className={cn(isAdmin ? "h-2.5 w-2.5" : "h-3 w-3", "opacity-90")} />
+                            {b.Icon && <b.Icon className={cn(isAdmin ? "h-2.5 w-2.5" : "h-3 w-3", "opacity-90")} />}
                             {b.label}
                           </Badge>
                         ))}
@@ -218,8 +239,33 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
                 );
               })()}
             </div>
-            {/* City */}
-            <div className={cn("text-muted-foreground", isAdmin ? "text-xs" : "text-sm")}>{therapist.city}</div>
+            {/* Format badges (Online/Vor Ort) */}
+            {!isAdmin && (() => {
+              const prefs = Array.isArray(therapist.session_preferences) ? therapist.session_preferences : [];
+              const normalized = new Set(prefs.map(v => String(v).toLowerCase().replace(/[\s-]+/g, '_')));
+              const hasEither = normalized.has('either') || normalized.has('both');
+              const offersOnline = normalized.has('online') || hasEither;
+              const offersInPerson = normalized.has('in_person') || normalized.has('inperson') || hasEither;
+              if (!offersOnline && !offersInPerson) return null;
+              return (
+                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                  {offersOnline && (
+                    <Badge variant="secondary" className="gap-1 bg-sky-50 text-sky-700 hover:bg-sky-100 text-[11px] px-2 py-0.5">
+                      <Video className="h-3 w-3" />
+                      Online
+                    </Badge>
+                  )}
+                  {offersInPerson && (
+                    <Badge variant="secondary" className="gap-1 bg-slate-50 text-slate-700 hover:bg-slate-100 text-[11px] px-2 py-0.5">
+                      <User className="h-3 w-3" />
+                      Vor Ort
+                    </Badge>
+                  )}
+                </div>
+              );
+            })()}
+            {/* City - admin only */}
+            {isAdmin && <div className={cn("text-muted-foreground", "text-xs")}>{therapist.city}</div>}
 
             {isAdmin && (
               <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
@@ -248,14 +294,33 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
               </div>
             )}
 
-            {therapist.approach_text ? (
-              <p
-                className={cn("mt-1 text-slate-700", isAdmin ? "text-xs" : "text-sm")}
-                style={{ display: "-webkit-box", WebkitLineClamp: isAdmin ? 2 : 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}
-              >
-                {therapist.approach_text}
-              </p>
-            ) : null}
+            {/* Profile text - prefer new structured fields, fallback to legacy */}
+            {(() => {
+              const profile = therapist.metadata?.profile;
+              // Prefer who_comes_to_me with prefix for context
+              if (profile?.who_comes_to_me) {
+                return (
+                  <p
+                    className={cn("mt-1 text-slate-700", isAdmin ? "text-xs" : "text-sm")}
+                    style={{ display: "-webkit-box", WebkitLineClamp: isAdmin ? 2 : 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+                  >
+                    <span className="font-medium">Zu mir kommen Menschen, die </span>
+                    {profile.who_comes_to_me}
+                  </p>
+                );
+              }
+              // Fallback to session_focus or legacy approach_text
+              const fallbackText = profile?.session_focus || therapist.approach_text;
+              if (!fallbackText) return null;
+              return (
+                <p
+                  className={cn("mt-1 text-slate-700", isAdmin ? "text-xs" : "text-sm")}
+                  style={{ display: "-webkit-box", WebkitLineClamp: isAdmin ? 2 : 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+                >
+                  {fallbackText}
+                </p>
+              );
+            })()}
 
             {/* Bottom area pinned: availability + optional action */}
             <div className="mt-auto pt-2">

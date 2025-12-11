@@ -404,6 +404,7 @@ export default async function TherapieFindenPage({ searchParams }: { searchParam
           title="Unser Therapeut:innen-Netzwerk"
           subtitle="Persönlich ausgewählte Spezialist:innen für körperorientierte Verfahren"
           limit={3}
+          showSchwerpunkte={true}
         />
         <div className="mt-8 sm:mt-10 text-center">
           <CtaLink
