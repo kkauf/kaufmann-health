@@ -65,7 +65,7 @@ export function TherapistMatchCallout() {
               Ich schaue mir deine Anfrage persönlich an und helfe dir dabei, die richtige Therapeut:in für dich zu finden.
             </p>
             <p className="mt-2 text-xs sm:text-sm text-gray-500 italic">
-              – Katherine, Gründerin und Therapeutin
+              – Katherine Kaufmann, Gründerin und Therapeutin
             </p>
           </div>
         </div>
