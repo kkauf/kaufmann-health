@@ -358,15 +358,28 @@ counts AS (
     ON m.patient_id = l.id
    AND lower(coalesce(m.metadata->>'is_test','false')) <> 'true'
   GROUP BY 1
+),
+with_mean AS (
+  SELECT
+    patient_id,
+    proposals_total,
+    AVG(proposals_total) OVER () AS mean_proposals_per_lead
+  FROM counts
+),
+bucketed AS (
+  SELECT
+    CASE
+      WHEN proposals_total >= 6 THEN '6+'
+      ELSE proposals_total::text
+    END AS proposals_bucket,
+    mean_proposals_per_lead
+  FROM with_mean
 )
 SELECT
-  CASE
-    WHEN proposals_total >= 6 THEN '6+'
-    ELSE proposals_total::text
-  END AS proposals_bucket,
+  proposals_bucket,
   COUNT(*) AS leads,
-  ROUND(AVG(proposals_total) OVER (), 2) AS mean_proposals_per_lead
-FROM counts
+  ROUND(MAX(mean_proposals_per_lead)::numeric, 2) AS mean_proposals_per_lead
+FROM bucketed
 GROUP BY 1
 ORDER BY
   CASE
@@ -406,15 +419,28 @@ per_lead AS (
     ON m.patient_id = l.id
    AND lower(coalesce(m.metadata->>'is_test','false')) <> 'true'
   GROUP BY 1
+),
+with_mean AS (
+  SELECT
+    patient_id,
+    contacted_count,
+    AVG(contacted_count) OVER () AS mean_contacted_per_lead
+  FROM per_lead
+),
+bucketed AS (
+  SELECT
+    CASE
+      WHEN contacted_count >= 5 THEN '5+'
+      ELSE contacted_count::text
+    END AS contacted_bucket,
+    mean_contacted_per_lead
+  FROM with_mean
 )
 SELECT
-  CASE
-    WHEN contacted_count >= 5 THEN '5+'
-    ELSE contacted_count::text
-  END AS contacted_bucket,
+  contacted_bucket,
   COUNT(*) AS leads,
-  ROUND(AVG(contacted_count) OVER (), 2) AS mean_contacted_per_lead
-FROM per_lead
+  ROUND(MAX(mean_contacted_per_lead)::numeric, 2) AS mean_contacted_per_lead
+FROM bucketed
 GROUP BY 1
 ORDER BY
   CASE
@@ -690,17 +716,20 @@ per_lead AS (
   LEFT JOIN ranked r ON r.patient_id = l.id
   GROUP BY 1
 )
-SELECT
-  CASE
-    WHEN proposals_total = 0 THEN '0_no_proposals'
-    WHEN first_accept_proposal_n IS NULL THEN 'no_accept_yet'
-    WHEN first_accept_proposal_n >= 4 THEN '4+'
-    ELSE first_accept_proposal_n::text
-  END AS bucket,
-  COUNT(*) AS leads,
-  ROUND(100.0 * COUNT(*) / NULLIF(SUM(COUNT(*)) OVER (), 0), 1) AS pct
-FROM per_lead
-GROUP BY 1
+SELECT *
+FROM (
+  SELECT
+    CASE
+      WHEN proposals_total = 0 THEN '0_no_proposals'
+      WHEN first_accept_proposal_n IS NULL THEN 'no_accept_yet'
+      WHEN first_accept_proposal_n >= 4 THEN '4+'
+      ELSE first_accept_proposal_n::text
+    END AS bucket,
+    COUNT(*) AS leads,
+    ROUND(100.0 * COUNT(*) / NULLIF(SUM(COUNT(*)) OVER (), 0), 1) AS pct
+  FROM per_lead
+  GROUP BY 1
+) q
 ORDER BY
   CASE
     WHEN bucket = '0_no_proposals' THEN -1
@@ -1133,7 +1162,7 @@ ORDER BY
      l.id AS patient_id,
      MIN(c.created_at) AS first_contact_at,
      COUNT(c.therapist_id) AS therapists_contacted,
-     BOOL_OR(c.status IN ('accepted','session_booked','completed')) AS any_accept
+     COALESCE(BOOL_OR(c.status IN ('accepted','session_booked','completed')), false) AS any_accept
    FROM leads l
    LEFT JOIN contacts c ON c.patient_id = l.id
    GROUP BY 1
@@ -1151,19 +1180,39 @@ ORDER BY
      AND b.created_at >= pl.first_contact_at
      AND b.created_at < pl.first_contact_at + INTERVAL '14 days'
    GROUP BY 1
+ ),
+ base AS (
+   SELECT
+     pl.patient_id,
+     pl.therapists_contacted,
+     pl.any_accept,
+     (COALESCE(b14.bookings_in_14d, 0) > 0) AS has_booking_14d,
+     AVG(pl.therapists_contacted) OVER () AS mean_contacted_per_lead
+   FROM per_lead pl
+   LEFT JOIN bookings_14d b14 ON b14.patient_id = pl.patient_id
+ ),
+ bucketed AS (
+   SELECT
+     CASE
+       WHEN therapists_contacted >= 3 THEN '3+'
+       ELSE therapists_contacted::text
+     END AS contacted_bucket,
+     any_accept,
+     has_booking_14d,
+     mean_contacted_per_lead
+   FROM base
  )
- SELECT
-   CASE
-     WHEN therapists_contacted >= 3 THEN '3+'
-     ELSE therapists_contacted::text
-   END AS contacted_bucket,
-   COUNT(*) AS leads,
-   ROUND(AVG(therapists_contacted) OVER (), 2) AS mean_contacted_per_lead,
-   ROUND(100.0 * AVG((any_accept)::int), 1) AS accept_rate_pct,
-   ROUND(100.0 * AVG((COALESCE(b14.bookings_in_14d, 0) > 0)::int), 1) AS booking_14d_rate_pct
- FROM per_lead pl
- LEFT JOIN bookings_14d b14 ON b14.patient_id = pl.patient_id
- GROUP BY 1
+ SELECT *
+ FROM (
+   SELECT
+     contacted_bucket,
+     COUNT(*) AS leads,
+     ROUND(MAX(mean_contacted_per_lead)::numeric, 2) AS mean_contacted_per_lead,
+     ROUND(100.0 * AVG((any_accept)::int), 1) AS accept_rate_pct,
+     ROUND(100.0 * AVG((has_booking_14d)::int), 1) AS booking_14d_rate_pct
+   FROM bucketed
+   GROUP BY 1
+ ) q
  ORDER BY
    CASE
      WHEN contacted_bucket = '3+' THEN 999
