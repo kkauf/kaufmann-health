@@ -71,6 +71,10 @@ const nextConfig: NextConfig = {
         source: "/api/match/:uuid/respond",
         destination: "/api/public/match/:uuid/respond",
       },
+      {
+        source: "/api/match/:uuid/resend",
+        destination: "/api/public/match/:uuid/resend",
+      },
       // Therapist endpoints (moved Sept 24, 2025)
       {
         source: "/api/therapists/opt-out",

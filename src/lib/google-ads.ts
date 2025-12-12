@@ -193,16 +193,14 @@ export class GoogleAdsTracker {
     }
   }
 
-  private buildClickConversion(ec: EnhancedConversion) {
-    // REST JSON for ConversionUploadService.uploadClickConversions
+  private buildEnhancementAdjustment(ec: EnhancedConversion) {
+    // REST JSON for ConversionAdjustmentUploadService.uploadConversionAdjustments
+    // For ENHANCEMENT adjustments, orderId is required.
     return {
       conversionAction: this.resolveConversionAction(ec.conversion_action)!,
-      conversionDateTime: ec.conversion_date_time,
-      conversionValue: ec.conversion_value,
-      currencyCode: ec.currency,
+      adjustmentType: 'ENHANCEMENT',
       ...(ec.order_id ? { orderId: ec.order_id } : {}),
-      // gclid is the primary attribution signal from ad clicks
-      ...(ec.gclid ? { gclid: ec.gclid } : {}),
+      adjustmentDateTime: toGoogleDateTime(),
       userIdentifiers: ec.user_identifiers.map((u) => ({
         ...(u.hashed_email ? { hashedEmail: u.hashed_email } : {}),
         ...(u.hashed_phone_number ? { hashedPhoneNumber: u.hashed_phone_number } : {}),
@@ -215,6 +213,7 @@ export class GoogleAdsTracker {
     const hasEmail = !!(data?.email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email));
     const hasPhone = !!(data?.phoneNumber && normalizePhone(data.phoneNumber).length >= 8);
     if (!hasEmail && !hasPhone) return false;
+    if (!data?.orderId) return false;
     if (!data?.conversionAction || typeof data.conversionValue !== 'number') return false;
     return true;
   }
@@ -296,8 +295,8 @@ export class GoogleAdsTracker {
         return;
       }
 
-      const clickConversions = conversions.map((c) => this.buildClickConversion(c));
-      const url = `https://googleads.googleapis.com/v21/customers/${this.customerId}:uploadClickConversions`;
+      const conversionAdjustments = conversions.map((c) => this.buildEnhancementAdjustment(c));
+      const url = `https://googleads.googleapis.com/v21/customers/${this.customerId}:uploadConversionAdjustments`;
       const headers: Record<string, string> = {
         Authorization: `Bearer ${token}`,
         'developer-token': this.developerToken!,
@@ -306,7 +305,7 @@ export class GoogleAdsTracker {
       if (this.loginCustomerId) headers['login-customer-id'] = this.loginCustomerId;
 
       const payload = {
-        conversions: clickConversions,
+        conversionAdjustments,
         partialFailure: true,
         validateOnly: false,
       } as const;

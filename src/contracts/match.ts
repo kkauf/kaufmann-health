@@ -25,3 +25,11 @@ export const PatientSelectInput = z.object({
 });
 
 export type PatientSelectInput = z.infer<typeof PatientSelectInput>;
+
+export const TherapistResendMagicLinkInput = z.object({});
+export type TherapistResendMagicLinkInput = z.infer<typeof TherapistResendMagicLinkInput>;
+
+export const TherapistResendMagicLinkOutput = z.object({
+  ok: z.boolean(),
+});
+export type TherapistResendMagicLinkOutput = z.infer<typeof TherapistResendMagicLinkOutput>;

@@ -28,7 +28,7 @@ export function Actions({
   sessionPreference,
 }: {
   uuid: string;
-  matchId: string;
+  matchId?: string;
   expired: boolean;
   initialStatus: string;
   initialContact?: { name?: string | null; email?: string | null; phone?: string | null };
@@ -42,6 +42,8 @@ export function Actions({
   const [status, setStatus] = useState(initialStatus);
   const [expired, setExpired] = useState(expiredInitial);
   const [loading, setLoading] = useState<'accept' | 'decline' | null>(null);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendOk, setResendOk] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [contact, setContact] = useState<{ name?: string | null; email?: string | null; phone?: string | null } | null>(
     initialContact || null,
@@ -50,7 +52,7 @@ export function Actions({
   const isFinal = useMemo(() => status === 'accepted' || status === 'declined', [status]);
 
   useEffect(() => {
-    postEvent(expired ? 'link_expired_view' : 'magic_link_opened', { match_id: matchId, uuid });
+    postEvent(expired ? 'link_expired_view' : 'magic_link_opened', { ...(matchId ? { match_id: matchId } : {}), uuid });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -107,10 +109,51 @@ export function Actions({
     }
   }
 
+  async function resend() {
+    setError(null);
+    setResendOk(false);
+    setResendLoading(true);
+    try {
+      void postEvent('magic_link_resend_requested', { ...(matchId ? { match_id: matchId } : {}), uuid });
+      const res = await fetch(`/api/match/${encodeURIComponent(uuid)}/resend`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        const msg = (json && typeof json.error === 'string' && json.error) ? json.error : 'Fehler';
+        throw new Error(msg);
+      }
+      setResendOk(true);
+      void postEvent('magic_link_resend_succeeded', { ...(matchId ? { match_id: matchId } : {}), uuid });
+    } catch (e: unknown) {
+      let msg = 'Etwas ist schief gelaufen';
+      if (e instanceof Error) msg = e.message;
+      else if (typeof e === 'string') msg = e;
+      setError(msg);
+      void postEvent('magic_link_resend_failed', { ...(matchId ? { match_id: matchId } : {}), uuid, error: msg });
+    } finally {
+      setResendLoading(false);
+    }
+  }
+
   if (expired) {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">Dieser Link ist abgelaufen. Bitte wende dich an Kaufmann Health, falls weiterhin Interesse besteht.</p>
+        <p className="text-sm text-muted-foreground">Dieser Link ist abgelaufen. Du kannst dir einen neuen Link per E-Mail zusenden lassen.</p>
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        {resendOk ? (
+          <p className="text-sm text-emerald-700">Ein neuer Link wurde gerade per E-Mail gesendet.</p>
+        ) : null}
+        <div className="flex flex-col gap-3">
+          <Button onClick={resend} disabled={resendLoading}>
+            {resendLoading ? 'Wird gesendet…' : 'Link erneut senden'}
+          </Button>
+          <Button asChild variant="outline" disabled={resendLoading}>
+            <a href="/portal/login">Im Portal einloggen</a>
+          </Button>
+        </div>
       </div>
     );
   }
