@@ -93,7 +93,7 @@ export async function POST(req: Request) {
     const age = hoursSince(m.created_at ?? undefined);
     if (age == null || age > 72) {
       const session = await getTherapistSession(req);
-      const canBypassExpiry = !!session?.therapist_id && session.therapist_id === (m as any)?.therapist_id;
+      const canBypassExpiry = !!session?.therapist_id && session.therapist_id === m.therapist_id;
       if (canBypassExpiry) {
         void ServerAnalytics.trackEventFromRequest(req, {
           type: 'link_expiry_bypassed',

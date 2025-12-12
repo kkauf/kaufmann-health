@@ -59,6 +59,7 @@ async function getData(uuid: string, portalTherapistId: string | null) {
 
   type MatchRow = { 
     id: string; 
+    secure_uuid?: string | null;
     status?: string | null; 
     created_at?: string | null; 
     patient_id: string;
@@ -76,7 +77,7 @@ async function getData(uuid: string, portalTherapistId: string | null) {
 
   const portalAuthenticated = !!portalTherapistId && portalTherapistId === m.therapist_id;
   if (!found.uuidIsCurrent) {
-    const currentUuid = (m as any)?.secure_uuid;
+    const currentUuid = m.secure_uuid;
     if (portalAuthenticated && typeof currentUuid === 'string' && currentUuid.trim().length > 0 && currentUuid !== uuid) {
       redirect(`/match/${currentUuid}`);
     }

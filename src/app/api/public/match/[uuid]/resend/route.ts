@@ -41,7 +41,7 @@ async function findMatchByUuid(uuid: string) {
       .eq('secure_uuid', uuid)
       .single();
 
-    if (!error && match) return match as any;
+    if (!error && match) return match as unknown;
 
     const msg = extractMessage(error);
     if (msg && /Cannot coerce the result to a single JSON object/i.test(msg)) {
@@ -51,7 +51,7 @@ async function findMatchByUuid(uuid: string) {
         .eq('secure_uuid', uuid)
         .order('created_at', { ascending: false })
         .limit(1);
-      if (Array.isArray(fb.data) && fb.data.length > 0) return fb.data[0] as any;
+      if (Array.isArray(fb.data) && fb.data.length > 0) return fb.data[0] as unknown;
     }
   } catch {}
 
@@ -63,7 +63,7 @@ async function findMatchByUuid(uuid: string) {
       .filter('metadata', 'cs', JSON.stringify({ previous_secure_uuids: [uuid] }))
       .order('created_at', { ascending: false })
       .limit(1);
-    if (Array.isArray(fb2.data) && fb2.data.length > 0) return fb2.data[0] as any;
+    if (Array.isArray(fb2.data) && fb2.data.length > 0) return fb2.data[0] as unknown;
   } catch {}
 
   return null;
@@ -167,7 +167,7 @@ export async function POST(req: Request) {
 
     const isPatientInitiated = (() => {
       try {
-        const v = (meta as any)?.patient_initiated;
+        const v = meta['patient_initiated'];
         return v === true || String(v).toLowerCase() === 'true';
       } catch {
         return false;
@@ -186,7 +186,7 @@ export async function POST(req: Request) {
         .eq('id', m.patient_id)
         .single();
 
-      const pm = ((patientRow as any)?.metadata || {}) as Record<string, unknown>;
+      const pm = ((patientRow as { metadata?: Record<string, unknown> | null } | null)?.metadata || {}) as Record<string, unknown>;
       patientCity = typeof pm['city'] === 'string' ? String(pm['city']) : null;
       patientIssue = typeof pm['issue'] === 'string' ? String(pm['issue']) : null;
       const sp = pm['session_preference'];
