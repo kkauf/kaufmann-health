@@ -2,6 +2,9 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Actions } from './Actions';
 import FloatingWhatsApp from '@/components/FloatingWhatsApp';
+import { cookies } from 'next/headers';
+import { getTherapistSessionCookieName, verifyTherapistSessionToken } from '@/lib/auth/therapistSession';
+import { redirect } from 'next/navigation';
 
 function hoursSince(iso: string | null | undefined): number | null {
   if (!iso) return null;
@@ -14,13 +17,45 @@ function isUuidLike(s: string): string | null {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(s) ? s : null;
 }
 
-async function getData(uuid: string) {
-  const { data: match, error } = await supabaseServer
-    .from('matches')
-    .select('id, status, created_at, patient_id, therapist_id, metadata')
-    .eq('secure_uuid', uuid)
-    .single();
-  if (error || !match) return null;
+async function findMatchByUuid(uuid: string): Promise<{ match: unknown; uuidIsCurrent: boolean } | null> {
+  try {
+    const { data: match, error } = await supabaseServer
+      .from('matches')
+      .select('id, secure_uuid, status, created_at, patient_id, therapist_id, metadata')
+      .eq('secure_uuid', uuid)
+      .single();
+    if (!error && match) return { match, uuidIsCurrent: true };
+  } catch {}
+
+  try {
+    const fb = await supabaseServer
+      .from('matches')
+      .select('id, secure_uuid, status, created_at, patient_id, therapist_id, metadata')
+      .filter('metadata', 'cs', JSON.stringify({ previous_secure_uuids: [uuid] }))
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (Array.isArray(fb.data) && fb.data.length > 0) return { match: fb.data[0], uuidIsCurrent: false };
+  } catch {}
+
+  return null;
+}
+
+async function getPortalTherapistId(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    const cookieName = getTherapistSessionCookieName();
+    const cookieValue = cookieStore.get(cookieName)?.value;
+    if (cookieValue) {
+      const payload = await verifyTherapistSessionToken(cookieValue);
+      return payload?.therapist_id || null;
+    }
+  } catch {}
+  return null;
+}
+
+async function getData(uuid: string, portalTherapistId: string | null) {
+  const found = await findMatchByUuid(uuid);
+  if (!found) return null;
 
   type MatchRow = { 
     id: string; 
@@ -37,7 +72,37 @@ async function getData(uuid: string) {
       session_format?: 'online' | 'in_person';
     } | null;
   };
-  const m = match as unknown as MatchRow;
+  const m = found.match as unknown as MatchRow;
+
+  const portalAuthenticated = !!portalTherapistId && portalTherapistId === m.therapist_id;
+  if (!found.uuidIsCurrent) {
+    const currentUuid = (m as any)?.secure_uuid;
+    if (portalAuthenticated && typeof currentUuid === 'string' && currentUuid.trim().length > 0 && currentUuid !== uuid) {
+      redirect(`/match/${currentUuid}`);
+    }
+
+    const currentStatus = String(m.status || 'proposed').toLowerCase();
+    return {
+      id: m.id,
+      status: currentStatus,
+      name: undefined,
+      city: undefined,
+      issue: undefined,
+      sessionPreference: undefined,
+      expired: true,
+      expiresInHours: null,
+      expiryBypassed: false,
+      specializations: [],
+      notes: undefined,
+      contact: null,
+      contactType: undefined,
+      patientMessage: undefined,
+      patientReason: undefined,
+      contactMethod: undefined,
+      createdAt: m.created_at,
+      therapistName: undefined,
+    } as const;
+  }
 
   const { data: patient } = await supabaseServer
     .from('people')
@@ -71,8 +136,9 @@ async function getData(uuid: string) {
   }
 
   const age = hoursSince(m.created_at ?? undefined);
-  const expired = age == null || age > 72;
+  const expiredRaw = age == null || age > 72;
   const expiresInHours = age == null ? null : Math.max(0, Math.ceil(72 - age));
+  const expired = expiredRaw && !portalAuthenticated;
 
   // Requested specializations (slugs -> human labels)
   const slugToLabel: Record<string, string> = {
@@ -139,6 +205,7 @@ async function getData(uuid: string) {
     sessionPreference,
     expired,
     expiresInHours,
+    expiryBypassed: expiredRaw && portalAuthenticated,
     specializations,
     notes,
     contact,
@@ -173,7 +240,8 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
       </>
     );
   }
-  const data = await getData(uuid);
+  const portalTherapistId = await getPortalTherapistId();
+  const data = await getData(uuid, portalTherapistId);
 
   if (!data) {
     return (
@@ -207,6 +275,9 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
         </CardHeader>
         <CardContent>
           <div className="space-y-5">
+            {data.expiryBypassed ? (
+              <p className="text-sm text-muted-foreground">Portal-Login erkannt: Du kannst diese Anfrage auch nach Ablauf des Links bearbeiten.</p>
+            ) : null}
             {/* EARTH-205: Show request type and timestamp */}
             {data.contactType || data.createdAt ? (
               <div className="flex items-center justify-between text-sm">
@@ -223,9 +294,13 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
               </div>
             ) : null}
             <p className="text-sm text-muted-foreground">
-              {data.expiresInHours != null && !data.expired
-                ? `Noch ${data.expiresInHours < 1 ? '<1' : data.expiresInHours} Stunden gültig`
-                : 'Du kannst diese Anfrage innerhalb von 72 Stunden beantworten.'}
+              {data.expiryBypassed
+                ? 'Der E-Mail-Link ist abgelaufen, aber im Portal kannst du weiterhin antworten.'
+                : data.expiresInHours != null && !data.expired
+                  ? `Noch ${data.expiresInHours < 1 ? '<1' : data.expiresInHours} Stunden gültig`
+                  : data.expired
+                    ? 'Dieser Link ist abgelaufen.'
+                    : 'Du kannst diese Anfrage innerhalb von 72 Stunden beantworten.'}
             </p>
             <div className="space-y-1 text-sm">
               {data.name ? (

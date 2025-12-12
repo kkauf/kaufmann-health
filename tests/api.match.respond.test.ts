@@ -1,10 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Per-test mutable state for supabase mock
-let matchByUUID: Record<string, { id: string; status?: string | null; created_at?: string | null; patient_id: string }> = {};
+let matchByUUID: Record<string, { id: string; status?: string | null; created_at?: string | null; patient_id: string; therapist_id: string }> = {};
 let updateCalls: Array<{ id: string; payload: Record<string, unknown> }> = [];
 let peopleUpdateCalls: Array<{ id: string; payload: Record<string, unknown> }> = [];
 let updateMode: 'ok' | 'missing_responded_at' | 'error' = 'ok';
+let therapistSession: { therapist_id: string } | null = null;
+
+vi.mock('@/lib/auth/therapistSession', () => {
+  return {
+    getTherapistSession: async () => therapistSession,
+  };
+});
 
 vi.mock('@/lib/supabase-server', () => {
   const supabaseServer = {
@@ -69,12 +76,13 @@ beforeEach(() => {
   updateCalls = [];
   peopleUpdateCalls = [];
   updateMode = 'ok';
+  therapistSession = null;
 });
 
 describe('/api/match/[uuid]/respond POST', () => {
   it('accepts successfully when within 72h', async () => {
     const nowIso = new Date().toISOString();
-    matchByUUID['u-1'] = { id: 'm-1', status: 'proposed', created_at: nowIso, patient_id: 'p-1' };
+    matchByUUID['u-1'] = { id: 'm-1', status: 'proposed', created_at: nowIso, patient_id: 'p-1', therapist_id: 't-1' };
     const { POST } = await import('@/app/api/public/match/[uuid]/respond/route');
 
     const res = await POST(makePost('http://localhost/api/match/u-1/respond', { action: 'accept' }));
@@ -89,7 +97,7 @@ describe('/api/match/[uuid]/respond POST', () => {
 
   it('returns 410 when link expired (>72h) and does not update', async () => {
     const past = new Date(Date.now() - 73 * 60 * 60 * 1000).toISOString();
-    matchByUUID['u-2'] = { id: 'm-2', status: 'proposed', created_at: past, patient_id: 'p-2' };
+    matchByUUID['u-2'] = { id: 'm-2', status: 'proposed', created_at: past, patient_id: 'p-2', therapist_id: 't-2' };
     const { POST } = await import('@/app/api/public/match/[uuid]/respond/route');
 
     const res = await POST(makePost('http://localhost/api/match/u-2/respond', { action: 'decline' }));
@@ -101,7 +109,7 @@ describe('/api/match/[uuid]/respond POST', () => {
 
   it('is idempotent when already accepted/declined', async () => {
     const nowIso = new Date().toISOString();
-    matchByUUID['u-3'] = { id: 'm-3', status: 'accepted', created_at: nowIso, patient_id: 'p-3' };
+    matchByUUID['u-3'] = { id: 'm-3', status: 'accepted', created_at: nowIso, patient_id: 'p-3', therapist_id: 't-3' };
     const { POST } = await import('@/app/api/public/match/[uuid]/respond/route');
 
     const res = await POST(makePost('http://localhost/api/match/u-3/respond', { action: 'accept' }));
@@ -115,7 +123,7 @@ describe('/api/match/[uuid]/respond POST', () => {
 
   it('falls back when responded_at column missing (retry without it)', async () => {
     const nowIso = new Date().toISOString();
-    matchByUUID['u-4'] = { id: 'm-4', status: 'proposed', created_at: nowIso, patient_id: 'p-4' };
+    matchByUUID['u-4'] = { id: 'm-4', status: 'proposed', created_at: nowIso, patient_id: 'p-4', therapist_id: 't-4' };
     updateMode = 'missing_responded_at';
     const { POST } = await import('@/app/api/public/match/[uuid]/respond/route');
 
@@ -127,5 +135,21 @@ describe('/api/match/[uuid]/respond POST', () => {
     expect(updateCalls.length).toBe(2);
     expect(updateCalls[0].payload).toHaveProperty('responded_at');
     expect(updateCalls[1].payload).not.toHaveProperty('responded_at');
+  });
+
+  it('bypasses 72h expiry when therapist is logged in via portal session', async () => {
+    const past = new Date(Date.now() - 73 * 60 * 60 * 1000).toISOString();
+    matchByUUID['u-5'] = { id: 'm-5', status: 'proposed', created_at: past, patient_id: 'p-5', therapist_id: 't-5' };
+    therapistSession = { therapist_id: 't-5' };
+
+    const { POST } = await import('@/app/api/public/match/[uuid]/respond/route');
+
+    const res = await POST(makePost('http://localhost/api/match/u-5/respond', { action: 'accept' }));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ data: { status: 'accepted' }, error: null });
+    expect(updateCalls.length).toBeGreaterThanOrEqual(1);
+    expect(updateCalls[0]).toEqual({ id: 'm-5', payload: expect.objectContaining({ status: 'accepted' }) });
+    expect(peopleUpdateCalls).toContainEqual({ id: 'p-5', payload: expect.objectContaining({ status: 'matched' }) });
   });
 });

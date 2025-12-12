@@ -74,24 +74,28 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
       // SHOW_SCHWERPUNKTE=true flow: skip Schwerpunkte selection
       await page.getByRole('button', { name: /Überspringen/i }).click();
     } else if (whatBringsYouVisible) {
-      // SHOW_SCHWERPUNKTE=false flow: skip What Brings You
-      await page.getByRole('button', { name: /Überspringen/i }).click();
+      // SHOW_SCHWERPUNKTE=false flow: fill required text and continue
+      await page.getByLabel(/Was bringt dich zur Therapie/i).fill('E2E Test: kurzbeschreibung');
+      await page.getByRole('button', { name: 'Weiter →' }).click();
     }
     
     // Step 3: Modality - wait for it and select "Nein"
-    await expect(page.getByText(/Therapiemethode|Weißt du welche/i)).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: /Nein/i }).click();
-    await page.getByRole('button', { name: /Weiter/i }).click();
+    await expect(page.getByText(/Möchtest du deine Therapiemethode selbst wählen/i)).toBeVisible({ timeout: 5000 });
+    const noBtn = page.getByRole('button', { name: /^Nein/i });
+    await expect(noBtn).toBeEnabled();
+    await noBtn.click();
     
     // Step 4: Location/Session preference
-    await expect(page.getByText(/Wie möchtest du die Sitzungen/i)).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: /Online/i }).click();
-    await page.getByRole('button', { name: /Weiter/i }).click();
+    await expect(page.getByText(/Wie möchtest du die Sitzungen machen\?/i)).toBeVisible({ timeout: 8000 });
+    const onlineBtn = page.getByRole('button', { name: /Online \(Video\)/i });
+    await expect(onlineBtn).toBeEnabled();
+    await onlineBtn.click();
+    await page.getByRole('button', { name: 'Weiter →' }).click();
     
     // Step 5: Time preferences
     await expect(page.getByText(/Wann hast du Zeit/i)).toBeVisible({ timeout: 5000 });
     await page.getByRole('button', { name: /Bin flexibel|flexibel/i }).click();
-    await page.getByRole('button', { name: /Weiter/i }).click();
+    await page.getByRole('button', { name: 'Weiter →' }).click();
   }
 
   test.describe('Concierge Flow (/fragebogen?v=concierge)', () => {
@@ -102,7 +106,6 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
       // Should show contact collection (step 6)
       await expect(page.getByText('Fast geschafft!')).toBeVisible();
       await expect(page.getByPlaceholder('Vorname oder Spitzname')).toBeVisible();
-      await expect(page.getByPlaceholder('deine@email.de')).toBeVisible();
     });
 
     test('submits to leads API and stays on fragebogen for verification', async ({ page }) => {
@@ -112,6 +115,11 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
 
       // Fill contact info
       await page.getByPlaceholder('Vorname oder Spitzname').fill('E2E Concierge');
+      // Ensure email mode (some flows may default to SMS)
+      const emailToggle = page.getByRole('button', { name: /E.?Mail/i });
+      if (await emailToggle.isVisible().catch(() => false)) {
+        await emailToggle.click();
+      }
       await page.getByPlaceholder('deine@email.de').fill(MOCK_EMAIL);
       await page.getByTestId('wizard-next').click();
 
@@ -128,7 +136,7 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
       
       // Should show matches with booking buttons
       await expect(page.locator('h1')).toContainText('passenden Ergebnisse');
-      await expect(page.getByRole('button', { name: /Therapeut:in buchen/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /Direkt buchen/i })).toBeVisible();
     });
 
     test('verified user can book without re-verification', async ({ page }) => {
@@ -136,7 +144,7 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
       await page.goto(`${MOCK_MATCHES_URL}?confirm=1`);
       
       // Click book button
-      await page.getByRole('button', { name: /Therapeut:in buchen/i }).first().click();
+      await page.getByRole('button', { name: /Direkt buchen/i }).first().click();
       
       // Modal should open with slot selection (not verification)
       await expect(page.getByTestId('contact-modal')).toBeVisible();
@@ -168,6 +176,11 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
 
       // Fill contact info
       await page.getByPlaceholder('Vorname oder Spitzname').fill('E2E Marketplace');
+      // Ensure email mode (some flows may default to SMS)
+      const emailToggle = page.getByRole('button', { name: /E.?Mail/i });
+      if (await emailToggle.isVisible().catch(() => false)) {
+        await emailToggle.click();
+      }
       await page.getByPlaceholder('deine@email.de').fill(MOCK_EMAIL);
       await page.getByTestId('wizard-next').click();
 
@@ -182,14 +195,14 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
       await page.goto(`${MOCK_MATCHES_URL}?confirm=1&id=${MOCK_PATIENT_ID}`);
       
       await expect(page.locator('h1')).toContainText('passenden Ergebnisse');
-      await expect(page.getByRole('button', { name: /Therapeut:in buchen/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /Direkt buchen/i })).toBeVisible();
     });
 
     test('verified user can book without re-verification', async ({ page }) => {
       await mockMatchesApi(page, true);
       await page.goto(`${MOCK_MATCHES_URL}?confirm=1`);
       
-      await page.getByRole('button', { name: /Therapeut:in buchen/i }).first().click();
+      await page.getByRole('button', { name: /Direkt buchen/i }).first().click();
       
       await expect(page.getByTestId('contact-modal')).toBeVisible();
       await expect(page.getByText('Format')).toBeVisible();

@@ -4,6 +4,7 @@ import { logError } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { sendEmail } from '@/lib/email/client';
 import { renderPatientCustomUpdate, renderPatientMatchFound, renderTherapistRejection } from '@/lib/email/templates/patientUpdates';
+import { getTherapistSession } from '@/lib/auth/therapistSession';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -91,12 +92,22 @@ export async function POST(req: Request) {
     const m = match as unknown as MatchRow;
     const age = hoursSince(m.created_at ?? undefined);
     if (age == null || age > 72) {
+      const session = await getTherapistSession(req);
+      const canBypassExpiry = !!session?.therapist_id && session.therapist_id === (m as any)?.therapist_id;
+      if (canBypassExpiry) {
+        void ServerAnalytics.trackEventFromRequest(req, {
+          type: 'link_expiry_bypassed',
+          source: 'api.match.respond',
+          props: { match_id: m.id, therapist_id: session.therapist_id },
+        });
+      } else {
       void ServerAnalytics.trackEventFromRequest(req, {
         type: 'link_expired_view',
         source: 'api.match.respond',
         props: { match_id: m.id, uuid },
       });
       return NextResponse.json({ data: null, error: 'Link expired' }, { status: 410 });
+      }
     }
 
     const current = String(m.status || '').toLowerCase();
