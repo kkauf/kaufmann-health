@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
         // Resolve therapist recipient
         const { data: t } = await supabaseServer
           .from('therapists')
-          .select('email, first_name, last_name')
+          .select('email, first_name, last_name, typical_rate')
           .eq('id', therapist_id)
           .maybeSingle();
         // Resolve patient info
@@ -214,7 +214,7 @@ export async function POST(req: NextRequest) {
 
         // Only send emails if sink is configured to avoid accidental real sends in dry-run
         if (sinkEmail) {
-          type TherapistEmailRow = { email?: string | null; first_name?: string | null; last_name?: string | null } | null;
+          type TherapistEmailRow = { email?: string | null; first_name?: string | null; last_name?: string | null; typical_rate?: number | null } | null;
           const tRow = (t as unknown) as TherapistEmailRow;
           const therapistName = [tRow?.first_name || '', tRow?.last_name || ''].filter(Boolean).join(' ');
           const content = renderBookingTherapistNotification({
@@ -241,6 +241,7 @@ export async function POST(req: NextRequest) {
               timeLabel: time_label,
               format,
               address: addr || null,
+              sessionPrice: tRow?.typical_rate || null,
             });
             void sendEmail({
               to: sinkEmail,
@@ -285,7 +286,7 @@ export async function POST(req: NextRequest) {
       // Resolve therapist recipient
       const { data: t } = await supabaseServer
         .from('therapists')
-        .select('email, first_name, last_name, metadata')
+        .select('email, first_name, last_name, metadata, typical_rate')
         .eq('id', therapist_id)
         .maybeSingle();
       // Resolve patient info
@@ -305,7 +306,7 @@ export async function POST(req: NextRequest) {
       })();
 
       // Therapist email
-      type TherapistEmailRow = { email?: string | null; first_name?: string | null; last_name?: string | null; metadata?: unknown } | null;
+      type TherapistEmailRow = { email?: string | null; first_name?: string | null; last_name?: string | null; metadata?: unknown; typical_rate?: number | null } | null;
       const tRow = (t as unknown) as TherapistEmailRow;
       const therapistEmail = (tRow?.email || undefined) as string | undefined;
       const therapistName = [tRow?.first_name || '', tRow?.last_name || ''].filter(Boolean).join(' ');
@@ -373,6 +374,7 @@ export async function POST(req: NextRequest) {
           timeLabel: time_label,
           format,
           address: (addr || practiceAddr) || null,
+          sessionPrice: tRow?.typical_rate || null,
         });
         void sendEmail({
           to: toAddr,
