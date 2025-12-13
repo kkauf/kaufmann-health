@@ -17,6 +17,7 @@ import { createPortal } from 'react-dom';
 import type { TherapistData } from './TherapistDirectory';
 import { getAttribution } from '@/lib/attribution';
 import { getModalityInfo } from '@/lib/modalities';
+import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpunkte';
 import { cn } from '@/lib/utils';
 import { formatSessionPrice } from '@/lib/pricing';
 
@@ -67,6 +68,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
   const offersInPerson = Array.isArray(sessionPrefs) && sessionPrefs.includes('in_person');
 
   const profile = therapist.metadata?.profile;
+  const schwerpunkte = Array.isArray(therapist.schwerpunkte) ? therapist.schwerpunkte : [];
   const languages = profile?.languages || [];
   const yearsExperience = profile?.years_experience;
   const practiceAddress = (profile?.practice_address || '').toString().trim();
@@ -494,6 +496,55 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
                       </Badge>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {schwerpunkte.length > 0 && (
+              <div className="border-b pb-6">
+                <h3 className="mb-3 text-lg font-semibold text-gray-900">Spezialisierungen</h3>
+                <div className="flex flex-wrap gap-2">
+                  {schwerpunkte.map((id) => (
+                    <Badge
+                      key={id}
+                      variant="outline"
+                      className={cn('rounded-full border transition-all hover:shadow-sm', getSchwerpunktColorClasses(id))}
+                    >
+                      {getSchwerpunktLabel(id)}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(profile?.who_comes_to_me || profile?.session_focus || profile?.first_session || profile?.about_me) && (
+              <div className="border-b pb-6">
+                <h3 className="mb-3 text-lg font-semibold text-gray-900">Profil</h3>
+                <div className="space-y-5">
+                  {profile?.who_comes_to_me && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900">Zu mir kommen Menschen, die</h4>
+                      <p className="mt-1 text-sm text-gray-700 break-words">{profile.who_comes_to_me}</p>
+                    </div>
+                  )}
+                  {profile?.session_focus && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900">In unserer Arbeit</h4>
+                      <p className="mt-1 text-sm text-gray-700 break-words">{profile.session_focus}</p>
+                    </div>
+                  )}
+                  {profile?.first_session && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900">Das erste Gespräch</h4>
+                      <p className="mt-1 text-sm text-gray-700 break-words">{profile.first_session}</p>
+                    </div>
+                  )}
+                  {profile?.about_me && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900">Über mich</h4>
+                      <p className="mt-1 text-sm text-gray-700 break-words">{profile.about_me}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
