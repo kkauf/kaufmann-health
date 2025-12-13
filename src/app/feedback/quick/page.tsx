@@ -45,17 +45,23 @@ function FeedbackContent() {
       },
     };
 
-    // Fire-and-forget tracking
-    if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-      navigator.sendBeacon('/api/public/events', JSON.stringify(payload));
-    } else {
-      fetch('/api/public/events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        keepalive: true,
-      }).catch(() => {});
+    // Fire-and-forget tracking.
+    // Use sendBeacon with an explicit JSON content-type to ensure the server parses `properties`.
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      try {
+        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+        navigator.sendBeacon('/api/public/events', blob);
+        return;
+      } catch {
+        // Fall through to fetch
+      }
     }
+    fetch('/api/public/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    }).catch(() => {});
   }, [tracked, patientId, reason, therapistId, source]);
 
   const handleSubmitDetails = useCallback(async () => {
