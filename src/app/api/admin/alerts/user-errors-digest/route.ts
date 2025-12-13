@@ -14,6 +14,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { sendEmail } from '@/lib/email/client';
 import { renderLayout } from '@/lib/email/layout';
 import { track, logError } from '@/lib/logger';
+import { isCronAuthorized as isCronAuthorizedShared } from '@/lib/cron-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,21 +23,7 @@ const DIGEST_HOURS = 12;
 const NOTIFY_EMAIL = process.env.LEADS_NOTIFY_EMAIL || 'kontakt@kaufmann-health.de';
 
 function isCronAuthorized(req: Request): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return false;
-  
-  const cronHeader = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
-  if (cronHeader === cronSecret) return true;
-  
-  const authHeader = req.headers.get('authorization') || '';
-  if (authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret) return true;
-  
-  try {
-    const token = new URL(req.url).searchParams.get('token');
-    if (token === cronSecret) return true;
-  } catch {}
-  
-  return false;
+  return isCronAuthorizedShared(req);
 }
 
 function escapeHtml(s: string): string {

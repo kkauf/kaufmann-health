@@ -6,6 +6,7 @@ import { renderFeedbackRequestEmail } from '@/lib/email/templates/feedbackReques
 import { renderEmailConfirmation } from '@/lib/email/templates/emailConfirmation';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 import { BASE_URL } from '@/lib/constants';
+import { isCronAuthorized as isCronAuthorizedShared } from '@/lib/cron-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,16 +34,7 @@ async function assertAdmin(req: Request): Promise<boolean> {
 }
 
 function isCronAuthorized(req: Request): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return false;
-  const authHeader = req.headers.get('authorization') || '';
-  if (authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret) return true;
-  try {
-    const url = new URL(req.url);
-    const token = url.searchParams.get('token');
-    if (token && token === cronSecret) return true;
-  } catch {}
-  return false;
+  return isCronAuthorizedShared(req);
 }
 
 // Sample data for email previews
@@ -147,7 +139,7 @@ export async function GET(req: Request) {
         templates: emails.map((e, i) => ({
           index: i,
           subject: e.subject,
-          preview_url: `${url.origin}${url.pathname}?template=${template === 'all' ? validTemplates[i] : template}&token=${url.searchParams.get('token') || ''}`,
+          preview_url: `${url.origin}${url.pathname}?template=${template === 'all' ? validTemplates[i] : template}`,
         })),
       });
     }

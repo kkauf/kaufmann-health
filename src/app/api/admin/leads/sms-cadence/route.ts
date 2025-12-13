@@ -22,6 +22,7 @@ import { logError, track } from '@/lib/logger';
 import { sendTransactionalSms } from '@/lib/sms/client';
 import { BASE_URL } from '@/lib/constants';
 import { createShortLinkOrFallback } from '@/lib/short-links';
+import { isCronAuthorized as isCronAuthorizedShared } from '@/lib/cron-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -70,21 +71,7 @@ async function assertAdmin(req: Request): Promise<boolean> {
 }
 
 function isCronAuthorized(req: Request): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return false;
-  
-  const cronHeader = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
-  if (cronHeader === cronSecret) return true;
-  
-  const authHeader = req.headers.get('authorization') || '';
-  if (authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret) return true;
-  
-  try {
-    const token = new URL(req.url).searchParams.get('token');
-    if (token === cronSecret) return true;
-  } catch {}
-  
-  return false;
+  return isCronAuthorizedShared(req);
 }
 
 function hoursAgo(h: number): string {

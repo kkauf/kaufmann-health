@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { logError, track } from '@/lib/logger';
+import { isCronAuthorized as isCronAuthorizedShared } from '@/lib/cron-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -91,19 +92,8 @@ export async function GET(req: Request) {
   const startedAt = Date.now();
 
   try {
-    // Auth: allow Vercel Cron header or Bearer/secret for manual triggering
-    const cronSecretHeader = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
-    const cronSecret = process.env.CRON_SECRET;
-    const authHeader = req.headers.get('authorization') || '';
-    const isAuthBearer = Boolean(cronSecret && authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret);
-    let isCron = Boolean(cronSecret && cronSecretHeader && cronSecretHeader === cronSecret) || isAuthBearer;
-    if (!isCron && cronSecret) {
-      try {
-        const u = new URL(req.url);
-        const token = u.searchParams.get('token');
-        if (token && token === cronSecret) isCron = true;
-      } catch {}
-    }
+    // Auth: allow Bearer/secret headers (and in non-prod, optional query token fallback)
+    const isCron = isCronAuthorizedShared(req);
     if (!isCron) return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
 
     const url = new URL(req.url);

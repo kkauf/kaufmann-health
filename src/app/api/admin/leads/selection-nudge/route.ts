@@ -5,6 +5,7 @@ import { sendEmail } from '@/lib/email/client';
 import { renderSelectionNudgeEmail } from '@/lib/email/templates/selectionNudge';
 import { BASE_URL } from '@/lib/constants';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
+import { isCronAuthorized as isCronAuthorizedShared, sameOrigin as sameOriginShared } from '@/lib/cron-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -36,32 +37,11 @@ async function assertAdmin(req: Request): Promise<boolean> {
 }
 
 function isCronAuthorized(req: Request): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return false;
-  const header = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
-  const authHeader = req.headers.get('authorization') || '';
-  const isAuthBearer = Boolean(authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret);
-  if (header && header === cronSecret) return true;
-  if (isAuthBearer) return true;
-  try {
-    const url = new URL(req.url);
-    const token = url.searchParams.get('token');
-    if (token && token === cronSecret) return true;
-  } catch {}
-  return false;
+  return isCronAuthorizedShared(req);
 }
 
 function sameOrigin(req: Request): boolean {
-  const host = req.headers.get('host') || '';
-  if (!host) return false;
-  const origin = req.headers.get('origin') || '';
-  const referer = req.headers.get('referer') || '';
-  const http = `http://${host}`;
-  const https = `https://${host}`;
-  if (origin === http || origin === https) return true;
-  if (referer.startsWith(http + '/')) return true;
-  if (referer.startsWith(https + '/')) return true;
-  return false;
+  return sameOriginShared(req);
 }
 
 function daysAgo(d: number) {
