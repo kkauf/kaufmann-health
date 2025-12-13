@@ -11,6 +11,7 @@ import twilio from 'twilio';
 import { track, logError } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { supabaseServer } from '@/lib/supabase-server';
+import { TwilioIncomingSmsPayload } from '@/contracts/internal';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,6 +20,19 @@ function maskPhone(n?: string | null) {
   if (!n) return 'redacted';
   const s = String(n);
   return s.length > 6 ? `***${s.slice(-6)}` : 'redacted';
+}
+
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function stripHeaderNewlines(input: string): string {
+  return input.replace(/[\r\n]+/g, ' ').trim();
 }
 
 export async function POST(req: Request) {
@@ -58,10 +72,13 @@ export async function POST(req: Request) {
       payload = {};
     }
 
-    const from = String(payload['From'] || '').trim();
-    const to = String(payload['To'] || '').trim();
-    const body = String(payload['Body'] || '').trim();
-    const messageSid = String(payload['MessageSid'] || '');
+    const parsed = TwilioIncomingSmsPayload.safeParse(payload);
+    const tw = parsed.success ? parsed.data : ({} as Partial<TwilioIncomingSmsPayload>);
+
+    const from = String(tw.From || '').trim();
+    const to = String(tw.To || '').trim();
+    const body = String(tw.Body || '').trim();
+    const messageSid = String(tw.MessageSid || '');
 
     // Track incoming SMS (no PII in props)
     void track({
@@ -103,9 +120,17 @@ export async function POST(req: Request) {
     // Forward to admin email
     const notifyEmail = process.env.LEADS_NOTIFY_EMAIL;
     if (notifyEmail) {
-      const subject = wantsCallback
-        ? `📞 Rückruf gewünscht: ${patientName} (${maskPhone(from)})`
-        : `📱 SMS-Antwort: ${patientName} (${maskPhone(from)})`;
+      const safePatientName = escapeHtml(patientName || 'Unbekannt');
+      const safeFrom = escapeHtml(from || '');
+      const safeBody = escapeHtml(body || '(leer)');
+      const safePatientEmail = escapeHtml(patientEmail || '');
+      const safePatientId = escapeHtml(patientId || '');
+
+      const subject = stripHeaderNewlines(
+        wantsCallback
+          ? `📞 Rückruf gewünscht: ${patientName} (${maskPhone(from)})`
+          : `📱 SMS-Antwort: ${patientName} (${maskPhone(from)})`
+      );
 
       const html = `
         <div style="font-family: system-ui, sans-serif; max-width: 600px;">
@@ -113,28 +138,28 @@ export async function POST(req: Request) {
           
           <div style="background: ${wantsCallback ? '#fef3c7' : '#f1f5f9'}; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
             <p style="margin: 0 0 8px; color: #64748b; font-size: 14px;">Nachricht:</p>
-            <p style="margin: 0; font-size: 16px; color: #1e293b; white-space: pre-wrap;">${body || '(leer)'}</p>
+            <p style="margin: 0; font-size: 16px; color: #1e293b; white-space: pre-wrap;">${safeBody || '(leer)'}</p>
           </div>
 
           <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
             <tr>
               <td style="padding: 8px 0; color: #64748b;">Name:</td>
-              <td style="padding: 8px 0; color: #1e293b; font-weight: 500;">${patientName}</td>
+              <td style="padding: 8px 0; color: #1e293b; font-weight: 500;">${safePatientName}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #64748b;">Telefon:</td>
-              <td style="padding: 8px 0; color: #1e293b; font-weight: 500;">${from}</td>
+              <td style="padding: 8px 0; color: #1e293b; font-weight: 500;">${safeFrom}</td>
             </tr>
             ${patientEmail ? `
             <tr>
               <td style="padding: 8px 0; color: #64748b;">E-Mail:</td>
-              <td style="padding: 8px 0; color: #1e293b;">${patientEmail}</td>
+              <td style="padding: 8px 0; color: #1e293b;">${safePatientEmail}</td>
             </tr>
             ` : ''}
             ${patientId ? `
             <tr>
               <td style="padding: 8px 0; color: #64748b;">Patient ID:</td>
-              <td style="padding: 8px 0; color: #64748b; font-family: monospace; font-size: 12px;">${patientId}</td>
+              <td style="padding: 8px 0; color: #64748b; font-family: monospace; font-size: 12px;">${safePatientId}</td>
             </tr>
             ` : ''}
           </table>

@@ -619,9 +619,10 @@ export async function POST(req: NextRequest) {
         props: { contact_type: 'email' },
       });
 
-      const respData: Record<string, unknown> = { sent: true, method: 'email', token };
+      const respData: Record<string, unknown> = { sent: true, method: 'email' };
       if (process.env.NODE_ENV !== 'production') {
         respData.person_id = personId;
+        respData.token = token;
       }
       return NextResponse.json({
         data: respData,
