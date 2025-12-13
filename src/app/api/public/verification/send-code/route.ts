@@ -15,6 +15,8 @@ import { randomBytes } from 'crypto';
 import { supabaseServer } from '@/lib/supabase-server';
 import { track } from '@/lib/logger';
 import { getFixedWindowLimiter, extractIpFromHeaders } from '@/lib/rate-limit';
+import { parseRequestBody } from '@/lib/api-utils';
+import { SendCodeInput } from '@/contracts/verification';
 
 interface SendCodeRequest {
   contact: string; // email or phone
@@ -43,6 +45,13 @@ interface SendCodeRequest {
   };
 }
 
+function mapSendCodeContractError(message: string): string {
+  if (message.startsWith('contact') || message.startsWith('contact_type')) {
+    return 'Missing contact or contact_type';
+  }
+  return 'Missing contact or contact_type';
+}
+
 export async function POST(req: NextRequest) {
 
   try {
@@ -55,7 +64,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = (await req.json()) as SendCodeRequest;
+    const parsed = await parseRequestBody(req, SendCodeInput);
+    if (!parsed.success) {
+      const json = await parsed.response.json().catch(() => ({} as any));
+      const msg = typeof json?.error === 'string' ? json.error : 'Missing contact or contact_type';
+
+      // Preserve legacy behavior: invalid JSON hit catch-all and returned 500
+      if (msg === 'Ungültiger Request Body') {
+        return NextResponse.json({ error: 'Interner Fehler' }, { status: 500 });
+      }
+
+      return NextResponse.json({ error: mapSendCodeContractError(msg) }, { status: 400 });
+    }
+
+    const body = parsed.data as unknown as SendCodeRequest;
     let isTestCookie = false;
     try {
       const cookieHeader = req.headers.get('cookie') || '';

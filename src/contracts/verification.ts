@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UUID } from './shared';
+import { NonEmptyString, OptionalString, SessionPreference } from './shared';
 
 // ============================================================================
 // VERIFICATION
@@ -14,14 +14,30 @@ export type VerificationContactType = z.infer<typeof VerificationContactType>;
 // ============================================================================
 
 export const SendCodeInput = z.object({
-  contact: z.string().min(1, 'Kontakt erforderlich'),
+  contact: NonEmptyString,
   contact_type: VerificationContactType,
-  patient_id: UUID.optional(),
-  
-  // For redirect after verification
-  redirect_path: z.string().optional(),
-  form_session_id: UUID.optional(),
-});
+  lead_id: OptionalString,
+  form_session_id: OptionalString,
+  redirect: OptionalString,
+  name: OptionalString,
+  draft_contact: z
+    .object({
+      therapist_id: NonEmptyString,
+      contact_type: z.enum(['booking', 'consultation']),
+      patient_reason: OptionalString,
+      patient_message: OptionalString,
+      session_format: SessionPreference.optional(),
+    })
+    .optional(),
+  draft_booking: z
+    .object({
+      therapist_id: NonEmptyString,
+      date_iso: OptionalString,
+      time_label: OptionalString,
+      format: SessionPreference.optional(),
+    })
+    .optional(),
+}).passthrough();
 
 export type SendCodeInput = z.infer<typeof SendCodeInput>;
 
@@ -38,20 +54,16 @@ export type SendCodeOutput = z.infer<typeof SendCodeOutput>;
 // ============================================================================
 
 export const VerifyCodeInput = z.object({
-  contact: z.string().min(1, 'Kontakt erforderlich'),
+  contact: NonEmptyString,
   contact_type: VerificationContactType,
-  code: z.string().min(4, 'Code zu kurz').max(10, 'Code zu lang'),
-  
-  // Optional context
-  patient_id: UUID.optional(),
-  form_session_id: UUID.optional(),
-});
+  code: NonEmptyString,
+}).passthrough();
 
 export type VerifyCodeInput = z.infer<typeof VerifyCodeInput>;
 
 export const VerifyCodeOutput = z.object({
   success: z.boolean(),
-  patient_id: UUID.optional(),
+  patient_id: z.string().optional(),
   verified: z.boolean().optional(),
   error: z.string().optional(),
 });

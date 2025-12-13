@@ -6,6 +6,8 @@ import { sendEmail } from '@/lib/email/client';
 import { maybeFirePatientConversion } from '@/lib/conversion';
 import { renderBookingTherapistNotification } from '@/lib/email/templates/bookingTherapistNotification';
 import { renderBookingClientConfirmation } from '@/lib/email/templates/bookingClientConfirmation';
+import { BookingInput } from '@/contracts/booking';
+import { parseRequestBody } from '@/lib/api-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +18,14 @@ type BookRequest = {
   format: 'online' | 'in_person';
   session_id?: string;
 };
+
+function mapBookingContractError(message: string): string {
+  if (message.startsWith('therapist_id')) return 'Missing fields';
+  if (message.startsWith('date_iso')) return 'Invalid date';
+  if (message.startsWith('time_label')) return 'Invalid time';
+  if (message.startsWith('format')) return 'Invalid format';
+  return 'Missing fields';
+}
 
 function isValidDateIso(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
@@ -50,7 +60,20 @@ export async function POST(req: NextRequest) {
   })();
   const sinkEmail = (process.env.LEADS_NOTIFY_EMAIL || '').trim();
   try {
-    const body = (await req.json()) as BookRequest;
+    const parsed = await parseRequestBody(req, BookingInput);
+    if (!parsed.success) {
+      const json = await parsed.response.json().catch(() => ({} as any));
+      const msg = typeof json?.error === 'string' ? json.error : 'Missing fields';
+
+      // Preserve legacy behavior: malformed JSON previously threw and hit the catch-all (500)
+      if (msg === 'Ungültiger Request Body') {
+        return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+      }
+
+      return NextResponse.json({ error: mapBookingContractError(msg) }, { status: 400 });
+    }
+
+    const body = parsed.data as unknown as BookRequest;
     const { therapist_id, date_iso, time_label, format, session_id } = body;
 
     if (!therapist_id || !date_iso || !time_label || !format) {
