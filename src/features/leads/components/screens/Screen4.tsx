@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 
 export type Screen4Values = {
-  gender?: 'Frau' | 'Mann' | 'Keine Präferenz';
+  gender?: 'Frau' | 'Mann' | 'Keine Präferenz' | 'Divers/non-binär';
   time_slots?: string[]; // e.g., 'Morgens (8-12 Uhr)'
   methods?: string[]; // Still here for compatibility, but modality is handled in NewScreen5
 };

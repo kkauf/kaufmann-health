@@ -62,7 +62,9 @@ export async function POST(req: NextRequest) {
   try {
     const parsed = await parseRequestBody(req, BookingInput);
     if (!parsed.success) {
-      const json = await parsed.response.json().catch(() => ({} as any));
+      const json = await parsed.response
+        .json()
+        .catch(() => ({} as Record<string, unknown>));
       const msg = typeof json?.error === 'string' ? json.error : 'Missing fields';
 
       // Preserve legacy behavior: malformed JSON previously threw and hit the catch-all (500)

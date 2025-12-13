@@ -25,7 +25,9 @@ interface TherapistDetailModalProps {
   open: boolean;
   onClose: () => void;
   initialScrollTarget?: string;
-  onOpenContactModal: (
+  /** When true, hides contact CTAs and booking - used for therapist/admin previews */
+  previewMode?: boolean;
+  onOpenContactModal?: (
     therapist: TherapistData,
     type: 'booking' | 'consultation',
     selectedSlot?: { date_iso: string; time_label: string; format: 'online' | 'in_person' }
@@ -47,7 +49,7 @@ function hashCode(s: string) {
   return Math.abs(h);
 }
 
-export function TherapistDetailModal({ therapist, open, onClose, initialScrollTarget, onOpenContactModal }: TherapistDetailModalProps) {
+export function TherapistDetailModal({ therapist, open, onClose, initialScrollTarget, onOpenContactModal, previewMode = false }: TherapistDetailModalProps) {
   const [imageError, setImageError] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -70,6 +72,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
   const practiceAddress = (profile?.practice_address || '').toString().trim();
   
   const handleContactClick = (type: 'booking' | 'consultation') => {
+    if (previewMode || !onOpenContactModal) return;
     try {
       const attrs = getAttribution();
       const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
@@ -89,11 +92,11 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
         setWeekIndex(0);
       } else {
         // No slots: open ContactModal for messaging
-        onOpenContactModal(therapist, 'booking', undefined);
+        onOpenContactModal?.(therapist, 'booking', undefined);
       }
     } else {
       // For consultation, call parent to open ContactModal
-      onOpenContactModal(therapist, type, undefined);
+      onOpenContactModal?.(therapist, type, undefined);
     }
   };
 
@@ -106,6 +109,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
 
   const handleProceedToVerification = useCallback(() => {
     if (!selectedSlot) return;
+    if (previewMode || !onOpenContactModal) return;
     try {
       const attrs = getAttribution();
       const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
@@ -124,12 +128,12 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
     } catch {}
     // Close this modal and open ContactModal with selected slot
     // This creates a smoother transition since Contact Modal shows the same therapist header + slot
-    onOpenContactModal(therapist, 'booking', {
+    onOpenContactModal?.(therapist, 'booking', {
       date_iso: selectedSlot.date_iso,
       time_label: selectedSlot.time_label,
       format: selectedSlot.format
     });
-  }, [selectedSlot, therapist, onOpenContactModal]);
+  }, [selectedSlot, therapist, onOpenContactModal, previewMode]);
 
   useEffect(() => {
     setMounted(true);

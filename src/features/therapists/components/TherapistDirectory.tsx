@@ -11,28 +11,9 @@ import { getAttribution } from '@/lib/attribution';
 import { TherapistDetailModal } from './TherapistDetailModal';
 import { ContactModal } from './ContactModal';
 import { cn } from '@/lib/utils';
+import type { TherapistData } from '@/lib/therapist-mapper';
 
-export type TherapistData = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  photo_url?: string;
-  modalities: string[];
-  session_preferences?: string[];
-  approach_text: string;
-  accepting_new: boolean;
-  city: string;
-  typical_rate?: number | null;
-  metadata?: {
-    profile?: {
-      approach_text?: string;
-      languages?: string[];
-      years_experience?: number;
-      practice_address?: string;
-    };
-  };
-  availability?: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[];
-};
+export type { TherapistData } from '@/lib/therapist-mapper';
 
 // Static modality style configuration (moved outside component to prevent recreation)
 const BASE_MODALITY_STYLE: Record<string, { cls: string; Icon: React.ElementType; label: string }> = {

@@ -66,7 +66,9 @@ export async function POST(req: NextRequest) {
 
     const parsed = await parseRequestBody(req, SendCodeInput);
     if (!parsed.success) {
-      const json = await parsed.response.json().catch(() => ({} as any));
+      const json = await parsed.response
+        .json()
+        .catch(() => ({} as Record<string, unknown>));
       const msg = typeof json?.error === 'string' ? json.error : 'Missing contact or contact_type';
 
       // Preserve legacy behavior: invalid JSON hit catch-all and returned 500

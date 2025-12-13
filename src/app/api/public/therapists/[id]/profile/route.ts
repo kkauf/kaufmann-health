@@ -107,7 +107,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
       const parsed = await parseFormData(TherapistProfileUpdate, form);
       if (!parsed.success) {
-        const json = await parsed.response.json().catch(() => ({} as any));
+        const json = await parsed.response
+          .json()
+          .catch(() => ({} as Record<string, unknown>));
         const msg = typeof json?.error === 'string' ? json.error : 'Invalid request';
         return safeJson(
           { data: null, error: mapProfileContractError(msg) },
@@ -206,7 +208,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       // Assume JSON
       const parsed = await parseRequestBody(req, TherapistProfileUpdate);
       if (!parsed.success) {
-        const json = await parsed.response.json().catch(() => ({} as any));
+        const json = await parsed.response
+          .json()
+          .catch(() => ({} as Record<string, unknown>));
         const msg = typeof json?.error === 'string' ? json.error : 'Invalid request';
         return safeJson(
           { data: null, error: mapProfileContractError(msg) },
@@ -214,22 +218,27 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         );
       }
 
-      const body = parsed.data as any;
-      const g = body?.gender;
-      const c = body?.city;
-      const a = body?.accepting_new;
-      const sp = body?.session_preferences;
-      const tr = body?.typical_rate;
-      const pStreet = body?.practice_street;
-      const pPostal = body?.practice_postal_code;
-      const pCity = body?.practice_city;
+      const bodyUnknown: unknown = parsed.data;
+      const body: Record<string, unknown> =
+        bodyUnknown && typeof bodyUnknown === 'object'
+          ? (bodyUnknown as Record<string, unknown>)
+          : {};
+
+      const g = body['gender'];
+      const c = body['city'];
+      const a = body['accepting_new'];
+      const sp = body['session_preferences'];
+      const tr = body['typical_rate'];
+      const pStreet = body['practice_street'];
+      const pPostal = body['practice_postal_code'];
+      const pCity = body['practice_city'];
       // New profile text fields
-      const wctm = body?.who_comes_to_me;
-      const sf = body?.session_focus;
-      const fs = body?.first_session;
-      const am = body?.about_me;
+      const wctm = body['who_comes_to_me'];
+      const sf = body['session_focus'];
+      const fs = body['first_session'];
+      const am = body['about_me'];
       // Schwerpunkte
-      const spkt = body?.schwerpunkte;
+      const spkt = body['schwerpunkte'];
       
       if (typeof g === 'string') gender = g;
       if (typeof c === 'string') city = c;
