@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UUID } from './shared';
+import { NonEmptyString } from './shared';
 
 // ============================================================================
 // THERAPIST RESPOND TO MATCH
@@ -21,7 +21,7 @@ export type TherapistRespondInput = z.infer<typeof TherapistRespondInput>;
 // ============================================================================
 
 export const PatientSelectInput = z.object({
-  therapist_id: UUID,
+  therapist_id: NonEmptyString,
 });
 
 export type PatientSelectInput = z.infer<typeof PatientSelectInput>;
