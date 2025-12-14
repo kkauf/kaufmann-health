@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { NonEmptyString, OptionalString, SessionPreference } from './shared';
+import { NonEmptyString, OptionalString, SessionPreference, UUID } from './shared';
 
 // ============================================================================
 // VERIFICATION
@@ -22,7 +22,7 @@ export const SendCodeInput = z.object({
   name: OptionalString,
   draft_contact: z
     .object({
-      therapist_id: NonEmptyString,
+      therapist_id: UUID,
       contact_type: z.enum(['booking', 'consultation']),
       patient_reason: OptionalString,
       patient_message: OptionalString,
@@ -31,7 +31,7 @@ export const SendCodeInput = z.object({
     .optional(),
   draft_booking: z
     .object({
-      therapist_id: NonEmptyString,
+      therapist_id: UUID,
       date_iso: OptionalString,
       time_label: OptionalString,
       format: SessionPreference.optional(),
@@ -42,8 +42,9 @@ export const SendCodeInput = z.object({
 export type SendCodeInput = z.infer<typeof SendCodeInput>;
 
 export const SendCodeOutput = z.object({
-  success: z.boolean(),
-  message: z.string().optional(),
+  data: z.record(z.string(), z.unknown()).nullable().optional(),
+  error: z.string().nullable().optional(),
+  success: z.boolean().optional(),
 });
 
 export type SendCodeOutput = z.infer<typeof SendCodeOutput>;

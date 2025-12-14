@@ -38,7 +38,11 @@ describe('EARTH-204: send-code URL generation (the actual bug)', () => {
   it('includes both token AND id in confirmation URL when person exists', async () => {
     const email = 'test@example.com';
     const existingPersonId = 'existing-person-123';
-    const therapistId = 'therapist-456';
+    const therapistId = '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d';
+    const updateEqMock = vi.fn().mockResolvedValue({ error: null });
+    const updateMock = vi.fn().mockReturnValue({
+      eq: updateEqMock,
+    });
     
     // Mock existing person lookup
     (supabaseServer.from as unknown as Mock).mockReturnValue({
@@ -51,26 +55,45 @@ describe('EARTH-204: send-code URL generation (the actual bug)', () => {
         }),
         single: vi.fn(),
       }),
-      update: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      }),
+      update: updateMock,
     });
 
     const redirectPath = `/therapeuten?contact=compose&tid=${therapistId}&type=booking`;
     const body = {
       contact: email,
       contact_type: 'email',
+      name: 'Test User',
       redirect: redirectPath,
+      draft_contact: {
+        therapist_id: therapistId,
+        contact_type: 'booking',
+        patient_reason: 'Test reason',
+        patient_message: 'Test message',
+      },
     };
 
     const req = new Request('http://localhost:3000/api/public/verification/send-code', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Campaign-Source-Override': '/therapie-finden',
+        'X-Campaign-Variant-Override': 'concierge',
+        'X-Gclid': 'test-gclid-123',
+      },
       body: JSON.stringify(body),
     });
 
     const res = await POST(req as any);
     expect(res.status).toBe(200);
+
+    expect(updateMock).toHaveBeenCalled();
+    const updateArg = (updateMock as unknown as Mock).mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(updateArg.campaign_source).toBe('/therapie-finden');
+    expect(updateArg.campaign_variant).toBe('concierge');
+    const meta = updateArg.metadata as Record<string, unknown>;
+    expect(meta.gclid).toBe('test-gclid-123');
+    expect(meta.landing_page).toBe('/therapie-finden');
+    expect(meta.conversion_path).toBe('directory_contact');
 
     // Verify sendEmail was called
     expect(sendEmail).toHaveBeenCalledTimes(1);
