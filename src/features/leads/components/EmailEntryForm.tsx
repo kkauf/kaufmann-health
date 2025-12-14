@@ -168,8 +168,9 @@ export function ContactEntryForm({
       // Navigate to the Fragebogen, preserving variant (?v=) if present
       // Test 4: Use flow randomization (concierge/self-service) when no variant specified
       const url = typeof window !== 'undefined' ? new URL(window.location.href) : null;
-      const urlVariant = url?.searchParams.get('v');
-      const v = urlVariant || getFlowVariant(urlVariant);
+      const urlVariantRaw = (url?.searchParams.get('variant') || url?.searchParams.get('v') || '').toLowerCase();
+      const urlVariant = urlVariantRaw === 'concierge' || urlVariantRaw === 'self-service' ? urlVariantRaw : null;
+      const v = getFlowVariant(urlVariant);
       const next = `/fragebogen?v=${encodeURIComponent(v)}`;
       try { track('Lead Started'); } catch {}
       if (typeof window !== 'undefined') window.location.assign(next);

@@ -179,6 +179,18 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
       expect(schwerpunkteVisible).toBe(true);
     });
 
+    test('supports v= alias for self-service', async ({ page }) => {
+      await page.goto('/fragebogen?v=self-service&restart=1');
+      await completeStep1Timeline(page);
+
+      // Wait for transition
+      await page.waitForTimeout(1000);
+
+      // Should show Schwerpunkte checkboxes
+      const schwerpunkteVisible = await page.getByText(/Was beschäftigt dich|Wähle aus/i).isVisible().catch(() => false);
+      expect(schwerpunkteVisible).toBe(true);
+    });
+
     test('submits with matchesUrl (auto-matching)', async ({ page }) => {
       await mockLeadsApiSelfService(page);
       await page.goto('/fragebogen?variant=self-service&restart=1');

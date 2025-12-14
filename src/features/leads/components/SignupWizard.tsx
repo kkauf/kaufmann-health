@@ -8,6 +8,7 @@ import Screen4 from './screens/Screen4';
 import NewScreen2_Timeline, { type NewScreen2Values } from './screens/NewScreen2_Timeline';
 import NewScreen3_WhatBringsYou, { type NewScreen3Values } from './screens/NewScreen3_WhatBringsYou';
 import NewScreen5_Modality, { type NewScreen5Values } from './screens/NewScreen5_Modality';
+import ScreenSchwerpunkte, { type ScreenSchwerpunkteValues } from './screens/ScreenSchwerpunkte';
 import { Button } from '@/components/ui/button';
 import { getOrCreateSessionId } from '@/lib/attribution';
 
@@ -22,6 +23,7 @@ export type WizardData = {
   start_timing?: NewScreen2Values['start_timing'];
   // Step 2: What Brings You (optional)
   additional_info?: NewScreen3Values['additional_info'];
+  schwerpunkte?: ScreenSchwerpunkteValues['schwerpunkte'];
   // Step 3: Modality
   modality_matters?: boolean;
   methods?: string[];
@@ -39,6 +41,8 @@ const PROGRESS = [0, 20, 40, 60, 80, 100]; // steps 1-5
 
 export default function SignupWizard() {
   const searchParams = useSearchParams();
+  const flowVariantParam = (searchParams?.get('variant') || searchParams?.get('v') || '').toLowerCase();
+  const isSelfService = flowVariantParam === 'self-service';
   const [step, setStep] = React.useState<number>(1);
   const [data, setData] = React.useState<WizardData>({});
   const [initialized, setInitialized] = React.useState(false);
@@ -517,7 +521,15 @@ export default function SignupWizard() {
         );
       case 2:
         // Step 2: What Brings You (truly optional)
-        return (
+        return isSelfService ? (
+          <ScreenSchwerpunkte
+            values={{ schwerpunkte: data.schwerpunkte }}
+            onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
+            onBack={() => safeGoToStep(1)}
+            onNext={() => safeGoToStep(3)}
+            disabled={navLock || submitting}
+          />
+        ) : (
           <NewScreen3_WhatBringsYou
             values={{ additional_info: data.additional_info }}
             onChange={saveLocal}
@@ -604,6 +616,7 @@ export default function SignupWizard() {
         additional_info: data.additional_info,
         modality_matters: data.modality_matters,
         methods: data.methods || [],
+        schwerpunkte: data.schwerpunkte || [],
         city: data.city,
         session_preference: sessionPref,
         gender: data.gender,
