@@ -24,6 +24,16 @@ function extractMessage(err: unknown): string | null {
   return null;
 }
 
+function getMagicLinkIssuedAt(metadata: unknown, createdAt: string | null | undefined): string | null {
+  try {
+    if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
+      const raw = (metadata as { magic_link_issued_at?: unknown }).magic_link_issued_at;
+      if (typeof raw === 'string' && raw.trim().length > 0) return raw;
+    }
+  } catch {}
+  return createdAt || null;
+}
+
 export async function POST(req: Request) {
   const { pathname, searchParams } = (() => {
     try {
@@ -87,10 +97,12 @@ export async function POST(req: Request) {
       created_at?: string | null; 
       patient_id: string; 
       therapist_id: string;
-      metadata?: { patient_initiated?: boolean } | null;
+      metadata?: { patient_initiated?: boolean; magic_link_issued_at?: string } | null;
     };
     const m = match as unknown as MatchRow;
-    const age = hoursSince(m.created_at ?? undefined);
+
+    const issuedAt = getMagicLinkIssuedAt(m.metadata ?? null, m.created_at ?? null);
+    const age = hoursSince(issuedAt ?? undefined);
     if (age == null || age > 72) {
       const session = await getTherapistSession(req);
       const canBypassExpiry = !!session?.therapist_id && session.therapist_id === m.therapist_id;

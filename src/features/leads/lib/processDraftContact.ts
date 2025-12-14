@@ -82,6 +82,8 @@ export async function processDraftContact(
       contact_method: contactMethod,
       session_format: session_format || null,
       source: 'directory_contact_verified',
+      magic_link_issued_at: new Date().toISOString(),
+      magic_link_issued_count: 1,
       ...(isTest ? { is_test: true } : {}),
     };
 

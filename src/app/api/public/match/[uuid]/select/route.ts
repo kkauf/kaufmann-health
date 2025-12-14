@@ -89,7 +89,7 @@ async function handle(req: Request) {
     // Find the target match row for this patient + therapist
     const { data: targetMatch, error: tmErr } = await supabaseServer
       .from('matches')
-      .select('id, therapist_id, status')
+      .select('id, therapist_id, status, metadata')
       .eq('patient_id', patient_id)
       .eq('therapist_id', therapist_id)
       .limit(1)
@@ -109,9 +109,21 @@ async function handle(req: Request) {
     const _alreadySelected = existingStatus === 'patient_selected' || existingStatus === 'accepted';
 
     if (shouldTransition) {
+      const nowIso = new Date().toISOString();
+      const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+      const metaRaw = (targetMatch as { metadata?: unknown } | null)?.metadata;
+      const meta = isObj(metaRaw) ? metaRaw : {};
+      const nextMeta: Record<string, unknown> = { ...meta };
+      const hasIssuedAt = typeof nextMeta['magic_link_issued_at'] === 'string' && String(nextMeta['magic_link_issued_at']).trim().length > 0;
+      if (!hasIssuedAt) {
+        nextMeta['magic_link_issued_at'] = nowIso;
+        const prevCount = typeof nextMeta['magic_link_issued_count'] === 'number' ? Number(nextMeta['magic_link_issued_count']) : 0;
+        nextMeta['magic_link_issued_count'] = prevCount + 1;
+      }
+
       const { error: updErr } = await supabaseServer
         .from('matches')
-        .update({ status: 'patient_selected' })
+        .update({ status: 'patient_selected', metadata: nextMeta })
         .eq('id', match_id);
       if (updErr) {
         await logError('api.match.select', updErr, { stage: 'update_status', match_id });

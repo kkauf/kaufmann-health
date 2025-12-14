@@ -477,6 +477,8 @@ export async function POST(req: Request) {
       patient_message: patient_message || '',
       contact_method,
       session_format: session_format || null,
+      magic_link_issued_at: new Date().toISOString(),
+      magic_link_issued_count: 1,
       ...(isTestFinal ? { is_test: true } : {}),
       ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
     };

@@ -78,7 +78,7 @@ async function getData(uuid: string, portalTherapistId: string | null) {
   const portalAuthenticated = !!portalTherapistId && portalTherapistId === m.therapist_id;
   if (!found.uuidIsCurrent) {
     const currentUuid = m.secure_uuid;
-    if (portalAuthenticated && typeof currentUuid === 'string' && currentUuid.trim().length > 0 && currentUuid !== uuid) {
+    if (typeof currentUuid === 'string' && currentUuid.trim().length > 0 && currentUuid !== uuid) {
       redirect(`/match/${currentUuid}`);
     }
 
@@ -136,7 +136,13 @@ async function getData(uuid: string, portalTherapistId: string | null) {
     sessionPreference = toLabel(sp);
   }
 
-  const age = hoursSince(m.created_at ?? undefined);
+  const issuedAt = (() => {
+    const raw = (m.metadata as unknown as { magic_link_issued_at?: unknown } | null)?.magic_link_issued_at;
+    if (typeof raw === 'string' && raw.trim().length > 0) return raw;
+    return m.created_at ?? undefined;
+  })();
+
+  const age = hoursSince(issuedAt);
   const expiredRaw = age == null || age > 72;
   const expiresInHours = age == null ? null : Math.max(0, Math.ceil(72 - age));
   const expired = expiredRaw && !portalAuthenticated;
