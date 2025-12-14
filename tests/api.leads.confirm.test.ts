@@ -48,6 +48,8 @@ vi.mock('@/lib/supabase-server', () => {
   return { supabaseServer: api };
 });
 
+const LEAD_ID = '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d';
+
 function makeUrl(id: string, token: string) {
   return `http://localhost/api/public/leads/confirm?token=${encodeURIComponent(token)}&id=${encodeURIComponent(id)}`;
 }
@@ -60,7 +62,7 @@ beforeEach(() => {
   const now = Date.now();
   const sentAt = new Date(now - 10 * 60 * 1000).toISOString(); // 10 minutes ago
   person = {
-    id: 'p1',
+    id: LEAD_ID,
     email: 'user@example.com',
     status: 'pre_confirmation',
     metadata: { confirm_token: 't1', confirm_sent_at: sentAt },
@@ -72,9 +74,9 @@ beforeEach(() => {
 describe('EARTH-146 GET /api/public/leads/confirm', () => {
   it('confirms valid token, updates status and redirects to questionnaire confirmation', async () => {
     const { GET } = await import('@/app/api/public/leads/confirm/route');
-    const res = await GET(new Request(makeUrl('p1', 't1')));
+    const res = await GET(new Request(makeUrl(LEAD_ID, 't1')));
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('http://localhost/fragebogen?confirm=1&id=p1&variant=B');
+    expect(res.headers.get('location')).toBe(`http://localhost/fragebogen?confirm=1&id=${LEAD_ID}&variant=B`);
     // status update
     expect(updateArgs).toBeTruthy();
     expect(updateArgs.status).toBe('email_confirmed');
@@ -89,7 +91,7 @@ describe('EARTH-146 GET /api/public/leads/confirm', () => {
   it('rejects invalid token', async () => {
     person.metadata.confirm_token = 'different';
     const { GET } = await import('@/app/api/public/leads/confirm/route');
-    const res = await GET(new Request(makeUrl('p1', 't1')));
+    const res = await GET(new Request(makeUrl(LEAD_ID, 't1')));
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('http://localhost/fragebogen?confirm=invalid');
     expect(updateArgs).toBeNull();
@@ -100,7 +102,7 @@ describe('EARTH-146 GET /api/public/leads/confirm', () => {
     const past = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
     person.metadata.confirm_sent_at = past;
     const { GET } = await import('@/app/api/public/leads/confirm/route');
-    const res = await GET(new Request(makeUrl('p1', 't1')));
+    const res = await GET(new Request(makeUrl(LEAD_ID, 't1')));
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('http://localhost/fragebogen?confirm=expired');
     expect(updateArgs).toBeNull();
@@ -111,9 +113,9 @@ describe('EARTH-146 GET /api/public/leads/confirm', () => {
     // even if token mismatches, we should send to preferences rather than invalid
     person.metadata.confirm_token = 'different';
     const { GET } = await import('@/app/api/public/leads/confirm/route');
-    const res = await GET(new Request(makeUrl('p1', 't1')));
+    const res = await GET(new Request(makeUrl(LEAD_ID, 't1')));
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('http://localhost/fragebogen?confirm=1&id=p1&variant=B');
+    expect(res.headers.get('location')).toBe(`http://localhost/fragebogen?confirm=1&id=${LEAD_ID}&variant=B`);
     // no update since it's already confirmed
     expect(updateArgs).toBeNull();
   });

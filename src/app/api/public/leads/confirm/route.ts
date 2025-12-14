@@ -9,6 +9,7 @@ import { sendEmail } from '@/lib/email/client';
 import { renderBookingTherapistNotification } from '@/lib/email/templates/bookingTherapistNotification';
 import { renderBookingClientConfirmation } from '@/lib/email/templates/bookingClientConfirmation';
 import { processDraftContact, clearDraftContact } from '@/features/leads/lib/processDraftContact';
+import { LeadConfirmQuery } from '@/contracts/leads';
 
 export const runtime = 'nodejs';
 
@@ -31,14 +32,20 @@ export async function GET(req: Request) {
   try {
     const sessionIdHeader = req.headers.get('x-session-id') || undefined;
     const url = new URL(req.url);
-    const token = url.searchParams.get('token') || '';
-    const id = url.searchParams.get('id') || '';
-    const fs = url.searchParams.get('fs') || '';
-    const redirectPath = url.searchParams.get('redirect');
-    const isSafeRedirect = !!(redirectPath && redirectPath.startsWith('/') && !redirectPath.startsWith('/api') && !redirectPath.startsWith('//'));
-    if (!token || !id) {
+    const parsed = LeadConfirmQuery.safeParse({
+      token: url.searchParams.get('token') || undefined,
+      id: url.searchParams.get('id') || undefined,
+      fs: url.searchParams.get('fs') || undefined,
+      redirect: url.searchParams.get('redirect') || undefined,
+    });
+    if (!parsed.success) {
       return NextResponse.redirect(`${origin}/fragebogen?confirm=invalid`, 302);
     }
+    const token = parsed.data.token;
+    const id = parsed.data.id;
+    const fs = parsed.data.fs || '';
+    const redirectPath = parsed.data.redirect;
+    const isSafeRedirect = !!redirectPath;
 
     type PersonRow = {
       id: string;
@@ -85,10 +92,31 @@ export async function GET(req: Request) {
     const storedRedirectSafe = !!(storedRedirectRaw && storedRedirectRaw.startsWith('/') && !storedRedirectRaw.startsWith('/api') && !storedRedirectRaw.startsWith('//'));
     const effectiveRedirect = isSafeRedirect ? redirectPath! : (storedRedirectSafe ? storedRedirectRaw! : undefined);
 
+    const personDraftContact = (personMeta?.['draft_contact'] as Record<string, unknown> | undefined) || undefined;
+    const personDraftBooking = (personMeta?.['draft_booking'] as Record<string, unknown> | undefined) || undefined;
+    const personFormCompletedAt = typeof personMeta['form_completed_at'] === 'string' ? (personMeta['form_completed_at'] as string) : undefined;
+    const personFormIsCompleted = !!(personFormCompletedAt && !Number.isNaN(Date.parse(personFormCompletedAt)));
+    const personHasDraftAction = !!(personDraftContact || personDraftBooking);
+    const redirectSuggestsDraftAction = !!(
+      storedRedirectRaw &&
+      storedRedirectRaw.startsWith('/therapeuten') &&
+      storedRedirectRaw.includes('contact=compose')
+    );
+
     // If the email has already been confirmed previously (or the lead is already actionable as 'new'),
     // send the user directly back to the intended UI context instead of showing an invalid link.
     const statusLower = (person.status || '').toLowerCase();
     if (statusLower === 'email_confirmed' || statusLower === 'new') {
+      // If this lead is actionable (directory draft action or completed questionnaire), promote to 'new'
+      // so admin views treat it as verified/actionable.
+      if (statusLower === 'email_confirmed' && (personHasDraftAction || personFormIsCompleted || redirectSuggestsDraftAction)) {
+        try {
+          await supabaseServer
+            .from('people')
+            .update({ status: 'new' })
+            .eq('id', id);
+        } catch {}
+      }
       // Set client session cookie so the user is treated as verified (EARTH-204)
       // Preserve variant for correct confirmation screen (concierge vs self-service)
       const earlyVariantParam = person.campaign_variant ? `&variant=${encodeURIComponent(person.campaign_variant)}` : '';
@@ -154,7 +182,8 @@ export async function GET(req: Request) {
     // Otherwise, keep the transitional 'email_confirmed' status.
     const formCompletedAt = typeof newMetadata['form_completed_at'] === 'string' ? (newMetadata['form_completed_at'] as string) : undefined;
     const formIsCompleted = !!(formCompletedAt && !Number.isNaN(Date.parse(formCompletedAt)));
-    const nextStatus: 'email_confirmed' | 'new' = formIsCompleted ? 'new' : 'email_confirmed';
+    const hasDraftAction = !!(draftContact || draftBooking);
+    const nextStatus: 'email_confirmed' | 'new' = (formIsCompleted || hasDraftAction) ? 'new' : 'email_confirmed';
 
     const { error: upErr } = await supabaseServer
       .from('people')

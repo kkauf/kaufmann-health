@@ -100,3 +100,26 @@ export const FormSessionData = z.object({
 });
 
 export type FormSessionData = z.infer<typeof FormSessionData>;
+
+export const LeadIdParam = z.object({
+  id: UUID,
+});
+
+export type LeadIdParam = z.infer<typeof LeadIdParam>;
+
+export const LeadConfirmQuery = z.object({
+  token: z.string().min(1),
+  id: z.string().min(1),
+  fs: z
+    .string()
+    .optional()
+    .transform((v) => (v && /^[0-9a-fA-F-]{36}$/.test(v) ? v : undefined)),
+  redirect: z
+    .string()
+    .optional()
+    .transform((v) => (typeof v === 'string' ? v.trim() : undefined))
+    .transform((v) => (v ? v : undefined))
+    .refine((v) => !v || (v.startsWith('/') && !v.startsWith('//') && !v.startsWith('/api'))),
+});
+
+export type LeadConfirmQuery = z.infer<typeof LeadConfirmQuery>;
