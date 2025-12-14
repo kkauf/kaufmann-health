@@ -186,6 +186,11 @@ export async function POST(req: Request) {
       const meta: Record<string, unknown> = (existingMatch.metadata as Record<string, unknown>) || {};
       const merged: Record<string, unknown> = { ...meta, patient_initiated: true, contact_type, patient_reason, patient_message, ...(isTestCookie ? { is_test: true } : {}) };
       try {
+        const prevCount = typeof merged['magic_link_issued_count'] === 'number' ? Number(merged['magic_link_issued_count']) : 0;
+        merged['magic_link_issued_at'] = new Date().toISOString();
+        merged['magic_link_issued_count'] = prevCount + 1;
+      } catch {}
+      try {
         await supabaseServer
           .from('matches')
           .update({ metadata: merged })
@@ -204,7 +209,16 @@ export async function POST(req: Request) {
           patient_id: patientId,
           therapist_id,
           status: 'proposed',
-          metadata: { patient_initiated: true, contact_type, patient_reason, patient_message, session_format, ...(isTestCookie ? { is_test: true } : {}) },
+          metadata: {
+            patient_initiated: true,
+            contact_type,
+            patient_reason,
+            patient_message,
+            session_format,
+            magic_link_issued_at: new Date().toISOString(),
+            magic_link_issued_count: 1,
+            ...(isTestCookie ? { is_test: true } : {}),
+          },
         })
         .select('id, secure_uuid')
         .single();

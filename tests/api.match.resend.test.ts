@@ -176,6 +176,8 @@ describe('/api/match/[uuid]/resend POST', () => {
         secure_uuid: 'uuid-new',
         metadata: expect.objectContaining({
           previous_secure_uuids: ['u-1'],
+          magic_link_issued_at: expect.any(String),
+          magic_link_issued_count: 1,
         }),
       }),
     });

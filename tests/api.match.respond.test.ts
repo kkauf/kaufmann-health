@@ -1,7 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Per-test mutable state for supabase mock
-let matchByUUID: Record<string, { id: string; status?: string | null; created_at?: string | null; patient_id: string; therapist_id: string }> = {};
+let matchByUUID: Record<
+  string,
+  {
+    id: string;
+    status?: string | null;
+    created_at?: string | null;
+    patient_id: string;
+    therapist_id: string;
+    metadata?: Record<string, unknown> | null;
+  }
+> = {};
 let updateCalls: Array<{ id: string; payload: Record<string, unknown> }> = [];
 let peopleUpdateCalls: Array<{ id: string; payload: Record<string, unknown> }> = [];
 let updateMode: 'ok' | 'missing_responded_at' | 'error' = 'ok';
@@ -151,5 +161,27 @@ describe('/api/match/[uuid]/respond POST', () => {
     expect(updateCalls.length).toBeGreaterThanOrEqual(1);
     expect(updateCalls[0]).toEqual({ id: 'm-5', payload: expect.objectContaining({ status: 'accepted' }) });
     expect(peopleUpdateCalls).toContainEqual({ id: 'p-5', payload: expect.objectContaining({ status: 'matched' }) });
+  });
+
+  it('uses metadata.magic_link_issued_at for expiry when present (resent links stay valid)', async () => {
+    const createdAtOld = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+    const issuedAtRecent = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    matchByUUID['u-6'] = {
+      id: 'm-6',
+      status: 'proposed',
+      created_at: createdAtOld,
+      patient_id: 'p-6',
+      therapist_id: 't-6',
+      metadata: { magic_link_issued_at: issuedAtRecent },
+    };
+    const { POST } = await import('@/app/api/public/match/[uuid]/respond/route');
+
+    const res = await POST(makePost('http://localhost/api/match/u-6/respond', { action: 'accept' }));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ data: { status: 'accepted' }, error: null });
+    expect(updateCalls.length).toBeGreaterThanOrEqual(1);
+    expect(updateCalls[0]).toEqual({ id: 'm-6', payload: expect.objectContaining({ status: 'accepted' }) });
+    expect(peopleUpdateCalls).toContainEqual({ id: 'p-6', payload: expect.objectContaining({ status: 'matched' }) });
   });
 });
