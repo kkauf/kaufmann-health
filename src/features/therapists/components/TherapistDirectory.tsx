@@ -481,6 +481,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
           <TherapistCard
             key={therapist.id}
             therapist={therapist}
+            showSchwerpunkte
             onViewDetails={() => setSelectedTherapist(therapist)}
           />
         ))}
