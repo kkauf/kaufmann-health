@@ -65,7 +65,7 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
   });
 
   describe('Feature Flag Gating', () => {
-    it('returns matchesUrl when NEXT_PUBLIC_DIRECT_BOOKING_FLOW=true', async () => {
+    it('does not return matchesUrl when verification is required (even if NEXT_PUBLIC_DIRECT_BOOKING_FLOW=true)', async () => {
       process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW = 'true';
       mockMatchResult = { matchesUrl: '/matches/test-uuid', matchQuality: 'exact' };
       wireSupabaseForInstantMatch({
@@ -78,7 +78,8 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
       const res = await POST(makeReq({ type: 'patient', email: 'patient@example.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
-      expect(json.data.matchesUrl).toMatch(/^\/matches\//);
+      expect(json.data.requiresConfirmation).toBe(true);
+      expect(json.data.matchesUrl).toBeUndefined();
     });
 
     it('does not return matchesUrl when flag is false', async () => {
@@ -87,6 +88,7 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
       const res = await POST(makeReq({ type: 'patient', email: 'patient@example.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
+      expect(json.data.requiresConfirmation).toBe(true);
       expect(json.data.matchesUrl).toBeUndefined();
     });
 
@@ -98,6 +100,7 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
       )) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
+      expect(json.data.requiresConfirmation).toBe(true);
       expect(json.data.matchesUrl).toBeUndefined();
     });
   });
@@ -121,7 +124,8 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
       const res = await POST(makeReq({ type: 'patient', email: 'patient@example.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
-      expect(json.data.matchesUrl).toBeDefined();
+      expect(json.data.requiresConfirmation).toBe(true);
+      expect(json.data.matchesUrl).toBeUndefined();
     });
 
     it('creates empty match when no therapists available', async () => {
@@ -131,7 +135,8 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
       const res = await POST(makeReq({ type: 'patient', email: 'niche@test.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
-      expect(json.data.matchesUrl).toBeDefined();
+      expect(json.data.requiresConfirmation).toBe(true);
+      expect(json.data.matchesUrl).toBeUndefined();
     });
   });
 
@@ -150,7 +155,8 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
       const res = await POST(makeReq({ type: 'patient', email: 'morning@test.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
-      expect(json.data.matchesUrl).toBeDefined();
+      expect(json.data.requiresConfirmation).toBe(true);
+      expect(json.data.matchesUrl).toBeUndefined();
     });
 
     it('handles flexible time preference', async () => {
@@ -162,7 +168,8 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
       const res = await POST(makeReq({ type: 'patient', email: 'flexible@test.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
-      expect(json.data.matchesUrl).toBeDefined();
+      expect(json.data.requiresConfirmation).toBe(true);
+      expect(json.data.matchesUrl).toBeUndefined();
     });
   });
 
@@ -177,7 +184,8 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
       const res = await POST(makeReq({ type: 'patient', email: 'nosession@test.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
-      expect(json.data.matchesUrl).toBeDefined();
+      expect(json.data.requiresConfirmation).toBe(true);
+      expect(json.data.matchesUrl).toBeUndefined();
     });
 
     it('works with phone contact method', async () => {
@@ -185,7 +193,8 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
       const res = await POST(makeReq({ type: 'patient', phone_number: '+491234567890', contact_method: 'phone', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
       const json = await res.json();
       expect(res.status).toBe(200);
-      expect(json.data.matchesUrl).toBeDefined();
+      expect(json.data.requiresConfirmation).toBe(true);
+      expect(json.data.matchesUrl).toBeUndefined();
     });
   });
 });

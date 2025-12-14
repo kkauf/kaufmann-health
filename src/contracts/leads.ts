@@ -56,11 +56,17 @@ export type PatientLeadInput = z.infer<typeof PatientLeadInput>;
 /**
  * What the leads API returns
  */
-export const PatientLeadOutput = z.object({
-  id: UUID,
-  requiresConfirmation: z.boolean(),
-  matchesUrl: z.string().optional(),
-});
+export const PatientLeadOutput = z.discriminatedUnion('requiresConfirmation', [
+  z.object({
+    id: UUID,
+    requiresConfirmation: z.literal(true),
+  }),
+  z.object({
+    id: UUID,
+    requiresConfirmation: z.literal(false),
+    matchesUrl: z.string().optional(),
+  }),
+]);
 
 export type PatientLeadOutput = z.infer<typeof PatientLeadOutput>;
 
