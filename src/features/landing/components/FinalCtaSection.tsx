@@ -4,6 +4,21 @@ import { Button } from "@/components/ui/button";
 import CtaLink from "@/components/CtaLink";
 import { Shield, Lock, FileCheck, Clock, MessageCircle } from "lucide-react";
 
+ function mergeQueryParams(baseHref: string, extraQuery: string): string {
+   try {
+     if (baseHref.startsWith('#')) return baseHref;
+     const u = new URL(baseHref, 'https://www.kaufmann-health.de');
+     const extra = new URLSearchParams(extraQuery);
+     extra.forEach((value, key) => {
+       u.searchParams.set(key, value);
+     });
+     return `${u.pathname}${u.search}${u.hash}`;
+   } catch {
+     const hasQuery = baseHref.includes('?');
+     return `${baseHref}${hasQuery ? '&' : '?'}${extraQuery}`;
+   }
+ }
+
 export function FinalCtaSection({
   heading = "Bereit für den ersten Schritt?",
   subtitle,
@@ -107,8 +122,9 @@ export function FinalCtaSection({
             </p>
             <div className="mt-5 sm:mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-2xl mx-auto">
               {(targetBasePath === '/therapeuten' ? FORMAT_OPTIONS : START_TIMING_OPTIONS).map((option) => {
-                const isDirectory = targetBasePath === '/therapeuten';
-                const href = isDirectory ? `/therapeuten?${option.query}` : `${targetBasePath}?${option.query}`;
+                const isDirectory = targetBasePath.startsWith('/therapeuten');
+                const baseHref = isDirectory ? targetBasePath : targetBasePath;
+                const href = mergeQueryParams(baseHref, option.query);
                 return (
                   <CtaLink
                     key={option.value}
