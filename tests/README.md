@@ -4,6 +4,14 @@
 
 These are the business-critical paths that must work before any deployment.
 
+## E2E (Playwright) Tests
+
+E2E tests live in `tests/e2e` and run with Playwright.
+
+- **Run E2E**: `npm run test:e2e`
+- **Important**: `npm test` runs Vitest and will **not** execute `tests/e2e/**`.
+- **Maintenance rules / stable selectors / mocking guidance**: `tests/e2e/README.md`
+
 ### 1. Patient Registration Flow
 
 ```typescript
