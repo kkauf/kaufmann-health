@@ -43,6 +43,20 @@ When tests depend on `/fragebogen`, always clear wizard state via `page.addInitS
 - `anonymousPatientId`
 - (optional) `kh_flow_variant` (LP randomization)
 
+## Test Data Marking (Recommended)
+
+If your E2E run hits a real backend (staging/prod) and you want records to be filterable as test data:
+
+- Set cookie `kh_test=1`
+  - Easiest: add `?tt=1` once in the browser (see `src/components/TestMode.tsx`)
+  - Or set the cookie in Playwright context
+
+Server behavior:
+
+- `POST /api/public/questionnaire-submit` persists `people.metadata.is_test=true` when test mode is detected
+- Test mode is detected via `kh_test=1` and/or test-host detection (localhost/staging)
+- IP rate limiting is bypassed for test requests
+
 ## Mocking Rules
 
 - **Mock the authoritative endpoint** for the flow you are testing.

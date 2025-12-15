@@ -140,6 +140,7 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
       .single<PersonRow>();
     
     const meta = (person?.metadata || {}) as Record<string, unknown>;
+    const isTest = meta['is_test'] === true;
     const city = typeof meta['city'] === 'string' ? (meta['city'] as string) : undefined;
     const session_preference = typeof meta['session_preference'] === 'string' ? (meta['session_preference'] as string) as 'online' | 'in_person' : undefined;
     const session_preferences = Array.isArray(meta['session_preferences']) ? (meta['session_preferences'] as ('online' | 'in_person')[]) : undefined;
@@ -242,7 +243,11 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
     if (chosen.length === 0) {
       const { data: ref } = await supabaseServer
         .from('matches')
-        .insert({ patient_id: patientId, status: 'proposed', metadata: { match_quality: matchQuality } })
+        .insert({
+          patient_id: patientId,
+          status: 'proposed',
+          metadata: { match_quality: matchQuality, ...(isTest ? { is_test: true } : {}) },
+        })
         .select('secure_uuid')
         .single();
       secureUuid = (ref as { secure_uuid?: string | null } | null)?.secure_uuid || null;
@@ -256,7 +261,7 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
             patient_id: patientId,
             therapist_id: tid,
             status: 'proposed',
-            metadata: { match_quality: matchQuality, therapist_match_quality: therapistQuality }
+            metadata: { match_quality: matchQuality, therapist_match_quality: therapistQuality, ...(isTest ? { is_test: true } : {}) }
           })
           .select('secure_uuid')
           .single();
