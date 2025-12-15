@@ -13,24 +13,34 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
   const MOCK_EMAIL = 'test4@example.com';
 
   // Mock leads API - concierge returns no matchesUrl
-  const mockLeadsApiConcierge = (page: Page) => 
-    page.route('**/api/public/leads', async (route) => {
+  const mockLeadsApiConcierge = async (page: Page) => {
+    await page.route('**/api/public/leads', async (route) => {
       const body = {
         data: { id: MOCK_PATIENT_ID, requiresConfirmation: true },
         error: null,
       };
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     });
+    await page.route('**/api/public/leads/**/form-completed', async (route) => {
+      const body = { data: { ok: true }, error: null };
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    });
+  };
 
   // Mock leads API - self-service returns matchesUrl
-  const mockLeadsApiSelfService = (page: Page) => 
-    page.route('**/api/public/leads', async (route) => {
+  const mockLeadsApiSelfService = async (page: Page) => {
+    await page.route('**/api/public/leads', async (route) => {
       const body = {
         data: { id: MOCK_PATIENT_ID, requiresConfirmation: true, matchesUrl: MOCK_MATCHES_URL },
         error: null,
       };
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     });
+    await page.route('**/api/public/leads/**/form-completed', async (route) => {
+      const body = { data: { ok: true }, error: null };
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    });
+  };
 
   // Mock matches API for verified state
   const mockMatchesApi = (page: Page) =>

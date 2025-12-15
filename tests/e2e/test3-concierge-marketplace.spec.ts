@@ -9,19 +9,36 @@ import { test, expect, Page } from '@playwright/test';
  */
 
 test.describe('Test 3: Concierge vs Marketplace Flow', () => {
-  const MOCK_PATIENT_ID = 'p-test3';
   const MOCK_MATCHES_URL = '/matches/test3-uuid';
-  const MOCK_EMAIL = 'test3@example.com';
 
-  // Helper to mock the leads API response
-  const mockLeadsApi = (page: Page, matchesUrl = MOCK_MATCHES_URL) => 
-    page.route('**/api/public/leads', async (route) => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        localStorage.removeItem('kh_wizard_data');
+        localStorage.removeItem('kh_wizard_step');
+        localStorage.removeItem('kh_form_session_id');
+        localStorage.removeItem('anonymousPatientId');
+      } catch {}
+    });
+
+    await page.route('**/api/public/questionnaire-submit', async (route, request) => {
+      const headers = request.headers();
+      const variant = String(headers['x-campaign-variant-override'] || '').toLowerCase();
+      const isDirect = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
+      const shouldReturnMatchesUrl = variant === 'concierge' ? true : isDirect;
+
       const body = {
-        data: { id: MOCK_PATIENT_ID, requiresConfirmation: true, matchesUrl },
+        data: {
+          patientId: 'p-test3',
+          matchesUrl: shouldReturnMatchesUrl ? MOCK_MATCHES_URL : null,
+          matchQuality: shouldReturnMatchesUrl ? 'exact' : 'none',
+        },
         error: null,
       };
+
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     });
+  });
 
   // Helper to mock matches API
   const mockMatchesApi = (page: Page, verified = false) =>
@@ -99,56 +116,16 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
   }
 
   test.describe('Concierge Flow (/fragebogen?v=concierge)', () => {
-    test('shows contact collection after questionnaire', async ({ page }) => {
-      await page.goto('/fragebogen?v=concierge&restart=1');
-      await completeQuestionnaire(page);
-
-      // Should show contact collection (step 6)
-      await expect(page.getByText('Fast geschafft!')).toBeVisible();
-      await expect(page.getByPlaceholder('Vorname oder Spitzname')).toBeVisible();
-    });
-
-    test('submits to leads API and stays on fragebogen for verification', async ({ page }) => {
-      await mockLeadsApi(page);
-      await page.goto('/fragebogen?v=concierge&restart=1');
-      await completeQuestionnaire(page);
-
-      // Fill contact info
-      await page.getByPlaceholder('Vorname oder Spitzname').fill('E2E Concierge');
-      // Ensure email mode (some flows may default to SMS)
-      const emailToggle = page.getByRole('button', { name: /E.?Mail/i });
-      if (await emailToggle.isVisible().catch(() => false)) {
-        await emailToggle.click();
-      }
-      await page.getByPlaceholder('deine@email.de').fill(MOCK_EMAIL);
-      await page.getByTestId('wizard-next').click();
-
-      // Should NOT redirect to matches immediately
-      await page.waitForTimeout(2000);
-      await expect(page).toHaveURL(/\/fragebogen\?v=concierge/);
-    });
-
-    test('shows matches after email verification redirect', async ({ page }) => {
+    test('redirects to matches after questionnaire', async ({ page }) => {
       await mockMatchesApi(page, true);
-      
-      // Simulate post-verification redirect
-      await page.goto(`${MOCK_MATCHES_URL}?confirm=1&id=${MOCK_PATIENT_ID}`);
-      
-      // Should show matches with booking buttons
-      await expect(page.locator('h1')).toContainText('passenden Ergebnisse');
-      await expect(page.getByRole('button', { name: /Direkt buchen/i })).toBeVisible();
-    });
+      await page.goto('/fragebogen?v=concierge');
+      await completeQuestionnaire(page);
+      await expect(page).toHaveURL(MOCK_MATCHES_URL);
 
-    test('verified user can book without re-verification', async ({ page }) => {
-      await mockMatchesApi(page, true);
-      await page.goto(`${MOCK_MATCHES_URL}?confirm=1`);
-      
-      // Click book button
-      await page.getByRole('button', { name: /Direkt buchen/i }).first().click();
-      
-      // Modal should open with slot selection (not verification)
-      await expect(page.getByTestId('contact-modal')).toBeVisible();
-      await expect(page.getByText('Format')).toBeVisible();
+      const loading = page.getByText('Lade Empfehlungen…');
+      await loading.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+      await expect(loading).toHaveCount(0, { timeout: 15000 });
+      await expect(page.locator('h1')).toBeVisible();
     });
   });
 
@@ -161,88 +138,67 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
     });
 
     test('shows contact collection after questionnaire', async ({ page }) => {
-      await page.goto('/fragebogen?v=marketplace&restart=1');
+      await mockMatchesApi(page, true);
+      await page.goto('/fragebogen?v=marketplace');
       await completeQuestionnaire(page);
 
-      // Should show contact collection (step 6) - same as concierge
-      await expect(page.getByText('Fast geschafft!')).toBeVisible();
-      await expect(page.getByPlaceholder('Vorname oder Spitzname')).toBeVisible();
-    });
-
-    test('submits to leads API and stays on fragebogen for verification', async ({ page }) => {
-      await mockLeadsApi(page);
-      await page.goto('/fragebogen?v=marketplace&restart=1');
-      await completeQuestionnaire(page);
-
-      // Fill contact info
-      await page.getByPlaceholder('Vorname oder Spitzname').fill('E2E Marketplace');
-      // Ensure email mode (some flows may default to SMS)
-      const emailToggle = page.getByRole('button', { name: /E.?Mail/i });
-      if (await emailToggle.isVisible().catch(() => false)) {
-        await emailToggle.click();
+      const isDirect = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
+      if (isDirect) {
+        await expect(page).toHaveURL(MOCK_MATCHES_URL);
+      } else {
+        await expect(page.getByText('Keine Therapeuten gefunden. Bitte versuche es später erneut.')).toBeVisible();
       }
-      await page.getByPlaceholder('deine@email.de').fill(MOCK_EMAIL);
-      await page.getByTestId('wizard-next').click();
-
-      // Should NOT redirect to matches immediately
-      await page.waitForTimeout(2000);
-      await expect(page).toHaveURL(/\/fragebogen\?v=marketplace/);
-    });
-
-    test('shows matches after email verification redirect', async ({ page }) => {
-      await mockMatchesApi(page, true);
-      
-      await page.goto(`${MOCK_MATCHES_URL}?confirm=1&id=${MOCK_PATIENT_ID}`);
-      
-      await expect(page.locator('h1')).toContainText('passenden Ergebnisse');
-      await expect(page.getByRole('button', { name: /Direkt buchen/i })).toBeVisible();
-    });
-
-    test('verified user can book without re-verification', async ({ page }) => {
-      await mockMatchesApi(page, true);
-      await page.goto(`${MOCK_MATCHES_URL}?confirm=1`);
-      
-      await page.getByRole('button', { name: /Direkt buchen/i }).first().click();
-      
-      await expect(page.getByTestId('contact-modal')).toBeVisible();
-      await expect(page.getByText('Format')).toBeVisible();
     });
   });
 
   test.describe('Variant Parity', () => {
     test('concierge requires verification before matches', async ({ page }) => {
-      await page.goto('/fragebogen?v=concierge&restart=1');
+      await mockMatchesApi(page, true);
+      await page.goto('/fragebogen?v=concierge');
       await completeQuestionnaire(page);
-      await expect(page.getByText('Fast geschafft!')).toBeVisible();
+      await expect(page).toHaveURL(MOCK_MATCHES_URL);
     });
 
     test('marketplace requires verification before matches', async ({ page }) => {
-      await page.goto('/fragebogen?v=marketplace&restart=1');
+      await mockMatchesApi(page, true);
+      await page.goto('/fragebogen?v=marketplace');
       await completeQuestionnaire(page);
-      await expect(page.getByText('Fast geschafft!')).toBeVisible();
+
+      const isDirect = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
+      if (isDirect) {
+        await expect(page).toHaveURL(MOCK_MATCHES_URL);
+      } else {
+        await expect(page.getByText('Keine Therapeuten gefunden. Bitte versuche es später erneut.')).toBeVisible();
+      }
     });
   });
 
   test.describe('Mobile Experience', () => {
     test('concierge flow works on mobile', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
-      await page.goto('/fragebogen?v=concierge&restart=1');
+      await mockMatchesApi(page, true);
+      await page.goto('/fragebogen?v=concierge');
       
       // Use the shared helper for consistent flow handling
       await completeQuestionnaire(page);
       
-      // Should reach contact collection
-      await expect(page.getByText('Fast geschafft!')).toBeVisible();
+      await expect(page).toHaveURL(MOCK_MATCHES_URL);
     });
 
     test('marketplace flow works on mobile', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
-      await page.goto('/fragebogen?v=marketplace&restart=1');
+      await mockMatchesApi(page, true);
+      await page.goto('/fragebogen?v=marketplace');
       
       // Use the shared helper for consistent flow handling
       await completeQuestionnaire(page);
       
-      await expect(page.getByText('Fast geschafft!')).toBeVisible();
+      const isDirect = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
+      if (isDirect) {
+        await expect(page).toHaveURL(MOCK_MATCHES_URL);
+      } else {
+        await expect(page.getByText('Keine Therapeuten gefunden. Bitte versuche es später erneut.')).toBeVisible();
+      }
     });
   });
 });

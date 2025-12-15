@@ -58,7 +58,12 @@ function makeReq(url: string) {
 }
 
 beforeEach(() => {
-  personRow = { id: 'p1', email: 'user@example.com', type: 'patient', metadata: { is_test: true, form_session_id: 'fs-123' } };
+  personRow = {
+    id: '11111111-1111-4111-8111-111111111111',
+    email: 'user@example.com',
+    type: 'patient',
+    metadata: { is_test: true, form_session_id: '22222222-2222-4222-8222-222222222222' },
+  };
   formSessionRow = { data: { city: 'Berlin', session_preference: 'online' } };
   updatePayload = null;
 });
@@ -67,13 +72,13 @@ describe('POST /api/public/leads/:id/form-completed', () => {
   it('returns 404 when person not found', async () => {
     personRow = null;
     const { POST } = await import('@/app/api/public/leads/[id]/form-completed/route');
-    const res = await POST(makeReq('http://localhost/api/public/leads/p1/form-completed'));
+    const res = await POST(makeReq('http://localhost/api/public/leads/11111111-1111-4111-8111-111111111111/form-completed'));
     expect(res.status).toBe(404);
   });
 
   it('stamps form_completed_at and merges subset from form_sessions', async () => {
     const { POST } = await import('@/app/api/public/leads/[id]/form-completed/route');
-    const res = await POST(makeReq('http://localhost/api/public/leads/p1/form-completed'));
+    const res = await POST(makeReq('http://localhost/api/public/leads/11111111-1111-4111-8111-111111111111/form-completed'));
     expect(res.status).toBe(200);
     expect(updatePayload).toBeTruthy();
     expect(updatePayload.metadata).toBeTruthy();

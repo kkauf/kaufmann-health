@@ -113,6 +113,18 @@ export const LeadIdParam = z.object({
 
 export type LeadIdParam = z.infer<typeof LeadIdParam>;
 
+export const LeadFormCompletedParams = z.object({
+  id: UUID,
+});
+
+export type LeadFormCompletedParams = z.infer<typeof LeadFormCompletedParams>;
+
+export const LeadFormCompletedOutput = z.object({
+  ok: z.literal(true),
+});
+
+export type LeadFormCompletedOutput = z.infer<typeof LeadFormCompletedOutput>;
+
 export const LeadConfirmQuery = z.object({
   token: z.string().min(1),
   id: z.string().min(1),
@@ -129,3 +141,26 @@ export const LeadConfirmQuery = z.object({
 });
 
 export type LeadConfirmQuery = z.infer<typeof LeadConfirmQuery>;
+
+export const QuestionnaireSubmitInput = z.object({
+  start_timing: OptionalString,
+  additional_info: OptionalString,
+  modality_matters: z.boolean().optional(),
+  methods: z.array(z.string()).optional(),
+  schwerpunkte: z.array(z.string()).optional(),
+  city: City.optional(),
+  session_preference: SessionPreference.optional(),
+  gender: z.string().optional(),
+  time_slots: z.array(z.string()).optional(),
+  form_session_id: UUID.optional(),
+});
+
+export type QuestionnaireSubmitInput = z.infer<typeof QuestionnaireSubmitInput>;
+
+export const QuestionnaireSubmitOutput = z.object({
+  patientId: UUID,
+  matchesUrl: z.string().nullable(),
+  matchQuality: z.enum(['exact', 'partial', 'none']),
+});
+
+export type QuestionnaireSubmitOutput = z.infer<typeof QuestionnaireSubmitOutput>;
