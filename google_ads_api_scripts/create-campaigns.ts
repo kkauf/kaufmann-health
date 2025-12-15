@@ -506,14 +506,16 @@ async function main() {
     if (!dryRun && !validateOnly) {
       try {
         const todayIso = new Date().toISOString().slice(0, 10);
+        const desiredStartIso = c.schedule.start;
+        const startIsoToSet = desiredStartIso >= todayIso ? desiredStartIso : todayIso;
         try {
           await customer.campaigns.update([
             {
               resource_name: campaignRn,
-              start_date: todayIso,
+              start_date: startIsoToSet,
             },
           ], { partial_failure: true });
-          console.log(`  ✓ Campaign start date set to ${todayIso}`);
+          console.log(`  ✓ Campaign start date set to ${startIsoToSet}`);
         } catch (e) {
           console.log('  • Skipped start date update (may be unchanged or restricted)');
         }
