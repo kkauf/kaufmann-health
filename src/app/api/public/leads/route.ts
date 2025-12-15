@@ -1069,7 +1069,7 @@ export async function POST(req: Request) {
       }
       
       return safeJson(
-        { data: { id: effectiveId!, requiresConfirmation: true, ...(matchResult ? { matchesUrl: matchResult.matchesUrl } : {}) }, error: null },
+        { data: { id: effectiveId!, requiresConfirmation: true }, error: null },
         { headers: { 'Cache-Control': 'no-store' } },
       );
     }

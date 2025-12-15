@@ -8,6 +8,14 @@
 
 import { getAttribution } from './attribution';
 
+function shouldIgnoreUnhandledMessage(message?: string): boolean {
+  if (!message) return false;
+  const m = message.toLowerCase();
+  if (m.includes('chunkloaderror')) return true;
+  if (m.includes('__firefox__')) return true;
+  return false;
+}
+
 export type UserFacingError = {
   type: 'api_error' | 'auth_error' | 'network_error' | 'unhandled';
   status?: number;
@@ -23,6 +31,10 @@ let isInitialized = false;
  */
 export function reportError(error: UserFacingError): void {
   try {
+    if (error.type === 'unhandled' && shouldIgnoreUnhandledMessage(error.message)) {
+      return;
+    }
+
     const attrs = getAttribution();
     const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
     

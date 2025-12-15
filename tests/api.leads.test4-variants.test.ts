@@ -209,8 +209,8 @@ describe('Test 4: Concierge vs Self-Service Variant Gating', () => {
       expect(matchFnCalled).toBe(true);
       expect(matchFnVariant).toBe('self-service');
       
-      // Should return matchesUrl
-      expect(json.data.matchesUrl).toBe('/matches/test-uuid');
+      // Flow A: matchesUrl is not returned before verification
+      expect(json.data.matchesUrl).toBeUndefined();
     });
 
     it('tracks instant_match_created event', async () => {
@@ -259,8 +259,8 @@ describe('Test 4: Concierge vs Self-Service Variant Gating', () => {
       // Should have called createInstantMatchesForPatient
       expect(matchFnCalled).toBe(true);
       
-      // Should return matchesUrl
-      expect(json.data.matchesUrl).toBe('/matches/test-uuid');
+      // Flow A: matchesUrl is not returned before verification
+      expect(json.data.matchesUrl).toBeUndefined();
     });
   });
 
@@ -284,8 +284,8 @@ describe('Test 4: Concierge vs Self-Service Variant Gating', () => {
       // Should have called createInstantMatchesForPatient (backward compat)
       expect(matchFnCalled).toBe(true);
       
-      // Should return matchesUrl
-      expect(json.data.matchesUrl).toBe('/matches/test-uuid');
+      // Flow A: matchesUrl is not returned before verification
+      expect(json.data.matchesUrl).toBeUndefined();
     });
   });
 });

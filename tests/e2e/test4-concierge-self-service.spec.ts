@@ -77,17 +77,25 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
    */
   async function completeStep2Or2p5(page: Page) {
     await page.waitForTimeout(1000);
-    const schwerpunkteVisible = await page.getByText(/Was beschäftigt dich/i).isVisible().catch(() => false);
-    const whatBringsYouVisible = await page.getByText(/Was bringt dich zur Therapie/i).isVisible().catch(() => false);
-
-    if (schwerpunkteVisible) {
-      await page.getByRole('button', { name: /Überspringen/i }).click();
+    // Prefer robust detection: Schwerpunkte screen always has a visible "Überspringen" button
+    const skipBtn = page.getByRole('button', { name: /Überspringen/i });
+    if (await skipBtn.isVisible().catch(() => false)) {
+      await skipBtn.click();
       return;
     }
 
+    // Concierge path: open text question
+    const whatBringsYouVisible = await page.getByText(/Was bringt dich zur Therapie/i).isVisible().catch(() => false);
     if (whatBringsYouVisible) {
       await page.getByLabel(/Was bringt dich zur Therapie/i).fill('E2E Test: kurzbeschreibung');
       await page.getByRole('button', { name: 'Weiter →' }).click();
+      return;
+    }
+
+    // Fallback: if neither detected, try to proceed by clicking any available "Weiter" button
+    const nextBtn = page.getByRole('button', { name: /Weiter/i }).first();
+    if (await nextBtn.isVisible().catch(() => false)) {
+      await nextBtn.click();
     }
   }
 
@@ -176,6 +184,18 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
       const schwerpunkteVisible = await page.getByText(/Was beschäftigt dich|Wähle aus/i).isVisible().catch(() => false);
       
       // Self-service should show Schwerpunkte screen
+      expect(schwerpunkteVisible).toBe(true);
+    });
+
+    test('supports v= alias for self-service', async ({ page }) => {
+      await page.goto('/fragebogen?v=self-service&restart=1');
+      await completeStep1Timeline(page);
+
+      // Wait for transition
+      await page.waitForTimeout(1000);
+
+      // Should show Schwerpunkte checkboxes
+      const schwerpunkteVisible = await page.getByText(/Was beschäftigt dich|Wähle aus/i).isVisible().catch(() => false);
       expect(schwerpunkteVisible).toBe(true);
     });
 

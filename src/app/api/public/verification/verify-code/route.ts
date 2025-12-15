@@ -17,11 +17,20 @@ import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/
 import { getFixedWindowLimiter, extractIpFromHeaders } from '@/lib/rate-limit';
 import { createInstantMatchesForPatient } from '@/features/leads/lib/match';
 import { processDraftContact, clearDraftContact } from '@/features/leads/lib/processDraftContact';
+import { parseRequestBody } from '@/lib/api-utils';
+import { VerifyCodeInput } from '@/contracts/verification';
 
 interface VerifyCodeRequest {
   contact: string; // email or phone
   contact_type: 'email' | 'phone';
   code: string; // 6-digit SMS code or email token
+}
+
+function mapVerifyCodeContractError(message: string): string {
+  if (message.startsWith('contact') || message.startsWith('contact_type') || message.startsWith('code')) {
+    return 'Missing required fields';
+  }
+  return 'Missing required fields';
 }
 
 export async function POST(req: NextRequest) {
@@ -35,7 +44,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = (await req.json()) as VerifyCodeRequest;
+    const parsed = await parseRequestBody(req, VerifyCodeInput);
+    if (!parsed.success) {
+      const json = await parsed.response
+        .json()
+        .catch(() => ({} as Record<string, unknown>));
+      const msg = typeof json?.error === 'string' ? json.error : 'Missing required fields';
+
+      // Preserve legacy behavior: invalid JSON hit catch-all and returned 500
+      if (msg === 'Ungültiger Request Body') {
+        return NextResponse.json({ error: 'Verification failed' }, { status: 500 });
+      }
+
+      return NextResponse.json({ error: mapVerifyCodeContractError(msg) }, { status: 400 });
+    }
+
+    const body = parsed.data as unknown as VerifyCodeRequest;
     const { contact, contact_type, code } = body;
 
     if (!contact || !contact_type || !code) {

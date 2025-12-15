@@ -6,6 +6,8 @@ import { sendEmail } from '@/lib/email/client';
 import { renderPatientMatchFound } from '@/lib/email/templates/patientUpdates';
 import { renderTherapistNotification } from '@/lib/email/templates/therapistNotification';
 import { BASE_URL } from '@/lib/constants';
+import { parseRequestBody } from '@/lib/api-utils';
+import { PatientSelectInput } from '@/contracts/match';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -39,9 +41,34 @@ async function handle(req: Request) {
   }
 
   try {
-    const body = await req.json().catch(() => ({}));
     const therapistFromQuery = searchParams.get('therapist');
-    const therapist_id = String((therapistFromQuery || body?.therapist_id || '')).trim();
+
+    // For GET clicks from email, accept therapist_id from query param.
+    // For POST, validate JSON body via contract.
+    let therapist_id = '';
+    if (therapistFromQuery) {
+      therapist_id = String(therapistFromQuery).trim();
+    } else {
+      const parsed = await parseRequestBody(req, PatientSelectInput);
+      if (!parsed.success) {
+        const json = await parsed.response
+          .json()
+          .catch(() => ({} as Record<string, unknown>));
+        const msg = typeof json?.error === 'string' ? json.error : '';
+
+        // Preserve legacy behavior: malformed JSON caught at top-level returned Invalid JSON
+        if (msg === 'Ungültiger Request Body') {
+          if (isGet) return NextResponse.redirect(`${BASE_URL}/auswahl-bestaetigt?error=invalid`);
+          return NextResponse.json({ data: null, error: 'Invalid JSON' }, { status: 400 });
+        }
+
+        // Contract error (missing therapist_id)
+        if (isGet) return NextResponse.redirect(`${BASE_URL}/auswahl-bestaetigt?error=missing_therapist`);
+        return NextResponse.json({ data: null, error: 'therapist is required' }, { status: 400 });
+      }
+      therapist_id = String((parsed.data as { therapist_id?: string }).therapist_id || '').trim();
+    }
+
     if (!therapist_id) {
       if (isGet) return NextResponse.redirect(`${BASE_URL}/auswahl-bestaetigt?error=missing_therapist`);
       return NextResponse.json({ data: null, error: 'therapist is required' }, { status: 400 });

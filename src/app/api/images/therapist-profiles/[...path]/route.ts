@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { TherapistProfilesImagePathParams } from '@/contracts/images';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,9 +13,14 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
   const segments = Array.isArray(path) ? path : [];
   if (segments.length === 0) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    }
+  }
 
-  const relPath = segments.join('/');
+  const parsed = TherapistProfilesImagePathParams.safeParse({ path: segments });
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
+  }
+
+  const relPath = parsed.data.path.map((s) => encodeURIComponent(s)).join('/');
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!supabaseUrl) {
     return NextResponse.json({ error: 'Upstream not configured' }, { status: 500 });

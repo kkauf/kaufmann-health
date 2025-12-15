@@ -36,7 +36,7 @@ export type Therapist = {
 export interface TherapistPreviewProps {
   therapist: Therapist;
   actionButton?: React.ReactNode;
-  variant?: "email" | "web" | "admin";
+  variant?: "web" | "admin";
   className?: string;
   /** When true, show schwerpunkte badges instead of modality badges */
   showSchwerpunkte?: boolean;
@@ -102,82 +102,6 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
       return true;
     });
   }, [therapist.modalities, therapist.schwerpunkte, showSchwerpunkte]);
-
-  if (variant === "email") {
-    // Build simple color-based badges for email rendering (inline styles only)
-    const EMAIL_COLOR_MAP: Record<string, { label: string; color: string }> = {
-      'narm': { label: 'NARM', color: '#0f766e' },
-      'somatic-experiencing': { label: 'Somatic Experiencing', color: '#d97706' },
-      'hakomi': { label: 'Hakomi', color: '#047857' },
-      'core-energetics': { label: 'Core Energetics', color: '#a21caf' },
-    };
-    const emailBadgeItems = (() => {
-      const list = Array.isArray(therapist.modalities) ? therapist.modalities : [];
-      const items = list.map((m, i) => {
-        const slug = normalizeModality(String(m));
-        const conf = EMAIL_COLOR_MAP[slug];
-        const label = conf ? conf.label : toTitleCase(String(m));
-        const color = conf ? conf.color : '#0f172a';
-        return { key: `${slug}-${i}`, label, color };
-      });
-      const seen = new Set<string>();
-      return items.filter((it) => {
-        const k = it.label.toLowerCase();
-        if (seen.has(k)) return false;
-        seen.add(k);
-        return true;
-      });
-    })();
-    // Inline-styled markup suitable for email HTML (no Tailwind)
-    return (
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-        <div style={{ width: 56, height: 56, borderRadius: "999px", overflow: "hidden", background: avatarColor, flex: "0 0 auto" }}>
-          {photoSrc ? (
-            <img
-              src={photoSrc}
-              alt={`${therapist.first_name} ${therapist.last_name}`}
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-              onError={() => setImageError(true)}
-            />
-          ) : (
-            <div style={{ width: "100%", height: "100%", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600 }}>
-              {initials}
-            </div>
-          )}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
-            <div style={{ fontWeight: 600 }}>{therapist.first_name} {therapist.last_name}</div>
-            {(() => {
-              const max = 3;
-              const shown = emailBadgeItems.slice(0, max);
-              const extra = emailBadgeItems.length - shown.length;
-              return (
-                <>
-                  {shown.map((b) => (
-                    <span key={b.key} style={{ display: "inline-flex", alignItems: "center", borderRadius: 999, background: b.color, color: "#fff", fontSize: 12, padding: "2px 8px" }}>{b.label}</span>
-                  ))}
-                  {extra > 0 && (
-                    <span style={{ display: "inline-flex", alignItems: "center", borderRadius: 999, background: "#e5e7eb", color: "#111827", fontSize: 12, padding: "2px 8px" }}>+{extra}</span>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-          <div style={{ color: "#475569", fontSize: 14, marginBottom: 4 }}>{therapist.city}</div>
-          <div style={{ fontSize: 14, color: "#334155", marginBottom: 8 }}>{truncateSentences(therapist.approach_text, 3)}</div>
-          <div style={{ fontSize: 14 }}>
-            Neue Klient:innen: {therapist.accepting_new ? (
-              <span style={{ color: "#16a34a", fontWeight: 500 }}>✓ Verfügbar</span>
-            ) : (
-              <span style={{ color: "#ef4444", fontWeight: 500 }}>✕ Derzeit keine Kapazität</span>
-            )}
-          </div>
-          {actionButton ? <div style={{ marginTop: 8 }}>{actionButton}</div> : null}
-        </div>
-      </div>
-    );
-  }
 
   const isAdmin = variant === "admin";
 

@@ -469,9 +469,47 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         session_format: sessionFormat || undefined,
       };
 
+      const attrs = getAttribution();
+      const campaignSourceOverride = (() => {
+        try {
+          const ref = attrs.referrer;
+          if (!ref) return undefined;
+          if (ref.includes('/therapie-finden')) return '/therapie-finden';
+          if (ref.includes('/start')) return '/start';
+          if (ref.includes('/ankommen-in-dir')) return '/ankommen-in-dir';
+          if (ref.includes('/wieder-lebendig')) return '/wieder-lebendig';
+          return undefined;
+        } catch {
+          return undefined;
+        }
+      })();
+      const campaignVariantOverride = (() => {
+        try {
+          const sp = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+          const v = (sp.get('variant') || sp.get('v') || '').toLowerCase() || undefined;
+          if (v) {
+            try { window.localStorage?.setItem('test1_variant', v); } catch {}
+            return v;
+          }
+          if (typeof window !== 'undefined') {
+            return (
+              window.localStorage?.getItem('test1_variant') ||
+              window.localStorage?.getItem('kh_flow_variant') ||
+              undefined
+            );
+          }
+        } catch {
+          return undefined;
+        }
+      })();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (campaignSourceOverride) headers['X-Campaign-Source-Override'] = campaignSourceOverride;
+      if (campaignVariantOverride) headers['X-Campaign-Variant-Override'] = campaignVariantOverride;
+      if (attrs.gclid) headers['X-Gclid'] = attrs.gclid;
+
       const res = await fetch('/api/public/verification/send-code', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           contact,
           contact_type: contactMethod,

@@ -1,5 +1,6 @@
 import { renderLayout } from '../layout';
 import type { EmailContent } from '../types';
+import { formatEmailPrice } from '@/lib/pricing';
 
 function esc(s: string) {
   return String(s)
@@ -25,6 +26,7 @@ export type BookingClientParams = {
   timeLabel: string; // HH:MM
   format: 'online' | 'in_person';
   address?: string | null;
+  sessionPrice?: number | null;
 };
 
 export function renderBookingClientConfirmation(params: BookingClientParams): EmailContent {
@@ -48,6 +50,7 @@ export function renderBookingClientConfirmation(params: BookingClientParams): Em
   if (!isOnline && address) {
     lines.push(`<li><strong>Adresse:</strong> ${esc(address)}</li>`);
   }
+  lines.push(`<li><strong>Preis:</strong> ${esc(formatEmailPrice(params.sessionPrice))}</li>`);
   lines.push('</ul>');
   lines.push('</div>');
 

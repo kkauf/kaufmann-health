@@ -35,9 +35,9 @@ describe('FinalCtaSection entry options (midpage analytics continuity)', () => {
     const { container, unmount } = render(<FinalCtaSection withEntryOptions />);
     
     try {
-      expect(container.textContent).toContain('So schnell wie möglich');
-      expect(container.textContent).toContain('In den nächsten 2-4 Wochen');
-      expect(container.textContent).toContain('In 1-2 Monaten');
+      expect(container.textContent).toContain('Innerhalb der nächsten Woche');
+      expect(container.textContent).toContain('Innerhalb des nächsten Monats');
+      expect(container.textContent).toContain('Flexibel, der richtige Match ist wichtiger');
     } finally {
       unmount();
     }
@@ -47,12 +47,12 @@ describe('FinalCtaSection entry options (midpage analytics continuity)', () => {
     const { container, unmount } = render(<FinalCtaSection withEntryOptions />);
     
     try {
-      const immediateLink = container.querySelector('[data-cta="midpage-conversion-immediate"]');
-      const soonLink = container.querySelector('[data-cta="midpage-conversion-soon"]');
+      const weekLink = container.querySelector('[data-cta="midpage-conversion-week"]');
+      const monthLink = container.querySelector('[data-cta="midpage-conversion-month"]');
       const flexibleLink = container.querySelector('[data-cta="midpage-conversion-flexible"]');
 
-      expect(immediateLink?.getAttribute('href')).toBe('/fragebogen?timing=immediate');
-      expect(soonLink?.getAttribute('href')).toBe('/fragebogen?timing=soon');
+      expect(weekLink?.getAttribute('href')).toBe('/fragebogen?timing=week');
+      expect(monthLink?.getAttribute('href')).toBe('/fragebogen?timing=month');
       expect(flexibleLink?.getAttribute('href')).toBe('/fragebogen?timing=flexible');
     } finally {
       unmount();

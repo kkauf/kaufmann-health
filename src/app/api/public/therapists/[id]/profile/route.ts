@@ -4,6 +4,8 @@ import { logError, track } from '@/lib/logger';
 import { getTherapistSession } from '@/lib/auth/therapistSession';
 import { isValidSchwerpunktId, THERAPIST_SCHWERPUNKTE_MIN, THERAPIST_SCHWERPUNKTE_MAX } from '@/lib/schwerpunkte';
 import { SERVER_PROFILE_LIMITS } from '@/lib/config/profileLimits';
+import { TherapistProfileUpdate } from '@/contracts/therapist-profile';
+import { parseFormData, parseRequestBody } from '@/lib/api-utils';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,6 +35,12 @@ async function fileToBuffer(file: File): Promise<Buffer> {
 
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
+}
+
+function mapProfileContractError(message: string): string {
+  if (message.includes('invalid gender')) return 'invalid gender';
+  if (message.startsWith('session_preferences')) return 'invalid session_preferences';
+  return message;
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -96,6 +104,19 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     if (contentType.includes('multipart/form-data')) {
       const form = await req.formData();
+
+      const parsed = await parseFormData(TherapistProfileUpdate, form);
+      if (!parsed.success) {
+        const json = await parsed.response
+          .json()
+          .catch(() => ({} as Record<string, unknown>));
+        const msg = typeof json?.error === 'string' ? json.error : 'Invalid request';
+        return safeJson(
+          { data: null, error: mapProfileContractError(msg) },
+          { status: parsed.response.status || 400 }
+        );
+      }
+
       const g = form.get('gender');
       const c = form.get('city');
       const a = form.get('accepting_new');
@@ -185,25 +206,42 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (typeof pCity === 'string') practiceCity = pCity.trim();
     } else {
       // Assume JSON
-      const body = await req.json().catch(() => ({}));
-      const g = body?.gender;
-      const c = body?.city;
-      const a = body?.accepting_new;
-      const sp = body?.session_preferences;
-      const tr = body?.typical_rate;
-      const pStreet = body?.practice_street;
-      const pPostal = body?.practice_postal_code;
-      const pCity = body?.practice_city;
+      const parsed = await parseRequestBody(req, TherapistProfileUpdate);
+      if (!parsed.success) {
+        const json = await parsed.response
+          .json()
+          .catch(() => ({} as Record<string, unknown>));
+        const msg = typeof json?.error === 'string' ? json.error : 'Invalid request';
+        return safeJson(
+          { data: null, error: mapProfileContractError(msg) },
+          { status: parsed.response.status || 400 }
+        );
+      }
+
+      const bodyUnknown: unknown = parsed.data;
+      const body: Record<string, unknown> =
+        bodyUnknown && typeof bodyUnknown === 'object'
+          ? (bodyUnknown as Record<string, unknown>)
+          : {};
+
+      const g = body['gender'];
+      const c = body['city'];
+      const a = body['accepting_new'];
+      const sp = body['session_preferences'];
+      const tr = body['typical_rate'];
+      const pStreet = body['practice_street'];
+      const pPostal = body['practice_postal_code'];
+      const pCity = body['practice_city'];
       // New profile text fields
-      const wctm = body?.who_comes_to_me;
-      const sf = body?.session_focus;
-      const fs = body?.first_session;
-      const am = body?.about_me;
+      const wctm = body['who_comes_to_me'];
+      const sf = body['session_focus'];
+      const fs = body['first_session'];
+      const am = body['about_me'];
       // Schwerpunkte
-      const spkt = body?.schwerpunkte;
+      const spkt = body['schwerpunkte'];
       
-      if (typeof g === 'string' && g.trim()) gender = g.trim();
-      if (typeof c === 'string' && c.trim()) city = c.trim();
+      if (typeof g === 'string') gender = g;
+      if (typeof c === 'string') city = c;
       if (typeof a === 'boolean') acceptingNew = a;
       
       // Parse new profile text fields with length validation (JSON)

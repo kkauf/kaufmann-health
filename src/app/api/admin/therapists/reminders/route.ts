@@ -6,6 +6,7 @@ import { sendEmail } from '@/lib/email/client';
 import { renderTherapistReminder } from '@/lib/email/templates/therapistReminder';
 import { BASE_URL } from '@/lib/constants';
 import { createTherapistOptOutToken } from '@/lib/signed-links';
+import { isCronAuthorized as isCronAuthorizedShared, sameOrigin as sameOriginShared } from '@/lib/cron-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -31,16 +32,7 @@ function parseCookie(header?: string | null): Map<string, string> {
 }
 
 function sameOrigin(req: Request): boolean {
-  const host = req.headers.get('host') || '';
-  if (!host) return false;
-  const origin = req.headers.get('origin') || '';
-  const referer = req.headers.get('referer') || '';
-  const http = `http://${host}`;
-  const https = `https://${host}`;
-  if (origin === http || origin === https) return true;
-  if (referer.startsWith(http + '/')) return true;
-  if (referer.startsWith(https + '/')) return true;
-  return false;
+  return sameOriginShared(req);
 }
 
 // --- Helpers for cooldown/cap ---
@@ -93,22 +85,8 @@ export async function GET(req: Request) {
   const startedAt = Date.now();
 
   try {
-    // Auth: allow either admin cookie OR Cron secret (header or query param)
-    const cronSecretHeader = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
-    const cronSecret = process.env.CRON_SECRET;
-    const authHeader = req.headers.get('authorization') || '';
-    const isAuthBearer = Boolean(cronSecret && authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret);
-    let isCron = Boolean(cronSecret && cronSecretHeader && cronSecretHeader === cronSecret) || isAuthBearer;
-    if (!isCron && cronSecret) {
-      try {
-        const url = new URL(req.url);
-        const token = url.searchParams.get('token');
-        if (token && token === cronSecret) {
-          isCron = true;
-        }
-      } catch {}
-    }
-    
+    // Auth: allow either admin cookie OR Cron secret (headers; query token only in non-prod)
+    const isCron = isCronAuthorizedShared(req);
 
     const isAdmin = await assertAdmin(req);
     if (!isAdmin && !isCron) {
@@ -346,21 +324,8 @@ export async function POST(req: Request) {
   const startedAt = Date.now();
 
   try {
-    // Auth: allow either admin cookie OR Cron secret (Authorization header, custom header, or query param)
-    const cronSecretHeader = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
-    const cronSecret = process.env.CRON_SECRET;
-    const authHeader = req.headers.get('authorization') || '';
-    const isAuthBearer = Boolean(cronSecret && authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret);
-    let isCron = (Boolean(cronSecret && cronSecretHeader && cronSecretHeader === cronSecret) || isAuthBearer);
-    if (!isCron && cronSecret) {
-      try {
-        const url = new URL(req.url);
-        const token = url.searchParams.get('token');
-        if (token && token === cronSecret) {
-          isCron = true;
-        }
-      } catch {}
-    }
+    // Auth: allow either admin cookie OR Cron secret (headers; query token only in non-prod)
+    const isCron = isCronAuthorizedShared(req);
     const isAdmin = await assertAdmin(req);
     if (!isAdmin && !isCron) {
       return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });

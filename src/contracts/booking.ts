@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UUID, SessionPreference } from './shared';
+import { NonEmptyString, OptionalString, SessionPreference, UUID } from './shared';
 
 // ============================================================================
 // BOOKING REQUEST
@@ -26,11 +26,11 @@ export const TimeLabel = z.string().regex(
 );
 
 export const BookingInput = z.object({
-  therapist_id: UUID,
+  therapist_id: NonEmptyString,
   date_iso: DateIso,
   time_label: TimeLabel,
   format: SessionPreference,
-  session_id: UUID.optional(),
+  session_id: OptionalString,
 });
 
 export type BookingInput = z.infer<typeof BookingInput>;

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
+import { isCronAuthorized as isCronAuthorizedShared, sameOrigin as sameOriginShared } from '@/lib/cron-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,19 +21,7 @@ function parseCookie(header?: string | null): Map<string, string> {
 
 async function _isCronOrAdmin(req: Request): Promise<boolean> {
   try {
-    const cronSecretHeader = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
-    const cronSecret = process.env.CRON_SECRET;
-    const authHeader = req.headers.get('authorization') || '';
-    const isAuthBearer = Boolean(cronSecret && authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret);
-    let isCron = Boolean(cronSecret && cronSecretHeader && cronSecretHeader === cronSecret) || isAuthBearer;
-    if (!isCron && cronSecret) {
-      try {
-        const u = new URL(req.url);
-        const token = u.searchParams.get('token');
-        if (token && token === cronSecret) isCron = true;
-      } catch {}
-    }
-    if (isCron) return true;
+    if (isCronAuthorizedShared(req)) return true;
 
     // Fallback: allow admin cookie access as manual trigger (no import to avoid coupling)
     const { verifySessionToken, ADMIN_SESSION_COOKIE } = await import('@/lib/auth/adminSession');
@@ -45,32 +34,11 @@ async function _isCronOrAdmin(req: Request): Promise<boolean> {
 }
 
 function isCronAuthorized(req: Request): boolean {
-  const cronSecretHeader = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
-  const cronSecret = process.env.CRON_SECRET;
-  const authHeader = req.headers.get('authorization') || '';
-  const isAuthBearer = Boolean(cronSecret && authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret);
-  let isCron = Boolean(cronSecret && cronSecretHeader && cronSecretHeader === cronSecret) || isAuthBearer;
-  if (!isCron && cronSecret) {
-    try {
-      const u = new URL(req.url);
-      const token = u.searchParams.get('token');
-      if (token && token === cronSecret) isCron = true;
-    } catch {}
-  }
-  return Boolean(isCron);
+  return isCronAuthorizedShared(req);
 }
 
 function sameOrigin(req: Request): boolean {
-  const host = req.headers.get('host') || '';
-  if (!host) return false;
-  const origin = req.headers.get('origin') || '';
-  const referer = req.headers.get('referer') || '';
-  const http = `http://${host}`;
-  const https = `https://${host}`;
-  if (origin === http || origin === https) return true;
-  if (referer.startsWith(http + '/')) return true;
-  if (referer.startsWith(https + '/')) return true;
-  return false;
+  return sameOriginShared(req);
 }
 
 function minutesAgoISO(mins: number) {

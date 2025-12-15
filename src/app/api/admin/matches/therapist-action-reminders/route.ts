@@ -6,6 +6,7 @@ import { sendEmail } from '@/lib/email/client';
 import { renderTherapistNotification } from '@/lib/email/templates/therapistNotification';
 import { BASE_URL } from '@/lib/constants';
 import { createTherapistOptOutToken } from '@/lib/signed-links';
+import { isCronAuthorized as isCronAuthorizedShared, sameOrigin as sameOriginShared } from '@/lib/cron-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -39,33 +40,11 @@ function hoursAgo(h: number) {
 function isCronAuthorized(req: Request): boolean {
   const vercelCron = req.headers.get('x-vercel-cron');
   if (vercelCron && process.env.NODE_ENV !== 'production') return true;
-  const cronSecretHeader = req.headers.get('x-cron-secret') || req.headers.get('x-vercel-signature');
-  const cronSecret = process.env.CRON_SECRET;
-  const authHeader = req.headers.get('authorization') || '';
-  const isAuthBearer = Boolean(cronSecret && authHeader.startsWith('Bearer ') && authHeader.slice(7) === cronSecret);
-  let isCron = Boolean(cronSecret && cronSecretHeader && cronSecretHeader === cronSecret) || isAuthBearer;
-  if (!isCron && cronSecret) {
-    try {
-      const u = new URL(req.url);
-      const token = u.searchParams.get('token');
-      if (token && token === cronSecret) isCron = true;
-    } catch {}
-  }
-  return Boolean(isCron);
+  return isCronAuthorizedShared(req, { allowQueryToken: false });
 }
 
 function sameOrigin(req: Request): boolean {
-  const host = req.headers.get('host') || '';
-  if (!host) return false;
-  const origin = req.headers.get('origin') || '';
-  const referer = req.headers.get('referer') || '';
-  if (!origin && !referer) return true; // allow server-to-server/test requests
-  const http = `http://${host}`;
-  const https = `https://${host}`;
-  if (origin === http || origin === https) return true;
-  if (referer.startsWith(http + '/')) return true;
-  if (referer.startsWith(https + '/')) return true;
-  return false;
+  return sameOriginShared(req, { allowNoOrigin: true });
 }
 
 export async function GET(req: Request) {

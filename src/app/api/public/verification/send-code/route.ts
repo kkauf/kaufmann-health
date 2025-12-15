@@ -15,6 +15,8 @@ import { randomBytes } from 'crypto';
 import { supabaseServer } from '@/lib/supabase-server';
 import { track } from '@/lib/logger';
 import { getFixedWindowLimiter, extractIpFromHeaders } from '@/lib/rate-limit';
+import { parseRequestBody } from '@/lib/api-utils';
+import { SendCodeInput } from '@/contracts/verification';
 
 interface SendCodeRequest {
   contact: string; // email or phone
@@ -43,6 +45,13 @@ interface SendCodeRequest {
   };
 }
 
+function mapSendCodeContractError(message: string): string {
+  if (message.startsWith('contact') || message.startsWith('contact_type')) {
+    return 'Missing contact or contact_type';
+  }
+  return 'Missing contact or contact_type';
+}
+
 export async function POST(req: NextRequest) {
 
   try {
@@ -55,7 +64,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = (await req.json()) as SendCodeRequest;
+    const parsed = await parseRequestBody(req, SendCodeInput);
+    if (!parsed.success) {
+      const json = await parsed.response
+        .json()
+        .catch(() => ({} as Record<string, unknown>));
+      const msg = typeof json?.error === 'string' ? json.error : 'Missing contact or contact_type';
+
+      // Preserve legacy behavior: invalid JSON hit catch-all and returned 500
+      if (msg === 'Ungültiger Request Body') {
+        return NextResponse.json({ error: 'Interner Fehler' }, { status: 500 });
+      }
+
+      return NextResponse.json({ error: mapSendCodeContractError(msg) }, { status: 400 });
+    }
+
+    const body = parsed.data as unknown as SendCodeRequest;
     let isTestCookie = false;
     try {
       const cookieHeader = req.headers.get('cookie') || '';
@@ -68,6 +92,39 @@ export async function POST(req: NextRequest) {
       }
     } catch {}
     const { contact, contact_type, lead_id, form_session_id, redirect, name, draft_contact, draft_booking } = body;
+
+    let campaign_source: string | undefined;
+    let campaign_variant: string | undefined;
+    let gclid: string | undefined;
+    try {
+      const csOver = req.headers.get('x-campaign-source-override') || undefined;
+      const cvOver = req.headers.get('x-campaign-variant-override') || undefined;
+      gclid = req.headers.get('x-gclid') || undefined;
+      if (csOver) campaign_source = csOver;
+      if (cvOver) campaign_variant = cvOver;
+
+      if (!campaign_source || !campaign_variant) {
+        const ref = req.headers.get('referer') || '';
+        if (ref) {
+          try {
+            const u = new URL(ref);
+            const p = u.pathname || '';
+            const isLanding =
+              p === '/therapie-finden' ||
+              p === '/start' ||
+              p === '/ankommen-in-dir' ||
+              p === '/wieder-lebendig';
+            if (isLanding) {
+              if (!campaign_source) campaign_source = p;
+              if (!campaign_variant) {
+                const v = (u.searchParams.get('variant') || u.searchParams.get('v') || '').toLowerCase() || undefined;
+                if (v) campaign_variant = v;
+              }
+            }
+          } catch {}
+        }
+      }
+    } catch {}
 
     if (!contact || !contact_type) {
       return NextResponse.json(
@@ -157,7 +214,7 @@ export async function POST(req: NextRequest) {
           // Check if person already exists for this phone number
           const { data: existing } = await supabaseServer
             .from('people')
-            .select('id, name, metadata')
+            .select('id, name, metadata, campaign_source, campaign_variant')
             .eq('phone_number', normalized)
             .eq('type', 'patient')
             .single();
@@ -168,6 +225,12 @@ export async function POST(req: NextRequest) {
             const meta = (existing.metadata as Record<string, unknown>) || {};
             if (!existing.name || existing.name !== name) {
               updateData.name = name;
+            }
+            if (campaign_source && !(existing as unknown as { campaign_source?: string | null }).campaign_source) {
+              updateData.campaign_source = campaign_source;
+            }
+            if (campaign_variant && !(existing as unknown as { campaign_variant?: string | null }).campaign_variant) {
+              updateData.campaign_variant = campaign_variant;
             }
             // Store form_session_id so verify-code can merge preferences
             if (form_session_id) {
@@ -197,6 +260,19 @@ export async function POST(req: NextRequest) {
                 });
               } catch {}
             }
+
+            if (gclid && typeof meta['gclid'] !== 'string') {
+              meta['gclid'] = gclid;
+              updateData.metadata = meta;
+            }
+            if (campaign_source && typeof meta['landing_page'] !== 'string') {
+              meta['landing_page'] = campaign_source;
+              updateData.metadata = meta;
+            }
+            if ((draft_contact || draft_booking) && meta['conversion_path'] !== 'directory_contact') {
+              meta['conversion_path'] = 'directory_contact';
+              updateData.metadata = meta;
+            }
             if (isTestCookie) {
               meta['is_test'] = true;
               updateData.metadata = meta;
@@ -213,6 +289,9 @@ export async function POST(req: NextRequest) {
               contact_method: 'phone',
               source: 'directory_contact',
               ...(form_session_id ? { form_session_id } : {}),
+              ...(gclid ? { gclid } : {}),
+              ...(campaign_source ? { landing_page: campaign_source } : {}),
+              ...((draft_contact || draft_booking) ? { conversion_path: 'directory_contact' } : {}),
               ...(isTestCookie ? { is_test: true } : {}),
             };
             // Store draft contact data if provided (therapist directory flow)
@@ -243,6 +322,8 @@ export async function POST(req: NextRequest) {
                 phone_number: normalized,
                 name,
                 status: 'new',
+                ...(campaign_source ? { campaign_source } : {}),
+                ...(campaign_variant ? { campaign_variant } : {}),
                 metadata,
               });
           }
@@ -350,7 +431,7 @@ export async function POST(req: NextRequest) {
       if (!personId) {
         const { data: existing, error: selErr } = await supabaseServer
           .from('people')
-          .select('id, metadata')
+          .select('id, metadata, campaign_source, campaign_variant')
           .eq('email', contact)
           .limit(1);
         if (!selErr && existing && existing.length > 0) {
@@ -359,6 +440,11 @@ export async function POST(req: NextRequest) {
           meta['confirm_token'] = token;
           meta['confirm_sent_at'] = new Date().toISOString();
           if (isTestCookie) meta['is_test'] = true;
+          if (gclid && typeof meta['gclid'] !== 'string') meta['gclid'] = gclid;
+          if (campaign_source && typeof meta['landing_page'] !== 'string') meta['landing_page'] = campaign_source;
+          if ((draft_contact || draft_booking) && meta['conversion_path'] !== 'directory_contact') {
+            meta['conversion_path'] = 'directory_contact';
+          }
           // Persist safe redirect path for idempotent confirm redirects back to directory
           if (redirect && typeof redirect === 'string') {
             const isSafe = redirect.startsWith('/') && !redirect.startsWith('/api') && !redirect.startsWith('//');
@@ -391,6 +477,13 @@ export async function POST(req: NextRequest) {
             status: 'email_confirmation_sent',
           };
 
+          if (campaign_source && !(existing[0] as unknown as { campaign_source?: string | null }).campaign_source) {
+            updateData.campaign_source = campaign_source;
+          }
+          if (campaign_variant && !(existing[0] as unknown as { campaign_variant?: string | null }).campaign_variant) {
+            updateData.campaign_variant = campaign_variant;
+          }
+
           // Include name if provided (from therapist directory contact flow)
           if (name) {
             updateData.name = name;
@@ -416,6 +509,9 @@ export async function POST(req: NextRequest) {
           const metadata: Record<string, unknown> = {
             confirm_token: token,
             confirm_sent_at: new Date().toISOString(),
+            ...(gclid ? { gclid } : {}),
+            ...(campaign_source ? { landing_page: campaign_source } : {}),
+            ...((draft_contact || draft_booking) ? { conversion_path: 'directory_contact' } : {}),
             ...(isTestCookie ? { is_test: true } : {}),
           };
           // Store draft contact data if provided (therapist directory flow)
@@ -448,6 +544,8 @@ export async function POST(req: NextRequest) {
             email: contact,
             type: 'patient',
             status: 'email_confirmation_sent',
+            ...(campaign_source ? { campaign_source } : {}),
+            ...(campaign_variant ? { campaign_variant } : {}),
             metadata,
           };
           // Include name if provided (from therapist directory contact flow)
@@ -476,13 +574,18 @@ export async function POST(req: NextRequest) {
         // Update provided lead_id metadata
         const { data: existing } = await supabaseServer
           .from('people')
-          .select('metadata')
+          .select('metadata, campaign_source, campaign_variant')
           .eq('id', personId)
           .single();
         const meta = (existing?.metadata as Record<string, unknown>) || {};
         meta['confirm_token'] = token;
         meta['confirm_sent_at'] = new Date().toISOString();
         if (isTestCookie) meta['is_test'] = true;
+        if (gclid && typeof meta['gclid'] !== 'string') meta['gclid'] = gclid;
+        if (campaign_source && typeof meta['landing_page'] !== 'string') meta['landing_page'] = campaign_source;
+        if ((draft_contact || draft_booking) && meta['conversion_path'] !== 'directory_contact') {
+          meta['conversion_path'] = 'directory_contact';
+        }
         // Persist safe redirect path for idempotent confirm redirects back to directory
         if (redirect && typeof redirect === 'string') {
           const isSafe = redirect.startsWith('/') && !redirect.startsWith('/api') && !redirect.startsWith('//');
@@ -515,6 +618,13 @@ export async function POST(req: NextRequest) {
           metadata: meta,
           status: 'email_confirmation_sent',
         };
+
+        if (campaign_source && !(existing as unknown as { campaign_source?: string | null }).campaign_source) {
+          updateData.campaign_source = campaign_source;
+        }
+        if (campaign_variant && !(existing as unknown as { campaign_variant?: string | null }).campaign_variant) {
+          updateData.campaign_variant = campaign_variant;
+        }
 
         // Include name if provided (from therapist directory contact flow)
         if (name) {
@@ -595,9 +705,10 @@ export async function POST(req: NextRequest) {
         props: { contact_type: 'email' },
       });
 
-      const respData: Record<string, unknown> = { sent: true, method: 'email', token };
+      const respData: Record<string, unknown> = { sent: true, method: 'email' };
       if (process.env.NODE_ENV !== 'production') {
         respData.person_id = personId;
+        respData.token = token;
       }
       return NextResponse.json({
         data: respData,

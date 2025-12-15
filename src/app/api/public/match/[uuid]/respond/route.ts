@@ -5,6 +5,8 @@ import { ServerAnalytics } from '@/lib/server-analytics';
 import { sendEmail } from '@/lib/email/client';
 import { renderPatientCustomUpdate, renderPatientMatchFound, renderTherapistRejection } from '@/lib/email/templates/patientUpdates';
 import { getTherapistSession } from '@/lib/auth/therapistSession';
+import { parseRequestBody } from '@/lib/api-utils';
+import { TherapistRespondInput } from '@/contracts/match';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -55,11 +57,20 @@ export async function POST(req: Request) {
   const reveal = searchParams.get('reveal') === '1';
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const action = String(body?.action || '').trim().toLowerCase();
-    if (action !== 'accept' && action !== 'decline') {
+    const parsed = await parseRequestBody(req, TherapistRespondInput);
+    if (!parsed.success) {
+      const json = await parsed.response
+        .json()
+        .catch(() => ({} as Record<string, unknown>));
+      const msg = typeof json?.error === 'string' ? json.error : '';
+      // Preserve legacy behavior: malformed JSON became {} and yielded Invalid action
+      if (msg === 'Ungültiger Request Body') {
+        return NextResponse.json({ data: null, error: 'Invalid action' }, { status: 400 });
+      }
       return NextResponse.json({ data: null, error: 'Invalid action' }, { status: 400 });
     }
+
+    const action = String((parsed.data as { action?: string }).action || '').trim().toLowerCase();
 
     let match: unknown | null = null;
     let matchErr: unknown | null = null;

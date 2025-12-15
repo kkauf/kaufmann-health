@@ -5,8 +5,45 @@ import {
   City,
   TherapistGender,
   SessionPreference,
-  UUID,
 } from './shared';
+
+const TherapistProfileGender = z.string().refine(
+  (v) => ['male', 'female', 'diverse'].includes(v),
+  { message: 'invalid gender' }
+);
+
+const SessionPreferences = z.preprocess((v) => {
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string' && v.trim()) {
+    try {
+      const parsed = JSON.parse(v);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      // ignore
+    }
+    return v
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return v;
+}, z.array(SessionPreference));
+
+const AcceptingNew = z.preprocess((v) => {
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'string') {
+    const s = v.trim().toLowerCase();
+    if (['true', '1', 'yes'].includes(s)) return true;
+    if (['false', '0', 'no'].includes(s)) return false;
+  }
+  return v;
+}, z.boolean());
+
+const TypicalRate = z.preprocess((v) => {
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string' && v.trim()) return parseInt(v, 10);
+  return v;
+}, z.number().int().positive());
 
 // ============================================================================
 // THERAPIST PROFILE UPDATE
@@ -16,15 +53,23 @@ import {
 export const TherapistProfileUpdate = z.object({
   first_name: NonEmptyString.optional(),
   last_name: NonEmptyString.optional(),
-  gender: TherapistGender.optional(),
+  gender: TherapistProfileGender.optional(),
   city: City.optional(),
-  accepting_new: z.boolean().optional(),
+  accepting_new: AcceptingNew.optional(),
   approach_text: z.string().max(2000).optional(),
-  session_preferences: z.array(SessionPreference).optional(),
+  session_preferences: SessionPreferences.optional(),
   modalities: z.array(z.string()).optional(),
   schwerpunkte: z.array(z.string()).optional(),
-  terms_accepted_version: z.string().optional(),
-});
+  typical_rate: TypicalRate.optional(),
+  practice_street: OptionalString,
+  practice_postal_code: OptionalString,
+  practice_city: OptionalString,
+  who_comes_to_me: OptionalString,
+  session_focus: OptionalString,
+  first_session: OptionalString,
+  about_me: OptionalString,
+  terms_accepted_version: OptionalString,
+}).passthrough();
 
 export type TherapistProfileUpdate = z.infer<typeof TherapistProfileUpdate>;
 

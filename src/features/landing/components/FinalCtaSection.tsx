@@ -40,9 +40,9 @@ export function FinalCtaSection({
     `mt-12 sm:mt-16 relative overflow-hidden rounded-3xl border border-emerald-200/60 shadow-xl shadow-emerald-100/20 ${bgClass} px-6 py-10 sm:p-12 lg:p-16 ${alignClass}`;
 
   const START_TIMING_OPTIONS = [
-    { value: 'immediate', label: 'So schnell wie möglich', query: 'timing=immediate' },
-    { value: 'soon', label: 'In den nächsten 2-4 Wochen', query: 'timing=soon' },
-    { value: 'flexible', label: 'In 1-2 Monaten', query: 'timing=flexible' },
+    { value: 'week', label: 'Innerhalb der nächsten Woche', query: 'timing=week' },
+    { value: 'month', label: 'Innerhalb des nächsten Monats', query: 'timing=month' },
+    { value: 'flexible', label: 'Flexibel, der richtige Match ist wichtiger', query: 'timing=flexible' },
   ] as const;
 
   const FORMAT_OPTIONS = [
