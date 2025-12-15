@@ -53,7 +53,14 @@ function makeReq(url: string) {
 }
 
 beforeEach(() => {
-  personRow = { id: 'p1', email: 'user@example.com', type: 'patient', metadata: { form_session_id: 'fs-1' }, campaign_source: null, campaign_variant: null };
+  personRow = {
+    id: '11111111-1111-4111-8111-111111111111',
+    email: 'user@example.com',
+    type: 'patient',
+    metadata: { form_session_id: '22222222-2222-4222-8222-222222222222' },
+    campaign_source: null,
+    campaign_variant: null,
+  };
   formSessionRow = { data: { campaign_source: '/ankommen-in-dir', campaign_variant: 'C', city: 'Berlin' } };
   updatePayload = null;
 });
@@ -61,7 +68,7 @@ beforeEach(() => {
 describe('POST /api/public/leads/:id/form-completed campaign backfill', () => {
   it('backfills campaign_source and campaign_variant from form-session when missing', async () => {
     const { POST } = await import('@/app/api/public/leads/[id]/form-completed/route');
-    const res = await POST(makeReq('http://localhost/api/public/leads/p1/form-completed'));
+    const res = await POST(makeReq('http://localhost/api/public/leads/11111111-1111-4111-8111-111111111111/form-completed'));
     expect(res.status).toBe(200);
     expect(updatePayload).toBeTruthy();
     // Ensure update occurred and metadata persisted; campaign may be set by route when available

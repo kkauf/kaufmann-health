@@ -3,6 +3,7 @@ import { safeJson } from '@/lib/http';
 import { logError, track } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { maybeFirePatientConversion } from '@/lib/conversion';
+import { LeadFormCompletedParams } from '@/contracts/leads';
 
 export const runtime = 'nodejs';
 
@@ -29,8 +30,15 @@ function getClientIP(headers: Headers) {
 }
 
 export async function POST(req: Request) {
-  const id = getIdFromUrl(req.url);
-  if (!id) return safeJson({ data: null, error: 'Missing id' }, { status: 400 });
+  const idRaw = getIdFromUrl(req.url);
+  if (!idRaw) return safeJson({ data: null, error: 'Missing id' }, { status: 400 });
+
+  const parsedParams = LeadFormCompletedParams.safeParse({ id: idRaw });
+  if (!parsedParams.success) {
+    return safeJson({ data: null, error: 'Invalid id' }, { status: 400 });
+  }
+
+  const id = parsedParams.data.id;
 
   try {
     const sessionIdHeader = req.headers.get('x-session-id') || undefined;

@@ -113,6 +113,18 @@ export const LeadIdParam = z.object({
 
 export type LeadIdParam = z.infer<typeof LeadIdParam>;
 
+export const LeadFormCompletedParams = z.object({
+  id: UUID,
+});
+
+export type LeadFormCompletedParams = z.infer<typeof LeadFormCompletedParams>;
+
+export const LeadFormCompletedOutput = z.object({
+  ok: z.literal(true),
+});
+
+export type LeadFormCompletedOutput = z.infer<typeof LeadFormCompletedOutput>;
+
 export const LeadConfirmQuery = z.object({
   token: z.string().min(1),
   id: z.string().min(1),

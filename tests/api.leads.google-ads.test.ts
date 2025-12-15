@@ -90,6 +90,7 @@ describe('Google Ads conversions', () => {
   });
 
   it('fires client_registration conversion on form completion only when verified', async () => {
+    const leadId = '11111111-1111-4111-8111-111111111111';
     // Mock people row for preferences route to include email
     vi.doMock('@/lib/supabase-server', () => {
       const api: any = {
@@ -97,7 +98,7 @@ describe('Google Ads conversions', () => {
           if (table === 'people') {
             return {
               select: (_sel?: string) => ({
-                eq: (_col?: string, _val?: string) => ({ single: async () => ({ data: { id: 'lead-xyz', email: 'patient@example.com', type: 'patient', status: 'email_confirmed', metadata: {} }, error: null }) }),
+                eq: (_col?: string, _val?: string) => ({ single: async () => ({ data: { id: leadId, email: 'patient@example.com', type: 'patient', status: 'email_confirmed', metadata: {} }, error: null }) }),
               }),
               update: (_payload: any) => ({ eq: (_col?: string, _val?: string) => ({ data: null, error: null }) }),
             };
@@ -108,7 +109,7 @@ describe('Google Ads conversions', () => {
       return { supabaseServer: api };
     });
     const { POST: FORM_COMPLETED } = await import('@/app/api/public/leads/[id]/form-completed/route');
-    const prefRes: any = await FORM_COMPLETED(new Request('http://localhost/api/public/leads/lead-xyz/form-completed', {
+    const prefRes: any = await FORM_COMPLETED(new Request(`http://localhost/api/public/leads/${leadId}/form-completed`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({}),
@@ -119,7 +120,7 @@ describe('Google Ads conversions', () => {
     const call = trackConversion.mock.calls[0][0];
     expect(call.conversionAction).toBe('client_registration');
     expect(call.conversionValue).toBe(10);
-    expect(call.orderId).toBe('lead-xyz');
+    expect(call.orderId).toBe(leadId);
     expect(call.email).toBe('patient@example.com');
   });
 

@@ -14,14 +14,19 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
   const MOCK_EMAIL = 'test3@example.com';
 
   // Helper to mock the leads API response
-  const mockLeadsApi = (page: Page, matchesUrl = MOCK_MATCHES_URL) => 
-    page.route('**/api/public/leads', async (route) => {
+  const mockLeadsApi = async (page: Page, matchesUrl = MOCK_MATCHES_URL) => {
+    await page.route('**/api/public/leads', async (route) => {
       const body = {
         data: { id: MOCK_PATIENT_ID, requiresConfirmation: true, matchesUrl },
         error: null,
       };
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     });
+    await page.route('**/api/public/leads/**/form-completed', async (route) => {
+      const body = { data: { ok: true }, error: null };
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    });
+  };
 
   // Helper to mock matches API
   const mockMatchesApi = (page: Page, verified = false) =>
