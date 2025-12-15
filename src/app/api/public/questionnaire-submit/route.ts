@@ -5,6 +5,8 @@ import { isIpRateLimited } from '@/features/leads/lib/rateLimit';
 import { track } from '@/lib/logger';
 import { safeJson } from '@/lib/http';
 import { createInstantMatchesForPatient } from '@/features/leads/lib/match';
+import { QuestionnaireSubmitInput } from '@/contracts/leads';
+import { parseRequestBody } from '@/lib/api-utils';
 
 // getClientIP helper
 function getClientIP(headers: Headers): string | undefined {
@@ -41,7 +43,9 @@ export const runtime = 'nodejs';
  */
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => ({}));
+    const parsed = await parseRequestBody(req, QuestionnaireSubmitInput);
+    if (!parsed.success) return parsed.response;
+    const body = parsed.data;
 
     // Extract questionnaire data (Steps 1-5 only)
     const {
@@ -93,8 +97,8 @@ export async function POST(req: Request) {
     const cvOverride = req.headers.get('x-campaign-variant-override') || undefined;
     
     // Priority: header override > referer URL param > fallback
-    const campaign_source: string | undefined = csOverride || campaign.campaign_source || '/start';
-    const campaign_variant: string | undefined = cvOverride || campaign.campaign_variant || 'quiz';
+    const campaign_source: string | undefined = csOverride || campaign.campaign_source || '/fragebogen';
+    const campaign_variant: string | undefined = cvOverride || campaign.campaign_variant || (campaign_source === '/fragebogen' ? 'direct' : undefined);
 
     // Prepare metadata with all preferences
     // Normalize gender from German UI labels to English values for matching

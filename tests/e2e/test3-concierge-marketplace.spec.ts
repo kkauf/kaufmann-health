@@ -11,6 +11,35 @@ import { test, expect, Page } from '@playwright/test';
 test.describe('Test 3: Concierge vs Marketplace Flow', () => {
   const MOCK_MATCHES_URL = '/matches/test3-uuid';
 
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        localStorage.removeItem('kh_wizard_data');
+        localStorage.removeItem('kh_wizard_step');
+        localStorage.removeItem('kh_form_session_id');
+        localStorage.removeItem('anonymousPatientId');
+      } catch {}
+    });
+
+    await page.route('**/api/public/questionnaire-submit', async (route, request) => {
+      const headers = request.headers();
+      const variant = String(headers['x-campaign-variant-override'] || '').toLowerCase();
+      const isDirect = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
+      const shouldReturnMatchesUrl = variant === 'concierge' ? true : isDirect;
+
+      const body = {
+        data: {
+          patientId: 'p-test3',
+          matchesUrl: shouldReturnMatchesUrl ? MOCK_MATCHES_URL : null,
+          matchQuality: shouldReturnMatchesUrl ? 'exact' : 'none',
+        },
+        error: null,
+      };
+
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    });
+  });
+
   // Helper to mock matches API
   const mockMatchesApi = (page: Page, verified = false) =>
     page.route('**/api/public/matches/*', async (route) => {

@@ -8,6 +8,7 @@
  *  - search_terms: search_terms.csv
  *  - adgroups: adgroup_perf.csv
  *  - asset_labels: asset_labels.csv
+ *  - quality_scores: quality_scores.csv (keyword-level)
  *
  * Defaults:
  *  - modules: keywords,assets,asset_labels
@@ -342,6 +343,61 @@ async function exportSearchTerms(customer: any, outDir: string, exportDatePrefix
   writeCsv(out, headers, data);
 }
 
+async function exportQualityScores(customer: any, outDir: string, exportDatePrefix: string, since: string, until: string, nameLike?: string) {
+  console.log('\n[QS] Quality score snapshot…');
+  const nameClause = nameLike ? ` AND campaign.name LIKE '%${escapeLike(nameLike)}%'` : '';
+  const rows: any[] = await customer.query(`
+    SELECT
+      campaign.name,
+      ad_group.name,
+      ad_group_criterion.criterion_id,
+      ad_group_criterion.keyword.text,
+      ad_group_criterion.keyword.match_type,
+      ad_group_criterion.status,
+      ad_group_criterion.quality_info.quality_score,
+      ad_group_criterion.quality_info.creative_quality_score,
+      ad_group_criterion.quality_info.post_click_quality_score,
+      metrics.impressions
+    FROM keyword_view
+    WHERE campaign.advertising_channel_type = 'SEARCH'
+      AND ad_group_criterion.type = 'KEYWORD'
+      AND ad_group_criterion.status IN ('ENABLED','PAUSED')
+      AND segments.date BETWEEN '${since}' AND '${until}'
+      ${nameClause}
+  `);
+
+  const out = path.join(outDir, `${exportDatePrefix}_quality_scores.csv`);
+  const headers = [
+    'campaign_name',
+    'ad_group_name',
+    'keyword_id',
+    'keyword_text',
+    'match_type',
+    'status',
+    'quality_score',
+    'creative_quality_score',
+    'post_click_quality_score',
+    'impressions',
+    'date_range',
+  ];
+  const data: any[] = [];
+  for (const r of rows) {
+    const campaignName = String(getField(r, ['campaign.name']) || '');
+    const adGroupName = String(getField(r, ['ad_group.name']) || '');
+    const keywordId = String(getField(r, ['ad_group_criterion.criterion_id']) || '');
+    const keywordText = String(getField(r, ['ad_group_criterion.keyword.text']) || '');
+    const matchType = String(getField(r, ['ad_group_criterion.keyword.match_type']) || '');
+    const status = String(getField(r, ['ad_group_criterion.status']) || '');
+    const qs = String(getField(r, ['ad_group_criterion.quality_info.quality_score']) || '');
+    const creative = String(getField(r, ['ad_group_criterion.quality_info.creative_quality_score']) || '');
+    const postClick = String(getField(r, ['ad_group_criterion.quality_info.post_click_quality_score']) || '');
+    const impressions = Number(getField(r, ['metrics.impressions']) || 0);
+    data.push([campaignName, adGroupName, keywordId, keywordText, matchType, status, qs, creative, postClick, impressions, `${since}..${until}`]);
+  }
+
+  writeCsv(out, headers, data);
+}
+
 async function exportAdgroupPerf(customer: any, outDir: string, exportDatePrefix: string, since: string, until: string, nameLike?: string) {
   console.log('\n[4/5] Ad group performance…');
   const nameClause = nameLike ? ` AND campaign.name LIKE '%${escapeLike(nameLike)}%'` : '';
@@ -477,6 +533,7 @@ async function main() {
   if (modules.includes('search_terms')) await exportSearchTerms(customer, outDir, exportDatePrefix, since, until, nameLike);
   if (modules.includes('adgroups')) await exportAdgroupPerf(customer, outDir, exportDatePrefix, since, until, nameLike);
   if (modules.includes('asset_labels')) await exportAssetLabels(customer, outDir, exportDatePrefix, since, until, nameLike);
+  if (modules.includes('quality_scores')) await exportQualityScores(customer, outDir, exportDatePrefix, since, until, nameLike);
 
   console.log('\n✅ Unified export complete.');
 }

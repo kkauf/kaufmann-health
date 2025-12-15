@@ -41,8 +41,10 @@ const PROGRESS = [0, 20, 40, 60, 80, 100]; // steps 1-5
 
 export default function SignupWizard() {
   const searchParams = useSearchParams();
-  const flowVariantParam = (searchParams?.get('variant') || searchParams?.get('v') || '').toLowerCase();
-  const isSelfService = flowVariantParam === 'self-service';
+  const rawFlowVariantParam = (searchParams?.get('variant') || searchParams?.get('v') || '').toLowerCase();
+  const hasFlowVariantParam = Boolean(rawFlowVariantParam);
+  const effectiveFlowVariant = hasFlowVariantParam ? rawFlowVariantParam : 'self-service';
+  const isSelfService = effectiveFlowVariant === 'self-service';
   const [step, setStep] = React.useState<number>(1);
   const [data, setData] = React.useState<WizardData>({});
   const [initialized, setInitialized] = React.useState(false);
@@ -252,6 +254,10 @@ export default function SignupWizard() {
             } catch {}
           }
         } catch {}
+        if (!src) {
+          src = '/fragebogen';
+          variant = 'direct';
+        }
         if (src) campaignSourceOverrideRef.current = src;
         if (variant) campaignVariantOverrideRef.current = variant;
       } catch {}
