@@ -8,39 +8,36 @@ import { test, expect, Page } from '@playwright/test';
  */
 
 test.describe('Test 4: Concierge vs Self-Service', () => {
-  const MOCK_PATIENT_ID = 'p-test4';
   const MOCK_MATCHES_URL = '/matches/test4-uuid';
-  const MOCK_EMAIL = 'test4@example.com';
 
-  // Mock leads API - concierge returns no matchesUrl
-  const mockLeadsApiConcierge = async (page: Page) => {
-    await page.route('**/api/public/leads', async (route) => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        localStorage.removeItem('kh_wizard_data');
+        localStorage.removeItem('kh_wizard_step');
+        localStorage.removeItem('kh_form_session_id');
+        localStorage.removeItem('anonymousPatientId');
+      } catch {}
+    });
+
+    await page.route('**/api/public/questionnaire-submit', async (route, request) => {
+      const headers = request.headers();
+      const variant = String(headers['x-campaign-variant-override'] || '').toLowerCase();
+      const isDirect = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
+      const shouldReturnMatchesUrl = variant === 'concierge' ? true : isDirect;
+
       const body = {
-        data: { id: MOCK_PATIENT_ID, requiresConfirmation: true },
+        data: {
+          patientId: 'p-test4',
+          matchesUrl: shouldReturnMatchesUrl ? MOCK_MATCHES_URL : null,
+          matchQuality: shouldReturnMatchesUrl ? 'exact' : 'none',
+        },
         error: null,
       };
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
-    });
-    await page.route('**/api/public/leads/**/form-completed', async (route) => {
-      const body = { data: { ok: true }, error: null };
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
-    });
-  };
 
-  // Mock leads API - self-service returns matchesUrl
-  const mockLeadsApiSelfService = async (page: Page) => {
-    await page.route('**/api/public/leads', async (route) => {
-      const body = {
-        data: { id: MOCK_PATIENT_ID, requiresConfirmation: true, matchesUrl: MOCK_MATCHES_URL },
-        error: null,
-      };
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     });
-    await page.route('**/api/public/leads/**/form-completed', async (route) => {
-      const body = { data: { ok: true }, error: null };
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
-    });
-  };
+  });
 
   // Mock matches API for verified state
   const mockMatchesApi = (page: Page) =>
@@ -140,17 +137,12 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
       // Wait for transition
       await page.waitForTimeout(1000);
       
-      // Should show "What Brings You" text field, NOT Schwerpunkte checkboxes
-      const textFieldVisible = await page.getByText(/Was bringt dich zur Therapie|Was beschäftigt dich gerade/i).isVisible().catch(() => false);
-      const schwerpunkteVisible = await page.getByText(/Wähle aus, was/i).isVisible().catch(() => false);
-      
-      // Concierge should show text field screen (not necessarily visible text, but the skip/continue pattern)
-      // The key is that it does NOT show Schwerpunkte checkboxes
-      expect(schwerpunkteVisible).toBe(false);
+      await expect(page.getByText(/Was bringt dich zur Therapie\?/i)).toBeVisible({ timeout: 5000 });
+      await expect(page.getByText(/Was beschäftigt dich\?/i)).toHaveCount(0);
     });
 
-    test('submits without matchesUrl (no auto-matching)', async ({ page }) => {
-      await mockLeadsApiConcierge(page);
+    test('redirects to matches after questionnaire', async ({ page }) => {
+      await mockMatchesApi(page);
       await page.goto('/fragebogen?variant=concierge&restart=1');
       
       // Complete questionnaire
@@ -158,27 +150,9 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
       await completeStep2Or2p5(page);
       
       await completeRemainingSteps(page);
-      
-      // Fill contact info
-      await page.getByPlaceholder('Vorname oder Spitzname').fill('E2E Concierge');
-      // Ensure email mode (some flows may default to SMS)
-      const emailToggle = page.getByRole('button', { name: /E.?Mail/i });
-      if (await emailToggle.isVisible().catch(() => false)) {
-        await emailToggle.click();
-      }
-      await page.getByPlaceholder('deine@email.de').fill(MOCK_EMAIL);
-      await page.getByTestId('wizard-next').click();
-      
-      // Should stay on fragebogen (no redirect to matches)
-      await page.waitForTimeout(2000);
-      await expect(page).toHaveURL(/\/fragebogen/);
-    });
 
-    test('confirmation screen shows waiting message (not matches CTA)', async ({ page }) => {
-      await page.goto('/fragebogen?variant=concierge&confirm=1');
-      
-      // Should show concierge waiting message
-      await expect(page.getByRole('heading', { name: /wir bereiten deine persönliche Auswahl vor/i })).toBeVisible({ timeout: 5000 });
+      await expect(page).toHaveURL(new RegExp(`${MOCK_MATCHES_URL.replace('/', '\\/')}$`));
+      await expect(page.locator('h1')).toBeVisible({ timeout: 8000 });
     });
   });
 
@@ -209,8 +183,9 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
       expect(schwerpunkteVisible).toBe(true);
     });
 
-    test('submits with matchesUrl (auto-matching)', async ({ page }) => {
-      await mockLeadsApiSelfService(page);
+    test('redirects to matches after questionnaire when direct booking is enabled', async ({ page }) => {
+      test.skip(process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW !== 'true', 'Requires NEXT_PUBLIC_DIRECT_BOOKING_FLOW=true');
+      await mockMatchesApi(page);
       await page.goto('/fragebogen?variant=self-service&restart=1');
       
       // Complete questionnaire
@@ -218,37 +193,19 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
       await completeStep2Or2p5(page);
       
       await completeRemainingSteps(page);
-      
-      // Fill contact info
-      await page.getByPlaceholder('Vorname oder Spitzname').fill('E2E Self-Service');
-      // Ensure email mode (some flows may default to SMS)
-      const emailToggle2 = page.getByRole('button', { name: /E.?Mail/i });
-      if (await emailToggle2.isVisible().catch(() => false)) {
-        await emailToggle2.click();
-      }
-      await page.getByPlaceholder('deine@email.de').fill(MOCK_EMAIL);
-      await page.getByTestId('wizard-next').click();
-      
-      // Should stay on fragebogen for verification (matches come after)
-      await page.waitForTimeout(2000);
-      await expect(page).toHaveURL(/\/fragebogen/);
+
+      await expect(page).toHaveURL(new RegExp(`${MOCK_MATCHES_URL.replace('/', '\\/')}$`));
     });
 
-    test('confirmed user sees matches CTA', async ({ page }) => {
-      await mockMatchesApi(page);
-      await page.goto('/fragebogen?variant=self-service&confirm=1');
-      
-      // Should show matches CTA (not waiting message)
-      await expect(page.getByRole('heading', { name: /deine Matches sind bereit/i })).toBeVisible({ timeout: 5000 });
-      await expect(page.getByRole('button', { name: /Jetzt Therapeut:innen ansehen/i })).toBeVisible({ timeout: 5000 });
-    });
+    test('shows inline no-matches message when direct booking is disabled', async ({ page }) => {
+      test.skip(process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW === 'true', 'Skipped when NEXT_PUBLIC_DIRECT_BOOKING_FLOW=true');
+      await page.goto('/fragebogen?variant=self-service&restart=1');
 
-    test('verified user can view matches immediately', async ({ page }) => {
-      await mockMatchesApi(page);
-      await page.goto(`${MOCK_MATCHES_URL}?confirm=1`);
-      
-      // Should show matches
-      await expect(page.locator('h1')).toContainText(/Ergebnisse|Matches/i);
+      await completeStep1Timeline(page);
+      await completeStep2Or2p5(page);
+      await completeRemainingSteps(page);
+
+      await expect(page.getByText('Keine Therapeuten gefunden. Bitte versuche es später erneut.')).toBeVisible({ timeout: 8000 });
     });
   });
 
@@ -278,20 +235,18 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
   });
 
   test.describe('Variant Parity', () => {
-    test('both variants reach contact collection step', async ({ page }) => {
+    test('both variants reach step 3 (modality) after step 2', async ({ page }) => {
       // Concierge
       await page.goto('/fragebogen?variant=concierge&restart=1');
       await completeStep1Timeline(page);
       await completeStep2Or2p5(page);
-      await completeRemainingSteps(page);
-      await expect(page.getByText('Fast geschafft!')).toBeVisible();
+      await expect(page.getByText(/Möchtest du deine Therapiemethode selbst wählen/i)).toBeVisible({ timeout: 8000 });
       
       // Self-Service
       await page.goto('/fragebogen?variant=self-service&restart=1');
       await completeStep1Timeline(page);
       await completeStep2Or2p5(page);
-      await completeRemainingSteps(page);
-      await expect(page.getByText('Fast geschafft!')).toBeVisible();
+      await expect(page.getByText(/Möchtest du deine Therapiemethode selbst wählen/i)).toBeVisible({ timeout: 8000 });
     });
   });
 
@@ -302,9 +257,7 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
       
       await completeStep1Timeline(page);
       await completeStep2Or2p5(page);
-      await completeRemainingSteps(page);
-      
-      await expect(page.getByText('Fast geschafft!')).toBeVisible();
+      await expect(page.getByText(/Möchtest du deine Therapiemethode selbst wählen/i)).toBeVisible({ timeout: 8000 });
     });
 
     test('self-service flow works on mobile', async ({ page }) => {
@@ -313,9 +266,7 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
       
       await completeStep1Timeline(page);
       await completeStep2Or2p5(page);
-      await completeRemainingSteps(page);
-      
-      await expect(page.getByText('Fast geschafft!')).toBeVisible();
+      await expect(page.getByText(/Möchtest du deine Therapiemethode selbst wählen/i)).toBeVisible({ timeout: 8000 });
     });
   });
 });
