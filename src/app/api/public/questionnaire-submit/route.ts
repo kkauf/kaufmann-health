@@ -7,6 +7,7 @@ import { safeJson } from '@/lib/http';
 import { createInstantMatchesForPatient } from '@/features/leads/lib/match';
 import { QuestionnaireSubmitInput } from '@/contracts/leads';
 import { parseRequestBody } from '@/lib/api-utils';
+import { isTestRequest } from '@/lib/test-mode';
 
 // getClientIP helper
 function getClientIP(headers: Headers): string | undefined {
@@ -47,6 +48,20 @@ export async function POST(req: Request) {
     if (!parsed.success) return parsed.response;
     const body = parsed.data;
 
+    const isKhTest = (() => {
+      try {
+        const cookie = req.headers.get('cookie') || '';
+        return cookie.split(';').some((p) => {
+          const [k, v] = p.trim().split('=');
+          return k === 'kh_test' && v === '1';
+        });
+      } catch {
+        return false;
+      }
+    })();
+
+    const isTest = isKhTest || isTestRequest(req);
+
     // Extract questionnaire data (Steps 1-5 only)
     const {
       start_timing,
@@ -64,7 +79,7 @@ export async function POST(req: Request) {
     // Rate limiting
     const ip = getClientIP(req.headers);
     const ua = req.headers.get('user-agent') || undefined;
-    if (ip) {
+    if (ip && !isTest) {
       const limited = await isIpRateLimited(supabaseServer, ip, 'patient');
       if (limited) {
         const attr = parseAttributionFromRequest(req);
@@ -114,6 +129,7 @@ export async function POST(req: Request) {
       session_preference,
       gender_preference: normalizedGender,
       time_slots: time_slots || [],
+      ...(isTest ? { is_test: true } : {}),
     };
 
     // Add attribution data
