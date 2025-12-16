@@ -34,6 +34,15 @@ function normalizeGenderPreference(gender: string | undefined): 'male' | 'female
   }
 }
 
+function normalizeSessionPreferences(
+  v: string | undefined,
+): { session_preference?: 'online' | 'in_person'; session_preferences?: ('online' | 'in_person')[] } {
+  if (!v) return {};
+  if (v === 'online' || v === 'in_person') return { session_preference: v };
+  if (v === 'either' || v === 'both') return { session_preferences: ['online', 'in_person'] };
+  return {};
+}
+
 export const runtime = 'nodejs';
 
 /**
@@ -118,6 +127,7 @@ export async function POST(req: Request) {
     // Prepare metadata with all preferences
     // Normalize gender from German UI labels to English values for matching
     const normalizedGender = normalizeGenderPreference(gender);
+    const normalizedSession = normalizeSessionPreferences(session_preference);
     const metadata: Record<string, unknown> = {
       form_session_id,
       start_timing,
@@ -126,7 +136,8 @@ export async function POST(req: Request) {
       methods: methods || [],
       schwerpunkte: schwerpunkte || [],
       city,
-      session_preference,
+      ...(normalizedSession.session_preference ? { session_preference: normalizedSession.session_preference } : {}),
+      ...(normalizedSession.session_preferences ? { session_preferences: normalizedSession.session_preferences } : {}),
       gender_preference: normalizedGender,
       time_slots: time_slots || [],
       ...(isTest ? { is_test: true } : {}),
