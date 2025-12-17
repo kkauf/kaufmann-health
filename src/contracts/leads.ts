@@ -149,7 +149,7 @@ export const QuestionnaireSubmitInput = z.object({
   methods: z.array(z.string()).optional(),
   schwerpunkte: z.array(z.string()).optional(),
   city: City.optional(),
-  session_preference: SessionPreference.optional(),
+  session_preference: z.enum(['online', 'in_person', 'either', 'both']).optional(),
   gender: z.string().optional(),
   time_slots: z.array(z.string()).optional(),
   form_session_id: UUID.optional(),

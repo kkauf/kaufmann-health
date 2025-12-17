@@ -13,6 +13,7 @@ export * from './contact';
 export * from './match';
 export * from './booking';
 export * from './verification';
+export * from './cal';
 export * from './internal';
 export * from './images';
 export * from './admin';
