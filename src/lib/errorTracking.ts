@@ -13,6 +13,8 @@ function shouldIgnoreUnhandledMessage(message?: string): boolean {
   const m = message.toLowerCase();
   if (m.includes('chunkloaderror')) return true;
   if (m.includes('__firefox__')) return true;
+  if (m.trim() === 'uncaught') return true;
+  if (m.trim() === 'script error.' || m.trim() === 'script error') return true;
   return false;
 }
 
@@ -22,6 +24,10 @@ export type UserFacingError = {
   url?: string;
   message?: string;
   page_path?: string;
+  error_name?: string;
+  filename?: string;
+  lineno?: number;
+  colno?: number;
 };
 
 let isInitialized = false;
@@ -47,6 +53,10 @@ export function reportError(error: UserFacingError): void {
         url: error.url,
         message: error.message?.slice(0, 500), // Truncate long messages
         page_path: error.page_path || pagePath,
+        error_name: error.error_name?.slice(0, 80),
+        filename: error.filename,
+        lineno: error.lineno,
+        colno: error.colno,
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
       },
     };
@@ -85,12 +95,13 @@ function wrapFetch(): void {
       // Skip 410 (Gone/Expired) - this is expected behavior for expired sessions/links
       if (!response.ok && url.startsWith('/api/') && response.status !== 410) {
         const isAuthError = response.status === 401 || response.status === 403;
-        
+        const msg = response.statusText || `HTTP ${response.status}`;
+
         reportError({
           type: isAuthError ? 'auth_error' : 'api_error',
           status: response.status,
           url: url.split('?')[0], // Strip query params
-          message: response.statusText,
+          message: msg,
         });
       }
       
@@ -120,6 +131,7 @@ function trackUnhandledRejections(): void {
     reportError({
       type: 'unhandled',
       message: error instanceof Error ? error.message : String(error),
+      error_name: error instanceof Error ? error.name : undefined,
     });
   });
 }
@@ -135,10 +147,17 @@ function trackUncaughtErrors(): void {
     if (event.filename && !event.filename.includes(window.location.origin)) {
       return;
     }
+
+    const err = (event as ErrorEvent).error;
+    const message = err instanceof Error ? err.message : event.message;
     
     reportError({
       type: 'unhandled',
-      message: event.message,
+      message,
+      error_name: err instanceof Error ? err.name : undefined,
+      filename: event.filename || undefined,
+      lineno: typeof event.lineno === 'number' ? event.lineno : undefined,
+      colno: typeof event.colno === 'number' ? event.colno : undefined,
     });
   });
 }
