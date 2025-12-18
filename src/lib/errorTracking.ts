@@ -95,13 +95,26 @@ function wrapFetch(): void {
       // Skip 410 (Gone/Expired) - this is expected behavior for expired sessions/links
       if (!response.ok && url.startsWith('/api/') && response.status !== 410) {
         const isAuthError = response.status === 401 || response.status === 403;
-        const msg = response.statusText || `HTTP ${response.status}`;
+        
+        // Clone response to read body without consuming original
+        // Extract actual error message from JSON response body
+        let errorMessage = response.statusText || `HTTP ${response.status}`;
+        try {
+          const cloned = response.clone();
+          const json = await cloned.json();
+          // Our API returns { data: null, error: "actual message" }
+          if (json?.error && typeof json.error === 'string') {
+            errorMessage = json.error;
+          }
+        } catch {
+          // Body not JSON or couldn't be read - use statusText
+        }
 
         reportError({
           type: isAuthError ? 'auth_error' : 'api_error',
           status: response.status,
           url: url.split('?')[0], // Strip query params
-          message: msg,
+          message: errorMessage,
         });
       }
       
