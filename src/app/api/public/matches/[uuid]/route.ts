@@ -152,7 +152,7 @@ export async function GET(req: Request) {
       session_preferences?: string[] | null;
       accepting_new?: boolean | null;
       typical_rate?: number | null;
-      metadata?: { session_preferences?: string[] | null; profile?: { approach_text?: string; who_comes_to_me?: string; session_focus?: string; qualification?: string }; [k: string]: unknown } | null;
+      metadata?: { session_preferences?: string[] | null; profile?: { approach_text?: string; who_comes_to_me?: string; session_focus?: string; first_session?: string; about_me?: string; qualification?: string }; [k: string]: unknown } | null;
     };
     let therapistRows: MatchTherapistRow[] = [];
     if (therapistIds.length > 0) {
