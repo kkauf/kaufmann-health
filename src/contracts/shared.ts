@@ -49,6 +49,12 @@ export const OptionalString = z.string().optional().transform(s => s?.trim() || 
 
 export const City = z.string().min(1).transform(s => s.trim());
 
+/** City that treats empty string as undefined (for optional city fields) */
+export const OptionalCity = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+  City.optional()
+);
+
 export const UUID = z.string().uuid();
 
 // ============================================================================

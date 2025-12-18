@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {
   NonEmptyString,
   OptionalString,
-  City,
+  OptionalCity,
   TherapistGender,
   SessionPreference,
 } from './shared';
@@ -29,6 +29,20 @@ const SessionPreferences = z.preprocess((v) => {
   return v;
 }, z.array(SessionPreference));
 
+/** Schwerpunkte array that handles JSON-encoded strings from FormData */
+const SchwerpunkteArray = z.preprocess((v) => {
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string' && v.trim()) {
+    try {
+      const parsed = JSON.parse(v);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      // ignore
+    }
+  }
+  return v;
+}, z.array(z.string()).optional());
+
 const AcceptingNew = z.preprocess((v) => {
   if (typeof v === 'boolean') return v;
   if (typeof v === 'string') {
@@ -54,12 +68,12 @@ export const TherapistProfileUpdate = z.object({
   first_name: NonEmptyString.optional(),
   last_name: NonEmptyString.optional(),
   gender: TherapistProfileGender.optional(),
-  city: City.optional(),
+  city: OptionalCity,
   accepting_new: AcceptingNew.optional(),
   approach_text: z.string().max(2000).optional(),
   session_preferences: SessionPreferences.optional(),
   modalities: z.array(z.string()).optional(),
-  schwerpunkte: z.array(z.string()).optional(),
+  schwerpunkte: SchwerpunkteArray,
   typical_rate: TypicalRate.optional(),
   practice_street: OptionalString,
   practice_postal_code: OptionalString,
@@ -95,7 +109,7 @@ export type TherapistSlotInput = z.infer<typeof TherapistSlotInput>;
 // ============================================================================
 
 export const TherapistListQuery = z.object({
-  city: City.optional(),
+  city: OptionalCity,
   modality: z.string().optional(),
   gender: TherapistGender.optional(),
   session_type: SessionPreference.optional(),
