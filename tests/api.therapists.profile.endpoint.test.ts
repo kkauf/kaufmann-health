@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 let fetchedTherapist: any = null;
 let lastUpdate: any = null;
 let uploads: Array<{ bucket: string; path: string; contentType: string; size: number }>; 
+ let mockSession: null | { therapist_id: string } = null;
 
 vi.mock('@/lib/supabase-server', () => {
   const supabaseServer: any = {
@@ -37,6 +38,10 @@ vi.mock('@/lib/supabase-server', () => {
 
 vi.mock('@/lib/logger', () => ({ logError: vi.fn(async () => {}), track: vi.fn(async () => {}) }));
 
+vi.mock('@/lib/auth/therapistSession', () => ({
+  getTherapistSession: vi.fn(async () => mockSession),
+}));
+
 function makeJsonReq(body: any) {
   return new Request('http://localhost/api/therapists/tid-1/profile', {
     method: 'POST',
@@ -64,6 +69,7 @@ beforeEach(() => {
   };
   lastUpdate = null;
   uploads = [];
+  mockSession = null;
 });
 
 describe('/api/therapists/:id/profile POST', () => {
@@ -136,5 +142,50 @@ describe('/api/therapists/:id/profile POST', () => {
     expect(meta.profile).toBeTruthy();
     expect(typeof meta.profile.photo_pending_path).toBe('string');
     expect(meta.profile.who_comes_to_me).toBe('Desc');
+  });
+
+  it('Multipart: portal payload succeeds (schwerpunkte JSON string)', async () => {
+    const { POST } = await import('@/app/api/public/therapists/[id]/profile/route');
+
+    fetchedTherapist = { ...fetchedTherapist, status: 'verified' };
+    mockSession = { therapist_id: 'tid-1' };
+
+    const schwerpunkte = ['trauma', 'angst', 'depression', 'selbstwert', 'trauer'];
+    const form = new FormData();
+    form.set('who_comes_to_me', 'Hello');
+    form.set('session_focus', 'Focus');
+    form.set('first_session', 'First');
+    form.set('about_me', 'About');
+    form.set('schwerpunkte', JSON.stringify(schwerpunkte));
+    form.set('session_preferences', JSON.stringify(['online', 'in_person']));
+    form.set('accepting_new', 'true');
+    form.set('city', 'Berlin');
+
+    const res = await POST(makeFormReq(form), { params: Promise.resolve({ id: 'tid-1' }) });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.ok).toBe(true);
+    expect(lastUpdate).toBeTruthy();
+    expect(lastUpdate.schwerpunkte).toEqual(schwerpunkte);
+  });
+
+  it('Multipart: allows empty city (treated as undefined, not validation error)', async () => {
+    const { POST } = await import('@/app/api/public/therapists/[id]/profile/route');
+
+    fetchedTherapist = { ...fetchedTherapist, status: 'verified' };
+    mockSession = { therapist_id: 'tid-1' };
+
+    const form = new FormData();
+    form.set('who_comes_to_me', 'Hello');
+    form.set('schwerpunkte', JSON.stringify(['trauma']));
+    form.set('session_preferences', JSON.stringify(['online']));
+    form.set('city', '');
+
+    const res = await POST(makeFormReq(form), { params: Promise.resolve({ id: 'tid-1' }) });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.ok).toBe(true);
+    expect(lastUpdate).toBeTruthy();
+    expect('city' in lastUpdate).toBe(false);
   });
 });
