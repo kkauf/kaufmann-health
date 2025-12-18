@@ -365,7 +365,7 @@ export function TherapistCard({
               );
             }
             // Fallback to session_focus or legacy approach_text
-            const fallbackText = profile?.session_focus || therapist.approach_text;
+            const fallbackText = profile?.session_focus || profile?.about_me || therapist.approach_text;
             if (!fallbackText) return null;
             return (
               <p className="mb-4 line-clamp-3 text-sm text-gray-700">

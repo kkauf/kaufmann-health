@@ -24,6 +24,7 @@ export type Therapist = {
     profile?: {
       who_comes_to_me?: string;
       session_focus?: string;
+      about_me?: string;
     };
   };
   // Admin-only optional fields
@@ -234,7 +235,7 @@ export function TherapistPreview({ therapist, actionButton, variant = "web", cla
                 );
               }
               // Fallback to session_focus or legacy approach_text
-              const fallbackText = profile?.session_focus || therapist.approach_text;
+              const fallbackText = profile?.session_focus || profile?.about_me || therapist.approach_text;
               if (!fallbackText) return null;
               return (
                 <p

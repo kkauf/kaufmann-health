@@ -37,6 +37,10 @@ type TherapistItem = {
     profile?: {
       qualification?: string;
       approach_text?: string;
+      who_comes_to_me?: string;
+      session_focus?: string;
+      first_session?: string;
+      about_me?: string;
       approach_text_sections?: Record<string, string>;
       practice_address?: string;
       pricing?: string;
