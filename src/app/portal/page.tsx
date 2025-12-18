@@ -92,7 +92,7 @@ export default async function PortalPage({
   // Legacy approach_text (read-only if present and no new fields filled)
   const legacyApproachText = typeof profileMeta?.approach_text === 'string' ? profileMeta.approach_text : '';
   // Only show legacy text if it exists AND the new fields are empty (hasn't migrated yet)
-  const showLegacy = legacyApproachText && !whoComesToMe && !sessionFocus && !firstSession;
+  const showLegacy = legacyApproachText && !whoComesToMe && !sessionFocus && !firstSession && !aboutMe;
   
   // Extract structured address fields (with fallback parsing for legacy data)
   let practiceStreet = typeof profileMeta?.practice_street === 'string' ? profileMeta.practice_street : '';

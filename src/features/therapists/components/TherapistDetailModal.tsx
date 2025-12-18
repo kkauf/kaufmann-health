@@ -72,6 +72,16 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
   const languages = profile?.languages || [];
   const yearsExperience = profile?.years_experience;
   const practiceAddress = (profile?.practice_address || '').toString().trim();
+  const hasStructuredProfileContent = Boolean(
+    profile?.who_comes_to_me ||
+      profile?.session_focus ||
+      profile?.first_session ||
+      profile?.about_me ||
+      (Array.isArray(languages) && languages.length > 0) ||
+      yearsExperience ||
+      practiceAddress
+  );
+  const showLegacyApproachText = Boolean(therapist.approach_text && !hasStructuredProfileContent);
   
   const handleContactClick = (type: 'booking' | 'consultation') => {
     if (previewMode || !onOpenContactModal) return;
@@ -550,21 +560,27 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
             )}
 
             {/* Approach text */}
-            {therapist.approach_text && (
+            {(showLegacyApproachText || therapist.typical_rate != null) && (
               <div className="border-b pb-6">
-                <h3 className="mb-3 text-lg font-semibold text-gray-900">Über mich & meinen Ansatz</h3>
-                <div className="prose prose-sm max-w-none overflow-wrap-anywhere text-gray-700">
-                  {therapist.approach_text.split('\n').map((paragraph, idx) => (
-                    paragraph.trim() && <p key={idx} className="mb-3 break-words">{paragraph}</p>
-                  ))}
-                </div>
+                {showLegacyApproachText && (
+                  <>
+                    <h3 className="mb-3 text-lg font-semibold text-gray-900">Über mich & meinen Ansatz</h3>
+                    <div className="prose prose-sm max-w-none overflow-wrap-anywhere text-gray-700">
+                      {therapist.approach_text.split('\n').map((paragraph, idx) => (
+                        paragraph.trim() && <p key={idx} className="mb-3 break-words">{paragraph}</p>
+                      ))}
+                    </div>
+                  </>
+                )}
                 {/* Session price badge */}
-                <div className="mt-4">
-                  <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
-                    <Euro className="h-3.5 w-3.5" />
-                    {formatSessionPrice(therapist.typical_rate)}
-                  </Badge>
-                </div>
+                {therapist.typical_rate != null && (
+                  <div className={showLegacyApproachText ? 'mt-4' : undefined}>
+                    <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
+                      <Euro className="h-3.5 w-3.5" />
+                      {formatSessionPrice(therapist.typical_rate)}
+                    </Badge>
+                  </div>
+                )}
               </div>
             )}
 
