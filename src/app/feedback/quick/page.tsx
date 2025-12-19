@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { CheckCircle2, MessageSquare, Calendar } from 'lucide-react';
+import PageAnalytics from '@/components/PageAnalytics';
 
 const REASON_LABELS: Record<string, string> = {
   price_too_high: 'Preis ist zu hoch',
@@ -45,17 +46,7 @@ function FeedbackContent() {
       },
     };
 
-    // Fire-and-forget tracking.
-    // Use sendBeacon with an explicit JSON content-type to ensure the server parses `properties`.
-    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-      try {
-        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-        navigator.sendBeacon('/api/public/events', blob);
-        return;
-      } catch {
-        // Fall through to fetch
-      }
-    }
+    // Use fetch with keepalive for reliability
     fetch('/api/public/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -95,6 +86,7 @@ function FeedbackContent() {
 
   return (
     <div className="mx-auto max-w-xl px-4 py-10 sm:py-16">
+      <PageAnalytics qualifier="Feedback-Quick" />
       {/* Thank You Card */}
       <Card className="border-emerald-200/60 shadow-lg">
         <CardHeader className="text-center pb-4">
