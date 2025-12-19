@@ -584,9 +584,10 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
             {/* Modality Descriptions */}
             {therapist.modalities && therapist.modalities.length > 0 && (
               <div className="border-b pb-6">
-                <h3 className="mb-1 text-lg font-semibold text-gray-900">Methoden, mit denen {therapist.first_name} arbeitet</h3>
-                <p className="mb-5 text-sm text-gray-600">
-                  Diese Methoden nutzt {therapist.first_name} in der Arbeit. Kurz erklärt:
+                <h3 className="mb-2 text-lg font-semibold text-gray-900">Methoden, mit denen {therapist.first_name} arbeitet</h3>
+                <p className="mb-5 text-sm font-medium text-emerald-700/90 flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4" />
+                  {profile?.qualification || 'Therapeut:in'} · Ausbildungen verifiziert
                 </p>
                 <div className="space-y-5">
                   {therapist.modalities.map((modality, idx) => {
