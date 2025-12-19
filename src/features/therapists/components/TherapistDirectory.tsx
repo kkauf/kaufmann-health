@@ -228,6 +228,9 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
 
   const filteredTherapists = useMemo(() => {
     const filtered = therapists.filter(t => {
+      // Hide therapists who are not accepting new patients
+      if (t.accepting_new === false) return false;
+
       // Filter by modality
       if (selectedModality !== 'all' && !t.modalities?.some(m => normalizeModality(m) === selectedModality)) {
         return false;

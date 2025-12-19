@@ -160,7 +160,9 @@ export async function GET(req: Request) {
         .from('therapists')
         .select(THERAPIST_SELECT_COLUMNS_WITH_GENDER)
         .in('id', therapistIds);
-      if (Array.isArray(trows)) therapistRows = trows as unknown as MatchTherapistRow[];
+      if (Array.isArray(trows)) {
+        therapistRows = (trows as unknown as MatchTherapistRow[]).filter(t => t.accepting_new !== false);
+      }
     }
 
     // Compute availability for selected therapists using shared utility
