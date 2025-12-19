@@ -93,12 +93,16 @@ export type TherapistProfileUpdate = z.infer<typeof TherapistProfileUpdate>;
 // ============================================================================
 
 export const TherapistSlotInput = z.object({
-  start_time: z.string().datetime(),
-  end_time: z.string().datetime(),
-  session_type: SessionPreference,
+  id: z.string().uuid().optional(),
+  day_of_week: z.number().int().min(0).max(6).optional(), // 0=Sunday. Optional because one-time slots might calculate it.
+  time_local: z.string().regex(/^\d{2}:\d{2}$/, 'Invalid time format (HH:MM)'),
+  format: z.enum(['online', 'in_person', 'both']),
   address: OptionalString,
-  is_recurring: z.boolean().default(false),
-  recurrence_rule: OptionalString,
+  duration_minutes: z.number().int().positive().default(50),
+  active: z.boolean().default(true),
+  is_recurring: z.boolean().default(true),
+  specific_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 });
 
 export type TherapistSlotInput = z.infer<typeof TherapistSlotInput>;

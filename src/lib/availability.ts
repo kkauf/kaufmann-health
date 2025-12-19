@@ -171,7 +171,10 @@ export function expandSlotsToAvailability(
 
   // One-time slots: include only on their specific_date within the window
   for (const s of slots) {
-    if (s.is_recurring === false) {
+    // Treat as one-time if explicitly false OR if specific_date is present (and not explicitly true)
+    const isOneTime = s.is_recurring === false || (!!s.specific_date && s.is_recurring !== true);
+    
+    if (isOneTime) {
       const specific = String(s.specific_date || '').trim();
       if (!specific) continue;
       if (specific < startYmd || specific > endYmd) continue;
@@ -199,8 +202,10 @@ export function expandSlotsToAvailability(
 
     for (const s of slots) {
       if (candidates.length >= maxSlots) break;
-      // Skip one-time slots (handled above); treat missing is_recurring as recurring (legacy)
-      if (s.is_recurring === false) continue;
+      // Skip one-time slots (handled above); treat missing is_recurring as recurring ONLY if specific_date is missing
+      const isOneTime = s.is_recurring === false || (!!s.specific_date && s.is_recurring !== true);
+      if (isOneTime) continue;
+      
       if (Number(s.day_of_week) !== dow) continue;
       // Respect optional end_date on recurring series
       const slotEndDate = String(s.end_date || '').trim();
