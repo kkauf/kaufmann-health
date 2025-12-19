@@ -8,6 +8,10 @@ import {
   parseTherapistRows,
   THERAPIST_SELECT_COLUMNS,
 } from '@/lib/therapist-mapper';
+import { computeAvailability } from '@/lib/availability';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
@@ -34,82 +38,7 @@ export async function GET() {
     // Build list of therapist ids for availability lookup
     const therapistIds = visibleRows.map((r) => r.id);
 
-    type SlotRow = {
-      therapist_id: string;
-      day_of_week: number; // 0..6 (Sun..Sat)
-      time_local: string;  // HH:MM[:SS]
-      format: 'online' | 'in_person' | string;
-      address: string | null;
-      duration_minutes: number | null;
-      active: boolean | null;
-    };
-
-    // Fetch active recurring slots for these therapists (best-effort)
-    let slotsByTherapist = new Map<string, SlotRow[]>();
-    try {
-      if (therapistIds.length > 0) {
-        const { data: slotsData, error: slotsErr } = await supabaseServer
-          .from('therapist_slots')
-          .select('therapist_id, day_of_week, time_local, format, address, duration_minutes, active')
-          .in('therapist_id', therapistIds)
-          .eq('active', true)
-          .limit(1000);
-        if (!slotsErr && Array.isArray(slotsData)) {
-          for (const s of slotsData as SlotRow[]) {
-            const arr = slotsByTherapist.get(s.therapist_id) || [];
-            arr.push(s);
-            slotsByTherapist.set(s.therapist_id, arr);
-          }
-        }
-      }
-    } catch {
-      // Ignore availability on failure; API should remain stable
-      slotsByTherapist = new Map();
-    }
-
-    // Helpers for Europe/Berlin date computation
-    const TZ = 'Europe/Berlin';
-    const weekdayFmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'short' });
-    const ymdFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }); // en-CA yields YYYY-MM-DD
-    const weekdayIndex: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-
-    function getBerlinDayIndex(d: Date): number {
-      const name = weekdayFmt.format(d);
-      return weekdayIndex[name as keyof typeof weekdayIndex] ?? d.getUTCDay();
-    }
-    function getBerlinYmd(d: Date): string {
-      // en-CA with the TZ gives YYYY-MM-DD
-      return ymdFmt.format(d);
-    }
-
-    // Precompute booking blackout set for next 3 weeks
-    const booked = new Set<string>();
-    try {
-      if (therapistIds.length > 0) {
-        const now = new Date();
-        const start = new Date(now.getTime());
-        start.setUTCDate(start.getUTCDate() + 1);
-        const end = new Date(start.getTime());
-        end.setUTCDate(end.getUTCDate() + 21);
-        const startYmd = getBerlinYmd(start);
-        const endYmd = getBerlinYmd(end);
-
-        const { data: bookingsData } = await supabaseServer
-          .from('bookings')
-          .select('therapist_id, date_iso, time_label')
-          .in('therapist_id', therapistIds)
-          .gte('date_iso', startYmd)
-          .lte('date_iso', endYmd)
-          .limit(5000);
-        if (Array.isArray(bookingsData)) {
-          for (const b of bookingsData as { therapist_id: string; date_iso: string; time_label: string }[]) {
-            const key = `${b.therapist_id}|${String(b.date_iso)}|${String(b.time_label).slice(0,5)}`;
-            booked.add(key);
-          }
-        }
-      }
-    } catch {}
-
+    // Helpers to extract practice address for fallback
     function getPracticeAddress(row: TherapistRow): string {
       try {
         const mdObj: Record<string, unknown> =
@@ -128,42 +57,25 @@ export async function GET() {
       }
     }
 
+    // Prepare fallback addresses
+    const fallbackAddresses = new Map<string, string>();
+    for (const row of visibleRows) {
+      const addr = getPracticeAddress(row);
+      if (addr) fallbackAddresses.set(row.id, addr);
+    }
+
+    // Compute availability using shared logic (handles one-time vs recurring correctly)
+    const availabilityMap = await computeAvailability(therapistIds, {
+      maxDays: 21,
+      maxSlots: 9, // Directory view needs fewer slots
+      fallbackAddresses,
+    });
+
     const therapists = visibleRows.map((row) => {
-      const practice_address = getPracticeAddress(row);
-
-      const slots = slotsByTherapist.get(row.id) || [];
-      const availability: { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] = [];
-      if (slots.length > 0) {
-        const maxDays = 21;
-        const now = new Date();
-        for (let offset = 1; offset <= maxDays; offset++) {
-          if (availability.length >= 9) break;
-          const d = new Date(now.getTime());
-          d.setUTCDate(d.getUTCDate() + offset);
-          const dow = getBerlinDayIndex(d);
-          const ymd = getBerlinYmd(d);
-          for (const s of slots) {
-            if (availability.length >= 9) break;
-            const sDow = Number(s.day_of_week);
-            if (sDow !== dow) continue;
-            const time = String(s.time_local || '').slice(0, 5);
-            const bookedKey = `${row.id}|${ymd}|${time}`;
-            if (booked.has(bookedKey)) continue;
-            const fmt = (s.format === 'in_person' ? 'in_person' : 'online') as 'online' | 'in_person';
-            if (fmt === 'in_person') {
-              const addrSlot = String(s.address || '').trim();
-              const addr = addrSlot || String(practice_address || '').trim();
-              availability.push({ date_iso: ymd, time_label: time, format: fmt, ...(addr ? { address: addr } : {}) });
-            } else {
-              availability.push({ date_iso: ymd, time_label: time, format: fmt });
-            }
-          }
-        }
-        availability.sort((a, b) => (a.date_iso === b.date_iso ? a.time_label.localeCompare(b.time_label) : a.date_iso.localeCompare(b.date_iso)));
-      }
-
+      const availability = availabilityMap.get(row.id) || [];
       return mapTherapistRow(row, { availability });
     });
+
     return NextResponse.json(
       { therapists },
       {
