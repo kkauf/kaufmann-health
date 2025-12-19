@@ -467,48 +467,45 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
                 )}
               </div>
             )}
+            {/* Modalities (Hero) */}
+            {therapist.modalities && therapist.modalities.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                {therapist.modalities.map((modality, idx) => {
+                  const modalityInfo = getModalityInfo(modality);
+                  const scrollToDescription = () => {
+                    const element = document.getElementById(`modality-${modalityInfo.id}`);
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  };
+                  return (
+                    <Badge
+                      key={idx}
+                      variant="outline"
+                      role="button"
+                      tabIndex={0}
+                      onClick={scrollToDescription}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          scrollToDescription();
+                        }
+                      }}
+                      className={`rounded-full gap-1.5 shadow-sm cursor-pointer ${modalityInfo.cls} transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md active:shadow-sm active:translate-y-0`}
+                      aria-label={`Zur Beschreibung von ${modalityInfo.label} springen`}
+                    >
+                      <modalityInfo.Icon className="h-3 w-3 opacity-90" />
+                      {modalityInfo.label}
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
         {viewMode === 'profile' ? (
           <>
-            {/* Modalities */}
-            {therapist.modalities && therapist.modalities.length > 0 && (
-              <div className="border-b pb-6">
-                <h3 className="mb-3 text-lg font-semibold text-gray-900">Modalitäten</h3>
-                <div className="flex flex-wrap gap-2">
-                  {therapist.modalities.map((modality, idx) => {
-                    const modalityInfo = getModalityInfo(modality);
-                    const scrollToDescription = () => {
-                      const element = document.getElementById(`modality-${modalityInfo.id}`);
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                    };
-                    return (
-                      <Badge
-                        key={idx}
-                        variant="outline"
-                        role="button"
-                        tabIndex={0}
-                        onClick={scrollToDescription}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            scrollToDescription();
-                          }
-                        }}
-                        className={`rounded-full gap-1.5 shadow-sm cursor-pointer ${modalityInfo.cls} transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md active:shadow-sm active:translate-y-0`}
-                        aria-label={`Zur Beschreibung von ${modalityInfo.label} springen`}
-                      >
-                        <modalityInfo.Icon className="h-3 w-3 opacity-90" />
-                        {modalityInfo.label}
-                      </Badge>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
             {schwerpunkte.length > 0 && (
               <div className="border-b pb-6">
@@ -587,7 +584,10 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
             {/* Modality Descriptions */}
             {therapist.modalities && therapist.modalities.length > 0 && (
               <div className="border-b pb-6">
-                <h3 className="mb-4 text-lg font-semibold text-gray-900">Über die Modalitäten</h3>
+                <h3 className="mb-1 text-lg font-semibold text-gray-900">Methoden, mit denen {therapist.first_name} arbeitet</h3>
+                <p className="mb-5 text-sm text-gray-600">
+                  Diese Methoden nutzt {therapist.first_name} in der Arbeit. Kurz erklärt:
+                </p>
                 <div className="space-y-5">
                   {therapist.modalities.map((modality, idx) => {
                     const modalityInfo = getModalityInfo(modality);
