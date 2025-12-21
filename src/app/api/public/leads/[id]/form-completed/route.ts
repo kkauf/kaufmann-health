@@ -253,11 +253,13 @@ export async function POST(req: Request) {
     }
 
     // Track server analytics: form_completed (legacy) and fragebogen_completed (new canonical name)
+    // CRITICAL: Use fsid variable which may have been backfilled from email lookup,
+    // not just metadata['form_session_id'] which might be missing
     try {
       const commonProps = {
         id,
-        form_session_id: (typeof metadata['form_session_id'] === 'string' ? (metadata['form_session_id'] as string) : undefined),
-      } as const;
+        ...(fsid ? { form_session_id: fsid } : {}),
+      };
       await ServerAnalytics.trackEventFromRequest(req, {
         type: 'form_completed',
         source: 'api.leads.form_completed',
@@ -293,8 +295,18 @@ export async function POST(req: Request) {
     }
 
     // Internal log for ops
-    void track({ type: 'form_completed', level: 'info', source: 'api.leads', props: { lead_id: id } });
-    void track({ type: 'fragebogen_completed', level: 'info', source: 'api.leads', props: { lead_id: id } });
+    void track({ 
+      type: 'form_completed', 
+      level: 'info', 
+      source: 'api.leads', 
+      props: { lead_id: id, ...(fsid ? { form_session_id: fsid } : {}) } 
+    });
+    void track({ 
+      type: 'fragebogen_completed', 
+      level: 'info', 
+      source: 'api.leads', 
+      props: { lead_id: id, ...(fsid ? { form_session_id: fsid } : {}) } 
+    });
 
     return safeJson({ data: { ok: true }, error: null });
   } catch (e) {
