@@ -197,13 +197,15 @@ export async function POST(req: NextRequest) {
             meta['sms_fallback_at'] = new Date().toISOString();
             if (isTestCookie) meta['is_test'] = true;
 
-            await supabaseServer
+            const { error: fallbackErr } = await supabaseServer
               .from('people')
               .update({
                 phone_number: normalized,
                 metadata: meta,
               })
               .eq('id', lead_id);
+
+            if (fallbackErr) throw fallbackErr;
 
             void ServerAnalytics.trackEventFromRequest(req, {
               type: 'sms_fallback_phone_added',
@@ -292,10 +294,12 @@ export async function POST(req: NextRequest) {
               updateData.metadata = meta;
             }
             if (Object.keys(updateData).length > 0) {
-              await supabaseServer
+              const { error: updateErr } = await supabaseServer
                 .from('people')
                 .update(updateData)
                 .eq('id', existing.id);
+
+              if (updateErr) throw updateErr;
             }
           } else {
             // Create new person record with phone and name
@@ -329,7 +333,7 @@ export async function POST(req: NextRequest) {
                 });
               } catch { }
             }
-            await supabaseServer
+            const { error: insertErr } = await supabaseServer
               .from('people')
               .insert({
                 type: 'patient',
@@ -340,6 +344,8 @@ export async function POST(req: NextRequest) {
                 ...(campaign_variant ? { campaign_variant } : {}),
                 metadata,
               });
+
+            if (insertErr) throw insertErr;
           }
         } catch (err) {
           // Log but don't fail - SMS can still be sent
