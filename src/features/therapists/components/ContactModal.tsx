@@ -295,7 +295,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     if (!open) return;
     // Skip if message already has content (from preAuth, verified session, or saved draft)
     if (message.trim()) return;
-    
+
     const greeting = `Guten Tag ${therapist.first_name}`;
     const intent = contactType === 'booking'
       ? 'ich möchte gerne einen Termin vereinbaren'
@@ -488,7 +488,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           const sp = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
           const v = (sp.get('variant') || sp.get('v') || '').toLowerCase() || undefined;
           if (v) {
-            try { window.localStorage?.setItem('test1_variant', v); } catch {}
+            try { window.localStorage?.setItem('test1_variant', v); } catch { }
             return v;
           }
           if (typeof window !== 'undefined') {
@@ -623,14 +623,14 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       }
 
       setStep('success');
-      
+
       // Save consultation message for quick multi-therapist contact
       if (contactType === 'consultation' && reason && message) {
         try {
           sessionStorage.setItem(CONSULTATION_DRAFT_KEY, JSON.stringify({ reason, message }));
         } catch { /* ignore storage errors */ }
       }
-      
+
       if (!preAuth) {
         trackEvent('contact_message_sent');
       } else {
@@ -1521,6 +1521,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         data-testid="contact-modal"
         aria-describedby={undefined}
         className="max-h-[85vh] overflow-x-hidden overflow-y-auto p-4 sm:p-6 md:max-w-3xl"
+        onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader className="pb-4">
           <DialogTitle className="text-xl font-bold">
