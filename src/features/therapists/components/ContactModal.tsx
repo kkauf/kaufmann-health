@@ -1522,6 +1522,8 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         aria-describedby={undefined}
         className="max-h-[85vh] overflow-x-hidden overflow-y-auto p-4 sm:p-6 md:max-w-3xl"
         onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
       >
         <DialogHeader className="pb-4">
           <DialogTitle className="text-xl font-bold">
