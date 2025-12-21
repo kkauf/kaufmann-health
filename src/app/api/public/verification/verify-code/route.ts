@@ -117,7 +117,9 @@ export async function POST(req: NextRequest) {
           .select('id,name,email,campaign_variant,metadata')
           .eq('phone_number', contact)
           .eq('type', 'patient')
-          .single<PersonRow>();
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle<PersonRow>();
 
         if (!fetchErr && person) {
           console.log('[verify-code] Found person:', { id: person.id, has_draft: !!person.metadata?.draft_contact }); // DEBUG

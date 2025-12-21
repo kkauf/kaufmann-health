@@ -107,14 +107,18 @@ describe('EARTH-204: Session cookie persistence across verification flows', () =
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: {
-                id: personId,
-                name,
-                email: null,
-                metadata: {},
-              },
-              error: null,
+            order: vi.fn().mockReturnValue({
+              limit: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: {
+                    id: personId,
+                    name,
+                    email: null,
+                    metadata: {},
+                  },
+                  error: null,
+                }),
+              }),
             }),
           }),
         }),
@@ -211,7 +215,7 @@ describe('EARTH-204: Session cookie persistence across verification flows', () =
     const setCookieHeader = confirmRes.headers.get('Set-Cookie');
     expect(setCookieHeader).toBeTruthy();
     expect(setCookieHeader).toContain('kh_client=');
-    
+
     // Verify cookie attributes for proper persistence
     expect(setCookieHeader).toContain('Path=/');
     expect(setCookieHeader).toContain('HttpOnly');

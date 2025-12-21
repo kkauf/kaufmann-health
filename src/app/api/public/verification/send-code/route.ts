@@ -233,7 +233,9 @@ export async function POST(req: NextRequest) {
             .select('id, name, metadata, campaign_source, campaign_variant')
             .eq('phone_number', normalized)
             .eq('type', 'patient')
-            .single();
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
           if (existing) {
             // Update name and persist draft_contact/form_session_id if provided
