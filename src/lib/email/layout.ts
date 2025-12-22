@@ -1,4 +1,4 @@
-import { BASE_URL } from '@/lib/constants';
+import { BASE_URL, EMAIL_ASSETS_URL } from '@/lib/constants';
 
 export function renderButton(href: string, label: string) {
   // Use table-based button for maximum email client compatibility (incl. Yahoo Mail iOS, Outlook)
@@ -27,7 +27,8 @@ export function renderLayout(params: { title?: string; contentHtml: string; preh
   const preheader = (params.preheader || '').trim();
   const schema = params.schema;
   // Use PNG for broad email client compatibility (SVG is not supported everywhere like Gmail)
-  const logoSrc = `${BASE_URL}/logos/Health%20Logos%20-%20black/Kaufmann_health_logo_small.png`;
+  // Always use EMAIL_ASSETS_URL (production) for images to avoid 401s from password-protected staging
+  const logoSrc = `${EMAIL_ASSETS_URL}/logos/Health%20Logos%20-%20black/Kaufmann_health_logo_small.png`;
   return `<!DOCTYPE html>
 <html>
   <head>
@@ -63,7 +64,7 @@ export function renderLayout(params: { title?: string; contentHtml: string; preh
         </tr>
       </table>
       <div class="email-footer" style="text-align:center; color:#94a3b8 !important; font-size:13px; margin-top:16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;">
-        <a href="${BASE_URL}" style="color:#94a3b8 !important; text-decoration:none;">${BASE_URL.replace('https://','')}</a>
+        <a href="${BASE_URL}" style="color:#94a3b8 !important; text-decoration:none;">${BASE_URL.replace('https://', '')}</a>
       </div>
     </div>
   </body>

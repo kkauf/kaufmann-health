@@ -1,5 +1,5 @@
 import { renderLayout, renderButton } from '../layout';
-import { BASE_URL } from '@/lib/constants';
+import { BASE_URL, EMAIL_ASSETS_URL } from '@/lib/constants';
 import type { EmailContent } from '../types';
 
 export function renderTherapistWelcome(params: {
@@ -18,7 +18,7 @@ export function renderTherapistWelcome(params: {
 
   const termsUrl = `${BASE_URL}/therapist-terms?version=${encodeURIComponent(params.termsVersion)}`;
 
-  const founderImg = `${BASE_URL}/profile-pictures/konstantin.JPEG`;
+  const founderImg = `${EMAIL_ASSETS_URL}/profile-pictures/konstantin.JPEG`;
 
   const contentHtml = `
     <h1 style="color:#0f172a !important; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Willkommen! Vervollständige dein Profil</h1>
@@ -86,16 +86,16 @@ export function renderTherapistWelcome(params: {
       preheader: 'Willkommen! Vervollständige dein Profil in 5–10 Minuten.',
       schema: params.uploadUrl
         ? {
-            '@context': 'http://schema.org',
-            '@type': 'EmailMessage',
-            potentialAction: {
-              '@type': 'ViewAction',
-              target: params.uploadUrl,
-              url: params.uploadUrl,
-              name: 'Profil vervollständigen',
-            },
-            description: 'Willkommen bei Kaufmann Health - Vervollständige dein Profil',
-          }
+          '@context': 'http://schema.org',
+          '@type': 'EmailMessage',
+          potentialAction: {
+            '@type': 'ViewAction',
+            target: params.uploadUrl,
+            url: params.uploadUrl,
+            name: 'Profil vervollständigen',
+          },
+          description: 'Willkommen bei Kaufmann Health - Vervollständige dein Profil',
+        }
         : undefined,
     }),
   };

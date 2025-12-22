@@ -69,7 +69,7 @@ export function renderTherapistNotification(params: TherapistNotificationParams)
   if (details.length) {
     lines.push('<div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; background-image: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; padding:20px 24px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); margin: 20px 0; box-shadow: 0 2px 4px 0 rgba(100, 116, 139, 0.05);">');
     lines.push('<h3 style="margin:0 0 12px; color:#0f172a !important; font-size:18px; font-weight:700;">Anfrage‑Details</h3>');
-    lines.push('<ul style="margin:0 0 0 20px; padding:0; font-size:15px; line-height:1.65;">');
+    lines.push('<ul style="margin:0 0 0 20px; padding:0; font-size:15px; line-height:1.65; color:#475569 !important;">');
     lines.push(details.join(''));
     lines.push('</ul>');
     lines.push('</div>');
