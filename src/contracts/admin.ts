@@ -87,3 +87,11 @@ export const AdminUserErrorsInput = z
   .passthrough();
 
 export type AdminUserErrorsInput = z.infer<typeof AdminUserErrorsInput>;
+
+export const AdminUserErrorsDigestInput = z
+  .object({
+    hours: z.coerce.number().int().min(1).max(168).optional(),
+  })
+  .passthrough();
+
+export type AdminUserErrorsDigestInput = z.infer<typeof AdminUserErrorsDigestInput>;

@@ -16,6 +16,8 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 import { isCronAuthorized as isCronAuthorizedShared } from '@/lib/cron-auth';
+import { AdminUserErrorsInput } from '@/contracts/admin';
+import { parseQuery } from '@/lib/api-utils';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -67,7 +69,11 @@ export async function GET(req: Request) {
 
   try {
     const url = new URL(req.url);
-    const hours = Math.min(parseInt(url.searchParams.get('hours') || '24', 10), 168); // Max 7 days
+
+    const parsed = parseQuery(AdminUserErrorsInput, url.searchParams);
+    if (!parsed.success) return parsed.response;
+
+    const hours = parsed.data.hours ?? 24;
     const sinceIso = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 
     const { data, error } = await supabaseServer
@@ -93,7 +99,7 @@ export async function GET(req: Request) {
     for (const e of events) {
       const props = e.properties || {};
       const errorType = props.error_type || 'unknown';
-      const apiUrl = props.url || 'unknown';
+      const apiUrl = props.url || props.page_path || 'unknown';
       const pagePath = props.page_path || 'unknown';
       
       byType[errorType] = (byType[errorType] || 0) + 1;
@@ -124,7 +130,7 @@ export async function GET(req: Request) {
         topPages: sortedByPage.map(([page, count]) => ({ page, count })),
         authErrors: authErrors.slice(0, 20).map(e => ({
           created_at: e.created_at,
-          url: e.properties?.url,
+          url: e.properties?.url || e.properties?.page_path,
           page: e.properties?.page_path,
           status: e.properties?.status,
           message: e.properties?.message,
@@ -132,7 +138,7 @@ export async function GET(req: Request) {
         recentErrors: events.slice(0, 30).map(e => ({
           created_at: e.created_at,
           type: e.properties?.error_type,
-          url: e.properties?.url,
+          url: e.properties?.url || e.properties?.page_path,
           page: e.properties?.page_path,
           status: e.properties?.status,
           message: e.properties?.message?.slice(0, 100),

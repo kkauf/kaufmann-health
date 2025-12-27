@@ -120,7 +120,16 @@ export default function RootLayout({
                 (function(c,l,a,r,i,t,y){
                   c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
                   t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-                  y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+                  y=l.getElementsByTagName(r)[0];
+                  try {
+                    if (y && y.parentNode && y.parentNode.contains(y)) {
+                      y.parentNode.insertBefore(t,y);
+                    } else {
+                      (l.head || l.documentElement).appendChild(t);
+                    }
+                  } catch (e) {
+                    try { (l.head || l.documentElement).appendChild(t); } catch {}
+                  }
                 })(window, document, "clarity", "script", "${process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID}");
               }
               

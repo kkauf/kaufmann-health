@@ -24,6 +24,7 @@ export type UserFacingError = {
   url?: string;
   message?: string;
   page_path?: string;
+  stack?: string;
   error_name?: string;
   filename?: string;
   lineno?: number;
@@ -43,6 +44,18 @@ export function reportError(error: UserFacingError): void {
 
     const attrs = getAttribution();
     const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
+    const url = error.url || pagePath || undefined;
+
+    // Best-effort questionnaire context (helps debug /fragebogen issues)
+    let wizardStep: number | undefined;
+    let formSessionId: string | undefined;
+    try {
+      if (typeof window !== 'undefined') {
+        const rawStep = window.localStorage?.getItem('kh_wizard_step') || undefined;
+        if (rawStep && /^\d+$/.test(rawStep)) wizardStep = Number(rawStep);
+        formSessionId = window.localStorage?.getItem('kh_form_session_id') || undefined;
+      }
+    } catch {}
     
     const payload = {
       type: 'user_facing_error',
@@ -50,9 +63,12 @@ export function reportError(error: UserFacingError): void {
       properties: {
         error_type: error.type,
         status: error.status,
-        url: error.url,
+        url,
         message: error.message?.slice(0, 500), // Truncate long messages
+        stack: error.stack?.slice(0, 1200),
         page_path: error.page_path || pagePath,
+        ...(wizardStep ? { wizard_step: wizardStep } : {}),
+        ...(formSessionId ? { form_session_id: formSessionId } : {}),
         error_name: error.error_name?.slice(0, 80),
         filename: error.filename,
         lineno: error.lineno,
@@ -144,6 +160,7 @@ function trackUnhandledRejections(): void {
     reportError({
       type: 'unhandled',
       message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
       error_name: error instanceof Error ? error.name : undefined,
     });
   });
@@ -167,6 +184,7 @@ function trackUncaughtErrors(): void {
     reportError({
       type: 'unhandled',
       message,
+      stack: err instanceof Error ? err.stack : undefined,
       error_name: err instanceof Error ? err.name : undefined,
       filename: event.filename || undefined,
       lineno: typeof event.lineno === 'number' ? event.lineno : undefined,
