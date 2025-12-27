@@ -15,6 +15,8 @@ import { sendEmail } from '@/lib/email/client';
 import { renderLayout } from '@/lib/email/layout';
 import { track, logError } from '@/lib/logger';
 import { isCronAuthorized as isCronAuthorizedShared } from '@/lib/cron-auth';
+import { AdminUserErrorsDigestInput } from '@/contracts/admin';
+import { parseQuery } from '@/lib/api-utils';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,7 +58,13 @@ export async function GET(req: Request) {
   }
 
   try {
-    const sinceIso = new Date(Date.now() - DIGEST_HOURS * 60 * 60 * 1000).toISOString();
+    const url = new URL(req.url);
+
+    const parsed = parseQuery(AdminUserErrorsDigestInput, url.searchParams);
+    if (!parsed.success) return parsed.response;
+
+    const hours = parsed.data.hours ?? DIGEST_HOURS;
+    const sinceIso = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 
     // Fetch user-facing errors
     const { data, error } = await supabaseServer
@@ -99,7 +107,7 @@ export async function GET(req: Request) {
       void track({
         type: 'user_errors_digest_empty',
         source: 'admin.alerts.user-errors-digest',
-        props: { hours: DIGEST_HOURS },
+        props: { hours },
       });
       return NextResponse.json({
         data: { sent: false, reason: 'no_errors', count: 0 },
@@ -117,7 +125,7 @@ export async function GET(req: Request) {
     for (const e of events) {
       const props = e.properties || {};
       const errorType = props.error_type || 'unknown';
-      const apiUrl = props.url || 'unknown';
+      const apiUrl = props.url || props.page_path || 'unknown';
       const isTest = props.is_test === true || props.is_test === 'true';
 
       byType[errorType] = (byType[errorType] || 0) + 1;
@@ -165,7 +173,7 @@ export async function GET(req: Request) {
       return `<tr>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">${time}${testBadge}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;"><span style="color:${typeColor};font-weight:600;font-size:13px;">${escapeHtml(type)}</span></td>
-        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-family:monospace;font-size:12px;">${escapeHtml(props.url || '-')}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-family:monospace;font-size:12px;">${escapeHtml(props.url || props.page_path || '-')}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;">${escapeHtml(props.page_path || '-')}</td>
       </tr>`;
     }).join('');
@@ -181,7 +189,7 @@ export async function GET(req: Request) {
       <div style="background:${headerBg};padding:16px 20px;border-radius:12px;border:1px solid ${headerBorder};margin-bottom:24px;">
         <h1 style="margin:0 0 8px;font-size:24px;color:#0f172a;">${alertLevel} User-Facing Errors</h1>
         <p style="margin:0;color:#475569;">
-          <strong>${events.length} error${events.length === 1 ? '' : 's'}</strong> in the last ${DIGEST_HOURS} hours
+          <strong>${events.length} error${events.length === 1 ? '' : 's'}</strong> in the last ${hours} hours
           ${hasAuthErrors ? `<br><span style="color:#dc2626;font-weight:600;">${authErrors.length} auth error${authErrors.length === 1 ? '' : 's'} (session/verification failures)</span>` : ''}
         </p>
         <p style="margin:8px 0 0;font-size:14px;">
@@ -229,7 +237,7 @@ export async function GET(req: Request) {
 
     const html = renderLayout({
       contentHtml,
-      preheader: `${events.length} user-facing errors in the last ${DIGEST_HOURS}h`,
+      preheader: `${events.length} user-facing errors in the last ${hours}h`,
     });
 
     const subjectPrefix = !hasRealErrors ? '🧪' : (hasAuthErrors ? '🔴' : '⚠️');
