@@ -119,6 +119,9 @@ export function mapTherapistRow(
     approach_text,
     typical_rate: row.typical_rate,
     metadata: Object.keys(cleanProfile).length > 0 ? { profile: cleanProfile } : undefined,
+    // Cal.com integration
+    cal_username: row.cal_username || undefined,
+    cal_enabled: row.cal_enabled || false,
   };
 
   if (options?.availability) {

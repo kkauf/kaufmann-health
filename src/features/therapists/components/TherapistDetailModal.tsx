@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
-import { MapPin, Video, User, Calendar, MessageCircle, Globe, ShieldCheck, CalendarCheck2, X, ChevronLeft, ChevronRight, ArrowLeft, Euro } from 'lucide-react';
+import { MapPin, Video, User, Calendar, MessageCircle, Globe, ShieldCheck, CalendarCheck2, X, ChevronLeft, ChevronRight, ArrowLeft, Euro, ExternalLink } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { TherapistData } from './TherapistDirectory';
 import { getAttribution } from '@/lib/attribution';
@@ -20,6 +20,7 @@ import { getModalityInfo } from '@/lib/modalities';
 import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpunkte';
 import { cn } from '@/lib/utils';
 import { formatSessionPrice } from '@/lib/pricing';
+import { buildCalBookingUrl, isCalBookingEnabled } from '@/lib/cal/booking-url';
 
 interface TherapistDetailModalProps {
   therapist: TherapistData;
@@ -783,24 +784,85 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
         {/* Action buttons */}
         {viewMode === 'profile' ? (
           <div className="sticky bottom-0 flex flex-col gap-3 pt-4 sm:flex-row">
-            <Button
-              className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
-              onClick={() => handleContactClick('booking')}
-              disabled={!therapist.accepting_new}
-            >
-              <Calendar className="mr-2 h-5 w-5 shrink-0" />
-              <span className="break-words">Therapeut:in buchen</span>
-            </Button>
+            {/* Cal.com booking CTAs when enabled */}
+            {isCalBookingEnabled(therapist) ? (
+              <>
+                <Button
+                  className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
+                  onClick={() => {
+                    const attrs = getAttribution();
+                    const url = buildCalBookingUrl({
+                      calUsername: therapist.cal_username!,
+                      eventType: 'intro',
+                      metadata: {
+                        kh_therapist_id: therapist.id,
+                        kh_booking_kind: 'intro',
+                        kh_source: 'directory',
+                        kh_gclid: attrs.gclid,
+                        kh_utm_source: attrs.utm_source,
+                        kh_utm_medium: attrs.utm_medium,
+                        kh_utm_campaign: attrs.utm_campaign,
+                      },
+                    });
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  }}
+                  disabled={!therapist.accepting_new}
+                >
+                  <Calendar className="mr-2 h-5 w-5 shrink-0" />
+                  <span className="break-words">Kostenloses Kennenlernen</span>
+                  <ExternalLink className="ml-2 h-4 w-4 shrink-0 opacity-70" />
+                </Button>
 
-            <Button
-              variant="outline"
-              className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
-              onClick={() => handleContactClick('consultation')}
-              disabled={!therapist.accepting_new}
-            >
-              <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
-              <span className="break-words">Kostenloses Erstgespräch (15 min)</span>
-            </Button>
+                <Button
+                  variant="outline"
+                  className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
+                  onClick={() => {
+                    const attrs = getAttribution();
+                    const url = buildCalBookingUrl({
+                      calUsername: therapist.cal_username!,
+                      eventType: 'full_session',
+                      metadata: {
+                        kh_therapist_id: therapist.id,
+                        kh_booking_kind: 'full_session',
+                        kh_source: 'directory',
+                        kh_gclid: attrs.gclid,
+                        kh_utm_source: attrs.utm_source,
+                        kh_utm_medium: attrs.utm_medium,
+                        kh_utm_campaign: attrs.utm_campaign,
+                      },
+                    });
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  }}
+                  disabled={!therapist.accepting_new}
+                >
+                  <CalendarCheck2 className="mr-2 h-5 w-5 shrink-0" />
+                  <span className="break-words">Sitzung buchen</span>
+                  <ExternalLink className="ml-2 h-4 w-4 shrink-0 opacity-70" />
+                </Button>
+              </>
+            ) : (
+              <>
+                {/* Fallback: existing KH booking flow */}
+                <Button
+                  className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
+                  onClick={() => handleContactClick('booking')}
+                  disabled={!therapist.accepting_new}
+                >
+                  <Calendar className="mr-2 h-5 w-5 shrink-0" />
+                  <span className="break-words">Therapeut:in buchen</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
+                  onClick={() => handleContactClick('consultation')}
+                  disabled={!therapist.accepting_new}
+                >
+                  <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
+                  <span className="break-words">Kostenloses Erstgespräch (15 min)</span>
+                </Button>
+              </>
+            )}
           </div>
         ) : viewMode === 'booking' ? (
           <div className="sticky bottom-0 flex gap-3 pt-4">

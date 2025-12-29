@@ -92,6 +92,9 @@ export const TherapistDataSchema = z.object({
     profile: TherapistProfileSchema.optional(),
   }).optional(),
   availability: z.array(AvailabilitySlotSchema).optional(),
+  // Cal.com integration fields
+  cal_username: z.string().nullable().optional(),
+  cal_enabled: z.boolean().nullable().optional(),
   // Admin-only fields
   gender: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
@@ -165,7 +168,7 @@ export function parseTherapistRows(data: unknown[]): TherapistRow[] {
 // ============================================================================
 
 export const THERAPIST_SELECT_COLUMNS = 
-  'id, first_name, last_name, city, modalities, schwerpunkte, session_preferences, accepting_new, photo_url, status, metadata, typical_rate';
+  'id, first_name, last_name, city, modalities, schwerpunkte, session_preferences, accepting_new, photo_url, status, metadata, typical_rate, cal_username, cal_enabled';
 
 export const THERAPIST_SELECT_COLUMNS_WITH_GENDER = 
   THERAPIST_SELECT_COLUMNS + ', gender';
