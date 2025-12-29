@@ -55,7 +55,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const { id } = await ctx.params;
     const { data: row, error } = await supabaseServer
       .from('therapists')
-      .select('id, first_name, last_name, email, phone, city, status, metadata, photo_url')
+      .select('id, first_name, last_name, email, phone, city, status, metadata, photo_url, cal_username, cal_enabled, cal_user_id')
       .eq('id', id)
       .single();
     if (error || !row) {
@@ -96,6 +96,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const hasSpecialization = Object.keys(specialization).length > 0;
 
     const name = [row.first_name || '', row.last_name || ''].join(' ').trim() || null;
+    const rowAny = row as Record<string, unknown>;
     return NextResponse.json({
       data: {
         id: row.id,
@@ -107,13 +108,17 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         profile: {
           photo_pending_url,
           approach_text: approachText,
-          photo_url: (row as Record<string, unknown>).photo_url || undefined,
+          photo_url: rowAny.photo_url || undefined,
           practice_address: practiceAddress,
         },
         documents: {
           has_license: hasLicense,
           has_specialization: hasSpecialization,
         },
+        // Cal.com integration
+        cal_username: typeof rowAny.cal_username === 'string' ? rowAny.cal_username : null,
+        cal_enabled: Boolean(rowAny.cal_enabled),
+        cal_user_id: typeof rowAny.cal_user_id === 'number' ? rowAny.cal_user_id : null,
       },
       error: null,
     });
@@ -142,8 +147,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         if (typeof nested === 'string') practice_address = nested;
       } catch {}
     }
+    // Cal.com integration fields (admin can manually set/override)
+    const cal_username = typeof payload.cal_username === 'string' ? payload.cal_username.trim() : undefined;
+    const cal_enabled = typeof payload.cal_enabled === 'boolean' ? payload.cal_enabled : undefined;
 
-    if (!status && typeof verification_notes !== 'string' && !approve_profile && typeof approach_text !== 'string' && typeof practice_address !== 'string') {
+    const hasCalFields = cal_username !== undefined || cal_enabled !== undefined;
+    if (!status && typeof verification_notes !== 'string' && !approve_profile && typeof approach_text !== 'string' && typeof practice_address !== 'string' && !hasCalFields) {
       return NextResponse.json({ data: null, error: 'Missing fields' }, { status: 400 });
     }
     if (status && !['pending_verification', 'verified', 'rejected'].includes(status)) {
@@ -156,6 +165,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     const update: Record<string, unknown> = {};
     if (status) update.status = status;
     if (typeof verification_notes === 'string') update.verification_notes = verification_notes;
+    // Cal.com fields can be set/overridden by admin
+    if (cal_username !== undefined) update.cal_username = cal_username || null;
+    if (cal_enabled !== undefined) update.cal_enabled = cal_enabled;
 
     // Load current metadata to optionally update profile info and process photo approval
     const { data: current, error: fetchErr } = await supabaseServer

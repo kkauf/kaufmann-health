@@ -108,6 +108,9 @@ export const AdminTherapistPatchInput = z
         practice_address: z.string().optional(),
       })
       .optional(),
+    // Cal.com integration fields (admin can manually set/override)
+    cal_username: z.string().max(100).optional(),
+    cal_enabled: z.boolean().optional(),
   })
   .passthrough();
 

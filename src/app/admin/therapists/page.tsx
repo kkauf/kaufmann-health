@@ -57,6 +57,10 @@ type TherapistDetail = {
     has_license: boolean;
     has_specialization: boolean;
   };
+  // Cal.com integration
+  cal_username?: string | null;
+  cal_enabled?: boolean;
+  cal_user_id?: number | null;
 };
 
 function formatDate(iso?: string | null) {
@@ -93,6 +97,9 @@ export default function AdminTherapistsPage() {
   const [approvePhoto, setApprovePhoto] = useState(false);
   const [page, setPage] = useState<number>(1);
   const pageSize = 20;
+  // Cal.com integration state
+  const [calUsername, setCalUsername] = useState<string>("");
+  const [calEnabled, setCalEnabled] = useState<boolean>(false);
 
   // Bulk selection state
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -183,6 +190,8 @@ export default function AdminTherapistsPage() {
     setNotes("");
     setApproachText("");
     setApprovePhoto(false);
+    setCalUsername("");
+    setCalEnabled(false);
     try {
       const res = await fetch(`/api/admin/therapists/${id}`, { credentials: "include", cache: "no-store" });
       const json = await res.json();
@@ -190,6 +199,8 @@ export default function AdminTherapistsPage() {
       const d = json.data as TherapistDetail;
       setDetail(d);
       setApproachText(d?.profile?.approach_text || "");
+      setCalUsername(d?.cal_username || "");
+      setCalEnabled(Boolean(d?.cal_enabled));
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
       setDetailError(msg);
@@ -206,6 +217,8 @@ export default function AdminTherapistsPage() {
     setMessage(null);
     setDetailError(null);
     setApprovePhoto(false);
+    setCalUsername("");
+    setCalEnabled(false);
   }, []);
 
   // Improve modal UX: Esc to close and prevent background scroll while open
@@ -254,6 +267,29 @@ export default function AdminTherapistsPage() {
       await fetchTherapists();
       // Close modal after successful verification
       setTimeout(closeDetail, 1500);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
+      setMessage(msg);
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  async function saveCalSettings() {
+    if (!openId) return;
+    try {
+      setUpdating(true);
+      setMessage(null);
+      const res = await fetch(`/api/admin/therapists/${openId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ cal_username: calUsername.trim() || null, cal_enabled: calEnabled }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Update fehlgeschlagen");
+      setMessage("Cal.com Einstellungen gespeichert");
+      await openDetail(openId);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
       setMessage(msg);
@@ -822,6 +858,56 @@ export default function AdminTherapistsPage() {
                         <span>Max. 500 Zeichen</span>
                         <span className={approachText.length > 450 ? "text-amber-600 font-medium" : ""}>{approachText.length} / 500</span>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Cal.com Integration */}
+                  <div className="bg-white rounded-lg border p-4">
+                    <h4 className="font-semibold text-base mb-3 flex items-center gap-2">
+                      📅 Cal.com Integration
+                      {detail.cal_enabled && detail.cal_username && (
+                        <Badge variant="outline" className="text-green-700 border-green-700">Aktiv</Badge>
+                      )}
+                      {detail.cal_user_id && (
+                        <Badge variant="outline" className="text-blue-600 border-blue-300">Provisioned (ID: {detail.cal_user_id})</Badge>
+                      )}
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="cal_username" className="text-sm font-medium">Cal.com Benutzername</Label>
+                        <div className="flex gap-2 mt-1">
+                          <input
+                            id="cal_username"
+                            type="text"
+                            className="border-input placeholder:text-muted-foreground flex-1 rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                            value={calUsername}
+                            onChange={(e) => setCalUsername(e.target.value)}
+                            placeholder="z.B. max-mustermann"
+                          />
+                        </div>
+                        {calUsername && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Booking URL: <a href={`https://cal.kaufmann.health/${calUsername}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">cal.kaufmann.health/{calUsername}</a>
+                          </p>
+                        )}
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-green-600"
+                          checked={calEnabled}
+                          onChange={(e) => setCalEnabled(e.target.checked)}
+                        />
+                        <span className="text-sm">Cal.com Booking aktiviert</span>
+                      </label>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updating}
+                        onClick={saveCalSettings}
+                      >
+                        Cal.com Einstellungen speichern
+                      </Button>
                     </div>
                   </div>
 
