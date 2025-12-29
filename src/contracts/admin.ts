@@ -88,6 +88,44 @@ export const AdminUserErrorsInput = z
 
 export type AdminUserErrorsInput = z.infer<typeof AdminUserErrorsInput>;
 
+// ============================================================================
+// PATCH /api/admin/therapists/[id]
+// Admin therapist update (verification, photo approval, profile edits)
+// ============================================================================
+
+export const AdminTherapistStatus = z.enum(['pending_verification', 'verified', 'rejected']);
+export type AdminTherapistStatus = z.infer<typeof AdminTherapistStatus>;
+
+export const AdminTherapistPatchInput = z
+  .object({
+    status: AdminTherapistStatus.optional(),
+    verification_notes: z.string().optional(),
+    approve_profile: z.boolean().optional(),
+    approach_text: z.string().max(500).optional(),
+    practice_address: z.string().optional(),
+    profile: z
+      .object({
+        practice_address: z.string().optional(),
+      })
+      .optional(),
+  })
+  .passthrough();
+
+export type AdminTherapistPatchInput = z.infer<typeof AdminTherapistPatchInput>;
+
+export const AdminTherapistPatchOutput = z.object({
+  data: z
+    .object({
+      ok: z.boolean(),
+      cal_provisioned: z.boolean().optional(),
+      cal_username: z.string().optional(),
+    })
+    .nullable(),
+  error: z.string().nullable(),
+});
+
+export type AdminTherapistPatchOutput = z.infer<typeof AdminTherapistPatchOutput>;
+
 export const AdminUserErrorsDigestInput = z
   .object({
     hours: z.coerce.number().int().min(1).max(168).optional(),

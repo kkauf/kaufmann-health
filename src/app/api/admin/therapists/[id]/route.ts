@@ -6,6 +6,7 @@ import { sendEmail } from '@/lib/email/client';
 import { renderTherapistApproval } from '@/lib/email/templates/therapistApproval';
 import { renderTherapistRejection } from '@/lib/email/templates/therapistRejection';
 import { BASE_URL } from '@/lib/constants';
+import { provisionCalUser, isCalProvisioningEnabled, type CalProvisionResult } from '@/lib/cal/provision';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -224,6 +225,58 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     const newMeta: Record<string, unknown> = { ...currMeta, profile: profileMeta };
     update.metadata = newMeta;
 
+    // Cal.com provisioning: when transitioning to verified, provision Cal.com user
+    let calResult: CalProvisionResult | null = null;
+    const isNewlyVerified = status === 'verified' && beforeStatus !== 'verified';
+
+    if (isNewlyVerified && isCalProvisioningEnabled()) {
+      // Fetch therapist details for Cal provisioning
+      const { data: therapistForCal } = await supabaseServer
+        .from('therapists')
+        .select('first_name, last_name, email, cal_user_id')
+        .eq('id', id)
+        .single();
+
+      const therapistEmail = (therapistForCal as { email?: string | null })?.email;
+      const existingCalUserId = (therapistForCal as { cal_user_id?: number | null })?.cal_user_id;
+
+      // Only provision if no existing Cal user and email exists
+      if (therapistEmail && !existingCalUserId) {
+        try {
+          calResult = await provisionCalUser({
+            email: therapistEmail,
+            firstName: String((therapistForCal as { first_name?: string | null })?.first_name || ''),
+            lastName: String((therapistForCal as { last_name?: string | null })?.last_name || ''),
+            timeZone: 'Europe/Berlin',
+          });
+
+          // Store Cal.com user info in KH therapists table
+          update.cal_user_id = calResult.cal_user_id;
+          update.cal_username = calResult.cal_username;
+          update.cal_enabled = true;
+
+          void track({
+            type: 'cal_user_provisioned',
+            level: 'info',
+            source: 'admin.api.therapists.update',
+            props: {
+              therapist_id: id,
+              cal_user_id: calResult.cal_user_id,
+              cal_username: calResult.cal_username,
+            },
+          });
+        } catch (calErr) {
+          // Log error but don't fail the verification
+          await logError('admin.api.therapists.update', calErr, {
+            stage: 'cal_provision_failed',
+            therapist_id: id,
+            email: therapistEmail,
+          });
+          // Continue without Cal provisioning
+        }
+      }
+    }
+
     const { error } = await supabaseServer
       .from('therapists')
       .update(update)
@@ -248,7 +301,14 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       const finalStatus = (after as { status?: string | null })?.status || undefined;
       if (to && finalStatus === 'verified' && beforeStatus !== 'verified') {
         const visible = Boolean((after as { photo_url?: string | null })?.photo_url);
-        const approval = renderTherapistApproval({ name, profileVisible: visible });
+        const approval = renderTherapistApproval({
+          name,
+          profileVisible: visible,
+          calLoginUrl: calResult?.cal_login_url,
+          calEmail: to,
+          calUsername: calResult?.cal_username,
+          calPassword: calResult?.cal_password,
+        });
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.update', props: { stage: 'therapist_approval', therapist_id: id, subject: approval.subject } });
         const sent = await sendEmail({ to, subject: approval.subject, html: approval.html, context: { stage: 'therapist_approval', therapist_id: id } });
         if (!sent) {
@@ -267,7 +327,14 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       await logError('admin.api.therapists.update', e, { stage: 'send_status_email', therapist_id: id });
     }
 
-    return NextResponse.json({ data: { ok: true }, error: null });
+    return NextResponse.json({
+      data: {
+        ok: true,
+        cal_provisioned: Boolean(calResult),
+        cal_username: calResult?.cal_username,
+      },
+      error: null,
+    });
   } catch (e) {
     await logError('admin.api.therapists.update', e, { stage: 'exception' });
     return NextResponse.json({ data: null, error: 'Unexpected error' }, { status: 500 });

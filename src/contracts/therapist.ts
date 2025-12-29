@@ -51,6 +51,10 @@ export const TherapistRowSchema = z.object({
   metadata: z.unknown(),
   typical_rate: z.number().nullable().optional(),
   gender: z.string().nullable().optional(),
+  // Cal.com integration fields
+  cal_user_id: z.number().int().nullable().optional(),
+  cal_username: z.string().nullable().optional(),
+  cal_enabled: z.boolean().nullable().optional(),
 });
 
 export type TherapistRow = z.infer<typeof TherapistRowSchema>;
