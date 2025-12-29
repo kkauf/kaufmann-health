@@ -12,6 +12,7 @@ import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
 import { getModalityInfo } from '@/lib/modalities';
 import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpunkte';
+import { buildCalBookingUrl, isCalBookingEnabled } from '@/lib/cal/booking-url';
 
 interface TherapistCardProps {
   therapist: TherapistData;
@@ -135,6 +136,29 @@ export function TherapistCard({
       const payload = { type: 'contact_cta_clicked', ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id, contact_type: type } };
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
     } catch { }
+
+    // Use Cal.com for booking if enabled
+    if (isCalBookingEnabled(therapist)) {
+      const attrs = getAttribution();
+      const eventType = type === 'consultation' ? 'intro' : 'full_session';
+      const url = buildCalBookingUrl({
+        calUsername: therapist.cal_username!,
+        eventType,
+        metadata: {
+          kh_therapist_id: therapist.id,
+          kh_booking_kind: eventType,
+          kh_source: 'directory',
+          kh_gclid: attrs.gclid,
+          kh_utm_source: attrs.utm_source,
+          kh_utm_medium: attrs.utm_medium,
+          kh_utm_campaign: attrs.utm_campaign,
+        },
+        redirectBack: true,
+      });
+      window.location.href = url;
+      return;
+    }
+
     if (customContactHandler) {
       customContactHandler(type);
     } else {

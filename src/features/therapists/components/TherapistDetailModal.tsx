@@ -803,14 +803,14 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
                         kh_utm_medium: attrs.utm_medium,
                         kh_utm_campaign: attrs.utm_campaign,
                       },
+                      redirectBack: true,
                     });
-                    window.open(url, '_blank', 'noopener,noreferrer');
+                    window.location.href = url;
                   }}
                   disabled={!therapist.accepting_new}
                 >
                   <Calendar className="mr-2 h-5 w-5 shrink-0" />
                   <span className="break-words">Kostenloses Kennenlernen</span>
-                  <ExternalLink className="ml-2 h-4 w-4 shrink-0 opacity-70" />
                 </Button>
 
                 <Button
@@ -830,14 +830,14 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
                         kh_utm_medium: attrs.utm_medium,
                         kh_utm_campaign: attrs.utm_campaign,
                       },
+                      redirectBack: true,
                     });
-                    window.open(url, '_blank', 'noopener,noreferrer');
+                    window.location.href = url;
                   }}
                   disabled={!therapist.accepting_new}
                 >
                   <CalendarCheck2 className="mr-2 h-5 w-5 shrink-0" />
                   <span className="break-words">Sitzung buchen</span>
-                  <ExternalLink className="ml-2 h-4 w-4 shrink-0 opacity-70" />
                 </Button>
               </>
             ) : (

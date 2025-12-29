@@ -7,6 +7,8 @@ import { renderTherapistApproval } from '@/lib/email/templates/therapistApproval
 import { renderTherapistRejection } from '@/lib/email/templates/therapistRejection';
 import { BASE_URL } from '@/lib/constants';
 import { provisionCalUser, isCalProvisioningEnabled, type CalProvisionResult } from '@/lib/cal/provision';
+import { AdminTherapistPatchInput } from '@/contracts/admin';
+import { parseRequestBody } from '@/lib/api-utils';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -135,7 +137,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 
   try {
     const { id } = await ctx.params;
-    const payload = await req.json();
+    const parsed = await parseRequestBody(req, AdminTherapistPatchInput);
+    if (!parsed.success) return parsed.response;
+
+    const payload: Record<string, unknown> =
+      parsed.data && typeof parsed.data === 'object' ? (parsed.data as Record<string, unknown>) : {};
+
     const status = typeof payload.status === 'string' ? payload.status : undefined;
     const verification_notes = typeof payload.verification_notes === 'string' ? payload.verification_notes : undefined;
     const approve_profile = Boolean(payload.approve_profile);
@@ -143,7 +150,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     let practice_address = typeof payload.practice_address === 'string' ? String(payload.practice_address) : undefined;
     if (!practice_address) {
       try {
-        const nested = (payload?.profile?.practice_address as unknown);
+        const profile = (payload.profile as unknown);
+        const nested = (profile && typeof profile === 'object' ? (profile as Record<string, unknown>).practice_address : undefined) as unknown;
         if (typeof nested === 'string') practice_address = nested;
       } catch {}
     }
@@ -188,6 +196,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       ? ((current as { status?: string | null }).status as string)
       : undefined;
     const profileMeta = isObject(currMeta.profile) ? (currMeta.profile as Record<string, unknown>) : {};
+
+    // Safety: once verified, do not allow status downgrades (accidental clicks / test-profile edits)
+    if (beforeStatus === 'verified' && status && status !== 'verified') {
+      return NextResponse.json({ data: null, error: 'Cannot change status for verified therapist' }, { status: 400 });
+    }
 
     if (typeof approach_text === 'string') {
       profileMeta.approach_text = approach_text;
@@ -237,6 +250,44 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     const newMeta: Record<string, unknown> = { ...currMeta, profile: profileMeta };
     update.metadata = newMeta;
 
+    // If rejecting, ensure the email will include a meaningful reason.
+    const rejectingNow = status === 'rejected' && beforeStatus !== 'rejected';
+    let rejectionMissingDocuments = false;
+    let rejectionPhotoIssue: string | null = null;
+    let rejectionApproachIssue: string | null = null;
+    let rejectionLink: string | undefined;
+
+    if (rejectingNow) {
+      const docsUnknown = (currMeta as { documents?: unknown }).documents;
+      const docs = isObject(docsUnknown) ? (docsUnknown as Record<string, unknown>) : {};
+      const hasLicense = typeof docs.license === 'string' && (docs.license as string).length > 0;
+      rejectionMissingDocuments = !hasLicense;
+
+      const hasPhotoPending = typeof profileMeta.photo_pending_path === 'string' && (profileMeta.photo_pending_path as string).length > 0;
+      const photoUrl =
+        (typeof update.photo_url === 'string' && (update.photo_url as string)) ||
+        ((current as { photo_url?: string | null })?.photo_url || null);
+      const hasPhotoApproved = typeof photoUrl === 'string' && photoUrl.length > 0;
+      if (!hasPhotoApproved && !hasPhotoPending) {
+        rejectionPhotoIssue = 'Bitte lade ein Profilfoto hoch.';
+      }
+
+      const approach = typeof profileMeta.approach_text === 'string' ? (profileMeta.approach_text as string).trim() : '';
+      if (!approach) {
+        rejectionApproachIssue = 'Bitte ergänze eine kurze Ansatz‑Beschreibung.';
+      }
+
+      const hasAnyReason =
+        Boolean(rejectionMissingDocuments) || Boolean(rejectionPhotoIssue) || Boolean(rejectionApproachIssue) || Boolean((verification_notes || '').trim());
+      if (!hasAnyReason) {
+        return NextResponse.json({ data: null, error: 'verification_notes required for rejection' }, { status: 400 });
+      }
+
+      rejectionLink = rejectionMissingDocuments
+        ? `${BASE_URL}/therapists/upload-documents/${id}`
+        : `${BASE_URL}/therapists/complete-profile/${id}`;
+    }
+
     // Cal.com provisioning: when transitioning to verified, provision Cal.com user
     let calResult: CalProvisionResult | null = null;
     const isNewlyVerified = status === 'verified' && beforeStatus !== 'verified';
@@ -245,15 +296,18 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       // Fetch therapist details for Cal provisioning
       const { data: therapistForCal } = await supabaseServer
         .from('therapists')
-        .select('first_name, last_name, email, cal_user_id')
+        .select('first_name, last_name, email, cal_user_id, cal_username, cal_enabled')
         .eq('id', id)
         .single();
 
       const therapistEmail = (therapistForCal as { email?: string | null })?.email;
       const existingCalUserId = (therapistForCal as { cal_user_id?: number | null })?.cal_user_id;
+      const existingCalUsername = (therapistForCal as { cal_username?: string | null })?.cal_username;
+      const patchedCalUsername = cal_username !== undefined ? cal_username : undefined;
+      const hasStoredCalUrl = Boolean(String(patchedCalUsername || existingCalUsername || '').trim());
 
       // Only provision if no existing Cal user and email exists
-      if (therapistEmail && !existingCalUserId) {
+      if (therapistEmail && !existingCalUserId && !hasStoredCalUrl) {
         try {
           calResult = await provisionCalUser({
             email: therapistEmail,
@@ -311,7 +365,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         (after as { last_name?: string | null })?.last_name || '',
       ].join(' ').trim();
       const finalStatus = (after as { status?: string | null })?.status || undefined;
-      if (to && finalStatus === 'verified' && beforeStatus !== 'verified') {
+      // Only send status emails when THIS request explicitly changed status.
+      if (to && status === 'verified' && finalStatus === 'verified' && beforeStatus !== 'verified') {
         const visible = Boolean((after as { photo_url?: string | null })?.photo_url);
         const approval = renderTherapistApproval({
           name,
@@ -326,9 +381,16 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         if (!sent) {
           await logError('admin.api.therapists.update', new Error('Approval email send failed'), { stage: 'therapist_approval_send_failed', therapist_id: id, email: to });
         }
-      } else if (to && finalStatus === 'rejected' && beforeStatus !== 'rejected') {
-        const uploadUrl = `${BASE_URL}/therapists/upload-documents/${id}`;
-        const rejection = renderTherapistRejection({ name, uploadUrl, adminNotes: verification_notes || null });
+      } else if (to && status === 'rejected' && finalStatus === 'rejected' && beforeStatus !== 'rejected') {
+        const uploadUrl = rejectionLink || `${BASE_URL}/therapists/complete-profile/${id}`;
+        const rejection = renderTherapistRejection({
+          name,
+          uploadUrl,
+          missingDocuments: rejectionMissingDocuments,
+          photoIssue: rejectionPhotoIssue,
+          approachIssue: rejectionApproachIssue,
+          adminNotes: verification_notes || null,
+        });
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.update', props: { stage: 'therapist_rejection', therapist_id: id, subject: rejection.subject } });
         const sent = await sendEmail({ to, subject: rejection.subject, html: rejection.html, context: { stage: 'therapist_rejection', therapist_id: id } });
         if (!sent) {

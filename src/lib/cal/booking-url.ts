@@ -29,6 +29,8 @@ export type CalBookingUrlOptions = {
   metadata?: CalBookingMetadata;
   prefillName?: string;
   prefillEmail?: string;
+  /** If true, adds successRedirectUrl to redirect back to KH after booking */
+  redirectBack?: boolean;
 };
 
 /**
@@ -37,8 +39,10 @@ export type CalBookingUrlOptions = {
  * Example output:
  * https://cal.kaufmann.health/firstname-lastname/intro?metadata[kh_therapist_id]=xxx&name=John
  */
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health.de';
+
 export function buildCalBookingUrl(options: CalBookingUrlOptions): string {
-  const { calUsername, eventType, metadata, prefillName, prefillEmail } = options;
+  const { calUsername, eventType, metadata, prefillName, prefillEmail, redirectBack } = options;
 
   // Build base URL - if eventType specified, append it as a path segment
   // Cal.com event type slugs: intro, full-session
@@ -61,6 +65,18 @@ export function buildCalBookingUrl(options: CalBookingUrlOptions): string {
   }
   if (prefillEmail) {
     url.searchParams.set('email', prefillEmail);
+  }
+
+  // Add redirect back to KH after successful booking
+  if (redirectBack) {
+    const redirectUrl = new URL('/booking/confirmed', BASE_URL);
+    if (metadata?.kh_therapist_id) {
+      redirectUrl.searchParams.set('therapist', metadata.kh_therapist_id);
+    }
+    if (eventType) {
+      redirectUrl.searchParams.set('kind', eventType);
+    }
+    url.searchParams.set('successRedirectUrl', redirectUrl.toString());
   }
 
   return url.toString();

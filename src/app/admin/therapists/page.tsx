@@ -960,23 +960,31 @@ export default function AdminTherapistsPage() {
                     <Button size="sm" variant="outline" disabled={updating} onClick={sendReminder}>
                       📧 Erinnerung
                     </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="border-red-300 text-red-700 hover:bg-red-50"
-                      disabled={updating} 
-                      onClick={() => updateStatus('rejected')}
-                    >
-                      ✗ Ablehnen
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                      disabled={updating} 
-                      onClick={() => updateStatus('verified')}
-                    >
-                      ✓ Freigeben {approvePhoto && detail?.profile.photo_pending_url ? '(inkl. Foto)' : ''}
-                    </Button>
+                    {detail?.status !== 'verified' && (
+                      <>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="border-red-300 text-red-700 hover:bg-red-50"
+                          disabled={updating} 
+                          onClick={() => {
+                            const ok = window.confirm('Therapeut wirklich ablehnen? Dadurch wird eine E-Mail mit Rückfragen verschickt.');
+                            if (!ok) return;
+                            void updateStatus('rejected');
+                          }}
+                        >
+                          ✗ Ablehnen
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={updating} 
+                          onClick={() => updateStatus('verified')}
+                        >
+                          ✓ Freigeben {approvePhoto && detail?.profile.photo_pending_url ? '(inkl. Foto)' : ''}
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

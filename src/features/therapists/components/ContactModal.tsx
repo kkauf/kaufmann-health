@@ -90,6 +90,11 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   // Track whether the user has a verified session in this modal lifecycle
   const [isVerified, setIsVerified] = useState<boolean>(false);
 
+  const messageRef = useRef<string>('');
+  useEffect(() => {
+    messageRef.current = message;
+  }, [message]);
+
   const [_restoredDraft, _setRestoredDraft] = useState<boolean>(false);
   const [_autoSendAttempted, _setAutoSendAttempted] = useState<boolean>(false);
   const draftTrackedRef = useRef<boolean>(false);
@@ -118,7 +123,9 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       const initialReason = (preAuth.defaultReason || '').trim();
       if (initialReason) setReason(initialReason);
       const signature = preAuth.patientName ? `\n\nViele Grüße\n${preAuth.patientName}` : '';
-      setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei ${initialReason || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
+      const nextMessage = `${greeting},\n\n${intent}. Ich suche Unterstützung bei ${initialReason || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`;
+      messageRef.current = nextMessage;
+      setMessage(nextMessage);
 
       // Pre-select session format based on patient preferences from wizard
       if (preAuth.sessionPreference) {
@@ -186,6 +193,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         if (draft.message) {
           // Replace therapist name in saved message with current therapist
           const updatedMessage = draft.message.replace(/^Guten Tag \S+/, `Guten Tag ${therapist.first_name}`);
+          messageRef.current = updatedMessage;
           setMessage(updatedMessage);
           setUserEditedMessage(true); // Prevent auto-update from overwriting
         }
@@ -219,15 +227,19 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             setContactMethod('phone');
             if (typeof s.contact_value === 'string') setPhone(s.contact_value);
           }
-          const greeting = `Guten Tag ${therapist.first_name}`;
-          const intent = contactType === 'booking'
-            ? 'ich möchte gerne einen Termin vereinbaren'
-            : 'ich würde gerne ein kostenloses Kennenlerngespräch (15 Min) vereinbaren';
-          const signature = userName ? `\n\nViele Grüße\n${userName}` : '';
-          // Use preAuth.defaultReason if available (e.g., from matches page)
-          const initialReason = (preAuth?.defaultReason || '').trim();
-          if (initialReason) setReason(initialReason);
-          setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei ${initialReason || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
+          if (!userEditedMessage && !messageRef.current.trim()) {
+            const greeting = `Guten Tag ${therapist.first_name}`;
+            const intent = contactType === 'booking'
+              ? 'ich möchte gerne einen Termin vereinbaren'
+              : 'ich würde gerne ein kostenloses Kennenlerngespräch (15 Min) vereinbaren';
+            const signature = userName ? `\n\nViele Grüße\n${userName}` : '';
+            // Use preAuth.defaultReason if available (e.g., from matches page)
+            const initialReason = (preAuth?.defaultReason || '').trim();
+            if (initialReason) setReason(initialReason);
+            const nextMessage = `${greeting},\n\n${intent}. Ich suche Unterstützung bei ${initialReason || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`;
+            messageRef.current = nextMessage;
+            setMessage(nextMessage);
+          }
 
           if (forceSuccess || awaitingVerificationSend) {
             // After magic-link verification we show success to mirror directory behavior
@@ -293,16 +305,19 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   // This runs for new users who don't have preAuth, verified session, or saved draft
   useEffect(() => {
     if (!open) return;
+    if (preAuth) return;
     // Skip if message already has content (from preAuth, verified session, or saved draft)
-    if (message.trim()) return;
+    if (messageRef.current.trim()) return;
 
     const greeting = `Guten Tag ${therapist.first_name}`;
     const intent = contactType === 'booking'
       ? 'ich möchte gerne einen Termin vereinbaren'
-      : 'ich interessiere mich für ein kostenloses Kennenlerngespräch (15 Min)';
-    const defaultMessage = `${greeting}, ${intent} und fand dein Profil sehr ansprechend.`;
+      : 'ich würde gerne ein kostenloses Kennenlerngespräch (15 Min) vereinbaren';
+    const signature = name ? `\n\nViele Grüße\n${name}` : '';
+    const defaultMessage = `${greeting},\n\n${intent}. Ich suche Unterstützung bei [beschreibe dein Anliegen] und fand dein Profil sehr ansprechend.${signature}`;
+    messageRef.current = defaultMessage;
     setMessage(defaultMessage);
-  }, [open, therapist.first_name, contactType, message]);
+  }, [open, preAuth, therapist.first_name, contactType, name]);
 
   // Save draft when modal closes (for multi-therapist contact)
   const prevOpenRef = useRef(open);
