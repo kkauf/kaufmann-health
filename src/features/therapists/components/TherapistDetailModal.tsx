@@ -20,7 +20,11 @@ import { getModalityInfo } from '@/lib/modalities';
 import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpunkte';
 import { cn } from '@/lib/utils';
 import { formatSessionPrice } from '@/lib/pricing';
-import { buildCalBookingUrl, isCalBookingEnabled } from '@/lib/cal/booking-url';
+import { isCalBookingEnabled } from '@/lib/cal/booking-url';
+import { useCalBooking, groupSlotsByDay } from '../hooks/useCalBooking';
+import { CalVerificationForm } from './CalVerificationForm';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { CalBookingKind } from '@/contracts/cal';
 
 interface TherapistDetailModalProps {
   therapist: TherapistData;
@@ -37,7 +41,7 @@ interface TherapistDetailModalProps {
 }
 
 type Slot = { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string };
-type ViewMode = 'profile' | 'booking';
+type ViewMode = 'profile' | 'booking' | 'cal-booking';
 
 function getInitials(firstName: string, lastName: string) {
   return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
@@ -59,6 +63,18 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
   const [sessionFormat, setSessionFormat] = useState<'online' | 'in_person' | ''>('');
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [weekIndex, setWeekIndex] = useState(0);
+
+  // Cal.com booking state (EARTH-256)
+  const [calBookingKind, setCalBookingKind] = useState<CalBookingKind>('intro');
+  const [calWeekIndex, setCalWeekIndex] = useState(0);
+  const isCalEnabled = isCalBookingEnabled(therapist);
+  
+  const [calState, calActions] = useCalBooking({
+    therapistId: therapist.id,
+    calUsername: therapist.cal_username || '',
+    bookingKind: calBookingKind,
+    enabled: isCalEnabled && open && viewMode === 'cal-booking',
+  });
   
   const photoSrc = therapist.photo_url && !imageError ? therapist.photo_url : undefined;
   const initials = getInitials(therapist.first_name, therapist.last_name);
@@ -350,9 +366,31 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
       setSessionFormat('');
       setSelectedSlot(null);
       setWeekIndex(0);
+      // Reset Cal booking state
+      setCalWeekIndex(0);
+      calActions.reset();
       onClose();
     }
-  }, [onClose, selectedSlot, sessionFormat, therapist.id, therapist.typical_rate]);
+  }, [onClose, selectedSlot, sessionFormat, therapist.id, therapist.typical_rate, calActions]);
+
+  // Cal slots grouped by day
+  const calSlotsByDay = useMemo(() => groupSlotsByDay(calState.slots), [calState.slots]);
+  const calSortedDays = useMemo(() => Array.from(calSlotsByDay.keys()).sort(), [calSlotsByDay]);
+  
+  // Handle opening Cal booking view
+  const handleOpenCalBooking = useCallback((kind: CalBookingKind) => {
+    setCalBookingKind(kind);
+    setViewMode('cal-booking');
+    calActions.reset();
+    setCalWeekIndex(0);
+  }, [calActions]);
+
+  // Handle back from Cal booking
+  const handleBackFromCalBooking = useCallback(() => {
+    setViewMode('profile');
+    calActions.reset();
+    setCalWeekIndex(0);
+  }, [calActions]);
 
   return (
     <Dialog open={open} onOpenChange={handleModalClose}>
@@ -781,18 +819,166 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
           </>
         )}
 
+        {/* Cal.com booking view (EARTH-256) */}
+        {viewMode === 'cal-booking' && (
+          <>
+            {/* Header with back button */}
+            <div className="flex items-center gap-3 mb-4">
+              <Button variant="ghost" size="icon" onClick={handleBackFromCalBooking} className="shrink-0 -ml-2">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {calBookingKind === 'intro' ? 'Kostenloses Kennenlernen' : 'Sitzung buchen'}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {calBookingKind === 'intro' ? '15 Min. • Kostenlos' : `50 Min. • ${formatSessionPrice(therapist.typical_rate)}`}
+                </p>
+              </div>
+            </div>
+
+            {/* Verification form for unverified users */}
+            {calState.step !== 'slots' ? (
+              <CalVerificationForm
+                state={calState}
+                actions={calActions}
+                slotSummary={calState.selectedSlot && (
+                  <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 mb-2">
+                    <p className="text-sm text-emerald-900">
+                      <span className="font-medium">Termin:</span>{' '}
+                      {(() => {
+                        const d = new Date(calState.selectedSlot.date_iso + 'T00:00:00');
+                        return d.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' });
+                      })()}{' '}
+                      um {calState.selectedSlot.time_label} Uhr
+                    </p>
+                  </div>
+                )}
+              />
+            ) : (
+              /* Slot picker */
+              <div className="space-y-4">
+                {calState.slotsLoading && (
+                  <div className="space-y-3">
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {[...Array(5)].map((_, i) => (
+                        <Skeleton key={i} className="h-14 w-20 rounded-lg shrink-0" />
+                      ))}
+                    </div>
+                    <Skeleton className="h-24 w-full rounded-lg" />
+                  </div>
+                )}
+
+                {calState.slotsError && (
+                  <div className="text-center py-6">
+                    <Calendar className="h-10 w-10 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm text-gray-600">{calState.slotsError}</p>
+                  </div>
+                )}
+
+                {!calState.slotsLoading && !calState.slotsError && calSortedDays.length === 0 && (
+                  <div className="text-center py-6">
+                    <Calendar className="h-10 w-10 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm text-gray-600">Aktuell sind keine Termine verfügbar.</p>
+                  </div>
+                )}
+
+                {!calState.slotsLoading && !calState.slotsError && calSortedDays.length > 0 && (
+                  <>
+                    {/* Day chips */}
+                    <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+                      {calSortedDays.map((day) => {
+                        const isSelected = calState.selectedSlot?.date_iso === day;
+                        const slotCount = calSlotsByDay.get(day)?.length || 0;
+                        const d = new Date(day + 'T00:00:00');
+
+                        return (
+                          <button
+                            key={day}
+                            onClick={() => {
+                              const firstSlot = calSlotsByDay.get(day)?.[0];
+                              if (firstSlot && calState.selectedSlot?.date_iso !== day) {
+                                calActions.selectSlot(firstSlot);
+                              }
+                            }}
+                            className={cn(
+                              'shrink-0 px-3 py-2 rounded-lg border text-center transition-all',
+                              isSelected
+                                ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-200'
+                                : 'bg-white border-gray-200 hover:border-gray-300'
+                            )}
+                          >
+                            <div className={cn('text-sm font-medium', isSelected ? 'text-emerald-900' : 'text-gray-900')}>
+                              {d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}
+                            </div>
+                            <div className={cn('text-xs', isSelected ? 'text-emerald-600' : 'text-gray-500')}>
+                              {slotCount} {slotCount === 1 ? 'Termin' : 'Termine'}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Time slots for selected day */}
+                    {calState.selectedSlot && (
+                      <div className="pt-2">
+                        <p className="text-sm text-gray-600 mb-2">
+                          Verfügbare Zeiten am {(() => {
+                            const d = new Date(calState.selectedSlot.date_iso + 'T00:00:00');
+                            return d.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' });
+                          })()}:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {calSlotsByDay.get(calState.selectedSlot.date_iso)?.map((slot) => {
+                            const isSelected = calState.selectedSlot?.time_utc === slot.time_utc;
+                            return (
+                              <button
+                                key={slot.time_utc}
+                                onClick={() => calActions.selectSlot(slot)}
+                                className={cn(
+                                  'px-3 py-2 rounded-lg border text-sm font-medium transition-all',
+                                  isSelected
+                                    ? 'bg-emerald-600 border-emerald-600 text-white'
+                                    : 'bg-white border-gray-200 text-gray-900 hover:border-emerald-300'
+                                )}
+                              >
+                                {slot.time_label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Selected slot summary */}
+                    {calState.selectedSlot && (
+                      <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                        <p className="text-sm text-emerald-900">
+                          <span className="font-medium">Gewählter Termin:</span>{' '}
+                          {(() => {
+                            const d = new Date(calState.selectedSlot.date_iso + 'T00:00:00');
+                            return d.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' });
+                          })()}{' '}
+                          um {calState.selectedSlot.time_label} Uhr
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
         {/* Action buttons */}
         {viewMode === 'profile' ? (
           <div className="sticky bottom-0 flex flex-col gap-3 pt-4 sm:flex-row">
-            {/* Cal.com booking CTAs when enabled - route to in-domain booking page (EARTH-256) */}
-            {isCalBookingEnabled(therapist) ? (
+            {/* Cal.com booking CTAs when enabled - open in-modal booking view (EARTH-256) */}
+            {isCalEnabled ? (
               <>
                 <Button
                   className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
-                  onClick={() => {
-                    const returnTo = typeof window !== 'undefined' ? window.location.pathname : '/therapeuten';
-                    window.location.href = `/booking/therapist/${therapist.id}?kind=intro&returnTo=${encodeURIComponent(returnTo)}`;
-                  }}
+                  onClick={() => handleOpenCalBooking('intro')}
                   disabled={!therapist.accepting_new}
                 >
                   <Calendar className="mr-2 h-5 w-5 shrink-0" />
@@ -802,10 +988,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
                 <Button
                   variant="outline"
                   className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
-                  onClick={() => {
-                    const returnTo = typeof window !== 'undefined' ? window.location.pathname : '/therapeuten';
-                    window.location.href = `/booking/therapist/${therapist.id}?kind=full_session&returnTo=${encodeURIComponent(returnTo)}`;
-                  }}
+                  onClick={() => handleOpenCalBooking('full_session')}
                   disabled={!therapist.accepting_new}
                 >
                   <CalendarCheck2 className="mr-2 h-5 w-5 shrink-0" />
@@ -851,6 +1034,23 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
               className="flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200"
             >
               Termin buchen
+            </Button>
+          </div>
+        ) : viewMode === 'cal-booking' ? (
+          <div className="sticky bottom-0 flex gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={handleBackFromCalBooking}
+              className="flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold"
+            >
+              Zurück
+            </Button>
+            <Button
+              onClick={calActions.handleBooking}
+              disabled={!calState.selectedSlot || calState.sessionLoading}
+              className="flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              Termin bestätigen
             </Button>
           </div>
         ) : null}

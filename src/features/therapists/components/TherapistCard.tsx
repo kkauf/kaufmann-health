@@ -12,7 +12,6 @@ import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
 import { getModalityInfo } from '@/lib/modalities';
 import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpunkte';
-import { isCalBookingEnabled } from '@/lib/cal/booking-url';
 
 interface TherapistCardProps {
   therapist: TherapistData;
@@ -137,13 +136,8 @@ export function TherapistCard({
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
     } catch { }
 
-    // Use in-domain booking page for Cal-enabled therapists (EARTH-256)
-    if (isCalBookingEnabled(therapist)) {
-      const kind = type === 'consultation' ? 'intro' : 'full_session';
-      const returnTo = typeof window !== 'undefined' ? window.location.pathname : '/therapeuten';
-      window.location.href = `/booking/therapist/${therapist.id}?kind=${kind}&returnTo=${encodeURIComponent(returnTo)}`;
-      return;
-    }
+    // Cal-enabled therapists use modal flow (EARTH-256)
+    // TherapistDetailModal handles the Cal booking view internally
 
     if (customContactHandler) {
       customContactHandler(type);

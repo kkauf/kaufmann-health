@@ -1,15 +1,12 @@
 /**
- * /booking/[therapistId] - In-domain Cal.com booking page (EARTH-256)
+ * /booking/[therapistId] - Standalone Cal.com booking page (EARTH-256)
  *
- * WHY: Keep users on KH domain through slot selection, reducing drop-off
- * and preserving trust signals. Hand off to Cal only for final confirmation.
+ * NOTE: Primary booking flow now uses TherapistDetailModal (in-modal Cal booking).
+ * This page is kept as foundation for future therapist profile pages with
+ * shareable URLs (e.g., /therapist/[id] or /t/[slug]).
  *
- * Flow:
- * 1. User arrives with ?kind=intro|full_session&returnTo=...
- * 2. Shows therapist header + trust badges + price
- * 3. Day-first availability picker (Cal-backed)
- * 4. On slot selection → redirect to Cal with pre-selected slot
- * 5. After booking → Cal redirects back to /booking/confirmed → returnTo
+ * Current status: Not actively used - CTAs route to modal instead.
+ * Future use: Full therapist profile page with booking embedded.
  */
 
 import { notFound } from 'next/navigation';

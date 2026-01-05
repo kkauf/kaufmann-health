@@ -135,8 +135,8 @@ async function getBookings(
     `SELECT "startTime", "endTime" 
      FROM "Booking" 
      WHERE "eventTypeId" = $1 
-       AND "startTime" >= $1 
-       AND "startTime" < $2
+       AND "startTime" >= $2 
+       AND "startTime" < $3
        AND status NOT IN ('CANCELLED', 'REJECTED')`,
     [eventTypeId, start, end]
   );
