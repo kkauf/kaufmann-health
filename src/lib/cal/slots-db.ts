@@ -53,8 +53,8 @@ interface CalEventType {
 
 interface CalAvailability {
   days: number[]; // 0=Sunday, 1=Monday, etc.
-  startTime: Date;
-  endTime: Date;
+  startTime: string; // TIME as 'HH:MM:SS' string
+  endTime: string; // TIME as 'HH:MM:SS' string
 }
 
 interface CalBooking {
@@ -113,11 +113,11 @@ async function getAvailability(userId: number): Promise<CalAvailability[]> {
   
   const scheduleId = scheduleResult.rows[0].id;
   
-  // Get availability entries
+  // Get availability entries (startTime/endTime are TIME columns, returned as strings)
   const availResult = await db.query<{
     days: number[];
-    startTime: Date;
-    endTime: Date;
+    startTime: string;
+    endTime: string;
   }>(
     `SELECT days, "startTime", "endTime" 
      FROM "Availability" 
@@ -150,6 +150,14 @@ async function getBookings(
 }
 
 /**
+ * Parse TIME string 'HH:MM:SS' to hours and minutes
+ */
+function parseTimeString(timeStr: string): { hours: number; minutes: number } {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return { hours: hours || 0, minutes: minutes || 0 };
+}
+
+/**
  * Generate available time slots from availability patterns
  */
 function generateSlots(
@@ -173,22 +181,16 @@ function generateSlots(
     for (const avail of availability) {
       if (!avail.days.includes(dayOfWeek)) continue;
       
+      // Parse time strings to get hours/minutes
+      const startParsed = parseTimeString(avail.startTime);
+      const endParsed = parseTimeString(avail.endTime);
+      
       // Get start/end times for this day
       const dayStart = new Date(current);
-      dayStart.setHours(
-        avail.startTime.getUTCHours(),
-        avail.startTime.getUTCMinutes(),
-        0,
-        0
-      );
+      dayStart.setHours(startParsed.hours, startParsed.minutes, 0, 0);
       
       const dayEnd = new Date(current);
-      dayEnd.setHours(
-        avail.endTime.getUTCHours(),
-        avail.endTime.getUTCMinutes(),
-        0,
-        0
-      );
+      dayEnd.setHours(endParsed.hours, endParsed.minutes, 0, 0);
       
       // Generate slots at event length intervals
       let slotStart = new Date(dayStart);
