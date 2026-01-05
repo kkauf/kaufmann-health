@@ -73,7 +73,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
     therapistId: therapist.id,
     calUsername: therapist.cal_username || '',
     bookingKind: calBookingKind,
-    enabled: isCalEnabled && open && viewMode === 'cal-booking',
+    enabled: isCalEnabled && open, // Fetch slots when modal is open, not just when in cal-booking view
   });
   
   const photoSrc = therapist.photo_url && !imageError ? therapist.photo_url : undefined;
