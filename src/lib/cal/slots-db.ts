@@ -23,11 +23,17 @@ function getPool(): Pool {
     throw new Error('CAL_DATABASE_URL not configured');
   }
   if (!pool) {
+    console.log('[cal/slots-db] Creating new pool, URL prefix:', CAL_DATABASE_URL.substring(0, 30) + '...');
     pool = new Pool({
       connectionString: CAL_DATABASE_URL,
       ssl: { rejectUnauthorized: false },
       max: 3,
       idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000, // 10s timeout for serverless
+    });
+    
+    pool.on('error', (err) => {
+      console.error('[cal/slots-db] Pool error:', err.message);
     });
   }
   return pool;
@@ -277,7 +283,14 @@ export async function fetchCalSlotsFromDb(
     
     return slots;
   } catch (err) {
-    console.error('[cal/slots-db] Error fetching slots:', err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    const errStack = err instanceof Error ? err.stack : undefined;
+    console.error('[cal/slots-db] Error fetching slots:', {
+      message: errMsg,
+      stack: errStack,
+      calUsername,
+      eventSlug,
+    });
     return null;
   }
 }
