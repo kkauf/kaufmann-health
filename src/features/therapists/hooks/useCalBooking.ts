@@ -11,7 +11,7 @@
  */
 
 // DEBUG: Module load check
-console.log('[useCalBooking] MODULE LOADED - EARTH-256');
+console.warn('[useCalBooking] MODULE LOADED - EARTH-256');
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { CalNormalizedSlot, CalBookingKind } from '@/contracts/cal';
@@ -91,7 +91,7 @@ export function useCalBooking({
   enabled = true,
 }: UseCalBookingOptions): [CalBookingState, CalBookingActions] {
   // DEBUG: Log hook initialization
-  console.log('[useCalBooking] Init:', { therapistId, calUsername, bookingKind, enabled });
+  console.warn('[useCalBooking] Init:', { therapistId, calUsername, bookingKind, enabled });
 
   // Slot state
   const [slots, setSlots] = useState<CalNormalizedSlot[]>([]);
@@ -137,14 +137,14 @@ export function useCalBooking({
 
   // Fetch Cal slots
   useEffect(() => {
-    console.log('[useCalBooking] Slot fetch effect:', { enabled, therapistId, calUsername });
+    console.warn('[useCalBooking] Slot fetch effect:', { enabled, therapistId, calUsername });
     if (!enabled || !therapistId) {
-      console.log('[useCalBooking] Skipping slot fetch - not enabled or no therapistId');
+      console.warn('[useCalBooking] Skipping slot fetch - not enabled or no therapistId');
       return;
     }
 
     async function fetchSlots() {
-      console.log('[useCalBooking] Starting slot fetch...');
+      console.warn('[useCalBooking] Starting slot fetch...');
       setSlotsLoading(true);
       setSlotsError(null);
 
@@ -161,13 +161,13 @@ export function useCalBooking({
         url.searchParams.set('start', start);
         url.searchParams.set('end', end7);
 
-        console.log('[useCalBooking] Fetching:', url.toString());
+        console.warn('[useCalBooking] Fetching:', url.toString());
         const res = await fetch(url.toString());
         const json = await res.json();
-        console.log('[useCalBooking] Response:', { status: res.status, error: json.error, slotCount: json.data?.slots?.length });
+        console.warn('[useCalBooking] Response:', { status: res.status, error: json.error, slotCount: json.data?.slots?.length });
 
         if (json.error) {
-          console.error('[useCalBooking] API error:', json.error);
+          console.warn('[useCalBooking] API error:', json.error);
           setSlotsError(json.error);
           return;
         }
