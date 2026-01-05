@@ -1,5 +1,8 @@
 'use client';
 
+// DEBUG: Module load check - remove after debugging
+console.log('[TherapistDetailModal] MODULE LOADED - EARTH-256');
+
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import type React from 'react';
 import {

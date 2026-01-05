@@ -10,6 +10,9 @@
  * Used by TherapistDetailModal for in-modal Cal booking.
  */
 
+// DEBUG: Module load check
+console.log('[useCalBooking] MODULE LOADED - EARTH-256');
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { CalNormalizedSlot, CalBookingKind } from '@/contracts/cal';
 import { buildCalBookingUrl } from '@/lib/cal/booking-url';
