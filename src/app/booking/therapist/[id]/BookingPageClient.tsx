@@ -5,6 +5,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   MapPin,
   Video,
@@ -13,11 +15,11 @@ import {
   CalendarCheck2,
   Euro,
   Calendar,
-  ChevronLeft,
-  ChevronRight,
   ArrowLeft,
   Loader2,
   MessageCircle,
+  Mail,
+  Phone,
 } from 'lucide-react';
 import type { TherapistData } from '@/features/therapists/components/TherapistDirectory';
 import { buildCalBookingUrl } from '@/lib/cal/booking-url';
@@ -30,6 +32,14 @@ interface BookingPageClientProps {
   bookingKind: CalBookingKind;
   returnTo?: string;
   returnUI?: string;
+}
+
+interface SessionData {
+  verified: boolean;
+  name?: string;
+  contact_method?: 'email' | 'phone';
+  contact_value?: string;
+  patient_id?: string;
 }
 
 type SlotsByDay = Map<string, CalNormalizedSlot[]>;
@@ -66,11 +76,14 @@ function formatDayLong(dateIso: string): string {
 
 const MAX_TIMES_SHOWN = 6;
 
+type BookingStep = 'slots' | 'verify' | 'code';
+
 export function BookingPageClient({
   therapist,
   bookingKind,
   returnTo,
 }: BookingPageClientProps) {
+  // Slot picker state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [slots, setSlots] = useState<CalNormalizedSlot[]>([]);
@@ -78,6 +91,20 @@ export function BookingPageClient({
   const [selectedSlot, setSelectedSlot] = useState<CalNormalizedSlot | null>(null);
   const [showAllTimes, setShowAllTimes] = useState(false);
   const [imageError, setImageError] = useState(false);
+
+  // Session/verification state
+  const [session, setSession] = useState<SessionData | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [step, setStep] = useState<BookingStep>('slots');
+
+  // Verification form state
+  const [name, setName] = useState('');
+  const [contactMethod, setContactMethod] = useState<'email' | 'phone'>('email');
+  const [contactValue, setContactValue] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [patientId, setPatientId] = useState<string | null>(null);
 
   const photoSrc = therapist.photo_url && !imageError ? therapist.photo_url : undefined;
   const initials = getInitials(therapist.first_name, therapist.last_name);
@@ -89,6 +116,22 @@ export function BookingPageClient({
 
   const kindLabel = bookingKind === 'intro' ? 'Kostenloses Kennenlernen' : 'Sitzung';
   const kindDuration = bookingKind === 'intro' ? '15 Min.' : '50 Min.';
+
+  // Check session on load
+  useEffect(() => {
+    async function checkSession() {
+      try {
+        const res = await fetch('/api/public/session');
+        const json = await res.json();
+        setSession(json.data || { verified: false });
+      } catch {
+        setSession({ verified: false });
+      } finally {
+        setSessionLoading(false);
+      }
+    }
+    checkSession();
+  }, []);
 
   // Fetch slots from Cal API proxy
   useEffect(() => {
@@ -249,8 +292,8 @@ export function BookingPageClient({
     } catch {}
   }, [therapist.id, bookingKind]);
 
-  // Handle booking confirmation (redirect to Cal)
-  const handleBooking = useCallback(() => {
+  // Redirect to Cal with prefill data
+  const redirectToCal = useCallback((prefillName?: string, prefillEmail?: string, pid?: string) => {
     if (!selectedSlot) return;
 
     const attrs = getAttribution();
@@ -269,6 +312,8 @@ export function BookingPageClient({
                 kind: bookingKind,
                 date_iso: selectedSlot.date_iso,
                 time_label: selectedSlot.time_label,
+                verified: Boolean(session?.verified),
+                patient_id: pid || session?.patient_id,
               },
             }),
           ],
@@ -283,6 +328,7 @@ export function BookingPageClient({
       eventType: bookingKind,
       metadata: {
         kh_therapist_id: therapist.id,
+        kh_patient_id: pid || session?.patient_id,
         kh_booking_kind: bookingKind,
         kh_source: 'directory',
         kh_gclid: attrs.gclid,
@@ -290,6 +336,8 @@ export function BookingPageClient({
         kh_utm_medium: attrs.utm_medium,
         kh_utm_campaign: attrs.utm_campaign,
       },
+      prefillName,
+      prefillEmail,
       redirectBack: true,
       returnTo: returnTo || '/therapeuten',
     });
@@ -300,7 +348,107 @@ export function BookingPageClient({
 
     // Navigate to Cal
     window.location.href = url.toString();
-  }, [selectedSlot, therapist, bookingKind, returnTo]);
+  }, [selectedSlot, therapist, bookingKind, returnTo, session]);
+
+  // Handle booking button click - check verification first
+  const handleBooking = useCallback(() => {
+    if (!selectedSlot) return;
+
+    // If user is verified, redirect directly with session data
+    if (session?.verified) {
+      const email = session.contact_method === 'email' ? session.contact_value : undefined;
+      redirectToCal(session.name, email, session.patient_id);
+      return;
+    }
+
+    // Unverified user: show verification form
+    setStep('verify');
+  }, [selectedSlot, session, redirectToCal]);
+
+  // Send verification code
+  const handleSendCode = useCallback(async () => {
+    if (!name.trim() || !contactValue.trim()) {
+      setVerifyError('Bitte fülle alle Felder aus');
+      return;
+    }
+
+    setVerifyLoading(true);
+    setVerifyError(null);
+
+    try {
+      const res = await fetch('/api/public/verification/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          contact_method: contactMethod,
+          contact_value: contactValue.trim(),
+          draft_booking: selectedSlot ? {
+            therapist_id: therapist.id,
+            date_iso: selectedSlot.date_iso,
+            time_label: selectedSlot.time_label,
+            format: 'online', // Cal.com handles location selection
+          } : undefined,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (json.error) {
+        setVerifyError(json.error);
+        return;
+      }
+
+      // Move to code entry step
+      setStep('code');
+    } catch (e) {
+      setVerifyError('Fehler beim Senden des Codes');
+    } finally {
+      setVerifyLoading(false);
+    }
+  }, [name, contactMethod, contactValue, selectedSlot, therapist.id]);
+
+  // Verify code and redirect to Cal
+  const handleVerifyCode = useCallback(async () => {
+    if (!verificationCode.trim()) {
+      setVerifyError('Bitte gib den Code ein');
+      return;
+    }
+
+    setVerifyLoading(true);
+    setVerifyError(null);
+
+    try {
+      const res = await fetch('/api/public/verification/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact_method: contactMethod,
+          contact_value: contactValue.trim(),
+          code: verificationCode.trim(),
+        }),
+      });
+
+      const json = await res.json();
+
+      if (json.error) {
+        setVerifyError(json.error);
+        return;
+      }
+
+      // Get patient ID from response
+      const newPatientId = json.data?.patient_id;
+      setPatientId(newPatientId);
+
+      // Redirect to Cal with the just-entered data
+      const email = contactMethod === 'email' ? contactValue.trim() : undefined;
+      redirectToCal(name.trim(), email, newPatientId);
+    } catch (e) {
+      setVerifyError('Fehler bei der Verifizierung');
+    } finally {
+      setVerifyLoading(false);
+    }
+  }, [verificationCode, contactMethod, contactValue, name, redirectToCal]);
 
   // Handle back navigation
   const handleBack = useCallback(() => {
@@ -397,7 +545,151 @@ export function BookingPageClient({
           )}
         </div>
 
-        {/* Availability picker */}
+        {/* Verification form for unverified users */}
+        {step === 'verify' && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6 shadow-sm">
+            <h3 className="text-base font-semibold text-gray-900 mb-2">Deine Kontaktdaten</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Bitte gib deine Daten ein, damit wir deine Buchung bestätigen können.
+            </p>
+
+            {selectedSlot && (
+              <div className="mb-4 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                <p className="text-sm text-emerald-900">
+                  <span className="font-medium">Termin:</span>{' '}
+                  {formatDayLong(selectedSlot.date_iso)} um {selectedSlot.time_label} Uhr
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="name" className="text-sm font-medium text-gray-700">Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Max Mustermann"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-gray-700 mb-2 block">Kontaktmethode</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={contactMethod === 'email' ? 'default' : 'outline'}
+                    onClick={() => setContactMethod('email')}
+                    className="flex-1"
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    E-Mail
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={contactMethod === 'phone' ? 'default' : 'outline'}
+                    onClick={() => setContactMethod('phone')}
+                    className="flex-1"
+                  >
+                    <Phone className="h-4 w-4 mr-2" />
+                    SMS
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="contact" className="text-sm font-medium text-gray-700">
+                  {contactMethod === 'email' ? 'E-Mail-Adresse' : 'Handynummer'}
+                </Label>
+                <Input
+                  id="contact"
+                  type={contactMethod === 'email' ? 'email' : 'tel'}
+                  placeholder={contactMethod === 'email' ? 'max@beispiel.de' : '+49 170 1234567'}
+                  value={contactValue}
+                  onChange={(e) => setContactValue(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+
+              {verifyError && (
+                <p className="text-sm text-red-600">{verifyError}</p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setStep('slots')}
+                  className="flex-1"
+                >
+                  Zurück
+                </Button>
+                <Button
+                  onClick={handleSendCode}
+                  disabled={verifyLoading || !name.trim() || !contactValue.trim()}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {verifyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Code senden'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Code verification step */}
+        {step === 'code' && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6 shadow-sm">
+            <h3 className="text-base font-semibold text-gray-900 mb-2">Code eingeben</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Wir haben dir einen Code an {contactValue} gesendet.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="code" className="text-sm font-medium text-gray-700">Bestätigungscode</Label>
+                <Input
+                  id="code"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="123456"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  className="mt-1 text-center text-lg tracking-widest"
+                  maxLength={6}
+                />
+              </div>
+
+              {verifyError && (
+                <p className="text-sm text-red-600">{verifyError}</p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setStep('verify');
+                    setVerificationCode('');
+                    setVerifyError(null);
+                  }}
+                  className="flex-1"
+                >
+                  Zurück
+                </Button>
+                <Button
+                  onClick={handleVerifyCode}
+                  disabled={verifyLoading || !verificationCode.trim()}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {verifyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Bestätigen'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Availability picker - only shown in slots step */}
+        {step === 'slots' && (
         <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6 shadow-sm">
           <h3 className="text-base font-semibold text-gray-900 mb-4">Wähle einen Termin</h3>
 
@@ -526,14 +818,16 @@ export function BookingPageClient({
             </>
           )}
         </div>
+        )}
       </main>
 
-      {/* Sticky footer with CTA */}
-      {selectedSlot && (
+      {/* Sticky footer with CTA - only show in slots step */}
+      {step === 'slots' && selectedSlot && (
         <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 shadow-lg">
           <div className="max-w-2xl mx-auto">
             <Button
               onClick={handleBooking}
+              disabled={sessionLoading}
               className="w-full h-14 text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg"
             >
               <Calendar className="h-5 w-5 mr-2" />
