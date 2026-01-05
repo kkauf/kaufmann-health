@@ -12,7 +12,7 @@ import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
 import { getModalityInfo } from '@/lib/modalities';
 import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpunkte';
-import { buildCalBookingUrl, isCalBookingEnabled } from '@/lib/cal/booking-url';
+import { isCalBookingEnabled } from '@/lib/cal/booking-url';
 
 interface TherapistCardProps {
   therapist: TherapistData;
@@ -137,25 +137,11 @@ export function TherapistCard({
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
     } catch { }
 
-    // Use Cal.com for booking if enabled
+    // Use in-domain booking page for Cal-enabled therapists (EARTH-256)
     if (isCalBookingEnabled(therapist)) {
-      const attrs = getAttribution();
-      const eventType = type === 'consultation' ? 'intro' : 'full_session';
-      const url = buildCalBookingUrl({
-        calUsername: therapist.cal_username!,
-        eventType,
-        metadata: {
-          kh_therapist_id: therapist.id,
-          kh_booking_kind: eventType,
-          kh_source: 'directory',
-          kh_gclid: attrs.gclid,
-          kh_utm_source: attrs.utm_source,
-          kh_utm_medium: attrs.utm_medium,
-          kh_utm_campaign: attrs.utm_campaign,
-        },
-        redirectBack: true,
-      });
-      window.location.href = url;
+      const kind = type === 'consultation' ? 'intro' : 'full_session';
+      const returnTo = typeof window !== 'undefined' ? window.location.pathname : '/therapeuten';
+      window.location.href = `/booking/therapist/${therapist.id}?kind=${kind}&returnTo=${encodeURIComponent(returnTo)}`;
       return;
     }
 

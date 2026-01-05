@@ -31,6 +31,8 @@ export type CalBookingUrlOptions = {
   prefillEmail?: string;
   /** If true, adds successRedirectUrl to redirect back to KH after booking */
   redirectBack?: boolean;
+  /** Path to return to after booking confirmation (EARTH-256) */
+  returnTo?: string;
 };
 
 /**
@@ -42,7 +44,7 @@ export type CalBookingUrlOptions = {
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health.de';
 
 export function buildCalBookingUrl(options: CalBookingUrlOptions): string {
-  const { calUsername, eventType, metadata, prefillName, prefillEmail, redirectBack } = options;
+  const { calUsername, eventType, metadata, prefillName, prefillEmail, redirectBack, returnTo } = options;
 
   // Build base URL - if eventType specified, append it as a path segment
   // Cal.com event type slugs: intro, full-session
@@ -75,6 +77,10 @@ export function buildCalBookingUrl(options: CalBookingUrlOptions): string {
     }
     if (eventType) {
       redirectUrl.searchParams.set('kind', eventType);
+    }
+    // EARTH-256: Include returnTo so confirmation page can redirect back to origin
+    if (returnTo) {
+      redirectUrl.searchParams.set('returnTo', returnTo);
     }
     url.searchParams.set('successRedirectUrl', redirectUrl.toString());
   }

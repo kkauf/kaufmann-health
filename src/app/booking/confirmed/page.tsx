@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle2, Calendar, ArrowLeft, Home } from 'lucide-react';
@@ -9,10 +9,13 @@ import Link from 'next/link';
 
 function ConfirmationContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const therapistId = searchParams.get('therapist');
   const bookingKind = searchParams.get('kind') as 'intro' | 'full_session' | null;
+  const returnTo = searchParams.get('returnTo');
 
   const [therapistName, setTherapistName] = useState<string | null>(null);
+  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
     if (therapistId) {
@@ -26,6 +29,21 @@ function ConfirmationContent() {
         .catch(() => {});
     }
   }, [therapistId]);
+
+  // EARTH-256: Auto-redirect to origin after short delay with confirmation param
+  useEffect(() => {
+    if (returnTo && !redirecting) {
+      setRedirecting(true);
+      const timer = setTimeout(() => {
+        const url = new URL(returnTo, window.location.origin);
+        url.searchParams.set('booking', 'confirmed');
+        if (therapistId) url.searchParams.set('therapist', therapistId);
+        if (bookingKind) url.searchParams.set('kind', bookingKind);
+        router.push(url.pathname + url.search);
+      }, 2500); // Show confirmation briefly before redirecting
+      return () => clearTimeout(timer);
+    }
+  }, [returnTo, therapistId, bookingKind, router, redirecting]);
 
   const kindLabel = bookingKind === 'intro' 
     ? 'Kostenloses Kennenlernen' 

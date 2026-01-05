@@ -142,3 +142,19 @@ export async function parseRequestBody<T extends ZodSchema>(
     return { success: false, response: fail('Ungültiger Request Body') };
   }
 }
+
+/**
+ * Parse and validate query params from a NextRequest against a Zod schema.
+ * Convenience wrapper around parseQuery that extracts searchParams from URL.
+ * 
+ * @example
+ * const parsed = parseQueryParams(req, CalSlotsInput);
+ * if (!parsed.success) return parsed.response;
+ */
+export function parseQueryParams<T extends ZodSchema>(
+  req: Request,
+  schema: T
+): ParseResult<z.infer<T>> {
+  const url = new URL(req.url);
+  return parseQuery(schema, url.searchParams);
+}
