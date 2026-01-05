@@ -69,6 +69,16 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
   const [calWeekIndex, setCalWeekIndex] = useState(0);
   const isCalEnabled = isCalBookingEnabled(therapist);
   
+  // DEBUG: Log Cal.com state
+  console.log('[TherapistDetailModal] Cal state:', {
+    therapistId: therapist.id,
+    cal_username: therapist.cal_username,
+    cal_enabled: therapist.cal_enabled,
+    isCalEnabled,
+    open,
+    viewMode,
+  });
+  
   const [calState, calActions] = useCalBooking({
     therapistId: therapist.id,
     calUsername: therapist.cal_username || '',

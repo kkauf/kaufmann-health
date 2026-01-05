@@ -87,6 +87,9 @@ export function useCalBooking({
   bookingKind,
   enabled = true,
 }: UseCalBookingOptions): [CalBookingState, CalBookingActions] {
+  // DEBUG: Log hook initialization
+  console.log('[useCalBooking] Init:', { therapistId, calUsername, bookingKind, enabled });
+
   // Slot state
   const [slots, setSlots] = useState<CalNormalizedSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -131,9 +134,14 @@ export function useCalBooking({
 
   // Fetch Cal slots
   useEffect(() => {
-    if (!enabled || !therapistId) return;
+    console.log('[useCalBooking] Slot fetch effect:', { enabled, therapistId, calUsername });
+    if (!enabled || !therapistId) {
+      console.log('[useCalBooking] Skipping slot fetch - not enabled or no therapistId');
+      return;
+    }
 
     async function fetchSlots() {
+      console.log('[useCalBooking] Starting slot fetch...');
       setSlotsLoading(true);
       setSlotsError(null);
 
@@ -150,10 +158,13 @@ export function useCalBooking({
         url.searchParams.set('start', start);
         url.searchParams.set('end', end7);
 
+        console.log('[useCalBooking] Fetching:', url.toString());
         const res = await fetch(url.toString());
         const json = await res.json();
+        console.log('[useCalBooking] Response:', { status: res.status, error: json.error, slotCount: json.data?.slots?.length });
 
         if (json.error) {
+          console.error('[useCalBooking] API error:', json.error);
           setSlotsError(json.error);
           return;
         }
