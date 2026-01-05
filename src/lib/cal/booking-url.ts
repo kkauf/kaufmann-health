@@ -33,6 +33,10 @@ export type CalBookingUrlOptions = {
   redirectBack?: boolean;
   /** Path to return to after booking confirmation (EARTH-256) */
   returnTo?: string;
+  /** Pre-selected date in YYYY-MM-DD format */
+  date?: string;
+  /** Layout mode for Cal.com embed */
+  layout?: 'mobile' | 'month_view' | 'week_view' | 'column_view';
 };
 
 /**
@@ -44,7 +48,7 @@ export type CalBookingUrlOptions = {
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health.de';
 
 export function buildCalBookingUrl(options: CalBookingUrlOptions): string {
-  const { calUsername, eventType, metadata, prefillName, prefillEmail, redirectBack, returnTo } = options;
+  const { calUsername, eventType, metadata, prefillName, prefillEmail, redirectBack, returnTo, date, layout } = options;
 
   // Build base URL - if eventType specified, append it as a path segment
   // Cal.com event type slugs: intro, full-session
@@ -83,6 +87,16 @@ export function buildCalBookingUrl(options: CalBookingUrlOptions): string {
       redirectUrl.searchParams.set('returnTo', returnTo);
     }
     url.searchParams.set('successRedirectUrl', redirectUrl.toString());
+  }
+
+  // Pre-select date (YYYY-MM-DD format)
+  if (date) {
+    url.searchParams.set('date', date);
+  }
+
+  // Layout mode
+  if (layout) {
+    url.searchParams.set('layout', layout);
   }
 
   return url.toString();

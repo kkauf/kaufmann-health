@@ -486,6 +486,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
             therapist={therapist}
             showSchwerpunkte
             onViewDetails={() => setSelectedTherapist(therapist)}
+            onContactClick={() => setSelectedTherapist(therapist)}
           />
         ))}
         {/* Desktop/Tablet: Load more tile occupies a grid cell */}

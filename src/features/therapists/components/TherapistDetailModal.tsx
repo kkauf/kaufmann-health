@@ -560,7 +560,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
           </div>
         </div>
 
-        {viewMode === 'profile' ? (
+        {viewMode === 'profile' && (
           <>
 
             {schwerpunkte.length > 0 && (
@@ -678,9 +678,11 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
               </div>
             )}
           </>
-        ) : (
+        )}
+
+        {viewMode === 'booking' && (
           <>
-            {/* Booking mode: slot picker */}
+            {/* Booking mode: slot picker (for non-Cal therapists only) */}
             <div className="space-y-5 border-b pb-6">
               {/* Back button */}
               <Button
