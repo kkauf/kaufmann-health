@@ -143,7 +143,7 @@ async function getBookings(
      WHERE "eventTypeId" = $1 
        AND "startTime" >= $2 
        AND "startTime" < $3
-       AND status NOT IN ('CANCELLED', 'REJECTED')`,
+       AND status NOT IN ('cancelled', 'rejected')`,
     [eventTypeId, start, end]
   );
   return result.rows;
