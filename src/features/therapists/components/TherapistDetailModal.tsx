@@ -36,6 +36,10 @@ interface TherapistDetailModalProps {
   initialScrollTarget?: string;
   /** When true, hides contact CTAs and booking - used for therapist/admin previews */
   previewMode?: boolean;
+  /** Initial view mode when modal opens (default: 'profile') */
+  initialViewMode?: ViewMode;
+  /** Initial Cal booking kind when opening in cal-booking mode */
+  initialCalBookingKind?: CalBookingKind;
   onOpenContactModal?: (
     therapist: TherapistData,
     type: 'booking' | 'consultation',
@@ -58,30 +62,37 @@ function hashCode(s: string) {
   return Math.abs(h);
 }
 
-export function TherapistDetailModal({ therapist, open, onClose, initialScrollTarget, onOpenContactModal, previewMode = false }: TherapistDetailModalProps) {
+export function TherapistDetailModal({ 
+  therapist, 
+  open, 
+  onClose, 
+  initialScrollTarget, 
+  onOpenContactModal, 
+  previewMode = false,
+  initialViewMode = 'profile',
+  initialCalBookingKind = 'intro',
+}: TherapistDetailModalProps) {
   const [imageError, setImageError] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('profile');
+  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
   const [sessionFormat, setSessionFormat] = useState<'online' | 'in_person' | ''>('');
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [weekIndex, setWeekIndex] = useState(0);
 
   // Cal.com booking state (EARTH-256)
-  const [calBookingKind, setCalBookingKind] = useState<CalBookingKind>('intro');
+  const [calBookingKind, setCalBookingKind] = useState<CalBookingKind>(initialCalBookingKind);
   const [calWeekIndex, setCalWeekIndex] = useState(0);
   const isCalEnabled = isCalBookingEnabled(therapist);
   
-  // DEBUG: Log Cal.com state
-  console.warn('[TherapistDetailModal] Cal state:', {
-    therapistId: therapist.id,
-    cal_username: therapist.cal_username,
-    cal_enabled: therapist.cal_enabled,
-    isCalEnabled,
-    open,
-    viewMode,
-  });
-  
+  // Reset viewMode to initial when modal opens with new therapist or initial mode
+  useEffect(() => {
+    if (open) {
+      setViewMode(initialViewMode);
+      setCalBookingKind(initialCalBookingKind);
+    }
+  }, [open, initialViewMode, initialCalBookingKind]);
+
   const [calState, calActions] = useCalBooking({
     therapistId: therapist.id,
     calUsername: therapist.cal_username || '',

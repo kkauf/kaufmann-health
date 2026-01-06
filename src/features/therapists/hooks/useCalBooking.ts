@@ -254,11 +254,10 @@ export function useCalBooking({
       prefillName,
       prefillEmail,
       redirectBack: true,
+      date: selectedSlot.date_iso,
     });
 
-    const url = new URL(calUrl);
-    url.searchParams.set('date', selectedSlot.date_iso);
-    window.location.href = url.toString();
+    window.location.href = calUrl;
   }, [selectedSlot, therapistId, calUsername, bookingKind, session]);
 
   // Handle booking button - check session first
