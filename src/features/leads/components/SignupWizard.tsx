@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { leadSubmissionSchema } from '@/lib/contracts';
 import { PRIVACY_VERSION } from '@/lib/privacy';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
+import { useVerification } from '@/lib/verification/useVerification';
 import { getOrCreateSessionId, getGclid } from '@/lib/attribution';
 import { fireGoogleAdsClientConversion } from '@/lib/gtag';
 import { getFlowVariant } from '@/lib/flow-randomization';
@@ -145,6 +146,14 @@ export default function SignupWizard() {
   // Campaign overrides captured on client (source/variant)
   const campaignSourceOverrideRef = React.useRef<string | null>(null);
   const campaignVariantOverrideRef = React.useRef<string | null>(null);
+
+  // Shared verification hook for SMS code sending/verification
+  const verification = useVerification({
+    initialContactMethod: 'phone',
+    onTrackEvent: (event, props) => {
+      void trackEvent(event, props);
+    },
+  });
 
   // Ensure a stable web analytics session id exists before any events
   React.useEffect(() => {
@@ -713,31 +722,24 @@ export default function SignupWizard() {
     return () => clearTimeout(t);
   }, [initialized, step, data.email]);
 
-  // SMS code sending and verification handlers
+  // SMS code sending using shared verification hook
   const handleSendSmsCode = React.useCallback(async (): Promise<boolean> => {
     if (!data.phone_number) return false;
-    try {
-      const res = await fetch('/api/public/verification/send-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contact: data.phone_number,
-          contact_type: 'phone',
-          form_session_id: sessionId || undefined,
-          ...(data.name && data.name.trim() ? { name: data.name.trim() } : {}),
-        }),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error('Failed to send SMS');
-      // If API indicates fallback to email, keep user on step 1 to choose email manually
-      if (j?.data?.fallback === 'email') return false;
-      void trackEvent('verification_code_sent', { contact_type: 'phone' });
-      return true;
-    } catch (err) {
-      console.error('Failed to send SMS code:', err);
-      throw err;
-    }
-  }, [data.phone_number, sessionId, trackEvent, saveLocal]);
+    
+    // Sync phone number to verification hook state
+    verification.setPhone(data.phone_number);
+    if (data.name) verification.setName(data.name);
+    
+    const result = await verification.sendCode({
+      name: data.name?.trim(),
+      formSessionId: sessionId || undefined,
+    });
+    
+    // If API indicates fallback to email, return false to let user choose email
+    if (result.fallbackToEmail) return false;
+    
+    return result.success;
+  }, [data.phone_number, data.name, sessionId, verification]);
 
   // If we arrive directly on step 1.5 with a phone number, auto-send the SMS code once
   const autoSentRef = React.useRef(false);
@@ -754,35 +756,22 @@ export default function SignupWizard() {
     });
   }, [step, data.contact_method, data.phone_number, data.phone_verified, handleSendSmsCode]);
 
+  // SMS code verification using shared verification hook
   const handleVerifySmsCode = React.useCallback(async (code: string): Promise<{ success: boolean; error?: string }> => {
     if (!data.phone_number) return { success: false, error: 'Keine Telefonnummer' };
 
-    try {
-      const res = await fetch('/api/public/verification/verify-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contact: data.phone_number,
-          contact_type: 'phone',
-          code,
-        }),
-      });
+    // Sync code to hook state and verify
+    verification.setCode(code);
+    const result = await verification.verifyCode();
 
-      const result = await res.json();
-
-      if (result.data?.verified) {
-        saveLocal({ phone_verified: true });
-        void trackEvent('verification_code_verified', { contact_type: 'phone' });
-        // Don't navigate here - caller will handle submit after verification
-        return { success: true };
-      }
-
-      return { success: false, error: 'Ungültiger Code' };
-    } catch (err) {
-      console.error('Failed to verify SMS code:', err);
-      return { success: false, error: 'Fehler bei der Überprüfung' };
+    if (result.success) {
+      saveLocal({ phone_verified: true });
+      // Don't navigate here - caller will handle submit after verification
+      return { success: true };
     }
-  }, [data.phone_number, saveLocal, trackEvent]);
+
+    return { success: false, error: result.error || 'Ungültiger Code' };
+  }, [data.phone_number, verification, saveLocal]);
 
   // Simple screen renderers
   function renderScreen() {
