@@ -78,6 +78,34 @@ export function isValidGermanMobile(input: string): boolean {
 }
 
 /**
+ * Validate phone number and return result with normalized value
+ * Used by verification flows for input validation
+ */
+export interface PhoneValidationResult {
+  isValid: boolean;
+  normalized: string | null;
+  error?: string;
+}
+
+export function validatePhone(input: string): PhoneValidationResult {
+  if (!input || !input.trim()) {
+    return { isValid: false, normalized: null, error: 'Bitte gib eine Handynummer ein.' };
+  }
+  
+  const normalized = normalizePhoneNumber(input);
+  
+  if (!normalized) {
+    return { 
+      isValid: false, 
+      normalized: null, 
+      error: 'Bitte gib eine gültige Handynummer ein (z.B. 0176 123 45678).' 
+    };
+  }
+  
+  return { isValid: true, normalized };
+}
+
+/**
  * Format phone as user types: adds spaces automatically
  * Input: "0176123" -> Output: "0176 123"
  */
