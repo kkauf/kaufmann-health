@@ -89,3 +89,79 @@ export const CAL_WEBHOOK_SIGNATURE_HEADER = 'x-cal-signature-256' as const;
 
 export const CalWebhookSignature = z.string().min(1);
 export type CalWebhookSignature = z.infer<typeof CalWebhookSignature>;
+
+// ============================================================================
+// CAL.COM SLOTS API (EARTH-256)
+// GET /api/public/cal/slots - proxy to Cal.com v2 slots API
+// ============================================================================
+
+export const CalSlotsInput = z.object({
+  therapist_id: z.string().uuid(),
+  kind: CalBookingKind,
+  start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // YYYY-MM-DD, defaults to today
+  end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // YYYY-MM-DD, defaults to start+7d
+  timeZone: z.string().optional(), // defaults to Europe/Berlin
+});
+
+export type CalSlotsInput = z.infer<typeof CalSlotsInput>;
+
+export const CalSlot = z.object({
+  time: z.string().datetime(), // ISO 8601 datetime
+});
+
+export type CalSlot = z.infer<typeof CalSlot>;
+
+export const CalSlotsOutput = z.object({
+  data: z
+    .object({
+      slots: z.record(z.string(), z.array(CalSlot)), // { "2025-01-06": [{ time: "..." }, ...] }
+    })
+    .nullable(),
+  error: z.string().nullable(),
+});
+
+export type CalSlotsOutput = z.infer<typeof CalSlotsOutput>;
+
+// Normalized slot format for KH UI (day-first grouping)
+export const CalNormalizedSlot = z.object({
+  date_iso: z.string(), // YYYY-MM-DD
+  time_label: z.string(), // HH:MM (local time)
+  time_utc: z.string().datetime(), // Full ISO timestamp for booking
+});
+
+export type CalNormalizedSlot = z.infer<typeof CalNormalizedSlot>;
+
+export const CalSlotsResponse = z.object({
+  data: z
+    .object({
+      slots: z.array(CalNormalizedSlot),
+      therapist_id: z.string().uuid(),
+      kind: CalBookingKind,
+      cal_username: z.string(),
+      event_type_slug: z.string(),
+    })
+    .nullable(),
+  error: z.string().nullable(),
+});
+
+export type CalSlotsResponse = z.infer<typeof CalSlotsResponse>;
+
+// ============================================================================
+// CAL.COM EVENT TYPE LOOKUP
+// Helper to map (username, kind) → eventTypeId for reserve/book
+// ============================================================================
+
+export const CalEventTypeInfo = z.object({
+  eventTypeId: z.number().int(),
+  slug: z.string(),
+  title: z.string(),
+  length: z.number().int(), // duration in minutes
+  locations: z.array(
+    z.object({
+      type: z.string(),
+      address: z.string().optional(),
+    })
+  ).optional(),
+});
+
+export type CalEventTypeInfo = z.infer<typeof CalEventTypeInfo>;
