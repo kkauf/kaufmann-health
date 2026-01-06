@@ -16,6 +16,9 @@ import { Pool } from 'pg';
 
 const CAL_DATABASE_URL = process.env.CAL_DATABASE_URL;
 
+// Query timeout for Cal DB operations (EARTH-262)
+const CAL_QUERY_TIMEOUT_MS = 5000;
+
 let pool: Pool | null = null;
 
 function getPool(): Pool {
@@ -29,7 +32,8 @@ function getPool(): Pool {
       ssl: { rejectUnauthorized: false },
       max: 3,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000, // 10s timeout for serverless
+      connectionTimeoutMillis: CAL_QUERY_TIMEOUT_MS, // EARTH-262: 5s connection timeout
+      statement_timeout: CAL_QUERY_TIMEOUT_MS, // EARTH-262: 5s query timeout
     });
     
     pool.on('error', (err) => {

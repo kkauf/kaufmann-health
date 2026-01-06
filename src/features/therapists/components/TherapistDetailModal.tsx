@@ -899,17 +899,62 @@ export function TherapistDetailModal({
                   </div>
                 )}
 
-                {calState.slotsError && (
+                {/* EARTH-262: Show fallback UI when Cal.com is unavailable */}
+                {calState.slotsUnavailable && (
+                  <div className="text-center py-6 space-y-4">
+                    <Calendar className="h-10 w-10 mx-auto mb-2 text-amber-500" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        Terminkalender vorübergehend nicht verfügbar
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Schreiben Sie {therapist.first_name} direkt eine Nachricht.
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-2 max-w-xs mx-auto">
+                      <Button
+                        onClick={() => {
+                          handleBackFromCalBooking();
+                          onOpenContactModal?.(therapist, 'consultation', undefined);
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Direkt kontaktieren
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={calActions.retrySlotsFetch}
+                        className="text-gray-600"
+                      >
+                        Erneut versuchen
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {calState.slotsError && !calState.slotsUnavailable && (
                   <div className="text-center py-6">
                     <Calendar className="h-10 w-10 mx-auto mb-2 text-gray-400" />
                     <p className="text-sm text-gray-600">{calState.slotsError}</p>
                   </div>
                 )}
 
-                {!calState.slotsLoading && !calState.slotsError && calSortedDays.length === 0 && (
-                  <div className="text-center py-6">
+                {!calState.slotsLoading && !calState.slotsError && !calState.slotsUnavailable && calSortedDays.length === 0 && (
+                  <div className="text-center py-6 space-y-4">
                     <Calendar className="h-10 w-10 mx-auto mb-2 text-gray-400" />
                     <p className="text-sm text-gray-600">Aktuell sind keine Termine verfügbar.</p>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        handleBackFromCalBooking();
+                        onOpenContactModal?.(therapist, 'consultation', undefined);
+                      }}
+                      className="text-gray-600"
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      {therapist.first_name} direkt kontaktieren
+                    </Button>
                   </div>
                 )}
 

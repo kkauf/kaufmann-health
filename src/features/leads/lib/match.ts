@@ -1,14 +1,17 @@
 // Note: supabaseServer and track are imported dynamically inside createInstantMatchesForPatient
 // to avoid module-level initialization issues in test environments
+//
+// Matching Algorithm Spec: /docs/therapist-matching-algorithm-spec.md
 
 export type PatientMeta = {
   city?: string;
   session_preference?: 'online' | 'in_person';
   session_preferences?: ('online' | 'in_person')[];
   issue?: string;
-  specializations?: string[];
-  schwerpunkte?: string[]; // New: client focus area selections
-  gender_preference?: 'male' | 'female' | 'no_preference';
+  specializations?: string[]; // modalities patient selected
+  schwerpunkte?: string[]; // focus area selections
+  gender_preference?: 'male' | 'female' | 'no_preference' | 'any';
+  time_preferences?: string[]; // time slot preferences
 };
 
 export type TherapistRowForMatch = {
@@ -17,7 +20,32 @@ export type TherapistRowForMatch = {
   city?: string | null;
   session_preferences?: unknown;
   modalities?: unknown;
-  schwerpunkte?: unknown; // New: therapist focus areas
+  schwerpunkte?: unknown;
+  accepting_new?: boolean | null;
+  photo_url?: string | null;
+  approach_text?: string | null;
+  who_comes_to_me?: string | null;
+  metadata?: {
+    hide_from_directory?: boolean;
+    cal_username?: string;
+    cal_event_types?: string[];
+    profile?: {
+      approach_text?: string;
+      who_comes_to_me?: string;
+    };
+    [key: string]: unknown;
+  } | null;
+};
+
+export type TherapistScore = {
+  id: string;
+  platformScore: number;
+  matchScore: number;
+  totalScore: number;
+  isEligible: boolean;
+  schwerpunkteOverlap: number;
+  hasIntakeSlots7Days: number;
+  hasIntakeSlots14Days: number;
 };
 
 export type MismatchResult = {
@@ -121,6 +149,195 @@ export function computeMismatches(patient: PatientMeta | null | undefined, thera
 }
 
 /**
+ * Check if therapist is eligible to be shown (hard filters)
+ * See: /docs/therapist-matching-algorithm-spec.md - System 1: Eligibility
+ */
+export function isEligible(
+  therapist: TherapistRowForMatch,
+  patient?: PatientMeta | null
+): boolean {
+  // E1: Must be verified (checked at query level, but defensive check)
+  // E2: Must be accepting new clients
+  if (therapist.accepting_new === false) return false;
+  
+  // E3: Must not be hidden from directory
+  if (therapist.metadata?.hide_from_directory === true) return false;
+  
+  // Conditional filters (only when patient context exists)
+  if (patient) {
+    // E4: Gender - only filter if patient specified male/female preference
+    const gp = patient.gender_preference;
+    if (gp && gp !== 'any' && gp !== 'no_preference') {
+      const tGender = (therapist.gender || '').toLowerCase();
+      if (tGender && tGender !== gp) return false;
+    }
+    
+    // E5: Format - only filter if patient wants EXCLUSIVELY one format
+    const sessionPrefs = patient.session_preferences || 
+      (patient.session_preference ? [patient.session_preference] : []);
+    if (sessionPrefs.length === 1) {
+      const required = sessionPrefs[0];
+      const tPrefs = Array.isArray(therapist.session_preferences) 
+        ? (therapist.session_preferences as string[]) 
+        : [];
+      if (!tPrefs.includes(required)) return false;
+    }
+  }
+  
+  return true;
+}
+
+/**
+ * Check if therapist has full Cal.com journey (intake + session booking)
+ */
+export function hasFullCalComJourney(therapist: TherapistRowForMatch): boolean {
+  if (!therapist.metadata?.cal_username) return false;
+  
+  const eventTypes = therapist.metadata?.cal_event_types || [];
+  const hasIntake = eventTypes.some(t => 
+    t.toLowerCase().includes('intake') || 
+    t.toLowerCase().includes('kennenlernen') ||
+    t.toLowerCase().includes('erstgespraech')
+  );
+  const hasSession = eventTypes.some(t => 
+    t.toLowerCase().includes('session') || 
+    t.toLowerCase().includes('sitzung')
+  );
+  
+  return hasIntake && hasSession;
+}
+
+/**
+ * Calculate Platform Score (0-100 points)
+ * Measures therapist investment in the platform.
+ * See: /docs/therapist-matching-algorithm-spec.md - Platform Score
+ */
+export function calculatePlatformScore(
+  therapist: TherapistRowForMatch,
+  intakeSlots7Days: number,
+  intakeSlots14Days: number
+): number {
+  let score = 0;
+  
+  // Cal.com integration (30 points)
+  if (hasFullCalComJourney(therapist)) {
+    score += 30;
+  }
+  
+  // Intake slot availability (mutually exclusive tiers)
+  if (intakeSlots7Days >= 3) {
+    score += 25;
+  } else if (intakeSlots7Days >= 1) {
+    score += 15;
+  } else if (intakeSlots14Days >= 1) {
+    score += 10;
+  }
+  
+  // Profile completeness
+  const hasPhoto = Boolean(therapist.photo_url);
+  const hasApproach = Boolean(
+    therapist.approach_text || 
+    therapist.metadata?.profile?.approach_text
+  );
+  const hasWhoComes = Boolean(
+    therapist.who_comes_to_me || 
+    therapist.metadata?.profile?.who_comes_to_me
+  );
+  const hasLocation = Boolean(therapist.city);
+  
+  if (hasPhoto && hasApproach && hasWhoComes) {
+    score += 15; // Complete profile
+  } else if (hasPhoto && hasLocation) {
+    score += 5;  // Basic profile
+  }
+  
+  return score;
+}
+
+/**
+ * Calculate Match Score (0-100 points)
+ * Measures relevance to a specific patient's preferences.
+ * See: /docs/therapist-matching-algorithm-spec.md - Match Score
+ */
+export function calculateMatchScore(
+  therapist: TherapistRowForMatch,
+  patient: PatientMeta,
+  hasMatchingTimeSlots: boolean
+): number {
+  let score = 0;
+  
+  // Schwerpunkte overlap (0-40 points)
+  const patientSchwerpunkte = patient.schwerpunkte || [];
+  const therapistSchwerpunkte = Array.isArray(therapist.schwerpunkte) 
+    ? (therapist.schwerpunkte as string[]) 
+    : [];
+  
+  if (patientSchwerpunkte.length > 0) {
+    const patientSet = new Set(patientSchwerpunkte);
+    const overlap = therapistSchwerpunkte.filter(s => patientSet.has(s)).length;
+    if (overlap >= 3) score += 40;
+    else if (overlap === 2) score += 30;
+    else if (overlap === 1) score += 15;
+    // 0 overlap = 0 points (but not excluded per spec)
+  }
+  
+  // In-person in patient's city (20 points)
+  // Only applies when patient selected BOTH online and in-person
+  const sessionPrefs = patient.session_preferences || 
+    (patient.session_preference ? [patient.session_preference] : []);
+  const patientWantsBoth = sessionPrefs.includes('online') && sessionPrefs.includes('in_person');
+  
+  if (patientWantsBoth) {
+    const tPrefs = Array.isArray(therapist.session_preferences) 
+      ? (therapist.session_preferences as string[]) 
+      : [];
+    const therapistOffersInPerson = tPrefs.includes('in_person');
+    const patientCity = normalizeSpec(patient.city || '');
+    const therapistCity = normalizeSpec(therapist.city || '');
+    
+    if (therapistOffersInPerson && patientCity && patientCity === therapistCity) {
+      score += 20;
+    }
+  }
+  
+  // Modality overlap (15 points)
+  const patientModalities = (patient.specializations || []).map(s => normalizeSpec(String(s)));
+  const therapistModalities = Array.isArray(therapist.modalities) 
+    ? (therapist.modalities as string[]).map(s => normalizeSpec(String(s)))
+    : [];
+  
+  if (patientModalities.length > 0) {
+    const patientSet = new Set(patientModalities);
+    const hasOverlap = therapistModalities.some(m => patientSet.has(m));
+    if (hasOverlap) score += 15;
+  }
+  
+  // Time slot compatibility (15 points)
+  if (hasMatchingTimeSlots) {
+    score += 15;
+  }
+  
+  // Gender match bonus (10 points)
+  const gp = patient.gender_preference;
+  if (gp && gp !== 'any' && gp !== 'no_preference') {
+    const tGender = (therapist.gender || '').toLowerCase();
+    if (tGender === gp) {
+      score += 10;
+    }
+  }
+  
+  return score;
+}
+
+/**
+ * Calculate Total Score for ranking
+ * Match score weighted 1.5x higher than platform score
+ */
+export function calculateTotalScore(matchScore: number, platformScore: number): number {
+  return (matchScore * 1.5) + platformScore;
+}
+
+/**
  * Create instant matches for a patient based on their preferences
  * Returns secure match UUID for browsing therapists
  */
@@ -150,10 +367,22 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
     const time_slots = Array.isArray(meta['time_slots']) ? (meta['time_slots'] as string[]) : [];
     const pMeta: PatientMeta = { city, session_preference, session_preferences, specializations, schwerpunkte, gender_preference };
 
-    type TR = { id: string; gender?: string | null; city?: string | null; session_preferences?: unknown; modalities?: unknown; schwerpunkte?: unknown; accepting_new?: boolean | null; metadata?: Record<string, unknown> | null };
+    type TR = { 
+      id: string; 
+      gender?: string | null; 
+      city?: string | null; 
+      session_preferences?: unknown; 
+      modalities?: unknown; 
+      schwerpunkte?: unknown; 
+      accepting_new?: boolean | null; 
+      photo_url?: string | null;
+      approach_text?: string | null;
+      who_comes_to_me?: string | null;
+      metadata?: Record<string, unknown> | null;
+    };
     const { data: trows } = await supabaseServer
       .from('therapists')
-      .select('id, gender, city, session_preferences, modalities, schwerpunkte, accepting_new, metadata')
+      .select('id, gender, city, session_preferences, modalities, schwerpunkte, accepting_new, photo_url, approach_text, who_comes_to_me, metadata')
       .eq('status', 'verified')
       .limit(5000);
     const therapists = Array.isArray(trows) ? (trows as TR[]) : [];
@@ -179,6 +408,23 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
       }
     } catch { slotsByTid = new Map(); }
 
+    // Helper: count intake slots within a day window
+    function countIntakeSlotsInDays(therapistId: string, days: number): number {
+      const slots = slotsByTid.get(therapistId) || [];
+      const now = new Date();
+      let count = 0;
+      for (let offset = 1; offset <= days; offset++) {
+        const d = new Date(now.getTime());
+        d.setUTCDate(d.getUTCDate() + offset);
+        const dow = d.getUTCDay();
+        for (const s of slots) {
+          if (Number(s.day_of_week) === dow) count++;
+        }
+      }
+      return count;
+    }
+
+    // Helper: check if therapist has slots matching patient's time preferences
     function slotMatchesPreferences(therapistId: string): boolean {
       const prefs = new Set((time_slots || []).map((s) => String(s)));
       if (prefs.size === 0 || prefs.has('Bin flexibel')) return true;
@@ -205,38 +451,73 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
       return false;
     }
 
-    const scored: { id: string; isPerfect: boolean; reasons: string[]; accepting: boolean; schwerpunkteOverlap: number }[] = [];
+    // Score all therapists using the new algorithm (see /docs/therapist-matching-algorithm-spec.md)
+    type ScoredTherapist = {
+      id: string;
+      platformScore: number;
+      matchScore: number;
+      totalScore: number;
+      schwerpunkteOverlap: number;
+      intakeSlots7Days: number;
+      intakeSlots14Days: number;
+      reasons: string[];
+    };
+    
+    const scored: ScoredTherapist[] = [];
     for (const t of therapists) {
-      if (t.accepting_new === false) continue;
-      const tMeta = (t.metadata || {}) as Record<string, unknown>;
-      const hideFromDir = tMeta['hide_from_directory'] === true;
-      if (hideFromDir) continue;
+      // Build TherapistRowForMatch with full metadata
+      const tRow: TherapistRowForMatch = {
+        id: t.id,
+        gender: t.gender || undefined,
+        city: t.city || undefined,
+        session_preferences: t.session_preferences,
+        modalities: t.modalities,
+        schwerpunkte: t.schwerpunkte,
+        accepting_new: t.accepting_new,
+        photo_url: t.photo_url,
+        approach_text: t.approach_text,
+        who_comes_to_me: t.who_comes_to_me,
+        metadata: t.metadata as TherapistRowForMatch['metadata'],
+      };
 
-      const tRow: TherapistRowForMatch = { id: t.id, gender: t.gender || undefined, city: t.city || undefined, session_preferences: t.session_preferences, modalities: t.modalities, schwerpunkte: t.schwerpunkte };
-      const mm = computeMismatches(pMeta, tRow);
+      // Apply eligibility filters (hard filters)
+      if (!isEligible(tRow, pMeta)) continue;
+
+      // Calculate slot counts for Platform Score
+      const intakeSlots7Days = countIntakeSlotsInDays(t.id, 7);
+      const intakeSlots14Days = countIntakeSlotsInDays(t.id, 14);
+      
+      // Calculate scores
+      const platformScore = calculatePlatformScore(tRow, intakeSlots7Days, intakeSlots14Days);
       const timeOk = slotMatchesPreferences(t.id);
-      const isPerfect = mm.isPerfect && timeOk;
-      scored.push({ id: t.id, isPerfect, reasons: mm.reasons, accepting: Boolean(t.accepting_new), schwerpunkteOverlap: mm.schwerpunkteOverlap });
+      const matchScore = calculateMatchScore(tRow, pMeta, timeOk);
+      const totalScore = calculateTotalScore(matchScore, platformScore);
+      
+      // Also compute mismatches for tracking/analytics
+      const mm = computeMismatches(pMeta, tRow);
+
+      scored.push({
+        id: t.id,
+        platformScore,
+        matchScore,
+        totalScore,
+        schwerpunkteOverlap: mm.schwerpunkteOverlap,
+        intakeSlots7Days,
+        intakeSlots14Days,
+        reasons: mm.reasons,
+      });
     }
 
-    scored.sort((a, b) => {
-      if (a.isPerfect !== b.isPerfect) return a.isPerfect ? -1 : 1;
-      if (a.accepting !== b.accepting) return a.accepting ? -1 : 1;
-      // Modality match is most important - penalize modality mismatch heavily
-      const aModality = a.reasons.includes('modality') ? 1 : 0;
-      const bModality = b.reasons.includes('modality') ? 1 : 0;
-      if (aModality !== bModality) return aModality - bModality;
-      // Sort by schwerpunkte overlap (descending - more matches first)
-      if (a.schwerpunkteOverlap !== b.schwerpunkteOverlap) return b.schwerpunkteOverlap - a.schwerpunkteOverlap;
-      // Then by total reasons count
-      return a.reasons.length - b.reasons.length;
-    });
+    // Sort by totalScore descending (per spec: Match × 1.5 + Platform)
+    scored.sort((a, b) => b.totalScore - a.totalScore);
+    
     const chosenScored = scored.slice(0, 3);
     const chosen = chosenScored.map(s => s.id);
 
-    console.log(`[InstantMatch] Patient ${patientId}: Found ${therapists.length} verified therapists. Scored ${scored.length} candidates. Chosen ${chosen.length}.`);
+    console.log(`[InstantMatch] Patient ${patientId}: Found ${therapists.length} verified therapists. Scored ${scored.length} candidates. Chosen ${chosen.length}. Top scores: ${chosenScored.map(s => s.totalScore).join(', ')}`);
 
-    const hasAnyPerfect = chosenScored.some(s => s.isPerfect);
+    // Per spec: "exact" match when top therapist has high total score (≥120 or no mismatches)
+    const hasAnyPerfect = chosenScored.some(s => s.totalScore >= 120 || s.reasons.length === 0);
     const matchQuality = chosen.length === 0 ? 'none' : (hasAnyPerfect ? 'exact' : 'partial');
 
     let secureUuid: string | null = null;
@@ -254,7 +535,8 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
     } else {
       for (let i = 0; i < chosen.length; i++) {
         const tid = chosen[i];
-        const therapistQuality = chosenScored[i].isPerfect ? 'exact' : 'partial';
+        const s = chosenScored[i];
+        const therapistQuality = (s.totalScore >= 120 || s.reasons.length === 0) ? 'exact' : 'partial';
         const { data: row } = await supabaseServer
           .from('matches')
           .insert({

@@ -9,6 +9,11 @@ import {
   THERAPIST_SELECT_COLUMNS,
 } from '@/lib/therapist-mapper';
 import { computeAvailability } from '@/lib/availability';
+import { 
+  isEligible, 
+  calculatePlatformScore, 
+  type TherapistRowForMatch 
+} from '@/features/leads/lib/match';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -71,8 +76,55 @@ export async function GET() {
       fallbackAddresses,
     });
 
-    const therapists = visibleRows.map((row) => {
+    // Helper: count slots within day windows for Platform Score
+    function countSlotsInDays(availability: { date_iso: string }[], days: number): number {
+      const now = new Date();
+      const cutoff = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      return availability.filter(a => new Date(a.date_iso) <= cutoff).length;
+    }
+
+    // Calculate Platform Score for each therapist and sort (per spec)
+    const scoredRows = visibleRows.map((row) => {
       const availability = availabilityMap.get(row.id) || [];
+      
+      // Build TherapistRowForMatch for scoring
+      const mdObj = (row.metadata && typeof row.metadata === 'object') 
+        ? row.metadata as Record<string, unknown> 
+        : {};
+      const profile = (mdObj['profile'] && typeof mdObj['profile'] === 'object')
+        ? mdObj['profile'] as Record<string, unknown>
+        : {};
+      
+      const tRow: TherapistRowForMatch = {
+        id: row.id,
+        gender: row.gender || undefined,
+        city: row.city || undefined,
+        session_preferences: row.session_preferences,
+        modalities: row.modalities,
+        schwerpunkte: row.schwerpunkte,
+        accepting_new: row.accepting_new,
+        photo_url: row.photo_url,
+        approach_text: typeof profile['approach_text'] === 'string' ? profile['approach_text'] : undefined,
+        who_comes_to_me: typeof profile['who_comes_to_me'] === 'string' ? profile['who_comes_to_me'] : undefined,
+        metadata: {
+          hide_from_directory: mdObj['hide_from_directory'] === true,
+          cal_username: typeof mdObj['cal_username'] === 'string' ? mdObj['cal_username'] : undefined,
+          cal_event_types: Array.isArray(mdObj['cal_event_types']) ? mdObj['cal_event_types'] as string[] : undefined,
+          profile: profile as TherapistRowForMatch['metadata'] extends { profile?: infer P } ? P : never,
+        },
+      };
+      
+      const intakeSlots7Days = countSlotsInDays(availability, 7);
+      const intakeSlots14Days = countSlotsInDays(availability, 14);
+      const platformScore = calculatePlatformScore(tRow, intakeSlots7Days, intakeSlots14Days);
+      
+      return { row, availability, platformScore };
+    });
+
+    // Sort by Platform Score descending (per spec: directory uses Platform Score only)
+    scoredRows.sort((a, b) => b.platformScore - a.platformScore);
+
+    const therapists = scoredRows.map(({ row, availability }) => {
       return mapTherapistRow(row, { availability });
     });
 

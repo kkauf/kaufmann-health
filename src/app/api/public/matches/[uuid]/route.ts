@@ -2,7 +2,16 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { logError } from '@/lib/logger';
-import { computeMismatches, normalizeSpec, type PatientMeta, type TherapistRowForMatch } from '@/features/leads/lib/match';
+import { 
+  computeMismatches, 
+  normalizeSpec, 
+  isEligible,
+  calculatePlatformScore,
+  calculateMatchScore,
+  calculateTotalScore,
+  type PatientMeta, 
+  type TherapistRowForMatch 
+} from '@/features/leads/lib/match';
 import { computeAvailability, getBerlinDayIndex } from '@/lib/availability';
 import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
 import {
@@ -180,7 +189,37 @@ export async function GET(req: Request) {
       }
     }
 
-    // Rank therapists using admin mismatch logic
+    // Helper: check if slots match patient's time preferences
+    function slotMatchesPreferences(availability: { date_iso: string; time_label: string; format: 'online' | 'in_person' }[]): boolean {
+      const prefs = new Set((timeSlots || []).map((s) => String(s)));
+      if (prefs.size === 0 || prefs.has('Bin flexibel')) return true;
+      const wantMorning = Array.from(prefs).some((s) => s.toLowerCase().includes('morg'));
+      const wantAfternoon = Array.from(prefs).some((s) => s.toLowerCase().includes('nachmitt'));
+      const wantEvening = Array.from(prefs).some((s) => s.toLowerCase().includes('abend'));
+      const wantWeekend = Array.from(prefs).some((s) => s.toLowerCase().includes('wochen'));
+      for (const a of availability) {
+        const h = parseInt(a.time_label.slice(0, 2), 10);
+        const d = new Date(a.date_iso + 'T00:00:00');
+        const dow = getBerlinDayIndex(d);
+        const isMorning = h >= 8 && h < 12;
+        const isAfternoon = h >= 12 && h < 17;
+        const isEvening = h >= 17 && h < 21;
+        const isWeekend = dow === 0 || dow === 6;
+        if ((wantMorning && isMorning) || (wantAfternoon && isAfternoon) || (wantEvening && isEvening) || (wantWeekend && isWeekend)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // Count intake slots within day windows for Platform Score
+    function countSlotsInDays(availability: { date_iso: string }[], days: number): number {
+      const now = new Date();
+      const cutoff = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      return availability.filter(a => new Date(a.date_iso) <= cutoff).length;
+    }
+
+    // Rank therapists using new algorithm (see /docs/therapist-matching-algorithm-spec.md)
     const scored = therapistRows.map((t) => {
       const tRow: TherapistRowForMatch = {
         id: t.id,
@@ -188,42 +227,31 @@ export async function GET(req: Request) {
         city: t.city || undefined,
         session_preferences: Array.isArray(t.session_preferences) ? t.session_preferences : (Array.isArray(t.metadata?.session_preferences) ? t.metadata?.session_preferences : []),
         modalities: Array.isArray(t.modalities) ? t.modalities : [],
+        schwerpunkte: Array.isArray(t.schwerpunkte) ? t.schwerpunkte : [],
+        accepting_new: t.accepting_new,
+        photo_url: t.photo_url,
+        metadata: t.metadata as TherapistRowForMatch['metadata'],
       };
+      
       const mm = computeMismatches(patientMeta, tRow);
-      // Get pre-computed availability from shared utility
       const availability = availabilityMap.get(t.id) || [];
-
-      function slotMatchesPreferences(): boolean {
-        const prefs = new Set((timeSlots || []).map((s) => String(s)));
-        if (prefs.size === 0 || prefs.has('Bin flexibel')) return true;
-        const wantMorning = Array.from(prefs).some((s) => s.toLowerCase().includes('morg'));
-        const wantAfternoon = Array.from(prefs).some((s) => s.toLowerCase().includes('nachmitt'));
-        const wantEvening = Array.from(prefs).some((s) => s.toLowerCase().includes('abend'));
-        const wantWeekend = Array.from(prefs).some((s) => s.toLowerCase().includes('wochen'));
-        for (const a of availability) {
-          const h = parseInt(a.time_label.slice(0, 2), 10);
-          const d = new Date(a.date_iso + 'T00:00:00');
-          const dow = getBerlinDayIndex(d);
-          const isMorning = h >= 8 && h < 12;
-          const isAfternoon = h >= 12 && h < 17;
-          const isEvening = h >= 17 && h < 21;
-          const isWeekend = dow === 0 || dow === 6;
-          if ((wantMorning && isMorning) || (wantAfternoon && isAfternoon) || (wantEvening && isEvening) || (wantWeekend && isWeekend)) {
-            return true;
-          }
-        }
-        return false;
-      }
-      const timeOk = slotMatchesPreferences();
-      const isPerfect = mm.isPerfect && timeOk;
-      return { t, mm, availability, isPerfect } as const;
+      const timeOk = slotMatchesPreferences(availability);
+      
+      // Calculate scores per spec
+      const intakeSlots7Days = countSlotsInDays(availability, 7);
+      const intakeSlots14Days = countSlotsInDays(availability, 14);
+      const platformScore = calculatePlatformScore(tRow, intakeSlots7Days, intakeSlots14Days);
+      const matchScore = calculateMatchScore(tRow, patientMeta, timeOk);
+      const totalScore = calculateTotalScore(matchScore, platformScore);
+      
+      // "Perfect" = high total score or no mismatches
+      const isPerfect = totalScore >= 120 || mm.reasons.length === 0;
+      
+      return { t, mm, availability, isPerfect, totalScore, platformScore, matchScore } as const;
     });
 
-    // Sort: perfect matches first, then by fewest mismatch reasons
-    scored.sort((a, b) => {
-      if (a.isPerfect !== b.isPerfect) return a.isPerfect ? -1 : 1;
-      return a.mm.reasons.length - b.mm.reasons.length;
-    });
+    // Sort by totalScore descending (per spec: Match × 1.5 + Platform)
+    scored.sort((a, b) => b.totalScore - a.totalScore);
 
     // Build response list and include per-therapist is_perfect
     const list = scored.map(({ t, availability, isPerfect }) => ({

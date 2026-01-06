@@ -13,7 +13,7 @@
 // DEBUG: Module load check
 console.warn('[useCalBooking] MODULE LOADED - EARTH-256');
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { CalNormalizedSlot, CalBookingKind } from '@/contracts/cal';
 import { buildCalBookingUrl } from '@/lib/cal/booking-url';
 import { getAttribution } from '@/lib/attribution';
@@ -26,7 +26,10 @@ interface SessionData {
   patient_id?: string;
 }
 
-type BookingStep = 'slots' | 'verify' | 'code';
+type BookingStep = 'slots' | 'verify' | 'code' | 'fallback';
+
+// EARTH-262: Timeout configuration
+const SLOTS_FETCH_TIMEOUT_MS = 5000;
 
 interface UseCalBookingOptions {
   therapistId: string;
@@ -40,6 +43,7 @@ export interface CalBookingState {
   slots: CalNormalizedSlot[];
   slotsLoading: boolean;
   slotsError: string | null;
+  slotsUnavailable: boolean; // EARTH-262: Cal.com is unreachable
   selectedSlot: CalNormalizedSlot | null;
   
   // Session state
@@ -56,6 +60,9 @@ export interface CalBookingState {
   verificationCode: string;
   verifyLoading: boolean;
   verifyError: string | null;
+  
+  // EARTH-262: Retry state
+  bookingRetryCount: number;
 }
 
 export interface CalBookingActions {
@@ -65,6 +72,7 @@ export interface CalBookingActions {
   // Step navigation
   proceedToVerify: () => void;
   backToSlots: () => void;
+  goToFallback: () => void; // EARTH-262: Switch to contact fallback
   
   // Verification form
   setName: (name: string) => void;
@@ -79,6 +87,9 @@ export interface CalBookingActions {
   
   // Main booking handler (checks session, redirects or shows verify)
   handleBooking: () => void;
+  
+  // EARTH-262: Retry slots fetch
+  retrySlotsFetch: () => void;
   
   // Reset state
   reset: () => void;
@@ -113,6 +124,11 @@ export function useCalBooking({
   const [verificationCode, setVerificationCode] = useState('');
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
+  
+  // EARTH-262: Unavailable and retry state
+  const [slotsUnavailable, setSlotsUnavailable] = useState(false);
+  const [bookingRetryCount, setBookingRetryCount] = useState(0);
+  const [slotsFetchTrigger, setSlotsFetchTrigger] = useState(0); // Trigger re-fetch
 
   // Check session on mount
   useEffect(() => {
@@ -135,18 +151,27 @@ export function useCalBooking({
     checkSession();
   }, [enabled]);
 
-  // Fetch Cal slots
+  // Fetch Cal slots with EARTH-262 timeout handling
   useEffect(() => {
-    console.warn('[useCalBooking] Slot fetch effect:', { enabled, therapistId, calUsername });
+    console.warn('[useCalBooking] Slot fetch effect:', { enabled, therapistId, calUsername, slotsFetchTrigger });
     if (!enabled || !therapistId) {
       console.warn('[useCalBooking] Skipping slot fetch - not enabled or no therapistId');
       return;
     }
 
+    const abortController = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout>;
+
     async function fetchSlots() {
       console.warn('[useCalBooking] Starting slot fetch...');
       setSlotsLoading(true);
       setSlotsError(null);
+      setSlotsUnavailable(false);
+
+      // EARTH-262: Set up timeout
+      timeoutId = setTimeout(() => {
+        abortController.abort();
+      }, SLOTS_FETCH_TIMEOUT_MS);
 
       try {
         const today = new Date();
@@ -162,17 +187,57 @@ export function useCalBooking({
         url.searchParams.set('end', end7);
 
         console.warn('[useCalBooking] Fetching:', url.toString());
-        const res = await fetch(url.toString());
-        const json = await res.json();
-        console.warn('[useCalBooking] Response:', { status: res.status, error: json.error, slotCount: json.data?.slots?.length });
+        const res = await fetch(url.toString(), { signal: abortController.signal });
+        clearTimeout(timeoutId);
+        
+        // EARTH-262: Handle non-OK responses as unavailable
+        if (!res.ok) {
+          console.warn('[useCalBooking] Non-OK response:', res.status);
+          setSlotsUnavailable(true);
+          setSlotsError('Terminkalender vorübergehend nicht verfügbar');
+          return;
+        }
+        
+        let json: unknown;
+        try {
+          json = await res.json();
+        } catch {
+          // EARTH-262: Malformed response
+          console.error('[useCalBooking] Malformed JSON response');
+          setSlotsUnavailable(true);
+          setSlotsError('Terminkalender vorübergehend nicht verfügbar');
+          return;
+        }
+        
+        // EARTH-262: Validate response structure
+        if (!json || typeof json !== 'object') {
+          console.error('[useCalBooking] Invalid response structure');
+          setSlotsUnavailable(true);
+          setSlotsError('Terminkalender vorübergehend nicht verfügbar');
+          return;
+        }
+        
+        const typedJson = json as { error?: string; data?: { slots?: unknown[] } };
+        console.warn('[useCalBooking] Response:', { status: res.status, error: typedJson.error, slotCount: typedJson.data?.slots?.length });
 
-        if (json.error) {
-          console.warn('[useCalBooking] API error:', json.error);
-          setSlotsError(json.error);
+        if (typedJson.error) {
+          console.warn('[useCalBooking] API error:', typedJson.error);
+          // EARTH-262: Treat backend errors as unavailable for graceful degradation
+          setSlotsUnavailable(true);
+          setSlotsError('Terminkalender vorübergehend nicht verfügbar');
           return;
         }
 
-        let fetchedSlots: CalNormalizedSlot[] = json.data?.slots || [];
+        // EARTH-262: Validate slots array
+        const rawSlots = typedJson.data?.slots;
+        if (!Array.isArray(rawSlots)) {
+          console.error('[useCalBooking] Slots is not an array:', typeof rawSlots);
+          setSlotsUnavailable(true);
+          setSlotsError('Terminkalender vorübergehend nicht verfügbar');
+          return;
+        }
+
+        let fetchedSlots: CalNormalizedSlot[] = rawSlots as CalNormalizedSlot[];
 
         // If sparse, extend to 14 days
         if (fetchedSlots.length < 3) {
@@ -181,14 +246,21 @@ export function useCalBooking({
             .split('T')[0];
           url.searchParams.set('end', end14);
           
-          const res14 = await fetch(url.toString());
-          const json14 = await res14.json();
-          if (!json14.error && json14.data?.slots) {
-            fetchedSlots = json14.data.slots;
+          try {
+            const res14 = await fetch(url.toString(), { signal: abortController.signal });
+            if (res14.ok) {
+              const json14 = await res14.json() as { error?: string; data?: { slots?: CalNormalizedSlot[] } };
+              if (!json14.error && Array.isArray(json14.data?.slots)) {
+                fetchedSlots = json14.data.slots;
+              }
+            }
+          } catch {
+            // EARTH-262: Ignore extended fetch errors, use what we have
           }
         }
 
         setSlots(fetchedSlots);
+        setSlotsUnavailable(false);
 
         // Track fetch
         try {
@@ -203,15 +275,46 @@ export function useCalBooking({
           );
         } catch {}
       } catch (e) {
-        console.error('[useCalBooking] Failed to fetch slots:', e);
-        setSlotsError('Verfügbarkeit konnte nicht geladen werden');
+        clearTimeout(timeoutId);
+        const isAbort = e instanceof Error && e.name === 'AbortError';
+        console.error('[useCalBooking] Failed to fetch slots:', isAbort ? 'timeout' : e);
+        
+        // EARTH-262: Mark as unavailable on timeout or network error
+        setSlotsUnavailable(true);
+        setSlotsError(isAbort 
+          ? 'Terminkalender vorübergehend nicht verfügbar' 
+          : 'Terminkalender vorübergehend nicht verfügbar'
+        );
+        
+        // Track error
+        try {
+          const attrs = getAttribution();
+          navigator.sendBeacon?.(
+            '/api/events',
+            new Blob([JSON.stringify({
+              type: 'cal_slots_fetch_failed',
+              ...attrs,
+              properties: { 
+                therapist_id: therapistId, 
+                kind: bookingKind, 
+                error_type: isAbort ? 'timeout' : 'network',
+                error_message: e instanceof Error ? e.message : 'unknown',
+              },
+            })], { type: 'application/json' })
+          );
+        } catch {}
       } finally {
         setSlotsLoading(false);
       }
     }
 
     fetchSlots();
-  }, [enabled, therapistId, bookingKind]);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      abortController.abort();
+    };
+  }, [enabled, therapistId, bookingKind, slotsFetchTrigger]);
 
   // Redirect to Cal with prefill
   const redirectToCal = useCallback((prefillName?: string, prefillEmail?: string, patientId?: string) => {
@@ -351,6 +454,16 @@ export function useCalBooking({
     }
   }, [verificationCode, contactMethod, contactValue, name, redirectToCal]);
 
+  // EARTH-262: Retry slots fetch
+  const retrySlotsFetch = useCallback(() => {
+    setSlotsFetchTrigger((t) => t + 1);
+  }, []);
+
+  // EARTH-262: Go to fallback (contact form)
+  const goToFallback = useCallback(() => {
+    setStep('fallback');
+  }, []);
+
   // Reset state
   const reset = useCallback(() => {
     setSelectedSlot(null);
@@ -359,12 +472,15 @@ export function useCalBooking({
     setContactValue('');
     setVerificationCode('');
     setVerifyError(null);
+    setSlotsUnavailable(false);
+    setBookingRetryCount(0);
   }, []);
 
   const state: CalBookingState = {
     slots,
     slotsLoading,
     slotsError,
+    slotsUnavailable,
     selectedSlot,
     session,
     sessionLoading,
@@ -375,6 +491,7 @@ export function useCalBooking({
     verificationCode,
     verifyLoading,
     verifyError,
+    bookingRetryCount,
   };
 
   const actions: CalBookingActions = {
@@ -382,6 +499,7 @@ export function useCalBooking({
     clearSlot: () => setSelectedSlot(null),
     proceedToVerify: () => setStep('verify'),
     backToSlots: () => { setStep('slots'); setVerifyError(null); },
+    goToFallback,
     setName,
     setContactMethod,
     setContactValue,
@@ -390,6 +508,7 @@ export function useCalBooking({
     verifyCode,
     redirectToCal,
     handleBooking,
+    retrySlotsFetch,
     reset,
   };
 
