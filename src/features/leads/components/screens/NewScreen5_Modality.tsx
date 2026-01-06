@@ -156,7 +156,7 @@ export default function NewScreen5_Modality({
 
             {/* Optional explanations below */}
             <div className="mt-4 sm:mt-6 pt-4 sm:pt-5 border-t border-gray-200/60">
-              <TherapyModalityExplanations />
+              <TherapyModalityExplanations compact />
             </div>
           </>
         )}

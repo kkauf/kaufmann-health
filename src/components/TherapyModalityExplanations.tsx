@@ -3,10 +3,15 @@ import React from 'react';
 import { ExternalLink, HeartHandshake, Shell, Wind, Target, HandHelping } from 'lucide-react';
 import CtaLink from '@/components/CtaLink';
 
-export default function TherapyModalityExplanations() {
+interface TherapyModalityExplanationsProps {
+  /** Compact mode for use within narrow form containers */
+  compact?: boolean;
+}
+
+export default function TherapyModalityExplanations({ compact = false }: TherapyModalityExplanationsProps) {
   return (
-    <section aria-labelledby="modalities" className="mt-14 sm:mt-20 lg:mt-24">
-      <div className="relative overflow-hidden rounded-2xl border border-gray-200/60 bg-white shadow-md p-8 sm:p-10">
+    <section aria-labelledby="modalities" className={compact ? 'mt-6' : 'mt-14 sm:mt-20 lg:mt-24'}>
+      <div className={`relative overflow-hidden rounded-2xl border border-gray-200/60 bg-white shadow-md ${compact ? 'p-5 sm:p-6' : 'p-8 sm:p-10'}`}>
         {/* Subtle gradient overlay for depth */}
         <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
         
@@ -34,7 +39,7 @@ export default function TherapyModalityExplanations() {
           </CtaLink>
         </div>
 
-        <div className="mt-8 sm:mt-10 grid grid-cols-1 gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-2 lg:grid-cols-2">
+        <div className={`mt-8 sm:mt-10 grid grid-cols-1 gap-4 ${compact ? '' : 'sm:gap-6 lg:gap-8 sm:grid-cols-2'}`}>
           <div className="relative rounded-xl border border-teal-200/60 bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 p-5 sm:p-6 h-full flex flex-col">
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white to-teal-50/30 rounded-xl" />
             <div className="flex items-start gap-4">
