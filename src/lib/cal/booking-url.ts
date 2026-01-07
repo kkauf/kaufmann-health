@@ -52,16 +52,15 @@ export function buildCalBookingUrl(options: CalBookingUrlOptions): string {
 
   // Build base URL - if eventType specified, append it as a path segment
   // Cal.com event type slugs: intro, full-session
-  // Cal.com uses path-based dates: /username/event-slug/YYYY-MM-DD
   const eventSlug = eventType === 'intro' ? 'intro' : eventType === 'full_session' ? 'full-session' : null;
-  let basePath = eventSlug ? `/${calUsername}/${eventSlug}` : `/${calUsername}`;
-  
-  // Add date to path if provided (Cal.com format: /username/event/YYYY-MM-DD)
-  if (date) {
-    basePath += `/${date}`;
-  }
+  const basePath = eventSlug ? `/${calUsername}/${eventSlug}` : `/${calUsername}`;
   
   const url = new URL(basePath, CAL_ORIGIN);
+  
+  // Add date as query param (Cal.com self-hosted uses ?date=YYYY-MM-DD)
+  if (date) {
+    url.searchParams.set('date', date);
+  }
 
   // Add metadata as query params (Cal.com metadata[key]=value format)
   if (metadata) {

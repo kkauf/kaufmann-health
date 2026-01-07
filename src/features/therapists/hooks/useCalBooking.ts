@@ -10,9 +10,6 @@
  * Used by TherapistDetailModal for in-modal Cal booking.
  */
 
-// DEBUG: Module load check
-console.warn('[useCalBooking] MODULE LOADED - EARTH-256');
-
 import { useState, useEffect, useCallback } from 'react';
 import type { CalNormalizedSlot, CalBookingKind } from '@/contracts/cal';
 import { buildCalBookingUrl } from '@/lib/cal/booking-url';
@@ -101,9 +98,6 @@ export function useCalBooking({
   bookingKind,
   enabled = true,
 }: UseCalBookingOptions): [CalBookingState, CalBookingActions] {
-  // DEBUG: Log hook initialization
-  console.warn('[useCalBooking] Init:', { therapistId, calUsername, bookingKind, enabled });
-
   // Slot state
   const [slots, setSlots] = useState<CalNormalizedSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -153,9 +147,7 @@ export function useCalBooking({
 
   // Fetch Cal slots with EARTH-262 timeout handling
   useEffect(() => {
-    console.warn('[useCalBooking] Slot fetch effect:', { enabled, therapistId, calUsername, slotsFetchTrigger });
     if (!enabled || !therapistId) {
-      console.warn('[useCalBooking] Skipping slot fetch - not enabled or no therapistId');
       return;
     }
 
@@ -163,7 +155,6 @@ export function useCalBooking({
     let timeoutId: ReturnType<typeof setTimeout>;
 
     async function fetchSlots() {
-      console.warn('[useCalBooking] Starting slot fetch...');
       setSlotsLoading(true);
       setSlotsError(null);
       setSlotsUnavailable(false);
@@ -186,13 +177,11 @@ export function useCalBooking({
         url.searchParams.set('start', start);
         url.searchParams.set('end', end7);
 
-        console.warn('[useCalBooking] Fetching:', url.toString());
         const res = await fetch(url.toString(), { signal: abortController.signal });
         clearTimeout(timeoutId);
         
         // EARTH-262: Handle non-OK responses as unavailable
         if (!res.ok) {
-          console.warn('[useCalBooking] Non-OK response:', res.status);
           setSlotsUnavailable(true);
           setSlotsError('Terminkalender vorübergehend nicht verfügbar');
           return;
@@ -218,10 +207,8 @@ export function useCalBooking({
         }
         
         const typedJson = json as { error?: string; data?: { slots?: unknown[] } };
-        console.warn('[useCalBooking] Response:', { status: res.status, error: typedJson.error, slotCount: typedJson.data?.slots?.length });
 
         if (typedJson.error) {
-          console.warn('[useCalBooking] API error:', typedJson.error);
           // EARTH-262: Treat backend errors as unavailable for graceful degradation
           setSlotsUnavailable(true);
           setSlotsError('Terminkalender vorübergehend nicht verfügbar');

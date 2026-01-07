@@ -1,8 +1,5 @@
 'use client';
 
-// DEBUG: Module load check - remove after debugging
-console.warn('[TherapistDetailModal] MODULE LOADED - EARTH-256');
-
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import type React from 'react';
 import {
@@ -429,10 +426,6 @@ export function TherapistDetailModal({
           }
         }}
       >
-        {/* DEBUG: Visual confirmation that EARTH-256 code is deployed */}
-        <div className="bg-red-500 text-white p-2 text-xs font-mono mb-2">
-          EARTH-256 DEBUG: isCalEnabled={String(isCalEnabled)}, cal_username={therapist.cal_username || 'null'}, cal_enabled={String(therapist.cal_enabled)}
-        </div>
         <DialogHeader>
           <DialogTitle className="sr-only">
             Profil von {therapist.first_name} {therapist.last_name}
