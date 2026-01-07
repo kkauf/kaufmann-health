@@ -27,10 +27,18 @@ interface VerifyCodeRequest {
 }
 
 function mapVerifyCodeContractError(message: string): string {
-  if (message.startsWith('contact') || message.startsWith('contact_type') || message.startsWith('code')) {
-    return 'Missing required fields';
+  // In development, show the actual Zod error for debugging
+  if (process.env.NODE_ENV !== 'production') {
+    return message;
   }
-  return 'Missing required fields';
+  // In production, show user-friendly message
+  if (message.includes('code')) {
+    return 'Code fehlt oder ungültig';
+  }
+  if (message.includes('contact')) {
+    return 'Kontaktinformationen fehlen';
+  }
+  return 'Ungültige Anfrage';
 }
 
 export async function POST(req: NextRequest) {

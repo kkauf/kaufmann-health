@@ -46,10 +46,15 @@ interface SendCodeRequest {
 }
 
 function mapSendCodeContractError(message: string): string {
-  if (message.startsWith('contact') || message.startsWith('contact_type')) {
-    return 'Missing contact or contact_type';
+  // In development, show the actual Zod error for debugging
+  if (process.env.NODE_ENV !== 'production') {
+    return message;
   }
-  return 'Missing contact or contact_type';
+  // In production, show user-friendly German message
+  if (message.includes('contact_type') || message.includes('contact')) {
+    return 'Kontaktinformationen fehlen';
+  }
+  return 'Ungültige Anfrage';
 }
 
 export async function POST(req: NextRequest) {

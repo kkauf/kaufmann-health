@@ -954,7 +954,8 @@ export function TherapistDetailModal({
                 {!calState.slotsLoading && !calState.slotsError && calSortedDays.length > 0 && (
                   <>
                     {/* Day chips */}
-                    <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+                    <div className="overflow-x-auto scrollbar-hide -mx-4">
+                      <div className="flex gap-3 px-4 py-4">
                       {calSortedDays.map((day) => {
                         const isSelected = calState.selectedSlot?.date_iso === day;
                         const slotCount = calSlotsByDay.get(day)?.length || 0;
@@ -970,9 +971,9 @@ export function TherapistDetailModal({
                               }
                             }}
                             className={cn(
-                              'shrink-0 px-3 py-2 rounded-lg border text-center transition-all',
+                              'shrink-0 px-3 py-2 rounded-lg border-2 text-center transition-all',
                               isSelected
-                                ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-200'
+                                ? 'bg-emerald-50 border-emerald-400 shadow-lg shadow-emerald-200/50'
                                 : 'bg-white border-gray-200 hover:border-gray-300'
                             )}
                           >
@@ -985,6 +986,7 @@ export function TherapistDetailModal({
                           </button>
                         );
                       })}
+                      </div>
                     </div>
 
                     {/* Time slots for selected day */}
