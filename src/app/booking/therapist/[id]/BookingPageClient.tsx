@@ -378,8 +378,8 @@ export function BookingPageClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
-          contact_method: contactMethod,
-          contact_value: contactValue.trim(),
+          contact: contactValue.trim(),
+          contact_type: contactMethod,
           draft_booking: selectedSlot ? {
             therapist_id: therapist.id,
             date_iso: selectedSlot.date_iso,
@@ -420,8 +420,8 @@ export function BookingPageClient({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contact_method: contactMethod,
-          contact_value: contactValue.trim(),
+          contact: contactValue.trim(),
+          contact_type: contactMethod,
           code: verificationCode.trim(),
         }),
       });
@@ -613,23 +613,6 @@ export function BookingPageClient({
               {verifyError && (
                 <p className="text-sm text-red-600">{verifyError}</p>
               )}
-
-              <div className="flex gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setStep('slots')}
-                  className="flex-1"
-                >
-                  Zurück
-                </Button>
-                <Button
-                  onClick={handleSendCode}
-                  disabled={verifyLoading || !name.trim() || !contactValue.trim()}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-                >
-                  {verifyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Code senden'}
-                </Button>
-              </div>
             </div>
           </div>
         )}
@@ -660,27 +643,6 @@ export function BookingPageClient({
               {verifyError && (
                 <p className="text-sm text-red-600">{verifyError}</p>
               )}
-
-              <div className="flex gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setStep('verify');
-                    setVerificationCode('');
-                    setVerifyError(null);
-                  }}
-                  className="flex-1"
-                >
-                  Zurück
-                </Button>
-                <Button
-                  onClick={handleVerifyCode}
-                  disabled={verifyLoading || !verificationCode.trim()}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-                >
-                  {verifyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Bestätigen'}
-                </Button>
-              </div>
             </div>
           </div>
         )}
@@ -735,7 +697,7 @@ export function BookingPageClient({
           {!loading && !error && sortedDays.length > 0 && (
             <>
               {/* Day selector - horizontal scroll */}
-              <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1 scrollbar-hide">
+              <div className="flex gap-2 overflow-x-auto pb-3 -mx-2 px-2 scrollbar-hide">
                 {sortedDays.map((day) => {
                   const isSelected = selectedDay === day;
                   const slotCount = slotsByDay.get(day)?.length || 0;
@@ -818,21 +780,63 @@ export function BookingPageClient({
         )}
       </main>
 
-      {/* Sticky footer with CTA - only show in slots step */}
-      {step === 'slots' && selectedSlot && (
+      {/* Sticky footer with CTA */}
+      {(step === 'slots' && selectedSlot) || step === 'verify' || step === 'code' ? (
         <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 shadow-lg">
-          <div className="max-w-2xl mx-auto">
-            <Button
-              onClick={handleBooking}
-              disabled={sessionLoading}
-              className="w-full h-14 text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg"
-            >
-              <Calendar className="h-5 w-5 mr-2" />
-              Termin bestätigen
-            </Button>
+          <div className="max-w-2xl mx-auto flex gap-3">
+            {step === 'slots' && selectedSlot && (
+              <Button
+                onClick={handleBooking}
+                disabled={sessionLoading}
+                className="w-full h-14 text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg"
+              >
+                <Calendar className="h-5 w-5 mr-2" />
+                Termin bestätigen
+              </Button>
+            )}
+            {step === 'verify' && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setStep('slots')}
+                  className="flex-1 h-14 text-base"
+                >
+                  Zurück
+                </Button>
+                <Button
+                  onClick={handleSendCode}
+                  disabled={verifyLoading || !name.trim() || !contactValue.trim()}
+                  className="flex-1 h-14 text-base font-semibold bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {verifyLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Code senden'}
+                </Button>
+              </>
+            )}
+            {step === 'code' && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setStep('verify');
+                    setVerificationCode('');
+                    setVerifyError(null);
+                  }}
+                  className="flex-1 h-14 text-base"
+                >
+                  Zurück
+                </Button>
+                <Button
+                  onClick={handleVerifyCode}
+                  disabled={verifyLoading || !verificationCode.trim()}
+                  className="flex-1 h-14 text-base font-semibold bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {verifyLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Bestätigen'}
+                </Button>
+              </>
+            )}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
