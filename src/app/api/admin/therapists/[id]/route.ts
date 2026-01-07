@@ -320,6 +320,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
           update.cal_user_id = calResult.cal_user_id;
           update.cal_username = calResult.cal_username;
           update.cal_enabled = true;
+          if (calResult.cal_intro_event_type_id) {
+            update.cal_intro_event_type_id = calResult.cal_intro_event_type_id;
+          }
+          if (calResult.cal_full_session_event_type_id) {
+            update.cal_full_session_event_type_id = calResult.cal_full_session_event_type_id;
+          }
 
           void track({
             type: 'cal_user_provisioned',

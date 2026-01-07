@@ -8,11 +8,14 @@
  * - users table (profile)
  * - UserPassword table (bcrypt hash)
  * - Schedule + Availability (cloned from template user)
- * - EventType (cloned from template user)
  *
- * Template-based cloning: We maintain a "golden template" user whose event types
- * and schedules are copied for each new therapist. This avoids reverse-engineering
- * every required column and handles Cal schema drift gracefully.
+ * NOTE: Event types are NOT cloned because SQL-created event types don't work
+ * on Cal.com booking pages (404 error). Therapists must create their own event
+ * types through the Cal.com UI after logging in.
+ *
+ * Template-based cloning: We clone schedules/availability from a "golden template"
+ * user. This avoids reverse-engineering every required column and handles
+ * Cal schema drift gracefully.
  */
 
 import { Pool } from 'pg';
@@ -260,9 +263,11 @@ function processLocations(locations: unknown, practiceAddress?: string): string 
  * 1. User record in Cal.com users table
  * 2. Password hash in UserPassword table
  * 3. Schedules + Availability (cloned from template user)
- * 4. Event Types (cloned from template user)
  *
- * Returns cal_user_id, cal_username, plaintext password, and event type IDs.
+ * NOTE: Event types are NOT created - therapists must create them via Cal.com UI
+ * because SQL-created event types don't work on booking pages (Cal.com limitation).
+ *
+ * Returns cal_user_id, cal_username, and plaintext password.
  */
 export async function provisionCalUser(
   input: ProvisionCalUserInput
@@ -372,19 +377,38 @@ export async function provisionCalUser(
       );
     }
 
-    // Clone event types from template user
-    const { introId, fullSessionId } = await cloneEventTypes(
-      client,
-      CAL_TEMPLATE_USER_ID,
-      userId,
-      scheduleMap,
-      practiceAddress
+    // Create per-user webhook for this therapist
+    // This ensures only KH-managed therapists' bookings trigger our webhook
+    const webhookUrl = process.env.KH_CAL_WEBHOOK_URL || 'https://www.kaufmann-health.de/api/public/cal/webhook';
+    const webhookSecret = process.env.CAL_WEBHOOK_SECRET || '';
+    
+    await client.query(
+      `INSERT INTO "Webhook" (id, "userId", "subscriberUrl", active, "eventTriggers", secret, "createdAt", time, "timeUnit", version)
+       VALUES (gen_random_uuid(), $1, $2, true, 
+         '{BOOKING_CREATED,BOOKING_CANCELLED,BOOKING_RESCHEDULED}',
+         $3, NOW(), 5, 'minute', '2021-10-20')
+       ON CONFLICT DO NOTHING`,
+      [userId, webhookUrl, webhookSecret]
     );
 
-    // Note: We don't create per-user webhooks because there's an app-level
-    // webhook that catches all bookings (userId=null in Webhook table)
-
     await client.query('COMMIT');
+
+    // Create event types via Playwright UI automation
+    // SQL-created event types don't work on Cal.com booking pages (404 error)
+    let introId: number | null = null;
+    let fullSessionId: number | null = null;
+    
+    try {
+      const { createEventTypesViaUI } = await import('./createEventTypes');
+      const result = await createEventTypesViaUI(email, password, username);
+      introId = result.introId;
+      fullSessionId = result.fullSessionId;
+      if (!result.success) {
+        console.warn('Event type creation via UI had issues:', result.error);
+      }
+    } catch (err) {
+      console.warn('Could not create event types via UI (Playwright may not be available):', err);
+    }
 
     return {
       cal_user_id: userId,

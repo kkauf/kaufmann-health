@@ -1106,7 +1106,7 @@ export function TherapistDetailModal({
               Termin buchen
             </Button>
           </div>
-        ) : viewMode === 'cal-booking' ? (
+        ) : viewMode === 'cal-booking' && calState.step === 'slots' ? (
           <div className="sticky bottom-0 flex gap-3 pt-4">
             <Button
               variant="outline"

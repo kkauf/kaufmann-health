@@ -900,14 +900,50 @@ export default function AdminTherapistsPage() {
                         />
                         <span className="text-sm">Cal.com Booking aktiviert</span>
                       </label>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={updating}
-                        onClick={saveCalSettings}
-                      >
-                        Cal.com Einstellungen speichern
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={updating}
+                          onClick={saveCalSettings}
+                        >
+                          Cal.com Einstellungen speichern
+                        </Button>
+                        {detail.cal_user_id && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={updating}
+                            onClick={async () => {
+                              if (!detail?.id) return;
+                              try {
+                                setUpdating(true);
+                                setMessage(null);
+                                const res = await fetch(`/api/admin/therapists/${detail.id}/fix-cal-events`, {
+                                  method: 'POST',
+                                  credentials: 'include',
+                                });
+                                const json = await res.json();
+                                if (!res.ok) throw new Error(json?.error || 'Fix fehlgeschlagen');
+                                if (json.data?.ok) {
+                                  setMessage(`Event-Typen erstellt: intro=${json.data.intro_id}, full-session=${json.data.full_session_id}`);
+                                } else {
+                                  setMessage(json.data?.message || json.data?.error || 'Teilweise erfolgreich');
+                                }
+                                await openDetail(detail.id);
+                              } catch (e) {
+                                const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
+                                setMessage(msg);
+                              } finally {
+                                setUpdating(false);
+                              }
+                            }}
+                            className="text-amber-700 border-amber-300 hover:bg-amber-50"
+                          >
+                            🔧 Event-Typen reparieren
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
 

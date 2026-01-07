@@ -38,7 +38,7 @@ export function renderTherapistCalOnboarding(params: {
     <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; padding:20px 24px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); margin: 0 0 24px; box-shadow: 0 2px 4px 0 rgba(100, 116, 139, 0.05);">
       <h3 style="margin:0 0 16px; color:#0f172a !important; font-size:18px; font-weight:700;">📋 Wichtig: So richtest du deinen Kalender ein</h3>
       <ol style="margin:0 0 0 20px; color:#475569 !important; font-size:15px; line-height:1.65; padding-left:0;">
-        <li style="margin:8px 0;"><strong style="color:#0f172a !important;">Verfügbarkeit anpassen:</strong> Gehe nach dem Login zu "Availability" und stelle deine tatsächlichen freien Zeiten ein.</li>
+        <li style="margin:8px 0;"><strong style="color:#0f172a !important;">Verfügbarkeit anpassen:</strong> Gehe nach dem Login zu "Verfügbarkeit" und stelle deine tatsächlichen freien Zeiten ein.</li>
         <li style="margin:8px 0;"><strong style="color:#0f172a !important;">Kalender verbinden (optional):</strong> Verbinde deinen Google/Outlook-Kalender, damit gebuchte Termine automatisch synchronisiert werden.</li>
         <li style="margin:8px 0;"><strong style="color:#0f172a !important;">Passwort ändern:</strong> Wir empfehlen, das Passwort beim ersten Login zu ändern (Einstellungen → Sicherheit).</li>
       </ol>
