@@ -379,8 +379,8 @@ export function useCalBooking({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
-          contact_method: contactMethod,
-          contact_value: contactValue.trim(),
+          contact_type: contactMethod,
+          contact: contactValue.trim(),
           draft_booking: selectedSlot ? {
             therapist_id: therapistId,
             date_iso: selectedSlot.date_iso,
@@ -419,8 +419,8 @@ export function useCalBooking({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contact_method: contactMethod,
-          contact_value: contactValue.trim(),
+          contact_type: contactMethod,
+          contact: contactValue.trim(),
           code: verificationCode.trim(),
         }),
       });
