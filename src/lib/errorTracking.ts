@@ -12,6 +12,7 @@ function shouldIgnoreUnhandledMessage(message?: string): boolean {
   if (!message) return false;
   const m = message.toLowerCase();
   if (m.includes('chunkloaderror')) return true;
+  if (m.includes("cannot read properties of undefined") && m.includes("reading 'call'")) return true;
   if (m.includes('__firefox__')) return true;
   if (m.trim() === 'uncaught') return true;
   if (m.trim() === 'script error.' || m.trim() === 'script error') return true;

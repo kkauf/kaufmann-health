@@ -1,5 +1,5 @@
 /**
- * Cal.com User Provisioning
+ * Cal.com User Provisioning (EARTH-265)
  *
  * WHY: Cal.com is treated as gated infrastructure. Users cannot self-register;
  * KH backend provisions Cal.com accounts for approved therapists.
@@ -7,19 +7,26 @@
  * HOW: Direct SQL inserts into Cal.com Postgres (Railway) for:
  * - users table (profile)
  * - UserPassword table (bcrypt hash)
- * - Webhook table (per-user webhook for booking events)
+ * - Schedule + Availability (cloned from template user)
+ * - EventType (cloned from template user)
+ *
+ * Template-based cloning: We maintain a "golden template" user whose event types
+ * and schedules are copied for each new therapist. This avoids reverse-engineering
+ * every required column and handles Cal schema drift gracefully.
  */
 
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
-import { randomBytes, randomUUID } from 'crypto';
+import { randomBytes } from 'crypto';
 
 const CAL_DATABASE_URL = process.env.CAL_DATABASE_URL;
-const CAL_WEBHOOK_SECRET = process.env.CAL_WEBHOOK_SECRET;
 const CAL_ORIGIN = process.env.NEXT_PUBLIC_CAL_ORIGIN || 'https://cal.kaufmann.health';
-const KH_WEBHOOK_URL = process.env.NEXT_PUBLIC_BASE_URL
-  ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/public/cal/webhook`
-  : 'https://www.kaufmann-health.de/api/public/cal/webhook';
+
+// Template user ID for cloning event types and schedules
+// This is the Cal.com user ID of the "golden template" (kgmkauf)
+const CAL_TEMPLATE_USER_ID = process.env.CAL_TEMPLATE_USER_ID
+  ? parseInt(process.env.CAL_TEMPLATE_USER_ID, 10)
+  : 1; // Default to user ID 1 (kgmkauf)
 
 let pool: Pool | null = null;
 
@@ -85,6 +92,8 @@ export type CalProvisionResult = {
   cal_username: string;
   cal_password: string; // plaintext, for email only
   cal_login_url: string;
+  cal_intro_event_type_id: number | null;
+  cal_full_session_event_type_id: number | null;
 };
 
 export type ProvisionCalUserInput = {
@@ -92,7 +101,157 @@ export type ProvisionCalUserInput = {
   firstName: string;
   lastName: string;
   timeZone?: string;
+  avatarUrl?: string;      // Profile photo URL from KH
+  practiceAddress?: string; // Practice address for in-person sessions
 };
+
+/**
+ * Clone schedules from template user to new user.
+ * Returns a map of old schedule ID -> new schedule ID.
+ */
+async function cloneSchedules(
+  client: import('pg').PoolClient,
+  templateUserId: number,
+  newUserId: number,
+  timeZone: string
+): Promise<Map<number, number>> {
+  const scheduleMap = new Map<number, number>();
+
+  // Get template schedules
+  const templateSchedules = await client.query(
+    `SELECT id, name FROM "Schedule" WHERE "userId" = $1`,
+    [templateUserId]
+  );
+
+  for (const schedule of templateSchedules.rows) {
+    // Create new schedule for new user
+    const newSchedule = await client.query(
+      `INSERT INTO "Schedule" ("userId", name, "timeZone")
+       VALUES ($1, $2, $3)
+       RETURNING id`,
+      [newUserId, schedule.name, timeZone]
+    );
+    const newScheduleId = newSchedule.rows[0].id;
+    scheduleMap.set(schedule.id, newScheduleId);
+
+    // Clone availability entries for this schedule
+    await client.query(
+      `INSERT INTO "Availability" ("userId", "scheduleId", days, "startTime", "endTime", date)
+       SELECT $1, $2, days, "startTime", "endTime", date
+       FROM "Availability"
+       WHERE "scheduleId" = $3`,
+      [newUserId, newScheduleId, schedule.id]
+    );
+  }
+
+  return scheduleMap;
+}
+
+/**
+ * Clone event types from template user to new user.
+ * Returns the IDs of the cloned intro and full-session event types.
+ */
+async function cloneEventTypes(
+  client: import('pg').PoolClient,
+  templateUserId: number,
+  newUserId: number,
+  scheduleMap: Map<number, number>,
+  practiceAddress?: string
+): Promise<{ introId: number | null; fullSessionId: number | null }> {
+  let introId: number | null = null;
+  let fullSessionId: number | null = null;
+
+  // Get template event types
+  const templateEventTypes = await client.query(
+    `SELECT id, slug, title, length, description, "scheduleId", hidden,
+            "successRedirectUrl", "forwardParamsSuccessRedirect", locations,
+            "minimumBookingNotice", "beforeEventBuffer", "afterEventBuffer",
+            "slotInterval", "periodType", "periodDays", "periodStartDate", "periodEndDate",
+            "requiresConfirmation", "disableGuests", "hideCalendarNotes",
+            "seatsPerTimeSlot", "seatsShowAttendees", "seatsShowAvailabilityCount",
+            "bookingLimits", "durationLimits", metadata, "bookingFields"
+     FROM "EventType"
+     WHERE "userId" = $1`,
+    [templateUserId]
+  );
+
+  for (const et of templateEventTypes.rows) {
+    // Map old scheduleId to new scheduleId
+    const newScheduleId = et.scheduleId ? scheduleMap.get(et.scheduleId) || null : null;
+
+    // Insert cloned event type
+    // Note: JSON columns need proper handling
+    const newEventType = await client.query(
+      `INSERT INTO "EventType" (
+        "userId", slug, title, length, description, "scheduleId", hidden,
+        "successRedirectUrl", "forwardParamsSuccessRedirect", locations,
+        "minimumBookingNotice", "beforeEventBuffer", "afterEventBuffer",
+        "slotInterval", "periodType", "periodDays", "periodStartDate", "periodEndDate",
+        "requiresConfirmation", "disableGuests", "hideCalendarNotes",
+        "seatsPerTimeSlot", "seatsShowAttendees", "seatsShowAvailabilityCount",
+        "bookingLimits", "durationLimits", metadata, "bookingFields"
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7,
+        $8, $9, $10::jsonb,
+        $11, $12, $13,
+        $14, $15, $16, $17, $18,
+        $19, $20, $21,
+        $22, $23, $24,
+        $25::jsonb, $26::jsonb, $27::jsonb, $28::jsonb
+      ) RETURNING id`,
+      [
+        newUserId, et.slug, et.title, et.length, et.description, newScheduleId, et.hidden,
+        et.successRedirectUrl, et.forwardParamsSuccessRedirect, 
+        processLocations(et.locations, practiceAddress),
+        et.minimumBookingNotice, et.beforeEventBuffer, et.afterEventBuffer,
+        et.slotInterval, et.periodType, et.periodDays, et.periodStartDate, et.periodEndDate,
+        et.requiresConfirmation, et.disableGuests, et.hideCalendarNotes,
+        et.seatsPerTimeSlot, et.seatsShowAttendees, et.seatsShowAvailabilityCount,
+        typeof et.bookingLimits === 'string' ? et.bookingLimits : JSON.stringify(et.bookingLimits),
+        typeof et.durationLimits === 'string' ? et.durationLimits : JSON.stringify(et.durationLimits),
+        typeof et.metadata === 'string' ? et.metadata : JSON.stringify(et.metadata),
+        typeof et.bookingFields === 'string' ? et.bookingFields : JSON.stringify(et.bookingFields),
+      ]
+    );
+
+    const newId = newEventType.rows[0].id;
+    if (et.slug === 'intro') introId = newId;
+    if (et.slug === 'full-session') fullSessionId = newId;
+  }
+
+  return { introId, fullSessionId };
+}
+
+/**
+ * Process locations JSON, replacing "Praxisadresse" placeholder with actual address.
+ */
+function processLocations(locations: unknown, practiceAddress?: string): string {
+  let locArray: Array<{ type: string; address?: string }>;
+  
+  if (typeof locations === 'string') {
+    try {
+      locArray = JSON.parse(locations);
+    } catch {
+      return locations; // Return as-is if not valid JSON
+    }
+  } else if (Array.isArray(locations)) {
+    locArray = locations;
+  } else {
+    return JSON.stringify(locations);
+  }
+  
+  // Replace "Praxisadresse" placeholder with actual address
+  if (practiceAddress) {
+    locArray = locArray.map(loc => {
+      if (loc.type === 'inPerson' && loc.address === 'Praxisadresse') {
+        return { ...loc, address: practiceAddress };
+      }
+      return loc;
+    });
+  }
+  
+  return JSON.stringify(locArray);
+}
 
 /**
  * Provision a Cal.com user for an approved therapist.
@@ -100,14 +259,15 @@ export type ProvisionCalUserInput = {
  * Creates:
  * 1. User record in Cal.com users table
  * 2. Password hash in UserPassword table
- * 3. Per-user webhook for booking events
+ * 3. Schedules + Availability (cloned from template user)
+ * 4. Event Types (cloned from template user)
  *
- * Returns cal_user_id, cal_username, and plaintext password (for email).
+ * Returns cal_user_id, cal_username, plaintext password, and event type IDs.
  */
 export async function provisionCalUser(
   input: ProvisionCalUserInput
 ): Promise<CalProvisionResult> {
-  const { email, firstName, lastName, timeZone = 'Europe/Berlin' } = input;
+  const { email, firstName, lastName, timeZone = 'Europe/Berlin', avatarUrl, practiceAddress } = input;
 
   if (!CAL_DATABASE_URL) {
     throw new Error('CAL_DATABASE_URL not configured - Cal.com provisioning disabled');
@@ -146,14 +306,26 @@ export async function provisionCalUser(
       [email]
     );
     if (existingEmail.rows.length > 0) {
-      // User already exists - return existing info without creating new
+      // User already exists - look up their event types
       const existingUser = existingEmail.rows[0];
+      const existingEventTypes = await client.query(
+        `SELECT id, slug FROM "EventType" WHERE "userId" = $1`,
+        [existingUser.id]
+      );
+      let introId: number | null = null;
+      let fullSessionId: number | null = null;
+      for (const et of existingEventTypes.rows) {
+        if (et.slug === 'intro') introId = et.id;
+        if (et.slug === 'full-session') fullSessionId = et.id;
+      }
       await client.query('ROLLBACK');
       return {
         cal_user_id: existingUser.id,
         cal_username: existingUser.username,
         cal_password: '', // Cannot retrieve existing password
         cal_login_url: `${CAL_ORIGIN}/auth/login`,
+        cal_intro_event_type_id: introId,
+        cal_full_session_event_type_id: fullSessionId,
       };
     }
 
@@ -162,12 +334,12 @@ export async function provisionCalUser(
     const passwordHash = await hashPassword(password);
 
     // Insert user
-    // Cal.com users table key columns: id (serial), username, name, email, timeZone, locale, completedOnboarding
+    // Cal.com users table key columns: id (serial), uuid, username, name, email, timeZone, locale, completedOnboarding, avatarUrl
     const userResult = await client.query(
       `INSERT INTO users (
-        username, name, email, "timeZone", locale, "completedOnboarding",
-        "identityProvider", "emailVerified"
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+        uuid, username, name, email, "timeZone", locale, "completedOnboarding",
+        "identityProvider", "emailVerified", "avatarUrl"
+      ) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, NOW(), $8)
       RETURNING id`,
       [
         username,
@@ -177,6 +349,7 @@ export async function provisionCalUser(
         'de', // German locale
         true, // Skip onboarding
         'CAL', // Identity provider
+        avatarUrl || null, // Profile photo from KH
       ]
     );
     const userId = userResult.rows[0].id as number;
@@ -187,25 +360,29 @@ export async function provisionCalUser(
       [userId, passwordHash]
     );
 
-    // Create per-user webhook for booking events
-    if (CAL_WEBHOOK_SECRET) {
-      const webhookId = randomUUID();
+    // Clone schedules from template user
+    const scheduleMap = await cloneSchedules(client, CAL_TEMPLATE_USER_ID, userId, timeZone);
+
+    // Set user's default schedule to the first cloned schedule
+    const firstScheduleId = scheduleMap.values().next().value;
+    if (firstScheduleId) {
       await client.query(
-        `INSERT INTO "Webhook" (
-          id, "userId", "subscriberUrl", "payloadTemplate", active, secret,
-          "eventTriggers", "createdAt"
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7::text[]::\"WebhookTriggerEvents\"[], NOW())`,
-        [
-          webhookId,
-          userId,
-          KH_WEBHOOK_URL,
-          null, // Use default payload
-          true,
-          CAL_WEBHOOK_SECRET,
-          ['BOOKING_CREATED', 'BOOKING_RESCHEDULED', 'BOOKING_CANCELLED'],
-        ]
+        'UPDATE users SET "defaultScheduleId" = $1 WHERE id = $2',
+        [firstScheduleId, userId]
       );
     }
+
+    // Clone event types from template user
+    const { introId, fullSessionId } = await cloneEventTypes(
+      client,
+      CAL_TEMPLATE_USER_ID,
+      userId,
+      scheduleMap,
+      practiceAddress
+    );
+
+    // Note: We don't create per-user webhooks because there's an app-level
+    // webhook that catches all bookings (userId=null in Webhook table)
 
     await client.query('COMMIT');
 
@@ -214,6 +391,8 @@ export async function provisionCalUser(
       cal_username: username,
       cal_password: password,
       cal_login_url: `${CAL_ORIGIN}/auth/login`,
+      cal_intro_event_type_id: introId,
+      cal_full_session_event_type_id: fullSessionId,
     };
   } catch (error) {
     await client.query('ROLLBACK');
