@@ -33,8 +33,8 @@ export type CalBookingUrlOptions = {
   redirectBack?: boolean;
   /** Path to return to after booking confirmation (EARTH-256) */
   returnTo?: string;
-  /** Pre-selected date in YYYY-MM-DD format */
-  date?: string;
+  /** Pre-selected slot in ISO datetime format (e.g., 2026-02-02T08:00:00.000Z) - skips to confirmation form */
+  slot?: string;
   /** Layout mode for Cal.com embed */
   layout?: 'mobile' | 'month_view' | 'week_view' | 'column_view';
 };
@@ -48,7 +48,7 @@ export type CalBookingUrlOptions = {
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health.de';
 
 export function buildCalBookingUrl(options: CalBookingUrlOptions): string {
-  const { calUsername, eventType, metadata, prefillName, prefillEmail, redirectBack, returnTo, date, layout } = options;
+  const { calUsername, eventType, metadata, prefillName, prefillEmail, redirectBack, returnTo, slot, layout } = options;
 
   // Build base URL - if eventType specified, append it as a path segment
   // Cal.com event type slugs: intro, full-session
@@ -57,9 +57,10 @@ export function buildCalBookingUrl(options: CalBookingUrlOptions): string {
   
   const url = new URL(basePath, CAL_ORIGIN);
   
-  // Add date as query param (Cal.com self-hosted uses ?date=YYYY-MM-DD)
-  if (date) {
-    url.searchParams.set('date', date);
+  // Add slot to skip directly to booking confirmation form
+  // Cal.com uses ?slot=ISO_DATETIME (e.g., 2026-02-02T08:00:00.000Z)
+  if (slot) {
+    url.searchParams.set('slot', slot);
   }
 
   // Add metadata as query params (Cal.com metadata[key]=value format)

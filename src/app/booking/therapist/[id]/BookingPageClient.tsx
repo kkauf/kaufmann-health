@@ -340,14 +340,11 @@ export function BookingPageClient({
       prefillEmail,
       redirectBack: true,
       returnTo: returnTo || '/therapeuten',
+      slot: selectedSlot.time_utc,
     });
 
-    // Add date param to pre-select in Cal
-    const url = new URL(calUrl);
-    url.searchParams.set('date', selectedSlot.date_iso);
-
-    // Navigate to Cal
-    window.location.href = url.toString();
+    // Navigate to Cal (slot param skips directly to confirmation form)
+    window.location.href = calUrl;
   }, [selectedSlot, therapist, bookingKind, returnTo, session]);
 
   // Handle booking button click - check verification first

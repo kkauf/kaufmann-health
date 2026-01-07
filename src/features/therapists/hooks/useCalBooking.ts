@@ -344,7 +344,7 @@ export function useCalBooking({
       prefillName,
       prefillEmail,
       redirectBack: true,
-      date: selectedSlot.date_iso,
+      slot: selectedSlot.time_utc,
     });
 
     window.location.href = calUrl;
