@@ -1,17 +1,18 @@
 /**
- * CalVerificationForm - Inline verification for Cal.com booking (EARTH-256)
+ * CalVerificationForm - Adapter for Cal.com booking verification (EARTH-256)
  *
- * Compact form for name + email/phone entry and code verification.
- * Used within TherapistDetailModal for unverified directory users.
+ * Wraps the shared VerificationForm component for use with useCalBooking.
+ * Maps CalBookingState/Actions to the shared verification interface.
+ * 
+ * @deprecated Consider using VerificationForm directly with useVerification hook
  */
 
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Mail, Phone, Loader2, MailCheck, RefreshCw } from 'lucide-react';
+import { useMemo } from 'react';
+import { VerificationForm } from '@/components/VerificationForm';
 import type { CalBookingState, CalBookingActions } from '../hooks/useCalBooking';
+import type { UseVerificationReturn, VerificationStep } from '@/lib/verification/useVerification';
 
 interface CalVerificationFormProps {
   state: CalBookingState;
@@ -19,196 +20,65 @@ interface CalVerificationFormProps {
   slotSummary?: React.ReactNode;
 }
 
+/**
+ * Maps Cal booking step to verification step
+ */
+function mapStep(calStep: CalBookingState['step']): VerificationStep {
+  switch (calStep) {
+    case 'verify': return 'input';
+    case 'code': return 'code';
+    case 'email-sent': return 'link';
+    default: return 'input';
+  }
+}
+
 export function CalVerificationForm({ state, actions, slotSummary }: CalVerificationFormProps) {
-  const { step, name, contactMethod, contactValue, verificationCode, verifyLoading, verifyError } = state;
+  // Create adapter that maps CalBooking interface to UseVerificationReturn
+  const verificationAdapter: UseVerificationReturn = useMemo(() => ({
+    state: {
+      step: mapStep(state.step),
+      contactMethod: state.contactMethod,
+      name: state.name,
+      email: state.contactMethod === 'email' ? state.contactValue : '',
+      phone: state.contactMethod === 'phone' ? state.contactValue : '',
+      code: state.verificationCode,
+      loading: state.verifyLoading,
+      error: state.verifyError,
+      verified: false,
+      patientId: null,
+    },
+    setName: actions.setName,
+    setEmail: (email: string) => actions.setContactValue(email),
+    setPhone: (phone: string) => actions.setContactValue(phone),
+    setCode: actions.setVerificationCode,
+    setContactMethod: actions.setContactMethod,
+    setError: () => {}, // Not directly exposed in CalBookingActions
+    sendCode: async () => {
+      await actions.sendCode();
+      return { success: true };
+    },
+    verifyCode: async () => {
+      await actions.verifyCode();
+      return { success: true };
+    },
+    resendCode: async () => {
+      await actions.sendCode();
+      return { success: true };
+    },
+    reset: () => {}, // Handled by useCalBooking
+    validateInputs: () => ({ valid: true }),
+    getContact: () => state.contactValue,
+    isPhoneValid: () => true,
+    isEmailValid: () => true,
+  }), [state, actions]);
 
-  if (step === 'verify') {
-    return (
-      <div className="space-y-4">
-        <div>
-          <h4 className="text-sm font-semibold text-gray-900 mb-1">Deine Kontaktdaten</h4>
-          <p className="text-xs text-gray-600">
-            Zur Bestätigung deiner Buchung
-          </p>
-        </div>
-
-        {slotSummary}
-
-        <div>
-          <Label htmlFor="cal-name" className="text-sm font-medium text-gray-700">Name</Label>
-          <Input
-            id="cal-name"
-            type="text"
-            placeholder="Max Mustermann"
-            value={name}
-            onChange={(e) => actions.setName(e.target.value)}
-            className="mt-1"
-          />
-        </div>
-
-        <div>
-          <Label className="text-sm font-medium text-gray-700 mb-2 block">Kontaktmethode</Label>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant={contactMethod === 'email' ? 'default' : 'outline'}
-              onClick={() => actions.setContactMethod('email')}
-              className="flex-1 h-9"
-              size="sm"
-            >
-              <Mail className="h-3.5 w-3.5 mr-1.5" />
-              E-Mail
-            </Button>
-            <Button
-              type="button"
-              variant={contactMethod === 'phone' ? 'default' : 'outline'}
-              onClick={() => actions.setContactMethod('phone')}
-              className="flex-1 h-9"
-              size="sm"
-            >
-              <Phone className="h-3.5 w-3.5 mr-1.5" />
-              SMS
-            </Button>
-          </div>
-        </div>
-
-        <div>
-          <Label htmlFor="cal-contact" className="text-sm font-medium text-gray-700">
-            {contactMethod === 'email' ? 'E-Mail-Adresse' : 'Handynummer'}
-          </Label>
-          <Input
-            id="cal-contact"
-            type={contactMethod === 'email' ? 'email' : 'tel'}
-            placeholder={contactMethod === 'email' ? 'max@beispiel.de' : '+49 170 1234567'}
-            value={contactValue}
-            onChange={(e) => actions.setContactValue(e.target.value)}
-            className="mt-1"
-          />
-        </div>
-
-        {verifyError && <p className="text-sm text-red-600">{verifyError}</p>}
-
-        <div className="flex gap-2 pt-1">
-          <Button variant="outline" onClick={actions.backToSlots} className="flex-1" size="sm">
-            Zurück
-          </Button>
-          <Button
-            onClick={actions.sendCode}
-            disabled={verifyLoading || !name.trim() || !contactValue.trim()}
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-            size="sm"
-          >
-            {verifyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Code senden'}
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'code') {
-    return (
-      <div className="space-y-4">
-        <div>
-          <h4 className="text-sm font-semibold text-gray-900 mb-1">Code eingeben</h4>
-          <p className="text-xs text-gray-600">
-            Wir haben einen Code an {contactValue} gesendet.
-          </p>
-        </div>
-
-        <div>
-          <Label htmlFor="cal-code" className="text-sm font-medium text-gray-700">Bestätigungscode</Label>
-          <Input
-            id="cal-code"
-            type="text"
-            inputMode="numeric"
-            placeholder="123456"
-            value={verificationCode}
-            onChange={(e) => actions.setVerificationCode(e.target.value)}
-            className="mt-1 text-center text-lg tracking-widest"
-            maxLength={6}
-          />
-        </div>
-
-        {verifyError && <p className="text-sm text-red-600">{verifyError}</p>}
-
-        <div className="flex gap-2 pt-1">
-          <Button
-            variant="outline"
-            onClick={() => {
-              actions.setVerificationCode('');
-              actions.backToSlots();
-            }}
-            className="flex-1"
-            size="sm"
-          >
-            Zurück
-          </Button>
-          <Button
-            onClick={actions.verifyCode}
-            disabled={verifyLoading || !verificationCode.trim()}
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-            size="sm"
-          >
-            {verifyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Bestätigen'}
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'email-sent') {
-    return (
-      <div className="space-y-4">
-        <div className="text-center py-4">
-          <div className="mx-auto w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
-            <MailCheck className="h-6 w-6 text-emerald-600" />
-          </div>
-          <h4 className="text-base font-semibold text-gray-900 mb-1">E-Mail gesendet!</h4>
-          <p className="text-sm text-gray-600">
-            Wir haben einen Bestätigungslink an <span className="font-medium">{contactValue}</span> gesendet.
-          </p>
-          <p className="text-sm text-gray-600 mt-2">
-            Klicke auf den Link in der E-Mail, um deine Buchung abzuschließen.
-          </p>
-        </div>
-
-        {slotSummary}
-
-        <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600">
-          <p className="font-medium text-gray-700 mb-1">Keine E-Mail erhalten?</p>
-          <ul className="list-disc list-inside space-y-1">
-            <li>Überprüfe deinen Spam-Ordner</li>
-            <li>Stelle sicher, dass die E-Mail-Adresse korrekt ist</li>
-          </ul>
-        </div>
-
-        <div className="flex gap-2 pt-1">
-          <Button
-            variant="outline"
-            onClick={actions.backToSlots}
-            className="flex-1"
-            size="sm"
-          >
-            Zurück
-          </Button>
-          <Button
-            variant="outline"
-            onClick={actions.sendCode}
-            disabled={verifyLoading}
-            className="flex-1"
-            size="sm"
-          >
-            {verifyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-              <>
-                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                Erneut senden
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return null;
+  return (
+    <VerificationForm
+      verification={verificationAdapter}
+      slotSummary={slotSummary}
+      onBack={actions.backToSlots}
+      backLabel="Zurück"
+      showContactMethodToggle={true}
+    />
+  );
 }

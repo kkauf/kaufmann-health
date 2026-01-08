@@ -4,7 +4,7 @@
  * Handles:
  * - Cal slot fetching via KH API proxy
  * - Session verification check
- * - Verification form state for unverified users
+ * - Verification via shared useVerification hook (single source of truth)
  * - Cal redirect with prefill data
  *
  * Used by TherapistDetailModal for in-modal Cal booking.
@@ -14,6 +14,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { CalNormalizedSlot, CalBookingKind } from '@/contracts/cal';
 import { buildCalBookingUrl } from '@/lib/cal/booking-url';
 import { getAttribution } from '@/lib/attribution';
+import { useVerification } from '@/lib/verification/useVerification';
 
 interface SessionData {
   verified: boolean;
@@ -33,6 +34,8 @@ interface UseCalBookingOptions {
   calUsername: string;
   bookingKind: CalBookingKind;
   enabled?: boolean;
+  /** Redirect path for email magic link confirmation (e.g., '/therapeuten?tid=xxx') */
+  emailRedirectPath?: string;
 }
 
 export interface CalBookingState {
@@ -97,6 +100,7 @@ export function useCalBooking({
   calUsername,
   bookingKind,
   enabled = true,
+  emailRedirectPath,
 }: UseCalBookingOptions): [CalBookingState, CalBookingActions] {
   // Slot state
   const [slots, setSlots] = useState<CalNormalizedSlot[]>([]);
@@ -108,21 +112,18 @@ export function useCalBooking({
   const [session, setSession] = useState<SessionData | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   
-  // Step state
+  // Step state (slots vs verification flow)
   const [step, setStep] = useState<BookingStep>('slots');
-  
-  // Verification form state
-  const [name, setName] = useState('');
-  const [contactMethod, setContactMethod] = useState<'email' | 'phone'>('email');
-  const [contactValue, setContactValue] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [verifyLoading, setVerifyLoading] = useState(false);
-  const [verifyError, setVerifyError] = useState<string | null>(null);
   
   // EARTH-262: Unavailable and retry state
   const [slotsUnavailable, setSlotsUnavailable] = useState(false);
   const [bookingRetryCount, setBookingRetryCount] = useState(0);
   const [slotsFetchTrigger, setSlotsFetchTrigger] = useState(0); // Trigger re-fetch
+  
+  // Use shared verification hook (single source of truth for verification logic)
+  const verification = useVerification({
+    initialContactMethod: 'email',
+  });
 
   // Check session on mount
   useEffect(() => {
@@ -363,84 +364,36 @@ export function useCalBooking({
     setStep('verify');
   }, [selectedSlot, session, redirectToCal]);
 
-  // Send verification code
+  // Send verification code using shared hook
   const sendCode = useCallback(async () => {
-    if (!name.trim() || !contactValue.trim()) {
-      setVerifyError('Bitte fülle alle Felder aus');
-      return;
+    const result = await verification.sendCode({
+      name: verification.state.name,
+      redirect: emailRedirectPath,
+      draftBooking: selectedSlot ? {
+        therapist_id: therapistId,
+        date_iso: selectedSlot.date_iso,
+        time_label: selectedSlot.time_label,
+        format: 'online',
+      } : undefined,
+    });
+
+    if (result.success) {
+      // Map verification step to booking step
+      setStep(result.useMagicLink ? 'email-sent' : 'code');
     }
+  }, [verification, selectedSlot, therapistId, emailRedirectPath]);
 
-    setVerifyLoading(true);
-    setVerifyError(null);
-
-    try {
-      const res = await fetch('/api/public/verification/send-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          contact_type: contactMethod,
-          contact: contactValue.trim(),
-          draft_booking: selectedSlot ? {
-            therapist_id: therapistId,
-            date_iso: selectedSlot.date_iso,
-            time_label: selectedSlot.time_label,
-            format: 'online',
-          } : undefined,
-        }),
-      });
-
-      const json = await res.json();
-      if (json.error) {
-        setVerifyError(json.error);
-        return;
-      }
-
-      // Email uses magic link (no code entry), SMS uses code entry
-      setStep(contactMethod === 'email' ? 'email-sent' : 'code');
-    } catch {
-      setVerifyError('Fehler beim Senden des Codes');
-    } finally {
-      setVerifyLoading(false);
-    }
-  }, [name, contactMethod, contactValue, selectedSlot, therapistId]);
-
-  // Verify code and redirect
+  // Verify code and redirect using shared hook
   const verifyCode = useCallback(async () => {
-    if (!verificationCode.trim()) {
-      setVerifyError('Bitte gib den Code ein');
-      return;
+    const result = await verification.verifyCode();
+
+    if (result.success) {
+      const email = verification.state.contactMethod === 'email' 
+        ? verification.state.email 
+        : undefined;
+      redirectToCal(verification.state.name, email, result.patientId);
     }
-
-    setVerifyLoading(true);
-    setVerifyError(null);
-
-    try {
-      const res = await fetch('/api/public/verification/verify-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contact_type: contactMethod,
-          contact: contactValue.trim(),
-          code: verificationCode.trim(),
-        }),
-      });
-
-      const json = await res.json();
-      if (json.error) {
-        setVerifyError(json.error);
-        return;
-      }
-
-      const patientId = json.data?.patient_id;
-      const email = contactMethod === 'email' ? contactValue.trim() : undefined;
-      redirectToCal(name.trim(), email, patientId);
-    } catch {
-      setVerifyError('Fehler bei der Verifizierung');
-    } finally {
-      setVerifyLoading(false);
-    }
-  }, [verificationCode, contactMethod, contactValue, name, redirectToCal]);
+  }, [verification, redirectToCal]);
 
   // EARTH-262: Retry slots fetch
   const retrySlotsFetch = useCallback(() => {
@@ -456,14 +409,12 @@ export function useCalBooking({
   const reset = useCallback(() => {
     setSelectedSlot(null);
     setStep('slots');
-    setName('');
-    setContactValue('');
-    setVerificationCode('');
-    setVerifyError(null);
+    verification.reset();
     setSlotsUnavailable(false);
     setBookingRetryCount(0);
-  }, []);
+  }, [verification]);
 
+  // Map verification state to CalBookingState interface for backward compatibility
   const state: CalBookingState = {
     slots,
     slotsLoading,
@@ -473,25 +424,36 @@ export function useCalBooking({
     session,
     sessionLoading,
     step,
-    name,
-    contactMethod,
-    contactValue,
-    verificationCode,
-    verifyLoading,
-    verifyError,
+    // Map from shared verification hook
+    name: verification.state.name,
+    contactMethod: verification.state.contactMethod,
+    contactValue: verification.state.contactMethod === 'email' 
+      ? verification.state.email 
+      : verification.state.phone,
+    verificationCode: verification.state.code,
+    verifyLoading: verification.state.loading,
+    verifyError: verification.state.error,
     bookingRetryCount,
   };
 
+  // Map actions to shared verification hook
   const actions: CalBookingActions = {
     selectSlot: setSelectedSlot,
     clearSlot: () => setSelectedSlot(null),
     proceedToVerify: () => setStep('verify'),
-    backToSlots: () => { setStep('slots'); setVerifyError(null); },
+    backToSlots: () => { setStep('slots'); verification.setError(null); },
     goToFallback,
-    setName,
-    setContactMethod,
-    setContactValue,
-    setVerificationCode,
+    setName: verification.setName,
+    setContactMethod: verification.setContactMethod,
+    setContactValue: (value: string) => {
+      // Route to correct setter based on contact method
+      if (verification.state.contactMethod === 'email') {
+        verification.setEmail(value);
+      } else {
+        verification.setPhone(value);
+      }
+    },
+    setVerificationCode: verification.setCode,
     sendCode,
     verifyCode,
     redirectToCal,

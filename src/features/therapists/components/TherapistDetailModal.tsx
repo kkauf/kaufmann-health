@@ -90,11 +90,17 @@ export function TherapistDetailModal({
     }
   }, [open, initialViewMode, initialCalBookingKind]);
 
+  // Build redirect path for email magic link - returns user to therapist modal with booking flow
+  const calEmailRedirectPath = useMemo(() => {
+    return `/therapeuten?tid=${therapist.id}&view=cal-booking&kind=${calBookingKind}`;
+  }, [therapist.id, calBookingKind]);
+
   const [calState, calActions] = useCalBooking({
     therapistId: therapist.id,
     calUsername: therapist.cal_username || '',
     bookingKind: calBookingKind,
     enabled: isCalEnabled && open, // Fetch slots when modal is open, not just when in cal-booking view
+    emailRedirectPath: calEmailRedirectPath,
   });
   
   const photoSrc = therapist.photo_url && !imageError ? therapist.photo_url : undefined;
