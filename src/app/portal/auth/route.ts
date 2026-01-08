@@ -47,5 +47,8 @@ export async function GET(req: Request) {
   });
 
   // Redirect to portal (clean URL without token)
-  return NextResponse.redirect(new URL('/portal', req.url));
+  // Support optional redirect parameter for deep-linking (e.g., ?redirect=/portal#calendar)
+  const redirect = url.searchParams.get('redirect');
+  const redirectPath = redirect && redirect.startsWith('/portal') ? redirect : '/portal';
+  return NextResponse.redirect(new URL(redirectPath, req.url));
 }
