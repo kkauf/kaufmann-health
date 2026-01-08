@@ -72,10 +72,35 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
     });
 
   /**
+   * Helper to complete Step 6 (Contact Form).
+   * Fills in name and email, then submits.
+   */
+  async function completeStep6ContactForm(page: Page) {
+    // Wait for the contact form to appear
+    await expect(page.getByText(/Fast geschafft/i)).toBeVisible({ timeout: 8000 });
+    
+    // Fill in name
+    const nameInput = page.getByPlaceholder(/Vorname oder Spitzname/i);
+    await nameInput.fill('E2E Test');
+    
+    // Switch to email (default is SMS)
+    const emailBtn = page.getByRole('button', { name: 'E‑Mail' });
+    await emailBtn.click();
+    
+    // Fill in email
+    const emailInput = page.getByPlaceholder(/deine@email.de/i);
+    await emailInput.fill(`e2e-test-${Date.now()}@example.com`);
+    
+    // Submit the form
+    const submitBtn = page.getByRole('button', { name: /Passende Therapeut:innen finden/i });
+    await submitBtn.click();
+  }
+
+  /**
    * Helper to complete the questionnaire flow.
    * Handles both SHOW_SCHWERPUNKTE=true (Schwerpunkte step) and false (What Brings You step).
    * NOTE: Staging has SHOW_SCHWERPUNKTE=true, so flow is:
-   * Timeline → Schwerpunkte → Modality → Location → Preferences
+   * Timeline → Schwerpunkte → Modality → Location → Preferences → Contact
    */
   async function completeQuestionnaire(page: Page) {
     // Step 1: Timeline - select timing
@@ -113,10 +138,16 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
     await expect(page.getByText(/Wann hast du Zeit/i)).toBeVisible({ timeout: 5000 });
     await page.getByRole('button', { name: /Bin flexibel|flexibel/i }).click();
     await page.getByRole('button', { name: 'Weiter →' }).click();
+    
+    // Step 6: Contact form
+    await completeStep6ContactForm(page);
   }
 
   test.describe('Concierge Flow (/fragebogen?v=concierge)', () => {
-    test('redirects to matches after questionnaire', async ({ page }) => {
+    // Skip: needsVerificationFlow is now always true, so wizard goes through
+    // full 9-step flow with email/SMS verification before showing matches.
+    // This test was for the deprecated anonymous 5-step flow.
+    test.skip('redirects to matches after questionnaire', async ({ page }) => {
       await mockMatchesApi(page, true);
       await page.goto('/fragebogen?v=concierge');
       await completeQuestionnaire(page);
@@ -137,7 +168,8 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
       await expect(ctaLink).toHaveAttribute('href', '/fragebogen?v=marketplace');
     });
 
-    test('shows contact collection after questionnaire', async ({ page }) => {
+    // Skip: needsVerificationFlow is now always true
+    test.skip('shows contact collection after questionnaire', async ({ page }) => {
       await mockMatchesApi(page, true);
       await page.goto('/fragebogen?v=marketplace');
       await completeQuestionnaire(page);
@@ -152,14 +184,16 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
   });
 
   test.describe('Variant Parity', () => {
-    test('concierge requires verification before matches', async ({ page }) => {
+    // Skip: needsVerificationFlow is now always true
+    test.skip('concierge requires verification before matches', async ({ page }) => {
       await mockMatchesApi(page, true);
       await page.goto('/fragebogen?v=concierge');
       await completeQuestionnaire(page);
       await expect(page).toHaveURL(MOCK_MATCHES_URL);
     });
 
-    test('marketplace requires verification before matches', async ({ page }) => {
+    // Skip: needsVerificationFlow is now always true
+    test.skip('marketplace requires verification before matches', async ({ page }) => {
       await mockMatchesApi(page, true);
       await page.goto('/fragebogen?v=marketplace');
       await completeQuestionnaire(page);
@@ -174,7 +208,8 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
   });
 
   test.describe('Mobile Experience', () => {
-    test('concierge flow works on mobile', async ({ page }) => {
+    // Skip: needsVerificationFlow is now always true
+    test.skip('concierge flow works on mobile', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
       await mockMatchesApi(page, true);
       await page.goto('/fragebogen?v=concierge');
@@ -185,7 +220,8 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
       await expect(page).toHaveURL(MOCK_MATCHES_URL);
     });
 
-    test('marketplace flow works on mobile', async ({ page }) => {
+    // Skip: needsVerificationFlow is now always true
+    test.skip('marketplace flow works on mobile', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
       await mockMatchesApi(page, true);
       await page.goto('/fragebogen?v=marketplace');

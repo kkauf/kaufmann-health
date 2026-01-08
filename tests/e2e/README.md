@@ -81,3 +81,33 @@ Server behavior:
   - Name input label: `Name *`
 
 Avoid asserting brittle marketing copy unless the test is explicitly about copy.
+
+## Cal.com Booking Flow Tests
+
+New in EARTH-256/265: `cal-booking-flow.spec.ts` tests the Cal.com integration:
+
+- **Intro session booking** (15 min free consultation)
+- **Full session booking** (60 min standard rate)
+- **Upsell flow** from intro to full session
+- **Verification before booking** (required per EARTH-256)
+- **Booking notification emails** (therapist + client confirmations)
+
+Key mocks:
+- `**/api/public/cal/slots*` - Cal.com slot availability
+- `**/api/public/therapists*` - Therapist with `cal_username` set
+
+## Step 6 Contact Form
+
+All questionnaire flows must complete Step 6 (contact info collection) before redirecting to matches. Use the shared helper `completeStep6ContactForm(page)` which:
+
+1. Waits for "Fast geschafft" heading
+2. Fills name input
+3. Switches to email mode
+4. Fills email input
+5. Clicks submit button
+
+This is required because the wizard is a 9-step flow:
+- Steps 1-5: Questionnaire
+- Step 6: Contact Info (name + email/phone)
+- Step 6.5: SMS verification (if phone)
+- Steps 7-9: Confirmation screens

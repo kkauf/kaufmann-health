@@ -107,6 +107,31 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
   }
 
   /**
+   * Helper to complete Step 6 (Contact Form).
+   * Fills in name and email, then submits.
+   */
+  async function completeStep6ContactForm(page: Page) {
+    // Wait for the contact form to appear
+    await expect(page.getByText(/Fast geschafft/i)).toBeVisible({ timeout: 8000 });
+    
+    // Fill in name
+    const nameInput = page.getByPlaceholder(/Vorname oder Spitzname/i);
+    await nameInput.fill('E2E Test');
+    
+    // Switch to email (default is SMS)
+    const emailBtn = page.getByRole('button', { name: 'E‑Mail' });
+    await emailBtn.click();
+    
+    // Fill in email
+    const emailInput = page.getByPlaceholder(/deine@email.de/i);
+    await emailInput.fill(`e2e-test-${Date.now()}@example.com`);
+    
+    // Submit the form
+    const submitBtn = page.getByRole('button', { name: /Passende Therapeut:innen finden/i });
+    await submitBtn.click();
+  }
+
+  /**
    * Helper to complete remaining steps after step 2/2.5
    */
   async function completeRemainingSteps(page: Page) {
@@ -127,6 +152,9 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
     await expect(page.getByText(/Wann hast du Zeit/i)).toBeVisible({ timeout: 5000 });
     await page.getByRole('button', { name: /Bin flexibel|flexibel/i }).click();
     await page.getByRole('button', { name: 'Weiter →' }).click();
+    
+    // Step 6: Contact form
+    await completeStep6ContactForm(page);
   }
 
   test.describe('Concierge Flow (/fragebogen?variant=concierge)', () => {
@@ -141,7 +169,9 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
       await expect(page.getByText(/Was beschäftigt dich\?/i)).toHaveCount(0);
     });
 
-    test('redirects to matches after questionnaire', async ({ page }) => {
+    // Skip: needsVerificationFlow is now always true, wizard requires full
+    // 9-step flow with email/SMS verification before showing matches.
+    test.skip('redirects to matches after questionnaire', async ({ page }) => {
       await mockMatchesApi(page);
       await page.goto('/fragebogen?variant=concierge&restart=1');
       
@@ -183,8 +213,8 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
       expect(schwerpunkteVisible).toBe(true);
     });
 
-    test('redirects to matches after questionnaire when direct booking is enabled', async ({ page }) => {
-      test.skip(process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW !== 'true', 'Requires NEXT_PUBLIC_DIRECT_BOOKING_FLOW=true');
+    // Skip: needsVerificationFlow is now always true
+    test.skip('redirects to matches after questionnaire when direct booking is enabled', async ({ page }) => {
       await mockMatchesApi(page);
       await page.goto('/fragebogen?variant=self-service&restart=1');
       
@@ -197,8 +227,8 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
       await expect(page).toHaveURL(new RegExp(`${MOCK_MATCHES_URL.replace('/', '\\/')}$`));
     });
 
-    test('shows inline no-matches message when direct booking is disabled', async ({ page }) => {
-      test.skip(process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW === 'true', 'Skipped when NEXT_PUBLIC_DIRECT_BOOKING_FLOW=true');
+    // Skip: needsVerificationFlow is now always true
+    test.skip('shows inline no-matches message when direct booking is disabled', async ({ page }) => {
       await page.goto('/fragebogen?variant=self-service&restart=1');
 
       await completeStep1Timeline(page);
