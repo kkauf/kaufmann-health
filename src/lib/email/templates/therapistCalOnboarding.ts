@@ -56,6 +56,10 @@ export function renderTherapistCalOnboarding(params: {
       <p style="margin:0; color:#92400e !important; font-size:14px; line-height:1.6;"><strong>💡 Tipp:</strong> Wir haben bereits zwei Terminarten für dich eingerichtet: "Kostenloses Kennenlerngespräch" (15 Min) und "Therapiesitzung" (50 Min). Du kannst diese nach dem Login anpassen.</p>
     </div>
 
+    <div style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%) !important; padding:16px 20px; border-radius:12px; border:1px solid rgba(239, 68, 68, 0.3); margin: 0 0 20px;">
+      <p style="margin:0; color:#991b1b !important; font-size:14px; line-height:1.6;"><strong>⚠️ Wichtig:</strong> Mit der Aktivierung von Cal.com werden deine bisherigen Verfügbarkeits-Slots im Kaufmann Health Portal deaktiviert. Bitte richte deine Verfügbarkeit in Cal.com neu ein – dort hast du deutlich mehr Flexibilität und Kontrolle.</p>
+    </div>
+
     ${portalUrl ? `
     <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important; padding:20px 24px; border-radius:12px; border:1px solid rgba(59, 130, 246, 0.3); margin: 0 0 24px; box-shadow: 0 2px 4px 0 rgba(59, 130, 246, 0.1);">
       <h3 style="margin:0 0 12px; color:#1e40af !important; font-size:18px; font-weight:700;">🎬 Video-Anleitung: Kalender einrichten</h3>

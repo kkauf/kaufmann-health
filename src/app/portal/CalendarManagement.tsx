@@ -127,6 +127,16 @@ export default function CalendarManagement() {
             ❓ Häufige Fragen
           </h3>
           <div className="space-y-4 text-sm">
+            {/* Slot Migration Warning */}
+            <div className="border-b border-amber-100 pb-4">
+              <h4 className="font-medium text-gray-900 mb-1">Was passiert mit meinen bisherigen Slots?</h4>
+              <p className="text-gray-600">
+                Mit der Aktivierung von Cal.com werden deine bisherigen Verfügbarkeits-Slots im Portal deaktiviert. 
+                Bitte richte deine Verfügbarkeit direkt in Cal.com ein – dort hast du deutlich mehr Flexibilität 
+                (z.B. Kalender-Sync, Pufferzeiten, individuelle Buchungsregeln).
+              </p>
+            </div>
+            
             {/* Booking Notice */}
             <div className="border-b border-amber-100 pb-4">
               <h4 className="font-medium text-gray-900 mb-1">Wie kurzfristig können Klient:innen buchen?</h4>
