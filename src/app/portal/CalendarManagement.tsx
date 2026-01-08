@@ -168,8 +168,8 @@ export default function CalendarManagement() {
             <div>
               <h4 className="font-medium text-gray-900 mb-1">Wo stelle ich meine Praxisadresse ein?</h4>
               <p className="text-gray-600">
-                Cal.com → Ereignistyp → &bdquo;Ort&ldquo; → &bdquo;Vor Ort&ldquo; hinzufügen und deine Adresse eingeben. 
-                Klient:innen sehen diese dann bei der Buchung als Option.
+                Im Reiter &bdquo;Profil&ldquo; oben auf dieser Seite. Wenn du dort &bdquo;Vor Ort&ldquo; als Sitzungsformat 
+                auswählst und deine Praxisadresse eingibst, wird diese automatisch mit Cal.com synchronisiert.
               </p>
             </div>
           </div>

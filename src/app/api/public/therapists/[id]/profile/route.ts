@@ -6,6 +6,7 @@ import { isValidSchwerpunktId, THERAPIST_SCHWERPUNKTE_MIN, THERAPIST_SCHWERPUNKT
 import { SERVER_PROFILE_LIMITS } from '@/lib/config/profileLimits';
 import { TherapistProfileUpdate } from '@/contracts/therapist-profile';
 import { parseFormData, parseRequestBody } from '@/lib/api-utils';
+import { syncPracticeAddressToCal } from '@/lib/cal/syncAddress';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -380,6 +381,31 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (updateErr) {
       await logError('api.therapists.profile', updateErr, { stage: 'update_metadata', therapist_id: id }, ip, ua);
       return safeJson({ data: null, error: 'Failed to update' }, { status: 500 });
+    }
+
+    // Sync practice address to Cal.com if address or session preferences changed
+    if (combinedAddress || sessionPreferences) {
+      // Get cal_username from therapist record
+      const { data: therapistData } = await supabaseServer
+        .from('therapists')
+        .select('cal_username, session_preferences')
+        .eq('id', id)
+        .single();
+      
+      if (therapistData?.cal_username) {
+        const prefs = therapistData.session_preferences || [];
+        const offersInPerson = Array.isArray(prefs) && prefs.includes('in_person');
+        
+        // Fire and forget - don't block response on Cal.com sync
+        const addressToSync = combinedAddress || (typeof profile.practice_address === 'string' ? profile.practice_address : null);
+        void syncPracticeAddressToCal(
+          therapistData.cal_username,
+          addressToSync,
+          offersInPerson
+        ).catch(err => {
+          console.error('[profile] Cal.com address sync failed:', err);
+        });
+      }
     }
 
     void track({ 
