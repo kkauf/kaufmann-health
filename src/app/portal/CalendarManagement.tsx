@@ -120,26 +120,59 @@ export default function CalendarManagement() {
         </div>
       </Card>
 
-      {/* Quick Tips */}
+      {/* FAQ Section */}
       <Card className="border border-amber-200/60 shadow-md bg-gradient-to-br from-white to-amber-50/20">
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">
-            💡 Schnelltipps
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            ❓ Häufige Fragen
           </h3>
-          <ul className="space-y-2 text-sm text-gray-700">
-            <li className="flex items-start gap-2">
-              <span className="text-emerald-600 font-bold mt-0.5">•</span>
-              <span>Stelle sicher, dass deine Verfügbarkeit immer aktuell ist, um mehr Buchungen zu erhalten</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-emerald-600 font-bold mt-0.5">•</span>
-              <span>Nutze Pufferzeiten zwischen Terminen für Notizen und Vorbereitung</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-emerald-600 font-bold mt-0.5">•</span>
-              <span>Konfiguriere automatische Erinnerungen, um No-Shows zu reduzieren</span>
-            </li>
-          </ul>
+          <div className="space-y-4 text-sm">
+            {/* Booking Notice */}
+            <div className="border-b border-amber-100 pb-4">
+              <h4 className="font-medium text-gray-900 mb-1">Wie kurzfristig können Klient:innen buchen?</h4>
+              <p className="text-gray-600">
+                <strong>Kennenlerngespräch:</strong> Mindestens 4 Stunden vorher (ermöglicht Same-Day-Buchungen)<br />
+                <strong>Therapiesitzung:</strong> Mindestens 24 Stunden vorher<br />
+                <span className="text-xs text-gray-500 mt-1 block">Ändern: Cal.com → Ereignistyp → Limits → &bdquo;Mindestvorlaufzeit&ldquo;</span>
+              </p>
+            </div>
+            
+            {/* Intro Call */}
+            <div className="border-b border-amber-100 pb-4">
+              <h4 className="font-medium text-gray-900 mb-1">Was ist das &bdquo;Kostenloses Kennenlerngespräch&ldquo;?</h4>
+              <p className="text-gray-600">
+                Ein 15-minütiges Videogespräch zum Kennenlernen. Der Video-Link wird automatisch von Cal.com generiert 
+                und in der Buchungsbestätigung an beide Parteien verschickt. Du musst nichts einrichten.
+              </p>
+            </div>
+            
+            {/* Full Session */}
+            <div className="border-b border-amber-100 pb-4">
+              <h4 className="font-medium text-gray-900 mb-1">Wie funktioniert die &bdquo;Therapiesitzung&ldquo;?</h4>
+              <p className="text-gray-600">
+                Eine 50-minütige Sitzung. Standard ist ein automatisch generierter Cal Video-Link. 
+                Für Präsenz-Termine wird deine Praxisadresse angezeigt.
+              </p>
+            </div>
+            
+            {/* Custom Video Link */}
+            <div className="border-b border-amber-100 pb-4">
+              <h4 className="font-medium text-gray-900 mb-1">Kann ich meinen eigenen Video-Link nutzen (z.B. Zoom)?</h4>
+              <p className="text-gray-600">
+                Ja! Gehe in Cal.com zu deinem Ereignistyp → &bdquo;Ort&ldquo; → wähle &bdquo;Zoom&ldquo;, &bdquo;Google Meet&ldquo; oder füge eine 
+                eigene URL hinzu. Die Standard-Einstellung ist Cal Video (kostenlos, DSGVO-konform, keine Installation nötig).
+              </p>
+            </div>
+            
+            {/* Practice Address */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-1">Wo stelle ich meine Praxisadresse ein?</h4>
+              <p className="text-gray-600">
+                Cal.com → Ereignistyp → &bdquo;Ort&ldquo; → &bdquo;Vor Ort&ldquo; hinzufügen und deine Adresse eingeben. 
+                Klient:innen sehen diese dann bei der Buchung als Option.
+              </p>
+            </div>
+          </div>
         </div>
       </Card>
     </div>
