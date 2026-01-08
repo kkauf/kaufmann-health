@@ -175,12 +175,25 @@ export default function CalendarManagement() {
             </div>
             
             {/* Practice Address */}
-            <div>
+            <div className="border-b border-amber-100 pb-4">
               <h4 className="font-medium text-gray-900 mb-1">Wo stelle ich meine Praxisadresse ein?</h4>
               <p className="text-gray-600">
                 Im Reiter &bdquo;Profil&ldquo; oben auf dieser Seite. Wenn du dort &bdquo;Vor Ort&ldquo; als Sitzungsformat 
                 auswählst und deine Praxisadresse eingibst, wird diese automatisch mit Cal.com synchronisiert.
               </p>
+            </div>
+            
+            {/* Critical Warning about slugs */}
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 -mx-1">
+              <h4 className="font-medium text-red-800 mb-1">⚠️ Wichtig: Bitte NICHT ändern!</h4>
+              <p className="text-red-700 text-xs">
+                Ändere in Cal.com <strong>niemals</strong> folgende Einstellungen – sonst funktioniert die Buchung über Kaufmann Health nicht mehr:
+              </p>
+              <ul className="text-red-700 text-xs mt-1 ml-4 list-disc">
+                <li>Deinen <strong>Benutzernamen</strong> (URL-Slug)</li>
+                <li>Die <strong>URL</strong> des Kennenlerngespräch (&bdquo;intro&ldquo;)</li>
+                <li>Die <strong>URL</strong> der Therapiesitzung (&bdquo;full-session&ldquo;)</li>
+              </ul>
             </div>
           </div>
         </div>
