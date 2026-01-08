@@ -118,7 +118,7 @@ async function main() {
 
       const emailContent = renderTherapistCalOnboarding({
         name: t.first_name,
-        calUsername: t.cal_username!,
+        calEmail: t.email,
         calPassword: newPassword,
         calLoginUrl: 'https://cal.kaufmann.health/auth/login',
         portalUrl,

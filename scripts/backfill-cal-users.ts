@@ -128,9 +128,10 @@ async function main() {
       if (!skipEmail && result.cal_password) {
         const emailContent = renderTherapistCalOnboarding({
           name: t.first_name,
-          calUsername: result.cal_username,
+          calEmail: t.email,
           calPassword: result.cal_password,
           calLoginUrl: result.cal_login_url,
+          portalUrl: `https://www.kaufmann-health.de/portal`,
         });
 
         const sent = await sendEmail({
