@@ -1,5 +1,5 @@
 import { EMAIL_FROM_DEFAULT, BASE_URL } from '@/lib/constants';
-import type { SendEmailParams } from './types';
+import type { SendEmailParams, SendEmailResult } from './types';
 import { logError, track } from '@/lib/logger';
 import { createHash } from 'crypto';
 
@@ -62,10 +62,14 @@ function htmlToText(html?: string): string | undefined {
 
 /**
  * Thin wrapper around Resend HTTP API.
- * Returns true if email was sent successfully, false otherwise.
- * No-ops (returns false) if RESEND_API_KEY is not configured or if 'to' is missing.
+ * Returns { sent: true } if email was sent successfully.
+ * Returns { sent: false, reason } if email was not sent, with reason indicating why:
+ * - 'suppressed': EMAIL_SUPPRESS_OUTBOUND is set (not an error)
+ * - 'missing_api_key': RESEND_API_KEY not configured (not an error in dev)
+ * - 'missing_recipient': no 'to' address provided
+ * - 'failed': actual send failure (API error, timeout, etc.)
  */
-export async function sendEmail(params: SendEmailParams): Promise<boolean> {
+export async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     // Observability: make it visible when emailing is disabled
@@ -75,7 +79,7 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
       source: 'email.client',
       props: { reason: 'missing_api_key', subject: params.subject, ...(params.context || {}) },
     });
-    return false; // disabled in tests or locally
+    return { sent: false, reason: 'missing_api_key' }; // disabled in tests or locally
   }
 
   const toList = !params.to
@@ -91,7 +95,7 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
       source: 'email.client',
       props: { reason: 'missing_recipient', subject: params.subject, ...(params.context || {}) },
     });
-    return false;
+    return { sent: false, reason: 'missing_recipient' };
   }
 
   const fromAddress = params.from || process.env.LEADS_FROM_EMAIL || EMAIL_FROM_DEFAULT;
@@ -106,7 +110,7 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
       source: 'email.client',
       props: { subject: params.subject, to_count: toList.length, ...(params.context || {}) },
     });
-    return false;
+    return { sent: false, reason: 'suppressed' };
   }
 
   // Minimal resiliency: timeout + retry on 429/5xx with exponential backoff. Never throw.
@@ -192,7 +196,7 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
             ...(params.context || {}),
           },
         });
-        return true;
+        return { sent: true };
       }
 
       const status = resp.status;
@@ -213,7 +217,7 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
             ...(params.context || {}),
           },
         });
-        return true;
+        return { sent: true };
       }
       let body = '';
       try {
@@ -254,7 +258,7 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
         attempt,
         ...(params.context || {}),
       });
-      return false; // give up
+      return { sent: false, reason: 'failed' }; // give up
     } catch (e) {
       clearTimeout(timer);
       // Network error or timeout; log and maybe retry.
@@ -285,9 +289,9 @@ export async function sendEmail(params: SendEmailParams): Promise<boolean> {
         timeout_ms: timeoutMs,
         ...(params.context || {}),
       });
-      return false;
+      return { sent: false, reason: 'failed' };
     }
   }
-  // If we exhausted all attempts without success, return false
-  return false;
+  // If we exhausted all attempts without success, return failed
+  return { sent: false, reason: 'failed' };
 }

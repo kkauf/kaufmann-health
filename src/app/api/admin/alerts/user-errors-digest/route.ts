@@ -244,7 +244,7 @@ export async function GET(req: Request) {
     const subjectSuffix = realCount > 0 ? ` (${realCount} real, ${testCount} test)` : ' (all test)';
     const subject = `${subjectPrefix} ${events.length} User Error${events.length === 1 ? '' : 's'}${subjectSuffix}`;
 
-    const sent = await sendEmail({
+    const digestResult = await sendEmail({
       to: NOTIFY_EMAIL,
       subject,
       html,
@@ -254,12 +254,12 @@ export async function GET(req: Request) {
     void track({
       type: 'user_errors_digest_sent',
       source: 'admin.alerts.user-errors-digest',
-      props: { count: events.length, auth_errors: authErrors.length, real: realCount, test: testCount, sent },
+      props: { count: events.length, auth_errors: authErrors.length, real: realCount, test: testCount, sent: digestResult.sent },
     });
 
     return NextResponse.json({
       data: {
-        sent,
+        sent: digestResult.sent,
         count: events.length,
         byType,
         authErrors: authErrors.length,

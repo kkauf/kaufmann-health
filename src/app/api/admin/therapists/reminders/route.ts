@@ -239,7 +239,7 @@ export async function GET(req: Request) {
 
       try {
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.reminders.batch', props: { stage: 'therapist_profile_reminder', therapist_id: t.id, subject: reminder.subject } });
-        const emailSent = await sendEmail({
+        const emailResult = await sendEmail({
           to,
           subject: reminder.subject,
           html: reminder.html,
@@ -250,7 +250,7 @@ export async function GET(req: Request) {
           replyTo: 'kontakt@kaufmann-health.de',
           context: { stage: 'therapist_profile_reminder', therapist_id: t.id },
         });
-        if (emailSent) {
+        if (emailResult.sent) {
           sent++;
           if (examples.length < 3) {
             const miss: string[] = [];
@@ -259,7 +259,8 @@ export async function GET(req: Request) {
             if (missingApproach) miss.push('approach');
             examples.push({ id: t.id as string, missing: miss });
           }
-        } else {
+        } else if (emailResult.reason === 'failed') {
+          // Only log as error for actual failures, not suppression or missing config
           await logError('admin.api.therapists.reminders.batch', new Error('Email send returned false'), { stage: 'send_email_failed', therapist_id: t.id, email: to }, ip, ua);
         }
       } catch (e) {
@@ -475,7 +476,7 @@ export async function POST(req: Request) {
 
       try {
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.reminders.batch', props: { stage: 'therapist_profile_reminder', therapist_id: t.id, subject: reminder.subject } });
-        const emailSent = await sendEmail({
+        const emailResult = await sendEmail({
           to,
           subject: reminder.subject,
           html: reminder.html,
@@ -486,7 +487,7 @@ export async function POST(req: Request) {
           replyTo: 'kontakt@kaufmann-health.de',
           context: { stage: 'therapist_profile_reminder', therapist_id: t.id },
         });
-        if (emailSent) {
+        if (emailResult.sent) {
           sent++;
           if (examples.length < 3) {
             const miss: string[] = [];
@@ -495,7 +496,8 @@ export async function POST(req: Request) {
             if (missingApproach) miss.push('approach');
             examples.push({ id: t.id as string, missing: miss });
           }
-        } else {
+        } else if (emailResult.reason === 'failed') {
+          // Only log as error for actual failures, not suppression or missing config
           await logError('admin.api.therapists.reminders.batch', new Error('Email send returned false'), { stage: 'send_email_failed', therapist_id: t.id, email: to }, ip, ua);
         }
       } catch (e) {

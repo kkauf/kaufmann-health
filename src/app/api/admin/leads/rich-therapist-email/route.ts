@@ -315,7 +315,7 @@ export async function GET(req: Request) {
           props: { kind: 'rich_therapist_d1', patient_id: patient.id, therapist_id: bestMatch.therapist.id, subject: content.subject },
         });
 
-        const emailSent = await sendEmail({
+        const emailResult = await sendEmail({
           to: email,
           subject: content.subject,
           html: content.html,
@@ -327,9 +327,9 @@ export async function GET(req: Request) {
           },
         });
 
-        if (emailSent) {
+        if (emailResult.sent) {
           sent++;
-        } else {
+        } else if (emailResult.reason === 'failed') {
           await logError('admin.api.leads.rich_therapist_email', new Error('Email send returned false'), { stage: 'send_failed', patient_id: patient.id }, ip, ua);
         }
       } catch (e) {

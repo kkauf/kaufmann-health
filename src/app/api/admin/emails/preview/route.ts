@@ -152,13 +152,13 @@ export async function GET(req: Request) {
 
     const results: { subject: string; sent: boolean }[] = [];
     for (const email of emails) {
-      const sent = await sendEmail({
+      const emailResult = await sendEmail({
         to: notifyEmail,
         subject: `[QA Preview] ${email.subject}`,
         html: email.html,
         context: { kind: 'qa_preview', template },
       });
-      results.push({ subject: email.subject, sent });
+      results.push({ subject: email.subject, sent: emailResult.sent });
     }
 
     return NextResponse.json({

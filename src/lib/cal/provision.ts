@@ -339,12 +339,12 @@ export async function provisionCalUser(
     const passwordHash = await hashPassword(password);
 
     // Insert user
-    // Cal.com users table key columns: id (serial), uuid, username, name, email, timeZone, locale, completedOnboarding, avatarUrl
+    // Cal.com users table key columns: id (serial), uuid, username, name, email, timeZone, locale, completedOnboarding, avatarUrl, timeFormat
     const userResult = await client.query(
       `INSERT INTO users (
-        uuid, username, name, email, "timeZone", locale, "completedOnboarding",
+        uuid, username, name, email, "timeZone", locale, "timeFormat", "completedOnboarding",
         "identityProvider", "emailVerified", "avatarUrl"
-      ) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, NOW(), $8)
+      ) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9)
       RETURNING id`,
       [
         username,
@@ -352,6 +352,7 @@ export async function provisionCalUser(
         email,
         timeZone,
         'de', // German locale
+        24, // 24-hour format (German standard)
         true, // Skip onboarding
         'CAL', // Identity provider
         avatarUrl || null, // Profile photo from KH

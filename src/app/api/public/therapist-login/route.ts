@@ -91,7 +91,7 @@ export async function POST(req: Request) {
       magicLinkUrl,
     });
 
-    const sent = await sendEmail({
+    const loginResult = await sendEmail({
       to: therapist.email,
       subject: emailContent.subject,
       html: emailContent.html,
@@ -101,8 +101,8 @@ export async function POST(req: Request) {
       },
     });
 
-    if (!sent) {
-      // Log but don't reveal to user
+    // Only log as error for actual failures, not suppression or missing config
+    if (!loginResult.sent && loginResult.reason === 'failed') {
       await logError('api.therapist-login', { name: 'EmailFailed', message: 'Failed to send magic link' }, {
         therapist_id: therapist.id,
       }, ip, ua);
@@ -116,7 +116,7 @@ export async function POST(req: Request) {
       ua,
       props: { 
         therapist_id: therapist.id,
-        email_sent: sent,
+        email_sent: loginResult.sent,
       },
     });
 

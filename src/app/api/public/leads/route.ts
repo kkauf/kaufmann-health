@@ -443,7 +443,7 @@ async function handleTherapistMultipart(req: Request) {
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
       };
     } catch { }
-    const sent = await sendEmail({
+    const welcomeResult = await sendEmail({
       to: data.email,
       subject: welcome.subject,
       html: welcome.html,
@@ -451,7 +451,8 @@ async function handleTherapistMultipart(req: Request) {
       replyTo: 'kontakt@kaufmann-health.de',
       context: { stage: 'therapist_welcome', lead_id: therapistId, lead_type: 'therapist' },
     });
-    if (!sent) {
+    // Only log as error if it was an actual failure, not suppression or missing config
+    if (!welcomeResult.sent && welcomeResult.reason === 'failed') {
       await logError('api.leads', new Error('Therapist welcome email send failed'), { stage: 'therapist_welcome_send_failed', lead_id: therapistId, email: data.email }, ip, ua);
     }
   } catch (e) {
@@ -991,7 +992,7 @@ export async function POST(req: Request) {
             ua,
             props: { stage: 'email_confirmation', lead_id: effectiveId!, lead_type: 'patient', subject: emailContent.subject },
           });
-          const sent = await sendEmail({
+          const emailResult = await sendEmail({
             to: email,
             subject: emailContent.subject,
             html: emailContent.html,
@@ -1004,7 +1005,8 @@ export async function POST(req: Request) {
               email_token: confirmToken,
             },
           });
-          if (!sent) {
+          // Only log as error if it was an actual failure, not suppression or missing config
+          if (!emailResult.sent && emailResult.reason === 'failed') {
             await logError('api.leads', new Error('Confirmation email send failed'), { stage: 'email_confirmation_send_failed', lead_id: effectiveId!, email }, ip, ua);
           }
         } catch (e) {

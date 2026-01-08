@@ -18,3 +18,9 @@ export type EmailContent = {
   html?: string;
   text?: string;
 };
+
+export type SendEmailResult = {
+  sent: boolean;
+  /** Why the email was not sent (only set when sent=false) */
+  reason?: 'suppressed' | 'missing_api_key' | 'missing_recipient' | 'failed';
+};

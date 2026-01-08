@@ -222,7 +222,7 @@ export async function GET(req: Request) {
           props: { kind: 'feedback_request_d10', patient_id: patient.id, subject: content.subject },
         });
 
-        const emailSent = await sendEmail({
+        const emailResult = await sendEmail({
           to: email,
           subject: content.subject,
           html: content.html,
@@ -233,9 +233,9 @@ export async function GET(req: Request) {
           },
         });
 
-        if (emailSent) {
+        if (emailResult.sent) {
           sent++;
-        } else {
+        } else if (emailResult.reason === 'failed') {
           await logError('admin.api.leads.feedback_request', new Error('Email send returned false'), { stage: 'send_failed', patient_id: patient.id }, ip, ua);
         }
       } catch (e) {
