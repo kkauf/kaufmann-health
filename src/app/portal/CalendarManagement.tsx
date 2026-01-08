@@ -1,10 +1,46 @@
 "use client";
 
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, ExternalLink, BookOpen, GraduationCap, Video } from "lucide-react";
+import { Calendar, ExternalLink, BookOpen, GraduationCap, Video, Rocket, CheckCircle, Loader2 } from "lucide-react";
 
-export default function CalendarManagement() {
+interface Props {
+  therapistId: string;
+  calEnabled?: boolean;
+}
+
+export default function CalendarManagement({ therapistId, calEnabled: initialCalEnabled }: Props) {
+  const [calEnabled, setCalEnabled] = useState(initialCalEnabled ?? false);
+  const [enabling, setEnabling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleGoLive = async () => {
+    if (!confirm('Hast du deine Verfügbarkeit in Cal.com eingerichtet? Mit diesem Schritt werden deine Terminarten für Buchungen freigeschaltet.')) {
+      return;
+    }
+    
+    setEnabling(true);
+    setError(null);
+    
+    try {
+      const res = await fetch(`/api/public/therapists/${therapistId}/enable-cal`, {
+        method: 'POST',
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Fehler beim Aktivieren');
+      }
+      
+      setCalEnabled(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unbekannter Fehler');
+    } finally {
+      setEnabling(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Main Cal.com Card */}
@@ -25,21 +61,47 @@ export default function CalendarManagement() {
             </div>
           </div>
 
-          <a
-            href="https://cal.kaufmann.health"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block w-full sm:w-auto"
-          >
-            <Button 
-              size="lg"
-              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg transition-all duration-200 group"
+          <div className="flex flex-wrap gap-3">
+            <a
+              href="https://cal.kaufmann.health"
+              target="_blank"
+              rel="noopener noreferrer"
             >
-              <Calendar className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" />
-              Zu Cal.com wechseln
-              <ExternalLink className="h-4 w-4 ml-2 opacity-70" />
-            </Button>
-          </a>
+              <Button 
+                size="lg"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg transition-all duration-200 group"
+              >
+                <Calendar className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" />
+                Zu Cal.com wechseln
+                <ExternalLink className="h-4 w-4 ml-2 opacity-70" />
+              </Button>
+            </a>
+            
+            {!calEnabled ? (
+              <Button 
+                size="lg"
+                onClick={handleGoLive}
+                disabled={enabling}
+                className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all duration-200"
+              >
+                {enabling ? (
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                ) : (
+                  <Rocket className="h-5 w-5 mr-2" />
+                )}
+                {enabling ? 'Wird aktiviert...' : 'Buchungen freischalten'}
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg">
+                <CheckCircle className="h-5 w-5" />
+                <span className="font-medium">Buchungen aktiv</span>
+              </div>
+            )}
+          </div>
+          
+          {error && (
+            <p className="mt-3 text-sm text-red-600">{error}</p>
+          )}
         </div>
       </Card>
 

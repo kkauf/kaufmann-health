@@ -891,7 +891,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
         </form>
       ) : (
         /* Calendar Management Tab */
-        <CalendarManagement />
+        <CalendarManagement therapistId={therapistId} />
       )}
 
       {/* Support & Logout Footer */}
