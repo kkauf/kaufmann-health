@@ -10,7 +10,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Mail, Phone, Loader2 } from 'lucide-react';
+import { Mail, Phone, Loader2, MailCheck, RefreshCw } from 'lucide-react';
 import type { CalBookingState, CalBookingActions } from '../hooks/useCalBooking';
 
 interface CalVerificationFormProps {
@@ -150,6 +150,60 @@ export function CalVerificationForm({ state, actions, slotSummary }: CalVerifica
             size="sm"
           >
             {verifyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Bestätigen'}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'email-sent') {
+    return (
+      <div className="space-y-4">
+        <div className="text-center py-4">
+          <div className="mx-auto w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
+            <MailCheck className="h-6 w-6 text-emerald-600" />
+          </div>
+          <h4 className="text-base font-semibold text-gray-900 mb-1">E-Mail gesendet!</h4>
+          <p className="text-sm text-gray-600">
+            Wir haben einen Bestätigungslink an <span className="font-medium">{contactValue}</span> gesendet.
+          </p>
+          <p className="text-sm text-gray-600 mt-2">
+            Klicke auf den Link in der E-Mail, um deine Buchung abzuschließen.
+          </p>
+        </div>
+
+        {slotSummary}
+
+        <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600">
+          <p className="font-medium text-gray-700 mb-1">Keine E-Mail erhalten?</p>
+          <ul className="list-disc list-inside space-y-1">
+            <li>Überprüfe deinen Spam-Ordner</li>
+            <li>Stelle sicher, dass die E-Mail-Adresse korrekt ist</li>
+          </ul>
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <Button
+            variant="outline"
+            onClick={actions.backToSlots}
+            className="flex-1"
+            size="sm"
+          >
+            Zurück
+          </Button>
+          <Button
+            variant="outline"
+            onClick={actions.sendCode}
+            disabled={verifyLoading}
+            className="flex-1"
+            size="sm"
+          >
+            {verifyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                Erneut senden
+              </>
+            )}
           </Button>
         </div>
       </div>

@@ -23,7 +23,7 @@ interface SessionData {
   patient_id?: string;
 }
 
-type BookingStep = 'slots' | 'verify' | 'code' | 'fallback';
+type BookingStep = 'slots' | 'verify' | 'code' | 'email-sent' | 'fallback';
 
 // EARTH-262: Timeout configuration
 const SLOTS_FETCH_TIMEOUT_MS = 5000;
@@ -396,7 +396,8 @@ export function useCalBooking({
         return;
       }
 
-      setStep('code');
+      // Email uses magic link (no code entry), SMS uses code entry
+      setStep(contactMethod === 'email' ? 'email-sent' : 'code');
     } catch {
       setVerifyError('Fehler beim Senden des Codes');
     } finally {

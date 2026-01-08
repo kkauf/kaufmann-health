@@ -491,11 +491,12 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
               setInitialModalViewMode('profile');
               setSelectedTherapist(therapist);
             }}
-            onContactClick={() => {
+            onContactClick={(type) => {
               // For Cal-enabled therapists, open modal in cal-booking mode
               const isCal = therapist.cal_enabled && therapist.cal_username;
               setInitialModalViewMode(isCal ? 'cal-booking' : 'booking');
-              setInitialCalBookingKind('intro');
+              // Map contact type to Cal booking kind: 'consultation' = 'intro', 'booking' = 'full_session'
+              setInitialCalBookingKind(type === 'consultation' ? 'intro' : 'full_session');
               setSelectedTherapist(therapist);
             }}
           />
