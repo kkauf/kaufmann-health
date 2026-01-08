@@ -142,6 +142,14 @@ Three-stage follow-up sequence for verified patients who haven't booked:
 | 5 | `selectionNudge` | Reassurance: free intro call, chemistry shows in person, can switch |
 | 10 | `feedbackRequest` | One-click feedback options + interview incentive (€25 voucher) |
 
+### Therapist Cal.com Onboarding
+- `therapistCalOnboarding` → `src/lib/email/templates/therapistCalOnboarding.ts`
+  - Sent once a therapist's Cal.com account is provisioned.
+  - Includes: Login credentials (URL, email, generated password), booking profile link, and setup guide.
+  - Features: **Video Tutorial link** (to KH Portal) to help with setup.
+  - Important warning: Activation of Cal.com disables native KH availability slots.
+
+
 Templates: `src/lib/email/templates/richTherapistEmail.ts`, `selectionNudge.ts`, `feedbackRequest.ts`
 
 Crons: `GET /api/admin/leads/rich-therapist-email`, `/selection-nudge`, `/feedback-request`

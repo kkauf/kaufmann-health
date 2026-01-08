@@ -62,6 +62,12 @@ This is a concise, high-signal overview. It complements the detailed `docs/api.m
 ## Therapist flows (public)
 - `POST /api/public/therapists/:id/profile` → basic profile + pending photo
 - `POST /api/public/therapists/:id/documents` → license/certificates + Enhanced Conversions
+- `POST /api/public/therapists/:id/enable-cal` → provision Cal.com account
+
+## Cal.com Integration
+- `GET /api/public/cal/slots` → high-speed slot fetching via direct DB access
+- `POST /api/public/cal/webhook` → booking ingestion (create/reschedule/cancel)
+
 
 ## Conversions (Google Ads)
 - Server Enhanced Conversions (`src/lib/google-ads.ts`) for `client_registration` and `therapist_registration`.

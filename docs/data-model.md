@@ -15,6 +15,26 @@
 - `status text default 'new'` — allowed values: `new`, `pre_confirmation`, `email_confirmed`, `pending_verification` (therapists default), `verified`, `rejected`, `matched`
 - `metadata jsonb default '{}'::jsonb`
 - `created_at timestamptz default now()`
+- `campaign_source text`
+- `campaign_variant text`
+- `phone_number varchar` — E.164 format: +4917612345678
+
+## public.therapists
+Stores profile and qualification data for therapists. References `people(id)`.
+- `id uuid pk references people(id)`
+- `first_name text`
+- `last_name text`
+- `gender text` — `male | female | diverse`
+- `city text`
+- `address text`
+- `accepting_new boolean`
+- `metadata jsonb` — stores `profile` (photo paths, approach text), `documents` (license, certificates), and Cal.com event IDs.
+- `cal_username text`
+- `cal_enabled boolean`
+- `cal_intro_event_type_id integer`
+- `cal_full_session_event_type_id integer`
+- `created_at timestamptz`
+- `updated_at timestamptz`
 
 Notes:
 - `secure_uuid` on `matches` is unique and used for magic links. No PII in emails.
@@ -62,3 +82,27 @@ Indexes: `created_at desc`, `reason`, and `match_id`.
 
   RLS:
   - Enabled. Only the service role writes/reads via server endpoints.
+
+## public.cal_bookings
+Ingested bookings from Cal.com.
+- `id uuid pk default gen_random_uuid()`
+- `cal_uid text unique` — The unique ID from Cal.com
+- `last_trigger_event text` — `BOOKING_CREATED | BOOKING_RESCHEDULED | BOOKING_CANCELLED`
+- `organizer_username text`
+- `event_type_id integer`
+- `start_time timestamptz`
+- `end_time timestamptz`
+- `therapist_id uuid references therapists(id)`
+- `patient_id uuid references people(id)`
+- `match_id uuid references matches(id)`
+- `booking_kind text` — `intro | full_session`
+- `source text` — `directory | questionnaire`
+- `status text`
+- `is_test boolean`
+- `metadata jsonb`
+- `created_at timestamptz`
+- `updated_at timestamptz`
+- `client_confirmation_sent_at timestamptz`
+- `therapist_notification_sent_at timestamptz`
+- `reminder_24h_sent_at timestamptz`
+- `reminder_1h_sent_at timestamptz`

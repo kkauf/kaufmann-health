@@ -182,3 +182,30 @@
   - ✅ Defensive CSS pattern that works reliably across all browsers
 - **Key Learning**: When using `overflow: hidden` with `border-radius` on a container, child elements don't need their own `border-radius` - they will be clipped to the container's shape. Redundant border-radius on animated children can cause sub-pixel bleeding in Safari/WebKit.
 - **Links**: `src/features/leads/components/ProgressBar.tsx`.
+
+## In-Modal Booking Experience (ADR-014)
+
+- **Why**: Standalone booking pages created a "dead end" feel and increased drop-off. In-modal booking keeps the patient in the directory context and allows for pre-verification (Phone/Email) before the final redirect to Cal.com.
+- **Decision** (EARTH-256):
+  - Migrate all booking flows into the `ContactModal`.
+  - Prefer pre-fetching slots on modal open to eliminate loading wait times.
+  - Implement a shared `VerificationForm` adapter to reuse logic across different contact types.
+- **Consequences**:
+  - ✅ Improved conversion rate by reducing friction.
+  - ✅ Consistent UX across directory and modality pages.
+  - ✅ Simplified maintenance via shared verification components.
+
+## Cal.com Infrastructure Integration (ADR-015)
+
+- **Why**: We needed a robust, automated way to manage therapist availability and bookings without building a full scheduling engine. Cal.com provided the right primitives, but required custom orchestration to fit our "gated infrastructure" model.
+- **Decision** (EARTH-265):
+  - **Template-based Provisioning**: Use a "golden template" user to clone schedules and availability. This handles schema drift gracefully and ensures a "known good" state for new therapists.
+  - **UI-Automation for Event Types**: SQL-created event types 404 on Cal.com booking pages. We use Playwright to automate event type creation through the UI during provisioning.
+  - **Direct SQL Access**: Query the Cal.com database (Railway) directly for slot fetching instead of relying on their Public API/Webhooks for real-time availability. This provides sub-second latency.
+  - **Per-user Webhooks**: Create unique webhooks for each provisioned user to ingest bookings (created, rescheduled, cancelled) into `public.cal_bookings`.
+- **Consequences**:
+  - ✅ Automated onboarding: therapists get a ready-to-use booking page upon approval.
+  - ✅ Performance: High-speed slot fetching via direct DB access.
+  - ✅ Reliability: Cloned schedules ensure consistent availability defaults.
+- **Links**: `src/lib/cal/provision.ts`, `src/lib/cal/slots-db.ts`, `src/app/api/public/cal/webhook/route.ts`.
+

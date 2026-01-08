@@ -15,6 +15,34 @@
   - 409: `{ error: 'SLOT_TAKEN' }`
   - 500: `{ error: 'Failed to book' }`
 
+__Note__: Native bookings are now secondary to Cal.com for most therapists. Cal.com bookings are ingested via `/api/public/cal/webhook`.
+
+## GET /api/public/cal/slots
+
+- __Purpose__: Fetch available booking slots for a Cal.com-enabled therapist.
+- __Auth__: None (public).
+- __Query Params__:
+  - `therapist_id` (uuid, required)
+  - `kind` (`'intro' | 'full_session'`, required) — Maps to Cal.com event type slug.
+  - `start?` (YYYY-MM-DD, optional) — Defaults to today.
+  - `end?` (YYYY-MM-DD, optional) — Defaults to 7 days from start.
+  - `timeZone?` (string, optional) — Defaults to `Europe/Berlin`.
+- __Behavior__: Queries the Cal.com Postgres database directly for sub-second latency. Caches results for 1 minute.
+- __Response__: `{ data: { slots: Array<{ date_iso, time_label, time_utc }>, therapist_id, kind, cal_username, event_type_slug }, error: null }`
+
+
+## POST /api/public/cal/webhook
+
+- __Purpose__: Ingest booking events (created, rescheduled, cancelled) from Cal.com.
+- __Auth__: Validates signature via `CAL_WEBHOOK_SECRET`.
+- __Behavior__:
+  - Matches Cal.com user to KH therapist via `cal_username`.
+  - Matches Cal.com booking to KH patient via email.
+  - Creates or updates `public.cal_bookings`.
+  - Sends transactional emails on success.
+- __Response__: `{ data: { ok: true }, error: null }`
+
+
 ## GET /api/public/therapists
 
 - __Purpose__: List publicly visible therapists and computed availability.
@@ -46,6 +74,8 @@
   - Updates `people.metadata.phone_verified=true`, sets `status='new'`.
   - If `metadata.draft_contact` exists, calls `POST /api/public/contact` with `idempotency_key` and clears draft only after success. Emits `draft_contact_processed` or `draft_contact_failed`.
   - If `metadata.draft_booking` exists, creates a `bookings` row for the selected occurrence if not already taken, then clears `draft_booking`. Emits `booking_created`.
+  - **In-Modal Booking (EARTH-256)**: Once verified, the client session `kh_client` cookie is set, enabling the `ContactModal` to proceed with the final booking step (Cal.com redirect or native submit).
+
 
 
 > Looking for a concise overview? See `docs/api-quick-reference.md` for invariants, auth patterns, observability, and the key endpoints. This file is the deep reference with full behavior and edge cases.
@@ -340,7 +370,20 @@
   - 404: `{ data: null, error: 'Not found' }`
   - 500: `{ data: null, error: 'Failed to update' | 'Failed to upload profile photo' | 'Unexpected error' }`
 
-### Therapist uploads (multipart)
+## POST /api/public/therapists/:id/enable-cal
+
+- __Purpose__: Enable (unhide) a therapist's Cal.com event types after they've finished setting up their availability. This is the final step after Cal.com account provisioning.
+- __Auth__: Requires `kh_therapist` session cookie (therapist must be logged in).
+- __Behavior__:
+  - Looks up the therapist's `cal_username`.
+  - Sets `hidden = false` on the `intro` and `full-session` event types in Cal.com.
+  - Tracks a `therapist_cal_enabled` analytics event.
+- __Response__:
+  - 200: `{ success: true, message: 'N event types enabled' }`
+  - 400: `{ error: 'Cal.com not set up' }`
+  - 401: `{ error: 'Unauthorized' }`
+  - 500: `{ error: 'Failed to enable Cal.com' }`
+
 - __Content-Type__: `multipart/form-data`
 - __Required files (flow-enforced)__:
   - License first: one document proving qualification. Accepted: Psychologischer Psychotherapeut (approbiert), Heilpraktiker für Psychotherapie, Großer Heilpraktiker. Formats: PDF, JPG, PNG. Max 4MB.

@@ -3,7 +3,8 @@
 - __App Router__: Pages in `src/app/` (UI only: rendering, local state, event handlers). Business logic does not live in components.
 - __Components__: Reusable UI in `src/components/` and shadcn-generated primitives in `src/components/ui/`.
 - __API routes__: Server-only logic in `src/app/api/*` with `export const runtime = 'nodejs'` where secrets (service role) are required. Public site stays cookie-free; only server routes touch the database or secrets.
-- __Lib__: Shared utilities in `src/lib/` including Supabase clients.
+- __Lib__: Shared utilities in `src/lib/` including Supabase clients and Cal.com integration logic.
+- __Cal.com (Gated Infrastructure)__: Approved therapists are provisioned into a managed Cal.com instance. The backend handles provisioning, slot fetching, and booking ingestion.
 
 ### Shared UI: TherapistPreview
 - Variants: `web` (customer-facing), `admin` (richer triage info), `email` (inline-styled, client-safe). Location: `src/components/TherapistPreview.tsx` and email snippet in `src/lib/email/components/therapistPreview.ts`.
@@ -66,7 +67,26 @@ Why this design:
   - Pre-authenticated contact via ContactModal (skips verification, prefills patient context)
   - Gentle urgency messaging: "💡 Tipp: Wir empfehlen, sich zeitnah zu melden" (no hard deadline)
 - **Session management**: Functional cookie `kh_client` (JWT, 30 days, HTTP-only) persists verified patient sessions; rate-limited to 3 contacts/day.
+- **Therapist session**: Functional cookie `kh_therapist` (JWT, 30 days, HTTP-only) enables therapist self-service portal access. Created after magic-link verification at `/portal/auth`.
 - **Privacy**: No PII in therapist notification email; contact info revealed only after acceptance; magic links use `secure_uuid`.
+
+### In-Modal Booking Experience (EARTH-256)
+- **Why**: Standalone booking pages added latency and drop-off. In-modal booking keeps the user in context and allows for pre-verification.
+- **Flow**:
+  1. User selects a slot from `TherapistCard` or `ModalityPage`.
+  2. `ContactModal` opens in "booking" mode.
+  3. Patient verification (Phone/Email) is completed *before* booking.
+  4. Once verified, the Cal.com booking modal (if enabled) or native KH booking is triggered.
+  5. Cal.com bookings are ingested via webhooks and stored in `public.cal_bookings`.
+- **Pre-fetching**: Slots are prefetched on modal open to ensure immediate interactivity.
+
+### Cal.com Integration (EARTH-265)
+- **Provisioning Trigger**: When an admin approves a therapist (sets `status='verified'` via `PATCH /api/admin/therapists/:id`), the system automatically calls `provisionCalUser()` to create their Cal.com account.
+- **Provisioning**: Managed via `src/lib/cal/provision.ts`. Approved therapists get a Cal.com account cloned from a "golden template" (including schedules and availability).
+- **Event Types**: Cloned via Playwright-driven UI automation (SQL inserts for event types are unstable in Cal.com).
+- **Slot Fetching**: `src/lib/cal/slots-db.ts` queries the Cal.com database directly for performance and real-time accuracy.
+- **Webhooks**: Each provisioned user has an individual webhook pointing to `POST /api/public/cal/webhook` for booking ingestion (created, rescheduled, cancelled).
+- **Address Sync**: `src/lib/cal/syncAddress.ts` syncs therapist practice addresses to Cal.com event type locations.
 
 ### Booking Notifications (EARTH-220/221)
 - On successful booking creation, two transactional emails are sent via `sendEmail()`:

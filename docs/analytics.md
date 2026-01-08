@@ -38,15 +38,18 @@
   - `contact_rate_limit_hit` (POST /api/public/matches/:uuid/contact when blocked)
   - Ops: `cron_executed`, `cron_completed`, `cron_failed`, `internal_alert_sent`.
 
-### SMS notifications (EARTH-206)
-- Outbound events
-  - `sms_attempted` — before sending transactional SMS (selection email fallback or reminders)
-  - `sms_sent` — on successful Twilio send
-  - `sms_status` — Twilio delivery status webhook (`/api/internal/sms/status`), includes `status`, masked `to/from`, `message_sid`, optional `error_code`
-- Deduplication for reminders
-  - `alreadySentForStage()` considers both `email_sent` and `sms_sent` within the stage lookback window (24h/48h) to prevent duplicate outreach.
+### Cal.com Integration (EARTH-265)
+- **Booking Events**: Emitted by `POST /api/public/cal/webhook`.
+  - `cal_booking_created`
+  - `cal_booking_rescheduled`
+  - `cal_booking_cancelled`
+- **Ops & Alerts**:
+  - `cal_webhook_failure` — tracks database/validation issues during ingestion.
+  - `cal_webhook_alert` — level `error` event emitted after 3+ consecutive failures for a booking ID.
+  - `cal_webhook_signature_failed` — level `warn` if signature verification fails.
 
 ### Match page client events (EARTH-206)
+
 - `match_page_view` — includes only `therapist_count` (no PII)
 - `match_page_preferences_shown` — non‑PII flags summarizing the preference chips (issue present, online/in_person flags, urgent flag, modality_matters)
 
@@ -56,9 +59,11 @@
 - Deduplication by lead id: `orderId` (server) == `transaction_id` (client).
 
 ### Campaign attribution (server‑side)
-- `campaign_source` inferred from referer path (`/ankommen-in-dir` | `/wieder-lebendig` | default `/therapie-finden`).
-- `campaign_variant` A/B/C from `?v=` (referer takes precedence; falls back to API URL).
+- `campaign_source` inferred from referer path.
+- `campaign_variant` A/B/C from `?v=`.
+- **GCLID persistence**: `gclid` and `utm` parameters are stored in `localStorage` and synchronized across domains to ensure stable attribution even if the user navigates away and returns.
 - Stored on patient leads; included in relevant events; do not duplicate into Vercel Analytics.
+
 
 ## Operations & Alerts (birdseye)
 - New (2025‑09‑26): System error digest.
@@ -97,7 +102,9 @@ try {
 
 ## Google Ads conversions (minimal & private)
 - Server Enhanced Conversions: hashed email uploads on key events (e.g., `client_registration`, `therapist_registration`).
+- **GCLID inclusion**: Payload now explicitly includes `gclid` for more robust server-side attribution matching.
 - Client signal (minimal): single gtag conversion after Fragebogen completion to help Ads optimization; deduped by lead id.
+
 - Consent Mode v2
   - Default denied (cookieless). If `NEXT_PUBLIC_COOKIES=true`, we enable conversion linker only after explicit consent.
 - Env (production only): `NEXT_PUBLIC_GOOGLE_ADS_ID`, `NEXT_PUBLIC_GAD_CONV_CLIENT`, plus server creds for Enhanced Conversions.

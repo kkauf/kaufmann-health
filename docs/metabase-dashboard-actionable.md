@@ -19,7 +19,8 @@ Key shift: **measure success per lead**, not per match.
 ### Entities
 - **Lead**: `public.people` where `type = 'patient'` and `status IS DISTINCT FROM 'anonymous'`
 - **Match**: `public.matches` (one patient ↔ one therapist)
-- **Booking**: `public.bookings` (primary conversion proxy)
+- **Booking**: `public.bookings` and `public.cal_bookings` (primary conversion proxy)
+
 
 ### Match statuses (current)
 `proposed → patient_selected → accepted | declined → session_booked → completed | failed`
@@ -36,7 +37,8 @@ Note:
 
 ### Success (lead-level)
 - **Accepted lead**: lead has **≥ 1** match in `('accepted','session_booked','completed')`
-- **Booked lead**: lead has **≥ 1** booking
+- **Booked lead**: lead has **≥ 1** booking (native or Cal.com)
+
 
 ### Lead cohorts (critical for correct metrics)
 - **Anonymous patient**: `people.status = 'anonymous'` (questionnaire-only; no direct revenue signal yet)
@@ -230,12 +232,17 @@ match_agg AS (
 ),
 booking_agg AS (
   SELECT
-    b.patient_id,
+    patient_id,
     COUNT(*) AS bookings
-  FROM bookings b
+  FROM (
+    SELECT patient_id FROM bookings
+    UNION ALL
+    SELECT patient_id FROM cal_bookings WHERE status IS DISTINCT FROM 'CANCELLED'
+  ) b
   JOIN leads l ON l.id = b.patient_id
   GROUP BY 1
 )
+
 SELECT
   COUNT(*) AS leads_created,
   COUNT(*) FILTER (WHERE COALESCE(ma.matches_total, 0) > 0) AS leads_with_any_match,

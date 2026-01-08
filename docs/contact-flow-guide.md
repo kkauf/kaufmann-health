@@ -4,9 +4,11 @@
 
 ### User Flow
 1. Browse directory → Click "Therapeut:in buchen" or "Erstgespräch"
-2. Modal: Enter name + email/phone → Verify code
-3. Compose message with reason → Send
-4. Success: "Therapeut erhält deine Nachricht"
+2. Modal opens: Select a slot (for bookings) or proceed with consultation.
+3. Verification: Enter name + email/phone → Verify 6-digit code.
+4. Compose message with reason (pre-filled) → Send.
+5. Success: Confirmation modal "Therapeut erhält deine Nachricht".
+
 
 ### Rate Limit
 - **3 contacts per patient per 24 hours**
@@ -22,10 +24,13 @@
 - **Purpose**: Skip re-verification for returning users
 - **Security**: JWT signed with `JWT_SECRET` environment variable (required in production)
 
-### API Endpoint
+### API Endpoints
 ```bash
 POST /api/public/contact
+GET /api/public/cal/slots
+POST /api/public/cal/webhook
 ```
+
 
 ### Message Templates
 **Booking:**
@@ -107,6 +112,14 @@ Track in Supabase events:
 - Creates `match` record with `status='proposed'`
 - Metadata includes: `patient_initiated: true`, `contact_type`, `patient_reason`, `patient_message`, `contact_method`
 - Patient record created if doesn't exist (by email or phone)
+- For Cal.com bookings: stored in `public.cal_bookings` table.
+
+### In-Modal Booking (EARTH-256)
+- **Why**: Reduced drop-off by staying in context.
+- **Verification**: Patient is verified *before* the booking is finalized.
+- **Cal.com**: If enabled, the Cal.com booking modal is opened *after* verification.
+- **Pre-fetching**: Slots are loaded in the background as soon as the modal is opened.
+
 
 ### Testing
 ```bash
