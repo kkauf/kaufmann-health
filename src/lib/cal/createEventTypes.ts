@@ -17,6 +17,7 @@ export interface EventTypeConfig {
   slug: string;
   description: string;
   lengthMinutes: number;
+  minimumBookingNoticeMinutes?: number;
 }
 
 export interface CreateEventTypesResult {
@@ -26,12 +27,15 @@ export interface CreateEventTypesResult {
   error?: string;
 }
 
-// Standard KH event types
+// Standard KH event types with minimum booking notice
+// intro: 4 hours (240 min) - allows same-day but not last-minute
+// full-session: 24 hours (1440 min) - industry standard for therapy sessions
 export const KH_INTRO_EVENT: EventTypeConfig = {
   title: 'Kostenloses Kennenlerngespräch (15 Min)',
   slug: 'intro',
   description: 'Ein kurzes, unverbindliches Videogespräch zum Kennenlernen.',
   lengthMinutes: 15,
+  minimumBookingNoticeMinutes: 240, // 4 hours
 };
 
 export const KH_FULL_SESSION_EVENT: EventTypeConfig = {
@@ -39,7 +43,26 @@ export const KH_FULL_SESSION_EVENT: EventTypeConfig = {
   slug: 'full-session',
   description: 'Eine vollständige Therapiesitzung per Video oder in meiner Praxis.',
   lengthMinutes: 50,
+  minimumBookingNoticeMinutes: 1440, // 24 hours
 };
+
+/**
+ * Update minimum booking notice for an event type via SQL
+ */
+async function updateEventTypeSettings(eventTypeId: number, config: EventTypeConfig): Promise<void> {
+  if (!CAL_DATABASE_URL || !config.minimumBookingNoticeMinutes) return;
+  
+  const pool = new Pool({ connectionString: CAL_DATABASE_URL, ssl: { rejectUnauthorized: false } });
+  try {
+    await pool.query(
+      'UPDATE "EventType" SET "minimumBookingNotice" = $1 WHERE id = $2',
+      [config.minimumBookingNoticeMinutes, eventTypeId]
+    );
+    console.log(`  Updated minimumBookingNotice to ${config.minimumBookingNoticeMinutes} min for event ${eventTypeId}`);
+  } finally {
+    await pool.end();
+  }
+}
 
 /**
  * Get existing event type IDs for a user from the database
@@ -136,6 +159,8 @@ export async function createEventTypesViaUI(
       const id = await createSingleEventType(page, eventType);
       if (id) {
         createdIds.set(eventType.slug, id);
+        // Update minimum booking notice via SQL after UI creation
+        await updateEventTypeSettings(id, eventType);
       }
     }
     
