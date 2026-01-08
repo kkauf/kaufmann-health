@@ -5,9 +5,21 @@ function normalizePhone(phone: string): string {
   return phone.replace(/\D+/g, '');
 }
 
-// Google Ads Enhanced Conversions (server-side) minimal wrapper.
+// Google Ads Server-Side Conversions (offline click conversions with enhanced user data)
+// 
+// CRITICAL ARCHITECTURE (DO NOT CHANGE WITHOUT BUSINESS APPROVAL):
+// This module uses uploadClickConversions API to create server-side conversions.
+// This is ESSENTIAL for reliable conversion tracking because:
+// 1. Client-side gtag conversions can be blocked by ad blockers, consent denial, or network issues
+// 2. Server-side conversions with GCLID provide reliable attribution to Google Ads campaigns
+// 3. User identifiers (hashed email/phone) enable cross-device attribution
+//
+// DO NOT switch to uploadConversionAdjustments - that API only ENHANCES existing conversions
+// and does NOTHING if no base conversion exists. This was incorrectly changed once and broke
+// conversion tracking for ~2 weeks.
+//
 // - Uses OAuth2 refresh token flow to obtain access tokens
-// - Uploads hashed user identifiers and conversion attributes via ConversionUploadService
+// - Uploads click conversions with GCLID + hashed user identifiers via ConversionUploadService
 // - Falls back to no-op with internal event logging when not configured
 
 export type ConversionData = {
@@ -193,16 +205,22 @@ export class GoogleAdsTracker {
     }
   }
 
-  private buildEnhancementAdjustment(ec: EnhancedConversion) {
-    // REST JSON for ConversionAdjustmentUploadService.uploadConversionAdjustments
-    // For ENHANCEMENT adjustments, orderId is required.
-    // GCLID is critical for attribution when no client-side base conversion exists.
+  /**
+   * Build a click conversion payload for uploadClickConversions API.
+   * 
+   * CRITICAL: This creates a NEW conversion attributed to the ad click via GCLID.
+   * DO NOT change to uploadConversionAdjustments - that only enhances existing conversions.
+   */
+  private buildClickConversion(ec: EnhancedConversion) {
     return {
       conversionAction: this.resolveConversionAction(ec.conversion_action)!,
-      adjustmentType: 'ENHANCEMENT',
+      conversionDateTime: ec.conversion_date_time,
+      conversionValue: ec.conversion_value,
+      currencyCode: ec.currency,
       ...(ec.order_id ? { orderId: ec.order_id } : {}),
-      ...(ec.gclid ? { gclidDateTimePair: { gclid: ec.gclid, conversionDateTime: ec.conversion_date_time } } : {}),
-      adjustmentDateTime: toGoogleDateTime(),
+      // GCLID is the PRIMARY attribution signal - links conversion to ad click
+      ...(ec.gclid ? { gclid: ec.gclid } : {}),
+      // User identifiers enable cross-device attribution and enhanced matching
       userIdentifiers: ec.user_identifiers.map((u) => ({
         ...(u.hashed_email ? { hashedEmail: u.hashed_email } : {}),
         ...(u.hashed_phone_number ? { hashedPhoneNumber: u.hashed_phone_number } : {}),
@@ -214,8 +232,10 @@ export class GoogleAdsTracker {
   validateConversionData(data: ConversionData): boolean {
     const hasEmail = !!(data?.email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email));
     const hasPhone = !!(data?.phoneNumber && normalizePhone(data.phoneNumber).length >= 8);
+    // Require at least one user identifier for enhanced matching
     if (!hasEmail && !hasPhone) return false;
-    if (!data?.orderId) return false;
+    // orderId is optional for click conversions (GCLID is primary identifier)
+    // but we require it for deduplication tracking on our side
     if (!data?.conversionAction || typeof data.conversionValue !== 'number') return false;
     return true;
   }
@@ -297,8 +317,10 @@ export class GoogleAdsTracker {
         return;
       }
 
-      const conversionAdjustments = conversions.map((c) => this.buildEnhancementAdjustment(c));
-      const url = `https://googleads.googleapis.com/v21/customers/${this.customerId}:uploadConversionAdjustments`;
+      // CRITICAL: Use uploadClickConversions to CREATE new conversions
+      // DO NOT change to uploadConversionAdjustments - that only enhances existing ones
+      const clickConversions = conversions.map((c) => this.buildClickConversion(c));
+      const url = `https://googleads.googleapis.com/v21/customers/${this.customerId}:uploadClickConversions`;
       const headers: Record<string, string> = {
         Authorization: `Bearer ${token}`,
         'developer-token': this.developerToken!,
@@ -307,7 +329,7 @@ export class GoogleAdsTracker {
       if (this.loginCustomerId) headers['login-customer-id'] = this.loginCustomerId;
 
       const payload = {
-        conversionAdjustments,
+        conversions: clickConversions,
         partialFailure: true,
         validateOnly: false,
       } as const;

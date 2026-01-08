@@ -26,7 +26,8 @@ function trackConversionAttempt(label: string, transactionId?: string, hasGclid?
   try {
     const body = JSON.stringify({
       type: 'gtag_conversion_attempted',
-      props: { label, transaction_id: transactionId, has_gclid: hasGclid },
+      // IMPORTANT: API expects 'properties' not 'props'
+      properties: { label, transaction_id: transactionId, has_gclid: hasGclid },
     });
     if (navigator.sendBeacon) {
       const blob = new Blob([body], { type: 'application/json' });
