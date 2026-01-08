@@ -196,10 +196,12 @@ export class GoogleAdsTracker {
   private buildEnhancementAdjustment(ec: EnhancedConversion) {
     // REST JSON for ConversionAdjustmentUploadService.uploadConversionAdjustments
     // For ENHANCEMENT adjustments, orderId is required.
+    // GCLID is critical for attribution when no client-side base conversion exists.
     return {
       conversionAction: this.resolveConversionAction(ec.conversion_action)!,
       adjustmentType: 'ENHANCEMENT',
       ...(ec.order_id ? { orderId: ec.order_id } : {}),
+      ...(ec.gclid ? { gclidDateTimePair: { gclid: ec.gclid, conversionDateTime: ec.conversion_date_time } } : {}),
       adjustmentDateTime: toGoogleDateTime(),
       userIdentifiers: ec.user_identifiers.map((u) => ({
         ...(u.hashed_email ? { hashedEmail: u.hashed_email } : {}),
