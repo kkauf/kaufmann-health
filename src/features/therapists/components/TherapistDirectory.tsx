@@ -31,6 +31,8 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
   const [selectedModality, setSelectedModality] = useState<string>('all');
   const [onlineOnly, setOnlineOnly] = useState<boolean | null>(null);
   const [selectedTherapist, setSelectedTherapist] = useState<TherapistData | null>(null);
+  const [initialModalViewMode, setInitialModalViewMode] = useState<'profile' | 'booking' | 'cal-booking'>('profile');
+  const [initialCalBookingKind, setInitialCalBookingKind] = useState<'intro' | 'full_session'>('intro');
   // Pagination: show first 5, reveal more on demand
   const [visibleCount, setVisibleCount] = useState<number>(5);
   // Auto contact (EARTH-204): when returning from email magic link with redirect
@@ -485,7 +487,18 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
             key={therapist.id}
             therapist={therapist}
             showSchwerpunkte
-            onViewDetails={() => setSelectedTherapist(therapist)}
+            onViewDetails={() => {
+              setInitialModalViewMode('profile');
+              setSelectedTherapist(therapist);
+            }}
+            onContactClick={(type) => {
+              // For Cal-enabled therapists, open modal in cal-booking mode
+              const isCal = therapist.cal_enabled && therapist.cal_username;
+              setInitialModalViewMode(isCal ? 'cal-booking' : 'booking');
+              // Map contact type to Cal booking kind: 'consultation' = 'intro', 'booking' = 'full_session'
+              setInitialCalBookingKind(type === 'consultation' ? 'intro' : 'full_session');
+              setSelectedTherapist(therapist);
+            }}
           />
         ))}
         {/* Desktop/Tablet: Load more tile occupies a grid cell */}
@@ -520,8 +533,13 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
         <TherapistDetailModal
           therapist={selectedTherapist}
           open={!!selectedTherapist}
-          onClose={() => setSelectedTherapist(null)}
+          onClose={() => {
+            setSelectedTherapist(null);
+            setInitialModalViewMode('profile'); // Reset for next open
+          }}
           onOpenContactModal={handleOpenContactModal}
+          initialViewMode={initialModalViewMode}
+          initialCalBookingKind={initialCalBookingKind}
         />
       )}
       

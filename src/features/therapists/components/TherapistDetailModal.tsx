@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
-import { MapPin, Video, User, Calendar, MessageCircle, Globe, ShieldCheck, CalendarCheck2, X, ChevronLeft, ChevronRight, ArrowLeft, Euro } from 'lucide-react';
+import { MapPin, Video, User, Calendar, MessageCircle, Globe, ShieldCheck, CalendarCheck2, X, ChevronLeft, ChevronRight, ArrowLeft, Euro, ExternalLink } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { TherapistData } from './TherapistDirectory';
 import { getAttribution } from '@/lib/attribution';
@@ -20,6 +20,11 @@ import { getModalityInfo } from '@/lib/modalities';
 import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpunkte';
 import { cn } from '@/lib/utils';
 import { formatSessionPrice } from '@/lib/pricing';
+import { isCalBookingEnabled } from '@/lib/cal/booking-url';
+import { useCalBooking, groupSlotsByDay } from '../hooks/useCalBooking';
+import { CalVerificationForm } from './CalVerificationForm';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { CalBookingKind } from '@/contracts/cal';
 
 interface TherapistDetailModalProps {
   therapist: TherapistData;
@@ -28,6 +33,10 @@ interface TherapistDetailModalProps {
   initialScrollTarget?: string;
   /** When true, hides contact CTAs and booking - used for therapist/admin previews */
   previewMode?: boolean;
+  /** Initial view mode when modal opens (default: 'profile') */
+  initialViewMode?: ViewMode;
+  /** Initial Cal booking kind when opening in cal-booking mode */
+  initialCalBookingKind?: CalBookingKind;
   onOpenContactModal?: (
     therapist: TherapistData,
     type: 'booking' | 'consultation',
@@ -36,7 +45,7 @@ interface TherapistDetailModalProps {
 }
 
 type Slot = { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string };
-type ViewMode = 'profile' | 'booking';
+type ViewMode = 'profile' | 'booking' | 'cal-booking';
 
 function getInitials(firstName: string, lastName: string) {
   return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
@@ -50,14 +59,49 @@ function hashCode(s: string) {
   return Math.abs(h);
 }
 
-export function TherapistDetailModal({ therapist, open, onClose, initialScrollTarget, onOpenContactModal, previewMode = false }: TherapistDetailModalProps) {
+export function TherapistDetailModal({ 
+  therapist, 
+  open, 
+  onClose, 
+  initialScrollTarget, 
+  onOpenContactModal, 
+  previewMode = false,
+  initialViewMode = 'profile',
+  initialCalBookingKind = 'intro',
+}: TherapistDetailModalProps) {
   const [imageError, setImageError] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('profile');
+  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
   const [sessionFormat, setSessionFormat] = useState<'online' | 'in_person' | ''>('');
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [weekIndex, setWeekIndex] = useState(0);
+
+  // Cal.com booking state (EARTH-256)
+  const [calBookingKind, setCalBookingKind] = useState<CalBookingKind>(initialCalBookingKind);
+  const [calWeekIndex, setCalWeekIndex] = useState(0);
+  const isCalEnabled = isCalBookingEnabled(therapist);
+  
+  // Reset viewMode to initial when modal opens with new therapist or initial mode
+  useEffect(() => {
+    if (open) {
+      setViewMode(initialViewMode);
+      setCalBookingKind(initialCalBookingKind);
+    }
+  }, [open, initialViewMode, initialCalBookingKind]);
+
+  // Build redirect path for email magic link - returns user to therapist modal with booking flow
+  const calEmailRedirectPath = useMemo(() => {
+    return `/therapeuten?tid=${therapist.id}&view=cal-booking&kind=${calBookingKind}`;
+  }, [therapist.id, calBookingKind]);
+
+  const [calState, calActions] = useCalBooking({
+    therapistId: therapist.id,
+    calUsername: therapist.cal_username || '',
+    bookingKind: calBookingKind,
+    enabled: isCalEnabled && open, // Fetch slots when modal is open, not just when in cal-booking view
+    emailRedirectPath: calEmailRedirectPath,
+  });
   
   const photoSrc = therapist.photo_url && !imageError ? therapist.photo_url : undefined;
   const initials = getInitials(therapist.first_name, therapist.last_name);
@@ -349,9 +393,31 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
       setSessionFormat('');
       setSelectedSlot(null);
       setWeekIndex(0);
+      // Reset Cal booking state
+      setCalWeekIndex(0);
+      calActions.reset();
       onClose();
     }
-  }, [onClose, selectedSlot, sessionFormat, therapist.id, therapist.typical_rate]);
+  }, [onClose, selectedSlot, sessionFormat, therapist.id, therapist.typical_rate, calActions]);
+
+  // Cal slots grouped by day
+  const calSlotsByDay = useMemo(() => groupSlotsByDay(calState.slots), [calState.slots]);
+  const calSortedDays = useMemo(() => Array.from(calSlotsByDay.keys()).sort(), [calSlotsByDay]);
+  
+  // Handle opening Cal booking view
+  const handleOpenCalBooking = useCallback((kind: CalBookingKind) => {
+    setCalBookingKind(kind);
+    setViewMode('cal-booking');
+    calActions.reset();
+    setCalWeekIndex(0);
+  }, [calActions]);
+
+  // Handle back from Cal booking
+  const handleBackFromCalBooking = useCallback(() => {
+    setViewMode('profile');
+    calActions.reset();
+    setCalWeekIndex(0);
+  }, [calActions]);
 
   return (
     <Dialog open={open} onOpenChange={handleModalClose}>
@@ -504,7 +570,7 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
           </div>
         </div>
 
-        {viewMode === 'profile' ? (
+        {viewMode === 'profile' && (
           <>
 
             {schwerpunkte.length > 0 && (
@@ -622,9 +688,11 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
               </div>
             )}
           </>
-        ) : (
+        )}
+
+        {viewMode === 'booking' && (
           <>
-            {/* Booking mode: slot picker */}
+            {/* Booking mode: slot picker (for non-Cal therapists only) */}
             <div className="space-y-5 border-b pb-6">
               {/* Back button */}
               <Button
@@ -780,27 +848,252 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
           </>
         )}
 
+        {/* Cal.com booking view (EARTH-256) */}
+        {viewMode === 'cal-booking' && (
+          <>
+            {/* Header with back button */}
+            <div className="flex items-center gap-3 mb-4">
+              <Button variant="ghost" size="icon" onClick={handleBackFromCalBooking} className="shrink-0 -ml-2">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {calBookingKind === 'intro' ? 'Kostenloses Kennenlernen' : 'Sitzung buchen'}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {calBookingKind === 'intro' ? '15 Min. • Kostenlos' : `50 Min. • ${formatSessionPrice(therapist.typical_rate)}`}
+                </p>
+              </div>
+            </div>
+
+            {/* Verification form for unverified users */}
+            {calState.step !== 'slots' ? (
+              <CalVerificationForm
+                state={calState}
+                actions={calActions}
+                slotSummary={calState.selectedSlot && (
+                  <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 mb-2">
+                    <p className="text-sm text-emerald-900">
+                      <span className="font-medium">Termin:</span>{' '}
+                      {(() => {
+                        const d = new Date(calState.selectedSlot.date_iso + 'T00:00:00');
+                        return d.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' });
+                      })()}{' '}
+                      um {calState.selectedSlot.time_label} Uhr
+                    </p>
+                  </div>
+                )}
+              />
+            ) : (
+              /* Slot picker */
+              <div className="space-y-4">
+                {calState.slotsLoading && (
+                  <div className="space-y-3">
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {[...Array(5)].map((_, i) => (
+                        <Skeleton key={i} className="h-14 w-20 rounded-lg shrink-0" />
+                      ))}
+                    </div>
+                    <Skeleton className="h-24 w-full rounded-lg" />
+                  </div>
+                )}
+
+                {/* EARTH-262: Show fallback UI when Cal.com is unavailable */}
+                {calState.slotsUnavailable && (
+                  <div className="text-center py-6 space-y-4">
+                    <Calendar className="h-10 w-10 mx-auto mb-2 text-amber-500" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        Terminkalender vorübergehend nicht verfügbar
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Schreiben Sie {therapist.first_name} direkt eine Nachricht.
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-2 max-w-xs mx-auto">
+                      <Button
+                        onClick={() => {
+                          handleBackFromCalBooking();
+                          onOpenContactModal?.(therapist, 'consultation', undefined);
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Direkt kontaktieren
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={calActions.retrySlotsFetch}
+                        className="text-gray-600"
+                      >
+                        Erneut versuchen
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {calState.slotsError && !calState.slotsUnavailable && (
+                  <div className="text-center py-6">
+                    <Calendar className="h-10 w-10 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm text-gray-600">{calState.slotsError}</p>
+                  </div>
+                )}
+
+                {!calState.slotsLoading && !calState.slotsError && !calState.slotsUnavailable && calSortedDays.length === 0 && (
+                  <div className="text-center py-6 space-y-4">
+                    <Calendar className="h-10 w-10 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm text-gray-600">Aktuell sind keine Termine verfügbar.</p>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        handleBackFromCalBooking();
+                        onOpenContactModal?.(therapist, 'consultation', undefined);
+                      }}
+                      className="text-gray-600"
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      {therapist.first_name} direkt kontaktieren
+                    </Button>
+                  </div>
+                )}
+
+                {!calState.slotsLoading && !calState.slotsError && calSortedDays.length > 0 && (
+                  <>
+                    {/* Day chips */}
+                    <div className="overflow-x-auto scrollbar-hide -mx-4">
+                      <div className="flex gap-3 px-4 py-4">
+                      {calSortedDays.map((day) => {
+                        const isSelected = calState.selectedSlot?.date_iso === day;
+                        const slotCount = calSlotsByDay.get(day)?.length || 0;
+                        const d = new Date(day + 'T00:00:00');
+
+                        return (
+                          <button
+                            key={day}
+                            onClick={() => {
+                              const firstSlot = calSlotsByDay.get(day)?.[0];
+                              if (firstSlot && calState.selectedSlot?.date_iso !== day) {
+                                calActions.selectSlot(firstSlot);
+                              }
+                            }}
+                            className={cn(
+                              'shrink-0 px-3 py-2 rounded-lg border-2 text-center transition-all',
+                              isSelected
+                                ? 'bg-emerald-50 border-emerald-400 shadow-lg shadow-emerald-200/50'
+                                : 'bg-white border-gray-200 hover:border-gray-300'
+                            )}
+                          >
+                            <div className={cn('text-sm font-medium', isSelected ? 'text-emerald-900' : 'text-gray-900')}>
+                              {d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}
+                            </div>
+                            <div className={cn('text-xs', isSelected ? 'text-emerald-600' : 'text-gray-500')}>
+                              {slotCount} {slotCount === 1 ? 'Termin' : 'Termine'}
+                            </div>
+                          </button>
+                        );
+                      })}
+                      </div>
+                    </div>
+
+                    {/* Time slots for selected day */}
+                    {calState.selectedSlot && (
+                      <div className="pt-2">
+                        <p className="text-sm text-gray-600 mb-2">
+                          Verfügbare Zeiten am {(() => {
+                            const d = new Date(calState.selectedSlot.date_iso + 'T00:00:00');
+                            return d.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' });
+                          })()}:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {calSlotsByDay.get(calState.selectedSlot.date_iso)?.map((slot) => {
+                            const isSelected = calState.selectedSlot?.time_utc === slot.time_utc;
+                            return (
+                              <button
+                                key={slot.time_utc}
+                                onClick={() => calActions.selectSlot(slot)}
+                                className={cn(
+                                  'px-3 py-2 rounded-lg border text-sm font-medium transition-all',
+                                  isSelected
+                                    ? 'bg-emerald-600 border-emerald-600 text-white'
+                                    : 'bg-white border-gray-200 text-gray-900 hover:border-emerald-300'
+                                )}
+                              >
+                                {slot.time_label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Selected slot summary */}
+                    {calState.selectedSlot && (
+                      <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                        <p className="text-sm text-emerald-900">
+                          <span className="font-medium">Gewählter Termin:</span>{' '}
+                          {(() => {
+                            const d = new Date(calState.selectedSlot.date_iso + 'T00:00:00');
+                            return d.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' });
+                          })()}{' '}
+                          um {calState.selectedSlot.time_label} Uhr
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
         {/* Action buttons */}
         {viewMode === 'profile' ? (
           <div className="sticky bottom-0 flex flex-col gap-3 pt-4 sm:flex-row">
-            <Button
-              className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
-              onClick={() => handleContactClick('booking')}
-              disabled={!therapist.accepting_new}
-            >
-              <Calendar className="mr-2 h-5 w-5 shrink-0" />
-              <span className="break-words">Therapeut:in buchen</span>
-            </Button>
+            {/* Cal.com booking CTAs when enabled - open in-modal booking view (EARTH-256) */}
+            {isCalEnabled ? (
+              <>
+                <Button
+                  className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
+                  onClick={() => handleOpenCalBooking('intro')}
+                  disabled={!therapist.accepting_new}
+                >
+                  <Calendar className="mr-2 h-5 w-5 shrink-0" />
+                  <span className="break-words">Kostenloses Kennenlernen</span>
+                </Button>
 
-            <Button
-              variant="outline"
-              className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
-              onClick={() => handleContactClick('consultation')}
-              disabled={!therapist.accepting_new}
-            >
-              <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
-              <span className="break-words">Kostenloses Erstgespräch (15 min)</span>
-            </Button>
+                <Button
+                  variant="outline"
+                  className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
+                  onClick={() => handleOpenCalBooking('full_session')}
+                  disabled={!therapist.accepting_new}
+                >
+                  <CalendarCheck2 className="mr-2 h-5 w-5 shrink-0" />
+                  <span className="break-words">Sitzung buchen</span>
+                </Button>
+              </>
+            ) : (
+              <>
+                {/* Fallback: existing KH booking flow */}
+                <Button
+                  className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
+                  onClick={() => handleContactClick('booking')}
+                  disabled={!therapist.accepting_new}
+                >
+                  <Calendar className="mr-2 h-5 w-5 shrink-0" />
+                  <span className="break-words">Therapeut:in buchen</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
+                  onClick={() => handleContactClick('consultation')}
+                  disabled={!therapist.accepting_new}
+                >
+                  <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
+                  <span className="break-words">Kostenloses Erstgespräch (15 min)</span>
+                </Button>
+              </>
+            )}
           </div>
         ) : viewMode === 'booking' ? (
           <div className="sticky bottom-0 flex gap-3 pt-4">
@@ -817,6 +1110,23 @@ export function TherapistDetailModal({ therapist, open, onClose, initialScrollTa
               className="flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200"
             >
               Termin buchen
+            </Button>
+          </div>
+        ) : viewMode === 'cal-booking' && calState.step === 'slots' ? (
+          <div className="sticky bottom-0 flex gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={handleBackFromCalBooking}
+              className="flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold"
+            >
+              Zurück
+            </Button>
+            <Button
+              onClick={calActions.handleBooking}
+              disabled={!calState.selectedSlot || calState.sessionLoading}
+              className="flex-1 h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              Termin bestätigen
             </Button>
           </div>
         ) : null}

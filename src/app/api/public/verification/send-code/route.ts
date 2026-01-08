@@ -46,10 +46,15 @@ interface SendCodeRequest {
 }
 
 function mapSendCodeContractError(message: string): string {
-  if (message.startsWith('contact') || message.startsWith('contact_type')) {
-    return 'Missing contact or contact_type';
+  // In development, show the actual Zod error for debugging
+  if (process.env.NODE_ENV !== 'production') {
+    return message;
   }
-  return 'Missing contact or contact_type';
+  // In production, show user-friendly German message
+  if (message.includes('contact_type') || message.includes('contact')) {
+    return 'Kontaktinformationen fehlen';
+  }
+  return 'Ungültige Anfrage';
 }
 
 export async function POST(req: NextRequest) {
@@ -80,6 +85,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = parsed.data as unknown as SendCodeRequest;
+    console.log('[send-code] Body:', JSON.stringify({ ...body, contact: '***' }, null, 2)); // Debug: Check if draft_contact is present
     let isTestCookie = false;
     try {
       const cookieHeader = req.headers.get('cookie') || '';
@@ -90,8 +96,21 @@ export async function POST(req: NextRequest) {
           if (k === 'kh_test' && v === '1') { isTestCookie = true; break; }
         }
       }
-    } catch {}
+    } catch { }
     const { contact, contact_type, lead_id, form_session_id, redirect, name, draft_contact, draft_booking } = body;
+
+    // DEBUG: Explicitly track reception of draft_contact to diagnose drop-off
+    // This allows us to see if the frontend sent it, even if validation passed
+    void ServerAnalytics.trackEventFromRequest(req, {
+      type: 'debug_draft_contact_reception',
+      source: 'api.verification.send-code',
+      props: {
+        has_draft_contact: !!draft_contact,
+        contact_type: draft_contact?.contact_type,
+        body_keys: Object.keys(body),
+        therapist_id_prefix: draft_contact?.therapist_id ? draft_contact.therapist_id.substring(0, 4) : undefined
+      }
+    });
 
     let campaign_source: string | undefined;
     let campaign_variant: string | undefined;
@@ -121,10 +140,10 @@ export async function POST(req: NextRequest) {
                 if (v) campaign_variant = v;
               }
             }
-          } catch {}
+          } catch { }
         }
       }
-    } catch {}
+    } catch { }
 
     if (!contact || !contact_type) {
       return NextResponse.json(
@@ -182,14 +201,16 @@ export async function POST(req: NextRequest) {
             meta['sms_fallback'] = true;
             meta['sms_fallback_at'] = new Date().toISOString();
             if (isTestCookie) meta['is_test'] = true;
-            
-            await supabaseServer
+
+            const { error: fallbackErr } = await supabaseServer
               .from('people')
               .update({
                 phone_number: normalized,
                 metadata: meta,
               })
               .eq('id', lead_id);
+
+            if (fallbackErr) throw fallbackErr;
 
             void ServerAnalytics.trackEventFromRequest(req, {
               type: 'sms_fallback_phone_added',
@@ -217,7 +238,9 @@ export async function POST(req: NextRequest) {
             .select('id, name, metadata, campaign_source, campaign_variant')
             .eq('phone_number', normalized)
             .eq('type', 'patient')
-            .single();
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
           if (existing) {
             // Update name and persist draft_contact/form_session_id if provided
@@ -246,7 +269,7 @@ export async function POST(req: NextRequest) {
                   source: 'api.verification.send-code',
                   props: { via: 'phone', therapist_id: draft_contact.therapist_id, contact_type: draft_contact.contact_type },
                 });
-              } catch {}
+              } catch { }
             }
             if (draft_booking) {
               meta['draft_booking'] = draft_booking;
@@ -258,7 +281,7 @@ export async function POST(req: NextRequest) {
                   source: 'api.verification.send-code',
                   props: { via: 'phone', therapist_id: draft_booking.therapist_id },
                 });
-              } catch {}
+              } catch { }
             }
 
             if (gclid && typeof meta['gclid'] !== 'string') {
@@ -278,10 +301,12 @@ export async function POST(req: NextRequest) {
               updateData.metadata = meta;
             }
             if (Object.keys(updateData).length > 0) {
-              await supabaseServer
+              const { error: updateErr } = await supabaseServer
                 .from('people')
                 .update(updateData)
                 .eq('id', existing.id);
+
+              if (updateErr) throw updateErr;
             }
           } else {
             // Create new person record with phone and name
@@ -303,7 +328,7 @@ export async function POST(req: NextRequest) {
                   source: 'api.verification.send-code',
                   props: { via: 'phone', therapist_id: draft_contact.therapist_id, contact_type: draft_contact.contact_type },
                 });
-              } catch {}
+              } catch { }
             }
             if (draft_booking) {
               (metadata as Record<string, unknown>)['draft_booking'] = draft_booking;
@@ -313,9 +338,9 @@ export async function POST(req: NextRequest) {
                   source: 'api.verification.send-code',
                   props: { via: 'phone', therapist_id: draft_booking.therapist_id },
                 });
-              } catch {}
+              } catch { }
             }
-            await supabaseServer
+            const { error: insertErr } = await supabaseServer
               .from('people')
               .insert({
                 type: 'patient',
@@ -326,6 +351,8 @@ export async function POST(req: NextRequest) {
                 ...(campaign_variant ? { campaign_variant } : {}),
                 metadata,
               });
+
+            if (insertErr) throw insertErr;
           }
         } catch (err) {
           // Log but don't fail - SMS can still be sent
@@ -427,7 +454,7 @@ export async function POST(req: NextRequest) {
       // Ensure a person exists for this email so confirmation can succeed.
       // Store the token & timestamp in metadata and include the id in the confirm URL.
       let personId = lead_id || '';
-      
+
       if (!personId) {
         const { data: existing, error: selErr } = await supabaseServer
           .from('people')
@@ -458,7 +485,7 @@ export async function POST(req: NextRequest) {
                 source: 'api.verification.send-code',
                 props: { via: 'email', therapist_id: draft_contact.therapist_id, contact_type: draft_contact.contact_type },
               });
-            } catch {}
+            } catch { }
           }
           if (draft_booking) {
             meta['draft_booking'] = draft_booking;
@@ -468,7 +495,7 @@ export async function POST(req: NextRequest) {
                 source: 'api.verification.send-code',
                 props: { via: 'email', therapist_id: draft_booking.therapist_id },
               });
-            } catch {}
+            } catch { }
           }
 
           // Prepare update data: always update metadata and status
@@ -523,7 +550,7 @@ export async function POST(req: NextRequest) {
                 source: 'api.verification.send-code',
                 props: { via: 'email', therapist_id: draft_contact.therapist_id, contact_type: draft_contact.contact_type },
               });
-            } catch {}
+            } catch { }
           }
           if (draft_booking) {
             metadata.draft_booking = draft_booking;
@@ -533,7 +560,7 @@ export async function POST(req: NextRequest) {
                 source: 'api.verification.send-code',
                 props: { via: 'email', therapist_id: draft_booking.therapist_id },
               });
-            } catch {}
+            } catch { }
           }
           // Persist safe redirect path for idempotent confirm redirects back to directory
           if (redirect && typeof redirect === 'string') {
@@ -600,7 +627,7 @@ export async function POST(req: NextRequest) {
               source: 'api.verification.send-code',
               props: { via: 'email', therapist_id: draft_contact.therapist_id, contact_type: draft_contact.contact_type },
             });
-          } catch {}
+          } catch { }
         }
         if (draft_booking) {
           meta['draft_booking'] = draft_booking;
@@ -610,7 +637,7 @@ export async function POST(req: NextRequest) {
               source: 'api.verification.send-code',
               props: { via: 'email', therapist_id: draft_booking.therapist_id },
             });
-          } catch {}
+          } catch { }
         }
 
         // Prepare update data: always update metadata and status
@@ -666,7 +693,7 @@ export async function POST(req: NextRequest) {
       // Check if this is a booking flow (draft_booking present)
       const isBooking = !!draft_booking;
       const emailContent = renderEmailConfirmation({ confirmUrl, isBooking });
-      
+
       let emailResult: { success: boolean; error?: string } = { success: true };
       try {
         await sendEmail({

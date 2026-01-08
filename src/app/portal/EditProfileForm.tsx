@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Lock, Target, Eye } from "lucide-react";
 import { TherapistDetailModal } from "@/features/therapists/components/TherapistDetailModal";
 import type { TherapistData } from "@/features/therapists/components/TherapistDirectory";
-import SlotsManager from "./SlotsManager";
+import CalendarManagement from "./CalendarManagement";
 import { SchwerpunkteSelector } from "@/components/SchwerpunkteSelector";
 import { THERAPIST_SCHWERPUNKTE_MIN, THERAPIST_SCHWERPUNKTE_MAX } from "@/lib/schwerpunkte";
 import { PROFILE_LIMITS } from "@/lib/config/profileLimits";
@@ -139,7 +139,7 @@ const isValidPostalCode = (code: string): boolean => /^\d{5}$/.test(code.trim())
 
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4MB
 
-type Tab = 'profile' | 'slots';
+type Tab = 'profile' | 'calendar';
 
 export default function EditProfileForm({ therapistId, initialData }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('profile');
@@ -507,16 +507,16 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
         <button
           type="button"
           role="tab"
-          aria-selected={activeTab === 'slots'}
-          onClick={() => setActiveTab('slots')}
+          aria-selected={activeTab === 'calendar'}
+          onClick={() => setActiveTab('calendar')}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md transition-all ${
-            activeTab === 'slots'
+            activeTab === 'calendar'
               ? 'bg-white text-gray-900 shadow-sm'
               : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
           }`}
         >
           <Calendar className="h-4 w-4" />
-          Termine
+          Kalender
         </button>
       </div>
 
@@ -890,13 +890,8 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
           </div>
         </form>
       ) : (
-        /* Slots Tab */
-        <SlotsManager
-          therapistId={therapistId}
-          practiceAddress={practiceAddress}
-          allowsOnline={offersOnline}
-          allowsInPerson={offersInPerson}
-        />
+        /* Calendar Management Tab */
+        <CalendarManagement />
       )}
 
       {/* Support & Logout Footer */}

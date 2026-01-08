@@ -232,7 +232,7 @@
 
 ### Public Page `/matches/[uuid]`
 
-- __Purpose__: Show “Ihre persönlichen Empfehlungen” with up to 3 therapist cards and allow contacting any without re‑verification.
+- __Purpose__: Show deine persönlichen Empfehlungen” with up to 3 therapist cards and allow contacting any without re‑verification.
 - __Notes__:
   - Highlights first card as “Top‑Empfehlung”.
   - Shows “Bereits kontaktiert am …” when applicable; primary button becomes “Erneut senden”.

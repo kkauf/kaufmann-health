@@ -135,6 +135,10 @@ export function TherapistCard({
       const payload = { type: 'contact_cta_clicked', ...attrs, properties: { page_path: pagePath, therapist_id: therapist.id, contact_type: type } };
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
     } catch { }
+
+    // Cal-enabled therapists use modal flow (EARTH-256)
+    // TherapistDetailModal handles the Cal booking view internally
+
     if (customContactHandler) {
       customContactHandler(type);
     } else {

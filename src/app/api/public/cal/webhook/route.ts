@@ -6,6 +6,8 @@
  * WHY: Receive booking events from Cal.com and mirror them into Supabase
  * for attribution, analytics, and downstream automation (emails, follow-ups).
  *
+ * EARTH-262: Idempotent on retry (upsert by cal_uid), tracks failures, alerts on 3+ failures.
+ *
  * Contract:
  * - Input: CalWebhookBody (triggerEvent, payload with uid, organizer, attendees, metadata)
  * - Signature: x-cal-signature-256 HMAC-SHA256 of raw body with CAL_WEBHOOK_SECRET
@@ -26,6 +28,69 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const CAL_WEBHOOK_SECRET = process.env.CAL_WEBHOOK_SECRET || '';
+
+// EARTH-262: Failure tracking threshold for admin alerts
+const WEBHOOK_FAILURE_ALERT_THRESHOLD = 3;
+
+/**
+ * EARTH-262: Track webhook failures and alert admin if threshold exceeded
+ */
+async function trackWebhookFailure(
+  calUid: string,
+  triggerEvent: string,
+  error: unknown,
+  ip: string,
+  ua: string
+): Promise<void> {
+  await logError('api.public.cal.webhook', error, {
+    cal_uid: calUid,
+    trigger_event: triggerEvent,
+  });
+
+  // Count recent failures for this cal_uid in the last hour
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { count } = await supabaseServer
+    .from('events')
+    .select('*', { count: 'exact', head: true })
+    .eq('type', 'error')
+    .gte('created_at', oneHourAgo)
+    .contains('properties', { source: 'api.public.cal.webhook', cal_uid: calUid });
+
+  const failureCount = (count ?? 0) + 1; // Include current failure
+
+  // Track this specific failure
+  void track({
+    type: 'cal_webhook_failure',
+    level: 'error',
+    source: 'api.public.cal.webhook',
+    ip,
+    ua,
+    props: {
+      cal_uid: calUid,
+      trigger_event: triggerEvent,
+      failure_count: failureCount,
+      error_message: error instanceof Error ? error.message : 'unknown',
+    },
+  });
+
+  // Alert admin if threshold exceeded
+  if (failureCount >= WEBHOOK_FAILURE_ALERT_THRESHOLD) {
+    void track({
+      type: 'cal_webhook_alert',
+      level: 'error',
+      source: 'api.public.cal.webhook',
+      props: {
+        cal_uid: calUid,
+        trigger_event: triggerEvent,
+        failure_count: failureCount,
+        alert: `Cal.com webhook failed ${failureCount}+ times for booking ${calUid}`,
+      },
+    });
+
+    // TODO: Send actual admin notification email when email templates are ready
+    console.error(`[ALERT] Cal.com webhook failed ${failureCount}+ times for booking ${calUid}`);
+  }
+}
 
 /**
  * Verify HMAC-SHA256 signature from Cal.com webhook
@@ -181,10 +246,8 @@ export async function POST(req: Request) {
       );
 
     if (upsertError) {
-      await logError('api.public.cal.webhook', upsertError, {
-        cal_uid: uid,
-        trigger_event: triggerEvent,
-      });
+      // EARTH-262: Track webhook failure and check if we need to alert
+      await trackWebhookFailure(uid, triggerEvent, upsertError, ip, ua);
       return NextResponse.json({ error: 'Database error' }, { status: 500 });
     }
 

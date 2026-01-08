@@ -433,6 +433,38 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
                 chips.push('Methode: von uns empfohlen');
               }
 
+              // Display schwerpunkte (focus areas) if patient selected any
+              const patientSchwerpunkte = data.patient.schwerpunkte || [];
+              if (patientSchwerpunkte.length > 0) {
+                // Import getSchwerpunktLabel would create circular dep, use simple mapping
+                const schwerpunktLabels: Record<string, string> = {
+                  'trauma': 'Trauma / PTBS',
+                  'angst': 'Angst / Panik',
+                  'depression': 'Depression / Erschöpfung',
+                  'selbstwert': 'Selbstwert / Scham',
+                  'stress': 'Stress / Burnout',
+                  'schmerzen': 'Chronische Schmerzen',
+                  'essstoerungen': 'Essstörungen',
+                  'sucht': 'Sucht / Abhängigkeit',
+                  'schlaf': 'Schlafprobleme',
+                  'psychosomatik': 'Psychosomatik',
+                  'beziehung': 'Beziehungsprobleme',
+                  'familie': 'Paare / Familie',
+                  'einsamkeit': 'Einsamkeit',
+                  'bindung': 'Bindung / Nähe',
+                  'sexualitaet': 'Sexualität / Intimität',
+                  'lebenskrisen': 'Lebenskrisen',
+                  'trauer': 'Trauer / Verlust',
+                  'identitaet': 'Identität / Sinnfindung',
+                  'persoenliche-entwicklung': 'Persönliche Entwicklung',
+                  'spiritualitaet': 'Spiritualität',
+                };
+                const labels = patientSchwerpunkte.slice(0, 3).map(id => schwerpunktLabels[id] || id);
+                let summary = labels.join(', ');
+                if (patientSchwerpunkte.length > 3) summary += ` +${patientSchwerpunkte.length - 3}`;
+                chips.push(`Schwerpunkte: ${summary}`);
+              }
+
               const gp = data.patient.gender_preference;
               if (gp === 'male') chips.push('Therapeut:in: männlich');
               else if (gp === 'female') chips.push('Therapeut:in: weiblich');

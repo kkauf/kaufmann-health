@@ -57,6 +57,10 @@ type TherapistDetail = {
     has_license: boolean;
     has_specialization: boolean;
   };
+  // Cal.com integration
+  cal_username?: string | null;
+  cal_enabled?: boolean;
+  cal_user_id?: number | null;
 };
 
 function formatDate(iso?: string | null) {
@@ -93,6 +97,9 @@ export default function AdminTherapistsPage() {
   const [approvePhoto, setApprovePhoto] = useState(false);
   const [page, setPage] = useState<number>(1);
   const pageSize = 20;
+  // Cal.com integration state
+  const [calUsername, setCalUsername] = useState<string>("");
+  const [calEnabled, setCalEnabled] = useState<boolean>(false);
 
   // Bulk selection state
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -183,6 +190,8 @@ export default function AdminTherapistsPage() {
     setNotes("");
     setApproachText("");
     setApprovePhoto(false);
+    setCalUsername("");
+    setCalEnabled(false);
     try {
       const res = await fetch(`/api/admin/therapists/${id}`, { credentials: "include", cache: "no-store" });
       const json = await res.json();
@@ -190,6 +199,8 @@ export default function AdminTherapistsPage() {
       const d = json.data as TherapistDetail;
       setDetail(d);
       setApproachText(d?.profile?.approach_text || "");
+      setCalUsername(d?.cal_username || "");
+      setCalEnabled(Boolean(d?.cal_enabled));
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
       setDetailError(msg);
@@ -206,6 +217,8 @@ export default function AdminTherapistsPage() {
     setMessage(null);
     setDetailError(null);
     setApprovePhoto(false);
+    setCalUsername("");
+    setCalEnabled(false);
   }, []);
 
   // Improve modal UX: Esc to close and prevent background scroll while open
@@ -254,6 +267,29 @@ export default function AdminTherapistsPage() {
       await fetchTherapists();
       // Close modal after successful verification
       setTimeout(closeDetail, 1500);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
+      setMessage(msg);
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  async function saveCalSettings() {
+    if (!openId) return;
+    try {
+      setUpdating(true);
+      setMessage(null);
+      const res = await fetch(`/api/admin/therapists/${openId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ cal_username: calUsername.trim() || null, cal_enabled: calEnabled }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Update fehlgeschlagen");
+      setMessage("Cal.com Einstellungen gespeichert");
+      await openDetail(openId);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
       setMessage(msg);
@@ -825,6 +861,92 @@ export default function AdminTherapistsPage() {
                     </div>
                   </div>
 
+                  {/* Cal.com Integration */}
+                  <div className="bg-white rounded-lg border p-4">
+                    <h4 className="font-semibold text-base mb-3 flex items-center gap-2">
+                      📅 Cal.com Integration
+                      {detail.cal_enabled && detail.cal_username && (
+                        <Badge variant="outline" className="text-green-700 border-green-700">Aktiv</Badge>
+                      )}
+                      {detail.cal_user_id && (
+                        <Badge variant="outline" className="text-blue-600 border-blue-300">Provisioned (ID: {detail.cal_user_id})</Badge>
+                      )}
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="cal_username" className="text-sm font-medium">Cal.com Benutzername</Label>
+                        <div className="flex gap-2 mt-1">
+                          <input
+                            id="cal_username"
+                            type="text"
+                            className="border-input placeholder:text-muted-foreground flex-1 rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                            value={calUsername}
+                            onChange={(e) => setCalUsername(e.target.value)}
+                            placeholder="z.B. max-mustermann"
+                          />
+                        </div>
+                        {calUsername && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Booking URL: <a href={`https://cal.kaufmann.health/${calUsername}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">cal.kaufmann.health/{calUsername}</a>
+                          </p>
+                        )}
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-green-600"
+                          checked={calEnabled}
+                          onChange={(e) => setCalEnabled(e.target.checked)}
+                        />
+                        <span className="text-sm">Cal.com Booking aktiviert</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={updating}
+                          onClick={saveCalSettings}
+                        >
+                          Cal.com Einstellungen speichern
+                        </Button>
+                        {detail.cal_user_id && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={updating}
+                            onClick={async () => {
+                              if (!detail?.id) return;
+                              try {
+                                setUpdating(true);
+                                setMessage(null);
+                                const res = await fetch(`/api/admin/therapists/${detail.id}/fix-cal-events`, {
+                                  method: 'POST',
+                                  credentials: 'include',
+                                });
+                                const json = await res.json();
+                                if (!res.ok) throw new Error(json?.error || 'Fix fehlgeschlagen');
+                                if (json.data?.ok) {
+                                  setMessage(`Event-Typen erstellt: intro=${json.data.intro_id}, full-session=${json.data.full_session_id}`);
+                                } else {
+                                  setMessage(json.data?.message || json.data?.error || 'Teilweise erfolgreich');
+                                }
+                                await openDetail(detail.id);
+                              } catch (e) {
+                                const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
+                                setMessage(msg);
+                              } finally {
+                                setUpdating(false);
+                              }
+                            }}
+                            className="text-amber-700 border-amber-300 hover:bg-amber-50"
+                          >
+                            🔧 Event-Typen reparieren
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Internal notes */}
                   <details className="bg-gray-50 rounded-lg border open:bg-white">
                     <summary className="cursor-pointer px-4 py-3 text-sm font-medium hover:bg-gray-100 rounded-lg">📝 Interne Notizen (nur für Admins sichtbar)</summary>
@@ -874,23 +996,31 @@ export default function AdminTherapistsPage() {
                     <Button size="sm" variant="outline" disabled={updating} onClick={sendReminder}>
                       📧 Erinnerung
                     </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="border-red-300 text-red-700 hover:bg-red-50"
-                      disabled={updating} 
-                      onClick={() => updateStatus('rejected')}
-                    >
-                      ✗ Ablehnen
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                      disabled={updating} 
-                      onClick={() => updateStatus('verified')}
-                    >
-                      ✓ Freigeben {approvePhoto && detail?.profile.photo_pending_url ? '(inkl. Foto)' : ''}
-                    </Button>
+                    {detail?.status !== 'verified' && (
+                      <>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="border-red-300 text-red-700 hover:bg-red-50"
+                          disabled={updating} 
+                          onClick={() => {
+                            const ok = window.confirm('Therapeut wirklich ablehnen? Dadurch wird eine E-Mail mit Rückfragen verschickt.');
+                            if (!ok) return;
+                            void updateStatus('rejected');
+                          }}
+                        >
+                          ✗ Ablehnen
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={updating} 
+                          onClick={() => updateStatus('verified')}
+                        >
+                          ✓ Freigeben {approvePhoto && detail?.profile.photo_pending_url ? '(inkl. Foto)' : ''}
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

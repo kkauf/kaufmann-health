@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, AlertCircle, Shield, Lock, FileCheck, Mail, MailCheck, MapPin, ChevronLeft, ChevronRight, Calendar, Video, User, Tag, CalendarCheck2 } from 'lucide-react';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
-import { validatePhone } from '@/lib/verification/usePhoneValidation';
+import { useVerification } from '@/lib/verification/useVerification';
 import ConsentSection from '@/components/ConsentSection';
 import { getAttribution } from '@/lib/attribution';
 import { cn } from '@/lib/utils';
@@ -69,15 +69,24 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     ? 'success'
     : (preAuth ? 'compose' : (needsVerification ? 'verify' : (contactType === 'booking' && selectedSlot ? 'verify' : 'compose')));
   const [step, setStep] = useState<Step>(initialStep);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [messageLoading, setMessageLoading] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
 
-  // Verification step
-  const [name, setName] = useState('');
-  const [contactMethod, setContactMethod] = useState<'email' | 'phone'>('email'); // Default to phone for mobile
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
+  // Use shared verification hook for name/email/phone/code state and send/verify logic
+  const verification = useVerification({
+    initialContactMethod: 'email',
+    onTrackEvent: (event, props) => {
+      try { trackEvent(event, props); } catch { }
+    },
+  });
+  
+  // Destructure for convenience - these replace the old local state
+  const { 
+    state: verificationState,
+    setName, setEmail, setPhone, setCode: setVerificationCode, setContactMethod, setError,
+    sendCode, verifyCode, reset: resetVerification,
+  } = verification;
+  const { name, email, phone, code: verificationCode, contactMethod, loading, error } = verificationState;
 
   // Message step
   const [reason, setReason] = useState('');
@@ -89,6 +98,11 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   const [userEditedMessage, setUserEditedMessage] = useState(false);
   // Track whether the user has a verified session in this modal lifecycle
   const [isVerified, setIsVerified] = useState<boolean>(false);
+
+  const messageRef = useRef<string>('');
+  useEffect(() => {
+    messageRef.current = message;
+  }, [message]);
 
   const [_restoredDraft, _setRestoredDraft] = useState<boolean>(false);
   const [_autoSendAttempted, _setAutoSendAttempted] = useState<boolean>(false);
@@ -118,7 +132,9 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       const initialReason = (preAuth.defaultReason || '').trim();
       if (initialReason) setReason(initialReason);
       const signature = preAuth.patientName ? `\n\nViele Grüße\n${preAuth.patientName}` : '';
-      setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei ${initialReason || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
+      const nextMessage = `${greeting},\n\n${intent}. Ich suche Unterstützung bei ${initialReason || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`;
+      messageRef.current = nextMessage;
+      setMessage(nextMessage);
 
       // Pre-select session format based on patient preferences from wizard
       if (preAuth.sessionPreference) {
@@ -186,6 +202,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         if (draft.message) {
           // Replace therapist name in saved message with current therapist
           const updatedMessage = draft.message.replace(/^Guten Tag \S+/, `Guten Tag ${therapist.first_name}`);
+          messageRef.current = updatedMessage;
           setMessage(updatedMessage);
           setUserEditedMessage(true); // Prevent auto-update from overwriting
         }
@@ -219,15 +236,19 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             setContactMethod('phone');
             if (typeof s.contact_value === 'string') setPhone(s.contact_value);
           }
-          const greeting = `Guten Tag ${therapist.first_name}`;
-          const intent = contactType === 'booking'
-            ? 'ich möchte gerne einen Termin vereinbaren'
-            : 'ich würde gerne ein kostenloses Kennenlerngespräch (15 Min) vereinbaren';
-          const signature = userName ? `\n\nViele Grüße\n${userName}` : '';
-          // Use preAuth.defaultReason if available (e.g., from matches page)
-          const initialReason = (preAuth?.defaultReason || '').trim();
-          if (initialReason) setReason(initialReason);
-          setMessage(`${greeting},\n\n${intent}. Ich suche Unterstützung bei ${initialReason || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`);
+          if (!userEditedMessage && !messageRef.current.trim()) {
+            const greeting = `Guten Tag ${therapist.first_name}`;
+            const intent = contactType === 'booking'
+              ? 'ich möchte gerne einen Termin vereinbaren'
+              : 'ich würde gerne ein kostenloses Kennenlerngespräch (15 Min) vereinbaren';
+            const signature = userName ? `\n\nViele Grüße\n${userName}` : '';
+            // Use preAuth.defaultReason if available (e.g., from matches page)
+            const initialReason = (preAuth?.defaultReason || '').trim();
+            if (initialReason) setReason(initialReason);
+            const nextMessage = `${greeting},\n\n${intent}. Ich suche Unterstützung bei ${initialReason || '[beschreibe dein Anliegen]'} und fand dein Profil sehr ansprechend.${signature}`;
+            messageRef.current = nextMessage;
+            setMessage(nextMessage);
+          }
 
           if (forceSuccess || awaitingVerificationSend) {
             // After magic-link verification we show success to mirror directory behavior
@@ -293,16 +314,19 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   // This runs for new users who don't have preAuth, verified session, or saved draft
   useEffect(() => {
     if (!open) return;
+    if (preAuth) return;
     // Skip if message already has content (from preAuth, verified session, or saved draft)
-    if (message.trim()) return;
-    
+    if (messageRef.current.trim()) return;
+
     const greeting = `Guten Tag ${therapist.first_name}`;
     const intent = contactType === 'booking'
       ? 'ich möchte gerne einen Termin vereinbaren'
-      : 'ich interessiere mich für ein kostenloses Kennenlerngespräch (15 Min)';
-    const defaultMessage = `${greeting}, ${intent} und fand dein Profil sehr ansprechend.`;
+      : 'ich würde gerne ein kostenloses Kennenlerngespräch (15 Min) vereinbaren';
+    const signature = name ? `\n\nViele Grüße\n${name}` : '';
+    const defaultMessage = `${greeting},\n\n${intent}. Ich suche Unterstützung bei [beschreibe dein Anliegen] und fand dein Profil sehr ansprechend.${signature}`;
+    messageRef.current = defaultMessage;
     setMessage(defaultMessage);
-  }, [open, therapist.first_name, contactType, message]);
+  }, [open, preAuth, therapist.first_name, contactType, name]);
 
   // Save draft when modal closes (for multi-therapist contact)
   const prevOpenRef = useRef(open);
@@ -392,11 +416,8 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       trackEvent('contact_modal_closed', { step });
     } catch { }
     setStep('compose');
-    setError(null);
-    setName('');
-    setEmail('');
-    setPhone('');
-    setVerificationCode('');
+    resetVerification(); // Reset all verification state via hook
+    setMessageError(null);
     setReason('');
     setMessage('');
     setSessionFormat('');
@@ -406,140 +427,90 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     setForceSuccess(false);
     setAwaitingVerificationSend(false);
     onClose();
-  }, [onClose, step, trackEvent]);
+  }, [onClose, step, trackEvent, resetVerification]);
 
-  // Send verification code
+  // Send verification code using shared hook
   const handleSendCode = useCallback(async () => {
-    setError(null);
-
-    // Validate inputs before sending
-    if (!name.trim()) {
-      setError('Bitte gib deinen Namen an.');
-      return;
-    }
-
-    let contact = '';
+    // Build redirect path for email magic link
+    let redirectPath: string | undefined;
     if (contactMethod === 'email') {
-      if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-        setError('Bitte gib eine gültige E-Mail-Adresse ein.');
-        return;
+      try {
+        const url = new URL(window.location.href);
+        const basePath = url.pathname;
+        const qs = new URLSearchParams({
+          contact: 'compose',
+          tid: therapist.id,
+          type: contactType,
+        });
+        redirectPath = `${basePath}?${qs.toString()}`;
+      } catch {
+        redirectPath = `/therapeuten?contact=compose&tid=${therapist.id}&type=${contactType}`;
       }
-      contact = email;
-    } else {
-      // Validate and normalize phone to E.164 format
-      const validation = validatePhone(phone);
-      if (!validation.isValid || !validation.normalized) {
-        setError(validation.error || 'Bitte gib eine gültige Handynummer ein.');
-        return;
-      }
-      contact = validation.normalized;
     }
 
-    try { trackEvent('contact_verification_started', { contact_method: contactMethod }); } catch { }
-    setLoading(true);
+    // Prepare draft_contact for server-side storage (works across devices)
+    const draftContact = {
+      therapist_id: therapist.id,
+      contact_type: contactType as 'booking' | 'consultation',
+      patient_reason: reason,
+      patient_message: message,
+      session_format: sessionFormat as 'online' | 'in_person' | undefined,
+    };
 
-    try {
-      // For email magic-link: include a safe redirect back to the current page
-      // so that the confirm endpoint can bring the user back into the ContactModal
-      // compose step. EARTH-204 will set the client cookie so the user is treated
-      // as verified when they return.
-      let redirectPath: string | undefined;
-      if (contactMethod === 'email') {
-        try {
-          const url = new URL(window.location.href);
-          const basePath = url.pathname;
-          const qs = new URLSearchParams({
-            contact: 'compose',
-            tid: therapist.id,
-            type: contactType,
-          });
-          redirectPath = `${basePath}?${qs.toString()}`;
-        } catch {
-          redirectPath = `/therapeuten?contact=compose&tid=${therapist.id}&type=${contactType}`;
-        }
-        // Draft will be sent as draft_contact parameter below
+    // Get campaign attribution
+    const attrs = getAttribution();
+    const campaignSourceOverride = (() => {
+      try {
+        const ref = attrs.referrer;
+        if (!ref) return undefined;
+        if (ref.includes('/therapie-finden')) return '/therapie-finden';
+        if (ref.includes('/start')) return '/start';
+        if (ref.includes('/ankommen-in-dir')) return '/ankommen-in-dir';
+        if (ref.includes('/wieder-lebendig')) return '/wieder-lebendig';
+        return undefined;
+      } catch {
+        return undefined;
       }
-
-      // Prepare draft_contact for server-side storage (works across devices)
-      const draftContact = {
-        therapist_id: therapist.id,
-        contact_type: contactType,
-        patient_reason: reason,
-        patient_message: message,
-        session_format: sessionFormat || undefined,
-      };
-
-      const attrs = getAttribution();
-      const campaignSourceOverride = (() => {
-        try {
-          const ref = attrs.referrer;
-          if (!ref) return undefined;
-          if (ref.includes('/therapie-finden')) return '/therapie-finden';
-          if (ref.includes('/start')) return '/start';
-          if (ref.includes('/ankommen-in-dir')) return '/ankommen-in-dir';
-          if (ref.includes('/wieder-lebendig')) return '/wieder-lebendig';
-          return undefined;
-        } catch {
-          return undefined;
+    })();
+    const campaignVariantOverride = (() => {
+      try {
+        const sp = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+        const v = (sp.get('variant') || sp.get('v') || '').toLowerCase() || undefined;
+        if (v) {
+          try { window.localStorage?.setItem('test1_variant', v); } catch { }
+          return v;
         }
-      })();
-      const campaignVariantOverride = (() => {
-        try {
-          const sp = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-          const v = (sp.get('variant') || sp.get('v') || '').toLowerCase() || undefined;
-          if (v) {
-            try { window.localStorage?.setItem('test1_variant', v); } catch {}
-            return v;
-          }
-          if (typeof window !== 'undefined') {
-            return (
-              window.localStorage?.getItem('test1_variant') ||
-              window.localStorage?.getItem('kh_flow_variant') ||
-              undefined
-            );
-          }
-        } catch {
-          return undefined;
+        if (typeof window !== 'undefined') {
+          return (
+            window.localStorage?.getItem('test1_variant') ||
+            window.localStorage?.getItem('kh_flow_variant') ||
+            undefined
+          );
         }
-      })();
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (campaignSourceOverride) headers['X-Campaign-Source-Override'] = campaignSourceOverride;
-      if (campaignVariantOverride) headers['X-Campaign-Variant-Override'] = campaignVariantOverride;
-      if (attrs.gclid) headers['X-Gclid'] = attrs.gclid;
-
-      const res = await fetch('/api/public/verification/send-code', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          contact,
-          contact_type: contactMethod,
-          // Include name so it can be stored in DB for both email and SMS flows
-          name: name.trim(),
-          // Only used by the email path (magic link)
-          redirect: redirectPath,
-          // Server-side draft storage (therapist directory flow)
-          draft_contact: draftContact,
-          ...(selectedBookingSlot && contactType === 'booking' ? { draft_booking: { therapist_id: therapist.id, date_iso: selectedBookingSlot.date_iso, time_label: selectedBookingSlot.time_label, format: selectedBookingSlot.format } } : {}),
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Fehler beim Senden des Codes');
+      } catch {
+        return undefined;
       }
+    })();
 
+    // Use shared hook's sendCode with ContactModal-specific options
+    const result = await sendCode({
+      name: name.trim(),
+      redirect: redirectPath,
+      draftContact,
+      draftBooking: selectedBookingSlot && contactType === 'booking' 
+        ? { therapist_id: therapist.id, date_iso: selectedBookingSlot.date_iso, time_label: selectedBookingSlot.time_label, format: selectedBookingSlot.format }
+        : undefined,
+      campaignSource: campaignSourceOverride,
+      campaignVariant: campaignVariantOverride,
+      gclid: attrs.gclid,
+    });
+
+    if (result.success) {
       // Email uses magic link → show link instructions; Phone uses OTP → show code entry
       setStep(contactMethod === 'email' ? 'verify-link' : 'verify-code');
       setAwaitingVerificationSend(contactMethod === 'email');
-      trackEvent('contact_verification_code_sent', { contact_method: contactMethod });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
-      trackEvent('contact_verification_code_failed', { contact_method: contactMethod });
-    } finally {
-      setLoading(false);
     }
-  }, [name, contactMethod, email, phone, therapist.id, contactType, trackEvent, selectedBookingSlot, reason, message, sessionFormat]);
+  }, [contactMethod, therapist.id, contactType, selectedBookingSlot, reason, message, sessionFormat, sendCode, name]);
 
   // Send message
   const handleSendMessage = useCallback(async () => {
@@ -578,8 +549,8 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       }
     }
 
-    setError(null);
-    setLoading(true);
+    setMessageError(null);
+    setMessageLoading(true);
 
     try {
       const endpoint = isPreAuth
@@ -623,14 +594,14 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       }
 
       setStep('success');
-      
+
       // Save consultation message for quick multi-therapist contact
       if (contactType === 'consultation' && reason && message) {
         try {
           sessionStorage.setItem(CONSULTATION_DRAFT_KEY, JSON.stringify({ reason, message }));
         } catch { /* ignore storage errors */ }
       }
-      
+
       if (!preAuth) {
         trackEvent('contact_message_sent');
       } else {
@@ -645,59 +616,29 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         }, 3000);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
+      setMessageError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
       trackEvent('contact_message_failed');
     } finally {
-      setLoading(false);
+      setMessageLoading(false);
     }
   }, [therapist.id, contactType, name, email, phone, contactMethod, reason, message, sessionFormat, trackEvent, onSuccess, handleClose, preAuth]);
 
   // Auto-send no longer needed - server handles draft_contact processing on verification
 
-  // Verify code
+  // Verify code using shared hook
   const handleVerifyCode = useCallback(async () => {
-    setError(null);
-    setLoading(true);
-
-    try {
-      // Normalize phone if needed
-      const contact = contactMethod === 'email' ? email : normalizePhoneNumber(phone) || phone;
-
-      const res = await fetch('/api/public/verification/verify-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contact,
-          contact_type: contactMethod,
-          code: verificationCode,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.data?.verified) {
-        throw new Error('Ungültiger Code');
-      }
-
+    const result = await verifyCode();
+    
+    if (result.success) {
       // Mark verified and show success; server processes draft_contact and sends message
       setIsVerified(true);
-      try {
-        const res = await fetch('/api/public/session');
-        if (res.ok) {
-          const json = await res.json();
-          const pid = json?.data?.patient_id;
-          if (typeof pid === 'string' && pid) setPatientId(pid);
-        }
-      } catch { }
-      trackEvent('contact_verification_completed', { contact_method: contactMethod });
-      setLoading(false);
+      if (result.patientId) {
+        setPatientId(result.patientId);
+      }
       setStep('success');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ungültiger Code');
-      trackEvent('contact_verification_failed', { contact_method: contactMethod });
-      setLoading(false);
     }
-  }, [contactMethod, email, phone, verificationCode, therapist.first_name, contactType, reason, name, sessionFormat, message, trackEvent, handleSendMessage]);
+    // Error handling is done by the hook (sets error state)
+  }, [verifyCode]);
 
   useEffect(() => {
     async function maybeFireClientConv() {
@@ -1359,10 +1300,10 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           </div>
         )}
 
-        {error && (
+        {(error || messageError) && (
           <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
             <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>{error}</span>
+            <span>{error || messageError}</span>
           </div>
         )}
         {!showBookingPicker && (
@@ -1521,6 +1462,9 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         data-testid="contact-modal"
         aria-describedby={undefined}
         className="max-h-[85vh] overflow-x-hidden overflow-y-auto p-4 sm:p-6 md:max-w-3xl"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
       >
         <DialogHeader className="pb-4">
           <DialogTitle className="text-xl font-bold">

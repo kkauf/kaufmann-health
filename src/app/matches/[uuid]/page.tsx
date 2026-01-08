@@ -5,8 +5,8 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'Ihre persönlichen Empfehlungen – Kaufmann Health',
-    description: 'Sehen Sie Ihre handverlesenen Therapie‑Empfehlungen und kontaktieren Sie Ihre bevorzugte Therapeut:in ohne erneute Verifizierung.',
+    title: 'Deine persönlichen Empfehlungen – Kaufmann Health',
+    description: 'Sieht dir deine handverlesenen Therapie‑Empfehlungen an und kontaktiert die bevorzugte Therapeut:in ohne erneute Verifizierung.',
     robots: { index: false, follow: false },
   };
 }
