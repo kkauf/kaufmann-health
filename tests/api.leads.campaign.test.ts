@@ -7,7 +7,7 @@ const trackedEvents: any[] = [];
 
 // Mock email client to avoid real sends
 vi.mock('@/lib/email/client', () => ({
-  sendEmail: vi.fn(async (params: any) => { sentEmails.push(params); return true; }),
+  sendEmail: vi.fn(async (params: any) => { sentEmails.push(params); return { sent: true }; }),
 }));
 
 // Mock logger.track to capture events

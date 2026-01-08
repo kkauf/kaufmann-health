@@ -28,7 +28,7 @@ vi.mock('@/lib/server-analytics', () => ({
   }),
 }));
 vi.mock('@/lib/logger', () => ({ logError: vi.fn(), track: vi.fn() }));
-vi.mock('@/lib/email/client', () => ({ sendEmail: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('@/lib/email/client', () => ({ sendEmail: vi.fn().mockResolvedValue({ sent: true }) }));
 vi.mock('@/lib/email/internalNotification', () => ({ buildInternalLeadNotification: vi.fn(() => ({ subject: 'x', html: '<p>x</p>' })) }));
 vi.mock('@/lib/email/templates/emailConfirmation', () => ({ renderEmailConfirmation: vi.fn(() => ({ subject: 'x', html: '<p>x</p>' })) }));
 vi.mock('@/lib/test-mode', () => ({ isTestRequest: () => true }));

@@ -239,7 +239,7 @@ export async function GET(req: Request) {
           props: { kind: 'selection_nudge_d5', patient_id: patient.id, subject: content.subject },
         });
 
-        const emailSent = await sendEmail({
+        const emailResult = await sendEmail({
           to: email,
           subject: content.subject,
           html: content.html,
@@ -250,9 +250,9 @@ export async function GET(req: Request) {
           },
         });
 
-        if (emailSent) {
+        if (emailResult.sent) {
           sent++;
-        } else {
+        } else if (emailResult.reason === 'failed') {
           await logError('admin.api.leads.selection_nudge', new Error('Email send returned false'), { stage: 'send_failed', patient_id: patient.id }, ip, ua);
         }
       } catch (e) {

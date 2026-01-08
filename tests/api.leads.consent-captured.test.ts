@@ -20,7 +20,7 @@ vi.mock('@/lib/server-analytics', async (orig) => {
 });
 
 vi.mock('@/lib/email/client', () => ({
-  sendEmail: vi.fn(async () => true),
+  sendEmail: vi.fn(async () => ({ sent: true })),
 }));
 
 vi.mock('@/lib/supabase-server', () => {

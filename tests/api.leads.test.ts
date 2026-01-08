@@ -71,7 +71,7 @@ vi.mock('@/lib/email/client', () => {
   return {
     sendEmail: vi.fn(async (params: any) => {
       sentEmails.push(params);
-      return true;
+      return { sent: true };
     }),
   } as any;
 });
@@ -162,10 +162,10 @@ describe('/api/public/leads POST', () => {
 
   it("email send failure doesn't break patient submission (fire-and-forget)", async () => {
     const emailClient: any = await import('@/lib/email/client');
-    // Make the next call reject but still record the attempt
+    // Make the next call return failed but still record the attempt
     emailClient.sendEmail.mockImplementationOnce(async (params: any) => {
       sentEmails.push(params);
-      throw new Error('send failed');
+      return { sent: false, reason: 'failed' };
     });
 
     const { POST } = await import('@/app/api/public/leads/route');

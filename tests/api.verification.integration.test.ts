@@ -22,7 +22,7 @@ vi.mock('@/lib/supabase-server', () => ({
 
 // Mock email client
 vi.mock('@/lib/email/client', () => ({
-  sendEmail: vi.fn().mockResolvedValue({ success: true }),
+  sendEmail: vi.fn().mockResolvedValue({ sent: true }),
 }));
 
 // Mock SMS client

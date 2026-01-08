@@ -18,7 +18,7 @@ vi.mock('@/lib/logger', () => ({
 }));
 
 vi.mock('@/lib/email/client', () => ({
-  sendEmail: vi.fn().mockResolvedValue(undefined),
+  sendEmail: vi.fn().mockResolvedValue({ sent: true }),
 }));
 
 vi.mock('@/lib/verification/config', () => ({

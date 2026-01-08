@@ -11,7 +11,7 @@ let lastTracked: Array<{ type: string; props?: Record<string, unknown> }> = [];
 const THERAPIST_ID = 't_ok';
 
 vi.mock('@/lib/email/client', () => ({
-  sendEmail: vi.fn(async () => true),
+  sendEmail: vi.fn(async () => ({ sent: true })),
 }));
 
 vi.mock('@/lib/logger', async (orig) => {

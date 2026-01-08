@@ -14,7 +14,7 @@ vi.mock('@/lib/supabase-server', () => ({
 }));
 
 vi.mock('@/lib/email/client', () => ({
-  sendEmail: vi.fn().mockResolvedValue(undefined),
+  sendEmail: vi.fn().mockResolvedValue({ sent: true }),
 }));
 
 vi.mock('@/lib/logger', () => ({
