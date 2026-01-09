@@ -20,6 +20,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 import {
   CalWebhookBody,
+  CalWebhookProcessableEvent,
   CAL_WEBHOOK_SIGNATURE_HEADER,
   type CalWebhookTriggerEvent,
 } from '@/contracts/cal';
@@ -94,23 +95,56 @@ async function trackWebhookFailure(
 
 /**
  * Verify HMAC-SHA256 signature from Cal.com webhook
+ * Returns { valid: true } or { valid: false, reason, debug }
  */
-function verifySignature(rawBody: string, signature: string): boolean {
-  if (!CAL_WEBHOOK_SECRET || !signature) return false;
+function verifySignature(rawBody: string, signature: string): { valid: boolean; reason?: string; debug?: Record<string, unknown> } {
+  if (!CAL_WEBHOOK_SECRET) {
+    return { valid: false, reason: 'no_secret_configured' };
+  }
+  if (!signature) {
+    return { valid: false, reason: 'no_signature_header' };
+  }
 
   try {
     const expected = createHmac('sha256', CAL_WEBHOOK_SECRET)
       .update(rawBody)
       .digest('hex');
 
-    // Cal.com sends signature as hex string directly
-    const sigBuffer = Buffer.from(signature, 'hex');
-    const expectedBuffer = Buffer.from(expected, 'hex');
+    // Cal.com may send signature with or without prefix - normalize both
+    const normalizedSig = signature.replace(/^sha256=/, '').toLowerCase();
+    const normalizedExpected = expected.toLowerCase();
 
-    if (sigBuffer.length !== expectedBuffer.length) return false;
-    return timingSafeEqual(sigBuffer, expectedBuffer);
-  } catch {
-    return false;
+    // Quick string comparison first for debugging
+    if (normalizedSig !== normalizedExpected) {
+      return {
+        valid: false,
+        reason: 'signature_mismatch',
+        debug: {
+          sig_length: normalizedSig.length,
+          expected_length: normalizedExpected.length,
+          sig_prefix: normalizedSig.substring(0, 8),
+          expected_prefix: normalizedExpected.substring(0, 8),
+          body_length: rawBody.length,
+          body_preview: rawBody.substring(0, 100),
+        },
+      };
+    }
+
+    // Timing-safe comparison for production security
+    const sigBuffer = Buffer.from(normalizedSig, 'hex');
+    const expectedBuffer = Buffer.from(normalizedExpected, 'hex');
+
+    if (sigBuffer.length !== expectedBuffer.length) {
+      return { valid: false, reason: 'buffer_length_mismatch' };
+    }
+
+    if (!timingSafeEqual(sigBuffer, expectedBuffer)) {
+      return { valid: false, reason: 'timing_safe_mismatch' };
+    }
+
+    return { valid: true };
+  } catch (e) {
+    return { valid: false, reason: 'exception', debug: { error: String(e) } };
   }
 }
 
@@ -173,12 +207,18 @@ export async function POST(req: Request) {
     const signature = req.headers.get(CAL_WEBHOOK_SIGNATURE_HEADER) || '';
 
     // Verify signature
-    if (!verifySignature(rawBody, signature)) {
+    const sigResult = verifySignature(rawBody, signature);
+    if (!sigResult.valid) {
       void track({
         type: 'cal_webhook_signature_failed',
         level: 'warn',
         source: 'api.public.cal.webhook',
-        props: { has_secret: Boolean(CAL_WEBHOOK_SECRET), has_signature: Boolean(signature) },
+        props: {
+          has_secret: Boolean(CAL_WEBHOOK_SECRET),
+          has_signature: Boolean(signature),
+          reason: sigResult.reason,
+          ...(sigResult.debug || {}),
+        },
       });
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
@@ -201,6 +241,31 @@ export async function POST(req: Request) {
     }
 
     const { triggerEvent, payload } = result.data;
+
+    // Check if this is an event we actually process into cal_bookings
+    const isProcessable = CalWebhookProcessableEvent.safeParse(triggerEvent).success;
+    if (!isProcessable) {
+      // Log ALL non-processable events with full context for future analysis
+      // This includes no-shows, meeting events, pings, etc.
+      const { uid, organizer, attendees, metadata } = payload;
+      void track({
+        type: 'cal_webhook_received',
+        level: 'info',
+        source: 'api.public.cal.webhook',
+        ip,
+        ua,
+        props: {
+          trigger_event: triggerEvent,
+          action: 'logged_not_processed',
+          cal_uid: uid,
+          organizer_username: organizer?.username || null,
+          attendee_email: attendees?.[0]?.email || null,
+          has_metadata: Boolean(metadata && Object.keys(metadata).length > 0),
+        },
+      });
+      return NextResponse.json({ ok: true, message: `Event ${triggerEvent} acknowledged and logged` });
+    }
+
     const { uid, eventTypeId, startTime, endTime, organizer, attendees, metadata, status } = payload;
 
     // Extract KH metadata if present
