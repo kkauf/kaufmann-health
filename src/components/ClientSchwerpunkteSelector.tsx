@@ -41,7 +41,10 @@ export function ClientSchwerpunkteSelector({
   const [clickedTooltip, setClickedTooltip] = useState<string | null>(null);
   // Track hover state separately for desktop
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+  // Track when user attempts to add beyond max
+  const [showMaxWarning, setShowMaxWarning] = useState(false);
   const tooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const maxWarningTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Auto-dismiss clicked tooltip after duration (but not if hovering)
   useEffect(() => {
@@ -53,6 +56,9 @@ export function ClientSchwerpunkteSelector({
     return () => {
       if (tooltipTimerRef.current) {
         clearTimeout(tooltipTimerRef.current);
+      }
+      if (maxWarningTimerRef.current) {
+        clearTimeout(maxWarningTimerRef.current);
       }
     };
   }, [clickedTooltip, hoveredCategory]);
@@ -75,9 +81,21 @@ export function ClientSchwerpunkteSelector({
       if (isSelected) {
         onChange(selected.filter((id) => id !== categoryId));
         setClickedTooltip(null); // Hide tooltip on deselection
+        setShowMaxWarning(false); // Clear warning when removing
       } else if (selected.length < maxSelections) {
         onChange([...selected, categoryId]);
         setClickedTooltip(categoryId); // Show tooltip on selection
+        setShowMaxWarning(false); // Clear warning on successful add
+      } else {
+        // User tried to add beyond max - show warning
+        setShowMaxWarning(true);
+        // Auto-dismiss warning after 3 seconds
+        if (maxWarningTimerRef.current) {
+          clearTimeout(maxWarningTimerRef.current);
+        }
+        maxWarningTimerRef.current = setTimeout(() => {
+          setShowMaxWarning(false);
+        }, TOOLTIP_DURATION);
       }
     },
     [selected, onChange, maxSelections]
@@ -143,9 +161,9 @@ export function ClientSchwerpunkteSelector({
         ))}
       </div>
 
-      {/* Max selection hint */}
-      {atMax && (
-        <p className="text-center text-sm text-amber-600 font-medium py-2">
+      {/* Max selection warning - only shown when user tries to add a 4th topic */}
+      {showMaxWarning && (
+        <p className="text-center text-sm text-amber-600 font-medium py-2 animate-in fade-in duration-200">
           Maximum erreicht – tippe auf ein Thema, um es zu entfernen
         </p>
       )}
