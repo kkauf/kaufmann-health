@@ -1,6 +1,5 @@
 import { supabaseServer } from '@/lib/supabase-server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import FloatingWhatsApp from '@/components/FloatingWhatsApp';
 import { track } from '@/lib/logger';
 
 function formatDate(d: string): string {
@@ -110,7 +109,6 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
             </CardHeader>
           </Card>
         </div>
-        <FloatingWhatsApp />
       </>
     );
   }
@@ -149,7 +147,6 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
           </CardContent>
         </Card>
       </div>
-      <FloatingWhatsApp />
     </>
   );
 }

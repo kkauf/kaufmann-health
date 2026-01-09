@@ -464,6 +464,8 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
     };
     
     const scored: ScoredTherapist[] = [];
+    const fallbackScored: ScoredTherapist[] = []; // Therapists that don't pass eligibility but could be shown as fallbacks
+    
     for (const t of therapists) {
       // Build TherapistRowForMatch with full metadata
       const tRow: TherapistRowForMatch = {
@@ -480,9 +482,6 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
         metadata: t.metadata as TherapistRowForMatch['metadata'],
       };
 
-      // Apply eligibility filters (hard filters)
-      if (!isEligible(tRow, pMeta)) continue;
-
       // Calculate slot counts for Platform Score
       const intakeSlots7Days = countIntakeSlotsInDays(t.id, 7);
       const intakeSlots14Days = countIntakeSlotsInDays(t.id, 14);
@@ -496,7 +495,7 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
       // Also compute mismatches for tracking/analytics
       const mm = computeMismatches(pMeta, tRow);
 
-      scored.push({
+      const scoredItem: ScoredTherapist = {
         id: t.id,
         platformScore,
         matchScore,
@@ -505,19 +504,38 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
         intakeSlots7Days,
         intakeSlots14Days,
         reasons: mm.reasons,
-      });
+      };
+
+      // Apply eligibility filters (hard filters)
+      // But also track fallbacks for "never empty" behavior
+      if (isEligible(tRow, pMeta)) {
+        scored.push(scoredItem);
+      } else if (t.accepting_new !== false && tRow.metadata?.hide_from_directory !== true) {
+        // Track as fallback: accepting new clients and not hidden, just doesn't match patient preferences
+        fallbackScored.push(scoredItem);
+      }
     }
 
     // Sort by totalScore descending (per spec: Match × 1.5 + Platform)
     scored.sort((a, b) => b.totalScore - a.totalScore);
+    fallbackScored.sort((a, b) => b.platformScore - a.platformScore); // Fallbacks sorted by platform score only
     
-    const chosenScored = scored.slice(0, 3);
+    // Never-empty behavior: if we have fewer than 3 matches, fill with fallbacks
+    let chosenScored = scored.slice(0, 3);
+    const neededFallbacks = 3 - chosenScored.length;
+    if (neededFallbacks > 0 && fallbackScored.length > 0) {
+      const fallbacksToAdd = fallbackScored.slice(0, neededFallbacks);
+      chosenScored = [...chosenScored, ...fallbacksToAdd];
+    }
+    
     const chosen = chosenScored.map(s => s.id);
+    const usedFallbacks = neededFallbacks > 0 && fallbackScored.length > 0;
 
-    console.log(`[InstantMatch] Patient ${patientId}: Found ${therapists.length} verified therapists. Scored ${scored.length} candidates. Chosen ${chosen.length}. Top scores: ${chosenScored.map(s => s.totalScore).join(', ')}`);
+    console.log(`[InstantMatch] Patient ${patientId}: Found ${therapists.length} verified therapists. Scored ${scored.length} eligible + ${fallbackScored.length} fallbacks. Chosen ${chosen.length}${usedFallbacks ? ' (includes fallbacks)' : ''}. Top scores: ${chosenScored.map(s => s.totalScore).join(', ')}`);
 
     // Per spec: "exact" match when top therapist has high total score (≥120 or no mismatches)
-    const hasAnyPerfect = chosenScored.some(s => s.totalScore >= 120 || s.reasons.length === 0);
+    // If we used fallbacks, it's always "partial"
+    const hasAnyPerfect = !usedFallbacks && chosenScored.some(s => s.totalScore >= 120 || s.reasons.length === 0);
     const matchQuality = chosen.length === 0 ? 'none' : (hasAnyPerfect ? 'exact' : 'partial');
 
     let secureUuid: string | null = null;

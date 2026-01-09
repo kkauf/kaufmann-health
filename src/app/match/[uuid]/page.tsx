@@ -1,7 +1,6 @@
 import { supabaseServer } from '@/lib/supabase-server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Actions } from './Actions';
-import FloatingWhatsApp from '@/components/FloatingWhatsApp';
 import { cookies } from 'next/headers';
 import { getTherapistSessionCookieName, verifyTherapistSessionToken } from '@/lib/auth/therapistSession';
 import { redirect } from 'next/navigation';
@@ -243,7 +242,6 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
             </CardHeader>
           </Card>
         </div>
-        <FloatingWhatsApp />
       </>
     );
   }
@@ -263,7 +261,6 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
             </CardHeader>
           </Card>
         </div>
-        <FloatingWhatsApp />
       </>
     );
   }
@@ -360,8 +357,6 @@ export default async function Page({ params }: { params: Promise<{ uuid: string 
         </CardContent>
       </Card>
     </div>
-    <FloatingWhatsApp />
     </>
   );
 }
-

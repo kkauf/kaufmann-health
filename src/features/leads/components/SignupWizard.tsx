@@ -147,6 +147,47 @@ export default function SignupWizard() {
   const campaignSourceOverrideRef = React.useRef<string | null>(null);
   const campaignVariantOverrideRef = React.useRef<string | null>(null);
 
+  // Progressive filtering: therapist count based on current filters
+  const [therapistCount, setTherapistCount] = React.useState<number | null>(null);
+
+  // Fetch therapist count on mount and when filters change
+  React.useEffect(() => {
+    async function fetchCount() {
+      try {
+        // Build query params based on current wizard data
+        const params = new URLSearchParams();
+        
+        // Add filters based on wizard progress
+        if (data.session_preference) {
+          params.set('session_preference', data.session_preference);
+        }
+        if (data.city) {
+          params.set('city', data.city);
+        }
+        if (data.gender && data.gender !== 'Keine Präferenz') {
+          const genderMap: Record<string, string> = {
+            'Frau': 'female',
+            'Mann': 'male',
+          };
+          params.set('gender_preference', genderMap[data.gender] || 'no_preference');
+        }
+        if (data.schwerpunkte && data.schwerpunkte.length > 0) {
+          params.set('schwerpunkte', data.schwerpunkte.join(','));
+        }
+
+        const res = await fetch(`/api/public/therapists/count?${params.toString()}`);
+        if (res.ok) {
+          const json = await res.json();
+          setTherapistCount(json.count ?? null);
+        }
+      } catch {
+        // Silently fail - count is optional UI enhancement
+      }
+    }
+    
+    void fetchCount();
+  }, [data.session_preference, data.city, data.gender, data.schwerpunkte]);
+
   // Shared verification hook for SMS code sending/verification
   const verification = useVerification({
     initialContactMethod: 'phone',
@@ -785,6 +826,7 @@ export default function SignupWizard() {
             onNext={() => safeGoToStep(usesSchwerpunkteStep ? 2.5 : 2)}
             suppressAutoAdvance={suppressAutoStep === 1}
             disabled={navLock || submitting}
+            therapistCount={therapistCount}
           />
         );
       case 2:
@@ -815,6 +857,7 @@ export default function SignupWizard() {
             onBack={() => safeGoToStep(1)}
             onNext={() => safeGoToStep(3)}
             disabled={navLock || submitting}
+            therapistCount={therapistCount}
           />
         );
       case 3:

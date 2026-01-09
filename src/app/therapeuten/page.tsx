@@ -4,7 +4,6 @@ import { TherapistDirectory } from '@/features/therapists/components/TherapistDi
 import type { TherapistData } from '@/features/therapists/components/TherapistDirectory';
 import { TherapistMatchCallout } from '@/features/therapists/components/TherapistMatchCallout';
 import { buildLandingMetadata } from '@/lib/seo';
-import VerifiedFloatingWhatsApp from '@/components/VerifiedFloatingWhatsApp';
 import DirectoryAnalytics from '@/features/therapists/components/DirectoryAnalytics';
 
 export const revalidate = 60;
@@ -56,7 +55,6 @@ export default async function TherapeutenPage() {
           <TherapistMatchCallout />
         </div>
       </main>
-      <VerifiedFloatingWhatsApp />
     </>
   );
 }

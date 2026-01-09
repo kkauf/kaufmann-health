@@ -467,16 +467,25 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
         </div>
       </div>
 
-      {/* Results header: count + compact trust note */}
+      {/* Results header: dynamic count + compact trust note */}
       <div className="mb-4 flex flex-col items-start justify-between gap-2 text-sm text-gray-700 sm:flex-row sm:items-center">
         <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-800 text-xs font-medium">
           <ShieldCheck className="h-3.5 w-3.5 text-emerald-700" />
           <span className="leading-none">Alle Profile verifiziert</span>
           <span className="sr-only">– Qualifikation & Lizenzen geprüft</span>
         </div>
-        <Badge className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+        <Badge className={cn(
+          "inline-flex items-center gap-1.5 transition-all duration-200",
+          activeFilterCount > 0 
+            ? "bg-amber-100 text-amber-700 hover:bg-amber-100" 
+            : "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+        )}>
           <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>{displayedCount} Therapeuten mit freien Terminen gefunden</span>
+          <span>
+            {activeFilterCount > 0 
+              ? `${displayedCount} Therapeut:innen gefunden`
+              : `${displayedCount} Therapeut:innen mit freien Terminen`}
+          </span>
         </Badge>
       </div>
 

@@ -1,8 +1,10 @@
 "use client";
 
 import React from 'react';
+import { Clock, Users, ShieldCheck } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import CtaLink from '@/components/CtaLink';
 
 export type NewScreen2Values = {
   start_timing?: 'Innerhalb der nächsten Woche' | 'Innerhalb des nächsten Monats' | 'Flexibel, der richtige Match ist wichtiger';
@@ -21,6 +23,7 @@ export default function NewScreen2_Timeline({
   onBack,
   disabled,
   suppressAutoAdvance,
+  therapistCount,
 }: {
   values: NewScreen2Values;
   onChange: (patch: Partial<NewScreen2Values>) => void;
@@ -28,6 +31,7 @@ export default function NewScreen2_Timeline({
   onBack?: () => void; // Optional - this can be the first step
   disabled?: boolean;
   suppressAutoAdvance?: boolean;
+  therapistCount?: number | null;
 }) {
   const [error, setError] = React.useState<string | null>(null);
   const [flashKey, setFlashKey] = React.useState<string | null>(null);
@@ -52,8 +56,33 @@ export default function NewScreen2_Timeline({
     return true;
   }
 
+  // Format therapist count for display
+  const countDisplay = therapistCount 
+    ? (therapistCount >= 50 ? '50+' : String(therapistCount))
+    : null;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Trust signals header */}
+      <div className="rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50/80 to-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-gray-700">
+          {countDisplay && (
+            <span className="inline-flex items-center gap-1.5 font-medium">
+              <Users className="h-4 w-4 text-emerald-600" />
+              <span>{countDisplay} geprüfte Therapeut:innen</span>
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1.5">
+            <Clock className="h-4 w-4 text-emerald-600" />
+            <span>3 Min. zum Match</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <ShieldCheck className="h-4 w-4 text-emerald-600" />
+            <span>Kostenlos & unverbindlich</span>
+          </span>
+        </div>
+      </div>
+
       <div className="space-y-3">
         <Label className="text-base">Wann möchtest du idealerweise beginnen?*</Label>
         <div className="grid gap-2">
@@ -101,6 +130,18 @@ export default function NewScreen2_Timeline({
         >
           Weiter →
         </Button>
+      </div>
+
+      {/* Escape hatch - browse all therapists */}
+      <div className="pt-2 text-center">
+        <CtaLink
+          href="/therapeuten"
+          eventType="cta_click"
+          eventId="wizard-browse-all-escape"
+          className="text-sm text-gray-500 hover:text-emerald-700 underline underline-offset-2 transition-colors"
+        >
+          Keine Zeit? Alle Therapeut:innen ansehen →
+        </CtaLink>
       </div>
     </div>
   );

@@ -283,21 +283,34 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     }
   }, [data]);
 
-  // Track partial/no-exact banner
+  // Track match quality - separate events for partial vs none
   useEffect(() => {
-    if (matchType === 'partial' || matchType === 'none') {
+    if (matchType === 'none') {
+      // True "no matches" - zero therapists found
       try {
         const attrs = getAttribution();
         const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
         const payload = {
           type: 'form_no_therapists_found',
           ...attrs,
-          properties: { page_path: pagePath, match_type: matchType },
+          properties: { page_path: pagePath, match_type: 'none' },
+        };
+        navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+      } catch { }
+    } else if (matchType === 'partial') {
+      // Partial matches - therapists found but not perfect fit
+      try {
+        const attrs = getAttribution();
+        const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
+        const payload = {
+          type: 'form_partial_match',
+          ...attrs,
+          properties: { page_path: pagePath, match_type: 'partial', therapist_count: therapists.length },
         };
         navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
       } catch { }
     }
-  }, [matchType]);
+  }, [matchType, therapists.length]);
 
   const handleOpen = useCallback((t: TherapistItem, type: 'booking' | 'consultation', selectedSlot?: { date_iso: string; time_label: string; format: 'online' | 'in_person' }) => {
     // Always open the modal; ContactModal will handle verification if required
@@ -357,23 +370,47 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   }
 
   if (!therapists.length) {
+    // True "no matches" state - be helpful and offer alternatives
     return (
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
-        <Card>
+        <Card className="border-amber-200 bg-gradient-to-br from-amber-50/50 to-white">
           <CardHeader>
-            <CardTitle>Keine passenden Therapeuten gefunden</CardTitle>
+            <CardTitle className="text-xl">Aktuell keine freien Kapazitäten für deine genauen Kriterien</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">Keine passende Person? Schau dir unser vollständiges Verzeichnis an.</p>
-            <div className="mt-4">
-              <Button asChild>
-                <CtaLink href="/therapeuten" eventType="cta_click" eventId="alle-therapeuten" data-cta="alle-therapeuten">
-                  Alle Therapeuten ansehen
+          <CardContent className="space-y-4">
+            <p className="text-muted-foreground">
+              Wir haben leider gerade keine Therapeut:innen mit freien Terminen, die alle deine Wünsche erfüllen. Das kann sich aber schnell ändern!
+            </p>
+            
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+              <p className="font-medium text-emerald-800 mb-2">Was du jetzt tun kannst:</p>
+              <ul className="space-y-2 text-sm text-emerald-700">
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>Schau dir alle Therapeut:innen an – vielleicht passt jemand, den wir nicht automatisch vorgeschlagen haben</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>Kontaktiere uns per WhatsApp – wir helfen dir persönlich bei der Suche</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
+                <CtaLink href="/therapeuten" eventType="cta_click" eventId="no-match-browse-all" data-cta="no-match-browse-all">
+                  Alle Therapeut:innen ansehen
                 </CtaLink>
+              </Button>
+              <Button variant="outline" asChild>
+                <a href="/fragebogen?restart=1">
+                  Kriterien anpassen
+                </a>
               </Button>
             </div>
           </CardContent>
         </Card>
+        <FloatingWhatsApp />
       </div>
     );
   }
@@ -390,11 +427,32 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           })()}
         </h1>
         <p className="mt-2 text-gray-600">
-          {isDirectBookingFlow
-            ? `Basierend auf deinen Angaben und aktueller Verfügbarkeit haben wir ${therapistsWithQuality.length} passende Therapeut:innen zusammengestellt.`
-            : `Basierend auf deiner Anfrage haben wir ${therapistsWithQuality.length} Therapeut:innen für dich ausgewählt.`}
+          {matchType === 'partial'
+            ? `Wir haben ${therapistsWithQuality.length} Therapeut:innen gefunden, die gut zu dir passen könnten – auch wenn nicht alle Kriterien perfekt erfüllt sind.`
+            : isDirectBookingFlow
+              ? `Basierend auf deinen Angaben und aktueller Verfügbarkeit haben wir ${therapistsWithQuality.length} passende Therapeut:innen zusammengestellt.`
+              : `Basierend auf deiner Anfrage haben wir ${therapistsWithQuality.length} Therapeut:innen für dich ausgewählt.`}
         </p>
       </div>
+
+      {/* Partial match transparency banner */}
+      {matchType === 'partial' && (
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm text-amber-800">
+            <strong>Hinweis:</strong> Diese Therapeut:innen erfüllen nicht alle deine Wunsch-Kriterien, passen aber möglicherweise trotzdem gut zu dir. Schau dir ihre Profile an!
+          </p>
+          <div className="mt-2">
+            <CtaLink 
+              href="/therapeuten" 
+              eventType="cta_click" 
+              eventId="partial-match-browse-all"
+              className="text-sm text-amber-700 hover:text-amber-900 underline underline-offset-2"
+            >
+              Alle Therapeut:innen ansehen →
+            </CtaLink>
+          </div>
+        </div>
+      )}
 
       {/* Preferences summary box */}
       {data && (
@@ -665,8 +723,6 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           }}
         />
       )}
-
-      <FloatingWhatsApp />
     </div>
   );
 }
