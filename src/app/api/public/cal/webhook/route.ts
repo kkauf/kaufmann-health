@@ -268,6 +268,19 @@ export async function POST(req: Request) {
 
     const { uid, eventTypeId, startTime, endTime, organizer, attendees, metadata, status } = payload;
 
+    // uid is required for processable events (booking create/reschedule/cancel)
+    if (!uid) {
+      void track({
+        type: 'cal_webhook_received',
+        level: 'warn',
+        source: 'api.public.cal.webhook',
+        ip,
+        ua,
+        props: { trigger_event: triggerEvent, action: 'skipped_no_uid' },
+      });
+      return NextResponse.json({ ok: true, message: `Event ${triggerEvent} skipped (no uid)` });
+    }
+
     // Extract KH metadata if present
     const khMeta = metadata ?? {};
     const bookingKind = ('kh_booking_kind' in khMeta ? khMeta.kh_booking_kind : null) || null;

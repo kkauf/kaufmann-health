@@ -73,7 +73,7 @@ export type CalWebhookAttendee = z.infer<typeof CalWebhookAttendee>;
 
 export const CalWebhookBookingPayload = z
   .object({
-    uid: z.string().min(1),
+    uid: z.string().optional(), // Optional for ping tests
     eventTypeId: z.union([z.number().int(), z.string()]).nullable().optional(),
     startTime: z.string().datetime().optional(),
     endTime: z.string().datetime().optional(),
