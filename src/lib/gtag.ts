@@ -96,14 +96,31 @@ function sendConversion({ label, value, transactionId, dedupePrefix }: { label?:
     const gtagAvailable = typeof g === 'function';
     
     if (gtagAvailable) {
-      g('event', 'conversion', payload);
+      // Use beacon transport to ensure conversion sends even if page navigates away
+      g('event', 'conversion', { ...payload, transport_type: 'beacon' });
     } else {
       // Fallback: push to dataLayer (gtag.js will process when loaded)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const w = window as any;
       w.dataLayer = w.dataLayer || [];
-      w.dataLayer.push({ event: 'conversion', ...payload });
+      w.dataLayer.push(['event', 'conversion', { ...payload, transport_type: 'beacon' }]);
     }
+    
+    // Also fire a direct pixel as belt-and-suspenders (survives navigation)
+    try {
+      const pixelUrl = new URL('https://www.googleadservices.com/pagead/conversion/' + GA_ID?.replace('AW-', '') + '/');
+      pixelUrl.searchParams.set('label', label);
+      pixelUrl.searchParams.set('value', String(value));
+      pixelUrl.searchParams.set('currency', 'EUR');
+      if (transactionId) pixelUrl.searchParams.set('oid', transactionId);
+      if (pageLocationWithGclid) pixelUrl.searchParams.set('url', pageLocationWithGclid);
+      // Use sendBeacon for reliability
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(pixelUrl.toString());
+      } else {
+        new Image().src = pixelUrl.toString();
+      }
+    } catch {}
 
     // Track attempt for observability - include whether gtag was available
     trackConversionAttempt(label, transactionId, !!pageLocationWithGclid || !!getGclid(), gtagAvailable);
