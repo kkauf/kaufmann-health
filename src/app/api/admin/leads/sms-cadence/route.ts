@@ -9,11 +9,12 @@
  * - Haven't received this SMS stage yet
  * 
  * Usage:
- *   GET /api/admin/leads/sms-cadence?stage=day2
+ *   GET /api/admin/leads/sms-cadence              (processes ALL stages)
+ *   GET /api/admin/leads/sms-cadence?stage=day2   (single stage)
  *   GET /api/admin/leads/sms-cadence?stage=day5
  *   GET /api/admin/leads/sms-cadence?stage=day10
  * 
- * Cron: Configure in vercel.json (e.g., 10:00 daily for each stage)
+ * Cron: Single daily call processes all stages sequentially
  */
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
@@ -127,6 +128,157 @@ async function sentRecentSms(patientId: string, hours = 24): Promise<boolean> {
   }
 }
 
+// Process a single stage and return counters
+async function processStage(
+  stage: Stage,
+  limit: number,
+  dryRun: boolean,
+  ip: string,
+  ua: string
+): Promise<{
+  stage: Stage;
+  processed: number;
+  sent: number;
+  skipped: {
+    no_matches: number;
+    already_selected: number;
+    already_sent: number;
+    recent_sms: number;
+    test: number;
+  };
+}> {
+  const config = STAGE_CONFIG[stage];
+  const fromIso = hoursAgo(config.maxHours);
+  const toIso = hoursAgo(config.minHours);
+
+  // Find phone-only patients with matches in the time window
+  const { data: candidates, error: candidatesError } = await supabaseServer
+    .from('people')
+    .select(`id, name, phone_number, email, status, metadata`)
+    .eq('type', 'patient')
+    .not('phone_number', 'is', null)
+    .in('status', ['new', 'email_confirmed'])
+    .gte('created_at', fromIso)
+    .lte('created_at', toIso)
+    .limit(limit * 2);
+
+  if (candidatesError) {
+    await logError('api.admin.leads.sms_cadence', candidatesError, { stage }, ip, ua);
+    return { stage, processed: 0, sent: 0, skipped: { no_matches: 0, already_selected: 0, already_sent: 0, recent_sms: 0, test: 0 } };
+  }
+
+  // Filter to phone-only (no email or temp email)
+  const phoneOnly = (candidates || []).filter(p => {
+    const email = p.email?.trim() || '';
+    const isTemp = email.startsWith('temp_') && email.endsWith('@kaufmann.health');
+    return p.phone_number && (!email || isTemp);
+  });
+
+  let processed = 0;
+  let sent = 0;
+  let skippedNoMatches = 0;
+  let skippedAlreadySelected = 0;
+  let skippedAlreadySent = 0;
+  let skippedRecentSms = 0;
+  let skippedTest = 0;
+
+  for (const patient of phoneOnly.slice(0, limit)) {
+    processed++;
+
+    const meta = patient.metadata as Record<string, unknown> | null;
+    if (meta?.is_test) {
+      skippedTest++;
+      continue;
+    }
+
+    const { data: matches } = await supabaseServer
+      .from('matches')
+      .select('id, secure_uuid, status')
+      .eq('patient_id', patient.id)
+      .limit(5);
+
+    if (!matches || matches.length === 0) {
+      skippedNoMatches++;
+      continue;
+    }
+
+    const hasSelected = matches.some(m => m.status === 'patient_selected');
+    if (hasSelected) {
+      skippedAlreadySelected++;
+      continue;
+    }
+
+    if (await alreadySentStage(patient.id, stage)) {
+      skippedAlreadySent++;
+      continue;
+    }
+
+    if (await sentRecentSms(patient.id, 24)) {
+      skippedRecentSms++;
+      continue;
+    }
+
+    const secureUuid = matches[0]?.secure_uuid;
+    if (!secureUuid) {
+      skippedNoMatches++;
+      continue;
+    }
+
+    const fullMatchesUrl = `${BASE_URL}/matches/${secureUuid}?direct=1`;
+    const matchesUrl = await createShortLinkOrFallback({
+      targetUrl: fullMatchesUrl,
+      utmSource: 'sms',
+      utmMedium: 'transactional',
+      utmCampaign: `sms_cadence_${stage}`,
+      patientId: patient.id,
+    });
+    const smsBody = config.smsTemplate(matchesUrl);
+
+    if (dryRun) {
+      console.log(`[sms-cadence] DRY RUN: Would send to ${patient.phone_number}: ${smsBody}`);
+      sent++;
+      continue;
+    }
+
+    void track({
+      type: 'sms_attempted',
+      level: 'info',
+      source: 'api.admin.leads.sms_cadence',
+      props: { kind: 'sms_cadence', stage, patient_id: patient.id },
+    });
+
+    const ok = await sendTransactionalSms(patient.phone_number!, smsBody);
+    
+    if (ok) {
+      void track({
+        type: 'sms_sent',
+        level: 'info',
+        source: 'api.admin.leads.sms_cadence',
+        props: { kind: 'sms_cadence', stage, patient_id: patient.id },
+      });
+      sent++;
+    } else {
+      await logError('api.admin.leads.sms_cadence', new Error('SMS send failed'), {
+        stage,
+        patient_id: patient.id,
+      }, ip, ua);
+    }
+  }
+
+  return {
+    stage,
+    processed,
+    sent,
+    skipped: {
+      no_matches: skippedNoMatches,
+      already_selected: skippedAlreadySelected,
+      already_sent: skippedAlreadySent,
+      recent_sms: skippedRecentSms,
+      test: skippedTest,
+    },
+  };
+}
+
 export async function GET(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   const ua = req.headers.get('user-agent') || '';
@@ -141,165 +293,48 @@ export async function GET(req: Request) {
     }
 
     const url = new URL(req.url);
-    const stage = url.searchParams.get('stage') as Stage | null;
+    const stageParam = url.searchParams.get('stage') as Stage | null;
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '100', 10), 200);
     const dryRun = url.searchParams.get('dry') === 'true';
 
-    if (!stage || !STAGE_CONFIG[stage]) {
-      return NextResponse.json({ 
-        data: null, 
-        error: 'Invalid stage. Use: day2, day5, day10' 
-      }, { status: 400 });
+    // If no stage specified, process ALL stages sequentially
+    const stagesToProcess: Stage[] = stageParam && STAGE_CONFIG[stageParam] 
+      ? [stageParam] 
+      : ['day2', 'day5', 'day10'];
+
+    const results: Array<{
+      stage: Stage;
+      processed: number;
+      sent: number;
+      skipped: { no_matches: number; already_selected: number; already_sent: number; recent_sms: number; test: number };
+    }> = [];
+
+    for (const stage of stagesToProcess) {
+      const result = await processStage(stage, limit, dryRun, ip, ua);
+      results.push(result);
     }
 
-    const config = STAGE_CONFIG[stage];
-    const fromIso = hoursAgo(config.maxHours);
-    const toIso = hoursAgo(config.minHours);
-
-    // Find phone-only patients with matches in the time window
-    // Phone-only = has phone_number AND (no email OR temp email)
-    const { data: candidates, error: candidatesError } = await supabaseServer
-      .from('people')
-      .select(`
-        id,
-        name,
-        phone_number,
-        email,
-        status,
-        metadata
-      `)
-      .eq('type', 'patient')
-      .not('phone_number', 'is', null)
-      .in('status', ['new', 'email_confirmed'])
-      .gte('created_at', fromIso)
-      .lte('created_at', toIso)
-      .limit(limit * 2); // Fetch extra to account for filtering
-
-    if (candidatesError) {
-      await logError('api.admin.leads.sms_cadence', candidatesError, { stage }, ip, ua);
-      return NextResponse.json({ data: null, error: 'Database error' }, { status: 500 });
-    }
-
-    // Filter to phone-only (no email or temp email)
-    const phoneOnly = (candidates || []).filter(p => {
-      const email = p.email?.trim() || '';
-      const isTemp = email.startsWith('temp_') && email.endsWith('@kaufmann.health');
-      return p.phone_number && (!email || isTemp);
-    });
-
-    let processed = 0;
-    let sent = 0;
-    let skippedNoMatches = 0;
-    let skippedAlreadySelected = 0;
-    let skippedAlreadySent = 0;
-    let skippedRecentSms = 0;
-    let skippedTest = 0;
-
-    for (const patient of phoneOnly.slice(0, limit)) {
-      processed++;
-
-      // Skip test users
-      const meta = patient.metadata as Record<string, unknown> | null;
-      if (meta?.is_test) {
-        skippedTest++;
-        continue;
-      }
-
-      // Check if patient has matches
-      const { data: matches } = await supabaseServer
-        .from('matches')
-        .select('id, secure_uuid, status')
-        .eq('patient_id', patient.id)
-        .limit(5);
-
-      if (!matches || matches.length === 0) {
-        skippedNoMatches++;
-        continue;
-      }
-
-      // Check if already selected
-      const hasSelected = matches.some(m => m.status === 'patient_selected');
-      if (hasSelected) {
-        skippedAlreadySelected++;
-        continue;
-      }
-
-      // Check if already sent this stage
-      if (await alreadySentStage(patient.id, stage)) {
-        skippedAlreadySent++;
-        continue;
-      }
-
-      // Check if sent any SMS recently (24h spam prevention)
-      if (await sentRecentSms(patient.id, 24)) {
-        skippedRecentSms++;
-        continue;
-      }
-
-      // Get secure_uuid for matches URL
-      const secureUuid = matches[0]?.secure_uuid;
-      if (!secureUuid) {
-        skippedNoMatches++;
-        continue;
-      }
-
-      // Create short link for cleaner SMS
-      // ?direct=1 skips loading animation on the matches page
-      const fullMatchesUrl = `${BASE_URL}/matches/${secureUuid}?direct=1`;
-      const matchesUrl = await createShortLinkOrFallback({
-        targetUrl: fullMatchesUrl,
-        utmSource: 'sms',
-        utmMedium: 'transactional',
-        utmCampaign: `sms_cadence_${stage}`,
-        patientId: patient.id,
-      });
-      const smsBody = config.smsTemplate(matchesUrl);
-
-      if (dryRun) {
-        console.log(`[sms-cadence] DRY RUN: Would send to ${patient.phone_number}: ${smsBody}`);
-        sent++;
-        continue;
-      }
-
-      // Send SMS
-      void track({
-        type: 'sms_attempted',
-        level: 'info',
-        source: 'api.admin.leads.sms_cadence',
-        props: { kind: 'sms_cadence', stage, patient_id: patient.id },
-      });
-
-      const ok = await sendTransactionalSms(patient.phone_number!, smsBody);
-      
-      if (ok) {
-        void track({
-          type: 'sms_sent',
-          level: 'info',
-          source: 'api.admin.leads.sms_cadence',
-          props: { kind: 'sms_cadence', stage, patient_id: patient.id },
-        });
-        sent++;
-      } else {
-        await logError('api.admin.leads.sms_cadence', new Error('SMS send failed'), {
-          stage,
-          patient_id: patient.id,
-        }, ip, ua);
-      }
-    }
+    // Aggregate totals
+    const totals = results.reduce(
+      (acc, r) => ({
+        processed: acc.processed + r.processed,
+        sent: acc.sent + r.sent,
+        skipped_no_matches: acc.skipped_no_matches + r.skipped.no_matches,
+        skipped_already_selected: acc.skipped_already_selected + r.skipped.already_selected,
+        skipped_already_sent: acc.skipped_already_sent + r.skipped.already_sent,
+        skipped_recent_sms: acc.skipped_recent_sms + r.skipped.recent_sms,
+        skipped_test: acc.skipped_test + r.skipped.test,
+      }),
+      { processed: 0, sent: 0, skipped_no_matches: 0, skipped_already_selected: 0, skipped_already_sent: 0, skipped_recent_sms: 0, skipped_test: 0 }
+    );
 
     void track({
       type: 'cron_completed',
       level: 'info',
       source: 'api.admin.leads.sms_cadence',
       props: {
-        stage,
-        processed,
-        sent,
-        skipped_no_matches: skippedNoMatches,
-        skipped_already_selected: skippedAlreadySelected,
-        skipped_already_sent: skippedAlreadySent,
-        skipped_recent_sms: skippedRecentSms,
-        skipped_test: skippedTest,
+        stages: stagesToProcess,
+        ...totals,
         dry_run: dryRun,
         duration_ms: Date.now() - startedAt,
       },
@@ -307,16 +342,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       data: {
-        stage,
-        processed,
-        sent,
-        skipped: {
-          no_matches: skippedNoMatches,
-          already_selected: skippedAlreadySelected,
-          already_sent: skippedAlreadySent,
-          recent_sms: skippedRecentSms,
-          test: skippedTest,
-        },
+        stages: stagesToProcess,
+        results,
+        totals,
         dry_run: dryRun,
       },
       error: null,

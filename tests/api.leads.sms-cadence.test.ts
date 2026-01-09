@@ -51,11 +51,12 @@ describe('GET /api/admin/leads/sms-cadence', () => {
     expect(res.status).toBe(200);
   });
 
-  it('rejects invalid stage', async () => {
+  it('falls back to all stages for invalid stage', async () => {
     const res = await GET(makeRequest('invalid', 'test-secret'));
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.error).toContain('Invalid stage');
+    // Invalid stage falls back to processing all stages
+    expect(json.data.stages).toEqual(['day2', 'day5', 'day10']);
   });
 
   it('accepts valid stages', async () => {
@@ -63,19 +64,30 @@ describe('GET /api/admin/leads/sms-cadence', () => {
       const res = await GET(makeRequest(stage, 'test-secret'));
       expect(res.status).toBe(200);
       const json = await res.json();
-      expect(json.data.stage).toBe(stage);
+      expect(json.data.stages).toContain(stage);
+      expect(json.data.stages).toHaveLength(1);
     }
   });
 
-  it('returns processing stats', async () => {
+  it('returns processing stats with totals', async () => {
     const res = await GET(makeRequest('day2', 'test-secret'));
     const json = await res.json();
     
-    expect(json.data).toHaveProperty('processed');
-    expect(json.data).toHaveProperty('sent');
-    expect(json.data).toHaveProperty('skipped');
-    expect(json.data.skipped).toHaveProperty('no_matches');
-    expect(json.data.skipped).toHaveProperty('already_selected');
-    expect(json.data.skipped).toHaveProperty('already_sent');
+    // New response format has stages, results array, and totals
+    expect(json.data).toHaveProperty('stages');
+    expect(json.data).toHaveProperty('results');
+    expect(json.data).toHaveProperty('totals');
+    expect(json.data.totals).toHaveProperty('processed');
+    expect(json.data.totals).toHaveProperty('sent');
+    expect(json.data.totals).toHaveProperty('skipped_no_matches');
+  });
+
+  it('processes all stages when no stage specified', async () => {
+    const url = `https://kaufmann-health.de/api/admin/leads/sms-cadence?token=test-secret`;
+    const res = await GET(new Request(url, { method: 'GET' }));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.stages).toEqual(['day2', 'day5', 'day10']);
+    expect(json.data.results).toHaveLength(3);
   });
 });

@@ -3,6 +3,12 @@
  *
  * Cron endpoint for Cal.com booking follow-ups and reminders (EARTH-261, EARTH-260)
  *
+ * Usage:
+ *   GET /api/admin/cal/booking-followups              (processes ALL stages)
+ *   GET /api/admin/cal/booking-followups?stage=post_intro
+ *   GET /api/admin/cal/booking-followups?stage=reminder_24h
+ *   GET /api/admin/cal/booking-followups?stage=reminder_1h
+ *
  * Stages:
  * - post_intro: Send follow-up 30min after intro call ends (prompt full session booking)
  * - reminder_24h: Send reminder 24h before appointment
@@ -49,17 +55,23 @@ function verifyCron(req: NextRequest): boolean {
   return token === CRON_SECRET;
 }
 
-export async function GET(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'cron';
+type StageCounters = {
+  processed: number;
+  sent_email: number;
+  sent_sms: number;
+  skipped_already_sent: number;
+  skipped_no_patient: number;
+  skipped_no_contact: number;
+  skipped_test: number;
+  errors: number;
+};
 
-  if (!verifyCron(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const stage = (req.nextUrl.searchParams.get('stage') || 'post_intro') as Stage;
-  const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '50', 10), 200);
-
-  const counters = {
+async function processStage(
+  stage: Stage,
+  limit: number,
+  ip: string
+): Promise<{ stage: Stage; counters: StageCounters }> {
+  const counters: StageCounters = {
     processed: 0,
     sent_email: 0,
     sent_sms: 0,
@@ -70,12 +82,11 @@ export async function GET(req: NextRequest) {
     errors: 0,
   };
 
-  try {
-    const now = new Date();
-    let bookings: CalBooking[] = [];
+  const now = new Date();
+  let bookings: CalBooking[] = [];
 
+  try {
     if (stage === 'post_intro') {
-      // Find intro bookings where end_time is 30+ min ago and followup not sent
       const cutoff = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
       const { data, error } = await supabaseServer
         .from('cal_bookings')
@@ -86,11 +97,9 @@ export async function GET(req: NextRequest) {
         .not('patient_id', 'is', null)
         .order('end_time', { ascending: true })
         .limit(limit);
-
       if (error) throw error;
       bookings = (data || []) as CalBooking[];
     } else if (stage === 'reminder_24h') {
-      // Find bookings where start_time is within 24-25h from now and reminder not sent
       const windowStart = new Date(now.getTime() + 23 * 60 * 60 * 1000).toISOString();
       const windowEnd = new Date(now.getTime() + 25 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabaseServer
@@ -102,11 +111,9 @@ export async function GET(req: NextRequest) {
         .not('patient_id', 'is', null)
         .order('start_time', { ascending: true })
         .limit(limit);
-
       if (error) throw error;
       bookings = (data || []) as CalBooking[];
     } else if (stage === 'reminder_1h') {
-      // Find bookings where start_time is within 1-2h from now and reminder not sent
       const windowStart = new Date(now.getTime() + 50 * 60 * 1000).toISOString();
       const windowEnd = new Date(now.getTime() + 70 * 60 * 1000).toISOString();
       const { data, error } = await supabaseServer
@@ -118,7 +125,6 @@ export async function GET(req: NextRequest) {
         .not('patient_id', 'is', null)
         .order('start_time', { ascending: true })
         .limit(limit);
-
       if (error) throw error;
       bookings = (data || []) as CalBooking[];
     }
@@ -131,7 +137,6 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
-      // Get patient details
       const { data: patient } = await supabaseServer
         .from('people')
         .select('id, email, phone, first_name')
@@ -151,7 +156,6 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
-      // Get therapist details
       const { data: therapist } = await supabaseServer
         .from('therapists')
         .select('id, first_name, last_name, cal_username')
@@ -164,7 +168,6 @@ export async function GET(req: NextRequest) {
 
       try {
         if (stage === 'post_intro') {
-          // Send post-intro follow-up
           const calBaseUrl = process.env.NEXT_PUBLIC_CAL_ORIGIN || 'https://cal.kaufmann.health';
           const fullSessionUrl = therapist?.cal_username
             ? `${calBaseUrl}/${therapist.cal_username}/full-session`
@@ -186,13 +189,11 @@ export async function GET(req: NextRequest) {
           }
 
           if (hasPhone && !hasEmail) {
-            // SMS for phone-only users
             const smsText = `Wie war Ihr Kennenlerngespräch mit ${therapistName}? Möchten Sie einen Folgetermin buchen? Antworten Sie auf diese Nachricht oder besuchen Sie kaufmann-health.de`;
             const smsResult = await sendTransactionalSms(patient.phone!, smsText);
             if (smsResult) counters.sent_sms++;
           }
 
-          // Mark as sent
           await supabaseServer
             .from('cal_bookings')
             .update({ followup_sent_at: now.toISOString() })
@@ -230,7 +231,6 @@ export async function GET(req: NextRequest) {
           }
 
           if (hasPhone) {
-            // SMS reminder for all phone users
             const smsText = stage === 'reminder_24h'
               ? `Erinnerung: Morgen ${timeStr} Uhr Termin mit ${therapistName}. Wir freuen uns auf Sie!`
               : `In 1 Stunde: Termin mit ${therapistName} um ${timeStr} Uhr. Bis gleich!`;
@@ -238,7 +238,6 @@ export async function GET(req: NextRequest) {
             if (smsResult) counters.sent_sms++;
           }
 
-          // Mark as sent
           const updateField = stage === 'reminder_24h' ? 'reminder_24h_sent_at' : 'reminder_1h_sent_at';
           await supabaseServer
             .from('cal_bookings')
@@ -254,18 +253,62 @@ export async function GET(req: NextRequest) {
         });
       }
     }
+  } catch (e) {
+    await logError('api.admin.cal.booking-followups', e, { stage });
+  }
+
+  return { stage, counters };
+}
+
+export async function GET(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'cron';
+
+  if (!verifyCron(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const stageParam = req.nextUrl.searchParams.get('stage') as Stage | null;
+  const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '50', 10), 200);
+
+  // If no stage specified, process ALL stages sequentially
+  const stagesToProcess: Stage[] = stageParam && ['post_intro', 'reminder_24h', 'reminder_1h'].includes(stageParam)
+    ? [stageParam]
+    : ['post_intro', 'reminder_24h', 'reminder_1h'];
+
+  try {
+    const results: Array<{ stage: Stage; counters: StageCounters }> = [];
+    
+    for (const stage of stagesToProcess) {
+      const result = await processStage(stage, limit, ip);
+      results.push(result);
+    }
+
+    // Aggregate totals
+    const totals = results.reduce(
+      (acc, r) => ({
+        processed: acc.processed + r.counters.processed,
+        sent_email: acc.sent_email + r.counters.sent_email,
+        sent_sms: acc.sent_sms + r.counters.sent_sms,
+        skipped_already_sent: acc.skipped_already_sent + r.counters.skipped_already_sent,
+        skipped_no_patient: acc.skipped_no_patient + r.counters.skipped_no_patient,
+        skipped_no_contact: acc.skipped_no_contact + r.counters.skipped_no_contact,
+        skipped_test: acc.skipped_test + r.counters.skipped_test,
+        errors: acc.errors + r.counters.errors,
+      }),
+      { processed: 0, sent_email: 0, sent_sms: 0, skipped_already_sent: 0, skipped_no_patient: 0, skipped_no_contact: 0, skipped_test: 0, errors: 0 }
+    );
 
     void track({
       type: 'cal_booking_followups_completed',
       level: 'info',
       source: 'api.admin.cal.booking-followups',
       ip,
-      props: { stage, ...counters },
+      props: { stages: stagesToProcess, totals },
     });
 
-    return NextResponse.json({ ok: true, stage, ...counters });
+    return NextResponse.json({ ok: true, stages: stagesToProcess, results, totals });
   } catch (e) {
-    await logError('api.admin.cal.booking-followups', e, { stage }, ip);
+    await logError('api.admin.cal.booking-followups', e, { stages: stagesToProcess }, ip);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

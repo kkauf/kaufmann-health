@@ -13,10 +13,18 @@ export const dynamic = 'force-dynamic';
 
 // Reminder thresholds: 24h (default) and optional 72h final reminder
 const THRESHOLDS = { '24h': 24 * 60 * 60 * 1000, '72h': 72 * 60 * 60 * 1000 } as const;
+type ThresholdKey = keyof typeof THRESHOLDS;
 
-function parseThreshold(input?: string | null): keyof typeof THRESHOLDS {
+function parseThreshold(input?: string | null): ThresholdKey {
   const t = (input || '').trim();
   return (t === '72h' ? '72h' : '24h');
+}
+
+function parseThresholds(input?: string | null): ThresholdKey[] {
+  const t = (input || '').trim().toLowerCase();
+  if (t === 'all' || t === '') return ['24h', '72h'];
+  if (t === '72h') return ['72h'];
+  return ['24h'];
 }
 
 // --- Auth helpers aligned with therapist reminders ---
@@ -191,12 +199,45 @@ export async function GET(req: Request) {
       return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 });
     }
     const url = new URL(req.url);
-    const threshold = parseThreshold(url.searchParams.get('threshold'));
+    const thresholdParam = url.searchParams.get('threshold');
     const limit = Math.max(1, Math.min(Number(url.searchParams.get('limit') || 100), 1000));
 
-    void track({ type: 'cron_executed', level: 'info', source: 'admin.api.leads.confirmation_reminders', ip, ua, props: { method: 'GET', threshold, limit } });
+    // If no threshold specified or "all", process both 24h and 72h
+    const thresholdsToProcess = parseThresholds(thresholdParam);
 
-    return await processBatch(threshold, limit, req);
+    void track({ type: 'cron_executed', level: 'info', source: 'admin.api.leads.confirmation_reminders', ip, ua, props: { method: 'GET', thresholds: thresholdsToProcess, limit } });
+
+    // Process each threshold and aggregate results
+    const results: Array<{ threshold: ThresholdKey; processed: number; sent: number; skipped_too_recent: number; skipped_no_email: number; skipped_already: number }> = [];
+    
+    for (const threshold of thresholdsToProcess) {
+      const response = await processBatch(threshold, limit, req);
+      const body = await response.json();
+      if (body.data) {
+        results.push(body.data);
+      }
+    }
+
+    // Aggregate totals
+    const totals = results.reduce(
+      (acc, r) => ({
+        processed: acc.processed + r.processed,
+        sent: acc.sent + r.sent,
+        skipped_too_recent: acc.skipped_too_recent + r.skipped_too_recent,
+        skipped_no_email: acc.skipped_no_email + r.skipped_no_email,
+        skipped_already: acc.skipped_already + r.skipped_already,
+      }),
+      { processed: 0, sent: 0, skipped_too_recent: 0, skipped_no_email: 0, skipped_already: 0 }
+    );
+
+    return NextResponse.json({ 
+      data: { 
+        thresholds: thresholdsToProcess, 
+        results, 
+        totals 
+      }, 
+      error: null 
+    });
   } catch (e) {
     await logError('admin.api.leads.confirmation_reminders', e, { stage: 'exception' }, ip, ua);
     void track({ type: 'cron_failed', level: 'error', source: 'admin.api.leads.confirmation_reminders', ip, ua, props: { method: 'GET' } });
