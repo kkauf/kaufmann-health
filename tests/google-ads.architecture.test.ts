@@ -311,12 +311,12 @@ describe('Google Ads Architecture (CRITICAL - DO NOT MODIFY)', () => {
 });
 
 describe('Client-Side Conversion Tracking', () => {
-  it('gtag.ts sends properties (not props) to events API', async () => {
+  it('gtag.ts sends properties (not props) to events API with gtag_available flag', async () => {
     const sourcePath = join(__dirname, '../src/lib/gtag.ts');
     const source = readFileSync(sourcePath, 'utf-8');
 
-    // Should use 'properties' key for the events API
-    expect(source).toContain("properties: { label, transaction_id: transactionId, has_gclid: hasGclid }");
+    // Should use 'properties' key for the events API with gtag_available
+    expect(source).toContain("properties: { label, transaction_id: transactionId, has_gclid: hasGclid, gtag_available: gtagAvailable }");
     // Should NOT use 'props' key (that was the bug)
     expect(source).not.toContain("props: { label, transaction_id: transactionId");
   });

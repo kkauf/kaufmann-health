@@ -22,12 +22,12 @@ function isTestMode(): boolean {
 /**
  * Track conversion attempt for observability (fire-and-forget)
  */
-function trackConversionAttempt(label: string, transactionId?: string, hasGclid?: boolean) {
+function trackConversionAttempt(label: string, transactionId?: string, hasGclid?: boolean, gtagAvailable?: boolean) {
   try {
     const body = JSON.stringify({
       type: 'gtag_conversion_attempted',
       // IMPORTANT: API expects 'properties' not 'props'
-      properties: { label, transaction_id: transactionId, has_gclid: hasGclid },
+      properties: { label, transaction_id: transactionId, has_gclid: hasGclid, gtag_available: gtagAvailable },
     });
     if (navigator.sendBeacon) {
       const blob = new Blob([body], { type: 'application/json' });
@@ -93,7 +93,9 @@ function sendConversion({ label, value, transactionId, dedupePrefix }: { label?:
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const g = (window as any).gtag as ((...args: any[]) => void) | undefined;
-    if (typeof g === 'function') {
+    const gtagAvailable = typeof g === 'function';
+    
+    if (gtagAvailable) {
       g('event', 'conversion', payload);
     } else {
       // Fallback: push to dataLayer (gtag.js will process when loaded)
@@ -103,8 +105,8 @@ function sendConversion({ label, value, transactionId, dedupePrefix }: { label?:
       w.dataLayer.push({ event: 'conversion', ...payload });
     }
 
-    // Track attempt for observability
-    trackConversionAttempt(label, transactionId, !!pageLocationWithGclid || !!getGclid());
+    // Track attempt for observability - include whether gtag was available
+    trackConversionAttempt(label, transactionId, !!pageLocationWithGclid || !!getGclid(), gtagAvailable);
 
     try {
       window.sessionStorage.setItem(key, '1');
