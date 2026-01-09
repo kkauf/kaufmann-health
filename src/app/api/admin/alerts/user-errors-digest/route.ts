@@ -115,6 +115,23 @@ export async function GET(req: Request) {
       });
     }
 
+    // Count test vs real errors early to skip digest when all are test
+    const testOnlyCheck = events.every(e => {
+      const props = e.properties || {};
+      return props.is_test === true || props.is_test === 'true';
+    });
+    if (testOnlyCheck) {
+      void track({
+        type: 'user_errors_digest_skipped',
+        source: 'admin.alerts.user-errors-digest',
+        props: { hours, count: events.length, reason: 'all_test' },
+      });
+      return NextResponse.json({
+        data: { sent: false, reason: 'all_test', count: events.length, testCount: events.length },
+        error: null,
+      });
+    }
+
     // Aggregate stats
     const byType: Record<string, number> = {};
     const byUrl: Record<string, number> = {};
