@@ -20,6 +20,7 @@ declare global {
 export default function ClarityLoader() {
   const pathname = usePathname();
   const wasStopped = useRef(false);
+  const lastNotifiedUrl = useRef<string | null>(null);
 
   useEffect(() => {
     // Stop Clarity on admin pages and therapist acceptance flow (/match/[uuid])
@@ -33,12 +34,22 @@ export default function ClarityLoader() {
       if (isExcluded) {
         window.clarity('stop');
         wasStopped.current = true;
-      } else if (wasStopped.current) {
-        // Only call start if we previously stopped (resuming from excluded page)
-        window.clarity('start');
-        wasStopped.current = false;
+        lastNotifiedUrl.current = null;
+      } else {
+        if (wasStopped.current) {
+          // Resume if we previously stopped (coming from excluded page)
+          window.clarity('start');
+          wasStopped.current = false;
+        }
+        
+        // Notify Clarity of URL change for SPA session continuity
+        // Uses window.location to avoid useSearchParams Suspense requirement
+        const currentUrl = window.location.pathname + window.location.search;
+        if (currentUrl !== lastNotifiedUrl.current) {
+          window.clarity('set', 'page', currentUrl);
+          lastNotifiedUrl.current = currentUrl;
+        }
       }
-      // Otherwise: don't touch Clarity, let it track naturally
       return true;
     };
 
