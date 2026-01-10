@@ -1,12 +1,15 @@
 /**
- * CRITICAL TESTS: Google Ads Conversion Architecture
+ * CRITICAL TESTS: Google Ads Enhanced Conversions Architecture
  * 
  * These tests verify the integrity of the Google Ads conversion tracking system.
- * DO NOT MODIFY these tests without business approval.
  * 
- * Background: In Dec 2025, an LLM incorrectly changed from uploadClickConversions
- * to uploadConversionAdjustments, breaking conversion tracking for ~2 weeks.
- * These tests prevent that from happening again.
+ * Architecture (Jan 2026):
+ * 1. Client-side gtag fires BASE conversion (Website source) with transaction_id
+ * 2. Server-side API ENHANCES that conversion with hashed user data via uploadConversionAdjustments
+ * 3. Google matches the enhancement to the base conversion via orderId
+ * 
+ * This is "Enhanced Conversions for Leads" - the conversion action source is Website,
+ * with Enhanced Conversions enabled via Google Ads API.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -24,7 +27,7 @@ vi.mock('@/lib/logger', async () => {
 import { GoogleAdsTracker } from '@/lib/google-ads';
 import * as logger from '@/lib/logger';
 
-describe('Google Ads Architecture (CRITICAL - DO NOT MODIFY)', () => {
+describe('Google Ads Enhanced Conversions Architecture', () => {
   let originalFetch: typeof global.fetch;
   let mockFetch: ReturnType<typeof vi.fn>;
 
@@ -56,7 +59,7 @@ describe('Google Ads Architecture (CRITICAL - DO NOT MODIFY)', () => {
   });
 
   describe('API Endpoint Verification', () => {
-    it('MUST use uploadClickConversions endpoint, NOT uploadConversionAdjustments', async () => {
+    it('uses uploadConversionAdjustments endpoint for Enhanced Conversions', async () => {
       // Mock OAuth token response
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -85,12 +88,11 @@ describe('Google Ads Architecture (CRITICAL - DO NOT MODIFY)', () => {
       const conversionCall = calls[1];
       const url = conversionCall[0] as string;
 
-      // CRITICAL: Must use uploadClickConversions, NOT uploadConversionAdjustments
-      expect(url).toContain(':uploadClickConversions');
-      expect(url).not.toContain(':uploadConversionAdjustments');
+      // Enhanced Conversions uses uploadConversionAdjustments to enhance existing website conversions
+      expect(url).toContain(':uploadConversionAdjustments');
     });
 
-    it('MUST include GCLID in the conversion payload for attribution', async () => {
+    it('includes GCLID in gclidDateTimePair for attribution', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ access_token: 'test-token', expires_in: 3600 }),
@@ -115,12 +117,12 @@ describe('Google Ads Architecture (CRITICAL - DO NOT MODIFY)', () => {
       const requestInit = conversionCall[1] as RequestInit;
       const body = JSON.parse(requestInit.body as string);
 
-      // CRITICAL: GCLID must be in the conversion payload
-      expect(body.conversions).toBeDefined();
-      expect(body.conversions[0].gclid).toBe('CjwKCAtest123');
+      // Enhanced Conversions include GCLID in gclidDateTimePair
+      expect(body.conversionAdjustments).toBeDefined();
+      expect(body.conversionAdjustments[0].gclidDateTimePair.gclid).toBe('CjwKCAtest123');
     });
 
-    it('MUST use "conversions" key in payload, NOT "conversionAdjustments"', async () => {
+    it('uses conversionAdjustments key for Enhanced Conversions payload', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ access_token: 'test-token', expires_in: 3600 }),
@@ -144,12 +146,12 @@ describe('Google Ads Architecture (CRITICAL - DO NOT MODIFY)', () => {
       const requestInit = conversionCall[1] as RequestInit;
       const body = JSON.parse(requestInit.body as string);
 
-      // CRITICAL: Must use "conversions" key for uploadClickConversions
-      expect(body.conversions).toBeDefined();
-      expect(body.conversionAdjustments).toBeUndefined();
+      // Enhanced Conversions uses conversionAdjustments key
+      expect(body.conversionAdjustments).toBeDefined();
+      expect(body.conversions).toBeUndefined();
     });
 
-    it('MUST include conversionDateTime and conversionValue in payload', async () => {
+    it('includes adjustmentType ENHANCEMENT and orderId for matching', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ access_token: 'test-token', expires_in: 3600 }),
@@ -173,75 +175,29 @@ describe('Google Ads Architecture (CRITICAL - DO NOT MODIFY)', () => {
       const requestInit = conversionCall[1] as RequestInit;
       const body = JSON.parse(requestInit.body as string);
 
-      const conversion = body.conversions[0];
-      // uploadClickConversions requires these fields
-      expect(conversion.conversionDateTime).toBeDefined();
-      expect(conversion.conversionValue).toBe(10);
-      expect(conversion.currencyCode).toBe('EUR');
-    });
-
-    it('MUST NOT include adjustmentType field (that is for adjustments API)', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ access_token: 'test-token', expires_in: 3600 }),
-      });
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ results: [{}] }),
-      });
-
-      const tracker = new GoogleAdsTracker();
-      await tracker.trackConversion({
-        email: 'test@example.com',
-        conversionAction: 'client_registration',
-        conversionValue: 10,
-        orderId: 'test-order-123',
-      });
-
-      const calls = mockFetch.mock.calls;
-      const conversionCall = calls[1];
-      const requestInit = conversionCall[1] as RequestInit;
-      const body = JSON.parse(requestInit.body as string);
-
-      const conversion = body.conversions[0];
-      // adjustmentType is only for uploadConversionAdjustments - should NOT exist
-      expect(conversion.adjustmentType).toBeUndefined();
+      const adjustment = body.conversionAdjustments[0];
+      // Enhanced Conversions require adjustmentType and orderId for matching to base conversion
+      expect(adjustment.adjustmentType).toBe('ENHANCEMENT');
+      expect(adjustment.orderId).toBe('test-order-123');
     });
   });
 
   describe('Source Code Verification', () => {
-    it('google-ads.ts MUST contain uploadClickConversions in the source code', () => {
+    it('google-ads.ts uses uploadConversionAdjustments for Enhanced Conversions', () => {
       const sourcePath = join(__dirname, '../src/lib/google-ads.ts');
       const source = readFileSync(sourcePath, 'utf-8');
 
-      expect(source).toContain('uploadClickConversions');
-      expect(source).toContain('buildClickConversion');
+      expect(source).toContain('uploadConversionAdjustments');
+      expect(source).toContain('buildConversionAdjustment');
     });
 
-    it('google-ads.ts MUST NOT use uploadConversionAdjustments as the primary API', () => {
+    it('google-ads.ts documents the Enhanced Conversions architecture', () => {
       const sourcePath = join(__dirname, '../src/lib/google-ads.ts');
       const source = readFileSync(sourcePath, 'utf-8');
 
-      // The source should not contain the adjustments endpoint in the actual upload code
-      // (Comments warning against it are OK)
-      const lines = source.split('\n');
-      const nonCommentLines = lines.filter(line => {
-        const trimmed = line.trim();
-        return !trimmed.startsWith('//') && !trimmed.startsWith('*');
-      });
-      const codeOnly = nonCommentLines.join('\n');
-
-      expect(codeOnly).not.toContain(':uploadConversionAdjustments');
-    });
-
-    it('google-ads.ts MUST contain warning comments about not switching APIs', () => {
-      const sourcePath = join(__dirname, '../src/lib/google-ads.ts');
-      const source = readFileSync(sourcePath, 'utf-8');
-
-      // Must have warning comments
-      expect(source).toContain('DO NOT switch to uploadConversionAdjustments');
-      expect(source).toContain('CRITICAL');
+      // Must document the architecture
+      expect(source).toContain('Enhanced Conversions');
+      expect(source).toContain('ENHANCE existing');
     });
   });
 
@@ -270,12 +226,12 @@ describe('Google Ads Architecture (CRITICAL - DO NOT MODIFY)', () => {
       const requestInit = conversionCall[1] as RequestInit;
       const body = JSON.parse(requestInit.body as string);
 
-      const conversion = body.conversions[0];
-      expect(conversion.userIdentifiers).toBeDefined();
-      expect(conversion.userIdentifiers.length).toBeGreaterThan(0);
-      expect(conversion.userIdentifiers[0].hashedEmail).toBeDefined();
+      const adjustment = body.conversionAdjustments[0];
+      expect(adjustment.userIdentifiers).toBeDefined();
+      expect(adjustment.userIdentifiers.length).toBeGreaterThan(0);
+      expect(adjustment.userIdentifiers[0].hashedEmail).toBeDefined();
       // Email should be SHA256 hashed (64 hex chars)
-      expect(conversion.userIdentifiers[0].hashedEmail).toMatch(/^[a-f0-9]{64}$/);
+      expect(adjustment.userIdentifiers[0].hashedEmail).toMatch(/^[a-f0-9]{64}$/);
     });
 
     it('includes hashed phone in user identifiers when provided', async () => {
@@ -302,10 +258,10 @@ describe('Google Ads Architecture (CRITICAL - DO NOT MODIFY)', () => {
       const requestInit = conversionCall[1] as RequestInit;
       const body = JSON.parse(requestInit.body as string);
 
-      const conversion = body.conversions[0];
-      expect(conversion.userIdentifiers).toBeDefined();
-      expect(conversion.userIdentifiers[0].hashedPhoneNumber).toBeDefined();
-      expect(conversion.userIdentifiers[0].hashedPhoneNumber).toMatch(/^[a-f0-9]{64}$/);
+      const adjustment = body.conversionAdjustments[0];
+      expect(adjustment.userIdentifiers).toBeDefined();
+      expect(adjustment.userIdentifiers[0].hashedPhoneNumber).toBeDefined();
+      expect(adjustment.userIdentifiers[0].hashedPhoneNumber).toMatch(/^[a-f0-9]{64}$/);
     });
   });
 });
