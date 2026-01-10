@@ -69,7 +69,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       
       <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-4">
         <p className="text-sm text-emerald-900">
-          ✨ <span className="font-medium">Das macht Spaß:</span> Füge dein Foto hinzu und beschreibe deinen therapeutischen Ansatz. Im nächsten Schritt laden wir dann die offiziellen Dokumente hoch.
+          ✨ <span className="font-medium">Fast geschafft:</span> Füge dein Foto und deine Basisdaten hinzu. Im nächsten Schritt laden wir dann die offiziellen Dokumente hoch.
         </p>
       </div>
 

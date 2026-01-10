@@ -27,7 +27,7 @@ export function renderTherapistReminder(params: {
   const items: string[] = [];
   if (params.missingDocuments) items.push('Lizenz‑Nachweis');
   if (params.missingPhoto) items.push('Profilfoto');
-  if (params.missingApproach) items.push('Ansatz‑Beschreibung');
+  // missingApproach is deprecated - therapists complete profile text in portal after verification
   if (params.missingBasic) items.push('Basisdaten (Stadt, Verfügbarkeit)');
 
   const missingList = items.length ? items.join(', ') : 'Profilangaben';
@@ -44,7 +44,8 @@ export function renderTherapistReminder(params: {
   }
   lines.push('</div>');
 
-  const targetIsProfile = Boolean(params.missingPhoto || params.missingApproach || params.missingBasic);
+  // missingApproach is deprecated - removed from targetIsProfile check
+  const targetIsProfile = Boolean(params.missingPhoto || params.missingBasic);
   const targetUrl = targetIsProfile ? params.profileUrl : params.uploadUrl;
   const ctaLabel = targetIsProfile ? 'Profil vervollständigen' : 'Dokumente hochladen';
   lines.push(`<div style=\"text-align:center; margin: 24px 0;\">${renderButton(targetUrl, ctaLabel)}</div>`);

@@ -47,7 +47,7 @@ export function renderTherapistWelcome(params: {
           <div style="font-weight:700; color:#0f172a !important; font-size:15px; margin-bottom:8px;">👤 DEIN THERAPEUTENPROFIL:</div>
           <ul style="margin:0 0 0 20px; color:#475569 !important; font-size:15px; line-height:1.65;">
             <li style="margin:6px 0;"> Professionelles Foto (für dein Verzeichnisprofil)</li>
-            <li style="margin:6px 0;"> Beschreibung deines therapeutischen Ansatzes (2–3 Absätze)</li>
+            <li style="margin:6px 0;"> Angaben zu Stadt und Verfügbarkeit</li>
           </ul>
         </div>
       </div>

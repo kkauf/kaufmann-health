@@ -70,6 +70,8 @@ export const TherapistProfileUpdate = z.object({
   gender: TherapistProfileGender.optional(),
   city: OptionalCity,
   accepting_new: AcceptingNew.optional(),
+  // approach_text is DEPRECATED - use who_comes_to_me, session_focus, first_session, about_me instead
+  // Kept for backward compatibility but ignored by the API
   approach_text: z.string().max(2000).optional(),
   session_preferences: SessionPreferences.optional(),
   modalities: z.array(z.string()).optional(),
@@ -83,6 +85,7 @@ export const TherapistProfileUpdate = z.object({
   first_session: OptionalString,
   about_me: OptionalString,
   terms_accepted_version: OptionalString,
+  // profile_photo is handled separately as File - allowed via passthrough
 }).passthrough();
 
 export type TherapistProfileUpdate = z.infer<typeof TherapistProfileUpdate>;

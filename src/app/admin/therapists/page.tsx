@@ -249,9 +249,8 @@ export default function AdminTherapistsPage() {
       };
       const body: UpdatePayload = { status: newStatus };
       if (notes.trim()) body.verification_notes = notes.trim();
-      if (approachText.trim()) body.approach_text = approachText.trim();
-      // Auto-approve photo if checkbox is checked and there's a pending photo
-      if (approvePhoto && detail?.profile.photo_pending_url) {
+      // Auto-approve photo when verifying (simplified flow)
+      if (newStatus === 'verified' && detail?.profile.photo_pending_url) {
         body.approve_profile = true;
       }
       const res = await fetch(`/api/admin/therapists/${openId}`, {
@@ -549,9 +548,8 @@ export default function AdminTherapistsPage() {
                       <span className="text-gray-500">Profil:</span>
                       <div className="flex items-center gap-2">
                         {hasPhoto && (<Badge className="bg-green-100 text-green-700 border-green-200">Foto ✓</Badge>)}
-                        {hasApproach && (<Badge className="bg-green-100 text-green-700 border-green-200">Ansatz ✓</Badge>)}
-                        {!hasPhoto || !hasApproach ? (
-                          <Badge className="bg-amber-100 text-amber-700 border-amber-200">Unvollständig</Badge>
+                        {!hasPhoto ? (
+                          <Badge className="bg-amber-100 text-amber-700 border-amber-200">Foto fehlt</Badge>
                         ) : null}
                       </div>
                     </div>
@@ -650,13 +648,7 @@ export default function AdminTherapistsPage() {
                             <Badge variant="secondary" className="bg-red-600 text-white border-transparent">✗ Foto fehlt</Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          {detail.profile.approach_text && detail.profile.approach_text.length > 50 ? (
-                            <Badge variant="default" className="bg-green-600 border-transparent text-white">✓ Ansatz-Text vorhanden</Badge>
-                          ) : (
-                            <Badge variant="secondary" className="bg-amber-600 text-white border-transparent">⚠ Ansatz-Text fehlt/kurz</Badge>
-                          )}
-                        </div>
+                        {/* Approach text no longer required during onboarding - therapists complete in portal after verification */}
                       </div>
                     </div>
                   </div>
@@ -836,32 +828,8 @@ export default function AdminTherapistsPage() {
                     </div>
                   </div>
 
-                  {/* Approach text - full width */}
-                  <div className="bg-white rounded-lg border p-4">
-                    <h4 className="font-semibold text-base mb-3 flex items-center gap-2">
-                      ✍️ Therapie-Ansatz
-                      {detail.profile.approach_text && detail.profile.approach_text.length > 50 && (
-                        <Badge variant="outline" className="text-green-700 border-green-700">Vorhanden</Badge>
-                      )}
-                    </h4>
-                    <div className="space-y-2">
-                      <textarea
-                        id="approach"
-                        rows={5}
-                        className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground w-full rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-                        value={approachText}
-                        onChange={(e) => setApproachText(e.target.value)}
-                        maxLength={500}
-                        placeholder="Beschreibung des therapeutischen Ansatzes..."
-                      />
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>Max. 500 Zeichen</span>
-                        <span className={approachText.length > 450 ? "text-amber-600 font-medium" : ""}>{approachText.length} / 500</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Cal.com Integration */}
+                  {/* Cal.com Integration - only show for verified therapists */}
+                  {detail.status === 'verified' && (
                   <div className="bg-white rounded-lg border p-4">
                     <h4 className="font-semibold text-base mb-3 flex items-center gap-2">
                       📅 Cal.com Integration
@@ -946,6 +914,7 @@ export default function AdminTherapistsPage() {
                       </div>
                     </div>
                   </div>
+                  )}
 
                   {/* Internal notes */}
                   <details className="bg-gray-50 rounded-lg border open:bg-white">
@@ -972,22 +941,7 @@ export default function AdminTherapistsPage() {
                 </div>
               )}
               <div className="flex flex-col gap-4">
-                {/* Photo approval checkbox - only show if there's a pending photo */}
-                {detail?.profile.photo_pending_url && !detail?.profile.photo_url && (
-                  <label className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-md cursor-pointer hover:bg-amber-100">
-                    <input
-                      type="checkbox"
-                      className="h-5 w-5 accent-green-600"
-                      checked={approvePhoto}
-                      onChange={(e) => setApprovePhoto(e.target.checked)}
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium text-sm text-gray-900">Profilfoto bei Freigabe automatisch veröffentlichen</div>
-                      <div className="text-xs text-gray-600 mt-0.5">Wenn aktiviert, wird das Foto zusammen mit der Verifizierung freigegeben</div>
-                    </div>
-                  </label>
-                )}
-                
+                {/* Photo is now approved automatically with verification - simplified flow */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                   <div className="text-xs text-gray-500">
                     <kbd className="px-2 py-1 bg-gray-100 border rounded text-xs">Esc</kbd> zum Schließen
@@ -1017,7 +971,7 @@ export default function AdminTherapistsPage() {
                           disabled={updating} 
                           onClick={() => updateStatus('verified')}
                         >
-                          ✓ Freigeben {approvePhoto && detail?.profile.photo_pending_url ? '(inkl. Foto)' : ''}
+                          ✓ Freigeben {detail?.profile.photo_pending_url ? '(inkl. Foto)' : ''}
                         </Button>
                       </>
                     )}
