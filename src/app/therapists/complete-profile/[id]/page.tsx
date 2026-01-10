@@ -50,14 +50,15 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const showGender = !(gender === 'male' || gender === 'female' || gender === 'diverse');
   const showCity = !city;
   const showAcceptingNew = accepting_new === null;
-  const showApproachText = !approach_text || String(approach_text).trim().length === 0;
+  // Skip approach_text during onboarding - therapists complete this in the portal after verification
+  const showApproachText = false;
   const showProfilePhoto = !photo_url && !photo_pending_path;
 
   const name = [ (row as { first_name?: string | null }).first_name || '', (row as { last_name?: string | null }).last_name || '' ].join(' ').trim();
 
   const defaults = { gender, city, accepting_new, approach_text } as const;
 
-  const totalMissing = [showGender, showCity, showAcceptingNew, showApproachText, showProfilePhoto].filter(Boolean).length;
+  const totalMissing = [showGender, showCity, showAcceptingNew, showProfilePhoto].filter(Boolean).length;
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">

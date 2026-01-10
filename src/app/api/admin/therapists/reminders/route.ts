@@ -175,15 +175,15 @@ export async function GET(req: Request) {
       const profileUnknown = (metadata as { profile?: unknown }).profile;
       const profile = isObject(profileUnknown) ? (profileUnknown as Record<string, unknown>) : {};
       const hasPhotoPending = typeof profile.photo_pending_path === 'string' && (profile.photo_pending_path as string).length > 0;
-      const hasApproach = typeof profile.approach_text === 'string' && (profile.approach_text as string).trim().length > 0;
       const approvedPhoto = (t as { photo_url?: string | null }).photo_url || null;
       const hasPhotoApproved = typeof approvedPhoto === 'string' && approvedPhoto.length > 0;
 
       const missingDocuments = !hasLicense;
       const missingPhoto = !(hasPhotoApproved || hasPhotoPending);
-      const missingApproach = !hasApproach;
+      // Skip approach text requirement for pending therapists - they complete this in the portal after verification
+      const missingApproach = false;
 
-      if (!missingDocuments && !missingPhoto && !missingApproach) {
+      if (!missingDocuments && !missingPhoto) {
         skippedNoMissing++;
         continue;
       }
@@ -413,14 +413,14 @@ export async function POST(req: Request) {
       const profileUnknown = (metadata as { profile?: unknown }).profile;
       const profile = isObject(profileUnknown) ? (profileUnknown as Record<string, unknown>) : {};
       const hasPhotoPending = typeof profile.photo_pending_path === 'string' && (profile.photo_pending_path as string).length > 0;
-      const hasApproach = typeof profile.approach_text === 'string' && (profile.approach_text as string).trim().length > 0;
       const approvedPhoto = (t as { photo_url?: string | null }).photo_url || null;
       const hasPhotoApproved = typeof approvedPhoto === 'string' && approvedPhoto.length > 0;
       const missingDocuments = !hasLicense;
       const missingPhoto = !(hasPhotoApproved || hasPhotoPending);
-      const missingApproach = !hasApproach;
+      // Skip approach text requirement for pending therapists - they complete this in the portal after verification
+      const missingApproach = false;
 
-      if (!missingDocuments && !missingPhoto && !missingApproach) {
+      if (!missingDocuments && !missingPhoto) {
         skippedNoMissing++;
         continue;
       }
