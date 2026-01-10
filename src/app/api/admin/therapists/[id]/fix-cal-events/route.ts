@@ -88,12 +88,56 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const hasIntro = existingEvents.some(e => e.slug === 'intro');
       const hasFullSession = existingEvents.some(e => e.slug === 'full-session');
       
-      client.release();
-      
       if (hasIntro && hasFullSession) {
-        // Both events exist, just update KH database with the IDs
+        // Both events exist - check if they need to be fixed (unhidden, linked to schedules)
         const introId = existingEvents.find(e => e.slug === 'intro')?.id;
         const fullSessionId = existingEvents.find(e => e.slug === 'full-session')?.id;
+        
+        // Get full event type details to check hidden and scheduleId
+        const { rows: eventDetails } = await client.query(
+          'SELECT id, slug, hidden, "scheduleId" FROM "EventType" WHERE "userId" = $1 AND slug IN ($2, $3)',
+          [calUserId, 'intro', 'full-session']
+        );
+        
+        // Get user's schedules
+        const { rows: schedules } = await client.query(
+          'SELECT id, name FROM "Schedule" WHERE "userId" = $1 ORDER BY id',
+          [calUserId]
+        );
+        
+        const fixes: string[] = [];
+        
+        // Find appropriate schedules
+        const kennenlernSchedule = schedules.find(s => s.name.toLowerCase().includes('kennenlerngespräch') || s.name.toLowerCase().includes('kennenlerng'));
+        const sitzungenSchedule = schedules.find(s => s.name.toLowerCase().includes('sitzung'));
+        const defaultSchedule = schedules[0];
+        
+        for (const evt of eventDetails) {
+          const needsUnhide = evt.hidden === true;
+          const needsSchedule = evt.scheduleId === null;
+          
+          if (needsUnhide || needsSchedule) {
+            const targetSchedule = evt.slug === 'intro' 
+              ? (kennenlernSchedule || defaultSchedule)
+              : (sitzungenSchedule || defaultSchedule);
+            
+            if (needsUnhide && needsSchedule && targetSchedule) {
+              await client.query(
+                'UPDATE "EventType" SET hidden = false, "scheduleId" = $1 WHERE id = $2',
+                [targetSchedule.id, evt.id]
+              );
+              fixes.push(`${evt.slug}: unhidden + linked to schedule "${targetSchedule.name}"`);
+            } else if (needsUnhide) {
+              await client.query('UPDATE "EventType" SET hidden = false WHERE id = $1', [evt.id]);
+              fixes.push(`${evt.slug}: unhidden`);
+            } else if (needsSchedule && targetSchedule) {
+              await client.query('UPDATE "EventType" SET "scheduleId" = $1 WHERE id = $2', [targetSchedule.id, evt.id]);
+              fixes.push(`${evt.slug}: linked to schedule "${targetSchedule.name}"`);
+            }
+          }
+        }
+        
+        client.release();
         
         await supabaseServer
           .from('therapists')
@@ -103,12 +147,24 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           })
           .eq('id', id);
         
+        void track({
+          type: 'cal_events_fixed',
+          level: 'info',
+          source: 'admin.api.therapists.fix-cal-events',
+          props: {
+            therapist_id: id,
+            cal_user_id: calUserId,
+            fixes,
+          },
+        });
+        
         return NextResponse.json({
           data: {
             ok: true,
-            message: 'Event types already exist',
+            message: fixes.length > 0 ? `Fixed: ${fixes.join(', ')}` : 'Event types already properly configured',
             intro_id: introId,
             full_session_id: fullSessionId,
+            fixes,
           },
           error: null,
         });
@@ -122,12 +178,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       ).join('');
       const passwordHash = await bcrypt.hash(tempPassword, 12);
       
-      const client2 = await pool.connect();
-      await client2.query(
+      await client.query(
         'UPDATE "UserPassword" SET hash = $1 WHERE "userId" = $2',
         [passwordHash, calUserId]
       );
-      client2.release();
+      client.release();
       
       // Now use Playwright to create events
       const { createEventTypesViaUI } = await import('@/lib/cal/createEventTypes');

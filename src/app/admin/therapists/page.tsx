@@ -102,6 +102,18 @@ export default function AdminTherapistsPage() {
   // Cal.com integration state
   const [calUsername, setCalUsername] = useState<string>("");
   const [calEnabled, setCalEnabled] = useState<boolean>(false);
+  const [calStatus, setCalStatus] = useState<{
+    provisioned: boolean;
+    ready_for_bookings: boolean;
+    issues: string[];
+    booking_url: string | null;
+    event_types: {
+      intro: { exists: boolean; visible: boolean; has_schedule: boolean; schedule_name?: string } | null;
+      full_session: { exists: boolean; visible: boolean; has_schedule: boolean; schedule_name?: string } | null;
+    };
+    schedules: { id: number; name: string; has_availability: boolean }[];
+  } | null>(null);
+  const [calStatusLoading, setCalStatusLoading] = useState(false);
 
   // Bulk selection state
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -221,6 +233,22 @@ export default function AdminTherapistsPage() {
     setApprovePhoto(false);
     setCalUsername("");
     setCalEnabled(false);
+    setCalStatus(null);
+  }, []);
+
+  const fetchCalStatus = useCallback(async (therapistId: string) => {
+    setCalStatusLoading(true);
+    try {
+      const res = await fetch(`/api/admin/therapists/${therapistId}/cal-status`, { credentials: "include", cache: "no-store" });
+      const json = await res.json();
+      if (res.ok && json.data) {
+        setCalStatus(json.data);
+      }
+    } catch {
+      // Ignore errors, just don't show status
+    } finally {
+      setCalStatusLoading(false);
+    }
   }, []);
 
   // Improve modal UX: Esc to close and prevent background scroll while open
@@ -884,13 +912,62 @@ export default function AdminTherapistsPage() {
                   <div className="bg-white rounded-lg border p-4">
                     <h4 className="font-semibold text-base mb-3 flex items-center gap-2">
                       📅 Cal.com Integration
-                      {detail.cal_enabled && detail.cal_username && (
-                        <Badge variant="outline" className="text-green-700 border-green-700">Aktiv</Badge>
+                      {calStatus?.ready_for_bookings ? (
+                        <Badge variant="outline" className="text-green-700 border-green-700 bg-green-50">✓ Buchbar</Badge>
+                      ) : calStatus && !calStatus.ready_for_bookings ? (
+                        <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50">⚠ Probleme</Badge>
+                      ) : detail.cal_enabled && detail.cal_username ? (
+                        <Badge variant="outline" className="text-blue-600 border-blue-300">Aktiv</Badge>
+                      ) : null}
+                      {detail.cal_user_id && !calStatus && (
+                        <Badge variant="outline" className="text-gray-500 border-gray-300">ID: {detail.cal_user_id}</Badge>
                       )}
-                      {detail.cal_user_id && (
-                        <Badge variant="outline" className="text-blue-600 border-blue-300">Provisioned (ID: {detail.cal_user_id})</Badge>
-                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="ml-auto h-6 px-2 text-xs"
+                        disabled={calStatusLoading}
+                        onClick={() => detail?.id && fetchCalStatus(detail.id)}
+                      >
+                        {calStatusLoading ? '...' : '🔄 Status prüfen'}
+                      </Button>
                     </h4>
+                    
+                    {/* Health Status Display */}
+                    {calStatus && (
+                      <div className={`mb-4 p-3 rounded-md text-sm ${calStatus.ready_for_bookings ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+                        {calStatus.ready_for_bookings ? (
+                          <p className="text-green-800 font-medium">✓ Terminbuchung funktioniert</p>
+                        ) : (
+                          <>
+                            <p className="text-amber-800 font-medium mb-2">⚠ Folgende Probleme gefunden:</p>
+                            <ul className="list-disc list-inside text-amber-700 space-y-1">
+                              {calStatus.issues.map((issue, i) => (
+                                <li key={i}>{issue}</li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+                        {calStatus.booking_url && (
+                          <p className="mt-2 text-xs text-gray-600">
+                            Buchungsseite: <a href={calStatus.booking_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{calStatus.booking_url}</a>
+                          </p>
+                        )}
+                        {calStatus.schedules.length > 0 && (
+                          <details className="mt-2">
+                            <summary className="text-xs text-gray-500 cursor-pointer">Zeitpläne anzeigen</summary>
+                            <ul className="mt-1 text-xs text-gray-600 space-y-0.5">
+                              {calStatus.schedules.map(s => (
+                                <li key={s.id} className="flex items-center gap-1">
+                                  {s.has_availability ? '✓' : '⚠'} {s.name}
+                                  {!s.has_availability && <span className="text-amber-600">(keine Verfügbarkeit)</span>}
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
+                      </div>
+                    )}
                     <div className="space-y-3">
                       <div>
                         <Label htmlFor="cal_username" className="text-sm font-medium">Cal.com Benutzername</Label>
@@ -944,12 +1021,16 @@ export default function AdminTherapistsPage() {
                                 });
                                 const json = await res.json();
                                 if (!res.ok) throw new Error(json?.error || 'Fix fehlgeschlagen');
-                                if (json.data?.ok) {
-                                  setMessage(`Event-Typen erstellt: intro=${json.data.intro_id}, full-session=${json.data.full_session_id}`);
+                                const fixes = json.data?.fixes || [];
+                                if (json.data?.ok && fixes.length > 0) {
+                                  setMessage(`✓ Repariert: ${fixes.join('; ')}`);
+                                } else if (json.data?.ok) {
+                                  setMessage(json.data?.message || '✓ Cal.com Setup ist korrekt');
                                 } else {
                                   setMessage(json.data?.message || json.data?.error || 'Teilweise erfolgreich');
                                 }
-                                await openDetail(detail.id);
+                                // Refresh Cal.com status after fix
+                                await fetchCalStatus(detail.id);
                               } catch (e) {
                                 const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
                                 setMessage(msg);
@@ -957,9 +1038,9 @@ export default function AdminTherapistsPage() {
                                 setUpdating(false);
                               }
                             }}
-                            className="text-amber-700 border-amber-300 hover:bg-amber-50"
+                            className="text-green-700 border-green-300 hover:bg-green-50"
                           >
-                            🔧 Event-Typen reparieren
+                            🔧 Cal.com reparieren
                           </Button>
                         )}
                       </div>
