@@ -102,6 +102,48 @@ export default function CalendarManagement({ therapistId, calEnabled: initialCal
           {error && (
             <p className="mt-3 text-sm text-red-600">{error}</p>
           )}
+          
+          {/* Pre-flight Checklist - only show when not yet enabled */}
+          {!calEnabled && (
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-3 flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                Bevor du &bdquo;Buchungen freischalten&ldquo; klickst:
+              </h4>
+              <ol className="space-y-2 text-sm text-blue-800">
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-blue-600 shrink-0">1.</span>
+                  <span><strong>Bei Cal.com einloggen</strong> mit deinen Zugangsdaten aus der Willkommens-E-Mail</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-blue-600 shrink-0">2.</span>
+                  <span><strong>Verfügbarkeit einrichten</strong> → Gehe zu &bdquo;Availability&ldquo; / &bdquo;Verfügbarkeit&ldquo; und passe deine Zeiten an</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-blue-600 shrink-0">3.</span>
+                  <span><strong>Zurückkommen und freischalten</strong> → Klicke dann hier auf &bdquo;Buchungen freischalten&ldquo;</span>
+                </li>
+              </ol>
+              <p className="mt-3 text-xs text-blue-700">
+                💡 Die Terminarten (Kennenlerngespräch &amp; Therapiesitzung) sind bereits für dich vorbereitet – 
+                du musst nur noch deine verfügbaren Zeiten festlegen.
+              </p>
+            </div>
+          )}
+          
+          {/* Success state - show after enabling */}
+          {calEnabled && (
+            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <h4 className="font-medium text-green-900 mb-2 flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                Deine Buchungsseite ist live!
+              </h4>
+              <p className="text-sm text-green-800">
+                Klient:innen können ab sofort Termine bei dir buchen. Änderungen an deiner Verfügbarkeit 
+                kannst du jederzeit in Cal.com vornehmen – sie werden automatisch übernommen.
+              </p>
+            </div>
+          )}
         </div>
       </Card>
 

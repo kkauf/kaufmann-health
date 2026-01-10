@@ -42,19 +42,63 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return NextResponse.json({ error: 'Cal.com not configured' }, { status: 500 });
     }
 
-    // Enable (unhide) event types in Cal.com
+    // Enable (unhide) event types and link to schedules in Cal.com
     const pool = new Pool({ connectionString: CAL_DATABASE_URL, ssl: { rejectUnauthorized: false } });
     const client = await pool.connect();
 
     try {
-      const result = await client.query(`
-        UPDATE "EventType" e
-        SET hidden = false
-        FROM users u
-        WHERE e."userId" = u.id 
-          AND u.username = $1
-          AND e.slug IN ('intro', 'full-session')
-      `, [therapist.cal_username]);
+      // Get user ID
+      const { rows: users } = await client.query(
+        'SELECT id FROM users WHERE username = $1',
+        [therapist.cal_username]
+      );
+      
+      if (users.length === 0) {
+        return NextResponse.json({ error: 'Cal.com user not found' }, { status: 400 });
+      }
+      
+      const calUserId = users[0].id;
+      
+      // Get therapist's schedules
+      const { rows: schedules } = await client.query(
+        'SELECT id, name FROM "Schedule" WHERE "userId" = $1 ORDER BY id',
+        [calUserId]
+      );
+      
+      if (schedules.length === 0) {
+        return NextResponse.json({ 
+          error: 'Keine Zeitpläne gefunden. Bitte richte zuerst deine Verfügbarkeit in Cal.com ein.' 
+        }, { status: 400 });
+      }
+      
+      // Find appropriate schedules for each event type
+      const kennenlernSchedule = schedules.find((s: { name: string }) => 
+        s.name.toLowerCase().includes('kennenlerngespräch') || 
+        s.name.toLowerCase().includes('kennenlerng')
+      );
+      const sitzungenSchedule = schedules.find((s: { name: string }) => 
+        s.name.toLowerCase().includes('sitzung')
+      );
+      const defaultSchedule = schedules[0];
+      
+      const introScheduleId = (kennenlernSchedule || defaultSchedule).id;
+      const fullSessionScheduleId = (sitzungenSchedule || defaultSchedule).id;
+      
+      // Update intro event type: unhide + link to schedule
+      const introResult = await client.query(`
+        UPDATE "EventType"
+        SET hidden = false, "scheduleId" = $1
+        WHERE "userId" = $2 AND slug = 'intro'
+      `, [introScheduleId, calUserId]);
+      
+      // Update full-session event type: unhide + link to schedule
+      const fullSessionResult = await client.query(`
+        UPDATE "EventType"
+        SET hidden = false, "scheduleId" = $1
+        WHERE "userId" = $2 AND slug = 'full-session'
+      `, [fullSessionScheduleId, calUserId]);
+      
+      const totalEnabled = (introResult.rowCount || 0) + (fullSessionResult.rowCount || 0);
 
       void track({
         type: 'therapist_cal_enabled',
@@ -65,13 +109,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         props: {
           therapist_id: id,
           cal_username: therapist.cal_username,
-          event_types_enabled: result.rowCount,
+          event_types_enabled: totalEnabled,
+          intro_schedule_id: introScheduleId,
+          full_session_schedule_id: fullSessionScheduleId,
         },
       });
 
       return NextResponse.json({ 
         success: true, 
-        message: `${result.rowCount} event types enabled` 
+        message: `${totalEnabled} Terminarten freigeschaltet` 
       });
     } finally {
       client.release();
