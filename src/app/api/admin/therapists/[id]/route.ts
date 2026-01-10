@@ -94,8 +94,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       ? ((metadata as Record<string, unknown>).documents as Record<string, unknown>)
       : {};
     const hasLicense = typeof documents.license === 'string' && documents.license.length > 0;
-    const specialization = isObject(documents.specialization) ? (documents.specialization as Record<string, unknown>) : {};
+    const specialization = isObject(documents.specialization) ? (documents.specialization as Record<string, string[]>) : {};
     const hasSpecialization = Object.keys(specialization).length > 0;
+    
+    // Get selected modalities from metadata
+    const modalities = Array.isArray((metadata as Record<string, unknown>).specializations)
+      ? ((metadata as Record<string, unknown>).specializations as string[])
+      : [];
 
     const name = [row.first_name || '', row.last_name || ''].join(' ').trim() || null;
     const rowAny = row as Record<string, unknown>;
@@ -116,7 +121,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         documents: {
           has_license: hasLicense,
           has_specialization: hasSpecialization,
+          specialization_certs: specialization, // { slug: [paths] }
         },
+        modalities, // Selected modalities from signup
         // Cal.com integration
         cal_username: typeof rowAny.cal_username === 'string' ? rowAny.cal_username : null,
         cal_enabled: Boolean(rowAny.cal_enabled),

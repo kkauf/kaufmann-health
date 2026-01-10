@@ -56,7 +56,9 @@ type TherapistDetail = {
   documents: {
     has_license: boolean;
     has_specialization: boolean;
+    specialization_certs?: Record<string, string[]>; // { slug: [paths] }
   };
+  modalities?: string[]; // Selected modalities from signup (e.g., ['narm', 'se'])
   // Cal.com integration
   cal_username?: string | null;
   cal_enabled?: boolean;
@@ -727,6 +729,55 @@ export default function AdminTherapistsPage() {
                               </details>
                             )}
                           </div>
+                        )}
+                      </div>
+
+                      {/* Modalities & Specialization Certs */}
+                      <div className="bg-white rounded-lg border p-4">
+                        <h4 className="font-semibold text-base mb-3 flex items-center gap-2">
+                          🎓 Spezialisierung
+                          {detail.documents.has_specialization && <Badge variant="outline" className="text-green-700 border-green-700">Vorhanden</Badge>}
+                        </h4>
+                        
+                        {/* Selected modalities */}
+                        {detail.modalities && detail.modalities.length > 0 ? (
+                          <div className="mb-3">
+                            <div className="text-sm text-gray-600 mb-2">Gewählte Modalitäten:</div>
+                            <div className="flex flex-wrap gap-2">
+                              {detail.modalities.map((mod) => (
+                                <Badge key={mod} className="bg-indigo-100 text-indigo-700 border-indigo-200 uppercase text-xs">
+                                  {mod}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500 mb-3">Keine Modalität ausgewählt</p>
+                        )}
+
+                        {/* Specialization certificates */}
+                        {detail.documents.specialization_certs && Object.keys(detail.documents.specialization_certs).length > 0 ? (
+                          <div className="space-y-2">
+                            <div className="text-sm text-gray-600">Zertifikate:</div>
+                            {Object.entries(detail.documents.specialization_certs).map(([slug, paths]) => (
+                              <div key={slug} className="flex items-center gap-2">
+                                <Badge variant="outline" className="uppercase text-xs">{slug}</Badge>
+                                {paths.map((path, idx) => (
+                                  <a
+                                    key={idx}
+                                    className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs hover:bg-blue-100"
+                                    href={`/api/admin/therapists/${detail.id}/documents/specialization/${slug}/${idx}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    📄 Zertifikat {idx + 1}
+                                  </a>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">Keine Spezialisierungs-Zertifikate hochgeladen</p>
                         )}
                       </div>
                     </div>
