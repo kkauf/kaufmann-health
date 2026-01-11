@@ -421,20 +421,21 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
     }
 
     // Helper: check if therapist languages match patient preference
+    // Languages are stored in native form: 'Deutsch', 'English', 'Français', etc.
     function languageMatches(therapistLanguages: unknown, patientPref: 'deutsch' | 'englisch' | 'any' | undefined): boolean {
       // If patient has no preference or prefers "any", all therapists match
       if (!patientPref || patientPref === 'any') return true;
       
-      // Parse therapist languages (stored as JSONB array)
+      // Parse therapist languages (stored as JSONB array in native form)
       const langs = Array.isArray(therapistLanguages) 
         ? (therapistLanguages as string[]).map(l => l.toLowerCase())
         : ['deutsch']; // Default to German if no languages set
       
       if (patientPref === 'deutsch') {
-        return langs.some(l => l.includes('deutsch'));
+        return langs.some(l => l === 'deutsch');
       }
       if (patientPref === 'englisch') {
-        return langs.some(l => l.includes('englisch') || l.includes('english'));
+        return langs.some(l => l === 'english');
       }
       return true;
     }

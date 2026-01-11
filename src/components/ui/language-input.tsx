@@ -3,19 +3,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 
-// Comprehensive list of languages in German
+// Languages stored and displayed in their native form
 const COMMON_LANGUAGES = [
-  'Deutsch', 'Englisch', 'Französisch', 'Spanisch', 'Italienisch',
-  'Portugiesisch', 'Niederländisch', 'Polnisch', 'Russisch', 'Ukrainisch',
-  'Türkisch', 'Arabisch', 'Persisch', 'Hindi', 'Urdu',
-  'Chinesisch', 'Japanisch', 'Koreanisch', 'Vietnamesisch', 'Thai',
-  'Griechisch', 'Rumänisch', 'Bulgarisch', 'Serbisch', 'Kroatisch',
-  'Bosnisch', 'Slowenisch', 'Slowakisch', 'Tschechisch', 'Ungarisch',
-  'Finnisch', 'Schwedisch', 'Norwegisch', 'Dänisch', 'Isländisch',
-  'Hebräisch', 'Kurdisch', 'Albanisch', 'Mazedonisch', 'Litauisch',
-  'Lettisch', 'Estnisch', 'Georgisch', 'Armenisch', 'Bengalisch',
-  'Tamil', 'Telugu', 'Marathi', 'Gujarati', 'Punjabi',
-  'Indonesisch', 'Malaysisch', 'Tagalog', 'Swahili', 'Afrikaans',
+  'Deutsch', 'English', 'Français', 'Español', 'Italiano',
+  'Português', 'Nederlands', 'Polski', 'Русский', 'Українська',
+  'Türkçe', 'العربية', 'فارسی', 'हिन्दी', 'اردو',
+  '中文', '日本語', '한국어', 'Tiếng Việt', 'ไทย',
+  'Ελληνικά', 'Română', 'Български', 'Српски', 'Hrvatski',
+  'Bosanski', 'Slovenščina', 'Slovenčina', 'Čeština', 'Magyar',
+  'Suomi', 'Svenska', 'Norsk', 'Dansk', 'Íslenska',
+  'עברית', 'Kurdî', 'Shqip', 'Македонски', 'Lietuvių',
+  'Latviešu', 'Eesti', 'ქართული', 'Armenian', 'বাংলা',
+  'தமிழ்', 'తెలుగు', 'मराठी', 'ગુજરાતી', 'ਪੰਜਾਬੀ',
+  'Bahasa Indonesia', 'Bahasa Melayu', 'Tagalog', 'Kiswahili', 'Afrikaans',
 ];
 
 interface LanguageInputProps {

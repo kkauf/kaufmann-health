@@ -318,10 +318,12 @@ export default async function NarmPage() {
             title={modalityConfig.therapistSectionTitle}
             subtitle={modalityConfig.therapistSectionSubtitle}
             filters={modalityConfig.therapistFilter}
-            limit={3}
+            limit={6}
+            randomize={false}
             showViewAllButton={true}
-            viewAllButtonText="Alle Therapeut:innen ansehen"
+            viewAllButtonText="Alle NARM-Therapeut:innen mit Terminen"
             viewAllButtonHref={`/therapeuten${modalityConfig.directoryFilterParams}`}
+            showBookingCta={true}
           />
         </section>
 
@@ -329,15 +331,14 @@ export default async function NarmPage() {
 
         <div className="mt-14 sm:mt-20 lg:mt-24">
           <FinalCtaSection
-            heading="Bereit für den ersten Schritt?"
-            subtitle="Fülle unseren 5-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte NARM-Therapeuten-Vorschläge."
-            buttonLabel="Jetzt Therapeut:in finden"
-            targetId="/fragebogen"
+            heading="Finde deine NARM-Therapeut:in"
+            subtitle="Alle unsere NARM-Therapeut:innen sind zertifiziert und bieten Online-Termine an. Buche direkt deinen ersten Termin."
+            buttonLabel="NARM-Therapeut:innen ansehen"
+            targetId={`/therapeuten${modalityConfig.directoryFilterParams}`}
             align="center"
             variant="tinted"
             showAvailabilityNote={false}
-            withEntryOptions={true}
-            targetBasePath="/fragebogen"
+            withEntryOptions={false}
           />
         </div>
 
