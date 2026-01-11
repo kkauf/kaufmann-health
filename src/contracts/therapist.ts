@@ -69,7 +69,7 @@ export const AvailabilitySlotSchema = z.object({
   time_label: z.string(),
   format: z.enum(['online', 'in_person']),
   address: z.string().optional(),
-});
+}).passthrough();
 
 export type AvailabilitySlot = z.infer<typeof AvailabilitySlotSchema>;
 
@@ -91,7 +91,7 @@ export const TherapistDataSchema = z.object({
   typical_rate: z.number().nullable().optional(),
   metadata: z.object({
     profile: TherapistProfileSchema.optional(),
-  }).optional(),
+  }).passthrough().optional(),
   availability: z.array(AvailabilitySlotSchema).optional(),
   // Cal.com integration fields
   cal_username: z.string().nullable().optional(),
@@ -102,7 +102,7 @@ export const TherapistDataSchema = z.object({
   phone: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
   created_at: z.string().nullable().optional(),
-});
+}).passthrough();
 
 export type TherapistData = z.infer<typeof TherapistDataSchema>;
 
@@ -112,7 +112,7 @@ export type TherapistData = z.infer<typeof TherapistDataSchema>;
 
 export const TherapistsApiResponseSchema = z.object({
   therapists: z.array(TherapistDataSchema),
-});
+}).passthrough();
 
 export type TherapistsApiResponse = z.infer<typeof TherapistsApiResponseSchema>;
 
