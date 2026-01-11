@@ -55,6 +55,7 @@ export const TherapistRowSchema = z.object({
   cal_user_id: z.number().int().nullable().optional(),
   cal_username: z.string().nullable().optional(),
   cal_enabled: z.boolean().nullable().optional(),
+  cal_bookings_live: z.boolean().nullable().optional(),
 });
 
 export type TherapistRow = z.infer<typeof TherapistRowSchema>;
