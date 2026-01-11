@@ -7,6 +7,7 @@ import { Activity, Brain, ShieldCheck, CheckCircle2, Shell } from "lucide-react"
 import RevealContainer from "@/components/RevealContainer";
 import { MODALITIES } from "@/features/therapies/modalityConfig";
 import { HeroNoForm } from "@/features/landing/components/HeroNoForm";
+import CtaLink from "@/components/CtaLink";
 
 export const revalidate = 3600;
 
@@ -103,10 +104,16 @@ export default async function SomaticExperiencingPage() {
     <div className="min-h-screen bg-white">
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
         <HeroNoForm
-          title="Somatic Experiencing"
-          subtitle="Die wissenschaftlich fundierte Methode von Dr. Peter Levine – sanft, sicher und ohne Retraumatisierung"
-          noBackground
-          valueProps={[]}
+          title="Somatic Experiencing Berlin"
+          subtitle="Die wissenschaftlich fundierte Methode von Dr. Peter Levine – sanft, sicher und ohne Retraumatisierung."
+          backgroundSrc="/images/hero-calm.jpeg"
+          ctaLabel="SE-Therapeut:innen finden"
+          ctaHref={`/therapeuten${modalityConfig.directoryFilterParams}`}
+          valueProps={[
+            '✓ Zertifizierte SE-Praktiker:innen',
+            '✓ Für Schock- & Entwicklungstrauma',
+            '✓ Berlin & Online · 80€–120€',
+          ]}
           icon={
             <div className="inline-flex items-center gap-4">
               <div className="rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/60 p-3 sm:p-4 text-amber-600 shadow-sm">
@@ -137,6 +144,22 @@ export default async function SomaticExperiencingPage() {
             <p className="mt-4 text-sm sm:text-base text-gray-700">
               Mehr Informationen bei <a href="https://traumahealing.org/" className="underline text-indigo-600" target="_blank" rel="noopener noreferrer">Somatic Experiencing® International</a>.
             </p>
+
+            {/* CTA after What is SE */}
+            <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <CtaLink
+                href={`/therapeuten${modalityConfig.directoryFilterParams}`}
+                eventType="cta_click"
+                eventId="se-what-is-cta"
+                data-cta="what-is-section"
+                className="inline-flex items-center gap-2 rounded-lg bg-white border-2 border-amber-600 px-6 sm:px-8 py-3 sm:py-3.5 text-base sm:text-lg font-semibold text-amber-700 shadow-md hover:bg-amber-600 hover:text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2"
+              >
+                SE-Therapeut:innen ansehen
+              </CtaLink>
+              <p className="text-sm sm:text-base text-gray-600">
+                Alle zertifiziert · Termine diese Woche möglich
+              </p>
+            </div>
           </div>
         </section>
 
@@ -181,6 +204,19 @@ export default async function SomaticExperiencingPage() {
             </div>
           </div>
         </section>
+
+        {/* Mid-page CTA */}
+        <div className="mt-10 sm:mt-12 text-center">
+          <CtaLink
+            href={`/therapeuten${modalityConfig.directoryFilterParams}`}
+            eventType="cta_click"
+            eventId="se-mid-page-cta"
+            data-cta="after-suitability"
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-8 sm:px-10 py-3.5 sm:py-4 text-base sm:text-lg font-semibold text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/30 hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2"
+          >
+            Jetzt SE-Therapeut:in finden
+          </CtaLink>
+        </div>
 
         {/* Comparison table */}
         <section aria-labelledby="comparison-heading" className="mt-14 sm:mt-20 lg:mt-24">

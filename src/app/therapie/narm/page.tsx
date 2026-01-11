@@ -7,6 +7,7 @@ import { Heart, Users, Brain, CheckCircle2, HeartHandshake } from "lucide-react"
 import RevealContainer from "@/components/RevealContainer";
 import { MODALITIES } from "@/features/therapies/modalityConfig";
 import { HeroNoForm } from "@/features/landing/components/HeroNoForm";
+import CtaLink from "@/components/CtaLink";
 
 export const revalidate = 3600;
 
@@ -99,10 +100,16 @@ export default async function NarmPage() {
     <div className="min-h-screen bg-white">
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
         <HeroNoForm
-          title="NARM"
-          subtitle="Das NeuroAffektive Beziehungsmodell arbeitet mit dem, was jetzt ist – für Menschen, die funktionieren, aber nicht wirklich leben"
-          noBackground
-          valueProps={[]}
+          title="NARM Therapie Berlin"
+          subtitle="Das NeuroAffektive Beziehungsmodell arbeitet mit dem, was jetzt ist – für Menschen, die funktionieren, aber nicht wirklich leben."
+          backgroundSrc="/images/hero-calm.jpeg"
+          ctaLabel="NARM-Therapeut:innen finden"
+          ctaHref={`/therapeuten${modalityConfig.directoryFilterParams}`}
+          valueProps={[
+            '✓ Zertifizierte NARM-Therapeut:innen',
+            '✓ Für Entwicklungstrauma',
+            '✓ Berlin & Online · 80€–120€',
+          ]}
           icon={
             <div className="inline-flex items-center gap-4">
               <div className="rounded-xl bg-gradient-to-br from-teal-50 to-teal-100/60 p-3 sm:p-4 text-teal-600 shadow-sm">
@@ -129,6 +136,22 @@ export default async function NarmPage() {
             </blockquote>
             <p className="mt-4 text-sm sm:text-base text-gray-700">
               Mehr Informationen bei <a href="https://drlaurenceheller.com/de/" className="underline text-indigo-600" target="_blank" rel="noopener noreferrer">Dr. Laurence Heller</a>.
+            </p>
+          </div>
+
+          {/* CTA after What is NARM */}
+          <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <CtaLink
+              href={`/therapeuten${modalityConfig.directoryFilterParams}`}
+              eventType="cta_click"
+              eventId="narm-what-is-cta"
+              data-cta="what-is-section"
+              className="inline-flex items-center gap-2 rounded-lg bg-white border-2 border-teal-600 px-6 sm:px-8 py-3 sm:py-3.5 text-base sm:text-lg font-semibold text-teal-700 shadow-md hover:bg-teal-600 hover:text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2"
+            >
+              NARM-Therapeut:innen ansehen
+            </CtaLink>
+            <p className="text-sm sm:text-base text-gray-600">
+              Alle zertifiziert · Termine diese Woche möglich
             </p>
           </div>
         </section>
@@ -272,6 +295,19 @@ export default async function NarmPage() {
             </div>
           </div>
         </section>
+
+        {/* Mid-page CTA */}
+        <div className="mt-10 sm:mt-12 text-center">
+          <CtaLink
+            href={`/therapeuten${modalityConfig.directoryFilterParams}`}
+            eventType="cta_click"
+            eventId="narm-mid-page-cta"
+            data-cta="after-suitability"
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-8 sm:px-10 py-3.5 sm:py-4 text-base sm:text-lg font-semibold text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/30 hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2"
+          >
+            Jetzt NARM-Therapeut:in finden
+          </CtaLink>
+        </div>
 
         {/* Wissenschaftlicher Hintergrund */}
         <section aria-labelledby="scientific-basis-heading" className="mt-14 sm:mt-20 lg:mt-24">

@@ -7,6 +7,7 @@ import { TherapistTeaserSection } from "@/features/landing/components/TherapistT
 import { HeroNoForm } from "@/features/landing/components/HeroNoForm";
 import { Brain, Heart, Users, CheckCircle2, Shield, HeartHandshake, Shell, Wind, Target } from "lucide-react";
 import RevealContainer from "@/components/RevealContainer";
+import CtaLink from "@/components/CtaLink";
 
 export const revalidate = 3600;
 
@@ -87,6 +88,22 @@ function WhatIsBodyTherapy() {
                 Evidenzbasierte Methoden. In RCT-Studien untersucht. Keine Esoterik.
               </p>
             </Card>
+          </div>
+
+          {/* CTA after explanation */}
+          <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <CtaLink
+              href="/therapeuten"
+              eventType="cta_click"
+              eventId="therapie-what-is-cta"
+              data-cta="what-is-section"
+              className="inline-flex items-center gap-2 rounded-lg bg-white border-2 border-teal-600 px-6 sm:px-8 py-3 sm:py-3.5 text-base sm:text-lg font-semibold text-teal-700 shadow-md hover:bg-teal-600 hover:text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2"
+            >
+              Therapeut:innen ansehen
+            </CtaLink>
+            <p className="text-sm sm:text-base text-gray-600">
+              Finde passende Spezialist:innen für körperorientierte Therapie.
+            </p>
           </div>
         </div>
       </RevealContainer>
@@ -186,9 +203,14 @@ export default async function KoerpertherapiePage() {
         <HeroNoForm
           title="Körperorientierte Psychotherapie"
           subtitle="Körperorientierte Psychotherapie (auch somatische Therapie genannt) arbeitet dort, wo Trauma und Stress im Nervensystem gespeichert sind – wissenschaftlich fundiert, professionell und ohne Esoterik."
-          // use default background image with blur overlay
-          valueProps={[]}
-          backgroundBlurClass="object-cover scale-105 blur-[6px]"
+          backgroundSrc="/images/hero-calm.jpeg"
+          ctaLabel="Therapeut:in finden"
+          ctaHref="/therapeuten"
+          valueProps={[
+            '✓ Handverlesene Therapeut:innen',
+            '✓ NARM, SE, Hakomi & Core Energetics',
+            '✓ Berlin & Online · 80€–120€',
+          ]}
           icon={
             <div className="flex items-center gap-4 sm:gap-5">
               <div className="rounded-xl bg-gradient-to-br from-teal-50 to-teal-100/60 p-3 sm:p-4 text-teal-600 shadow-sm">
@@ -212,6 +234,19 @@ export default async function KoerpertherapiePage() {
         {/* Modality explanations */}
         <TherapyModalityExplanations />
 
+        {/* Mid-page CTA */}
+        <div className="mt-10 sm:mt-12 text-center">
+          <CtaLink
+            href="/therapeuten"
+            eventType="cta_click"
+            eventId="therapie-mid-page-cta"
+            data-cta="after-modalities"
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-8 sm:px-10 py-3.5 sm:py-4 text-base sm:text-lg font-semibold text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/30 hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2"
+          >
+            Jetzt passende Therapeut:in finden
+          </CtaLink>
+        </div>
+
         {/* Therapist showcase - SEO + trust */}
         <section className="mt-14 sm:mt-20 lg:mt-24">
           <TherapistTeaserSection
@@ -231,14 +266,13 @@ export default async function KoerpertherapiePage() {
         <div className="mt-14 sm:mt-20 lg:mt-24">
           <FinalCtaSection 
             heading="Bereit für den ersten Schritt?" 
-            subtitle="Fülle unseren 5-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten-Vorschläge."
-            buttonLabel="Jetzt Therapeut:in finden"
-            targetId="/fragebogen"
+            subtitle="Entdecke unsere handverlesenen Therapeut:innen für körperorientierte Psychotherapie. Online oder vor Ort in Berlin."
+            buttonLabel="Alle Therapeut:innen ansehen"
+            targetId="/therapeuten"
             align="center"
             variant="tinted"
             showAvailabilityNote={false}
-            withEntryOptions={true}
-            targetBasePath="/fragebogen"
+            withEntryOptions={false}
           />
         </div>
 

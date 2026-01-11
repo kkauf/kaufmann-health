@@ -386,6 +386,13 @@ export default function SignupWizard() {
         }
       }
 
+      // Test 5: Handle ?mode=online param - pre-select online session preference
+      const modeParam = searchParams?.get('mode');
+      if (modeParam === 'online') {
+        setData((prev) => ({ ...prev, session_preference: 'online', online_ok: true }));
+        void trackEvent('online_mode_prefill', { mode: 'online' });
+      }
+
       // Prefer fs from URL if present, otherwise fall back to localStorage
       const fsFromUrl = searchParams?.get('fs');
       const fsid = fsFromUrl || localStorage.getItem(LS_KEYS.sessionId);
@@ -867,6 +874,7 @@ export default function SignupWizard() {
         );
       case 3:
         // Step 3: Modality Preferences
+        // Test 5: Online mode skips step 4 (location), goes directly to step 5
         return (
           <NewScreen5_Modality
             values={{
@@ -875,13 +883,18 @@ export default function SignupWizard() {
             }}
             onChange={saveLocal}
             onBack={() => safeGoToStep(usesSchwerpunkteStep ? 2.5 : 2)}
-            onNext={() => safeGoToStep(4)}
+            onNext={() => safeGoToStep(isOnlineMode ? 5 : 4)}
             suppressAutoAdvance={suppressAutoStep === 3}
             disabled={navLock || submitting}
           />
         );
       case 4:
         // Step 4: Location (session preference + city only, no privacy)
+        // Test 5: Online mode skips this step entirely
+        if (isOnlineMode) {
+          safeGoToStep(5);
+          return null;
+        }
         return (
           <Screen3
             values={{
@@ -904,7 +917,7 @@ export default function SignupWizard() {
               methods: data.methods, // Keep for compatibility
             }}
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
-            onBack={() => safeGoToStep(4)}
+            onBack={() => safeGoToStep(isOnlineMode ? 3 : 4)}
             onNext={(isDirectBookingFlow && !needsVerificationFlow) ? handleQuestionnaireSubmit : () => safeGoToStep(6)}
             disabled={navLock || submitting}
           />
