@@ -13,7 +13,8 @@
     { "path": "/api/admin/alerts/system?minutes=15", "schedule": "*/15 * * * *" },
     { "path": "/api/admin/alerts/new-leads?hours=6", "schedule": "0 14,20 * * *" },
     { "path": "/api/admin/alerts/user-errors-digest", "schedule": "0 8,20 * * *" },
-    { "path": "/api/admin/cal/booking-followups?limit=50", "schedule": "*/30 * * * *" }
+    { "path": "/api/admin/cal/booking-followups?limit=50", "schedule": "*/30 * * * *" },
+    { "path": "/api/admin/alerts/match-quality-report?days=1", "schedule": "0 8 * * *" }
   ],
   "functions": {
     "app/therapie-finden/page.tsx": {

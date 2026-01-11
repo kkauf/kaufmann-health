@@ -597,6 +597,9 @@ export async function POST(req: Request) {
     let formSessionMethods: string[] | undefined;
     let formSessionStartTiming: string | undefined;
     let formSessionGenderPref: 'male' | 'female' | 'no_preference' | undefined;
+    let formSessionCity: string | undefined;
+    let formSessionSessionPref: 'online' | 'in_person' | undefined;
+    let formSessionSessionPrefs: ('online' | 'in_person')[] | undefined;
     if (formSessionId) {
       try {
         const { data: fsRow } = await supabaseServer
@@ -625,11 +628,25 @@ export async function POST(req: Request) {
             else if (g.includes('frau')) formSessionGenderPref = 'female';
             else if (g.includes('keine') || g.includes('divers')) formSessionGenderPref = 'no_preference';
           }
+          // Extract city from form session (critical for matching)
+          if (typeof fsData.city === 'string' && fsData.city.trim()) {
+            formSessionCity = fsData.city.trim();
+          }
+          // Extract session preference from form session (critical for matching)
+          const fsSp = fsData.session_preference;
+          if (fsSp === 'online' || fsSp === 'in_person') {
+            formSessionSessionPref = fsSp;
+          } else if (fsSp === 'either' || fsSp === 'both') {
+            formSessionSessionPrefs = ['online', 'in_person'];
+          }
         }
       } catch { /* ignore form session fetch errors */ }
     }
-    // Use form session gender preference if not provided directly in payload
+    // Use form session values if not provided directly in payload (fallback chain)
     const effectiveGenderPref = genderPreference || formSessionGenderPref;
+    const effectiveCity = city || formSessionCity;
+    const effectiveSessionPref = sessionPreference || formSessionSessionPref;
+    const effectiveSessionPrefs = sessionPreferences.length > 0 ? sessionPreferences : (formSessionSessionPrefs || [])
 
     // Detect verified phone via client session cookie (set by verify-code)
     const clientSession = await getClientSession(req);
@@ -719,14 +736,14 @@ export async function POST(req: Request) {
         ...(ua ? { user_agent: ua } : {}),
         // Google Ads click ID for conversion attribution (critical for tracking)
         ...(gclid ? { gclid } : {}),
-        ...(sessionPreference ? { session_preference: sessionPreference } : {}),
-        ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
+        ...(effectiveSessionPref ? { session_preference: effectiveSessionPref } : {}),
+        ...(effectiveSessionPrefs.length ? { session_preferences: effectiveSessionPrefs } : {}),
         ...(formSessionId ? { form_session_id: formSessionId } : {}),
         ...(formSessionSchwerpunkte?.length ? { schwerpunkte: formSessionSchwerpunkte } : {}),
         ...(formSessionTimeSlots?.length ? { time_slots: formSessionTimeSlots } : {}),
         ...(formSessionMethods?.length ? { methods: formSessionMethods } : {}),
         ...(formSessionStartTiming ? { start_timing: formSessionStartTiming } : {}),
-        ...(city ? { city } : {}),
+        ...(effectiveCity ? { city: effectiveCity } : {}),
         ...(issue ? { issue } : {}),
         ...(availability ? { availability } : {}),
         ...(budget ? { budget } : {}),
@@ -921,10 +938,10 @@ export async function POST(req: Request) {
               ...(existing.metadata || {}),
               confirm_token: confirmToken,
               confirm_sent_at: new Date().toISOString(),
-              ...(sessionPreference ? { session_preference: sessionPreference } : {}),
-              ...(sessionPreferences.length ? { session_preferences: sessionPreferences } : {}),
+              ...(effectiveSessionPref ? { session_preference: effectiveSessionPref } : {}),
+              ...(effectiveSessionPrefs.length ? { session_preferences: effectiveSessionPrefs } : {}),
               ...(isTest ? { is_test: true } : {}),
-              ...(city ? { city } : {}),
+              ...(effectiveCity ? { city: effectiveCity } : {}),
               ...(issue ? { issue } : {}),
               ...(availability ? { availability } : {}),
               ...(budget ? { budget } : {}),
