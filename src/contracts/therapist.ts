@@ -56,7 +56,7 @@ export const TherapistRowSchema = z.object({
   cal_username: z.string().nullable().optional(),
   cal_enabled: z.boolean().nullable().optional(),
   cal_bookings_live: z.boolean().nullable().optional(),
-});
+}).passthrough(); // Preserve unknown fields from DB to avoid silent data loss
 
 export type TherapistRow = z.infer<typeof TherapistRowSchema>;
 
@@ -146,17 +146,20 @@ export function parseTherapistData(data: unknown): TherapistData {
 }
 
 /**
- * Validate an array of therapist rows, filtering out invalid ones.
- * Logs warnings for invalid rows in development.
+ * Validate an array of therapist rows.
+ * In development: throws on first invalid row to catch schema mismatches early.
+ * In production: logs errors and filters out invalid rows for resilience.
  */
 export function parseTherapistRows(data: unknown[]): TherapistRow[] {
   return data
     .map((row, i) => {
       const result = TherapistRowSchema.safeParse(row);
       if (!result.success) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn(`[therapist-contract] Invalid row at index ${i}:`, result.error.issues);
+        const errorMsg = `[therapist-contract] Invalid row at index ${i}: ${JSON.stringify(result.error.issues)}`;
+        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+          throw new Error(errorMsg);
         }
+        console.error(errorMsg);
         return null;
       }
       return result.data;
