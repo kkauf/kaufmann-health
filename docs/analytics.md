@@ -100,14 +100,17 @@ try {
 }
 ```
 
-## Google Ads conversions (minimal & private)
-- Server Enhanced Conversions: hashed email uploads on key events (e.g., `client_registration`, `therapist_registration`).
-- **GCLID inclusion**: Payload now explicitly includes `gclid` for more robust server-side attribution matching.
-- Client signal (minimal): single gtag conversion after Fragebogen completion to help Ads optimization; deduped by lead id.
+## Google Ads conversions
 
-- Consent Mode v2
-  - Default denied (cookieless). If `NEXT_PUBLIC_COOKIES=true`, we enable conversion linker only after explicit consent.
-- Env (production only): `NEXT_PUBLIC_GOOGLE_ADS_ID`, `NEXT_PUBLIC_GAD_CONV_CLIENT`, plus server creds for Enhanced Conversions.
+> **See [docs/google-ads-conversions.md](./google-ads-conversions.md) for the full architecture reference.**
+
+Summary:
+- **Two-layer system**: Client gtag fires BASE conversion → Server API ENHANCES with hashed user data
+- **Matching key**: `transaction_id` (client) = `orderId` (server) = patient UUID
+- **API**: `uploadConversionAdjustments` with `adjustmentType: 'ENHANCEMENT'`
+- **Conversion source**: Website (NOT Import)
+
+Consent Mode v2: Default denied (cookieless). If `NEXT_PUBLIC_COOKIES=true`, conversion linker enabled post-consent.
 
 ## Privacy & compliance
 - No PII in `properties`. IPs hashed with `IP_HASH_SALT`.

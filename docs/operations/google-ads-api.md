@@ -6,7 +6,8 @@ Programmatic campaign management for Kaufmann Health using the official Google A
 - Test access and credentials verification
 - One-off campaign creation from a typed config
 - Ongoing monitoring with safe auto-pause rules
-- Server-side Enhanced Conversions for Leads (hashed email only)
+
+> **For conversion tracking architecture, see [docs/google-ads-conversions.md](../google-ads-conversions.md)**
 
 This document focuses on operational usage: how to run scripts safely, what to watch for, and the boundaries we keep for privacy and reliability.
 
