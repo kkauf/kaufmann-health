@@ -118,11 +118,12 @@ export async function GET(req: Request) {
       ua,
     });
 
-    // Fetch therapists pending verification (reuse logic from POST)
+    // Fetch VERIFIED therapists who may need profile completion reminders
+    // (Pending therapists don't get reminders - they're waiting for admin approval)
     const initial = await supabaseServer
       .from('therapists')
-      .select('id, status, first_name, last_name, email, gender, city, accepting_new, photo_url, metadata')
-      .eq('status', 'pending_verification')
+      .select('id, status, first_name, last_name, email, gender, city, accepting_new, photo_url, metadata, who_comes_to_me, session_focus, first_session, about_me')
+      .eq('status', 'verified')
       .limit(limit);
 
     if (initial.error) {
@@ -131,7 +132,7 @@ export async function GET(req: Request) {
         const retry = await supabaseServer
           .from('therapists')
           .select('id, status, first_name, last_name, email')
-          .eq('status', 'pending_verification')
+          .eq('status', 'verified')
           .limit(limit);
         if (retry.error) {
           await logError('admin.api.therapists.reminders.batch', retry.error, { stage: 'fetch' }, ip, ua);
@@ -161,29 +162,47 @@ export async function GET(req: Request) {
     let skippedCooldown = 0;
     let skippedCapped = 0;
     let skippedOptOut = 0;
+    let skippedTooRecent = 0;
     const examples: Array<{ id: string; missing: string[] }> = [];
+
+    // Minimum days since verification before sending reminders
+    const MIN_DAYS_SINCE_VERIFIED = 3;
+    const MIN_MS_SINCE_VERIFIED = MIN_DAYS_SINCE_VERIFIED * 24 * 60 * 60 * 1000;
 
     const rowsTyped: TherapistRowLite[] = (rows as TherapistRowLite[] | null) || [];
     for (const t of rowsTyped) {
       processed++;
       const metadata = isObject(t.metadata) ? (t.metadata as Record<string, unknown>) : {};
 
-      const docsUnknown = (metadata as { documents?: unknown }).documents;
-      const docs = isObject(docsUnknown) ? (docsUnknown as Record<string, unknown>) : {};
-      const hasLicense = typeof docs.license === 'string' && (docs.license as string).length > 0;
+      // Skip if verified less than 3 days ago
+      const verifiedAt = typeof metadata.verified_at === 'string' ? new Date(metadata.verified_at as string) : null;
+      if (verifiedAt && Date.now() - verifiedAt.getTime() < MIN_MS_SINCE_VERIFIED) {
+        skippedTooRecent++;
+        continue;
+      }
 
+      // Check portal profile fields (the new structured fields therapists complete after verification)
+      const tAny = t as Record<string, unknown>;
+      const hasWhoComesToMe = typeof tAny.who_comes_to_me === 'string' && (tAny.who_comes_to_me as string).trim().length > 50;
+      const hasSessionFocus = typeof tAny.session_focus === 'string' && (tAny.session_focus as string).trim().length > 50;
+      const hasFirstSession = typeof tAny.first_session === 'string' && (tAny.first_session as string).trim().length > 50;
+      const hasAboutMe = typeof tAny.about_me === 'string' && (tAny.about_me as string).trim().length > 50;
+      const profileComplete = hasWhoComesToMe && hasSessionFocus && hasFirstSession && hasAboutMe;
+
+      // Check photo
       const profileUnknown = (metadata as { profile?: unknown }).profile;
       const profile = isObject(profileUnknown) ? (profileUnknown as Record<string, unknown>) : {};
       const hasPhotoPending = typeof profile.photo_pending_path === 'string' && (profile.photo_pending_path as string).length > 0;
       const approvedPhoto = (t as { photo_url?: string | null }).photo_url || null;
       const hasPhotoApproved = typeof approvedPhoto === 'string' && approvedPhoto.length > 0;
 
-      const missingDocuments = !hasLicense;
+      const missingDocuments = false; // Verified therapists already have documents approved
       const missingPhoto = !(hasPhotoApproved || hasPhotoPending);
-      // Skip approach text requirement for pending therapists - they complete this in the portal after verification
-      const missingApproach = false;
+      const missingApproach = false; // Deprecated - using new profile fields
+      const missingProfileFields = !profileComplete;
 
-      if (!missingDocuments && !missingPhoto) {
+      // Skip if profile is complete and has photo
+      if (!missingPhoto && !missingProfileFields) {
         skippedNoMissing++;
         continue;
       }
@@ -192,16 +211,12 @@ export async function GET(req: Request) {
       if (!to) continue;
 
       const name = [(t.first_name || ''), (t.last_name || '')].join(' ').trim();
-      const uploadUrl = `${BASE_URL}/therapists/upload-documents/${t.id}`;
-      const profileUrl = `${BASE_URL}/therapists/complete-profile/${t.id}`;
+      // Verified therapists complete their profile in the portal, not onboarding pages
+      const uploadUrl = `${BASE_URL}/portal`;
+      const profileUrl = `${BASE_URL}/portal`;
 
-      const genderVal = (t as { gender?: string | null }).gender || null;
-      const cityVal = (t as { city?: string | null }).city || null;
-      const acceptingVal = (t as { accepting_new?: boolean | null }).accepting_new;
-      const genderOk = genderVal === 'male' || genderVal === 'female' || genderVal === 'diverse';
-      const cityOk = typeof cityVal === 'string' && cityVal.trim().length > 0;
-      const acceptingOk = typeof acceptingVal === 'boolean';
-      const missingBasic = !(genderOk && cityOk && acceptingOk);
+      // For verified therapists, basic fields should already be set - use profile completeness
+      const missingBasic = missingProfileFields;
 
       // Opt-out check
       const notificationsUnknown = (metadata as { notifications?: unknown }).notifications;
@@ -280,6 +295,7 @@ export async function GET(req: Request) {
         skipped_cooldown: skippedCooldown,
         skipped_capped: skippedCapped,
         skipped_opt_out: skippedOptOut,
+        skipped_too_recent: skippedTooRecent,
         duration_ms: Date.now() - startedAt,
         stage: stageLabel,
         method: 'GET',
@@ -288,7 +304,7 @@ export async function GET(req: Request) {
       ua,
     });
 
-    return NextResponse.json({ data: { processed, sent, skipped_no_missing: skippedNoMissing, skipped_cooldown: skippedCooldown, skipped_capped: skippedCapped, skipped_opt_out: skippedOptOut, examples }, error: null });
+    return NextResponse.json({ data: { processed, sent, skipped_no_missing: skippedNoMissing, skipped_cooldown: skippedCooldown, skipped_capped: skippedCapped, skipped_opt_out: skippedOptOut, skipped_too_recent: skippedTooRecent, examples }, error: null });
   } catch (e) {
     await logError('admin.api.therapists.reminders.batch', e, { stage: 'exception' }, ip, ua);
     // Monitoring: failure
@@ -355,11 +371,11 @@ export async function POST(req: Request) {
       ua,
     });
 
-    // Fetch therapists pending verification
+    // Fetch VERIFIED therapists who may need profile completion reminders
     const initial = await supabaseServer
       .from('therapists')
-      .select('id, status, first_name, last_name, email, gender, city, accepting_new, photo_url, metadata')
-      .eq('status', 'pending_verification')
+      .select('id, status, first_name, last_name, email, gender, city, accepting_new, photo_url, metadata, who_comes_to_me, session_focus, first_session, about_me')
+      .eq('status', 'verified')
       .limit(limit);
 
     // Fallback if metadata column is missing in production
@@ -368,7 +384,7 @@ export async function POST(req: Request) {
       const retry = await supabaseServer
         .from('therapists')
         .select('id, status, first_name, last_name, email')
-        .eq('status', 'pending_verification')
+        .eq('status', 'verified')
         .limit(limit);
       if (retry.error) {
         await logError('admin.api.therapists.reminders.batch', retry.error, { stage: 'fetch' }, ip, ua);
@@ -399,28 +415,47 @@ export async function POST(req: Request) {
     let skippedCooldown = 0;
     let skippedCapped = 0;
     let skippedOptOut = 0;
+    let skippedTooRecent = 0;
     const examples: Array<{ id: string; missing: string[] }> = [];
+
+    // Minimum days since verification before sending reminders
+    const MIN_DAYS_SINCE_VERIFIED = 3;
+    const MIN_MS_SINCE_VERIFIED = MIN_DAYS_SINCE_VERIFIED * 24 * 60 * 60 * 1000;
 
     const rowsTyped: TherapistRowLite[] = (rows as TherapistRowLite[] | null) || [];
     for (const t of rowsTyped) {
       processed++;
       const metadata = isObject(t.metadata) ? (t.metadata as Record<string, unknown>) : {};
 
-      const docsUnknown = (metadata as { documents?: unknown }).documents;
-      const docs = isObject(docsUnknown) ? (docsUnknown as Record<string, unknown>) : {};
-      const hasLicense = typeof docs.license === 'string' && (docs.license as string).length > 0;
+      // Skip if verified less than 3 days ago
+      const verifiedAt = typeof metadata.verified_at === 'string' ? new Date(metadata.verified_at as string) : null;
+      if (verifiedAt && Date.now() - verifiedAt.getTime() < MIN_MS_SINCE_VERIFIED) {
+        skippedTooRecent++;
+        continue;
+      }
 
+      // Check portal profile fields (the new structured fields therapists complete after verification)
+      const tAny = t as Record<string, unknown>;
+      const hasWhoComesToMe = typeof tAny.who_comes_to_me === 'string' && (tAny.who_comes_to_me as string).trim().length > 50;
+      const hasSessionFocus = typeof tAny.session_focus === 'string' && (tAny.session_focus as string).trim().length > 50;
+      const hasFirstSession = typeof tAny.first_session === 'string' && (tAny.first_session as string).trim().length > 50;
+      const hasAboutMe = typeof tAny.about_me === 'string' && (tAny.about_me as string).trim().length > 50;
+      const profileComplete = hasWhoComesToMe && hasSessionFocus && hasFirstSession && hasAboutMe;
+
+      // Check photo
       const profileUnknown = (metadata as { profile?: unknown }).profile;
       const profile = isObject(profileUnknown) ? (profileUnknown as Record<string, unknown>) : {};
       const hasPhotoPending = typeof profile.photo_pending_path === 'string' && (profile.photo_pending_path as string).length > 0;
       const approvedPhoto = (t as { photo_url?: string | null }).photo_url || null;
       const hasPhotoApproved = typeof approvedPhoto === 'string' && approvedPhoto.length > 0;
-      const missingDocuments = !hasLicense;
-      const missingPhoto = !(hasPhotoApproved || hasPhotoPending);
-      // Skip approach text requirement for pending therapists - they complete this in the portal after verification
-      const missingApproach = false;
 
-      if (!missingDocuments && !missingPhoto) {
+      const missingDocuments = false; // Verified therapists already have documents approved
+      const missingPhoto = !(hasPhotoApproved || hasPhotoPending);
+      const missingApproach = false; // Deprecated - using new profile fields
+      const missingProfileFields = !profileComplete;
+
+      // Skip if profile is complete and has photo
+      if (!missingPhoto && !missingProfileFields) {
         skippedNoMissing++;
         continue;
       }
@@ -429,16 +464,12 @@ export async function POST(req: Request) {
       if (!to) continue;
 
       const name = [(t.first_name || ''), (t.last_name || '')].join(' ').trim();
-      const uploadUrl = `${BASE_URL}/therapists/upload-documents/${t.id}`;
-      const profileUrl = `${BASE_URL}/therapists/complete-profile/${t.id}`;
+      // Verified therapists complete their profile in the portal, not onboarding pages
+      const uploadUrl = `${BASE_URL}/portal`;
+      const profileUrl = `${BASE_URL}/portal`;
 
-      const genderVal = (t as { gender?: string | null }).gender || null;
-      const cityVal = (t as { city?: string | null }).city || null;
-      const acceptingVal = (t as { accepting_new?: boolean | null }).accepting_new;
-      const genderOk = genderVal === 'male' || genderVal === 'female' || genderVal === 'diverse';
-      const cityOk = typeof cityVal === 'string' && cityVal.trim().length > 0;
-      const acceptingOk = typeof acceptingVal === 'boolean';
-      const missingBasic = !(genderOk && cityOk && acceptingOk);
+      // For verified therapists, basic fields should already be set - use profile completeness
+      const missingBasic = missingProfileFields;
 
       // Opt-out check
       const notificationsUnknown = (metadata as { notifications?: unknown }).notifications;
@@ -517,6 +548,7 @@ export async function POST(req: Request) {
         skipped_cooldown: skippedCooldown,
         skipped_capped: skippedCapped,
         skipped_opt_out: skippedOptOut,
+        skipped_too_recent: skippedTooRecent,
         duration_ms: Date.now() - startedAt,
         stage: stageLabel,
         method: 'POST',
@@ -525,7 +557,7 @@ export async function POST(req: Request) {
       ua,
     });
 
-    return NextResponse.json({ data: { processed, sent, skipped_no_missing: skippedNoMissing, skipped_cooldown: skippedCooldown, skipped_capped: skippedCapped, skipped_opt_out: skippedOptOut, examples }, error: null });
+    return NextResponse.json({ data: { processed, sent, skipped_no_missing: skippedNoMissing, skipped_cooldown: skippedCooldown, skipped_capped: skippedCapped, skipped_opt_out: skippedOptOut, skipped_too_recent: skippedTooRecent, examples }, error: null });
   } catch (e) {
     await logError('admin.api.therapists.reminders.batch', e, { stage: 'exception' }, ip, ua);
     // Monitoring: failure (POST)

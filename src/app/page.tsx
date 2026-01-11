@@ -230,7 +230,7 @@ export default function Home() {
                 <UserCheck className="mt-0.5 h-6 w-6 text-indigo-600 flex-shrink-0" />
                 <div>
                   <p className="font-semibold text-gray-900">Transparente Datenverarbeitung</p>
-                  <p className="mt-1 text-sm leading-relaxed text-gray-600">Nutzung deiner Angaben ausschließlich zur Kontaktaufnahme mit ausgewählten Therapeut:innen.</p>
+                  <p className="mt-1 text-sm leading-relaxed text-gray-600">Nutzung deiner Angaben ausschließlich zur Kontaktaufnahme mit ausgewählten Therapeut:innen. <a href="/datenschutz" className="underline underline-offset-2 hover:text-indigo-700">Datenschutzerklärung</a></p>
                 </div>
               </Card>
             </div>

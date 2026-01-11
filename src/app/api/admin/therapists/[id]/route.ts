@@ -254,6 +254,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       delete profileMeta.photo_pending_path;
     }
 
+    // Store verified_at timestamp when approving
+    if (status === 'verified' && beforeStatus !== 'verified') {
+      currMeta.verified_at = new Date().toISOString();
+    }
+
     const newMeta: Record<string, unknown> = { ...currMeta, profile: profileMeta };
     update.metadata = newMeta;
 
