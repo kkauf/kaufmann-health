@@ -81,10 +81,7 @@ describe('Directory Ranking (Platform Score)', () => {
       }),
       createTherapist({
         id: 'with-calcom',
-        metadata: {
-          cal_username: 'therapist1',
-          cal_event_types: ['intake', 'session'],
-        },
+        cal_bookings_live: true,
       }),
     ];
 
@@ -217,10 +214,7 @@ describe('Match View Ranking (Total Score = Match × 1.5 + Platform)', () => {
       createTherapist({
         id: 'high-platform-low-match',
         schwerpunkte: ['beziehung'], // No schwerpunkte match with patient
-        metadata: {
-          cal_username: 'therapist1',
-          cal_event_types: ['intake', 'session'],
-        },
+        cal_bookings_live: true,
       }),
       createTherapist({
         id: 'low-platform-high-match',

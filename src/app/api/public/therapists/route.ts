@@ -106,6 +106,7 @@ export async function GET() {
         photo_url: row.photo_url,
         approach_text: typeof profile['approach_text'] === 'string' ? profile['approach_text'] : undefined,
         who_comes_to_me: typeof profile['who_comes_to_me'] === 'string' ? profile['who_comes_to_me'] : undefined,
+        cal_bookings_live: (row as Record<string, unknown>).cal_bookings_live === true,
         metadata: {
           hide_from_directory: mdObj['hide_from_directory'] === true,
           cal_username: typeof mdObj['cal_username'] === 'string' ? mdObj['cal_username'] : undefined,

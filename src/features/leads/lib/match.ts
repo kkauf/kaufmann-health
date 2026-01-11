@@ -25,6 +25,7 @@ export type TherapistRowForMatch = {
   photo_url?: string | null;
   approach_text?: string | null;
   who_comes_to_me?: string | null;
+  cal_bookings_live?: boolean | null;
   metadata?: {
     hide_from_directory?: boolean;
     cal_username?: string;
@@ -219,8 +220,8 @@ export function calculatePlatformScore(
 ): number {
   let score = 0;
   
-  // Cal.com integration (30 points)
-  if (hasFullCalComJourney(therapist)) {
+  // Cal.com bookings live (30 points) - therapist has activated their Cal.com booking page
+  if (therapist.cal_bookings_live === true) {
     score += 30;
   }
   

@@ -89,12 +89,9 @@ describe('Platform Score', () => {
       approach_text: 'My approach...',
       who_comes_to_me: 'People who...',
       city: 'Berlin',
-      metadata: {
-        cal_username: 'therapist1',
-        cal_event_types: ['intake', 'session'],
-      },
+      cal_bookings_live: true,
     };
-    // 30 (Cal.com) + 25 (3+ slots in 7 days) + 15 (complete profile) = 70
+    // 30 (Cal.com live) + 25 (3+ slots in 7 days) + 15 (complete profile) = 70
     expect(calculatePlatformScore(therapist, 4, 4)).toBe(70);
   });
 
@@ -105,12 +102,9 @@ describe('Platform Score', () => {
       approach_text: 'My approach...',
       who_comes_to_me: 'People who...',
       city: 'Berlin',
-      metadata: {
-        cal_username: 'therapist1',
-        cal_event_types: ['intake', 'session'],
-      },
+      cal_bookings_live: true,
     };
-    // 30 (Cal.com) + 0 (no slots) + 15 (complete profile) = 45
+    // 30 (Cal.com live) + 0 (no slots) + 15 (complete profile) = 45
     expect(calculatePlatformScore(therapist, 0, 0)).toBe(45);
   });
 
