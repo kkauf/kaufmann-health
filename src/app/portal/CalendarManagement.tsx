@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, ExternalLink, BookOpen, GraduationCap, Video, Rocket, CheckCircle, Loader2 } from "lucide-react";
+import { Calendar, ExternalLink, BookOpen, GraduationCap, Video, Rocket, CheckCircle, Loader2, Square, CheckSquare } from "lucide-react";
 
 interface Props {
   therapistId: string;
@@ -14,11 +14,15 @@ export default function CalendarManagement({ therapistId, calBookingsLive: initi
   const [calBookingsLive, setCalBookingsLive] = useState(initialCalBookingsLive ?? false);
   const [enabling, setEnabling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Activation checklist state (one-time confirmation)
+  const [hasReviewedAvailability, setHasReviewedAvailability] = useState(false);
+  const [hasSetRealHours, setHasSetRealHours] = useState(false);
+  
+  const canEnable = hasReviewedAvailability && hasSetRealHours;
 
   const handleGoLive = async () => {
-    if (!confirm('Hast du deine Verfügbarkeit in Cal.com eingerichtet? Mit diesem Schritt werden deine Terminarten für Buchungen freigeschaltet.')) {
-      return;
-    }
+    if (!canEnable) return;
     
     setEnabling(true);
     setError(null);
@@ -77,21 +81,7 @@ export default function CalendarManagement({ therapistId, calBookingsLive: initi
               </Button>
             </a>
             
-            {!calBookingsLive ? (
-              <Button 
-                size="lg"
-                onClick={handleGoLive}
-                disabled={enabling}
-                className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all duration-200"
-              >
-                {enabling ? (
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                ) : (
-                  <Rocket className="h-5 w-5 mr-2" />
-                )}
-                {enabling ? 'Wird aktiviert...' : 'Buchungen freischalten'}
-              </Button>
-            ) : (
+            {calBookingsLive && (
               <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg">
                 <CheckCircle className="h-5 w-5" />
                 <span className="font-medium">Buchungen aktiv</span>
@@ -103,31 +93,99 @@ export default function CalendarManagement({ therapistId, calBookingsLive: initi
             <p className="mt-3 text-sm text-red-600">{error}</p>
           )}
           
-          {/* Pre-flight Checklist - only show when not yet enabled */}
+          {/* Activation Checklist - only show when not yet enabled */}
           {!calBookingsLive && (
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-3 flex items-center gap-2">
-                <CheckCircle className="h-5 w-5" />
-                Bevor du &bdquo;Buchungen freischalten&ldquo; klickst:
+            <div className="mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+              <h4 className="font-semibold text-gray-900 mb-4">
+                Freischaltung deiner Online-Buchung
               </h4>
-              <ol className="space-y-2 text-sm text-blue-800">
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-blue-600 shrink-0">1.</span>
-                  <span><strong>Bei Cal.com einloggen</strong> mit deinen Zugangsdaten aus der Willkommens-E-Mail</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-blue-600 shrink-0">2.</span>
-                  <span><strong>Verfügbarkeit einrichten</strong> → Gehe zu &bdquo;Availability&ldquo; / &bdquo;Verfügbarkeit&ldquo; und passe deine Zeiten an</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-blue-600 shrink-0">3.</span>
-                  <span><strong>Zurückkommen und freischalten</strong> → Klicke dann hier auf &bdquo;Buchungen freischalten&ldquo;</span>
-                </li>
-              </ol>
-              <p className="mt-3 text-xs text-blue-700">
-                💡 Die Terminarten (Kennenlerngespräch &amp; Therapiesitzung) sind bereits für dich vorbereitet – 
-                du musst nur noch deine verfügbaren Zeiten festlegen.
+              
+              <p className="text-sm text-gray-600 mb-4">
+                Bitte bestätige, dass du deine Verfügbarkeit in Cal.com eingerichtet hast:
               </p>
+              
+              {/* Checkbox 1 */}
+              <button
+                type="button"
+                onClick={() => setHasReviewedAvailability(!hasReviewedAvailability)}
+                className={`w-full flex items-start gap-3 p-3 rounded-lg border transition-all duration-200 mb-3 text-left ${
+                  hasReviewedAvailability 
+                    ? 'bg-emerald-50 border-emerald-300' 
+                    : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
+                }`}
+              >
+                <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                  hasReviewedAvailability 
+                    ? 'bg-emerald-500 border-emerald-500' 
+                    : 'border-gray-300'
+                }`}>
+                  {hasReviewedAvailability && (
+                    <CheckCircle className="h-3.5 w-3.5 text-white" />
+                  )}
+                </div>
+                <div>
+                  <span className={`font-medium ${hasReviewedAvailability ? 'text-emerald-800' : 'text-gray-900'}`}>
+                    Ich habe meine Verfügbarkeit in Cal.com überprüft
+                  </span>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Eingeloggt und den Bereich &bdquo;Availability&ldquo; angeschaut
+                  </p>
+                </div>
+              </button>
+              
+              {/* Checkbox 2 */}
+              <button
+                type="button"
+                onClick={() => setHasSetRealHours(!hasSetRealHours)}
+                className={`w-full flex items-start gap-3 p-3 rounded-lg border transition-all duration-200 mb-4 text-left ${
+                  hasSetRealHours 
+                    ? 'bg-emerald-50 border-emerald-300' 
+                    : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
+                }`}
+              >
+                <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                  hasSetRealHours 
+                    ? 'bg-emerald-500 border-emerald-500' 
+                    : 'border-gray-300'
+                }`}>
+                  {hasSetRealHours && (
+                    <CheckCircle className="h-3.5 w-3.5 text-white" />
+                  )}
+                </div>
+                <div>
+                  <span className={`font-medium ${hasSetRealHours ? 'text-emerald-800' : 'text-gray-900'}`}>
+                    Ich habe meine tatsächlichen Arbeitszeiten eingetragen
+                  </span>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Nicht nur die Beispielzeiten – sondern wann ich wirklich verfügbar bin
+                  </p>
+                </div>
+              </button>
+              
+              {/* Enable Button */}
+              <Button 
+                size="lg"
+                onClick={handleGoLive}
+                disabled={!canEnable || enabling}
+                className={`w-full transition-all duration-200 ${
+                  canEnable 
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg' 
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {enabling ? (
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                ) : (
+                  <Rocket className="h-5 w-5 mr-2" />
+                )}
+                {enabling ? 'Wird aktiviert...' : 'Buchungen freischalten'}
+              </Button>
+              
+              {!canEnable && (
+                <p className="text-xs text-gray-500 text-center mt-2">
+                  Bitte bestätige beide Punkte, um fortzufahren
+                </p>
+              )}
             </div>
           )}
           

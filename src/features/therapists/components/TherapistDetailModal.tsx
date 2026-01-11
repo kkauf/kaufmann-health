@@ -591,37 +591,41 @@ export function TherapistDetailModal({
               </div>
             )}
 
-            {(profile?.who_comes_to_me || profile?.session_focus || profile?.first_session || profile?.about_me) && (
-              <div className="border-b pb-6">
-                <h3 className="mb-3 text-lg font-semibold text-gray-900">Profil</h3>
-                <div className="space-y-5">
-                  {profile?.who_comes_to_me && (
-                    <div>
-                      <h4 className="text-sm font-semibold text-gray-900">Zu mir kommen Menschen, die</h4>
-                      <p className="mt-1 text-sm text-gray-700 break-words">{profile.who_comes_to_me}</p>
-                    </div>
-                  )}
-                  {profile?.session_focus && (
-                    <div>
-                      <h4 className="text-sm font-semibold text-gray-900">In unserer Arbeit</h4>
-                      <p className="mt-1 text-sm text-gray-700 break-words">{profile.session_focus}</p>
-                    </div>
-                  )}
-                  {profile?.first_session && (
-                    <div>
-                      <h4 className="text-sm font-semibold text-gray-900">Das erste Gespräch</h4>
-                      <p className="mt-1 text-sm text-gray-700 break-words">{profile.first_session}</p>
-                    </div>
-                  )}
-                  {profile?.about_me && (
-                    <div>
-                      <h4 className="text-sm font-semibold text-gray-900">Über mich</h4>
-                      <p className="mt-1 text-sm text-gray-700 break-words">{profile.about_me}</p>
-                    </div>
-                  )}
+            {(profile?.who_comes_to_me || profile?.session_focus || profile?.first_session || profile?.about_me) && (() => {
+              // Check if therapist offers German - if not, use English labels
+              const offersGerman = languages.some(l => l === 'Deutsch') || languages.length === 0;
+              return (
+                <div className="border-b pb-6">
+                  <h3 className="mb-3 text-lg font-semibold text-gray-900">{offersGerman ? 'Profil' : 'Profile'}</h3>
+                  <div className="space-y-5">
+                    {profile?.who_comes_to_me && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-900">{offersGerman ? 'Zu mir kommen Menschen, die' : 'People who come to me'}</h4>
+                        <p className="mt-1 text-sm text-gray-700 break-words">{profile.who_comes_to_me}</p>
+                      </div>
+                    )}
+                    {profile?.session_focus && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-900">{offersGerman ? 'In unserer Arbeit' : 'In our work together'}</h4>
+                        <p className="mt-1 text-sm text-gray-700 break-words">{profile.session_focus}</p>
+                      </div>
+                    )}
+                    {profile?.first_session && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-900">{offersGerman ? 'Das erste Gespräch' : 'The first session'}</h4>
+                        <p className="mt-1 text-sm text-gray-700 break-words">{profile.first_session}</p>
+                      </div>
+                    )}
+                    {profile?.about_me && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-900">{offersGerman ? 'Über mich' : 'About me'}</h4>
+                        <p className="mt-1 text-sm text-gray-700 break-words">{profile.about_me}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Approach text */}
             {(showLegacyApproachText || therapist.typical_rate != null) && (

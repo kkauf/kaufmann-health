@@ -370,11 +370,13 @@ export function TherapistCard({
           {/* Profile text preview - prefer new structured fields, fallback to legacy */}
           {(() => {
             const profile = therapist.metadata?.profile;
+            // Check if therapist offers German - if not, use English labels
+            const offersGerman = therapist.languages?.some(l => l === 'Deutsch') ?? true;
             // Prefer who_comes_to_me with prefix for context
             if (profile?.who_comes_to_me) {
               return (
                 <p className="mb-4 line-clamp-3 text-sm text-gray-700">
-                  <span className="font-medium">Zu mir kommen Menschen, die </span>
+                  <span className="font-medium">{offersGerman ? 'Zu mir kommen Menschen, die ' : 'People who come to me '}</span>
                   {profile.who_comes_to_me}
                 </p>
               );
