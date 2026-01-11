@@ -52,6 +52,7 @@ interface CalEventType {
   slug: string;
   title: string;
   length: number; // minutes
+  slotInterval: number | null; // minutes between slots (null = use length)
   userId: number;
 }
 
@@ -90,7 +91,7 @@ async function getCalUserId(username: string): Promise<number | null> {
 async function getEventType(userId: number, slug: string): Promise<CalEventType | null> {
   const db = getPool();
   const result = await db.query<CalEventType>(
-    `SELECT id, slug, title, length, "userId" 
+    `SELECT id, slug, title, length, "slotInterval", "userId" 
      FROM "EventType" 
      WHERE "userId" = $1 AND slug = $2 
      LIMIT 1`,
@@ -168,6 +169,7 @@ function generateSlots(
   availability: CalAvailability[],
   bookings: CalBooking[],
   eventLength: number,
+  slotInterval: number, // spacing between slots (may differ from eventLength)
   startDate: Date,
   endDate: Date,
   timeZone: string
@@ -196,14 +198,14 @@ function generateSlots(
       const dayEnd = new Date(current);
       dayEnd.setHours(endParsed.hours, endParsed.minutes, 0, 0);
       
-      // Generate slots at event length intervals
+      // Generate slots at slotInterval spacing
       let slotStart = new Date(dayStart);
       while (slotStart.getTime() + eventLength * 60 * 1000 <= dayEnd.getTime()) {
         const slotEnd = new Date(slotStart.getTime() + eventLength * 60 * 1000);
         
         // Skip if in the past
         if (slotStart < minBookingTime) {
-          slotStart = new Date(slotStart.getTime() + eventLength * 60 * 1000);
+          slotStart = new Date(slotStart.getTime() + slotInterval * 60 * 1000);
           continue;
         }
         
@@ -227,7 +229,7 @@ function generateSlots(
           });
         }
         
-        slotStart = new Date(slotStart.getTime() + eventLength * 60 * 1000);
+        slotStart = new Date(slotStart.getTime() + slotInterval * 60 * 1000);
       }
     }
     
@@ -277,11 +279,13 @@ export async function fetchCalSlotsFromDb(
     // Get existing bookings
     const bookings = await getBookings(eventType.id, startDate, endDate);
     
-    // Generate available slots
+    // Generate available slots (use slotInterval for spacing, fallback to length)
+    const slotInterval = eventType.slotInterval ?? eventType.length;
     const slots = generateSlots(
       availability,
       bookings,
       eventType.length,
+      slotInterval,
       startDate,
       endDate,
       timeZone
