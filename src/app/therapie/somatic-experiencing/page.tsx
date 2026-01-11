@@ -338,7 +338,6 @@ export default async function SomaticExperiencingPage() {
             showViewAllButton={true}
             viewAllButtonText="Alle SE-Therapeut:innen mit Terminen"
             viewAllButtonHref={`/therapeuten${modalityConfig.directoryFilterParams}`}
-            showBookingCta={true}
           />
         </section>
 

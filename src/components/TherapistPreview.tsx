@@ -25,8 +25,13 @@ export type Therapist = {
       who_comes_to_me?: string;
       session_focus?: string;
       about_me?: string;
+      practice_address?: string;
     };
   };
+  // Cal.com integration fields
+  cal_username?: string | null;
+  cal_enabled?: boolean | null;
+  cal_bookings_live?: boolean | null;
   // Admin-only optional fields
   email?: string | null;
   phone?: string | null;

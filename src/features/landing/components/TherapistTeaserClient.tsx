@@ -32,20 +32,9 @@ export function TherapistTeaserClient({
   const [scrollTarget, setScrollTarget] = useState<string | undefined>(undefined);
 
   const handleViewDetails = (therapist: Therapist, modalityId?: string) => {
-    // Convert to TherapistData format for the modal
-    const therapistData: TherapistData = {
-      id: therapist.id,
-      first_name: therapist.first_name,
-      last_name: therapist.last_name,
-      city: therapist.city,
-      modalities: therapist.modalities,
-      schwerpunkte: therapist.schwerpunkte || [],
-      accepting_new: therapist.accepting_new,
-      photo_url: therapist.photo_url,
-      approach_text: therapist.approach_text,
-      session_preferences: [],
-      metadata: undefined,
-    };
+    // Cast to TherapistData - Therapist type includes all required fields
+    // The landing lib fetches complete data including cal_username, cal_enabled, etc.
+    const therapistData = therapist as unknown as TherapistData;
     setScrollTarget(modalityId);
     setSelectedTherapist(therapistData);
   };

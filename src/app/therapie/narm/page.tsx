@@ -323,7 +323,6 @@ export default async function NarmPage() {
             showViewAllButton={true}
             viewAllButtonText="Alle NARM-Therapeut:innen mit Terminen"
             viewAllButtonHref={`/therapeuten${modalityConfig.directoryFilterParams}`}
-            showBookingCta={true}
           />
         </section>
 

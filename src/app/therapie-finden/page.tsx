@@ -21,8 +21,13 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }): Promise<Metadata> {
   const params = await searchParams;
-  const title = 'Kaufmann Health - Körperpsychotherapie';
-  const description = 'Sorgfältig ausgewählte Therapeut:innen für dich. Online oder vor Ort in Berlin. Ohne Wartezeit.';
+  const isOnlineMode = params?.mode === 'online';
+  const title = isOnlineMode 
+    ? 'Kaufmann Health - Online Körperpsychotherapie' 
+    : 'Kaufmann Health - Körperpsychotherapie';
+  const description = isOnlineMode
+    ? 'Sorgfältig ausgewählte Therapeut:innen für Online-Therapie. Deutschlandweit. Ohne Wartezeit.'
+    : 'Sorgfältig ausgewählte Therapeut:innen für dich. Online oder vor Ort in Berlin. Ohne Wartezeit.';
   const v = (params?.v as string) || undefined;
   return buildLandingMetadata({
     baseUrl: baseUrl,
@@ -35,11 +40,16 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 
 export default async function TherapieFindenPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const params = await searchParams;
+  // Test 5: Online mode for online-only campaigns
+  const isOnlineMode = params?.mode === 'online';
   // Test 4: Read variant from URL params (from Google Ads)
   // If no variant param, FlowVariantInit will randomize client-side and update URL
   const rawVariant = params?.variant || params?.v;
   const variant = typeof rawVariant === 'string' ? rawVariant : 'concierge';
-  const fragebogenHref = `/fragebogen?variant=${encodeURIComponent(variant)}`;
+  // Pass mode=online to fragebogen for online-only flow
+  const fragebogenHref = isOnlineMode 
+    ? `/fragebogen?variant=${encodeURIComponent(variant)}&mode=online`
+    : `/fragebogen?variant=${encodeURIComponent(variant)}`;
   
   // Test 4: Keyword-echo for QS optimization
   // Priority: ?kw={keyword} (ValueTrack) > ?adgroup= > page defaults
@@ -49,13 +59,23 @@ export default async function TherapieFindenPage({ searchParams }: { searchParam
   const landingCopy = getLandingPageCopy(keyword, adgroup);
   
   // Default copy (used when no keyword or adgroup param)
-  const defaultTitle = 'Traumata lösen sich nicht von Reden allein.';
-  const defaultValueProps = [
-    '✓ Handverlesene Therapeut:innen',
-    '✓ Ohne Warteliste',
-    '✓ Körperpsychotherapie Berlin',
-    '✓ Berlin & Online · 80€–120€',
-  ];
+  // Test 5: Online mode uses different copy
+  const defaultTitle = isOnlineMode 
+    ? 'Online Körperpsychotherapie — deutschlandweit.'
+    : 'Traumata lösen sich nicht von Reden allein.';
+  const defaultValueProps = isOnlineMode 
+    ? [
+      '✓ Handverlesene Therapeut:innen',
+      '✓ Ohne Warteliste',
+      '✓ Online-Therapie von zuhause',
+      '✓ Deutschlandweit · 80€–120€',
+    ]
+    : [
+      '✓ Handverlesene Therapeut:innen',
+      '✓ Ohne Warteliste',
+      '✓ Körperpsychotherapie Berlin',
+      '✓ Berlin & Online · 80€–120€',
+    ];
   
   // Use keyword/adgroup copy if available, otherwise defaults
   const heroTitle = landingCopy?.title ?? defaultTitle;
@@ -113,7 +133,9 @@ export default async function TherapieFindenPage({ searchParams }: { searchParam
             </p>
 
             <p className="mt-5 text-base sm:text-lg leading-relaxed text-gray-700">
-              Hier findest du Therapeut:innen, die verstehen, was du durchmachst — sorgfältig ausgewählt für deine Situation. Online oder vor Ort. Ohne Wartezeit. Ohne Eintrag in deine Krankenakte.
+              {isOnlineMode 
+                ? 'Hier findest du Therapeut:innen, die verstehen, was du durchmachst — sorgfältig ausgewählt für deine Situation. Online von zuhause. Ohne Wartezeit. Ohne Eintrag in deine Krankenakte.'
+                : 'Hier findest du Therapeut:innen, die verstehen, was du durchmachst — sorgfältig ausgewählt für deine Situation. Online oder vor Ort. Ohne Wartezeit. Ohne Eintrag in deine Krankenakte.'}
             </p>
 
             {/* CTA area */}
@@ -225,7 +247,9 @@ export default async function TherapieFindenPage({ searchParams }: { searchParam
 
         <div className="text-center">
           <h2 id="approaches-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
-            Körpertherapie Berlin: Was somatische Ansätze erreichen
+            {isOnlineMode 
+              ? 'Online Körpertherapie: Was somatische Ansätze erreichen'
+              : 'Körpertherapie Berlin: Was somatische Ansätze erreichen'}
           </h2>
           <p className="mt-4 text-base sm:text-lg leading-relaxed text-gray-700 max-w-2xl mx-auto">
             Körperpsychotherapie & Körperorientierte Therapie wirken dort, wo kognitive Methoden an Grenzen stoßen.
@@ -408,7 +432,7 @@ export default async function TherapieFindenPage({ searchParams }: { searchParam
         />
         <div className="mt-8 sm:mt-10 text-center">
           <CtaLink
-            href="/therapeuten"
+            href={isOnlineMode ? '/therapeuten?format=online' : '/therapeuten'}
             eventType="cta_click"
             eventId="therapie-finden-therapist-teaser-view-all"
             data-cta="view-all-therapists"

@@ -94,6 +94,9 @@ export default function SignupWizard() {
   const isConcierge = variant === 'concierge';
   const _isMarketplace = variant === 'marketplace'; // Kept for potential future use
   const isSelfService = variant === 'self-service';
+  
+  // Test 5: Online mode - skips location step and pre-selects online
+  const isOnlineMode = searchParams.get('mode') === 'online';
   // Test 4: Variant-aware step routing
   // - Concierge: uses open text field (step 2) for manual curation
   // - Self-Service: uses Schwerpunkte selector (step 2.5) for auto-filtering
@@ -246,6 +249,8 @@ export default function SignupWizard() {
       }
       case 4: {
         // Step 4: Location (session_preference required, city required if in_person)
+        // Test 5: Online mode skips this step entirely
+        if (isOnlineMode) return [];
         const miss: string[] = [];
         const hasCity = !!(d.city && d.city.trim());
         const pref = d.session_preference;
