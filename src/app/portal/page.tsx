@@ -25,13 +25,14 @@ type TherapistRow = {
   typical_rate: number | null;
   modalities: string[] | null;
   schwerpunkte: string[] | null;
+  languages: string[] | null;
   metadata: Record<string, unknown> | null;
 };
 
 async function getTherapistData(therapistId: string): Promise<TherapistRow | null> {
   const { data, error } = await supabaseServer
     .from('therapists')
-    .select('id, first_name, last_name, email, photo_url, city, accepting_new, session_preferences, typical_rate, modalities, schwerpunkte, metadata')
+    .select('id, first_name, last_name, email, photo_url, city, accepting_new, session_preferences, typical_rate, modalities, schwerpunkte, languages, metadata')
     .eq('id', therapistId)
     .eq('status', 'verified')
     .single();
@@ -144,6 +145,7 @@ export default async function PortalPage({
     practice_city: practiceCity,
     accepting_new: therapist.accepting_new ?? true,
     city: therapist.city || '',
+    languages: Array.isArray(therapist.languages) ? therapist.languages : ['Deutsch'],
   };
 
   const displayName = [therapist.first_name, therapist.last_name].filter(Boolean).join(' ') || therapist.email;

@@ -37,14 +37,14 @@ function createTherapist(overrides: Partial<TherapistRowForMatch> & { id: string
 function rankForMatches(
   therapists: TherapistRowForMatch[],
   patient: PatientMeta,
-  slotsMap: Map<string, { slots7: number; slots14: number; timeMatch: boolean }>
+  slotsMap: Map<string, { slots7: number; slots14: number }>
 ): Array<{ id: string; totalScore: number; platformScore: number; matchScore: number }> {
   const scored = therapists
     .filter(t => isEligible(t, patient))
     .map(t => {
-      const slots = slotsMap.get(t.id) || { slots7: 0, slots14: 0, timeMatch: false };
+      const slots = slotsMap.get(t.id) || { slots7: 0, slots14: 0 };
       const platformScore = calculatePlatformScore(t, slots.slots7, slots.slots14);
-      const matchScore = calculateMatchScore(t, patient, slots.timeMatch);
+      const matchScore = calculateMatchScore(t, patient);
       const totalScore = calculateTotalScore(matchScore, platformScore);
       return { id: t.id, totalScore, platformScore, matchScore };
     })
@@ -167,8 +167,8 @@ describe('Match View Ranking (Total Score = Match × 1.5 + Platform)', () => {
     ];
 
     const slotsMap = new Map([
-      ['no-schwerpunkte-match', { slots7: 3, slots14: 5, timeMatch: true }],
-      ['schwerpunkte-match', { slots7: 3, slots14: 5, timeMatch: true }],
+      ['no-schwerpunkte-match', { slots7: 3, slots14: 5 }],
+      ['schwerpunkte-match', { slots7: 3, slots14: 5 }],
     ]);
 
     const ranked = rankForMatches(therapists, patient, slotsMap);
@@ -195,8 +195,8 @@ describe('Match View Ranking (Total Score = Match × 1.5 + Platform)', () => {
     ];
 
     const slotsMap = new Map([
-      ['online-only', { slots7: 3, slots14: 5, timeMatch: true }],
-      ['in-person-berlin', { slots7: 3, slots14: 5, timeMatch: true }],
+      ['online-only', { slots7: 3, slots14: 5 }],
+      ['in-person-berlin', { slots7: 3, slots14: 5 }],
     ]);
 
     const ranked = rankForMatches(therapists, patient, slotsMap);
@@ -224,22 +224,22 @@ describe('Match View Ranking (Total Score = Match × 1.5 + Platform)', () => {
     ];
 
     const slotsMap = new Map([
-      ['high-platform-low-match', { slots7: 5, slots14: 8, timeMatch: true }],
-      ['low-platform-high-match', { slots7: 0, slots14: 0, timeMatch: true }],
+      ['high-platform-low-match', { slots7: 5, slots14: 8 }],
+      ['low-platform-high-match', { slots7: 0, slots14: 0 }],
     ]);
 
     const ranked = rankForMatches(therapists, patient, slotsMap);
     
-    // high-platform: gender(+10) + modality(+15) + time(+15) + in-person-city(+20) = 60 match
+    // high-platform: gender(+10) + modality(+15) + in-person-city(+20) = 45 match
     //   Platform = 30 (Cal.com) + 25 (5 slots) + 15 (profile) = 70
-    //   Total = 60*1.5 + 70 = 160
-    // low-platform: schwerpunkte(+30) + gender(+10) + modality(+15) + time(+15) + in-person-city(+20) = 90 match
+    //   Total = 45*1.5 + 70 = 137.5
+    // low-platform: schwerpunkte(+30) + gender(+10) + modality(+15) + in-person-city(+20) = 75 match
     //   Platform = 0 + 0 + 15 (profile) = 15
-    //   Total = 90*1.5 + 15 = 150
-    // high-platform wins with 160 > 150
+    //   Total = 75*1.5 + 15 = 127.5
+    // high-platform wins with 137.5 > 127.5
     expect(ranked[0].id).toBe('high-platform-low-match');
-    expect(ranked[0].totalScore).toBe(160);
-    expect(ranked[1].totalScore).toBe(150);
+    expect(ranked[0].totalScore).toBe(137.5);
+    expect(ranked[1].totalScore).toBe(127.5);
   });
 
   it('excludes therapists that fail eligibility filters', () => {
@@ -259,9 +259,9 @@ describe('Match View Ranking (Total Score = Match × 1.5 + Platform)', () => {
     ];
 
     const slotsMap = new Map([
-      ['not-accepting', { slots7: 5, slots14: 8, timeMatch: true }],
-      ['wrong-gender', { slots7: 5, slots14: 8, timeMatch: true }],
-      ['eligible', { slots7: 1, slots14: 2, timeMatch: true }],
+      ['not-accepting', { slots7: 5, slots14: 8 }],
+      ['wrong-gender', { slots7: 5, slots14: 8 }],
+      ['eligible', { slots7: 1, slots14: 2 }],
     ]);
 
     const ranked = rankForMatches(therapists, patient, slotsMap);
@@ -299,8 +299,8 @@ describe('Real-world ranking scenarios', () => {
     ];
 
     const slotsMap = new Map([
-      ['levent', { slots7: 3, slots14: 5, timeMatch: true }],
-      ['luise', { slots7: 3, slots14: 5, timeMatch: true }],
+      ['levent', { slots7: 3, slots14: 5 }],
+      ['luise', { slots7: 3, slots14: 5 }],
     ]);
 
     const ranked = rankForMatches(therapists, patient, slotsMap);
@@ -334,8 +334,8 @@ describe('Real-world ranking scenarios', () => {
     ];
 
     const slotsMap = new Map([
-      ['sandra-online-only', { slots7: 5, slots14: 8, timeMatch: true }],
-      ['berlin-in-person', { slots7: 2, slots14: 3, timeMatch: true }],
+      ['sandra-online-only', { slots7: 5, slots14: 8 }],
+      ['berlin-in-person', { slots7: 2, slots14: 3 }],
     ]);
 
     const ranked = rankForMatches(therapists, patient, slotsMap);

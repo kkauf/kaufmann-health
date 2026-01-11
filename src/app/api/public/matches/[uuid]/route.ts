@@ -105,7 +105,7 @@ export async function GET(req: Request) {
       await logError('api.public.matches.get', e, { stage: 'create_session', uuid, patient_id: patientId });
     }
 
-    type PatientRow = { name?: string | null; email?: string | null; phone_number?: string | null; status?: string | null; metadata?: { issue?: string; notes?: string; additional_info?: string; city?: string; session_preference?: 'online'|'in_person'; session_preferences?: ('online'|'in_person')[]; specializations?: string[]; schwerpunkte?: string[]; gender_preference?: 'male'|'female'|'no_preference'; start_timing?: string; modality_matters?: boolean; time_slots?: string[] } | null };
+    type PatientRow = { name?: string | null; email?: string | null; phone_number?: string | null; status?: string | null; metadata?: { issue?: string; notes?: string; additional_info?: string; city?: string; session_preference?: 'online'|'in_person'; session_preferences?: ('online'|'in_person')[]; specializations?: string[]; schwerpunkte?: string[]; gender_preference?: 'male'|'female'|'no_preference'; start_timing?: string; modality_matters?: boolean } | null };
     const p = (patient || null) as PatientRow | null;
     const patientName = (p?.name || '') || null;
     const patientStatus = (p?.status || '') || null;
@@ -113,7 +113,6 @@ export async function GET(req: Request) {
     const sessionPreference = p?.metadata?.session_preference ?? null;
     const startTiming = typeof p?.metadata?.start_timing === 'string' ? p!.metadata!.start_timing : undefined;
     const modalityMatters = typeof p?.metadata?.modality_matters === 'boolean' ? p!.metadata!.modality_matters : undefined;
-    const timeSlots = Array.isArray(p?.metadata?.time_slots) ? (p!.metadata!.time_slots as string[]) : [];
     const patientMeta: PatientMeta = {
       city: p?.metadata?.city,
       session_preference: p?.metadata?.session_preference,
@@ -189,29 +188,6 @@ export async function GET(req: Request) {
       }
     }
 
-    // Helper: check if slots match patient's time preferences
-    function slotMatchesPreferences(availability: { date_iso: string; time_label: string; format: 'online' | 'in_person' }[]): boolean {
-      const prefs = new Set((timeSlots || []).map((s) => String(s)));
-      if (prefs.size === 0 || prefs.has('Bin flexibel')) return true;
-      const wantMorning = Array.from(prefs).some((s) => s.toLowerCase().includes('morg'));
-      const wantAfternoon = Array.from(prefs).some((s) => s.toLowerCase().includes('nachmitt'));
-      const wantEvening = Array.from(prefs).some((s) => s.toLowerCase().includes('abend'));
-      const wantWeekend = Array.from(prefs).some((s) => s.toLowerCase().includes('wochen'));
-      for (const a of availability) {
-        const h = parseInt(a.time_label.slice(0, 2), 10);
-        const d = new Date(a.date_iso + 'T00:00:00');
-        const dow = getBerlinDayIndex(d);
-        const isMorning = h >= 8 && h < 12;
-        const isAfternoon = h >= 12 && h < 17;
-        const isEvening = h >= 17 && h < 21;
-        const isWeekend = dow === 0 || dow === 6;
-        if ((wantMorning && isMorning) || (wantAfternoon && isAfternoon) || (wantEvening && isEvening) || (wantWeekend && isWeekend)) {
-          return true;
-        }
-      }
-      return false;
-    }
-
     // Count intake slots within day windows for Platform Score
     function countSlotsInDays(availability: { date_iso: string }[], days: number): number {
       const now = new Date();
@@ -235,13 +211,12 @@ export async function GET(req: Request) {
       
       const mm = computeMismatches(patientMeta, tRow);
       const availability = availabilityMap.get(t.id) || [];
-      const timeOk = slotMatchesPreferences(availability);
       
       // Calculate scores per spec
       const intakeSlots7Days = countSlotsInDays(availability, 7);
       const intakeSlots14Days = countSlotsInDays(availability, 14);
       const platformScore = calculatePlatformScore(tRow, intakeSlots7Days, intakeSlots14Days);
-      const matchScore = calculateMatchScore(tRow, patientMeta, timeOk);
+      const matchScore = calculateMatchScore(tRow, patientMeta);
       const totalScore = calculateTotalScore(matchScore, platformScore);
       
       // "Perfect" = high total score or no mismatches
@@ -370,7 +345,6 @@ export async function GET(req: Request) {
           start_timing: startTiming,
           modality_matters: modalityMatters,
           status: patientStatus,
-          time_slots: timeSlots,
         },
         therapists: list.slice(0, 3),
         metadata: { match_type: matchType },

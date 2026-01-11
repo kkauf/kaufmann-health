@@ -56,6 +56,9 @@ export const TherapistRowSchema = z.object({
   cal_username: z.string().nullable().optional(),
   cal_enabled: z.boolean().nullable().optional(),
   cal_bookings_live: z.boolean().nullable().optional(),
+  languages: z.unknown().transform((v): string[] => 
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+  ),
 }).passthrough(); // Preserve unknown fields from DB to avoid silent data loss
 
 export type TherapistRow = z.infer<typeof TherapistRowSchema>;
@@ -88,6 +91,7 @@ export const TherapistDataSchema = z.object({
   approach_text: z.string(),
   accepting_new: z.boolean(),
   city: z.string(),
+  languages: z.array(z.string()).optional(),
   typical_rate: z.number().nullable().optional(),
   metadata: z.object({
     profile: TherapistProfileSchema.optional(),
@@ -172,7 +176,7 @@ export function parseTherapistRows(data: unknown[]): TherapistRow[] {
 // ============================================================================
 
 export const THERAPIST_SELECT_COLUMNS = 
-  'id, first_name, last_name, city, modalities, schwerpunkte, session_preferences, accepting_new, photo_url, status, metadata, typical_rate, cal_username, cal_enabled, cal_bookings_live';
+  'id, first_name, last_name, city, modalities, schwerpunkte, session_preferences, accepting_new, photo_url, status, metadata, typical_rate, cal_username, cal_enabled, cal_bookings_live, languages';
 
 export const THERAPIST_SELECT_COLUMNS_WITH_GENDER = 
   THERAPIST_SELECT_COLUMNS + ', gender';

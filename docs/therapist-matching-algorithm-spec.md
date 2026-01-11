@@ -1,7 +1,7 @@
 # Therapist Matching & Ranking Algorithm
 
 > **Status:** Approved  
-> **Last Updated:** 2026-01-06  
+> **Last Updated:** 2026-01-11  
 > **Owner:** Konstantin Kaufmann  
 > **Location:** `/docs/algorithms/matching.md`
 
@@ -163,10 +163,11 @@ Measures relevance to a specific patient's preferences. Only calculated when pat
 | +40 max | Schwerpunkte overlap | 1 match = 15, 2 matches = 30, 3+ matches = 40 |
 | +20 | In-person in patient's city | When patient accepts both formats |
 | +15 | Modality overlap | ≥1 shared modality |
-| +15 | Time slot compatibility | Slots match patient's time preferences |
 | +10 | Gender match | When patient specified and therapist matches |
 
-**Maximum Match Score:** 100 points
+**Maximum Match Score:** 85 points
+
+> **Note:** Time slot compatibility scoring was removed (2026-01-11) as it didn't work correctly with Cal.com therapists whose availability is managed externally.
 
 ```typescript
 function calculateMatchScore(therapist: Therapist, patient: PatientPreferences): number {
@@ -194,13 +195,6 @@ function calculateMatchScore(therapist: Therapist, patient: PatientPreferences):
   if (patient.modalities?.length > 0) {
     const modalityOverlap = intersection(therapist.modalities, patient.modalities).length;
     if (modalityOverlap > 0) score += 15;
-  }
-  
-  // Time slot compatibility (15 points)
-  if (patient.time_preferences?.length > 0) {
-    if (hasMatchingTimeSlots(therapist, patient.time_preferences)) {
-      score += 15;
-    }
   }
   
   // Gender match bonus (10 points)
@@ -380,7 +374,7 @@ When no therapist has high Match Score (e.g., no schwerpunkte overlap):
 | Session format | `metadata.session_preferences` | string[] |
 | Gender preference | `metadata.gender_preference` | string |
 | City | `metadata.city` | string |
-| Time preferences | `metadata.time_preferences` | string[] |
+| Language preference | `metadata.language_preference` | string |
 
 ---
 
@@ -532,6 +526,7 @@ Test R3: Platform Score as tiebreaker
 | Date | Author | Changes |
 |------|--------|---------|
 | 2026-01-06 | KK + Claude | Initial specification |
+| 2026-01-11 | KK + Cascade | Removed time_slots (broken for Cal.com), added language filtering |
 
 ---
 

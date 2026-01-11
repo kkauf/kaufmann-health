@@ -44,9 +44,9 @@ export type WizardData = Omit<Screen1Values, 'email'> & Screen1_5Values & Screen
   city?: string;
   online_ok?: boolean;
   session_preference?: 'online' | 'in_person' | 'either';
-  // Step 5: Preferences (gender, time_slots only)
+  language_preference?: 'deutsch' | 'englisch' | 'any';
+  // Step 5: Preferences (gender only)
   gender?: 'Frau' | 'Mann' | 'Keine Präferenz';
-  time_slots?: string[];
   // Step 6: Contact Info
   name: string;
 };
@@ -254,7 +254,7 @@ export default function SignupWizard() {
         return miss;
       }
       case 5: {
-        // Step 5: Preferences (NO REQUIRED fields - gender and time_slots optional)
+        // Step 5: Preferences (NO REQUIRED fields - gender optional)
         return [];
       }
       case 6: {
@@ -891,12 +891,11 @@ export default function SignupWizard() {
           />
         );
       case 5:
-        // Step 5: Preferences (gender + time_slots only, no language)
+        // Step 5: Preferences (gender only)
         return (
           <Screen4
             values={{
               gender: data.gender,
-              time_slots: data.time_slots,
               methods: data.methods, // Keep for compatibility
             }}
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
@@ -1476,7 +1475,6 @@ export default function SignupWizard() {
         city: data.city,
         session_preference: sessionPref,
         gender: backendGender, // Use mapped value
-        time_slots: data.time_slots || [],
         form_session_id: sessionIdRef.current || undefined,
       };
 

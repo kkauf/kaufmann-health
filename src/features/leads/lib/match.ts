@@ -11,7 +11,7 @@ export type PatientMeta = {
   specializations?: string[]; // modalities patient selected
   schwerpunkte?: string[]; // focus area selections
   gender_preference?: 'male' | 'female' | 'no_preference' | 'any';
-  time_preferences?: string[]; // time slot preferences
+  language_preference?: 'deutsch' | 'englisch' | 'any'; // session language preference
 };
 
 export type TherapistRowForMatch = {
@@ -262,8 +262,7 @@ export function calculatePlatformScore(
  */
 export function calculateMatchScore(
   therapist: TherapistRowForMatch,
-  patient: PatientMeta,
-  hasMatchingTimeSlots: boolean
+  patient: PatientMeta
 ): number {
   let score = 0;
   
@@ -313,11 +312,6 @@ export function calculateMatchScore(
     if (hasOverlap) score += 15;
   }
   
-  // Time slot compatibility (15 points)
-  if (hasMatchingTimeSlots) {
-    score += 15;
-  }
-  
   // Gender match bonus (10 points)
   const gp = patient.gender_preference;
   if (gp && gp !== 'any' && gp !== 'no_preference') {
@@ -365,8 +359,8 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
     const specializations = Array.isArray(meta['specializations']) ? (meta['specializations'] as string[]) : undefined;
     const schwerpunkte = Array.isArray(meta['schwerpunkte']) ? (meta['schwerpunkte'] as string[]) : undefined;
     const gender_preference = typeof meta['gender_preference'] === 'string' ? (meta['gender_preference'] as 'male' | 'female' | 'no_preference') : undefined;
-    const time_slots = Array.isArray(meta['time_slots']) ? (meta['time_slots'] as string[]) : [];
-    const pMeta: PatientMeta = { city, session_preference, session_preferences, specializations, schwerpunkte, gender_preference };
+    const language_preference = typeof meta['language_preference'] === 'string' ? (meta['language_preference'] as 'deutsch' | 'englisch' | 'any') : undefined;
+    const pMeta: PatientMeta = { city, session_preference, session_preferences, specializations, schwerpunkte, gender_preference, language_preference };
 
     type TR = { 
       id: string; 
@@ -375,6 +369,7 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
       session_preferences?: unknown; 
       modalities?: unknown; 
       schwerpunkte?: unknown; 
+      languages?: unknown;
       accepting_new?: boolean | null; 
       photo_url?: string | null;
       approach_text?: string | null;
@@ -383,7 +378,7 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
     };
     const { data: trows } = await supabaseServer
       .from('therapists')
-      .select('id, gender, city, session_preferences, modalities, schwerpunkte, accepting_new, photo_url, approach_text, who_comes_to_me, metadata')
+      .select('id, gender, city, session_preferences, modalities, schwerpunkte, languages, accepting_new, photo_url, approach_text, who_comes_to_me, metadata')
       .eq('status', 'verified')
       .limit(5000);
     const therapists = Array.isArray(trows) ? (trows as TR[]) : [];
@@ -425,31 +420,23 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
       return count;
     }
 
-    // Helper: check if therapist has slots matching patient's time preferences
-    function slotMatchesPreferences(therapistId: string): boolean {
-      const prefs = new Set((time_slots || []).map((s) => String(s)));
-      if (prefs.size === 0 || prefs.has('Bin flexibel')) return true;
-      const wantMorning = Array.from(prefs).some((s) => s.toLowerCase().includes('morg'));
-      const wantAfternoon = Array.from(prefs).some((s) => s.toLowerCase().includes('nachmitt'));
-      const wantEvening = Array.from(prefs).some((s) => s.toLowerCase().includes('abend'));
-      const wantWeekend = Array.from(prefs).some((s) => s.toLowerCase().includes('wochen'));
-      const slots = slotsByTid.get(therapistId) || [];
-      const now = new Date();
-      for (let offset = 1; offset <= 21; offset++) {
-        const d = new Date(now.getTime());
-        d.setUTCDate(d.getUTCDate() + offset);
-        const dow = d.getUTCDay();
-        for (const s of slots) {
-          if (Number(s.day_of_week) !== (dow === 0 ? 0 : dow)) continue;
-          const h = parseInt(String(s.time_local || '').slice(0, 2), 10);
-          const isMorning = h >= 8 && h < 12;
-          const isAfternoon = h >= 12 && h < 17;
-          const isEvening = h >= 17 && h < 21;
-          const isWeekend = dow === 0 || dow === 6;
-          if ((wantMorning && isMorning) || (wantAfternoon && isAfternoon) || (wantEvening && isEvening) || (wantWeekend && isWeekend)) return true;
-        }
+    // Helper: check if therapist languages match patient preference
+    function languageMatches(therapistLanguages: unknown, patientPref: 'deutsch' | 'englisch' | 'any' | undefined): boolean {
+      // If patient has no preference or prefers "any", all therapists match
+      if (!patientPref || patientPref === 'any') return true;
+      
+      // Parse therapist languages (stored as JSONB array)
+      const langs = Array.isArray(therapistLanguages) 
+        ? (therapistLanguages as string[]).map(l => l.toLowerCase())
+        : ['deutsch']; // Default to German if no languages set
+      
+      if (patientPref === 'deutsch') {
+        return langs.some(l => l.includes('deutsch'));
       }
-      return false;
+      if (patientPref === 'englisch') {
+        return langs.some(l => l.includes('englisch') || l.includes('english'));
+      }
+      return true;
     }
 
     // Score all therapists using the new algorithm (see /docs/therapist-matching-algorithm-spec.md)
@@ -489,8 +476,7 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
       
       // Calculate scores
       const platformScore = calculatePlatformScore(tRow, intakeSlots7Days, intakeSlots14Days);
-      const timeOk = slotMatchesPreferences(t.id);
-      const matchScore = calculateMatchScore(tRow, pMeta, timeOk);
+      const matchScore = calculateMatchScore(tRow, pMeta);
       const totalScore = calculateTotalScore(matchScore, platformScore);
       
       // Also compute mismatches for tracking/analytics
@@ -509,7 +495,8 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
 
       // Apply eligibility filters (hard filters)
       // But also track fallbacks for "never empty" behavior
-      if (isEligible(tRow, pMeta)) {
+      const langOk = languageMatches(t.languages, language_preference);
+      if (isEligible(tRow, pMeta) && langOk) {
         scored.push(scoredItem);
       } else if (t.accepting_new !== false && tRow.metadata?.hide_from_directory !== true) {
         // Track as fallback: accepting new clients and not hidden, just doesn't match patient preferences

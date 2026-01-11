@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Lock, Target, Eye } from "lucide-react";
+import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Lock, Target, Eye, Globe } from "lucide-react";
 import { TherapistDetailModal } from "@/features/therapists/components/TherapistDetailModal";
 import type { TherapistData } from "@/features/therapists/components/TherapistDirectory";
 import CalendarManagement from "./CalendarManagement";
@@ -36,6 +36,7 @@ type Props = {
     practice_city: string;
     accepting_new: boolean;
     city: string;
+    languages: string[];
   };
 };
 
@@ -164,6 +165,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
   const [practiceCity, setPracticeCity] = useState(initialData.practice_city);
   const [acceptingNew, setAcceptingNew] = useState(initialData.accepting_new);
   const [city, setCity] = useState(initialData.city);
+  const [languages, setLanguages] = useState<string[]>(initialData.languages);
 
   // Combine address fields for SlotsManager
   const practiceAddress = [practiceStreet, practicePostalCode, practiceCity].filter(Boolean).join(', ');
@@ -190,6 +192,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     practiceCity: initialData.practice_city,
     acceptingNew: initialData.accepting_new,
     city: initialData.city,
+    languages: [...initialData.languages],
   });
 
   // Track if form has unsaved changes (compare to baseline, not initialData)
@@ -210,9 +213,10 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     if (practiceCity !== b.practiceCity) return true;
     if (acceptingNew !== b.acceptingNew) return true;
     if (city !== b.city) return true;
+    if (languages.length !== b.languages.length || languages.some((l, i) => l !== b.languages[i])) return true;
     return false;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photoFile, whoComesToMe, sessionFocus, firstSession, aboutMe, schwerpunkte, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city, saveCount]);
+  }, [photoFile, whoComesToMe, sessionFocus, firstSession, aboutMe, schwerpunkte, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city, languages, saveCount]);
 
   // Minimum character count for required text fields
   const MIN_CHARS = 50;
@@ -233,6 +237,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     accepting_new: acceptingNew,
     city: offersInPerson ? practiceCity : city,
     typical_rate: typicalRate ? parseInt(typicalRate, 10) : null,
+    languages: languages.length > 0 ? languages : undefined,
     metadata: {
       profile: {
         who_comes_to_me: whoComesToMe,
@@ -259,6 +264,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     practiceCity,
     city,
     typicalRate,
+    languages,
     whoComesToMe,
     sessionFocus,
     firstSession,
@@ -376,6 +382,9 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
       // Add schwerpunkte
       form.set('schwerpunkte', JSON.stringify(schwerpunkte));
       
+      // Add languages
+      form.set('languages', JSON.stringify(languages));
+      
       form.set('session_preferences', JSON.stringify(sessionPrefs));
       form.set('accepting_new', acceptingNew ? 'true' : 'false');
       // Use practiceCity as city when offering in-person; standalone city field only for online-only therapists
@@ -429,6 +438,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
         practiceCity,
         acceptingNew,
         city,
+        languages: [...languages],
       };
       setSaveCount(c => c + 1); // Trigger hasUnsavedChanges re-evaluation
       setSaved(true);
@@ -796,6 +806,43 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
                   />
                 </div>
               )}
+
+              {/* Languages */}
+              <div className="space-y-3 mb-6">
+                <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-gray-400" />
+                  Sprachen für Sitzungen
+                </Label>
+                <p className="text-xs text-gray-500">Wähle die Sprachen, in denen du Sitzungen anbietest.</p>
+                <div className="flex flex-wrap gap-2">
+                  {['Deutsch', 'Englisch', 'Französisch', 'Spanisch', 'Italienisch', 'Türkisch', 'Russisch', 'Polnisch', 'Arabisch'].map((lang) => {
+                    const isSelected = languages.includes(lang);
+                    return (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setLanguages(languages.filter(l => l !== lang));
+                          } else {
+                            setLanguages([...languages, lang]);
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                          isSelected
+                            ? 'border-violet-400 bg-violet-50 text-violet-700 shadow-sm'
+                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {lang}
+                      </button>
+                    );
+                  })}
+                </div>
+                {languages.length === 0 && (
+                  <p className="text-xs text-amber-600">Bitte wähle mindestens eine Sprache.</p>
+                )}
+              </div>
 
               {/* Typical Rate */}
               <div className="space-y-2">

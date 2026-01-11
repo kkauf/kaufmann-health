@@ -106,6 +106,11 @@ export function mapTherapistRow(
   if (profile.practice_address) cleanProfile.practice_address = profile.practice_address;
   if (profile.qualification) cleanProfile.qualification = profile.qualification;
 
+  // Languages: prefer top-level column, fallback to metadata.profile.languages
+  const languages = Array.isArray(row.languages) && row.languages.length > 0
+    ? row.languages
+    : (profile.languages && profile.languages.length > 0 ? profile.languages : undefined);
+
   const result: TherapistData = {
     id: row.id,
     first_name: String(row.first_name || ''),
@@ -118,6 +123,7 @@ export function mapTherapistRow(
     photo_url: row.photo_url || undefined,
     approach_text,
     typical_rate: row.typical_rate,
+    languages,
     metadata: Object.keys(cleanProfile).length > 0 ? { profile: cleanProfile } : undefined,
     // Cal.com integration
     cal_username: row.cal_username || undefined,

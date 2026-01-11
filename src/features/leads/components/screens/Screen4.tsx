@@ -6,12 +6,10 @@ import { Button } from '@/components/ui/button';
 
 export type Screen4Values = {
   gender?: 'Frau' | 'Mann' | 'Keine Präferenz' | 'Divers/non-binär';
-  time_slots?: string[]; // e.g., 'Morgens (8-12 Uhr)'
   methods?: string[]; // Still here for compatibility, but modality is handled in NewScreen5
 };
 
 const GENDER: NonNullable<Screen4Values['gender']>[] = ['Frau', 'Mann', 'Keine Präferenz'];
-const TIMES = ['Morgens (8-12 Uhr)', 'Nachmittags (12-17 Uhr)', 'Abends (17-21 Uhr)', 'Wochenende', 'Bin flexibel'];
 
 export default function Screen4({
   values,
@@ -26,18 +24,6 @@ export default function Screen4({
   onBack: () => void;
   disabled?: boolean;
 }) {
-  // No required fields anymore - validation always passes
-  function validate() {
-    return true;
-  }
-
-  const toggle = (key: 'time_slots' | 'methods', val: string) => {
-    const set = new Set(values[key] || []);
-    if (set.has(val)) set.delete(val);
-    else set.add(val);
-    onChange({ [key]: Array.from(set) } as Partial<Screen4Values>);
-  };
-
   return (
     <div className="space-y-8">
       <div className="space-y-3">
@@ -61,31 +47,9 @@ export default function Screen4({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <p className="font-medium">Wann hast du Zeit für Termine? (Mehrfachauswahl)</p>
-        <div className="grid gap-2">
-          {TIMES.map((opt) => {
-            const selected = (values.time_slots || []).includes(opt);
-            return (
-              <button
-                key={opt}
-                type="button"
-                className={`h-11 rounded border px-4 text-left ${selected ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
-                disabled={!!disabled}
-                aria-disabled={disabled}
-                onClick={() => toggle('time_slots', opt)}
-              >
-                {opt}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-
       <div className="flex items-center justify-between pt-2">
         <Button variant="secondary" className="h-11" onClick={onBack} disabled={!!disabled} aria-disabled={disabled}>Zurück</Button>
-        <Button className="h-11" onClick={() => validate() && onNext()} disabled={!!disabled} aria-disabled={disabled}>Weiter →</Button>
+        <Button className="h-11" onClick={onNext} disabled={!!disabled} aria-disabled={disabled}>Weiter →</Button>
       </div>
     </div>
   );

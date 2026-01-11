@@ -11,6 +11,8 @@ export type Screen3Values = {
   online_ok?: boolean;
   // Explicit preference selection
   session_preference?: 'online' | 'in_person' | 'either';
+  // Language preference (default: Deutsch only)
+  language_preference?: 'deutsch' | 'englisch' | 'any';
 };
 
 // Currently only active in Berlin
@@ -91,6 +93,29 @@ export default function Screen3({
             </div>
           </div>
         )}
+
+        {/* Language preference */}
+        <div className="space-y-2 pt-4">
+          <p className="font-medium">In welcher Sprache sollen die Sitzungen stattfinden?</p>
+          <div className="grid gap-2">
+            {([
+              { value: 'deutsch', label: 'Deutsch' },
+              { value: 'englisch', label: 'Englisch' },
+              { value: 'any', label: 'Egal' },
+            ] as const).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`h-auto py-2.5 rounded border px-4 text-left ${values.language_preference === opt.value ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300'}`}
+                onClick={() => onChange({ language_preference: opt.value })}
+                disabled={!!disabled}
+                aria-disabled={disabled}
+              >
+                <span className="block font-medium">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="flex items-center justify-between pt-2">

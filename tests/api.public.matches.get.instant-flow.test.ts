@@ -126,7 +126,6 @@ describe('Matches API - Instant Flow Enhancements (EARTH-231)', () => {
 
     expect(res.status).toBe(200);
     expect(result.data.patient.status).toBe('pre_confirmation');
-    expect(Array.isArray(result.data.patient.time_slots)).toBe(true);
     expect(result.data.metadata.match_type).toMatch(/^(exact|partial|none)$/);
     expect(result.data.therapists.length).toBeLessThanOrEqual(3);
   });

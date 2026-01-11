@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, Calendar, MessageCircle, User, ShieldCheck, ChevronRight } from 'lucide-react';
+import { MapPin, Video, Calendar, MessageCircle, User, ShieldCheck, ChevronRight, Globe } from 'lucide-react';
 import type { TherapistData } from './TherapistDirectory';
 import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
@@ -352,6 +352,17 @@ export function TherapistCard({
                     Vor-Ort-Therapie
                   </Badge>
                 )}
+              </div>
+            )}
+            {/* Languages - only show if non-German languages available */}
+            {therapist.languages && therapist.languages.length > 0 && !therapist.languages.every(l => l === 'Deutsch') && (
+              <div className="flex flex-wrap items-center gap-2">
+                {therapist.languages.map((lang) => (
+                  <Badge key={lang} variant="secondary" className="gap-1 bg-violet-50 text-violet-700 hover:bg-violet-100">
+                    <Globe className="h-3 w-3" />
+                    {lang}
+                  </Badge>
+                ))}
               </div>
             )}
           </div>

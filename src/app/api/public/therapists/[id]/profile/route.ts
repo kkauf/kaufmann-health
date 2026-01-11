@@ -99,6 +99,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     let aboutMe: string | undefined;
     // Schwerpunkte (focus areas)
     let schwerpunkte: string[] | undefined;
+    // Languages
+    let languages: string[] | undefined;
 
     // Character limits for profile fields (shared with client config)
     const LIMITS = SERVER_PROFILE_LIMITS;
@@ -134,6 +136,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const am = form.get('about_me');
       // Schwerpunkte
       const spkt = form.get('schwerpunkte');
+      // Languages
+      const lang = form.get('languages');
 
       if (typeof g === 'string' && g.trim()) gender = g.trim();
       if (typeof c === 'string' && c.trim()) city = c.trim();
@@ -183,6 +187,19 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           }
         } catch {
           return safeJson({ data: null, error: 'Invalid schwerpunkte format' }, { status: 400 });
+        }
+      }
+      
+      // Parse languages (sent as JSON array string)
+      if (typeof lang === 'string' && lang.trim()) {
+        try {
+          const parsed = JSON.parse(lang);
+          if (Array.isArray(parsed)) {
+            languages = parsed.filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+          }
+        } catch {
+          // Fallback: treat as comma-separated
+          languages = lang.split(',').map(s => s.trim()).filter(Boolean);
         }
       }
       
@@ -240,6 +257,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const am = body['about_me'];
       // Schwerpunkte
       const spkt = body['schwerpunkte'];
+      // Languages
+      const lang = body['languages'];
       
       if (typeof g === 'string') gender = g;
       if (typeof c === 'string') city = c;
@@ -281,6 +300,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           return safeJson({ data: null, error: 'Invalid schwerpunkte IDs' }, { status: 400 });
         }
         schwerpunkte = validIds;
+      }
+      // Parse languages (JSON path)
+      if (Array.isArray(lang)) {
+        languages = lang.filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
       }
       if (Array.isArray(sp)) {
         sessionPreferences = sp.filter((v): v is string => typeof v === 'string');
@@ -371,6 +394,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (typeof acceptingNew === 'boolean') updates.accepting_new = acceptingNew;
     if (sessionPreferences) updates.session_preferences = sessionPreferences;
     if (schwerpunkte) updates.schwerpunkte = schwerpunkte;
+    if (languages) updates.languages = languages;
     if (typeof typicalRate === 'number') updates.typical_rate = typicalRate;
     if (uploadedPhotoUrl) updates.photo_url = uploadedPhotoUrl;
 
@@ -426,6 +450,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           first_session: Boolean(firstSession),
           about_me: Boolean(aboutMe),
           schwerpunkte: Boolean(schwerpunkte),
+          languages: Boolean(languages),
           profile_photo: Boolean(uploadedPhotoUrl || uploadedProfilePhotoPath),
           session_preferences: Boolean(sessionPreferences),
           typical_rate: Boolean(typicalRate),

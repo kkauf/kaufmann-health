@@ -156,7 +156,7 @@ describe('Match Score', () => {
       schwerpunkte: ['trauma', 'angst', 'depression'],
     };
     // 30 (2 schwerpunkte overlaps)
-    const score = calculateMatchScore(therapist, patient, false);
+    const score = calculateMatchScore(therapist, patient);
     expect(score).toBe(30);
   });
 
@@ -168,7 +168,7 @@ describe('Match Score', () => {
     const patient: PatientMeta = {
       schwerpunkte: ['trauma'],
     };
-    const score = calculateMatchScore(therapist, patient, false);
+    const score = calculateMatchScore(therapist, patient);
     expect(score).toBe(0);
   });
 
@@ -182,7 +182,7 @@ describe('Match Score', () => {
       city: 'Berlin',
       session_preferences: ['online', 'in_person'],
     };
-    const score = calculateMatchScore(therapist, patient, false);
+    const score = calculateMatchScore(therapist, patient);
     expect(score).toBe(20);
   });
 
@@ -196,7 +196,7 @@ describe('Match Score', () => {
       city: 'Berlin',
       session_preferences: ['online', 'in_person'],
     };
-    const score = calculateMatchScore(therapist, patient, false);
+    const score = calculateMatchScore(therapist, patient);
     expect(score).toBe(0);
   });
 
@@ -208,14 +208,7 @@ describe('Match Score', () => {
     const patient: PatientMeta = {
       specializations: ['NARM'],
     };
-    const score = calculateMatchScore(therapist, patient, false);
-    expect(score).toBe(15);
-  });
-
-  it('Time slot compatibility = +15', () => {
-    const therapist: TherapistRowForMatch = { id: '1' };
-    const patient: PatientMeta = {};
-    const score = calculateMatchScore(therapist, patient, true);
+    const score = calculateMatchScore(therapist, patient);
     expect(score).toBe(15);
   });
 
@@ -227,7 +220,7 @@ describe('Match Score', () => {
     const patient: PatientMeta = {
       gender_preference: 'female',
     };
-    const score = calculateMatchScore(therapist, patient, false);
+    const score = calculateMatchScore(therapist, patient);
     expect(score).toBe(10);
   });
 });
