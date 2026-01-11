@@ -100,6 +100,7 @@ export const TherapistDataSchema = z.object({
   // Cal.com integration fields
   cal_username: z.string().nullable().optional(),
   cal_enabled: z.boolean().nullable().optional(),
+  cal_bookings_live: z.boolean().nullable().optional(),
   // Admin-only fields
   gender: z.string().nullable().optional(),
   email: z.string().nullable().optional(),

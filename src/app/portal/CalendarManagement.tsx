@@ -7,11 +7,11 @@ import { Calendar, ExternalLink, BookOpen, GraduationCap, Video, Rocket, CheckCi
 
 interface Props {
   therapistId: string;
-  calEnabled?: boolean;
+  calBookingsLive?: boolean;
 }
 
-export default function CalendarManagement({ therapistId, calEnabled: initialCalEnabled }: Props) {
-  const [calEnabled, setCalEnabled] = useState(initialCalEnabled ?? false);
+export default function CalendarManagement({ therapistId, calBookingsLive: initialCalBookingsLive }: Props) {
+  const [calBookingsLive, setCalBookingsLive] = useState(initialCalBookingsLive ?? false);
   const [enabling, setEnabling] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +33,7 @@ export default function CalendarManagement({ therapistId, calEnabled: initialCal
         throw new Error(data.error || 'Fehler beim Aktivieren');
       }
       
-      setCalEnabled(true);
+      setCalBookingsLive(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unbekannter Fehler');
     } finally {
@@ -77,7 +77,7 @@ export default function CalendarManagement({ therapistId, calEnabled: initialCal
               </Button>
             </a>
             
-            {!calEnabled ? (
+            {!calBookingsLive ? (
               <Button 
                 size="lg"
                 onClick={handleGoLive}
@@ -104,7 +104,7 @@ export default function CalendarManagement({ therapistId, calEnabled: initialCal
           )}
           
           {/* Pre-flight Checklist - only show when not yet enabled */}
-          {!calEnabled && (
+          {!calBookingsLive && (
             <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h4 className="font-medium text-blue-900 mb-3 flex items-center gap-2">
                 <CheckCircle className="h-5 w-5" />
@@ -132,7 +132,7 @@ export default function CalendarManagement({ therapistId, calEnabled: initialCal
           )}
           
           {/* Success state - show after enabling */}
-          {calEnabled && (
+          {calBookingsLive && (
             <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
               <h4 className="font-medium text-green-900 mb-2 flex items-center gap-2">
                 <CheckCircle className="h-5 w-5" />
