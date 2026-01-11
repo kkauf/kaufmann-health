@@ -122,10 +122,19 @@ export async function GET() {
       return { row, availability, platformScore };
     });
 
-    // Sort by Platform Score descending (per spec: directory uses Platform Score only)
-    scoredRows.sort((a, b) => b.platformScore - a.platformScore);
+    // Filter out therapists without capacity:
+    // 1. Must be accepting new patients
+    // 2. Must have at least one availability slot
+    const eligibleRows = scoredRows.filter(({ row, availability }) => {
+      if (row.accepting_new === false) return false;
+      if (availability.length === 0) return false;
+      return true;
+    });
 
-    const therapists = scoredRows.map(({ row, availability }) => {
+    // Sort by Platform Score descending (per spec: directory uses Platform Score only)
+    eligibleRows.sort((a, b) => b.platformScore - a.platformScore);
+
+    const therapists = eligibleRows.map(({ row, availability }) => {
       return mapTherapistRow(row, { availability });
     });
 
