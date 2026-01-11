@@ -105,11 +105,16 @@ export function buildCalBookingUrl(options: CalBookingUrlOptions): string {
 }
 
 /**
- * Check if Cal.com booking is available for a therapist
+ * Check if Cal.com booking is available for a therapist.
+ * Requires:
+ * - cal_enabled: technical flag (part of onboarding)
+ * - cal_username: Cal.com account exists
+ * - cal_bookings_live: therapist has activated their slots (critical flag)
  */
 export function isCalBookingEnabled(therapist: {
   cal_enabled?: boolean | null;
   cal_username?: string | null;
+  cal_bookings_live?: boolean | null;
 }): boolean {
-  return Boolean(therapist.cal_enabled && therapist.cal_username);
+  return Boolean(therapist.cal_enabled && therapist.cal_username && therapist.cal_bookings_live);
 }

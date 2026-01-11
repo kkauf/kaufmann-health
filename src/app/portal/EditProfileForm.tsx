@@ -11,6 +11,7 @@ import { TherapistDetailModal } from "@/features/therapists/components/Therapist
 import type { TherapistData } from "@/features/therapists/components/TherapistDirectory";
 import CalendarManagement from "./CalendarManagement";
 import { SchwerpunkteSelector } from "@/components/SchwerpunkteSelector";
+import { LanguageInput } from "@/components/ui/language-input";
 import { THERAPIST_SCHWERPUNKTE_MIN, THERAPIST_SCHWERPUNKTE_MAX } from "@/lib/schwerpunkte";
 import { PROFILE_LIMITS } from "@/lib/config/profileLimits";
 
@@ -813,32 +814,12 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
                   <Globe className="h-4 w-4 text-gray-400" />
                   Sprachen für Sitzungen
                 </Label>
-                <p className="text-xs text-gray-500">Wähle die Sprachen, in denen du Sitzungen anbietest.</p>
-                <div className="flex flex-wrap gap-2">
-                  {['Deutsch', 'Englisch', 'Französisch', 'Spanisch', 'Italienisch', 'Türkisch', 'Russisch', 'Polnisch', 'Arabisch'].map((lang) => {
-                    const isSelected = languages.includes(lang);
-                    return (
-                      <button
-                        key={lang}
-                        type="button"
-                        onClick={() => {
-                          if (isSelected) {
-                            setLanguages(languages.filter(l => l !== lang));
-                          } else {
-                            setLanguages([...languages, lang]);
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                          isSelected
-                            ? 'border-violet-400 bg-violet-50 text-violet-700 shadow-sm'
-                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        {lang}
-                      </button>
-                    );
-                  })}
-                </div>
+                <p className="text-xs text-gray-500">Tippe, um Sprachen auszuwählen oder eigene hinzuzufügen.</p>
+                <LanguageInput
+                  value={languages}
+                  onChange={setLanguages}
+                  placeholder="Sprache eingeben..."
+                />
                 {languages.length === 0 && (
                   <p className="text-xs text-amber-600">Bitte wähle mindestens eine Sprache.</p>
                 )}

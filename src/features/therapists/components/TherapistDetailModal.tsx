@@ -113,7 +113,8 @@ export function TherapistDetailModal({
 
   const profile = therapist.metadata?.profile;
   const schwerpunkte = Array.isArray(therapist.schwerpunkte) ? therapist.schwerpunkte : [];
-  const languages = profile?.languages || [];
+  // Use top-level languages (from mapper), fallback to profile.languages for backwards compat
+  const languages = therapist.languages || profile?.languages || [];
   const yearsExperience = profile?.years_experience;
   const practiceAddress = (profile?.practice_address || '').toString().trim();
   const hasStructuredProfileContent = Boolean(
