@@ -27,6 +27,7 @@ import {
   CAL_WEBHOOK_SIGNATURE_HEADER,
   type CalWebhookTriggerEvent,
 } from '@/contracts/cal';
+import { warmCacheForTherapist } from '@/lib/cal/slots-cache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -429,14 +430,18 @@ export async function POST(req: Request) {
     const source: string | null = typeof sourceRaw === 'string' ? sourceRaw : null;
     const isTest = Boolean('kh_test' in khMeta ? khMeta.kh_test : false);
     const matchIdFromMeta = 'kh_match_id' in khMeta ? khMeta.kh_match_id : null;
+    const patientIdFromMeta = 'kh_patient_id' in khMeta && typeof khMeta.kh_patient_id === 'string' 
+      ? khMeta.kh_patient_id 
+      : null;
 
     // Look up therapist by cal_username
     const organizerUsername = organizer?.username || null;
     const therapistId = await lookupTherapistId(organizerUsername);
 
-    // Look up patient by attendee email (first attendee)
+    // Look up patient by attendee email, fallback to kh_patient_id from metadata
     const attendeeEmail = attendees?.[0]?.email || null;
-    const patientId = await lookupPatientId(attendeeEmail);
+    const patientIdFromEmail = await lookupPatientId(attendeeEmail);
+    const patientId = patientIdFromEmail || patientIdFromMeta;
 
     // Match ID from metadata
     const matchId = matchIdFromMeta || null;
@@ -491,6 +496,14 @@ export async function POST(req: Request) {
         attendee_email: attendeeEmail ? '***' : null, // redact for privacy
       },
     });
+
+    // Invalidate slots cache for this therapist (fire-and-forget)
+    // This ensures future users see updated availability after this booking
+    if (therapistId && organizerUsername) {
+      void warmCacheForTherapist(therapistId, organizerUsername).catch((err: unknown) => {
+        void logError('api.public.cal.webhook', err, { stage: 'cache_invalidation', therapist_id: therapistId });
+      });
+    }
 
     // Send confirmation emails for new bookings (fire-and-forget)
     // Only for BOOKING_CREATED to avoid duplicate emails on reschedule

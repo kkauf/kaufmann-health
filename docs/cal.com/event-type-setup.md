@@ -94,15 +94,30 @@ https://www.kaufmann-health.de/booking/confirmed?therapist={id}&kind={type}
 
 This shows a branded confirmation page instead of Cal's default.
 
+## Limits Configuration
+
+Under **Event Type** → **Limits**:
+
+| Setting | Intro (15 min) | Full Session (50 min) |
+|---------|----------------|----------------------|
+| Buffer before | **None** | **None** |
+| Buffer after | **None** | **None** |
+| Slot interval | **20 minutes** | **60 minutes** |
+| Minimum notice | 4 hours | 4 hours |
+
+⚠️ **Important**: Do NOT use buffer times. Slot intervals already include transition time:
+- Intro: 15 min meeting + 5 min transition = 20 min slots
+- Full: 50 min meeting + 10 min transition = 60 min slots
+
+Buffer times in Cal.com block the entire next slot, not just the buffer duration. This causes cache mismatches and booking failures.
+
 ## Availability Configuration
 
 Each therapist should configure their availability in Cal.com:
 
 1. Go to **Availability** → **Default Schedule**
 2. Set working hours for each day
-3. Add buffer time between appointments (recommended: 10-15 min)
-4. Set minimum notice (recommended: 24 hours)
-5. Set booking window (recommended: 2-4 weeks ahead)
+3. Set booking window (recommended: 2-4 weeks ahead)
 
 ## Per-Therapist Setup Checklist
 
