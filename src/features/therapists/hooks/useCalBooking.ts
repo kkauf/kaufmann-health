@@ -375,6 +375,10 @@ export function useCalBooking({
         date_iso: selectedSlot.date_iso,
         time_label: selectedSlot.time_label,
         format: 'online',
+        // Include Cal.com slot reference for auto-redirect after email confirmation
+        cal_slot_utc: selectedSlot.time_utc,
+        cal_username: calUsername,
+        cal_booking_kind: bookingKind,
       } : undefined,
     });
 
@@ -382,7 +386,7 @@ export function useCalBooking({
       // Map verification step to booking step
       setStep(result.useMagicLink ? 'email-sent' : 'code');
     }
-  }, [verification, selectedSlot, therapistId, emailRedirectPath]);
+  }, [verification, selectedSlot, therapistId, emailRedirectPath, calUsername, bookingKind]);
 
   // Verify code and redirect using shared hook
   const verifyCode = useCallback(async () => {

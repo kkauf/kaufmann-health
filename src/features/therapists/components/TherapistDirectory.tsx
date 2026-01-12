@@ -122,6 +122,32 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
       const t = (url.searchParams.get('type') || 'booking').toLowerCase();
       const type = t === 'consultation' ? 'consultation' : 'booking';
       const confirm = url.searchParams.get('confirm');
+      const view = url.searchParams.get('view');
+      const kind = url.searchParams.get('kind');
+
+      // Handle Cal.com booking flow return from email confirmation
+      // User selected a Cal slot, verified email, and should now be redirected to Cal.com
+      if (view === 'cal-booking' && tid && confirm === '1') {
+        const th = therapists.find(x => x.id === tid) || null;
+        if (th && th.cal_enabled && th.cal_username) {
+          // Clean URL first
+          url.searchParams.delete('view');
+          url.searchParams.delete('tid');
+          url.searchParams.delete('kind');
+          url.searchParams.delete('confirm');
+          url.searchParams.delete('id');
+          const cleaned = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ''}${url.hash}`;
+          window.history.replaceState({}, '', cleaned);
+
+          // Open the modal in cal-booking mode - useCalBooking will detect verified session
+          // and auto-redirect to Cal.com if a slot was previously selected
+          setInitialModalViewMode('cal-booking');
+          setInitialCalBookingKind(kind === 'full_session' ? 'full_session' : 'intro');
+          setSelectedTherapist(th);
+          return;
+        }
+      }
+
       // If confirm=1 and compose context present, auto-open and show success in ContactModal
       if (confirm === '1' && contact === 'compose' && tid) {
         const th = therapists.find(x => x.id === tid) || null;
@@ -149,6 +175,8 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
         url.searchParams.delete('contact');
         url.searchParams.delete('tid');
         url.searchParams.delete('type');
+        url.searchParams.delete('view');
+        url.searchParams.delete('kind');
         const cleaned = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ''}${url.hash}`;
         window.history.replaceState({}, '', cleaned);
         return;

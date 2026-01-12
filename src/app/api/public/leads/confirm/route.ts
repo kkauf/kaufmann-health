@@ -10,6 +10,7 @@ import { renderBookingTherapistNotification } from '@/lib/email/templates/bookin
 import { renderBookingClientConfirmation } from '@/lib/email/templates/bookingClientConfirmation';
 import { processDraftContact, clearDraftContact } from '@/features/leads/lib/processDraftContact';
 import { LeadConfirmQuery } from '@/contracts/leads';
+import { buildCalBookingUrl } from '@/lib/cal/booking-url';
 
 export const runtime = 'nodejs';
 
@@ -287,6 +288,65 @@ export async function GET(req: Request) {
         const dateIso = typeof draftBooking.date_iso === 'string' ? draftBooking.date_iso : '';
         const timeLabel = typeof draftBooking.time_label === 'string' ? draftBooking.time_label : '';
         const fmt = draftBooking.format === 'in_person' ? 'in_person' : (draftBooking.format === 'online' ? 'online' : null);
+        
+        // Cal.com booking fields
+        const calSlotUtc = typeof draftBooking.cal_slot_utc === 'string' ? draftBooking.cal_slot_utc : null;
+        const calUsername = typeof draftBooking.cal_username === 'string' ? draftBooking.cal_username : null;
+        const calBookingKind = draftBooking.cal_booking_kind === 'full_session' ? 'full_session' : 'intro';
+
+        // If this is a Cal.com booking (has cal_slot_utc), redirect to Cal.com instead of creating KH booking
+        if (calSlotUtc && calUsername && therapistId) {
+          try {
+            await ServerAnalytics.trackEventFromRequest(req, {
+              type: 'cal_redirect_after_confirm',
+              source: 'api.leads.confirm',
+              session_id: sessionIdHeader,
+              props: { therapist_id: therapistId, cal_username: calUsername, booking_kind: calBookingKind },
+            });
+          } catch {}
+
+          // Clear draft_booking since we're redirecting to Cal
+          try {
+            const clearedMeta = { ...(newMetadata || {}) } as Record<string, unknown>;
+            delete clearedMeta['draft_booking'];
+            await supabaseServer
+              .from('people')
+              .update({ metadata: clearedMeta })
+              .eq('id', id);
+          } catch {}
+
+          // Build Cal.com URL with prefill and slot
+          const calUrl = buildCalBookingUrl({
+            calUsername,
+            eventType: calBookingKind,
+            metadata: {
+              kh_therapist_id: therapistId,
+              kh_patient_id: id,
+              kh_booking_kind: calBookingKind,
+              kh_source: 'email_confirm',
+            },
+            prefillName: person.name || undefined,
+            prefillEmail: person.email,
+            redirectBack: true,
+            slot: calSlotUtc,
+          });
+
+          // Create session cookie and redirect to Cal.com
+          try {
+            const token = await createClientSessionToken({
+              patient_id: id,
+              contact_method: 'email',
+              contact_value: person.email.toLowerCase(),
+              name: person.name || undefined,
+            });
+            const cookie = createClientSessionCookie(token);
+            const resp = NextResponse.redirect(calUrl, 302);
+            resp.headers.set('Set-Cookie', cookie);
+            return resp;
+          } catch {
+            return NextResponse.redirect(calUrl, 302);
+          }
+        }
 
         const isKhTest = (() => {
           try {

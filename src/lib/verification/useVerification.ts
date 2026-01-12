@@ -61,6 +61,10 @@ export interface SendCodeOptions {
     date_iso?: string;
     time_label?: string;
     format?: 'online' | 'in_person';
+    // Cal.com booking fields for auto-redirect after email confirmation
+    cal_slot_utc?: string;
+    cal_username?: string;
+    cal_booking_kind?: 'intro' | 'full_session';
   };
   /** Optional campaign attribution headers */
   campaignSource?: string;

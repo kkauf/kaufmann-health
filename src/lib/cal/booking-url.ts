@@ -13,7 +13,7 @@ export type CalBookingMetadata = {
   kh_match_id?: string;
   kh_form_session_id?: string;
   kh_booking_kind?: 'intro' | 'full_session';
-  kh_source?: 'directory' | 'questionnaire';
+  kh_source?: 'directory' | 'questionnaire' | 'email_confirm';
   kh_test?: boolean;
   kh_gclid?: string;
   kh_utm_source?: string;

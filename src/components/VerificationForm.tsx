@@ -170,7 +170,7 @@ export function VerificationForm({
             className={`${onBack ? 'flex-1' : 'w-full'} bg-emerald-600 hover:bg-emerald-700`}
             size="sm"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Code senden'}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Bestätigen'}
           </Button>
         </div>
       </div>
