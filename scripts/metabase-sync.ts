@@ -204,7 +204,7 @@ async function createCard(query: ParsedQuery, databaseId: number): Promise<Metab
   return card;
 }
 
-async function updateCard(cardId: number, query: ParsedQuery): Promise<MetabaseCard> {
+async function updateCard(cardId: number, query: ParsedQuery, databaseId: number): Promise<MetabaseCard> {
   const templateTags = buildTemplateTags(query.sql);
   
   const payload = {
@@ -216,6 +216,7 @@ async function updateCard(cardId: number, query: ParsedQuery): Promise<MetabaseC
         query: query.sql,
         'template-tags': templateTags,
       },
+      database: databaseId,
     },
   };
   
@@ -285,7 +286,7 @@ async function main() {
           if (existing) {
             // Update existing card
             console.log(`🔄 Updating: ${query.name}`);
-            await updateCard(existing.id, query);
+            await updateCard(existing.id, query, databaseId);
             updated++;
           } else {
             // Create new card
