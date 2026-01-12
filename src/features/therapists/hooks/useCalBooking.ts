@@ -27,7 +27,8 @@ interface SessionData {
 type BookingStep = 'slots' | 'verify' | 'code' | 'email-sent' | 'fallback';
 
 // EARTH-262: Timeout configuration
-const SLOTS_FETCH_TIMEOUT_MS = 5000;
+// Increased from 5s to 10s to handle Vercel cold starts + Cal DB pool init
+const SLOTS_FETCH_TIMEOUT_MS = 10000;
 
 interface UseCalBookingOptions {
   therapistId: string;

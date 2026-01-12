@@ -6,7 +6,7 @@ import { sendEmail } from '@/lib/email/client';
 import { renderTherapistApproval } from '@/lib/email/templates/therapistApproval';
 import { renderTherapistRejection } from '@/lib/email/templates/therapistRejection';
 import { BASE_URL } from '@/lib/constants';
-import { provisionCalUser, isCalProvisioningEnabled, type CalProvisionResult } from '@/lib/cal/provision';
+import { provisionCalUser, isCalProvisioningEnabled, getSquareAvatarUrl, type CalProvisionResult } from '@/lib/cal/provision';
 import { AdminTherapistPatchInput } from '@/contracts/admin';
 import { parseRequestBody } from '@/lib/api-utils';
 
@@ -308,7 +308,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       // Fetch therapist details for Cal provisioning
       const { data: therapistForCal } = await supabaseServer
         .from('therapists')
-        .select('first_name, last_name, email, cal_user_id, cal_username, cal_enabled')
+        .select('first_name, last_name, email, photo_url, metadata, cal_user_id, cal_username, cal_enabled')
         .eq('id', id)
         .single();
 
@@ -321,11 +321,18 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       // Only provision if no existing Cal user and email exists
       if (therapistEmail && !existingCalUserId && !hasStoredCalUrl) {
         try {
+          // Extract photo URL and practice address for Cal.com profile
+          const calPhotoUrl = (therapistForCal as { photo_url?: string | null })?.photo_url;
+          const calMeta = (therapistForCal as { metadata?: { profile?: { practice_address?: string } } | null })?.metadata;
+          const calPracticeAddress = calMeta?.profile?.practice_address;
+
           calResult = await provisionCalUser({
             email: therapistEmail,
             firstName: String((therapistForCal as { first_name?: string | null })?.first_name || ''),
             lastName: String((therapistForCal as { last_name?: string | null })?.last_name || ''),
             timeZone: 'Europe/Berlin',
+            avatarUrl: getSquareAvatarUrl(calPhotoUrl),
+            practiceAddress: calPracticeAddress,
           });
 
           // Store Cal.com user info in KH therapists table

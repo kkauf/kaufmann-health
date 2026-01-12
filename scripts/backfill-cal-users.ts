@@ -95,13 +95,14 @@ async function main() {
     console.log(`\nProcessing: ${name} <${t.email}>...`);
 
     try {
-      // Provision Cal.com user
+      // Provision Cal.com user with square-cropped avatar
+      const { getSquareAvatarUrl } = await import('../src/lib/cal/provision');
       const result = await provisionCalUser({
         email: t.email,
         firstName: t.first_name || 'Therapist',
         lastName: t.last_name || '',
         timeZone: 'Europe/Berlin',
-        avatarUrl: t.photo_url || undefined,
+        avatarUrl: getSquareAvatarUrl(t.photo_url),
         practiceAddress: t.metadata?.profile?.practice_address || undefined,
       });
 
