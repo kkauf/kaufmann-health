@@ -13,6 +13,7 @@
     "test:critical": "vitest run --exclude tests/storage.health.test.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "smoke:cal": "SMOKE_TEST_URL=${SMOKE_TEST_URL:-https://www.kaufmann-health.de} playwright test tests/e2e/cal-slots-smoke.spec.ts --project=chromium",
     "reupload:leads": "tsx google_ads_api_scripts/reupload-leads.ts",
     "reminders:run": "tsx scripts/send-therapist-reminders.ts",
     "ads:test-access": "tsx google_ads_api_scripts/test-access.ts",

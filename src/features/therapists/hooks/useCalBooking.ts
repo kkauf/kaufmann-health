@@ -288,32 +288,41 @@ export function useCalBooking({
       } catch (e) {
         clearTimeout(timeoutId);
         const isAbort = e instanceof Error && e.name === 'AbortError';
-        console.error('[useCalBooking] Failed to fetch slots:', isAbort ? 'timeout' : e);
+        
+        // Distinguish real timeout from premature abort (cleanup due to re-render)
+        const isRealFailure = !isAbort || abortControllerRef.current === abortController;
+        
+        // Only show error + set unavailable for REAL failures
+        if (isRealFailure) {
+          console.error('[useCalBooking] ERROR: Cal.com slots fetch failed', {
+            therapist_id: therapistId,
+            kind: bookingKind,
+            error_type: isAbort ? 'timeout' : 'network',
+            error: e instanceof Error ? e.message : String(e),
+          });
 
-        // EARTH-262: Mark as unavailable on timeout or network error
-        setSlotsUnavailable(true);
-        setSlotsError(isAbort
-          ? 'Terminkalender vorübergehend nicht verfügbar'
-          : 'Terminkalender vorübergehend nicht verfügbar'
-        );
+          setSlotsUnavailable(true);
+          setSlotsError('Terminkalender vorübergehend nicht verfügbar');
 
-        // Track error
-        try {
-          const attrs = getAttribution();
-          navigator.sendBeacon?.(
-            '/api/events',
-            new Blob([JSON.stringify({
-              type: 'cal_slots_fetch_failed',
-              ...attrs,
-              properties: {
-                therapist_id: therapistId,
-                kind: bookingKind,
-                error_type: isAbort ? 'timeout' : 'network',
-                error_message: e instanceof Error ? e.message : 'unknown',
-              },
-            })], { type: 'application/json' })
-          );
-        } catch { }
+          // Track ERROR-level event for monitoring
+          try {
+            const attrs = getAttribution();
+            navigator.sendBeacon?.(
+              '/api/events',
+              new Blob([JSON.stringify({
+                type: 'cal_slots_fetch_failed',
+                level: 'error', // For alerting
+                ...attrs,
+                properties: {
+                  therapist_id: therapistId,
+                  kind: bookingKind,
+                  error_type: isAbort ? 'timeout' : 'network',
+                  error_message: e instanceof Error ? e.message : 'unknown',
+                },
+              })], { type: 'application/json' })
+            );
+          } catch { }
+        }
       } finally {
         setSlotsLoading(false);
       }

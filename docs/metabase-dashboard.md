@@ -3,6 +3,31 @@
 > Generated: January 2026  
 > Data source: Supabase (PostgreSQL)
 
+## Metabase Variables & Filters
+
+Use Metabase's filter syntax to create interactive dashboards:
+
+```sql
+-- Date range filter (creates a date picker widget)
+WHERE created_at >= [[{{start_date}}]]
+
+-- Alternative: fixed default with optional override
+WHERE created_at >= [[{{start_date}}]] -- or NOW() - INTERVAL '12 weeks'
+```
+
+**Setup in Metabase:**
+1. Use `[[{{variable_name}}]]` syntax in your SQL
+2. Metabase auto-detects and creates a filter widget
+3. Set "Required" = No for optional filters with defaults
+4. For dashboard-level filters, use Field Filters on `created_at`
+
+**Recommended Dashboard Layout:**
+- **Top row**: Gauges (current 7-day rates)
+- **Middle**: Weekly trend line charts (12 weeks)
+- **Bottom**: Funnels and breakdowns
+
+---
+
 ## Notes on Data Model
 
 - **Leads** = `people` table where `type = 'patient'`
@@ -52,41 +77,104 @@ ORDER BY week DESC
 LIMIT 12;
 ```
 
-### 2. Form Completion Rate (Unique Sessions)
+### 2. Form Completion Rate (Weekly Trend)
 
 ```sql
--- Form submissions ÷ form starts (unique sessions, last 30 days)
--- NOTE: questionnaire_completed fires BEFORE email verification
+-- Weekly form submission rate trend
+-- Use for line chart to track product improvements
+WITH weekly_starts AS (
+  SELECT 
+    date_trunc('week', created_at) AS week,
+    COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS starts
+  FROM events
+  WHERE type = 'screen_viewed'
+    AND properties->>'step' = '1'
+    AND created_at >= [[{{start_date}}]] --  Metabase date filter (default: 12 weeks ago)
+  GROUP BY date_trunc('week', created_at)
+),
+weekly_submissions AS (
+  SELECT 
+    date_trunc('week', created_at) AS week,
+    COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS submissions
+  FROM events
+  WHERE type = 'questionnaire_completed'
+    AND created_at >= [[{{start_date}}]]
+  GROUP BY date_trunc('week', created_at)
+)
+SELECT 
+  s.week,
+  s.starts AS form_starts,
+  COALESCE(sub.submissions, 0) AS form_submissions,
+  ROUND(100.0 * COALESCE(sub.submissions, 0) / NULLIF(s.starts, 0), 1) AS submission_rate_pct
+FROM weekly_starts s
+LEFT JOIN weekly_submissions sub ON s.week = sub.week
+ORDER BY s.week DESC
+LIMIT 12;
+```
+
+### 2b. Verification Conversion Rate (Weekly Trend)
+
+```sql
+-- Weekly verification rate trend
+-- Key product lever: email/SMS verification success
+WITH weekly_submissions AS (
+  SELECT 
+    date_trunc('week', created_at) AS week,
+    COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS submissions
+  FROM events
+  WHERE type = 'questionnaire_completed'
+    AND created_at >= [[{{start_date}}]]
+  GROUP BY date_trunc('week', created_at)
+),
+weekly_verified AS (
+  SELECT 
+    date_trunc('week', created_at) AS week,
+    COUNT(*) AS verified
+  FROM people
+  WHERE type = 'patient'
+    AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
+    AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+    AND created_at >= [[{{start_date}}]]
+  GROUP BY date_trunc('week', created_at)
+)
+SELECT 
+  s.week,
+  s.submissions AS form_submissions,
+  COALESCE(v.verified, 0) AS verified_leads,
+  ROUND(100.0 * COALESCE(v.verified, 0) / NULLIF(s.submissions, 0), 1) AS verification_rate_pct
+FROM weekly_submissions s
+LEFT JOIN weekly_verified v ON s.week = v.week
+ORDER BY s.week DESC
+LIMIT 12;
+```
+
+### 2c. Current Period Gauges (for dashboard cards)
+
+```sql
+-- Single values for gauge display (last 7 days)
+-- Form Completion Rate
 WITH starts AS (
   SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS cnt
   FROM events
   WHERE type = 'screen_viewed'
     AND properties->>'step' = '1'
-    AND created_at > NOW() - INTERVAL '30 days'
+    AND created_at > NOW() - INTERVAL '7 days'
 ),
 submissions AS (
   SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS cnt
   FROM events
   WHERE type = 'questionnaire_completed'
-    AND created_at > NOW() - INTERVAL '30 days'
+    AND created_at > NOW() - INTERVAL '7 days'
 )
-SELECT 
-  starts.cnt AS form_starts,
-  submissions.cnt AS form_submissions,
-  ROUND(100.0 * submissions.cnt / NULLIF(starts.cnt, 0), 1) AS submission_rate_pct
+SELECT ROUND(100.0 * submissions.cnt / NULLIF(starts.cnt, 0), 1) AS form_completion_rate_pct
 FROM starts, submissions;
-```
 
-### 2b. Verification Conversion Rate
-
-```sql
--- Confirmed leads ÷ form submissions (last 30 days)
--- Shows email/SMS verification success rate
+-- Verification Rate (separate query for gauge)
 WITH submissions AS (
   SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS cnt
   FROM events
   WHERE type = 'questionnaire_completed'
-    AND created_at > NOW() - INTERVAL '30 days'
+    AND created_at > NOW() - INTERVAL '7 days'
 ),
 confirmed AS (
   SELECT COUNT(*) AS cnt
@@ -94,12 +182,9 @@ confirmed AS (
   WHERE type = 'patient'
     AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
     AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-    AND created_at > NOW() - INTERVAL '30 days'
+    AND created_at > NOW() - INTERVAL '7 days'
 )
-SELECT 
-  submissions.cnt AS form_submissions,
-  confirmed.cnt AS verified_leads,
-  ROUND(100.0 * confirmed.cnt / NULLIF(submissions.cnt, 0), 1) AS verification_rate_pct
+SELECT ROUND(100.0 * confirmed.cnt / NULLIF(submissions.cnt, 0), 1) AS verification_rate_pct
 FROM submissions, confirmed;
 ```
 
