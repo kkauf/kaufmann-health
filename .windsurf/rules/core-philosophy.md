@@ -76,6 +76,11 @@ If testing needed: 5-minute max or skip (unless payments)
 npm run build && npm run start
 ```
 
+## API Boundary Rule
+When adding fields that cross API boundaries, add explicit assertions:
+- ❌ `expect(Array.isArray(therapists)).toBe(true)` — too weak
+- ✅ `expect(therapist).toHaveProperty('cal_bookings_live', true)` — catches missing fields
+
 # Git (Solo)
 Follow /stage command when packages of work are done
 If no Linear task is referenced and the work is significant (i.e. major bugs or feature changes), create a new Linear task and reference it in the commit message, mark it as "Done" when the commit is staged
