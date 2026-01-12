@@ -64,32 +64,7 @@ export default function TherapistApplicationForm() {
       setErrors({ qualification: 'Bitte wähle deine Qualifikation.' });
       return;
     }
-    const experience = form.get('experience')?.toString() || '';
-    if (!experience) {
-      setErrors({ experience: 'Bitte wähle deine Berufserfahrung.' });
-      return;
-    }
-
-    // Sitzungsart erfassen (Pflicht, Mehrfachauswahl möglich)
-    const session_preferences = form
-      .getAll('session_preference')
-      .map((v) => v.toString())
-      .filter((v) => v === 'online' || v === 'in_person') as ('online' | 'in_person')[];
-    if (session_preferences.length === 0) {
-      setErrors({ session_preference: 'Bitte wähle deine Sitzungsart.' });
-      return;
-    }
-
-    // Normalize website: auto-prefix https:// if missing
-    let website = form.get('website')?.toString().trim();
-    if (website) {
-      // Treat bare protocol as empty
-      if (/^https?:\/\/$/i.test(website)) {
-        website = '';
-      } else if (!/^https?:\/\//i.test(website)) {
-        website = `https://${website}`;
-      }
-    }
+    // Experience, session preferences, city, website, and notes are now collected in the portal after verification
 
     const specializations = form.getAll('specializations').map((v) => v.toString());
     // Require at least one modality (EARTH-71)
@@ -113,13 +88,8 @@ export default function TherapistApplicationForm() {
       name: (form.get('name')?.toString() || '').trim() || undefined,
       email,
       phone: form.get('phone')?.toString() || undefined,
-      notes: form.get('notes')?.toString() || undefined,
-      city: (form.get('city')?.toString() || '').trim() || undefined,
-      session_preferences,
       specializations,
       qualification: qualification || undefined,
-      experience: experience || undefined,
-      website: website || undefined,
       session_id: sid || undefined,
     };
 
@@ -264,48 +234,24 @@ export default function TherapistApplicationForm() {
         </div>
       </div>
 
-      {/* Compact two‑column layout */}
+      {/* Simplified registration form - additional details collected in portal */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="name">Dein Name</Label>
           <Input id="name" name="name" placeholder="Vor- und Nachname" />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="city">Deine Stadt</Label>
-          <Input id="city" name="city" placeholder="z. B. Berlin" />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="email">E-Mail-Adresse</Label>
-          <Input id="email" name="email" type="email" placeholder="E-Mail-Adresse" aria-invalid={Boolean(errors.email)} className={errors.email ? 'border-red-500 focus-visible:ring-red-500' : undefined} />
-          {errors.email && <p className="text-xs text-red-600">{errors.email}</p>}
-        </div>
-        <div className="space-y-2">
           <Label htmlFor="phone">Telefonnummer</Label>
           <Input id="phone" name="phone" type="tel" placeholder="Telefonnummer" />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="website">Webseite (optional)</Label>
-          <Input id="website" name="website" type="text" placeholder="https://" />
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="email">E-Mail-Adresse</Label>
+          <Input id="email" name="email" type="email" placeholder="E-Mail-Adresse" aria-invalid={Boolean(errors.email)} className={errors.email ? 'border-red-500 focus-visible:ring-red-500' : undefined} />
+          {errors.email && <p className="text-xs text-red-600">{errors.email}</p>}
         </div>
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">Sitzungsart</legend>
-          <div className="mt-1 flex flex-wrap gap-4">
-            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" name="session_preference" value="online" className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-              Online
-            </label>
-            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" name="session_preference" value="in_person" className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-              Vor Ort (Praxis)
-            </label>
-          </div>
-          <p className="text-xs text-gray-500">Wähle eine oder beide Optionen.</p>
-          {errors.session_preference && <p className="text-xs text-red-600">{errors.session_preference}</p>}
-        </fieldset>
 
-        <div className="space-y-2">
+        <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="qualification">Qualifikation</Label>
           <select
             id="qualification"
@@ -321,24 +267,6 @@ export default function TherapistApplicationForm() {
             <option value="Approbierter Psychotherapeut">Approbierter Psychotherapeut</option>
           </select>
           {errors.qualification && <p className="text-xs text-red-600">{errors.qualification}</p>}
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="experience">Berufserfahrung</Label>
-          <select
-            id="experience"
-            name="experience"
-            defaultValue=""
-            className={
-              "border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 flex h-9 w-full min-w-0 rounded-md border bg-white px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm" +
-              (errors.experience ? ' border-red-500 focus-visible:ring-red-500' : '')
-            }
-          >
-            <option value="" disabled>Bitte wählen</option>
-            <option value="< 2 Jahre">Weniger als 2 Jahre</option>
-            <option value="2-4 Jahre">2–4 Jahre</option>
-            <option value="> 4 Jahre">Mehr als 4 Jahre</option>
-          </select>
-          {errors.experience && <p className="text-xs text-red-600">{errors.experience}</p>}
         </div>
 
         <fieldset className="space-y-2 sm:col-span-2">
@@ -364,17 +292,6 @@ export default function TherapistApplicationForm() {
           <p className="text-xs text-gray-500">Bitte wähle mindestens einen Schwerpunkt aus.</p>
           {errors.specialization && <p className="text-xs text-red-600">{errors.specialization}</p>}
         </fieldset>
-
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="notes">Bemerkungen (optional)</Label>
-          <textarea
-            id="notes"
-            name="notes"
-            rows={3}
-            className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 w-full rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-            placeholder="Kurze Notiz (z.B. Spezialisierung, Verfügbarkeit)"
-          />
-        </div>
       </div>
 
       <div>

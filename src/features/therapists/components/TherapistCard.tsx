@@ -429,7 +429,7 @@ export function TherapistCard({
             disabled={!therapist.accepting_new}
           >
             <Video className="mr-2 h-4 w-4" />
-            Kostenloses Kennenlernen · Online (15 min)
+            Online-Kennenlernen (15 min)
           </Button>
 
           <Button

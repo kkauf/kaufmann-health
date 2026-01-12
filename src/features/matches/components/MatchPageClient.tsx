@@ -430,7 +430,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           })()}
         </h1>
         <p className="mt-2 text-gray-600">
-          Buche jetzt ein kostenloses Online-Kennenlernen (15 min) – unverbindlich und ohne Risiko.
+          Buche jetzt dein kostenloses Online-Kennenlernen (15 min) – unverbindlich und ohne Risiko.
         </p>
       </div>
 

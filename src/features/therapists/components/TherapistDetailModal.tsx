@@ -1116,7 +1116,7 @@ export function TherapistDetailModal({
                   disabled={!therapist.accepting_new}
                 >
                   <Video className="mr-2 h-5 w-5 shrink-0" />
-                  <span className="break-words">Kostenloses Kennenlernen · Online (15 min)</span>
+                  <span className="break-words">Online-Kennenlernen (15 min)</span>
                 </Button>
 
                 <Button
@@ -1138,7 +1138,7 @@ export function TherapistDetailModal({
                   disabled={!therapist.accepting_new}
                 >
                   <Video className="mr-2 h-5 w-5 shrink-0" />
-                  <span className="break-words">Kostenloses Kennenlernen · Online (15 min)</span>
+                  <span className="break-words">Online-Kennenlernen (15 min)</span>
                 </Button>
 
                 <Button
