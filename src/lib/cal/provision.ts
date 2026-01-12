@@ -25,6 +25,35 @@ import { randomBytes } from 'crypto';
 const CAL_DATABASE_URL = process.env.CAL_DATABASE_URL;
 const CAL_ORIGIN = process.env.NEXT_PUBLIC_CAL_ORIGIN || 'https://cal.kaufmann.health';
 
+/**
+ * Transform a therapist photo URL into a square-cropped version for Cal.com avatars.
+ * Cal.com displays avatars in circles, so we need a 1:1 aspect ratio to avoid squishing.
+ * Uses Supabase Storage image transformations.
+ */
+export function getSquareAvatarUrl(photoUrl: string | undefined | null): string | undefined {
+  if (!photoUrl) return undefined;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) return photoUrl;
+
+  // Check if it's a Supabase storage URL
+  if (!photoUrl.includes(supabaseUrl) && !photoUrl.includes('supabase')) {
+    return photoUrl; // External URL, return as-is
+  }
+
+  // Convert public object URL to render URL with transformations
+  // From: .../storage/v1/object/public/therapist-profiles/xxx.jpg
+  // To:   .../storage/v1/render/image/public/therapist-profiles/xxx.jpg?width=256&height=256&resize=cover
+  const transformed = photoUrl.replace(
+    '/storage/v1/object/public/',
+    '/storage/v1/render/image/public/'
+  );
+
+  // Add crop parameters (256x256 square, cover mode crops to fit)
+  const separator = transformed.includes('?') ? '&' : '?';
+  return `${transformed}${separator}width=256&height=256&resize=cover`;
+}
+
 // Template user ID for cloning event types and schedules
 // This is the Cal.com user ID of the "golden template" (kgmkauf)
 const CAL_TEMPLATE_USER_ID = process.env.CAL_TEMPLATE_USER_ID

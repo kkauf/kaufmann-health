@@ -52,28 +52,55 @@ ORDER BY week DESC
 LIMIT 12;
 ```
 
-### 2. Form Completion Rate
+### 2. Form Completion Rate (Unique Sessions)
 
 ```sql
--- Questionnaire completions ÷ questionnaire starts (last 30 days)
+-- Form submissions ÷ form starts (unique sessions, last 30 days)
+-- NOTE: questionnaire_completed fires BEFORE email verification
 WITH starts AS (
-  SELECT COUNT(DISTINCT properties->>'session_id') AS cnt
+  SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS cnt
   FROM events
   WHERE type = 'screen_viewed'
     AND properties->>'step' = '1'
     AND created_at > NOW() - INTERVAL '30 days'
 ),
-completions AS (
-  SELECT COUNT(*) AS cnt
+submissions AS (
+  SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS cnt
   FROM events
   WHERE type = 'questionnaire_completed'
     AND created_at > NOW() - INTERVAL '30 days'
 )
 SELECT 
-  starts.cnt AS questionnaire_starts,
-  completions.cnt AS questionnaire_completions,
-  ROUND(100.0 * completions.cnt / NULLIF(starts.cnt, 0), 1) AS completion_rate_pct
-FROM starts, completions;
+  starts.cnt AS form_starts,
+  submissions.cnt AS form_submissions,
+  ROUND(100.0 * submissions.cnt / NULLIF(starts.cnt, 0), 1) AS submission_rate_pct
+FROM starts, submissions;
+```
+
+### 2b. Verification Conversion Rate
+
+```sql
+-- Confirmed leads ÷ form submissions (last 30 days)
+-- Shows email/SMS verification success rate
+WITH submissions AS (
+  SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS cnt
+  FROM events
+  WHERE type = 'questionnaire_completed'
+    AND created_at > NOW() - INTERVAL '30 days'
+),
+confirmed AS (
+  SELECT COUNT(*) AS cnt
+  FROM people
+  WHERE type = 'patient'
+    AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
+    AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+    AND created_at > NOW() - INTERVAL '30 days'
+)
+SELECT 
+  submissions.cnt AS form_submissions,
+  confirmed.cnt AS verified_leads,
+  ROUND(100.0 * confirmed.cnt / NULLIF(submissions.cnt, 0), 1) AS verification_rate_pct
+FROM submissions, confirmed;
 ```
 
 ### 3. Lead → Intro Call % 
@@ -337,29 +364,109 @@ FROM intros, sessions;
 ### Panel 4: Funnel Drop-off (Questionnaire Flow)
 
 ```sql
--- Step-by-step funnel for questionnaire
--- Steps: 1 (timeline) → 2 (schwerpunkte) → 3 (modality) → 4 (location) → 5 (preferences) → 6 (contact) → completed
+-- Step-by-step funnel with unique sessions and drop-off rates
+-- Main flow: 1 → 2 → 3 → 4 → 5 → 6 → submitted → verified
+WITH step_data AS (
+  SELECT 
+    properties->>'step' AS step,
+    COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS unique_sessions
+  FROM events
+  WHERE type = 'screen_viewed'
+    AND created_at > NOW() - INTERVAL '30 days'
+  GROUP BY properties->>'step'
+),
+labeled AS (
+  SELECT 
+    step,
+    CASE step
+      WHEN '1' THEN '1. Zeitrahmen'
+      WHEN '2' THEN '2. Schwerpunkte'
+      WHEN '2.5' THEN '2.5. Symptome (optional)'
+      WHEN '3' THEN '3. Therapieform'
+      WHEN '4' THEN '4. Standort'
+      WHEN '5' THEN '5. Präferenzen'
+      WHEN '6' THEN '6. Kontakt (Email)'
+      WHEN '6.5' THEN '6.5. Kontakt (SMS)'
+      WHEN '7' THEN '7. Zusammenfassung'
+      WHEN '9' THEN '9. Bestätigung ausstehend'
+      ELSE step
+    END AS step_label,
+    unique_sessions,
+    CASE step
+      WHEN '1' THEN 1
+      WHEN '2' THEN 2
+      WHEN '2.5' THEN 2.5
+      WHEN '3' THEN 3
+      WHEN '4' THEN 4
+      WHEN '5' THEN 5
+      WHEN '6' THEN 6
+      WHEN '6.5' THEN 6.5
+      WHEN '7' THEN 7
+      WHEN '9' THEN 9
+      ELSE 99
+    END AS step_order
+  FROM step_data
+)
 SELECT 
-  properties->>'step' AS step,
-  COUNT(*) AS views
-FROM events
-WHERE type = 'screen_viewed'
-  AND created_at > NOW() - INTERVAL '30 days'
-GROUP BY properties->>'step'
-ORDER BY 
-  CASE properties->>'step'
-    WHEN '1' THEN 1
-    WHEN '2' THEN 2
-    WHEN '2.5' THEN 3
-    WHEN '3' THEN 4
-    WHEN '4' THEN 5
-    WHEN '5' THEN 6
-    WHEN '6' THEN 7
-    WHEN '6.5' THEN 8
-    WHEN '7' THEN 9
-    WHEN '9' THEN 10
-    ELSE 99
-  END;
+  step_label,
+  unique_sessions,
+  ROUND(100.0 * unique_sessions / NULLIF(FIRST_VALUE(unique_sessions) OVER (ORDER BY step_order), 0), 1) AS pct_of_start
+FROM labeled
+WHERE step_order < 99
+ORDER BY step_order;
+```
+
+### Panel 4b: Core Funnel Summary (Reliable Metrics)
+
+```sql
+-- Simplified funnel using reliable metrics only
+-- NOTE: Step 6/6.5 tracking is incomplete, so using Start → Submit → Verify
+WITH funnel AS (
+  SELECT 
+    '1. Started Questionnaire' AS stage,
+    1 AS stage_order,
+    COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS users
+  FROM events
+  WHERE type = 'screen_viewed'
+    AND properties->>'step' = '1'
+    AND created_at > NOW() - INTERVAL '30 days'
+  
+  UNION ALL
+  
+  SELECT 
+    '2. Submitted Form' AS stage,
+    2 AS stage_order,
+    COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS users
+  FROM events
+  WHERE type = 'questionnaire_completed'
+    AND created_at > NOW() - INTERVAL '30 days'
+  
+  UNION ALL
+  
+  SELECT 
+    '3. Verified Lead' AS stage,
+    3 AS stage_order,
+    COUNT(*) AS users
+  FROM people
+  WHERE type = 'patient'
+    AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
+    AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+    AND created_at > NOW() - INTERVAL '30 days'
+)
+SELECT 
+  stage,
+  users,
+  LAG(users) OVER (ORDER BY stage_order) AS prev_stage,
+  ROUND(100.0 * users / NULLIF(LAG(users) OVER (ORDER BY stage_order), 0), 1) AS step_conversion_pct,
+  ROUND(100.0 * users / NULLIF(FIRST_VALUE(users) OVER (ORDER BY stage_order), 0), 1) AS pct_of_start
+FROM funnel
+ORDER BY stage_order;
+-- Example output (last 30 days):
+-- | stage                  | users | step_conversion_pct | pct_of_start |
+-- |------------------------|-------|---------------------|--------------|
+-- | 1. Started             | 671   | -                   | 100.0%       |
+-- | 2. Submitted Form      | 274   | 40.8%               | 40.8%        |
+-- | 3. Verified Lead       | 33    | 12.0%               | 4.9%         |
 ```
 
 ### Panel 5: Directory Funnel
