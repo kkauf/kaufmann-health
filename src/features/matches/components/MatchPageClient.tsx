@@ -49,6 +49,10 @@ type TherapistItem = {
     };
     [k: string]: unknown;
   };
+  // Cal.com integration fields
+  cal_username?: string;
+  cal_enabled?: boolean;
+  cal_bookings_live?: boolean;
 };
 
 type MatchApiData = {
@@ -701,6 +705,10 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             city: detailModalTherapist.city || '',
             // Include metadata for rich profile display (qualification, sections, pricing)
             metadata: detailModalTherapist.metadata,
+            // Cal.com integration fields for booking UI
+            cal_username: detailModalTherapist.cal_username,
+            cal_enabled: detailModalTherapist.cal_enabled,
+            cal_bookings_live: detailModalTherapist.cal_bookings_live,
           } as TherapistData}
           open={!!detailModalTherapist}
           onClose={() => setDetailModalTherapist(null)}

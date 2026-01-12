@@ -161,6 +161,10 @@ export async function GET(req: Request) {
       accepting_new?: boolean | null;
       typical_rate?: number | null;
       metadata?: { session_preferences?: string[] | null; profile?: { approach_text?: string; who_comes_to_me?: string; session_focus?: string; first_session?: string; about_me?: string; qualification?: string }; [k: string]: unknown } | null;
+      // Cal.com integration fields
+      cal_username?: string | null;
+      cal_enabled?: boolean | null;
+      cal_bookings_live?: boolean | null;
     };
     let therapistRows: MatchTherapistRow[] = [];
     if (therapistIds.length > 0) {
@@ -247,6 +251,10 @@ export async function GET(req: Request) {
       is_perfect: Boolean(isPerfect),
       // Include full metadata for rich profile display (qualification, sections, pricing, etc.)
       metadata: t.metadata || undefined,
+      // Cal.com integration fields for booking UI
+      cal_username: t.cal_username || undefined,
+      cal_enabled: t.cal_enabled || false,
+      cal_bookings_live: t.cal_bookings_live || false,
     }));
 
     // Compute overall match_type for banner logic
