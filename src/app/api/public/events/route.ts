@@ -106,6 +106,20 @@ export async function POST(req: Request) {
       ...(properties && typeof properties === 'object' ? properties : {}),
     };
 
+    // ALERT: Log ERROR-level events to console for Vercel monitoring
+    // Events with level='error' indicate critical failures that need attention
+    const eventLevel = (properties as { level?: string } | undefined)?.level;
+    if (eventLevel === 'error' && envTag === 'production' && !markAsTest) {
+      console.error(`[ALERT] ${type}:`, JSON.stringify({
+        type,
+        therapist_id: mergedProps.therapist_id,
+        error_type: mergedProps.error_type,
+        error_message: mergedProps.error_message,
+        session_id,
+        host: hostHeader,
+      }));
+    }
+
     // Persist to server analytics (e.g., Supabase events table)
     try {
       await ServerAnalytics.trackEventFromRequest(req, {
