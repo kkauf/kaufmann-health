@@ -248,13 +248,13 @@ export default function SignupWizard() {
         return [];
       }
       case 4: {
-        // Step 4: Location (session_preference required, city required if in_person)
-        // Test 5: Online mode skips this step entirely
-        if (isOnlineMode) return [];
+        // Step 4: Location + Language (session_preference required unless online mode, city required if in_person)
+        // Test 5: Online mode pre-sets session_preference, so only validate it for non-online
         const miss: string[] = [];
         const hasCity = !!(d.city && d.city.trim());
         const pref = d.session_preference;
-        if (!pref) miss.push('session_preference');
+        // Skip session_preference validation in online mode (it's pre-set to 'online')
+        if (!pref && !isOnlineMode) miss.push('session_preference');
         if ((pref === 'in_person' || pref === 'either') && !hasCity) miss.push('city');
         return miss;
       }
@@ -874,7 +874,6 @@ export default function SignupWizard() {
         );
       case 3:
         // Step 3: Modality Preferences
-        // Test 5: Online mode skips step 4 (location), goes directly to step 5
         return (
           <NewScreen5_Modality
             values={{
@@ -883,29 +882,27 @@ export default function SignupWizard() {
             }}
             onChange={saveLocal}
             onBack={() => safeGoToStep(usesSchwerpunkteStep ? 2.5 : 2)}
-            onNext={() => safeGoToStep(isOnlineMode ? 5 : 4)}
+            onNext={() => safeGoToStep(4)}
             suppressAutoAdvance={suppressAutoStep === 3}
             disabled={navLock || submitting}
           />
         );
       case 4:
-        // Step 4: Location (session preference + city only, no privacy)
-        // Test 5: Online mode skips this step entirely
-        if (isOnlineMode) {
-          safeGoToStep(5);
-          return null;
-        }
+        // Step 4: Location + Language (session preference + city + language)
+        // Test 5: Online mode pre-selects session_preference but still shows language question
         return (
           <Screen3
             values={{
               city: data.city,
               online_ok: data.online_ok,
               session_preference: data.session_preference,
+              language_preference: data.language_preference,
             }}
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
             onBack={() => safeGoToStep(3)}
             onNext={() => safeGoToStep(5)}
             disabled={navLock || submitting}
+            isOnlineMode={isOnlineMode}
           />
         );
       case 5:
@@ -917,7 +914,7 @@ export default function SignupWizard() {
               methods: data.methods, // Keep for compatibility
             }}
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
-            onBack={() => safeGoToStep(isOnlineMode ? 3 : 4)}
+            onBack={() => safeGoToStep(4)}
             onNext={(isDirectBookingFlow && !needsVerificationFlow) ? handleQuestionnaireSubmit : () => safeGoToStep(6)}
             disabled={navLock || submitting}
           />

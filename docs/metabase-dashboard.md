@@ -3,27 +3,23 @@
 > Generated: January 2026  
 > Data source: Supabase (PostgreSQL)
 
-## Metabase Variables & Filters
+## Metabase Date Filters
 
-Use Metabase's filter syntax to create interactive dashboards:
-
+**Option 1: Rolling window with variable (recommended)**
 ```sql
--- Date range filter (creates a date picker widget)
-WHERE created_at >= [[{{start_date}}]]
-
--- Alternative: fixed default with optional override
-WHERE created_at >= [[{{start_date}}]] -- or NOW() - INTERVAL '12 weeks'
+-- Set days_back variable in Metabase (default: 28)
+WHERE created_at >= NOW() - INTERVAL '{{days_back}}' DAY
 ```
 
-**Setup in Metabase:**
-1. Use `[[{{variable_name}}]]` syntax in your SQL
-2. Metabase auto-detects and creates a filter widget
-3. Set "Required" = No for optional filters with defaults
-4. For dashboard-level filters, use Field Filters on `created_at`
+**Option 2: User-selectable date**
+```sql
+-- Creates date picker widget (requires manual selection)
+WHERE created_at >= {{start_date}}
+```
 
 **Recommended Dashboard Layout:**
 - **Top row**: Gauges (current 7-day rates)
-- **Middle**: Weekly trend line charts (12 weeks)
+- **Middle**: Weekly trend line charts (4+ weeks)
 - **Bottom**: Funnels and breakdowns
 
 ---
@@ -77,53 +73,54 @@ ORDER BY week DESC
 LIMIT 12;
 ```
 
-### 2. Form Completion Rate (Weekly Trend)
+### 2. Form Completion Rate (Daily Trend)
 
 ```sql
--- Weekly form submission rate trend
--- Use for line chart to track product improvements
-WITH weekly_starts AS (
+-- Daily form submission rate trend
+-- Excludes today only to avoid partial-day artifacts
+-- Use Metabase date range picker to focus on specific windows (last 7d, 14d, 30d)
+WITH daily_starts AS (
   SELECT 
-    date_trunc('week', created_at) AS week,
+    DATE(created_at) AS day,
     COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS starts
   FROM events
   WHERE type = 'screen_viewed'
     AND properties->>'step' = '1'
-    AND created_at >= [[{{start_date}}]] --  Metabase date filter (default: 12 weeks ago)
-  GROUP BY date_trunc('week', created_at)
+    AND created_at >= NOW() - INTERVAL '{{days_back}}' DAY
+    AND DATE(created_at) < CURRENT_DATE  -- Exclude today only
+  GROUP BY DATE(created_at)
 ),
-weekly_submissions AS (
+daily_submissions AS (
   SELECT 
-    date_trunc('week', created_at) AS week,
+    DATE(created_at) AS day,
     COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS submissions
   FROM events
-  WHERE type = 'questionnaire_completed'
-    AND created_at >= [[{{start_date}}]]
-  GROUP BY date_trunc('week', created_at)
+  WHERE type IN ('form_completed', 'questionnaire_completed')  -- Track both flows
+    AND created_at >= NOW() - INTERVAL '{{days_back}}' DAY
+    AND DATE(created_at) < CURRENT_DATE  -- Exclude today only
+  GROUP BY DATE(created_at)
 )
 SELECT 
-  s.week,
+  s.day,
   s.starts AS form_starts,
   COALESCE(sub.submissions, 0) AS form_submissions,
   ROUND(100.0 * COALESCE(sub.submissions, 0) / NULLIF(s.starts, 0), 1) AS submission_rate_pct
-FROM weekly_starts s
-LEFT JOIN weekly_submissions sub ON s.week = sub.week
-ORDER BY s.week DESC
-LIMIT 12;
+FROM daily_starts s
+LEFT JOIN daily_submissions sub ON s.day = sub.day
+ORDER BY s.day DESC;
 ```
 
 ### 2b. Verification Conversion Rate (Weekly Trend)
 
 ```sql
--- Weekly verification rate trend
--- Key product lever: email/SMS verification success
+-- Weekly verification rate trend (rolling 28 days)
 WITH weekly_submissions AS (
   SELECT 
     date_trunc('week', created_at) AS week,
     COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS submissions
   FROM events
-  WHERE type = 'questionnaire_completed'
-    AND created_at >= [[{{start_date}}]]
+  WHERE type IN ('form_completed', 'questionnaire_completed')
+    AND created_at >= NOW() - INTERVAL '{{days_back}}' DAY
   GROUP BY date_trunc('week', created_at)
 ),
 weekly_verified AS (
@@ -134,7 +131,7 @@ weekly_verified AS (
   WHERE type = 'patient'
     AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
     AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-    AND created_at >= [[{{start_date}}]]
+    AND created_at >= NOW() - INTERVAL '{{days_back}}' DAY
   GROUP BY date_trunc('week', created_at)
 )
 SELECT 
@@ -144,8 +141,7 @@ SELECT
   ROUND(100.0 * COALESCE(v.verified, 0) / NULLIF(s.submissions, 0), 1) AS verification_rate_pct
 FROM weekly_submissions s
 LEFT JOIN weekly_verified v ON s.week = v.week
-ORDER BY s.week DESC
-LIMIT 12;
+ORDER BY s.week DESC;
 ```
 
 ### 2c. Current Period Gauges (for dashboard cards)
@@ -158,13 +154,13 @@ WITH starts AS (
   FROM events
   WHERE type = 'screen_viewed'
     AND properties->>'step' = '1'
-    AND created_at > NOW() - INTERVAL '7 days'
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 ),
 submissions AS (
   SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS cnt
   FROM events
-  WHERE type = 'questionnaire_completed'
-    AND created_at > NOW() - INTERVAL '7 days'
+  WHERE type IN ('form_completed', 'questionnaire_completed')
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 )
 SELECT ROUND(100.0 * submissions.cnt / NULLIF(starts.cnt, 0), 1) AS form_completion_rate_pct
 FROM starts, submissions;
@@ -173,8 +169,8 @@ FROM starts, submissions;
 WITH submissions AS (
   SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS cnt
   FROM events
-  WHERE type = 'questionnaire_completed'
-    AND created_at > NOW() - INTERVAL '7 days'
+  WHERE type IN ('form_completed', 'questionnaire_completed')
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 ),
 confirmed AS (
   SELECT COUNT(*) AS cnt
@@ -182,7 +178,7 @@ confirmed AS (
   WHERE type = 'patient'
     AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
     AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-    AND created_at > NOW() - INTERVAL '7 days'
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 )
 SELECT ROUND(100.0 * confirmed.cnt / NULLIF(submissions.cnt, 0), 1) AS verification_rate_pct
 FROM submissions, confirmed;
@@ -199,7 +195,7 @@ WITH leads AS (
   WHERE type = 'patient'
     AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
     AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-    AND created_at > NOW() - INTERVAL '90 days'
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 ),
 intro_bookings AS (
   SELECT COUNT(DISTINCT patient_id) AS cnt
@@ -207,7 +203,7 @@ intro_bookings AS (
   WHERE booking_kind = 'intro'
     AND last_trigger_event = 'BOOKING_CREATED'
     AND (is_test = false OR is_test IS NULL)
-    AND created_at > NOW() - INTERVAL '90 days'
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 )
 SELECT 
   leads.cnt AS total_leads,
@@ -227,7 +223,7 @@ WITH intros AS (
   WHERE booking_kind = 'intro'
     AND last_trigger_event = 'BOOKING_CREATED'
     AND (is_test = false OR is_test IS NULL)
-    AND created_at > NOW() - INTERVAL '90 days'
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 ),
 sessions AS (
   SELECT COUNT(DISTINCT patient_id) AS cnt
@@ -235,7 +231,7 @@ sessions AS (
   WHERE booking_kind = 'full_session'
     AND last_trigger_event = 'BOOKING_CREATED'
     AND (is_test = false OR is_test IS NULL)
-    AND created_at > NOW() - INTERVAL '90 days'
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 )
 SELECT 
   intros.cnt AS intro_bookings,
@@ -298,13 +294,13 @@ WITH total_booking_attempts AS (
   SELECT COUNT(*) AS cnt
   FROM events
   WHERE type IN ('cal_slots_viewed', 'cal_auto_fallback_to_messaging', 'cal_slots_fetch_failed')
-    AND created_at > NOW() - INTERVAL '30 days'
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 ),
 fallbacks AS (
   SELECT COUNT(*) AS cnt
   FROM events
   WHERE type IN ('cal_auto_fallback_to_messaging', 'cal_slots_fetch_failed')
-    AND created_at > NOW() - INTERVAL '30 days'
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 )
 SELECT 
   fallbacks.cnt AS fallback_count,
@@ -328,7 +324,7 @@ FROM cal_bookings
 WHERE booking_kind = 'full_session'
   AND last_trigger_event = 'BOOKING_CREATED'
   AND (is_test = false OR is_test IS NULL)
-  AND created_at > NOW() - INTERVAL '90 days';
+  AND created_at > NOW() - INTERVAL '{{days_back}}' DAY;
 ```
 
 ### 2. Avg Sessions per Customer
@@ -343,7 +339,7 @@ FROM cal_bookings
 WHERE booking_kind = 'full_session'
   AND last_trigger_event = 'BOOKING_CREATED'
   AND (is_test = false OR is_test IS NULL)
-  AND created_at > NOW() - INTERVAL '90 days';
+  AND created_at > NOW() - INTERVAL '{{days_back}}' DAY;
 ```
 
 ---
@@ -361,7 +357,7 @@ FROM people
 WHERE type = 'patient'
   AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
   AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-  AND created_at > NOW() - INTERVAL '30 days'
+  AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 GROUP BY campaign_source
 ORDER BY leads DESC;
 ```
@@ -379,7 +375,7 @@ WITH questionnaire_leads AS (
     AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
     AND metadata->>'form_session_id' IS NOT NULL
     AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-    AND created_at > NOW() - INTERVAL '30 days'
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 ),
 questionnaire_intros AS (
   SELECT COUNT(DISTINCT cb.patient_id) AS cnt
@@ -388,13 +384,13 @@ questionnaire_intros AS (
   WHERE cb.booking_kind = 'intro'
     AND cb.source = 'questionnaire'
     AND (cb.is_test = false OR cb.is_test IS NULL)
-    AND cb.created_at > NOW() - INTERVAL '30 days'
+    AND cb.created_at > NOW() - INTERVAL '{{days_back}}' DAY
 ),
 directory_contacts AS (
   SELECT COUNT(DISTINCT m.patient_id) AS cnt
   FROM matches m
   WHERE m.metadata->>'patient_initiated' = 'true'
-    AND m.created_at > NOW() - INTERVAL '30 days'
+    AND m.created_at > NOW() - INTERVAL '{{days_back}}' DAY
 ),
 directory_intros AS (
   SELECT COUNT(DISTINCT cb.patient_id) AS cnt
@@ -402,7 +398,7 @@ directory_intros AS (
   WHERE cb.booking_kind = 'intro'
     AND cb.source = 'directory'
     AND (cb.is_test = false OR cb.is_test IS NULL)
-    AND cb.created_at > NOW() - INTERVAL '30 days'
+    AND cb.created_at > NOW() - INTERVAL '{{days_back}}' DAY
 )
 SELECT 
   'Questionnaire' AS path,
@@ -457,7 +453,7 @@ WITH step_data AS (
     COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS unique_sessions
   FROM events
   WHERE type = 'screen_viewed'
-    AND created_at > NOW() - INTERVAL '30 days'
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
   GROUP BY properties->>'step'
 ),
 labeled AS (
@@ -514,7 +510,7 @@ WITH funnel AS (
   FROM events
   WHERE type = 'screen_viewed'
     AND properties->>'step' = '1'
-    AND created_at > NOW() - INTERVAL '30 days'
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
   
   UNION ALL
   
@@ -523,8 +519,8 @@ WITH funnel AS (
     2 AS stage_order,
     COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS users
   FROM events
-  WHERE type = 'questionnaire_completed'
-    AND created_at > NOW() - INTERVAL '30 days'
+  WHERE type IN ('form_completed', 'questionnaire_completed')
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
   
   UNION ALL
   
@@ -536,7 +532,7 @@ WITH funnel AS (
   WHERE type = 'patient'
     AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
     AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-    AND created_at > NOW() - INTERVAL '30 days'
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 )
 SELECT 
   stage,
@@ -564,7 +560,7 @@ SELECT
   COUNT(*) AS count
 FROM events
 WHERE type = 'directory_viewed'
-  AND created_at > NOW() - INTERVAL '30 days'
+  AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 
 UNION ALL
 
@@ -574,7 +570,7 @@ SELECT
   COUNT(*) AS count
 FROM events
 WHERE type = 'profile_modal_opened'
-  AND created_at > NOW() - INTERVAL '30 days'
+  AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 
 UNION ALL
 
@@ -584,7 +580,7 @@ SELECT
   COUNT(*) AS count
 FROM events
 WHERE type = 'contact_cta_clicked'
-  AND created_at > NOW() - INTERVAL '30 days'
+  AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 
 UNION ALL
 
@@ -594,7 +590,7 @@ SELECT
   COUNT(*) AS count
 FROM events
 WHERE type = 'contact_modal_opened'
-  AND created_at > NOW() - INTERVAL '30 days'
+  AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 
 UNION ALL
 
@@ -604,7 +600,7 @@ SELECT
   COUNT(*) AS count
 FROM events
 WHERE type = 'contact_submitted'
-  AND created_at > NOW() - INTERVAL '30 days'
+  AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 
 ORDER BY stage_order;
 ```
@@ -626,7 +622,7 @@ FROM people
 WHERE type = 'patient'
   AND status != 'anonymous'
   AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-  AND created_at > NOW() - INTERVAL '30 days'
+  AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 GROUP BY campaign_source, campaign_variant
 ORDER BY leads DESC;
 ```
@@ -643,7 +639,7 @@ FROM people
 WHERE type = 'patient'
   AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
   AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-  AND created_at > NOW() - INTERVAL '8 weeks'
+  AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 GROUP BY date_trunc('week', created_at), campaign_source
 ORDER BY week DESC, leads DESC;
 ```
@@ -664,7 +660,7 @@ FROM cal_bookings
 WHERE booking_kind = 'intro'
   AND last_trigger_event = 'BOOKING_CREATED'
   AND (is_test = false OR is_test IS NULL)
-  AND created_at > NOW() - INTERVAL '3 days';
+  AND created_at > NOW() - INTERVAL '{{days_back}}' DAY;
 ```
 
 ### Alert: Therapist Availability Below Threshold
@@ -696,7 +692,7 @@ WITH stats AS (
     COUNT(*) AS total
   FROM events
   WHERE type IN ('cal_slots_viewed', 'cal_auto_fallback_to_messaging', 'cal_slots_fetch_failed')
-    AND created_at > NOW() - INTERVAL '7 days'
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 )
 SELECT CASE 
   WHEN 100.0 * fallbacks / NULLIF(total, 0) > 30 THEN 1 

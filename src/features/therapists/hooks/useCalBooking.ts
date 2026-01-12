@@ -105,7 +105,8 @@ export function useCalBooking({
 }: UseCalBookingOptions): [CalBookingState, CalBookingActions] {
   // Slot state
   const [slots, setSlots] = useState<CalNormalizedSlot[]>([]);
-  const [slotsLoading, setSlotsLoading] = useState(false);
+  // Start as true when enabled, so fallback logic waits for fetch to complete
+  const [slotsLoading, setSlotsLoading] = useState(enabled);
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<CalNormalizedSlot | null>(null);
 
