@@ -9,15 +9,20 @@ export default function ImpressumPage() {
           <section aria-labelledby="anbieter">
             <h2 id="anbieter" className="text-xl font-semibold">Angaben gemäß § 5 DDG</h2>
             <address className="not-italic mt-3 space-y-1">
-              <p className="font-medium">Konstantin Kaufmann - Kaufmann Health</p>
-              <p>Billackerweg 1</p>
-              <p>64646 Heppenheim</p>
+              <p className="font-medium">Kaufmann Earth LLC</p>
+              <p>handelnd als Kaufmann Health</p>
+              <p>2427 Stanton Road</p>
+              <p>New Woodstock, NY, 13122, USA</p>
+              <p className="mt-2 text-sm text-gray-600">
+                Registrierung: Madison, 250730021764 (New York State Department of State Division of Corporations,
+                State Divisions and Uniform Commercial Code)
+              </p>
             </address>
           </section>
 
           <section aria-labelledby="vertretung">
             <h2 id="vertretung" className="text-xl font-semibold">Vertreten durch</h2>
-            <p className="mt-3">Konstantin Kaufmann</p>
+            <p className="mt-3">Konstantin Kaufmann (CEO)</p>
           </section>
 
           <section aria-labelledby="kontakt">
@@ -36,9 +41,48 @@ export default function ImpressumPage() {
             <h2 id="verantwortlich" className="text-xl font-semibold">Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h2>
             <address className="not-italic mt-3 space-y-1">
               <p>Konstantin Kaufmann</p>
-              <p>Billackerweg 1</p>
-              <p>64646 Heppenheim</p>
+              <p>2427 Stanton Road</p>
+              <p>New Woodstock, NY, 13122, USA</p>
             </address>
+          </section>
+
+          <section aria-labelledby="eu-datenschutz">
+            <h2 id="eu-datenschutz" className="text-xl font-semibold">EU-Datenschutzverantwortlicher nach Art. 27 Abs. 2 DSGVO</h2>
+            <address className="not-italic mt-3 space-y-1">
+              <p>Josephine Kaufmann</p>
+              <p>Haydnstraße 4</p>
+              <p>12203 Berlin</p>
+            </address>
+          </section>
+
+          <section aria-labelledby="zustellung">
+            <h2 id="zustellung" className="text-xl font-semibold">Zustellungsbevollmächtigte in Deutschland (gemäß § 5 DDG, Art. 27 DSGVO)</h2>
+            <address className="not-italic mt-3 space-y-1">
+              <p>Frau Josephine Kaufmann</p>
+              <p>Haydnstraße 4</p>
+              <p>12203 Berlin</p>
+            </address>
+            <p className="mt-3">
+              Die vorgenannte Person ist bevollmächtigt, Zustellungen in gerichtlichen und außergerichtlichen Verfahren,
+              die den Betrieb der Plattform Kaufmann Health LLC betreffen, für die Gesellschaft entgegenzunehmen.
+            </p>
+          </section>
+
+          <section aria-labelledby="streitbeilegung">
+            <h2 id="streitbeilegung" className="text-xl font-semibold">EU-Streitbeilegung</h2>
+            <p className="mt-3">
+              Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:{' '}
+              <a
+                className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900"
+                href="https://ec.europa.eu/consumers/odr/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                https://ec.europa.eu/consumers/odr/
+              </a>
+              . Unsere E-Mail-Adresse finden Sie oben im Impressum. Wir sind nicht bereit oder verpflichtet, an
+              Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.
+            </p>
           </section>
 
           <section aria-labelledby="haftungsausschluss">
@@ -67,27 +111,11 @@ export default function ImpressumPage() {
                   Rechtsverletzungen werden wir derartige Links umgehend entfernen.
                 </p>
               </div>
-              <div>
-                <h3 className="font-medium">Datenschutz</h3>
-                <p className="mt-2">
-                  Die Nutzung unserer Webseite ist in der Regel ohne Angabe personenbezogener Daten möglich. Soweit auf unseren Seiten
-                  personenbezogene Daten (beispielsweise Name, Anschrift oder E‑Mail‑Adressen) erhoben werden, erfolgt dies, soweit möglich, stets
-                  auf freiwilliger Basis. Diese Daten werden ohne Ihre ausdrückliche Zustimmung nicht an Dritte weitergegeben. Wir weisen darauf hin,
-                  dass die Datenübertragung im Internet (z. B. bei der Kommunikation per E‑Mail) Sicherheitslücken aufweisen kann. Ein lückenloser
-                  Schutz der Daten vor dem Zugriff durch Dritte ist nicht möglich. Der Nutzung von im Rahmen der Impressumspflicht veröffentlichten
-                  Kontaktdaten durch Dritte zur Übersendung von nicht ausdrücklich angeforderter Werbung und Informationsmaterialien wird hiermit
-                  ausdrücklich widersprochen. Die Betreiber der Seiten behalten sich ausdrücklich rechtliche Schritte im Falle der unverlangten
-                  Zusendung von Werbeinformationen, etwa durch Spam‑Mails, vor.
-                </p>
-              </div>
-              <p className="text-xs text-gray-500">
-                Impressum nach einem Muster von Kanzlei Hasselbach Rechtsanwälte, über WebsiteWissen.com.
-              </p>
             </div>
           </section>
 
           <div className="mt-8 pt-4 border-t text-sm text-gray-500">
-            <p>Stand: Oktober 2025 (Version 2025-10.v1)</p>
+            <p>Stand: Januar 2026</p>
           </div>
         </div>
       </section>

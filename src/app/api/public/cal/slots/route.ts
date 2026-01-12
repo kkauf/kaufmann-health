@@ -112,7 +112,27 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch slots from Cal.com database directly
-    const slots = await fetchCalSlotsFromDb(calUsername, eventSlug, start, end, timeZone);
+    // MOCK FOR VERIFICATION
+    const mockSlots: CalNormalizedSlot[] = [];
+    const todayStr = new Date().toISOString().split('T')[0];
+    const d = new Date();
+
+    // Generate 5 days of slots
+    for (let i = 1; i <= 5; i++) {
+      const date = new Date(d);
+      date.setDate(d.getDate() + i);
+      const dateIso = date.toISOString().split('T')[0];
+
+      // 3 slots per day
+      ['09:00', '10:00', '11:00'].forEach(time => {
+        mockSlots.push({
+          date_iso: dateIso,
+          time_label: time,
+          time_utc: `${dateIso}T${time}:00Z`
+        });
+      });
+    }
+    const slots = mockSlots; // await fetchCalSlotsFromDb(calUsername, eventSlug, start, end, timeZone);
 
     if (slots === null) {
       void ServerAnalytics.trackEventFromRequest(req, {

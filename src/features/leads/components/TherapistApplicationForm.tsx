@@ -27,6 +27,7 @@ export default function TherapistApplicationForm() {
   const [message, setMessage] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [consentChecked, setConsentChecked] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const statusRef = useRef<HTMLDivElement>(null);
   const startedTracked = useRef(false);
@@ -94,6 +95,12 @@ export default function TherapistApplicationForm() {
     // Require at least one modality (EARTH-71)
     if (specializations.length === 0) {
       setErrors({ specialization: 'Bitte wähle mindestens einen Schwerpunkt.' });
+      return;
+    }
+
+    // Require consent checkbox for therapists
+    if (!consentChecked) {
+      setErrors({ consent: 'Bitte bestätige, dass du die AGB, den Maklervertrag und die Datenschutzerklärung gelesen hast.' });
       return;
     }
 
@@ -370,12 +377,21 @@ export default function TherapistApplicationForm() {
         </div>
       </div>
 
-      <ConsentSection actor="therapist" compact={false} />
+      <div>
+        <ConsentSection
+          actor="therapist"
+          compact={false}
+          requireCheckbox={true}
+          checked={consentChecked}
+          onChange={setConsentChecked}
+        />
+        {errors.consent && <p className="mt-1 text-xs text-red-600">{errors.consent}</p>}
+      </div>
 
-      <Button type="submit" disabled={loading}>
-        {loading ? 'Registrieren…' : 'Jetzt registrieren'}
+      <Button type="submit" disabled={loading || !consentChecked}>
+        {loading ? 'Registrieren…' : 'Jetzt kostenpflichtig registrieren'}
       </Button>
-      <small className="block text-xs text-gray-600">Erfolgsbasierte Konditionen. Keine Mindestlaufzeit.</small>
+      <small className="block text-xs text-gray-600">Erfolgsbasierte Provision (25%). Keine Grundgebühr. Keine Mindestlaufzeit.</small>
 
       {/* Non-success inline status for errors */}
       <div aria-live="polite" role="status">

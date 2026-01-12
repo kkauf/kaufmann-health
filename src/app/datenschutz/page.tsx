@@ -5,6 +5,7 @@ export default function DatenschutzPage() {
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
       <section aria-labelledby="ds-title" className="rounded-2xl border bg-white p-6 sm:p-8">
         <h1 id="ds-title" className="text-3xl font-semibold tracking-tight sm:text-4xl">Datenschutzerklärung</h1>
+        <p className="mt-2 text-sm text-gray-500">Stand: Januar 2026</p>
 
         <div className="mt-6 space-y-10 text-gray-700">
           <section aria-labelledby="ueberblick">
@@ -23,20 +24,31 @@ export default function DatenschutzPage() {
             <h2 id="verantwortliche" className="text-xl font-semibold">2. Verantwortliche Stelle</h2>
             <p className="mt-3">Verantwortlich für die Datenverarbeitung:</p>
             <address className="not-italic mt-3 space-y-1">
-              <p className="font-medium">Konstantin Kaufmann – Kaufmann Health</p>
-              <p>Billackerweg 1</p>
-              <p>64646 Heppenheim</p>
-              <p>
-                Telefon: <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="tel:+4915679686874">+49 156 79686874</a>
-              </p>
-              <p>
-                E-Mail: <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="mailto:kontakt@kaufmann-health.de">kontakt@kaufmann-health.de</a>
-              </p>
+              <p className="font-medium">Kaufmann Earth LLC</p>
+              <p>handelnd als Kaufmann Health</p>
+              <p>2427 Stanton Road</p>
+              <p>New Woodstock, NY, 13122, USA</p>
+            </address>
+            <p className="mt-3">
+              Sie können uns telefonisch unter{' '}
+              <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="tel:+4915679686874">+49 156 79686874</a>
+              {' '}oder per E-Mail an{' '}
+              <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="mailto:kontakt@kaufmann-health.de">kontakt@kaufmann-health.de</a>
+              {' '}erreichen.
+            </p>
+          </section>
+
+          <section aria-labelledby="eu-vertreter">
+            <h2 id="eu-vertreter" className="text-xl font-semibold">3. EU-Datenschutzverantwortlicher nach Art. 27 Abs. 2 DSGVO</h2>
+            <address className="not-italic mt-3 space-y-1">
+              <p className="font-medium">Josephine Kaufmann</p>
+              <p>Haydnstraße 4</p>
+              <p>12203 Berlin</p>
             </address>
           </section>
 
           <section aria-labelledby="hosting">
-            <h2 id="hosting" className="text-xl font-semibold">3. Hosting</h2>
+            <h2 id="hosting" className="text-xl font-semibold">4. Hosting</h2>
             <p className="mt-3">
               Unsere Website wird von externen Anbietern betrieben, darunter Vercel Inc., 340 S Lemon Ave #4133, Walnut,
               CA 91789, USA, und Supabase Inc., 9700 Great Hills Trail #150, Austin, TX 78759, USA. Die Speicherung
@@ -56,7 +68,7 @@ export default function DatenschutzPage() {
           </section>
 
           <section aria-labelledby="rechte-allgemein">
-            <h2 id="rechte-allgemein" className="text-xl font-semibold">4. Allgemeine Hinweise zu Ihren Rechten</h2>
+            <h2 id="rechte-allgemein" className="text-xl font-semibold">5. Allgemeine Hinweise zu Ihren Rechten</h2>
             <p className="mt-3">
               Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit
               und Widerruf von Einwilligungen (Art. 15 – 20, 7 DSGVO). Außerdem können Sie aus besonderen Gründen der
@@ -65,21 +77,19 @@ export default function DatenschutzPage() {
             <p className="mt-3">
               Im Falle datenschutzrechtlicher Verstöße steht Ihnen nach Art. 77 Abs. 1 DSGVO ein Beschwerderecht bei einer
               Aufsichtsbehörde zu, insbesondere in dem Mitgliedstaat Ihres gewöhnlichen Aufenthalts, Ihres Arbeitsplatzes
-              oder des Orts des mutmaßlichen Verstoßes.
-            </p>
-            <p className="mt-3">
-              Unter diesem Link finden Sie eine Auflistung der Landesdatenschutzbeauftragten:{' '}
+              oder des Orts des mutmaßlichen Verstoßes. Unter diesem Link finden Sie eine Auflistung der Landesdatenschutzbeauftragten,
+              insbesondere des Hessischen Beauftragten für Datenschutz und Informationsfreiheit:{' '}
               <a
                 className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900"
                 href="https://www.bfdi.bund.de/DE/Service/Anschriften/anschriften_table.html"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                bfdi.bund.de
+                https://www.bfdi.bund.de/DE/Service/Anschriften/anschriften_table.html
               </a>
             </p>
             <p className="mt-3">
-              <strong>Hessischer Beauftragter für Datenschutz und Informationsfreiheit</strong><br />
+              <strong>Der Hessische Beauftragte für Datenschutz und Informationsfreiheit</strong><br />
               Gustav-Stresemann-Ring 1, 65189 Wiesbaden<br />
               Telefon: +49 611 1408-0
             </p>
@@ -96,7 +106,7 @@ export default function DatenschutzPage() {
           </section>
 
           <section aria-labelledby="erfassung">
-            <h2 id="erfassung" className="text-xl font-semibold">5. Datenerfassung und Dienste</h2>
+            <h2 id="erfassung" className="text-xl font-semibold">6. Datenerfassung und Dienste</h2>
             <div className="mt-3 space-y-6">
               <div>
                 <h3 id="cookies" className="font-medium">Cookies und Tracking-Technologien</h3>
@@ -282,7 +292,7 @@ export default function DatenschutzPage() {
               </div>
 
               <div>
-                <h3 className="font-medium">Vertragsdaten (Therapeuten-Registrierung)</h3>
+                <h3 className="font-medium">Vertragsdaten</h3>
                 <div className="mt-2 space-y-2">
                   <p>
                     Bei der Registrierung von Therapeuten speichern wir die Vertragsannahme inklusive Zeitpunkt, IP-Adresse
@@ -308,11 +318,20 @@ export default function DatenschutzPage() {
                   verhindern (Art. 6 Abs. 1 lit. f DSGVO).
                 </p>
               </div>
+
+              <div>
+                <h3 className="font-medium">Meldepflichten nach dem PStTG</h3>
+                <p className="mt-2">
+                  Sofern Sie als Anbieter (Therapeut) auf unserer Plattform tätig sind, sind wir gesetzlich verpflichtet,
+                  bestimmte Daten (u. a. Steuer-ID, Honorarumsätze) zu erheben und an das Bundeszentralamt für Steuern zu melden.
+                  Rechtsgrundlage ist Art. 6 Abs. 1 lit. c DSGVO i.V.m. den Bestimmungen des PStTG.
+                </p>
+              </div>
             </div>
           </section>
 
           <section aria-labelledby="gesundheitsdaten">
-            <h2 id="gesundheitsdaten" className="text-xl font-semibold">6. Verarbeitung von Gesundheitsdaten (Art. 9 Abs. 2 DSGVO)</h2>
+            <h2 id="gesundheitsdaten" className="text-xl font-semibold">7. Verarbeitung von Gesundheitsdaten (Art. 9 Abs. 2 DSGVO)</h2>
             <div className="mt-3 space-y-3">
               <p>
                 Im Rahmen der Therapeutenvermittlung verarbeiten wir personenbezogene Gesundheitsdaten, die Sie freiwillig
@@ -329,7 +348,7 @@ export default function DatenschutzPage() {
           </section>
 
           <section aria-labelledby="speicherdauer">
-            <h2 id="speicherdauer" className="text-xl font-semibold">7. Speicherdauer</h2>
+            <h2 id="speicherdauer" className="text-xl font-semibold">8. Speicherdauer</h2>
             <ul className="mt-3 list-disc space-y-2 pl-6">
               <li>
                 <strong>Kontakt- und Anfragedaten</strong> (z. B. über Formular, E-Mail, Telefon): werden nach abschließender
@@ -362,7 +381,7 @@ export default function DatenschutzPage() {
           </section>
 
           <section aria-labelledby="ihre-rechte">
-            <h2 id="ihre-rechte" className="text-xl font-semibold">8. Ihre Rechte</h2>
+            <h2 id="ihre-rechte" className="text-xl font-semibold">9. Ihre Rechte</h2>
             <p className="mt-3">
               Sie haben jederzeit das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung,
               Datenübertragbarkeit sowie Widerruf von Einwilligungen. Zudem können Sie aus besonderen Gründen der
@@ -420,8 +439,7 @@ export default function DatenschutzPage() {
           </section>
 
           <div className="mt-8 pt-4 border-t text-sm text-gray-500">
-            <p>Stand: Oktober 2025</p>
-            <p>Version: 2025-10.v1</p>
+            <p>Version: v2.0</p>
           </div>
         </div>
       </section>

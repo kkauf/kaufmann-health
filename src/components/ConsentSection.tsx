@@ -31,8 +31,13 @@ export function ConsentSection({
     if (actor === 'therapist') {
       return (
         <>
-          Mit dem Klick auf „Jetzt registrieren“ akzeptierst du unsere{' '}
-          <a href="/agb" className="underline">AGB</a>.
+          Ich habe die{' '}
+          <a href="/agb" target="_blank" rel="noopener" className="underline font-medium">AGB</a>,{' '}
+          den{' '}
+          <a href="/therapist-terms" target="_blank" rel="noopener" className="underline font-medium">Maklervertrag</a>{' '}
+          und die{' '}
+          <a href="/datenschutz" target="_blank" rel="noopener" className="underline font-medium">Datenschutzerklärung</a>{' '}
+          zur Kenntnis genommen und akzeptiere diese.
         </>
       );
     }
