@@ -1063,7 +1063,7 @@ export function TherapistDetailModal({
                   disabled={!therapist.accepting_new}
                 >
                   <Calendar className="mr-2 h-5 w-5 shrink-0" />
-                  <span className="break-words">Kostenloses Kennenlernen</span>
+                  <span className="break-words">Kostenloses Erstgespräch (15 min)</span>
                 </Button>
 
                 <Button
@@ -1078,24 +1078,24 @@ export function TherapistDetailModal({
               </>
             ) : (
               <>
-                {/* Fallback: existing KH booking flow */}
+                {/* Fallback: existing KH booking flow - consultation (free intro) is primary */}
                 <Button
                   className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
-                  onClick={() => handleContactClick('booking')}
-                  disabled={!therapist.accepting_new}
-                >
-                  <Calendar className="mr-2 h-5 w-5 shrink-0" />
-                  <span className="break-words">Therapeut:in buchen</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
                   onClick={() => handleContactClick('consultation')}
                   disabled={!therapist.accepting_new}
                 >
                   <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
                   <span className="break-words">Kostenloses Erstgespräch (15 min)</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
+                  onClick={() => handleContactClick('booking')}
+                  disabled={!therapist.accepting_new}
+                >
+                  <Calendar className="mr-2 h-5 w-5 shrink-0" />
+                  <span className="break-words">Direkt buchen</span>
                 </Button>
               </>
             )}

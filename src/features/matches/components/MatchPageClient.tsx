@@ -10,6 +10,7 @@ import { TherapistCard } from '@/features/therapists/components/TherapistCard';
 import { CheckCircle, Sparkles } from 'lucide-react';
 import type { TherapistData } from '@/features/therapists/components/TherapistDirectory';
 import { computeMismatches, type PatientMeta } from '@/features/leads/lib/match';
+import { isCalBookingEnabled } from '@/lib/cal/booking-url';
 import CtaLink from '@/components/CtaLink';
 import FloatingWhatsApp from '@/components/FloatingWhatsApp';
 import { getAttribution } from '@/lib/attribution';
@@ -101,7 +102,6 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   } | null>(null);
   const [detailModalTherapist, setDetailModalTherapist] = useState<TherapistItem | null>(null);
   const [autoOpenedTherapist, setAutoOpenedTherapist] = useState(false);
-  const isDirectBookingFlow = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
 
   useEffect(() => {
     let cancelled = false;
@@ -197,16 +197,6 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     });
   }, [data, therapists]);
 
-  // If any card shows a perfect match badge, suppress the amber "no exact match" banner
-  const hasPerfect = useMemo(
-    () => therapistsWithQuality.some((t) => t.matchQuality?.isPerfect === true),
-    [therapistsWithQuality]
-  );
-  const shouldShowPartialBanner = useMemo(
-    () => (matchType === 'partial' || matchType === 'none') && !hasPerfect,
-    [matchType, hasPerfect]
-  );
-  
   // Find the SINGLE best therapist to highlight with premium styling
   // Priority: 1) Email link (?therapist=...) - always highlight that one
   //           2) Perfect match with booking slots
@@ -235,14 +225,6 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     return perfectMatches[0].id;
   }, [therapistsWithQuality]);
   
-  // Smart messaging: check if patient accepts online therapy
-  const patientAcceptsOnline = useMemo(
-    () => data?.patient?.session_preferences?.includes('online') || data?.patient?.session_preference === 'online',
-    [data?.patient?.session_preferences, data?.patient?.session_preference]
-  );
-
-
-
   // Track page view - include secure_uuid for linking to match session
   useEffect(() => {
     if (data) {
@@ -317,8 +299,13 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   }, [matchType, therapists.length]);
 
   const handleOpen = useCallback((t: TherapistItem, type: 'booking' | 'consultation', selectedSlot?: { date_iso: string; time_label: string; format: 'online' | 'in_person' }) => {
-    // Always open the modal; ContactModal will handle verification if required
-    setModalFor({ therapist: t, type, selectedSlot });
+    // For Cal.com-enabled therapists, open TherapistDetailModal with booking UI
+    // Otherwise, open ContactModal for message-based contact
+    if (isCalBookingEnabled(t)) {
+      setDetailModalTherapist(t);
+    } else {
+      setModalFor({ therapist: t, type, selectedSlot });
+    }
   }, []);
 
   const handleSuccess = useCallback(() => {
@@ -425,38 +412,15 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           {(() => {
             const name = (data?.patient?.name || '').trim();
-            if (!name) return isDirectBookingFlow ? 'Deine passenden Ergebnisse' : 'Deine persönlichen Empfehlungen';
+            if (!name) return 'Deine passenden Therapeut:innen';
             const first = name.split(/\s+/)[0];
-            return isDirectBookingFlow ? `${first}, deine passenden Ergebnisse` : `${first}, deine persönlichen Empfehlungen`;
+            return `${first}, deine passenden Therapeut:innen`;
           })()}
         </h1>
         <p className="mt-2 text-gray-600">
-          {matchType === 'partial'
-            ? `Wir haben ${therapistsWithQuality.length} Therapeut:innen gefunden, die gut zu dir passen könnten – auch wenn nicht alle Kriterien perfekt erfüllt sind.`
-            : isDirectBookingFlow
-              ? `Basierend auf deinen Angaben und aktueller Verfügbarkeit haben wir ${therapistsWithQuality.length} passende Therapeut:innen zusammengestellt.`
-              : `Basierend auf deiner Anfrage haben wir ${therapistsWithQuality.length} Therapeut:innen für dich ausgewählt.`}
+          Buche jetzt ein kostenloses Erstgespräch – unverbindlich und ohne Risiko.
         </p>
       </div>
-
-      {/* Partial match transparency banner */}
-      {matchType === 'partial' && (
-        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm text-amber-800">
-            <strong>Hinweis:</strong> Diese Therapeut:innen erfüllen nicht alle deine Wunsch-Kriterien, passen aber möglicherweise trotzdem gut zu dir. Schau dir ihre Profile an!
-          </p>
-          <div className="mt-2">
-            <CtaLink 
-              href="/therapeuten" 
-              eventType="cta_click" 
-              eventId="partial-match-browse-all"
-              className="text-sm text-amber-700 hover:text-amber-900 underline underline-offset-2"
-            >
-              Alle Therapeut:innen ansehen →
-            </CtaLink>
-          </div>
-        </div>
-      )}
 
       {/* Preferences summary box */}
       {data && (
@@ -543,65 +507,11 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         </div>
       )}
 
-      {/* Match info banner - positive framing */}
-      {shouldShowPartialBanner && (
-        <div className={`mb-6 rounded-xl border p-4 text-sm ${
-          patientAcceptsOnline 
-            ? 'border-emerald-200/70 bg-emerald-50/80 text-emerald-900'
-            : 'border-amber-200/70 bg-amber-50/80 text-amber-900'
-        }`}>
-          {patientAcceptsOnline ? (
-            <>🎉 Gute Nachrichten! {therapists.length > 1 ? `Wir haben ${therapists.length} passende Therapeut:innen` : 'Wir haben passende Therapeut:innen'} für dich gefunden, die Online-Therapie anbieten.</>  
-          ) : (
-            <>Diese Therapeut:innen könnten gut zu dir passen. Schau dir ihre Profile an!</>
-          )}
-        </div>
-      )}
-
-      {/* Trust & Quality Box */}
-      {!isDirectBookingFlow && (
-        <div className="mb-8 rounded-xl border border-slate-200/60 bg-gradient-to-br from-slate-50/80 to-white p-6 shadow-md">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-900">
-            <Sparkles className="h-5 w-5 text-emerald-600" />
-            Warum diese Auswahl?
-          </h2>
-          <ul className="space-y-2 text-sm text-gray-700">
-            <li className="flex items-start gap-2">
-              <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-              <span>Deine Auswahl basiert auf deinen individuellen Präferenzen.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-              <span>Die Auswahl basiert auf deinen individuellen Präferenzen und Bedürfnissen.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-              <span>Wir prüfen die Qualifikationen der Therapeut:innen gründlich.</span>
-            </li>
-          </ul>
-          <p className="mt-4 font-semibold text-gray-900">Sorgfältig geprüfte Profile – passend für dich.</p>
-        </div>
-      )}
-
-      {isDirectBookingFlow && (
-        <div className="mb-8 rounded-xl border border-slate-200/60 bg-gradient-to-br from-slate-50/80 to-white p-6 shadow-md">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-900">
-            <Sparkles className="h-5 w-5 text-emerald-600" />
-            Warum diese Ergebnisse?
-          </h2>
-          <ul className="space-y-2 text-sm text-gray-700">
-            <li className="flex items-start gap-2">
-              <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-              <span>Basierend auf deinen Präferenzen und aktueller Verfügbarkeit.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
-              <span>Profile und Qualifikationen verifiziert.</span>
-            </li>
-          </ul>
-          <p className="mt-4 font-semibold text-gray-900">Sorgfältig geprüfte Profile.</p>
-        </div>
-      )}
+      {/* Trust line - concise */}
+      <p className="mb-6 text-sm text-gray-600 flex items-center gap-2">
+        <CheckCircle className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+        <span>Qualifikationen geprüft · Erstgespräch kostenlos</span>
+      </p>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {/* Sort so highlighted/recommended therapist appears first */}

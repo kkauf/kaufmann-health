@@ -402,7 +402,7 @@ export function TherapistCard({
             disabled={!therapist.accepting_new}
           >
             <MessageCircle className="mr-2 h-4 w-4" />
-            Kostenloses Kennenlernen (15 min)
+            Kostenloses Erstgespräch (15 min)
           </Button>
 
           <Button
