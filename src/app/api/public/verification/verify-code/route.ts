@@ -196,10 +196,11 @@ export async function POST(req: NextRequest) {
             .update({ metadata, status: 'new' })
             .eq('id', person.id);
 
-          // Create instant matches for phone-verified users (uses merged metadata)
+          // Create instant matches for phone-verified users
+          // Pass the merged metadata directly to avoid race condition with DB write
           const variant = person.campaign_variant || undefined;
           try {
-            const matchResult = await createInstantMatchesForPatient(person.id, variant);
+            const matchResult = await createInstantMatchesForPatient(person.id, variant, metadata);
             if (matchResult) {
               // Store matchesUrl in metadata for redirect after verification
               const updatedMeta = { ...metadata, last_confirm_redirect_path: matchResult.matchesUrl };

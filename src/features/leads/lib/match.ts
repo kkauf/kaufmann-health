@@ -335,8 +335,16 @@ export function calculateTotalScore(matchScore: number, platformScore: number): 
 /**
  * Create instant matches for a patient based on their preferences
  * Returns secure match UUID for browsing therapists
+ * 
+ * @param patientId - The patient's ID
+ * @param variant - Optional campaign variant (e.g., 'concierge')
+ * @param preloadedMetadata - Optional pre-loaded metadata to avoid race conditions with DB writes
  */
-export async function createInstantMatchesForPatient(patientId: string, variant?: string): Promise<{ matchesUrl: string; matchQuality: 'exact' | 'partial' | 'none' } | null> {
+export async function createInstantMatchesForPatient(
+  patientId: string, 
+  variant?: string,
+  preloadedMetadata?: Record<string, unknown> | null
+): Promise<{ matchesUrl: string; matchQuality: 'exact' | 'partial' | 'none' } | null> {
   try {
     const isConcierge = variant === 'concierge';
     if (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW !== 'true' && !isConcierge) return null;
@@ -344,14 +352,20 @@ export async function createInstantMatchesForPatient(patientId: string, variant?
     // Dynamic import to avoid module-level initialization in tests
     const { supabaseServer } = await import('@/lib/supabase-server');
     
-    type PersonRow = { id: string; metadata?: Record<string, unknown> | null };
-    const { data: person } = await supabaseServer
-      .from('people')
-      .select('id, metadata')
-      .eq('id', patientId)
-      .single<PersonRow>();
-    
-    const meta = (person?.metadata || {}) as Record<string, unknown>;
+    // Use pre-loaded metadata if provided (avoids race condition with recent DB writes)
+    // Otherwise fetch fresh from DB
+    let meta: Record<string, unknown>;
+    if (preloadedMetadata !== undefined) {
+      meta = preloadedMetadata || {};
+    } else {
+      type PersonRow = { id: string; metadata?: Record<string, unknown> | null };
+      const { data: person } = await supabaseServer
+        .from('people')
+        .select('id, metadata')
+        .eq('id', patientId)
+        .single<PersonRow>();
+      meta = (person?.metadata || {}) as Record<string, unknown>;
+    }
     const isTest = meta['is_test'] === true;
     const city = typeof meta['city'] === 'string' ? (meta['city'] as string) : undefined;
     const session_preference = typeof meta['session_preference'] === 'string' ? (meta['session_preference'] as string) as 'online' | 'in_person' : undefined;

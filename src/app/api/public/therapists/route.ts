@@ -122,13 +122,10 @@ export async function GET() {
       return { row, availability, platformScore };
     });
 
-    // Filter out therapists without capacity:
-    // 1. Must be accepting new patients
-    // 2. Must have at least one availability slot
-    const eligibleRows = scoredRows.filter(({ row, availability }) => {
-      if (row.accepting_new === false) return false;
-      if (availability.length === 0) return false;
-      return true;
+    // Filter: only show therapists accepting new patients (DB flag)
+    // Note: availability is used for sorting/scoring, not visibility
+    const eligibleRows = scoredRows.filter(({ row }) => {
+      return row.accepting_new !== false;
     });
 
     // Sort by Platform Score descending (per spec: directory uses Platform Score only)
