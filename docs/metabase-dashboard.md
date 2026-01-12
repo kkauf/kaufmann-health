@@ -155,44 +155,46 @@ ORDER BY s.day DESC;
 ### 2c. Current Period Gauges (for dashboard cards)
 
 ```sql
--- Single values for gauge display (last 7 days)
+-- Single values for gauge display
 -- Form Completion Rate
-WITH starts AS (
-  SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS cnt
-  FROM events
-  WHERE type = 'screen_viewed'
-    AND properties->>'step' = '1'
-    AND properties->>'is_test' IS DISTINCT FROM 'true'
-    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
-),
-submissions AS (
-  SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS cnt
-  FROM events
-  WHERE type IN ('form_completed', 'questionnaire_completed')
-    AND properties->>'is_test' IS DISTINCT FROM 'true'
-    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
-)
-SELECT ROUND(100.0 * submissions.cnt / NULLIF(starts.cnt, 0), 1) AS form_completion_rate_pct
-FROM starts, submissions;
+SELECT COALESCE(ROUND(
+  100.0 * 
+  (SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text))
+   FROM events
+   WHERE type IN ('form_completed', 'questionnaire_completed')
+     AND properties->>'is_test' IS DISTINCT FROM 'true'
+     AND created_at > NOW() - INTERVAL '{{days_back}}' DAY)::numeric /
+  NULLIF(
+    (SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text))
+     FROM events
+     WHERE type = 'screen_viewed' 
+       AND properties->>'step' = '1'
+       AND properties->>'is_test' IS DISTINCT FROM 'true'
+       AND created_at > NOW() - INTERVAL '{{days_back}}' DAY),
+    0
+  ),
+  1
+), 0) AS form_completion_rate_pct;
 
 -- Verification Rate (separate query for gauge)
-WITH submissions AS (
-  SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS cnt
-  FROM events
-  WHERE type IN ('form_completed', 'questionnaire_completed')
-    AND properties->>'is_test' IS DISTINCT FROM 'true'
-    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
-),
-confirmed AS (
-  SELECT COUNT(*) AS cnt
-  FROM people
-  WHERE type = 'patient'
-    AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
-    AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
-)
-SELECT ROUND(100.0 * confirmed.cnt / NULLIF(submissions.cnt, 0), 1) AS verification_rate_pct
-FROM submissions, confirmed;
+SELECT ROUND(
+  100.0 *
+  (SELECT COUNT(*) 
+   FROM people 
+   WHERE type = 'patient'
+     AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
+     AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+     AND created_at > NOW() - INTERVAL '{{days_back}}' DAY)::numeric /
+  NULLIF(
+    (SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text))
+     FROM events
+     WHERE type IN ('form_completed', 'questionnaire_completed')
+       AND properties->>'is_test' IS DISTINCT FROM 'true'
+       AND created_at > NOW() - INTERVAL '{{days_back}}' DAY),
+    0
+  ),
+  1
+) AS verification_rate_pct;
 ```
 
 ### 3. Lead → Intro Call % 

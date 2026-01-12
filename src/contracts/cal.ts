@@ -75,8 +75,9 @@ export const CalWebhookBookingPayload = z
   .object({
     uid: z.string().optional(), // Optional for ping tests
     eventTypeId: z.union([z.number().int(), z.string()]).nullable().optional(),
-    startTime: z.string().datetime().optional(),
-    endTime: z.string().datetime().optional(),
+    // Cal.com may send various datetime formats - accept any string
+    startTime: z.string().optional(),
+    endTime: z.string().optional(),
     attendees: z.array(CalWebhookAttendee).optional(),
     organizer: CalWebhookOrganizer.optional(),
     metadata: CalKhMetadata.optional(),
@@ -89,7 +90,8 @@ export type CalWebhookBookingPayload = z.infer<typeof CalWebhookBookingPayload>;
 export const CalWebhookBody = z
   .object({
     triggerEvent: CalWebhookTriggerEvent,
-    createdAt: z.string().datetime().optional(),
+    // Cal.com may send various datetime formats
+    createdAt: z.string().optional(),
     payload: CalWebhookBookingPayload,
   })
   .passthrough();
