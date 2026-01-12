@@ -10,7 +10,7 @@
  * Used by TherapistDetailModal for in-modal Cal booking.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { CalNormalizedSlot, CalBookingKind } from '@/contracts/cal';
 import { buildCalBookingUrl } from '@/lib/cal/booking-url';
 import { getAttribution } from '@/lib/attribution';
@@ -121,6 +121,10 @@ export function useCalBooking({
   const [bookingRetryCount, setBookingRetryCount] = useState(0);
   const [slotsFetchTrigger, setSlotsFetchTrigger] = useState(0); // Trigger re-fetch
 
+  // Track current fetch to avoid aborting on re-renders (EARTH-262 fix)
+  const currentFetchRef = useRef<{ therapistId: string; bookingKind: CalBookingKind } | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // Use shared verification hook (single source of truth for verification logic)
   const verification = useVerification({
     initialContactMethod: 'email',
@@ -153,7 +157,24 @@ export function useCalBooking({
       return;
     }
 
+    // EARTH-262 fix: Only abort if therapist/kind ACTUALLY changed, not on re-renders
+    const isSameFetch = currentFetchRef.current?.therapistId === therapistId &&
+                        currentFetchRef.current?.bookingKind === bookingKind;
+    
+    if (isSameFetch && abortControllerRef.current && !slotsUnavailable) {
+      // Same fetch already in progress, don't abort and restart
+      return;
+    }
+
+    // Abort any previous fetch for DIFFERENT therapist/kind
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
     const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+    currentFetchRef.current = { therapistId, bookingKind };
+    
     let timeoutId: ReturnType<typeof setTimeout>;
 
     async function fetchSlots() {
@@ -302,9 +323,14 @@ export function useCalBooking({
 
     return () => {
       clearTimeout(timeoutId);
-      abortController.abort();
+      // Only abort on unmount, not on re-renders (refs handle the deduplication)
+      if (abortControllerRef.current === abortController) {
+        abortController.abort();
+        currentFetchRef.current = null;
+        abortControllerRef.current = null;
+      }
     };
-  }, [enabled, therapistId, bookingKind, slotsFetchTrigger]);
+  }, [enabled, therapistId, bookingKind, slotsFetchTrigger, slotsUnavailable]);
 
   // Redirect to Cal with prefill
   const redirectToCal = useCallback((prefillName?: string, prefillEmail?: string, patientId?: string) => {
@@ -403,6 +429,9 @@ export function useCalBooking({
 
   // EARTH-262: Retry slots fetch
   const retrySlotsFetch = useCallback(() => {
+    // Clear refs to force a new fetch
+    currentFetchRef.current = null;
+    abortControllerRef.current = null;
     setSlotsFetchTrigger((t) => t + 1);
   }, []);
 
