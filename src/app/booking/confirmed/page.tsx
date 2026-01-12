@@ -10,15 +10,31 @@ import Link from 'next/link';
 function ConfirmationContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const therapistId = searchParams.get('therapist');
-  const bookingKind = searchParams.get('kind') as 'intro' | 'full_session' | null;
+  
+  // Support both our params and Cal.com's callback params
+  const therapistId = searchParams.get('therapist') || searchParams.get('metadata[kh_therapist_id]');
+  const bookingKind = (searchParams.get('kind') || searchParams.get('metadata[kh_booking_kind]')) as 'intro' | 'full_session' | null;
   const returnTo = searchParams.get('returnTo');
+  
+  // Cal.com provides these directly in callback URL
+  const calHostName = searchParams.get('hostName');
+  const calStartTime = searchParams.get('startTime') || searchParams.get('attendeeStartTime');
 
-  const [therapistName, setTherapistName] = useState<string | null>(null);
+  const [therapistName, setTherapistName] = useState<string | null>(calHostName);
   const [redirecting, setRedirecting] = useState(false);
+  
+  // Format the booking time for display
+  const formattedTime = calStartTime ? new Date(calStartTime).toLocaleString('de-DE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+  }) : null;
 
   useEffect(() => {
-    if (therapistId) {
+    // Only fetch if we don't have the name from Cal.com params
+    if (therapistId && !calHostName) {
       fetch(`/api/public/therapists?id=${therapistId}`)
         .then((res) => res.json())
         .then((data) => {
@@ -28,7 +44,7 @@ function ConfirmationContent() {
         })
         .catch(() => {});
     }
-  }, [therapistId]);
+  }, [therapistId, calHostName]);
 
   // EARTH-256: Auto-redirect to origin after short delay with confirmation param
   useEffect(() => {
@@ -68,6 +84,15 @@ function ConfirmationContent() {
               {' '}wurde erfolgreich gebucht.
             </p>
           </div>
+
+          {formattedTime && (
+            <div className="bg-white border border-emerald-200 rounded-lg p-4 mb-4">
+              <div className="flex items-center justify-center gap-2 text-gray-800">
+                <Calendar className="w-5 h-5 text-emerald-600" />
+                <span className="font-semibold">{formattedTime} Uhr</span>
+              </div>
+            </div>
+          )}
 
           <div className="bg-emerald-50 rounded-lg p-4 mb-6">
             <div className="flex items-center justify-center gap-2 text-emerald-800">

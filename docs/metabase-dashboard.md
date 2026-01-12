@@ -30,47 +30,50 @@ WHERE created_at >= {{start_date}}
 - **Confirmed leads** = status NOT IN `('pre_confirmation', 'anonymous', 'email_confirmation_sent')`
 - **Cal.com bookings** = `cal_bookings` table (currently empty - needs investigation)
 - **Analytics events** = `events` table
-- **Test data exclusion** = `metadata->>'is_test' IS DISTINCT FROM 'true'`
+- **Test data exclusion (people)** = `metadata->>'is_test' IS DISTINCT FROM 'true'`
+- **Test data exclusion (events)** = `properties->>'is_test' IS DISTINCT FROM 'true'`
 
 ---
 
 ## North Star Metric
 
-### # Therapy Sessions on KH (Weekly)
+### # Therapy Sessions on KH (Daily Trend)
 
 ```sql
 -- Total paid sessions booked through Cal.com
 -- NOTE: cal_bookings is currently empty - this will populate once Cal.com integration is live
 SELECT 
-  date_trunc('week', created_at) AS week,
+  DATE(created_at) AS day,
   COUNT(*) AS sessions
 FROM cal_bookings
 WHERE booking_kind = 'full_session'
   AND last_trigger_event = 'BOOKING_CREATED'
   AND (is_test = false OR is_test IS NULL)
-GROUP BY date_trunc('week', created_at)
-ORDER BY week DESC
-LIMIT 12;
+  AND created_at >= NOW() - INTERVAL '{{days_back}}' DAY
+  AND DATE(created_at) < CURRENT_DATE
+GROUP BY DATE(created_at)
+ORDER BY day DESC;
 ```
 
 ---
 
 ## KPI Dashboard - Demand Side
 
-### 1. Leads/Week (Confirmed)
+### 1. Leads per Day (Confirmed)
 
 ```sql
--- Confirmed leads per week (excludes pre_confirmation, anonymous, email_confirmation_sent)
+-- Confirmed leads per day (excludes pre_confirmation, anonymous, email_confirmation_sent)
 SELECT 
-  date_trunc('week', created_at) AS week,
+  DATE(created_at) AS day,
   COUNT(*) AS confirmed_leads
 FROM people
 WHERE type = 'patient'
   AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
   AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-GROUP BY date_trunc('week', created_at)
-ORDER BY week DESC
-LIMIT 12;
+  AND created_at >= NOW() - INTERVAL '{{days_back}}' DAY
+  AND DATE(created_at) < CURRENT_DATE
+GROUP BY DATE(created_at)
+ORDER BY day DESC;
 ```
 
 ### 2. Form Completion Rate (Daily Trend)
@@ -86,6 +89,7 @@ WITH daily_starts AS (
   FROM events
   WHERE type = 'screen_viewed'
     AND properties->>'step' = '1'
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at >= NOW() - INTERVAL '{{days_back}}' DAY
     AND DATE(created_at) < CURRENT_DATE  -- Exclude today only
   GROUP BY DATE(created_at)
@@ -96,6 +100,7 @@ daily_submissions AS (
     COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS submissions
   FROM events
   WHERE type IN ('form_completed', 'questionnaire_completed')  -- Track both flows
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at >= NOW() - INTERVAL '{{days_back}}' DAY
     AND DATE(created_at) < CURRENT_DATE  -- Exclude today only
   GROUP BY DATE(created_at)
@@ -110,38 +115,41 @@ LEFT JOIN daily_submissions sub ON s.day = sub.day
 ORDER BY s.day DESC;
 ```
 
-### 2b. Verification Conversion Rate (Weekly Trend)
+### 2b. Verification Conversion Rate (Daily Trend)
 
 ```sql
--- Weekly verification rate trend (rolling 28 days)
-WITH weekly_submissions AS (
+-- Daily verification rate trend
+WITH daily_submissions AS (
   SELECT 
-    date_trunc('week', created_at) AS week,
+    DATE(created_at) AS day,
     COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS submissions
   FROM events
   WHERE type IN ('form_completed', 'questionnaire_completed')
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at >= NOW() - INTERVAL '{{days_back}}' DAY
-  GROUP BY date_trunc('week', created_at)
+    AND DATE(created_at) < CURRENT_DATE
+  GROUP BY DATE(created_at)
 ),
-weekly_verified AS (
+daily_verified AS (
   SELECT 
-    date_trunc('week', created_at) AS week,
+    DATE(created_at) AS day,
     COUNT(*) AS verified
   FROM people
   WHERE type = 'patient'
     AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
     AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
     AND created_at >= NOW() - INTERVAL '{{days_back}}' DAY
-  GROUP BY date_trunc('week', created_at)
+    AND DATE(created_at) < CURRENT_DATE
+  GROUP BY DATE(created_at)
 )
 SELECT 
-  s.week,
+  s.day,
   s.submissions AS form_submissions,
   COALESCE(v.verified, 0) AS verified_leads,
   ROUND(100.0 * COALESCE(v.verified, 0) / NULLIF(s.submissions, 0), 1) AS verification_rate_pct
-FROM weekly_submissions s
-LEFT JOIN weekly_verified v ON s.week = v.week
-ORDER BY s.week DESC;
+FROM daily_submissions s
+LEFT JOIN daily_verified v ON s.day = v.day
+ORDER BY s.day DESC;
 ```
 
 ### 2c. Current Period Gauges (for dashboard cards)
@@ -154,12 +162,14 @@ WITH starts AS (
   FROM events
   WHERE type = 'screen_viewed'
     AND properties->>'step' = '1'
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 ),
 submissions AS (
   SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS cnt
   FROM events
   WHERE type IN ('form_completed', 'questionnaire_completed')
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 )
 SELECT ROUND(100.0 * submissions.cnt / NULLIF(starts.cnt, 0), 1) AS form_completion_rate_pct
@@ -170,6 +180,7 @@ WITH submissions AS (
   SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS cnt
   FROM events
   WHERE type IN ('form_completed', 'questionnaire_completed')
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 ),
 confirmed AS (
@@ -453,6 +464,7 @@ WITH step_data AS (
     COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS unique_sessions
   FROM events
   WHERE type = 'screen_viewed'
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
   GROUP BY properties->>'step'
 ),
@@ -510,6 +522,7 @@ WITH funnel AS (
   FROM events
   WHERE type = 'screen_viewed'
     AND properties->>'step' = '1'
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
   
   UNION ALL
@@ -520,6 +533,7 @@ WITH funnel AS (
     COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS users
   FROM events
   WHERE type IN ('form_completed', 'questionnaire_completed')
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
   
   UNION ALL
@@ -627,21 +641,22 @@ GROUP BY campaign_source, campaign_variant
 ORDER BY leads DESC;
 ```
 
-### Weekly Trend by Campaign Source
+### Daily Trend by Campaign Source
 
 ```sql
--- Weekly lead trend by entry point
+-- Daily lead trend by entry point
 SELECT 
-  date_trunc('week', created_at) AS week,
+  DATE(created_at) AS day,
   COALESCE(campaign_source, '(unknown)') AS source,
   COUNT(*) AS leads
 FROM people
 WHERE type = 'patient'
   AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
   AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-  AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
-GROUP BY date_trunc('week', created_at), campaign_source
-ORDER BY week DESC, leads DESC;
+  AND created_at >= NOW() - INTERVAL '{{days_back}}' DAY
+  AND DATE(created_at) < CURRENT_DATE
+GROUP BY DATE(created_at), campaign_source
+ORDER BY day DESC, leads DESC;
 ```
 
 ---

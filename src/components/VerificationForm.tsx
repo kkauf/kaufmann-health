@@ -96,14 +96,15 @@ export function VerificationForm({
         {slotSummary}
 
         <div>
-          <Label htmlFor="verification-name" className="text-sm font-medium text-gray-700">Name</Label>
+          <Label htmlFor="verification-name" className="text-sm font-medium text-gray-700">Name *</Label>
           <Input
             id="verification-name"
             type="text"
-            placeholder="Max Mustermann"
+            placeholder="Dein Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="mt-1"
+            required
           />
         </div>
 
@@ -157,6 +158,10 @@ export function VerificationForm({
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
+
+        {!canSubmitInput && !error && (
+          <p className="text-sm text-amber-600">Bitte fülle alle Pflichtfelder aus.</p>
+        )}
 
         <div className="flex gap-2 pt-1">
           {onBack && (
