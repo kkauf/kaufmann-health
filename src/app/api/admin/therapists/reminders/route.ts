@@ -120,9 +120,10 @@ export async function GET(req: Request) {
 
     // Fetch VERIFIED therapists who may need profile completion reminders
     // (Pending therapists don't get reminders - they're waiting for admin approval)
+    // Profile fields (who_comes_to_me, session_focus, first_session, about_me) are in metadata JSONB
     const initial = await supabaseServer
       .from('therapists')
-      .select('id, status, first_name, last_name, email, gender, city, accepting_new, photo_url, metadata, who_comes_to_me, session_focus, first_session, about_me')
+      .select('id, status, first_name, last_name, email, gender, city, accepting_new, photo_url, metadata')
       .eq('status', 'verified')
       .limit(limit);
 
@@ -181,17 +182,16 @@ export async function GET(req: Request) {
         continue;
       }
 
-      // Check portal profile fields (the new structured fields therapists complete after verification)
-      const tAny = t as Record<string, unknown>;
-      const hasWhoComesToMe = typeof tAny.who_comes_to_me === 'string' && (tAny.who_comes_to_me as string).trim().length > 50;
-      const hasSessionFocus = typeof tAny.session_focus === 'string' && (tAny.session_focus as string).trim().length > 50;
-      const hasFirstSession = typeof tAny.first_session === 'string' && (tAny.first_session as string).trim().length > 50;
-      const hasAboutMe = typeof tAny.about_me === 'string' && (tAny.about_me as string).trim().length > 50;
+      // Check portal profile fields (stored in metadata.profile JSONB)
+      const profileUnknown = (metadata as { profile?: unknown }).profile;
+      const profile = isObject(profileUnknown) ? (profileUnknown as Record<string, unknown>) : {};
+      const hasWhoComesToMe = typeof profile.who_comes_to_me === 'string' && (profile.who_comes_to_me as string).trim().length > 50;
+      const hasSessionFocus = typeof profile.session_focus === 'string' && (profile.session_focus as string).trim().length > 50;
+      const hasFirstSession = typeof profile.first_session === 'string' && (profile.first_session as string).trim().length > 50;
+      const hasAboutMe = typeof profile.about_me === 'string' && (profile.about_me as string).trim().length > 50;
       const profileComplete = hasWhoComesToMe && hasSessionFocus && hasFirstSession && hasAboutMe;
 
       // Check photo
-      const profileUnknown = (metadata as { profile?: unknown }).profile;
-      const profile = isObject(profileUnknown) ? (profileUnknown as Record<string, unknown>) : {};
       const hasPhotoPending = typeof profile.photo_pending_path === 'string' && (profile.photo_pending_path as string).length > 0;
       const approvedPhoto = (t as { photo_url?: string | null }).photo_url || null;
       const hasPhotoApproved = typeof approvedPhoto === 'string' && approvedPhoto.length > 0;
@@ -372,9 +372,10 @@ export async function POST(req: Request) {
     });
 
     // Fetch VERIFIED therapists who may need profile completion reminders
+    // Profile fields (who_comes_to_me, session_focus, first_session, about_me) are in metadata JSONB
     const initial = await supabaseServer
       .from('therapists')
-      .select('id, status, first_name, last_name, email, gender, city, accepting_new, photo_url, metadata, who_comes_to_me, session_focus, first_session, about_me')
+      .select('id, status, first_name, last_name, email, gender, city, accepting_new, photo_url, metadata')
       .eq('status', 'verified')
       .limit(limit);
 
@@ -434,17 +435,16 @@ export async function POST(req: Request) {
         continue;
       }
 
-      // Check portal profile fields (the new structured fields therapists complete after verification)
-      const tAny = t as Record<string, unknown>;
-      const hasWhoComesToMe = typeof tAny.who_comes_to_me === 'string' && (tAny.who_comes_to_me as string).trim().length > 50;
-      const hasSessionFocus = typeof tAny.session_focus === 'string' && (tAny.session_focus as string).trim().length > 50;
-      const hasFirstSession = typeof tAny.first_session === 'string' && (tAny.first_session as string).trim().length > 50;
-      const hasAboutMe = typeof tAny.about_me === 'string' && (tAny.about_me as string).trim().length > 50;
+      // Check portal profile fields (stored in metadata.profile JSONB)
+      const profileUnknown = (metadata as { profile?: unknown }).profile;
+      const profile = isObject(profileUnknown) ? (profileUnknown as Record<string, unknown>) : {};
+      const hasWhoComesToMe = typeof profile.who_comes_to_me === 'string' && (profile.who_comes_to_me as string).trim().length > 50;
+      const hasSessionFocus = typeof profile.session_focus === 'string' && (profile.session_focus as string).trim().length > 50;
+      const hasFirstSession = typeof profile.first_session === 'string' && (profile.first_session as string).trim().length > 50;
+      const hasAboutMe = typeof profile.about_me === 'string' && (profile.about_me as string).trim().length > 50;
       const profileComplete = hasWhoComesToMe && hasSessionFocus && hasFirstSession && hasAboutMe;
 
       // Check photo
-      const profileUnknown = (metadata as { profile?: unknown }).profile;
-      const profile = isObject(profileUnknown) ? (profileUnknown as Record<string, unknown>) : {};
       const hasPhotoPending = typeof profile.photo_pending_path === 'string' && (profile.photo_pending_path as string).length > 0;
       const approvedPhoto = (t as { photo_url?: string | null }).photo_url || null;
       const hasPhotoApproved = typeof approvedPhoto === 'string' && approvedPhoto.length > 0;

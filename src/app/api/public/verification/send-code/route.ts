@@ -310,13 +310,16 @@ export async function POST(req: NextRequest) {
             }
           } else {
             // Create new person record with phone and name
+            // Only set source='directory_contact' when there's actually a draft_contact or draft_booking
+            // (i.e., user came through the therapist directory). Questionnaire users should not get this source.
+            const isDirectoryFlow = Boolean(draft_contact || draft_booking);
             const metadata: Record<string, unknown> = {
               contact_method: 'phone',
-              source: 'directory_contact',
+              ...(isDirectoryFlow ? { source: 'directory_contact' } : {}),
               ...(form_session_id ? { form_session_id } : {}),
               ...(gclid ? { gclid } : {}),
               ...(campaign_source ? { landing_page: campaign_source } : {}),
-              ...((draft_contact || draft_booking) ? { conversion_path: 'directory_contact' } : {}),
+              ...(isDirectoryFlow ? { conversion_path: 'directory_contact' } : {}),
               ...(isTestCookie ? { is_test: true } : {}),
             };
             // Store draft contact data if provided (therapist directory flow)

@@ -8,7 +8,7 @@
  *   - days: Number of days to look back (default: 1)
  *   - dryRun: If "true", logs but doesn't send email
  * 
- * Scheduled: Daily at 8:00 AM via vercel.json cron
+ * Scheduled: Daily at 7:00 PM UTC (2 PM Eastern / 8 PM Germany) via vercel.json cron
  */
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
@@ -199,12 +199,13 @@ export async function GET(req: Request) {
     const { start, end, label } = formatDateRange(days);
     
     // Fetch matches from the period
+    // Use proper JSONB filter syntax - exclude test matches
     const { data: matches, error: matchError } = await supabaseServer
       .from('matches')
       .select('id, patient_id, therapist_id, status, metadata, created_at')
       .gte('created_at', start)
       .lt('created_at', end)
-      .not('metadata->is_test', 'eq', true)
+      .or('metadata->>is_test.is.null,metadata->>is_test.eq.false')
       .order('created_at', { ascending: false });
     
     if (matchError) {
