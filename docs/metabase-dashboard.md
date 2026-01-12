@@ -1,7 +1,36 @@
 # Kaufmann Health Metabase Dashboard Queries
 
 > Generated: January 2026  
-> Data source: Supabase (PostgreSQL)
+> Data source: Supabase (PostgreSQL)  
+> Metabase URL: https://metabase-production-c3d3.up.railway.app
+
+## Syncing Queries to Metabase
+
+Queries defined in this file can be synced directly to Metabase via API.
+
+```bash
+# Preview what would be created/updated
+npx ts-node scripts/metabase-sync.ts --dry-run
+
+# Sync all queries to Metabase
+npx ts-node scripts/metabase-sync.ts --sync
+
+# List existing Metabase cards
+npx ts-node scripts/metabase-sync.ts --list
+```
+
+**How it works:**
+- Parses all `### Section Name` + ` ```sql` blocks from this file
+- Creates saved questions in Metabase using section names
+- Updates existing questions if names match exactly
+- Auto-configures `{{days_back}}` variable with default `28`
+
+**Requirements:**
+- `METABASE_API_KEY` in `.env.local` (admin permissions)
+
+**After syncing:** Add questions to dashboards manually in Metabase UI (+ → Saved Questions → search by name).
+
+---
 
 ## Metabase Date Filters
 

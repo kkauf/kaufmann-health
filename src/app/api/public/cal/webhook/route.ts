@@ -24,10 +24,15 @@ import { renderCalBookingTherapistNotification } from '@/lib/email/templates/cal
 import {
   CalWebhookBody,
   CalWebhookProcessableEvent,
+  CalWebhookBookingEvent,
+  CalWebhookMeetingEvent,
+  CalWebhookNoShowEvent,
   CAL_WEBHOOK_SIGNATURE_HEADER,
   type CalWebhookTriggerEvent,
 } from '@/contracts/cal';
 import { warmCacheForTherapist } from '@/lib/cal/slots-cache';
+import { getCachedCalSlots } from '@/lib/cal/slots-cache';
+import { renderCalIntroFollowup } from '@/lib/email/templates/calIntroFollowup';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -171,6 +176,102 @@ async function sendCalBookingEmails(params: {
         .update({ therapist_notification_sent_at: now })
         .eq('cal_uid', calUid);
     }
+  }
+}
+
+/**
+ * Send intro follow-up email after MEETING_ENDED.
+ * Prompts patient to book a full session.
+ */
+async function sendIntroFollowupEmail(params: {
+  calUid: string;
+  therapistId: string;
+  patientId: string;
+  matchId: string | null;
+  isTest: boolean;
+}): Promise<void> {
+  const { calUid, therapistId, patientId, matchId, isTest } = params;
+
+  // Check if already sent (idempotency)
+  const { data: booking } = await supabaseServer
+    .from('cal_bookings')
+    .select('followup_sent_at')
+    .eq('cal_uid', calUid)
+    .maybeSingle();
+
+  if (booking?.followup_sent_at) return;
+
+  // Fetch patient details
+  const { data: patient } = await supabaseServer
+    .from('people')
+    .select('email, first_name, phone')
+    .eq('id', patientId)
+    .maybeSingle();
+
+  if (!patient) return;
+
+  const hasEmail = patient.email && !patient.email.startsWith('temp_');
+  if (!hasEmail) return; // SMS follow-up could be added later
+
+  // Fetch therapist details
+  const { data: therapist } = await supabaseServer
+    .from('therapists')
+    .select('first_name, last_name, cal_username')
+    .eq('id', therapistId)
+    .maybeSingle();
+
+  const therapistName = therapist
+    ? `${therapist.first_name || ''} ${therapist.last_name || ''}`.trim()
+    : 'Ihr:e Therapeut:in';
+
+  // Build full session URL
+  const calBaseUrl = process.env.NEXT_PUBLIC_CAL_ORIGIN || 'https://cal.kaufmann.health';
+  const fullSessionUrl = therapist?.cal_username
+    ? `${calBaseUrl}/${therapist.cal_username}/full-session`
+    : null;
+
+  // Fetch next full session slot from cache
+  let nextSlotDateIso: string | null = null;
+  let nextSlotTimeLabel: string | null = null;
+  const cachedSlots = await getCachedCalSlots([therapistId]);
+  const cached = cachedSlots.get(therapistId);
+  if (cached?.next_full_date_iso && cached?.next_full_time_label) {
+    nextSlotDateIso = cached.next_full_date_iso;
+    nextSlotTimeLabel = cached.next_full_time_label;
+  }
+
+  // Render and send email
+  const content = renderCalIntroFollowup({
+    patientName: patient.first_name || null,
+    therapistName,
+    fullSessionUrl,
+    nextSlotDateIso,
+    nextSlotTimeLabel,
+    matchUuid: matchId,
+  });
+
+  const recipient = isTest ? (LEADS_NOTIFY_EMAIL || null) : patient.email;
+  if (!recipient) return;
+
+  const sent = await sendEmail({
+    to: recipient,
+    subject: content.subject,
+    html: content.html,
+    context: { kind: 'cal_intro_followup', cal_uid: calUid, is_test: isTest },
+  });
+
+  if (sent) {
+    await supabaseServer
+      .from('cal_bookings')
+      .update({ followup_sent_at: new Date().toISOString() })
+      .eq('cal_uid', calUid);
+
+    void track({
+      type: 'cal_intro_followup_sent',
+      level: 'info',
+      source: 'api.public.cal.webhook',
+      props: { cal_uid: calUid, therapist_id: therapistId, patient_id: patientId },
+    });
   }
 }
 
@@ -508,6 +609,34 @@ export async function POST(req: Request) {
     // Send confirmation emails for new bookings (fire-and-forget)
     // Only for BOOKING_CREATED to avoid duplicate emails on reschedule
     if (triggerEvent === 'BOOKING_CREATED' && therapistId) {
+      // Check if location is NOT Cal.com Video - alert if so (we won't get MEETING_ENDED)
+      const location = typeof payload.location === 'string' ? payload.location : '';
+      const isCalVideo = location.includes('daily') || location.includes('cal.com') || location.includes('integrations:daily');
+      if (!isCalVideo && location) {
+        void track({
+          type: 'cal_booking_non_cal_video',
+          level: 'warn',
+          source: 'api.public.cal.webhook',
+          ip,
+          ua,
+          props: {
+            cal_uid: uid,
+            therapist_id: therapistId,
+            location,
+            warning: 'Therapist using non-Cal.com video. MEETING_ENDED webhook will not fire.',
+          },
+        });
+        // Send admin alert
+        if (LEADS_NOTIFY_EMAIL) {
+          void sendEmail({
+            to: LEADS_NOTIFY_EMAIL,
+            subject: `⚠️ Therapist using non-Cal.com video: ${organizerUsername}`,
+            text: `Booking ${uid} uses "${location}" instead of Cal.com Video.\n\nThis means we won't receive MEETING_ENDED webhook and cannot automatically send intro follow-up emails.\n\nTherapist should use Cal.com Video for proper tracking.`,
+            context: { cal_uid: uid, alert: 'non_cal_video' },
+          }).catch(() => {});
+        }
+      }
+
       void sendCalBookingEmails({
         calUid: uid,
         therapistId,
@@ -519,6 +648,75 @@ export async function POST(req: Request) {
         isTest,
       }).catch((err: unknown) => {
         void logError('api.public.cal.webhook', err, { stage: 'send_emails', cal_uid: uid });
+      });
+    }
+
+    // Handle MEETING_ENDED: Update status to completed and send intro follow-up
+    if (triggerEvent === 'MEETING_ENDED' && !isTest) {
+      // Update booking status to completed
+      await supabaseServer
+        .from('cal_bookings')
+        .update({ status: 'completed', updated_at: new Date().toISOString() })
+        .eq('cal_uid', uid);
+
+      // Send intro follow-up email if this was an intro call
+      if (bookingKind === 'intro' && patientId && therapistId) {
+        void sendIntroFollowupEmail({
+          calUid: uid,
+          therapistId,
+          patientId,
+          matchId: typeof matchId === 'string' ? matchId : null,
+          isTest,
+        }).catch((err: unknown) => {
+          void logError('api.public.cal.webhook', err, { stage: 'intro_followup', cal_uid: uid });
+        });
+      }
+    }
+
+    // Handle no-show events: Update status and send appropriate notifications
+    if (CalWebhookNoShowEvent.safeParse(triggerEvent).success && !isTest) {
+      let newStatus: string;
+      let alertType: string;
+
+      if (triggerEvent === 'AFTER_GUESTS_CAL_VIDEO_NO_SHOW') {
+        newStatus = 'no_show_guest';
+        alertType = 'guest_no_show';
+        // TODO: Send re-engagement email to patient
+      } else if (triggerEvent === 'AFTER_HOSTS_CAL_VIDEO_NO_SHOW') {
+        newStatus = 'no_show_host';
+        alertType = 'host_no_show';
+        // Alert admin - therapist missed the call
+        if (LEADS_NOTIFY_EMAIL) {
+          void sendEmail({
+            to: LEADS_NOTIFY_EMAIL,
+            subject: `🚨 Therapist no-show: ${organizerUsername}`,
+            text: `Therapist ${organizerUsername} did not join booking ${uid}.\n\nStart time: ${startTime}\nPatient email: ${attendeeEmail || 'unknown'}\n\nPlease follow up with the therapist.`,
+            context: { cal_uid: uid, alert: alertType },
+          }).catch(() => {});
+        }
+      } else {
+        newStatus = 'no_show';
+        alertType = 'no_show_manual';
+      }
+
+      await supabaseServer
+        .from('cal_bookings')
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq('cal_uid', uid);
+
+      void track({
+        type: 'cal_booking_no_show',
+        level: 'warn',
+        source: 'api.public.cal.webhook',
+        ip,
+        ua,
+        props: {
+          cal_uid: uid,
+          trigger_event: triggerEvent,
+          therapist_id: therapistId,
+          patient_id: patientId,
+          status: newStatus,
+        },
       });
     }
 

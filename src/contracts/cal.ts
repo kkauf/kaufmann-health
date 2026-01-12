@@ -34,18 +34,30 @@ export type CalKhMetadata = z.infer<typeof CalKhMetadata>;
 // Accept ANY trigger event from Cal.com - we log everything
 export const CalWebhookTriggerEvent = z.string().min(1);
 
-// Events we process into cal_bookings table
-export const CalWebhookProcessableEvent = z.enum([
+// Events we process into cal_bookings table (booking lifecycle)
+export const CalWebhookBookingEvent = z.enum([
   'BOOKING_CREATED',
   'BOOKING_RESCHEDULED',
   'BOOKING_CANCELLED',
 ]);
 
-// No-show events for future automation (EARTH-TBD)
+// Meeting lifecycle events (require Cal.com Video)
+export const CalWebhookMeetingEvent = z.enum([
+  'MEETING_ENDED',
+]);
+
+// No-show events (automatic detection via Cal.com Video)
 export const CalWebhookNoShowEvent = z.enum([
   'BOOKING_NO_SHOW_UPDATED',
   'AFTER_HOSTS_CAL_VIDEO_NO_SHOW',
   'AFTER_GUESTS_CAL_VIDEO_NO_SHOW',
+]);
+
+// All events we process (booking + meeting + no-show)
+export const CalWebhookProcessableEvent = z.enum([
+  ...CalWebhookBookingEvent.options,
+  ...CalWebhookMeetingEvent.options,
+  ...CalWebhookNoShowEvent.options,
 ]);
 
 export type CalWebhookTriggerEvent = z.infer<typeof CalWebhookTriggerEvent>;

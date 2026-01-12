@@ -12,7 +12,14 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import 'dotenv/config';
+import { fileURLToPath } from 'url';
+import { config } from 'dotenv';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env.local explicitly
+config({ path: path.join(__dirname, '../.env.local') });
 
 const METABASE_URL = 'https://metabase-production-c3d3.up.railway.app';
 const METABASE_API_KEY = process.env.METABASE_API_KEY;
@@ -133,8 +140,9 @@ async function listExistingCards(): Promise<MetabaseCard[]> {
 }
 
 async function getDatabaseId(): Promise<number> {
-  const databases = await metabaseRequest('/api/database') as { id: number; name: string }[];
-  // Find the Supabase/PostgreSQL database
+  const response = await metabaseRequest('/api/database') as { data: { id: number; name: string }[] };
+  const databases = response.data;
+  // Find the Supabase/PostgreSQL database (not sample)
   const db = databases.find(d => 
     d.name.toLowerCase().includes('supabase') || 
     d.name.toLowerCase().includes('postgres') ||

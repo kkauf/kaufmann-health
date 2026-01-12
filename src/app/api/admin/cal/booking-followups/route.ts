@@ -1,20 +1,21 @@
 /**
  * GET /api/admin/cal/booking-followups
  *
- * Cron endpoint for Cal.com booking follow-ups and reminders (EARTH-261, EARTH-260)
+ * Cron endpoint for Cal.com booking reminders (EARTH-261, EARTH-260)
  *
  * Usage:
  *   GET /api/admin/cal/booking-followups              (processes ALL stages)
- *   GET /api/admin/cal/booking-followups?stage=post_intro
  *   GET /api/admin/cal/booking-followups?stage=reminder_24h
  *   GET /api/admin/cal/booking-followups?stage=reminder_1h
  *
  * Stages:
- * - post_intro: Send follow-up 30min after intro call ends (prompt full session booking)
  * - reminder_24h: Send reminder 24h before appointment
  * - reminder_1h: Send reminder 1h before appointment
  *
- * Idempotency: Uses followup_sent_at, reminder_24h_sent_at, reminder_1h_sent_at columns
+ * NOTE: post_intro follow-up emails are now sent via MEETING_ENDED webhook
+ * in /api/public/cal/webhook for immediate delivery after the call ends.
+ *
+ * Idempotency: Uses reminder_24h_sent_at, reminder_1h_sent_at columns
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -22,16 +23,14 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { track, logError } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { sendTransactionalSms } from '@/lib/sms/client';
-import { renderCalIntroFollowup } from '@/lib/email/templates/calIntroFollowup';
 import { renderCalBookingReminder } from '@/lib/email/templates/calBookingReminder';
-import { getCachedCalSlots } from '@/lib/cal/slots-cache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const CRON_SECRET = process.env.CRON_SECRET || '';
 
-type Stage = 'post_intro' | 'reminder_24h' | 'reminder_1h';
+type Stage = 'reminder_24h' | 'reminder_1h';
 
 interface CalBooking {
   id: string;
@@ -88,20 +87,7 @@ async function processStage(
   let bookings: CalBooking[] = [];
 
   try {
-    if (stage === 'post_intro') {
-      const cutoff = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
-      const { data, error } = await supabaseServer
-        .from('cal_bookings')
-        .select('*')
-        .eq('booking_kind', 'intro')
-        .lt('end_time', cutoff)
-        .is('followup_sent_at', null)
-        .not('patient_id', 'is', null)
-        .order('end_time', { ascending: true })
-        .limit(limit);
-      if (error) throw error;
-      bookings = (data || []) as CalBooking[];
-    } else if (stage === 'reminder_24h') {
+    if (stage === 'reminder_24h') {
       const windowStart = new Date(now.getTime() + 23 * 60 * 60 * 1000).toISOString();
       const windowEnd = new Date(now.getTime() + 25 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabaseServer
@@ -169,57 +155,7 @@ async function processStage(
         : 'Ihr:e Therapeut:in';
 
       try {
-        if (stage === 'post_intro') {
-          const calBaseUrl = process.env.NEXT_PUBLIC_CAL_ORIGIN || 'https://cal.kaufmann.health';
-          const fullSessionUrl = therapist?.cal_username
-            ? `${calBaseUrl}/${therapist.cal_username}/full-session`
-            : null;
-
-          // Fetch cached full session slot for this therapist
-          let nextSlotDateIso: string | null = null;
-          let nextSlotTimeLabel: string | null = null;
-          if (booking.therapist_id) {
-            const cachedSlots = await getCachedCalSlots([booking.therapist_id]);
-            const cached = cachedSlots.get(booking.therapist_id);
-            if (cached?.next_full_date_iso && cached?.next_full_time_label) {
-              nextSlotDateIso = cached.next_full_date_iso;
-              nextSlotTimeLabel = cached.next_full_time_label;
-            }
-          }
-
-          // Get match_id for personalized matches link
-          const matchUuid = booking.match_id || null;
-
-          if (hasEmail) {
-            const content = renderCalIntroFollowup({
-              patientName: patient.first_name || null,
-              therapistName,
-              fullSessionUrl,
-              nextSlotDateIso,
-              nextSlotTimeLabel,
-              matchUuid,
-            });
-            const sent = await sendEmail({
-              to: patient.email!,
-              subject: content.subject,
-              html: content.html,
-              context: { booking_id: booking.id, stage },
-            });
-            if (sent.sent) counters.sent_email++;
-          }
-
-          if (hasPhone && !hasEmail) {
-            const smsText = `Wie war Ihr Kennenlerngespräch mit ${therapistName}? Möchten Sie einen Folgetermin buchen? Antworten Sie auf diese Nachricht oder besuchen Sie kaufmann-health.de`;
-            const smsResult = await sendTransactionalSms(patient.phone!, smsText);
-            if (smsResult) counters.sent_sms++;
-          }
-
-          await supabaseServer
-            .from('cal_bookings')
-            .update({ followup_sent_at: now.toISOString() })
-            .eq('id', booking.id);
-
-        } else if (stage === 'reminder_24h' || stage === 'reminder_1h') {
+        if (stage === 'reminder_24h' || stage === 'reminder_1h') {
           const startDate = new Date(booking.start_time);
           const dateStr = startDate.toLocaleDateString('de-DE', { 
             weekday: 'long', 
@@ -291,9 +227,9 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '50', 10), 200);
 
   // If no stage specified, process ALL stages sequentially
-  const stagesToProcess: Stage[] = stageParam && ['post_intro', 'reminder_24h', 'reminder_1h'].includes(stageParam)
+  const stagesToProcess: Stage[] = stageParam && ['reminder_24h', 'reminder_1h'].includes(stageParam)
     ? [stageParam]
-    : ['post_intro', 'reminder_24h', 'reminder_1h'];
+    : ['reminder_24h', 'reminder_1h'];
 
   try {
     const results: Array<{ stage: Stage; counters: StageCounters }> = [];
