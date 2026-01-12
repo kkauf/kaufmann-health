@@ -136,12 +136,14 @@ export async function warmCacheForAllTherapists(): Promise<{
   failed: number;
   errors: Array<{ therapistId: string; error: string }>;
 }> {
-  // Fetch all Cal-enabled therapists
+  // Fetch all Cal-enabled therapists with cal_bookings_live=true
+  // Must match isCalBookingEnabled() check: cal_enabled && cal_username && cal_bookings_live
   const { data: therapists, error } = await supabaseServer
     .from('therapists')
     .select('id, cal_username')
     .eq('status', 'verified')
     .eq('cal_enabled', true)
+    .eq('cal_bookings_live', true)
     .not('cal_username', 'is', null);
 
   if (error || !therapists) {

@@ -47,9 +47,21 @@ function hashCode(s: string) {
 }
 
 // EARTH-248: Format next intro slot for display
-function formatNextIntroSlot(slot: { date_iso: string; time_label: string } | null | undefined): string | null {
+// Only returns formatted string if slot is still in the future
+function formatNextIntroSlot(slot: { date_iso: string; time_label: string; time_utc?: string } | null | undefined): string | null {
   if (!slot?.date_iso || !slot?.time_label) return null;
   try {
+    // Check if slot is in the future (using time_utc if available, otherwise date_iso)
+    const slotTime = slot.time_utc 
+      ? new Date(slot.time_utc).getTime()
+      : new Date(slot.date_iso + 'T' + slot.time_label + ':00').getTime();
+    const now = Date.now();
+    
+    // Don't show slots that are in the past or less than 30 minutes away
+    if (slotTime < now + 30 * 60 * 1000) {
+      return null;
+    }
+
     const date = new Date(slot.date_iso + 'T12:00:00'); // Noon to avoid timezone issues
     const weekday = date.toLocaleDateString('de-DE', { weekday: 'short' });
     const day = date.getDate();
@@ -263,10 +275,15 @@ export function TherapistCard({
                 </div>
               )}
 
-              {/* EARTH-248: Next intro slot - only show for Cal-enabled therapists with cached data */}
+              {/* EARTH-248: Next intro slot - only show for therapists with cal_bookings_live=true */}
               {(() => {
+                // Must match isCalBookingEnabled: cal_enabled && cal_username && cal_bookings_live
+                const isCalLive = therapist.cal_enabled && therapist.cal_username && therapist.cal_bookings_live;
+                if (!isCalLive) return null;
+                
                 const nextSlot = formatNextIntroSlot(therapist.next_intro_slot);
-                if (!nextSlot || !therapist.cal_enabled) return null;
+                if (!nextSlot) return null;
+                
                 return (
                   <div className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-700">
                     <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />

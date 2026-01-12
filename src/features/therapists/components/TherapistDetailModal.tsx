@@ -425,6 +425,51 @@ export function TherapistDetailModal({
     setCalWeekIndex(0);
   }, [calActions]);
 
+  // EARTH-248: Auto-switch to messaging when Cal slots unavailable or empty
+  // This prevents dead-end UX where user sees "no slots" and must manually click contact
+  useEffect(() => {
+    if (viewMode !== 'cal-booking' || previewMode || !onOpenContactModal) return;
+    if (calState.slotsLoading) return; // Still loading
+    
+    // Check if we should auto-fallback to messaging
+    const shouldFallback = calState.slotsUnavailable || 
+      (!calState.slotsError && calSortedDays.length === 0);
+    
+    if (shouldFallback) {
+      // Track the auto-fallback
+      try {
+        const attrs = getAttribution();
+        navigator.sendBeacon?.(
+          '/api/events',
+          new Blob([JSON.stringify({
+            type: 'cal_auto_fallback_to_messaging',
+            ...attrs,
+            properties: {
+              therapist_id: therapist.id,
+              kind: calBookingKind,
+              reason: calState.slotsUnavailable ? 'unavailable' : 'no_slots',
+            },
+          })], { type: 'application/json' })
+        );
+      } catch { }
+
+      // Auto-switch to messaging flow
+      handleBackFromCalBooking();
+      onOpenContactModal(therapist, 'consultation', undefined);
+    }
+  }, [
+    viewMode, 
+    calState.slotsLoading, 
+    calState.slotsUnavailable, 
+    calState.slotsError, 
+    calSortedDays.length,
+    previewMode,
+    onOpenContactModal,
+    therapist,
+    calBookingKind,
+    handleBackFromCalBooking,
+  ]);
+
   return (
     <Dialog open={open} onOpenChange={handleModalClose}>
       <DialogContent
@@ -1007,8 +1052,18 @@ export function TherapistDetailModal({
                     </div>
 
                     {/* Day chips with progressive disclosure */}
-                    <div className="overflow-x-auto scrollbar-hide -mx-4">
-                      <div className="flex gap-3 px-4 pb-4 items-start">
+                    <div className={cn(
+                      "-mx-4",
+                      showAllDays 
+                        ? "max-h-[180px] overflow-y-auto overflow-x-hidden" // Wrap mode: scrollable grid
+                        : "overflow-x-auto overflow-y-hidden scrollbar-hide" // Initial: horizontal scroll
+                    )}>
+                      <div className={cn(
+                        "gap-3 px-4 pb-4",
+                        showAllDays 
+                          ? "flex flex-wrap items-start" // Wrap into multiple rows
+                          : "flex items-start" // Single row
+                      )}>
                         {(showAllDays ? calSortedDays : calSortedDays.slice(0, INITIAL_DAYS_TO_SHOW)).map((day) => {
                           const isSelected = calState.selectedSlot?.date_iso === day;
                           const slotCount = calSlotsByDay.get(day)?.length || 0;
