@@ -295,13 +295,37 @@ export async function POST(req: NextRequest) {
                 })();
                 const sinkEmail = (process.env.LEADS_NOTIFY_EMAIL || '').trim();
                 // Validate therapist is verified and weekly slot is designated for the given weekday/time/format (Berlin TZ)
-                // Therapist verified
+                // Therapist verified - also check if Cal-enabled (skip draft_booking for Cal therapists)
                 const { data: therapist } = await supabaseServer
                   .from('therapists')
-                  .select('id')
+                  .select('id, cal_enabled, cal_username, cal_bookings_live')
                   .eq('id', therapistId)
                   .eq('status', 'verified')
                   .maybeSingle();
+                
+                // Skip draft_booking processing for Cal-enabled therapists
+                // Cal.com bookings are handled via webhook, not draft_booking
+                const isCalEnabled = therapist?.cal_enabled && therapist?.cal_username && therapist?.cal_bookings_live;
+                if (isCalEnabled) {
+                  try {
+                    await ServerAnalytics.trackEventFromRequest(req, {
+                      type: 'draft_booking_skipped_cal_enabled',
+                      source: 'api.verification.verify-code',
+                      props: { therapist_id: therapistId },
+                    });
+                  } catch { }
+                  // Clear draft_booking from metadata since it won't be processed
+                  try {
+                    const clearedMeta: Record<string, unknown> = { ...(person.metadata || {}) };
+                    delete clearedMeta['draft_booking'];
+                    await supabaseServer
+                      .from('people')
+                      .update({ metadata: clearedMeta })
+                      .eq('id', person.id);
+                  } catch { }
+                  // Skip to end of draft_booking processing
+                  throw new Error('CAL_ENABLED_SKIP');
+                }
                 // Weekly slot check
                 let hasValidSlot = false;
                 if (therapist) {

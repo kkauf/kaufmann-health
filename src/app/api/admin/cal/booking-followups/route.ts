@@ -24,6 +24,7 @@ import { sendEmail } from '@/lib/email/client';
 import { sendTransactionalSms } from '@/lib/sms/client';
 import { renderCalIntroFollowup } from '@/lib/email/templates/calIntroFollowup';
 import { renderCalBookingReminder } from '@/lib/email/templates/calBookingReminder';
+import { getCachedCalSlots } from '@/lib/cal/slots-cache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -37,6 +38,7 @@ interface CalBooking {
   cal_uid: string;
   therapist_id: string | null;
   patient_id: string | null;
+  match_id: string | null;
   start_time: string;
   end_time: string;
   booking_kind: string | null;
@@ -173,11 +175,29 @@ async function processStage(
             ? `${calBaseUrl}/${therapist.cal_username}/full-session`
             : null;
 
+          // Fetch cached full session slot for this therapist
+          let nextSlotDateIso: string | null = null;
+          let nextSlotTimeLabel: string | null = null;
+          if (booking.therapist_id) {
+            const cachedSlots = await getCachedCalSlots([booking.therapist_id]);
+            const cached = cachedSlots.get(booking.therapist_id);
+            if (cached?.next_full_date_iso && cached?.next_full_time_label) {
+              nextSlotDateIso = cached.next_full_date_iso;
+              nextSlotTimeLabel = cached.next_full_time_label;
+            }
+          }
+
+          // Get match_id for personalized matches link
+          const matchUuid = booking.match_id || null;
+
           if (hasEmail) {
             const content = renderCalIntroFollowup({
               patientName: patient.first_name || null,
               therapistName,
               fullSessionUrl,
+              nextSlotDateIso,
+              nextSlotTimeLabel,
+              matchUuid,
             });
             const sent = await sendEmail({
               to: patient.email!,

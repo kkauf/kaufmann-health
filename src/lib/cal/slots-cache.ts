@@ -14,6 +14,11 @@ export interface CachedCalSlot {
   next_intro_time_label: string | null;
   next_intro_time_utc: string | null;
   slots_count: number;
+  // Full session slots (for follow-up emails after intro)
+  next_full_date_iso: string | null;
+  next_full_time_label: string | null;
+  next_full_time_utc: string | null;
+  full_slots_count: number;
   cached_at: string;
   last_error: string | null;
 }
@@ -67,9 +72,13 @@ export async function warmCacheForTherapist(
       .toISOString()
       .split('T')[0];
 
-    const slots = await fetchCalSlotsFromDb(calUsername, 'intro', start, end, 'Europe/Berlin');
+    // Fetch both intro and full_session slots in parallel
+    const [introSlots, fullSlots] = await Promise.all([
+      fetchCalSlotsFromDb(calUsername, 'intro', start, end, 'Europe/Berlin'),
+      fetchCalSlotsFromDb(calUsername, 'full_session', start, end, 'Europe/Berlin'),
+    ]);
 
-    if (slots === null) {
+    if (introSlots === null && fullSlots === null) {
       // Update cache with error
       await supabaseServer.from('cal_slots_cache').upsert({
         therapist_id: therapistId,
@@ -77,22 +86,31 @@ export async function warmCacheForTherapist(
         next_intro_time_label: null,
         next_intro_time_utc: null,
         slots_count: 0,
+        next_full_date_iso: null,
+        next_full_time_label: null,
+        next_full_time_utc: null,
+        full_slots_count: 0,
         cached_at: new Date().toISOString(),
         last_error: 'Failed to fetch slots from Cal DB',
       });
       return { success: false, error: 'Failed to fetch slots' };
     }
 
-    // Find first available slot
-    const firstSlot = slots[0] || null;
+    // Find first available slot for each type
+    const firstIntroSlot = introSlots?.[0] || null;
+    const firstFullSlot = fullSlots?.[0] || null;
 
-    // Upsert cache entry
+    // Upsert cache entry with both slot types
     const { error: upsertError } = await supabaseServer.from('cal_slots_cache').upsert({
       therapist_id: therapistId,
-      next_intro_date_iso: firstSlot?.date_iso || null,
-      next_intro_time_label: firstSlot?.time_label || null,
-      next_intro_time_utc: firstSlot?.time_utc || null,
-      slots_count: slots.length,
+      next_intro_date_iso: firstIntroSlot?.date_iso || null,
+      next_intro_time_label: firstIntroSlot?.time_label || null,
+      next_intro_time_utc: firstIntroSlot?.time_utc || null,
+      slots_count: introSlots?.length || 0,
+      next_full_date_iso: firstFullSlot?.date_iso || null,
+      next_full_time_label: firstFullSlot?.time_label || null,
+      next_full_time_utc: firstFullSlot?.time_utc || null,
+      full_slots_count: fullSlots?.length || 0,
       cached_at: new Date().toISOString(),
       last_error: null,
     });
@@ -102,7 +120,7 @@ export async function warmCacheForTherapist(
       return { success: false, error: upsertError.message };
     }
 
-    return { success: true, slotsCount: slots.length };
+    return { success: true, slotsCount: (introSlots?.length || 0) + (fullSlots?.length || 0) };
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : 'Unknown error';
     console.error('[cal/slots-cache] Error warming cache:', errMsg);
@@ -115,6 +133,10 @@ export async function warmCacheForTherapist(
         next_intro_time_label: null,
         next_intro_time_utc: null,
         slots_count: 0,
+        next_full_date_iso: null,
+        next_full_time_label: null,
+        next_full_time_utc: null,
+        full_slots_count: 0,
         cached_at: new Date().toISOString(),
         last_error: errMsg,
       });

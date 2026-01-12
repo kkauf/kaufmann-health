@@ -18,6 +18,9 @@ import { NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
+import { sendEmail } from '@/lib/email/client';
+import { renderCalBookingClientConfirmation } from '@/lib/email/templates/calBookingClientConfirmation';
+import { renderCalBookingTherapistNotification } from '@/lib/email/templates/calBookingTherapistNotification';
 import {
   CalWebhookBody,
   CalWebhookProcessableEvent,
@@ -29,9 +32,146 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const CAL_WEBHOOK_SECRET = process.env.CAL_WEBHOOK_SECRET || '';
+const LEADS_NOTIFY_EMAIL = (process.env.LEADS_NOTIFY_EMAIL || '').trim();
 
 // EARTH-262: Failure tracking threshold for admin alerts
 const WEBHOOK_FAILURE_ALERT_THRESHOLD = 3;
+
+/**
+ * Send Cal.com booking confirmation emails to client and therapist.
+ * Called after webhook confirms BOOKING_CREATED.
+ * 
+ * Emails are idempotent: we check cal_bookings columns before sending
+ * and update them after successful send.
+ */
+async function sendCalBookingEmails(params: {
+  calUid: string;
+  therapistId: string;
+  patientId: string | null;
+  attendeeEmail: string | null;
+  attendeeName: string | null;
+  startTime: string | null;
+  bookingKind: string | null;
+  isTest: boolean;
+}): Promise<void> {
+  const { calUid, therapistId, patientId, attendeeEmail, attendeeName, startTime, bookingKind, isTest } = params;
+  
+  // Check if emails already sent (idempotency)
+  const { data: booking } = await supabaseServer
+    .from('cal_bookings')
+    .select('client_confirmation_sent_at, therapist_notification_sent_at')
+    .eq('cal_uid', calUid)
+    .maybeSingle();
+  
+  const clientAlreadySent = Boolean(booking?.client_confirmation_sent_at);
+  const therapistAlreadySent = Boolean(booking?.therapist_notification_sent_at);
+  
+  if (clientAlreadySent && therapistAlreadySent) return;
+  
+  // Fetch therapist details
+  const { data: therapist } = await supabaseServer
+    .from('therapists')
+    .select('email, first_name, last_name, typical_rate')
+    .eq('id', therapistId)
+    .maybeSingle();
+  
+  if (!therapist) return;
+  
+  const therapistName = [therapist.first_name || '', therapist.last_name || ''].filter(Boolean).join(' ');
+  const therapistEmail = therapist.email || null;
+  
+  // Fetch patient details (if we have a patient_id)
+  let patientName = attendeeName || null;
+  let patientEmail = attendeeEmail || null;
+  
+  if (patientId) {
+    const { data: patient } = await supabaseServer
+      .from('people')
+      .select('name, email')
+      .eq('id', patientId)
+      .maybeSingle();
+    
+    if (patient) {
+      patientName = patient.name || patientName;
+      patientEmail = patient.email || patientEmail;
+    }
+  }
+  
+  // Parse date/time from startTime (ISO format)
+  let dateIso = '';
+  let timeLabel = '';
+  if (startTime) {
+    try {
+      const dt = new Date(startTime);
+      // Format in Europe/Berlin timezone
+      dateIso = dt.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' }); // YYYY-MM-DD
+      timeLabel = dt.toLocaleTimeString('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' });
+    } catch {
+      // Fallback: extract from ISO string
+      dateIso = startTime.split('T')[0] || '';
+      timeLabel = startTime.split('T')[1]?.slice(0, 5) || '';
+    }
+  }
+  
+  const isIntro = bookingKind === 'intro';
+  const now = new Date().toISOString();
+  
+  // Determine recipient emails (test mode routes to sink)
+  const clientRecipient = isTest ? (LEADS_NOTIFY_EMAIL || null) : patientEmail;
+  const therapistRecipient = isTest ? (LEADS_NOTIFY_EMAIL || null) : therapistEmail;
+  
+  // Send client confirmation
+  if (!clientAlreadySent && clientRecipient) {
+    const content = renderCalBookingClientConfirmation({
+      patientName,
+      therapistName,
+      dateIso,
+      timeLabel,
+      isIntro,
+      sessionPrice: therapist.typical_rate || null,
+    });
+    
+    const sent = await sendEmail({
+      to: clientRecipient,
+      subject: content.subject,
+      html: content.html,
+      context: { kind: 'cal_booking_client_confirmation', cal_uid: calUid, is_test: isTest },
+    });
+    
+    if (sent) {
+      await supabaseServer
+        .from('cal_bookings')
+        .update({ client_confirmation_sent_at: now })
+        .eq('cal_uid', calUid);
+    }
+  }
+  
+  // Send therapist notification
+  if (!therapistAlreadySent && therapistRecipient) {
+    const content = renderCalBookingTherapistNotification({
+      therapistName,
+      patientName,
+      patientEmail,
+      dateIso,
+      timeLabel,
+      isIntro,
+    });
+    
+    const sent = await sendEmail({
+      to: therapistRecipient,
+      subject: content.subject,
+      html: content.html,
+      context: { kind: 'cal_booking_therapist_notification', cal_uid: calUid, is_test: isTest },
+    });
+    
+    if (sent) {
+      await supabaseServer
+        .from('cal_bookings')
+        .update({ therapist_notification_sent_at: now })
+        .eq('cal_uid', calUid);
+    }
+  }
+}
 
 /**
  * EARTH-262: Track webhook failures and alert admin if threshold exceeded
@@ -283,8 +423,10 @@ export async function POST(req: Request) {
 
     // Extract KH metadata if present
     const khMeta = metadata ?? {};
-    const bookingKind = ('kh_booking_kind' in khMeta ? khMeta.kh_booking_kind : null) || null;
-    const source = ('kh_source' in khMeta ? khMeta.kh_source : null) || null;
+    const bookingKindRaw = 'kh_booking_kind' in khMeta ? khMeta.kh_booking_kind : null;
+    const bookingKind: string | null = typeof bookingKindRaw === 'string' ? bookingKindRaw : null;
+    const sourceRaw = 'kh_source' in khMeta ? khMeta.kh_source : null;
+    const source: string | null = typeof sourceRaw === 'string' ? sourceRaw : null;
     const isTest = Boolean('kh_test' in khMeta ? khMeta.kh_test : false);
     const matchIdFromMeta = 'kh_match_id' in khMeta ? khMeta.kh_match_id : null;
 
@@ -349,6 +491,23 @@ export async function POST(req: Request) {
         attendee_email: attendeeEmail ? '***' : null, // redact for privacy
       },
     });
+
+    // Send confirmation emails for new bookings (fire-and-forget)
+    // Only for BOOKING_CREATED to avoid duplicate emails on reschedule
+    if (triggerEvent === 'BOOKING_CREATED' && therapistId) {
+      void sendCalBookingEmails({
+        calUid: uid,
+        therapistId,
+        patientId,
+        attendeeEmail,
+        attendeeName: attendees?.[0]?.name || null,
+        startTime: startTime || null,
+        bookingKind,
+        isTest,
+      }).catch((err: unknown) => {
+        void logError('api.public.cal.webhook', err, { stage: 'send_emails', cal_uid: uid });
+      });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (e) {

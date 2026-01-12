@@ -294,6 +294,38 @@ export async function GET(req: Request) {
         const calUsername = typeof draftBooking.cal_username === 'string' ? draftBooking.cal_username : null;
         const calBookingKind = draftBooking.cal_booking_kind === 'full_session' ? 'full_session' : 'intro';
 
+        // Check if therapist is Cal-enabled - skip old booking flow for Cal therapists
+        // This prevents emails being sent before Cal.com confirms the booking
+        if (therapistId) {
+          const { data: therapistCheck } = await supabaseServer
+            .from('therapists')
+            .select('cal_enabled, cal_username, cal_bookings_live')
+            .eq('id', therapistId)
+            .maybeSingle();
+          
+          const isCalEnabled = therapistCheck?.cal_enabled && therapistCheck?.cal_username && therapistCheck?.cal_bookings_live;
+          if (isCalEnabled && !calSlotUtc) {
+            // Cal-enabled therapist but no cal_slot_utc - clear draft_booking and skip
+            try {
+              await ServerAnalytics.trackEventFromRequest(req, {
+                type: 'draft_booking_skipped_cal_enabled',
+                source: 'api.leads.confirm',
+                props: { therapist_id: therapistId },
+              });
+            } catch {}
+            try {
+              const clearedMeta = { ...(newMetadata || {}) } as Record<string, unknown>;
+              delete clearedMeta['draft_booking'];
+              await supabaseServer
+                .from('people')
+                .update({ metadata: clearedMeta })
+                .eq('id', id);
+            } catch {}
+            // Skip draft_booking processing - Cal.com will handle via webhook
+            throw new Error('CAL_ENABLED_SKIP');
+          }
+        }
+
         // If this is a Cal.com booking (has cal_slot_utc), redirect to Cal.com instead of creating KH booking
         if (calSlotUtc && calUsername && therapistId) {
           try {
