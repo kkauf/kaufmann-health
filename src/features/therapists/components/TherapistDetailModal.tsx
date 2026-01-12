@@ -968,10 +968,48 @@ export function TherapistDetailModal({
 
                 {!calState.slotsLoading && !calState.slotsError && calSortedDays.length > 0 && (
                   <>
-                    {/* Day chips */}
+                    {/* First available slot quick-book banner */}
+                    {(() => {
+                      // Only show banner if no slot is explicitly selected or if the selected slot logic permits?
+                      // Actually always showing it at the top provides good context.
+                      // But maybe hide it if a slot is already selected to reduce noise?
+                      // User feedback said "prominent, direct action". Let's keep it visible.
+                      const firstDay = calSortedDays[0];
+                      const firstSlot = calSlotsByDay.get(firstDay)?.[0];
+                      if (!firstSlot) return null;
+
+                      const d = new Date(firstSlot.date_iso + 'T00:00:00');
+                      const dateStr = d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+
+                      return (
+                        <div className="mb-6 p-4 bg-emerald-50/80 border border-emerald-200/80 rounded-xl shadow-sm">
+                          <p className="text-sm font-medium text-emerald-900 mb-3">
+                            Nächster freier Termin:
+                          </p>
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="text-emerald-950 font-semibold text-lg">
+                              {dateStr} <span className="text-emerald-900/60 font-normal">um</span> {firstSlot.time_label} Uhr
+                            </div>
+                            <Button
+                              size="sm"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 font-semibold shadow-sm hover:shadow"
+                              onClick={() => calActions.selectSlot(firstSlot)}
+                            >
+                              Wählen
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    <div className="text-sm text-gray-500 font-medium mb-3">
+                      Oder einen anderen Zeitpunkt wählen:
+                    </div>
+
+                    {/* Day chips with progressive disclosure */}
                     <div className="overflow-x-auto scrollbar-hide -mx-4">
-                      <div className="flex gap-3 px-4 py-4">
-                        {calSortedDays.map((day) => {
+                      <div className="flex gap-3 px-4 pb-4 items-start">
+                        {(showAllDays ? calSortedDays : calSortedDays.slice(0, INITIAL_DAYS_TO_SHOW)).map((day) => {
                           const isSelected = calState.selectedSlot?.date_iso === day;
                           const slotCount = calSlotsByDay.get(day)?.length || 0;
                           const d = new Date(day + 'T00:00:00');
@@ -1001,6 +1039,17 @@ export function TherapistDetailModal({
                             </button>
                           );
                         })}
+
+                        {/* Show more button */}
+                        {!showAllDays && calSortedDays.length > INITIAL_DAYS_TO_SHOW && (
+                          <button
+                            onClick={() => setShowAllDays(true)}
+                            className="shrink-0 h-[60px] px-3 rounded-lg border-2 border-dashed border-gray-200 bg-gray-50/50 hover:bg-gray-100/50 hover:border-gray-300 transition-all flex flex-col items-center justify-center gap-1 min-w-[100px]"
+                          >
+                            <span className="text-xs font-medium text-gray-600">Mehr anzeigen</span>
+                            <ChevronDown className="h-4 w-4 text-gray-400" />
+                          </button>
+                        )}
                       </div>
                     </div>
 

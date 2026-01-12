@@ -101,6 +101,8 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     selectedSlot?: { date_iso: string; time_label: string; format: 'online' | 'in_person' };
   } | null>(null);
   const [detailModalTherapist, setDetailModalTherapist] = useState<TherapistItem | null>(null);
+  const [detailModalViewMode, setDetailModalViewMode] = useState<'profile' | 'cal-booking'>('profile');
+  const [detailModalCalKind, setDetailModalCalKind] = useState<'intro' | 'full_session'>('intro');
   const [autoOpenedTherapist, setAutoOpenedTherapist] = useState(false);
 
   useEffect(() => {
@@ -309,6 +311,9 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     // For Cal.com-enabled therapists, open TherapistDetailModal with booking UI
     // Otherwise, open ContactModal for message-based contact
     if (isCalBookingEnabled(t)) {
+      // Open directly into Cal booking view with appropriate kind
+      setDetailModalViewMode('cal-booking');
+      setDetailModalCalKind(type === 'consultation' ? 'intro' : 'full_session');
       setDetailModalTherapist(t);
     } else {
       setModalFor({ therapist: t, type, selectedSlot });
@@ -549,7 +554,10 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             <TherapistCard
               key={t.id}
               therapist={therapistData}
-              onViewDetails={() => setDetailModalTherapist(t)}
+              onViewDetails={() => {
+                setDetailModalViewMode('profile');
+                setDetailModalTherapist(t);
+              }}
               patientModalities={data?.patient?.specializations || []}
               showSchwerpunkte={true}
               patientSchwerpunkte={data?.patient?.schwerpunkte || []}
@@ -628,7 +636,12 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             cal_bookings_live: detailModalTherapist.cal_bookings_live,
           } as TherapistData}
           open={!!detailModalTherapist}
-          onClose={() => setDetailModalTherapist(null)}
+          onClose={() => {
+            setDetailModalTherapist(null);
+            setDetailModalViewMode('profile'); // Reset for next open
+          }}
+          initialViewMode={detailModalViewMode}
+          initialCalBookingKind={detailModalCalKind}
           onOpenContactModal={(therapistFromProfile: TherapistData, type: 'booking' | 'consultation', selectedSlot?: { date_iso: string; time_label: string; format: 'online' | 'in_person' }) => {
             // Map TherapistData → TherapistItem minimal fields and open ContactModal
             const t: TherapistItem = {
