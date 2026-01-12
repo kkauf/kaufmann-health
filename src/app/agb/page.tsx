@@ -15,9 +15,17 @@ export default function AgbPage() {
           <section aria-labelledby="leistungsbeschreibung">
             <h2 id="leistungsbeschreibung" className="text-xl font-semibold">§ 1 Leistungsbeschreibung</h2>
             <p className="mt-3">
-              (1) Kaufmann Health (&quot;Plattform&quot;) wird von Konstantin Kaufmann - Kaufmann Health, Billackerweg 1,
-              64646 Heppenheim, vertreten durch Konstantin Kaufmann, betrieben.
+              (1) Kaufmann Health (&quot;Plattform&quot;) wird von
             </p>
+            <p className="mt-2 pl-4">
+              Kaufmann Earth LLC<br />
+              handelnd als Kaufmann Health<br />
+              2427 Stanton Road<br />
+              New Woodstock, NY, 13122, USA<br />
+              Registrierung: Madison, 250730021764 (New York State Department of State Division of Corporations,
+              State Divisions and Uniform Commercial Code)
+            </p>
+            <p className="mt-2">betrieben.</p>
             <p className="mt-3">
               (2) Die Plattform ist ein Online-Dienst, welcher die Kontaktaufnahme zwischen lizenzierten Heilpraktikern
               für Psychotherapie (HPP) mit Erlaubnis nach HeilprG oder approbierten Psychologischen Psychotherapeuten (PPT)
@@ -34,6 +42,9 @@ export default function AgbPage() {
             <p className="mt-3">
               (2) Für Anbieter ist die Registrierung und Nutzung zunächst ebenfalls kostenfrei. Details zur
               Auslösung der Entgeltpflicht werden im separaten Maklervertrag zwischen Kaufmann Health und dem Anbieter geregelt.
+            </p>
+            <p className="mt-3">
+              (3) Für Anbieter gelten im Falle von Widersprüchen die Regelungen des Maklervertrages vorrangig vor diesen Bedingungen.
             </p>
           </section>
 
@@ -62,23 +73,30 @@ export default function AgbPage() {
               (2) Für Anbieter: Anbieter zahlen eine Vermittlungsprovision gemäß dem Maklervertrag. Details regelt die
               jeweils gültige Preisübersicht.
             </p>
+            <p className="mt-3">
+              (3) Steuerliche Behandlung (Reverse-Charge): Da die Plattform ihren Sitz in den USA hat, erbringt sie
+              grenzüberschreitende Dienstleistungen an Unternehmer in Deutschland. Sofern der Anbieter Unternehmer ist,
+              schuldet er die Umsatzsteuer auf die Provisionen gemäß § 13b UStG selbst (Steuerschuldumkehr). Die Plattform
+              stellt Rechnungen netto aus.
+            </p>
+            <p className="mt-3">
+              (4) Der Anbieter wird darauf hingewiesen, dass ein Vorsteuerabzug dieser Steuer für Heilberufe
+              (z. B. gemäß § 4 Nr. 14 UStG) in der Regel nicht möglich ist und die Umsatzsteuer somit einen
+              zusätzlichen Kostenfaktor darstellt.
+            </p>
           </section>
 
           <section aria-labelledby="pflichten">
             <h2 id="pflichten" className="text-xl font-semibold">§ 5 Pflichten der Nutzer (Klienten und Anbieter)</h2>
             <div className="mt-3 space-y-3">
               <p>(1) Alle Nutzer verpflichten sich:</p>
-              <ol className="list-decimal space-y-1 pl-6">
-                <li>Die Plattform nicht missbräuchlich, sondern allein zu in diesen AGB aufgeführten Zweck zu nutzen</li>
-                <li>
-                  Untersagt ist insbesondere:
-                  <ul className="mt-1 list-disc space-y-1 pl-6">
-                    <li>falsche, irreführende oder rechtswidrige Inhalte einzustellen, illegale oder diffamierende Inhalte zu verbreiten</li>
-                    <li>Rechte Dritter zu verletzen (z. B. Persönlichkeits-, Urheber- oder Markenrechte)</li>
-                    <li>wahrheitswidrige Angaben zu machen (untersagt sind insbesondere z. B. Spam, Fake-Profile, Mehrfachanmeldungen)</li>
-                  </ul>
-                </li>
-              </ol>
+              <p className="pl-4">Die Plattform nicht missbräuchlich, sondern allein zu in diesen AGB aufgeführten Zweck zu nutzen.</p>
+              <p className="pl-4">Untersagt ist insbesondere:</p>
+              <ul className="list-disc space-y-1 pl-10">
+                <li>falsche, irreführende oder rechtswidrige Inhalte einzustellen, illegale oder diffamierende Inhalte zu verbreiten</li>
+                <li>Rechte Dritter zu verletzen (z. B. Persönlichkeits-, Urheber- oder Markenrechte)</li>
+                <li>wahrheitswidrige Angaben zu machen (untersagt sind insbesondere z. B. Spam, Fake-Profile, Mehrfachanmeldungen)</li>
+              </ul>
               <p>(2) Anbieter verpflichten sich zusätzlich:</p>
               <ul className="list-disc space-y-1 pl-6">
                 <li>bei Registrierung und Profilangaben vollständige und wahrheitsgemäße Informationen bereitzustellen</li>
@@ -175,7 +193,13 @@ export default function AgbPage() {
 
           <section aria-labelledby="widerrufsrecht">
             <h2 id="widerrufsrecht" className="text-xl font-semibold">§ 11 Widerrufsrecht für Verbraucher</h2>
-            <p className="mt-3">(1) Verbraucher haben ein 14-tägiges Widerrufsrecht.</p>
+            <p className="mt-3">
+              (1) Verbraucher haben ein 14-tägiges Widerrufsrecht. Details und ein Muster-Widerrufsformular erhalten Sie
+              auf Anfrage per E-Mail:{' '}
+              <a href="mailto:kontakt@kaufmann-health.de" className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900">
+                kontakt@kaufmann-health.de
+              </a>
+            </p>
             <p className="mt-3">
               (2) Das Widerrufsrecht erlischt, wenn die Dienstleistung mit ausdrücklicher Zustimmung des Verbrauchers
               vor Ablauf der Widerrufsfrist vollständig erbracht wurde.
@@ -210,11 +234,27 @@ export default function AgbPage() {
 
           <section aria-labelledby="schlussbestimmungen">
             <h2 id="schlussbestimmungen" className="text-xl font-semibold">§ 14 Schlussbestimmungen</h2>
-            <p className="mt-3">(1) Es gilt das Recht der Bundesrepublik Deutschland.</p>
+            <p className="mt-3">
+              (1) Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts.
+            </p>
             <p className="mt-3">(2) Für Verbraucher gilt der gesetzliche Gerichtsstand.</p>
-            <p className="mt-3">(3) Sollten einzelne Bestimmungen unwirksam sein, bleiben die übrigen Bestimmungen unberührt.</p>
-            <p className="mt-6 text-sm text-gray-600">Stand: Oktober 2025 (Version 2025-10.v1)</p>
-            <p className="text-sm text-gray-600">Konstantin Kaufmann - Kaufmann Health</p>
+            <p className="mt-3">
+              (3) Als ausschließlicher Gerichtsstand für alle Streitigkeiten aus oder im Zusammenhang mit diesem Vertrag
+              zwischen Kaufmann Earth LLC und einem Anbieter wird Berlin vereinbart. Dies gilt auch, sofern der Anbieter
+              keinen allgemeinen Gerichtsstand in Deutschland hat.
+            </p>
+            <p className="mt-3">
+              (4) Die Plattform ist berechtigt, den Nutzer (Anbieter/Verbraucher) auch an seinem allgemeinen Gerichtsstand
+              zu verklagen.
+            </p>
+            <p className="mt-3">
+              (5) Die Kaufmann Earth LLC hat zur Vereinfachung des Rechtsverkehrs eine Zustellungsbevollmächtigte in Berlin
+              bestellt. Die Identität und Anschrift der bevollmächtigten Person ist dem Impressum der Website zu entnehmen.
+            </p>
+            <p className="mt-3">
+              (6) Sollten einzelne Bestimmungen unwirksam sein, bleiben die übrigen Bestimmungen unberührt.
+            </p>
+            <p className="mt-6 text-sm text-gray-600">Stand: Januar 2026</p>
           </section>
         </div>
       </section>

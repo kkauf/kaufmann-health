@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, Calendar, MessageCircle, User, ShieldCheck, ChevronRight, Globe } from 'lucide-react';
+import { MapPin, Video, Calendar, MessageCircle, User, ShieldCheck, ChevronRight, Globe, Clock } from 'lucide-react';
 import type { TherapistData } from './TherapistDirectory';
 import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
@@ -44,6 +44,21 @@ function hashCode(s: string) {
     h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
   }
   return Math.abs(h);
+}
+
+// EARTH-248: Format next intro slot for display
+function formatNextIntroSlot(slot: { date_iso: string; time_label: string } | null | undefined): string | null {
+  if (!slot?.date_iso || !slot?.time_label) return null;
+  try {
+    const date = new Date(slot.date_iso + 'T12:00:00'); // Noon to avoid timezone issues
+    const weekday = date.toLocaleDateString('de-DE', { weekday: 'short' });
+    const day = date.getDate();
+    const month = date.toLocaleDateString('de-DE', { month: 'short' });
+    // Format: "Mo 13. Jan um 10:00"
+    return `${weekday} ${day}. ${month} um ${slot.time_label}`;
+  } catch {
+    return null;
+  }
 }
 
 
@@ -247,6 +262,18 @@ export function TherapistCard({
                   )}
                 </div>
               )}
+
+              {/* EARTH-248: Next intro slot - only show for Cal-enabled therapists with cached data */}
+              {(() => {
+                const nextSlot = formatNextIntroSlot(therapist.next_intro_slot);
+                if (!nextSlot || !therapist.cal_enabled) return null;
+                return (
+                  <div className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-700">
+                    <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span>Nächster Intro-Termin: {nextSlot}</span>
+                  </div>
+                );
+              })()}
 
               {/* Contacted date */}
               {contactedAt && (

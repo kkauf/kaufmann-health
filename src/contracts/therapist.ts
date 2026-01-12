@@ -80,6 +80,15 @@ export type AvailabilitySlot = z.infer<typeof AvailabilitySlotSchema>;
 // DISPLAY DATA (what components receive)
 // ============================================================================
 
+// EARTH-248: Next intro slot (cached from Cal.com)
+export const NextIntroSlotSchema = z.object({
+  date_iso: z.string(),      // YYYY-MM-DD in Europe/Berlin
+  time_label: z.string(),    // HH:MM in Europe/Berlin  
+  time_utc: z.string(),      // Full ISO timestamp
+}).nullable();
+
+export type NextIntroSlot = z.infer<typeof NextIntroSlotSchema>;
+
 export const TherapistDataSchema = z.object({
   id: z.string().uuid(),
   first_name: z.string(),
@@ -101,6 +110,8 @@ export const TherapistDataSchema = z.object({
   cal_username: z.string().nullable().optional(),
   cal_enabled: z.boolean().nullable().optional(),
   cal_bookings_live: z.boolean().nullable().optional(),
+  // EARTH-248: Pre-cached next intro slot for fast display
+  next_intro_slot: NextIntroSlotSchema.optional(),
   // Admin-only fields
   gender: z.string().nullable().optional(),
   email: z.string().nullable().optional(),

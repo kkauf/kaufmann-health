@@ -14,6 +14,8 @@ import {
   calculatePlatformScore, 
   type TherapistRowForMatch 
 } from '@/features/leads/lib/match';
+import { getCachedCalSlots, type CachedCalSlot } from '@/lib/cal/slots-cache';
+import type { NextIntroSlot } from '@/contracts/therapist';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -43,6 +45,11 @@ export async function GET() {
     // Build list of therapist ids for availability lookup
     const therapistIds = visibleRows.map((r) => r.id);
 
+    // EARTH-248: Fetch cached Cal slots in parallel with availability
+    const calEnabledIds = visibleRows
+      .filter((r) => r.cal_enabled && r.cal_username)
+      .map((r) => r.id);
+
     // Helpers to extract practice address for fallback
     function getPracticeAddress(row: TherapistRow): string {
       try {
@@ -69,12 +76,27 @@ export async function GET() {
       if (addr) fallbackAddresses.set(row.id, addr);
     }
 
-    // Compute availability using shared logic (handles one-time vs recurring correctly)
-    const availabilityMap = await computeAvailability(therapistIds, {
-      maxDays: 21,
-      maxSlots: 9, // Directory view needs fewer slots
-      fallbackAddresses,
-    });
+    // Compute availability and fetch Cal cache in parallel
+    const [availabilityMap, calSlotsCache] = await Promise.all([
+      computeAvailability(therapistIds, {
+        maxDays: 21,
+        maxSlots: 9, // Directory view needs fewer slots
+        fallbackAddresses,
+      }),
+      getCachedCalSlots(calEnabledIds),
+    ]);
+
+    // EARTH-248: Helper to convert cached slot to NextIntroSlot
+    function toNextIntroSlot(cached: CachedCalSlot | undefined): NextIntroSlot | undefined {
+      if (!cached?.next_intro_date_iso || !cached?.next_intro_time_label || !cached?.next_intro_time_utc) {
+        return undefined;
+      }
+      return {
+        date_iso: cached.next_intro_date_iso,
+        time_label: cached.next_intro_time_label,
+        time_utc: cached.next_intro_time_utc,
+      };
+    }
 
     // Helper: count slots within day windows for Platform Score
     function countSlotsInDays(availability: { date_iso: string }[], days: number): number {
@@ -132,7 +154,10 @@ export async function GET() {
     eligibleRows.sort((a, b) => b.platformScore - a.platformScore);
 
     const therapists = eligibleRows.map(({ row, availability }) => {
-      return mapTherapistRow(row, { availability });
+      // EARTH-248: Include cached next intro slot for Cal-enabled therapists
+      const cachedSlot = calSlotsCache.get(row.id);
+      const nextIntroSlot = toNextIntroSlot(cachedSlot);
+      return mapTherapistRow(row, { availability, nextIntroSlot });
     });
 
     return NextResponse.json(
