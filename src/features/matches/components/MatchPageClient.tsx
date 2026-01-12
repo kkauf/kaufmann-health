@@ -10,7 +10,7 @@ import { TherapistCard } from '@/features/therapists/components/TherapistCard';
 import { CheckCircle, Sparkles } from 'lucide-react';
 import type { TherapistData } from '@/features/therapists/components/TherapistDirectory';
 import { computeMismatches, type PatientMeta } from '@/features/leads/lib/match';
-import { isCalBookingEnabled } from '@/lib/cal/booking-url';
+import { isCalBookingEnabled, assertCalFieldsPresent } from '@/lib/cal/booking-url';
 import CtaLink from '@/components/CtaLink';
 import FloatingWhatsApp from '@/components/FloatingWhatsApp';
 import { getAttribution } from '@/lib/attribution';
@@ -136,7 +136,14 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     };
   }, [uuid]);
 
-  const therapists = useMemo(() => data?.therapists || [], [data]);
+  const therapists = useMemo(() => {
+    const list = data?.therapists || [];
+    // Assert Cal.com fields are present on all therapists (fail loudly if API response is wrong)
+    if (process.env.NODE_ENV !== 'production') {
+      list.forEach(t => assertCalFieldsPresent(t as Record<string, unknown>, 'MatchPageClient'));
+    }
+    return list;
+  }, [data]);
   const _isVerified = useMemo(() => {
     const s = (data?.patient?.status || '').toLowerCase();
     return s === 'email_confirmed' || s === 'new';
@@ -418,7 +425,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           })()}
         </h1>
         <p className="mt-2 text-gray-600">
-          Buche jetzt ein kostenloses Erstgespräch – unverbindlich und ohne Risiko.
+          Buche jetzt ein kostenloses Online-Kennenlernen (15 min) – unverbindlich und ohne Risiko.
         </p>
       </div>
 
@@ -510,7 +517,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       {/* Trust line - concise */}
       <p className="mb-6 text-sm text-gray-600 flex items-center gap-2">
         <CheckCircle className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-        <span>Qualifikationen geprüft · Erstgespräch kostenlos</span>
+        <span>Qualifikationen geprüft · Online-Kennenlernen kostenlos</span>
       </p>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

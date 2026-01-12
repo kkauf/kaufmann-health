@@ -401,8 +401,8 @@ export function TherapistCard({
             onClick={() => handleContactClick('consultation')}
             disabled={!therapist.accepting_new}
           >
-            <MessageCircle className="mr-2 h-4 w-4" />
-            Kostenloses Erstgespräch (15 min)
+            <Video className="mr-2 h-4 w-4" />
+            Kostenloses Kennenlernen · Online (15 min)
           </Button>
 
           <Button

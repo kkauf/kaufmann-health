@@ -105,6 +105,23 @@ export function buildCalBookingUrl(options: CalBookingUrlOptions): string {
 }
 
 /**
+ * Assert that Cal.com fields are present on therapist object.
+ * Throws if any Cal.com field is undefined (not just false/null).
+ * Use this to catch API response mismatches early.
+ */
+export function assertCalFieldsPresent(therapist: Record<string, unknown>, context: string): void {
+  const requiredFields = ['cal_enabled', 'cal_username', 'cal_bookings_live'] as const;
+  const missingFields = requiredFields.filter(field => !(field in therapist));
+  
+  if (missingFields.length > 0) {
+    throw new Error(
+      `[${context}] Cal.com fields missing from therapist object: ${missingFields.join(', ')}. ` +
+      `This indicates an API response mismatch. Available keys: ${Object.keys(therapist).join(', ')}`
+    );
+  }
+}
+
+/**
  * Check if Cal.com booking is available for a therapist.
  * Requires:
  * - cal_enabled: technical flag (part of onboarding)
