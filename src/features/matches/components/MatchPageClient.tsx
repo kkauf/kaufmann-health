@@ -72,6 +72,7 @@ type MatchApiData = {
     modality_matters?: boolean;
     status?: string | null;
     time_slots?: string[];
+    personalized_message?: string;
   };
   therapists: TherapistItem[];
   metadata?: { match_type?: 'exact' | 'partial' | 'none' };
@@ -517,6 +518,21 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
                 <span key={i} className="text-gray-800">{c}{i < chips.length - 1 ? ' •' : ''}</span>
               ));
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* Personalized concierge message from admin */}
+      {data?.patient?.personalized_message && (
+        <div className="mb-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+              <span className="text-lg">💬</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-blue-900 mb-1">Persönliche Nachricht von Katherine</p>
+              <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{data.patient.personalized_message}</p>
+            </div>
           </div>
         </div>
       )}
