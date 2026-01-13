@@ -255,3 +255,31 @@ npx vitest run tests/google-ads.architecture.test.ts
 - **GCLID for attribution**: Links to ad click, not personal data
 - **Consent Mode v2**: Client-side respects user consent settings
 - **Server-side always fires**: Not dependent on cookies/consent
+
+## Consent & Attribution
+
+For Enhanced Conversions to work properly, the **base conversion must be attributed to the ad click**. This requires:
+
+### When User Accepts Cookies
+
+We grant these consent signals:
+- `ad_storage: 'granted'` - Allows conversion tracking cookies
+- `ad_user_data: 'granted'` - **Critical**: Allows GCLID attribution for Enhanced Conversions
+
+### When User Denies/Ignores Cookies
+
+Default consent is all denied. Google's Consent Mode v2 sends "cookieless pings" with **limited attribution**. To recover some of these conversions:
+
+1. **Enable Consent Mode modeling** in Google Ads:
+   - Go to Admin → Data → Consent Mode
+   - Enable "Conversion modeling"
+   - Google will estimate conversions for non-consenting users based on patterns
+
+### Troubleshooting Low Conversion Count
+
+If Google Ads shows fewer conversions than expected:
+
+1. **Check cookie consent rate** - Query `events` table for `cookie_consent_accepted` vs `cookie_consent_rejected`
+2. **Verify `ad_user_data` is granted on accept** - See `CookieBanner.tsx`
+3. **Enable Consent Mode modeling** in Google Ads for non-consenters
+4. **Check `gtag_conversion_attempted` events** - Verify `gtag_available: true` and `has_gclid: true`

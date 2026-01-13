@@ -51,7 +51,7 @@ function applyAdConsentGranted() {
       g('consent', 'update', {
         ad_storage: 'granted',
         analytics_storage: 'denied',
-        ad_user_data: 'denied',
+        ad_user_data: 'granted', // Required for GCLID attribution in Enhanced Conversions
         ad_personalization: 'denied',
       });
       // Ensure conversion_linker plugin is (re)applied after granting consent
