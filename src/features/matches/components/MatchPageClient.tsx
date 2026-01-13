@@ -50,6 +50,8 @@ type TherapistItem = {
     };
     [k: string]: unknown;
   };
+  // Languages for profile display
+  languages?: string[];
   // Cal.com integration fields
   cal_username?: string;
   cal_enabled?: boolean;
@@ -546,6 +548,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             schwerpunkte: t.schwerpunkte || [],
             session_preferences: t.session_preferences || [],
             approach_text: t.approach_text || '',
+            languages: t.languages,
             availability: Array.isArray(t.availability) ? t.availability as { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] : [],
             metadata: t.metadata,
           };
@@ -628,6 +631,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             approach_text: detailModalTherapist.approach_text || '',
             accepting_new: detailModalTherapist.accepting_new ?? true,
             city: detailModalTherapist.city || '',
+            languages: detailModalTherapist.languages,
             // Include metadata for rich profile display (qualification, sections, pricing)
             metadata: detailModalTherapist.metadata,
             // Cal.com integration fields for booking UI

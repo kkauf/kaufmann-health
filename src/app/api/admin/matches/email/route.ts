@@ -80,6 +80,9 @@ type Body = {
   // For selection template
   patient_id?: string;
   therapist_ids?: string[];
+  // Personalized concierge options
+  personalized_message?: string; // Custom message shown prominently in selection email
+  highlighted_therapist_id?: string; // Therapist to mark as "best match" instead of auto-sorting
 };
 
 export async function POST(req: Request) {
@@ -271,9 +274,15 @@ export async function POST(req: Request) {
         return NextResponse.json({ data: null, error: 'No magic link available for selection' }, { status: 400 });
       }
 
+      // Parse personalized options
+      const personalizedMessage = typeof body?.personalized_message === 'string' ? body.personalized_message.trim().slice(0, 2000) : undefined;
+      const highlightedTherapistId = typeof body?.highlighted_therapist_id === 'string' ? body.highlighted_therapist_id.trim() : undefined;
+
       const items = scored.map((s, idx) => {
         const t = s.t;
         const selectUrl = `${BASE_URL}/api/match/${secure_uuid}/select?therapist=${encodeURIComponent(t.id)}`;
+        // Use highlighted_therapist_id if provided, otherwise default to first (best scoring)
+        const isBest = highlightedTherapistId ? t.id === highlightedTherapistId : idx === 0;
         return {
           id: t.id,
           first_name: (t.first_name || '').trim(),
@@ -284,12 +293,12 @@ export async function POST(req: Request) {
           accepting_new: t.accepting_new ?? null,
           city: t.city || null,
           selectUrl,
-          isBest: idx === 0,
+          isBest,
         };
       });
 
       const matchesUrl = `${BASE_URL}/matches/${secure_uuid}`;
-      content = renderPatientSelectionEmail({ patientName, items, matchesUrl });
+      content = renderPatientSelectionEmail({ patientName, items, matchesUrl, personalizedMessage });
 
       // Choose channel: Email preferred; fallback to SMS for phone-only Klient:innen
       if ((!patientEmail || isTempEmail) && !patientPhone) {

@@ -144,34 +144,16 @@ export async function GET(req: Request) {
     }
     const therapistIds = chosen.map(m => m.therapist_id);
 
-    // Fetch therapist profiles using shared select columns
-    // Local type for mismatch scoring (extends shared fields with match-specific access patterns)
-    type MatchTherapistRow = {
-      id: string;
-      first_name: string | null;
-      last_name: string | null;
-      gender?: string | null;
-      photo_url?: string | null;
-      city?: string | null;
-      modalities?: string[] | null;
-      schwerpunkte?: string[] | null;
-      session_preferences?: string[] | null;
-      accepting_new?: boolean | null;
-      typical_rate?: number | null;
-      metadata?: { session_preferences?: string[] | null; profile?: { approach_text?: string; who_comes_to_me?: string; session_focus?: string; first_session?: string; about_me?: string; qualification?: string }; [k: string]: unknown } | null;
-      // Cal.com integration fields
-      cal_username?: string | null;
-      cal_enabled?: boolean | null;
-      cal_bookings_live?: boolean | null;
-    };
-    let therapistRows: MatchTherapistRow[] = [];
+    // Fetch therapist profiles using shared select columns and Zod-validated type
+    let therapistRows: TherapistRow[] = [];
     if (therapistIds.length > 0) {
       const { data: trows } = await supabaseServer
         .from('therapists')
         .select(THERAPIST_SELECT_COLUMNS_WITH_GENDER)
         .in('id', therapistIds);
       if (Array.isArray(trows)) {
-        therapistRows = (trows as unknown as MatchTherapistRow[]).filter(t => t.accepting_new !== false);
+        // Cast DB rows to TherapistRow - contract enforcement happens via mapTherapistRow on output
+        therapistRows = (trows as unknown as TherapistRow[]).filter(t => t.accepting_new !== false);
       }
     }
 
@@ -186,13 +168,14 @@ export async function GET(req: Request) {
 
     // Rank therapists using new algorithm (see /docs/therapist-matching-algorithm-spec.md)
     const scored = therapistRows.map((t) => {
+      // After Zod parsing, session_preferences is at top level (not in metadata)
       const tRow: TherapistRowForMatch = {
         id: t.id,
         gender: t.gender || undefined,
         city: t.city || undefined,
-        session_preferences: Array.isArray(t.session_preferences) ? t.session_preferences : (Array.isArray(t.metadata?.session_preferences) ? t.metadata?.session_preferences : []),
-        modalities: Array.isArray(t.modalities) ? t.modalities : [],
-        schwerpunkte: Array.isArray(t.schwerpunkte) ? t.schwerpunkte : [],
+        session_preferences: t.session_preferences,
+        modalities: t.modalities,
+        schwerpunkte: t.schwerpunkte,
         accepting_new: t.accepting_new,
         photo_url: t.photo_url,
         metadata: t.metadata as TherapistRowForMatch['metadata'],
@@ -214,29 +197,19 @@ export async function GET(req: Request) {
     // Sort by totalScore descending (per spec: Match × 1.5 + Platform)
     scored.sort((a, b) => b.totalScore - a.totalScore);
 
-    // Build response list and include per-therapist is_perfect
-    const list = scored.map(({ t, isPerfect }) => ({
-      id: t.id,
-      first_name: t.first_name,
-      last_name: t.last_name,
-      photo_url: t.photo_url || undefined,
-      city: (t.city || '') || undefined,
-      // Default to true when accepting_new is null/undefined to avoid disabling booking unnecessarily
-      accepting_new: (t.accepting_new === false ? false : true),
-      contacted_at: contactedById.get(t.id) || null,
-      modalities: Array.isArray(t.modalities) ? t.modalities : [],
-      schwerpunkte: Array.isArray(t.schwerpunkte) ? t.schwerpunkte : [],
-      session_preferences: Array.isArray(t.session_preferences) ? t.session_preferences : (Array.isArray(t.metadata?.session_preferences) ? t.metadata?.session_preferences : []),
-      approach_text: t.metadata?.profile?.approach_text || '',
-      gender: t.gender || undefined,
-      is_perfect: Boolean(isPerfect),
-      // Include full metadata for rich profile display (qualification, sections, pricing, etc.)
-      metadata: t.metadata || undefined,
-      // Cal.com integration fields for booking UI
-      cal_username: t.cal_username || undefined,
-      cal_enabled: t.cal_enabled || false,
-      cal_bookings_live: t.cal_bookings_live || false,
-    }));
+    // Build response list using shared mapper (ensures contract compliance)
+    // Then add match-specific fields
+    const list = scored.map(({ t, isPerfect }) => {
+      // Use shared mapper for all standard therapist fields
+      const mapped = mapTherapistRow(t, { includeAdminFields: true });
+      
+      return {
+        ...mapped,
+        // Match-specific fields
+        contacted_at: contactedById.get(t.id) || null,
+        is_perfect: Boolean(isPerfect),
+      };
+    });
 
     // Compute overall match_type for banner logic
     let matchType: 'exact' | 'partial' | 'none' = 'none';

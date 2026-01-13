@@ -147,6 +147,11 @@ export default function AdminLeadsPage() {
   // Therapist profile preview modal
   const [previewTherapist, setPreviewTherapist] = useState<Person | null>(null);
 
+  // Personalized concierge message for selection email
+  const [personalizedMessage, setPersonalizedMessage] = useState('');
+  // Highlighted therapist ("best match") for selection email
+  const [highlightedTherapistId, setHighlightedTherapistId] = useState<string | null>(null);
+
   // Prefill therapist filters when a patient is selected
   useEffect(() => {
     if (selectedPatient) {
@@ -161,9 +166,11 @@ export default function AdminLeadsPage() {
     }
   }, [selectedPatient]);
 
-  // Clear therapist selections when patient changes
+  // Clear therapist selections and personalization when patient changes
   useEffect(() => {
     setSelectedTherapists(new Set());
+    setPersonalizedMessage('');
+    setHighlightedTherapistId(null);
   }, [selectedPatient]);
 
   const loadPatientMatchFlags = useCallback(async (leadList: Person[]) => {
@@ -434,6 +441,9 @@ export default function AdminLeadsPage() {
       // Send selection email; pass therapist_ids when we have a current selection to control the list
       const payload: Record<string, unknown> = { template: 'selection', patient_id: patientId };
       if (selectedIds.length >= 2) payload['therapist_ids'] = selectedIds;
+      // Include personalized concierge options if provided
+      if (personalizedMessage.trim()) payload['personalized_message'] = personalizedMessage.trim();
+      if (highlightedTherapistId) payload['highlighted_therapist_id'] = highlightedTherapistId;
       const res = await fetch('/api/admin/matches/email', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -444,6 +454,8 @@ export default function AdminLeadsPage() {
       if (!res.ok) throw new Error(json?.error || 'E-Mail-Versand fehlgeschlagen');
       setMessage('Auswahl-E-Mail gesendet');
       setSelectedTherapists(new Set());
+      setPersonalizedMessage('');
+      setHighlightedTherapistId(null);
       try { track('Selection Email Sent'); } catch {}
       // Refresh counts after sending
       void loadPatientMatchFlags(leads);
@@ -893,13 +905,52 @@ export default function AdminLeadsPage() {
 
           {/* Batch actions */}
           {selectedTherapists.size > 0 && (
-            <div className="mb-2 flex items-center justify-between sticky top-0 z-10 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b px-2 py-1 rounded">
-              <div className="text-sm text-gray-700">Ausgewählt: {selectedTherapists.size} / 3</div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={sendSelectionEmail} disabled={!selectedPatient || sendingSelection || (selectedTherapists.size < 2 && (proposedCounts[selectedPatient!.id] || 0) < 2)} title="Sendet E-Mail an Klient/in – Therapeuten werden NICHT kontaktiert">
-                  {sendingSelection ? 'Wird gesendet…' : 'Auswahl-E-Mail senden'}
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => setSelectedTherapists(new Set())}>Auswahl leeren</Button>
+            <div className="mb-2 sticky top-0 z-10 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b px-2 py-2 rounded space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-700">Ausgewählt: {selectedTherapists.size} / 3</div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={sendSelectionEmail} disabled={!selectedPatient || sendingSelection || (selectedTherapists.size < 2 && (proposedCounts[selectedPatient!.id] || 0) < 2)} title="Sendet E-Mail an Klient/in – Therapeuten werden NICHT kontaktiert">
+                    {sendingSelection ? 'Wird gesendet…' : 'Auswahl-E-Mail senden'}
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => setSelectedTherapists(new Set())}>Auswahl leeren</Button>
+                </div>
+              </div>
+              
+              {/* Concierge personalization options */}
+              <div className="border-t pt-3 space-y-3">
+                <div className="text-xs font-medium text-gray-600 uppercase tracking-wide">Concierge-Optionen</div>
+                
+                {/* Highlighted therapist selection */}
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="highlighted-therapist" className="text-sm whitespace-nowrap">⭐ Beste Übereinstimmung:</Label>
+                  <Select value={highlightedTherapistId || ''} onValueChange={(v) => setHighlightedTherapistId(v || null)}>
+                    <SelectTrigger id="highlighted-therapist" className="h-8 text-sm flex-1">
+                      <SelectValue placeholder="Automatisch (erster)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Automatisch (erster)</SelectItem>
+                      {Array.from(selectedTherapists).map((id) => {
+                        const t = therapists.find((th) => th.id === id);
+                        const name = t ? `${t.first_name || ''} ${t.last_name || t.name || ''}`.trim() : id;
+                        return <SelectItem key={id} value={id}>{name}</SelectItem>;
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Personalized message */}
+                <div className="space-y-1">
+                  <Label htmlFor="personalized-message" className="text-sm">💬 Persönliche Nachricht (optional):</Label>
+                  <textarea
+                    id="personalized-message"
+                    className="w-full h-20 px-3 py-2 text-sm border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="z.B. &quot;Ich habe mir deine Anfrage persönlich angeschaut und...&quot;"
+                    value={personalizedMessage}
+                    onChange={(e) => setPersonalizedMessage(e.target.value)}
+                    maxLength={2000}
+                  />
+                  <div className="text-xs text-gray-500 text-right">{personalizedMessage.length}/2000</div>
+                </div>
               </div>
             </div>
           )}
