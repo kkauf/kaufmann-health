@@ -5,6 +5,7 @@ import { logError, track } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { renderPatientCustomUpdate, renderPatientMatchFound } from '@/lib/email/templates/patientUpdates';
 import { renderPatientSelectionEmail } from '@/lib/email/templates/patientSelection';
+import { renderPatientApologyEmail } from '@/lib/email/templates/patientApology';
 import { BASE_URL } from '@/lib/constants';
 import { computeMismatches } from '@/features/leads/lib/match';
 import { sendTransactionalSms } from '@/lib/sms/client';
@@ -75,13 +76,13 @@ type TherapistMeta = {
 
 type Body = {
   id?: string; // Match ID when using match_found or custom templates
-  template?: 'match_found' | 'custom' | 'selection';
+  template?: 'match_found' | 'custom' | 'selection' | 'apology';
   message?: string;
-  // For selection template
+  // For selection and apology templates
   patient_id?: string;
   therapist_ids?: string[];
   // Personalized concierge options
-  personalized_message?: string; // Custom message shown prominently in selection email
+  personalized_message?: string; // Custom message shown prominently in selection/apology email
   highlighted_therapist_id?: string; // Therapist to mark as "best match" instead of auto-sorting
 };
 
@@ -102,10 +103,10 @@ export async function POST(req: Request) {
   }
 
   const id = String(body?.id || '').trim();
-  const template = (body?.template || 'custom') as 'match_found' | 'custom' | 'selection';
+  const template = (body?.template || 'custom') as 'match_found' | 'custom' | 'selection' | 'apology';
   const customMessage = typeof body?.message === 'string' ? String(body.message).slice(0, 4000) : '';
 
-  if (template !== 'selection' && !id) {
+  if (template !== 'selection' && template !== 'apology' && !id) {
     return NextResponse.json({ data: null, error: 'id is required' }, { status: 400 });
   }
 
@@ -115,10 +116,10 @@ export async function POST(req: Request) {
     let personalizedMessage: string | undefined = undefined; // concierge personalization
     let highlightedTherapistId: string | undefined = undefined; // highlighted "best match"
     let m: Match | null = null;
-    if (template === 'selection') {
+    if (template === 'selection' || template === 'apology') {
       patient_id = String(body?.patient_id || '').trim();
       if (!patient_id) {
-        return NextResponse.json({ data: null, error: 'patient_id is required for selection' }, { status: 400 });
+        return NextResponse.json({ data: null, error: 'patient_id is required for selection/apology' }, { status: 400 });
       }
     } else {
       const { data: match, error: mErr } = await supabaseServer
@@ -335,18 +336,113 @@ export async function POST(req: Request) {
           return NextResponse.json({ data: null, error: 'SMS exception' }, { status: 500 });
         }
       }
+    } else if (template === 'apology') {
+      // Apology template: requires patient_id, fetches their matches and sends apology email
+      personalizedMessage = typeof body?.personalized_message === 'string' ? body.personalized_message : undefined;
+
+      // Get secure_uuid from patient's matches
+      let secure_uuid: string | undefined;
+      try {
+        const { data: oneMatch } = await supabaseServer
+          .from('matches')
+          .select('secure_uuid')
+          .eq('patient_id', patient_id)
+          .not('secure_uuid', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const rec = oneMatch as { secure_uuid?: string } | null;
+        if (rec && typeof rec.secure_uuid === 'string') secure_uuid = rec.secure_uuid;
+      } catch {}
+
+      if (!secure_uuid) {
+        return NextResponse.json({ data: null, error: 'No matches found for patient' }, { status: 400 });
+      }
+
+      // Optionally load therapist details for the email
+      let therapistIds: string[] = Array.isArray(body?.therapist_ids) ? body!.therapist_ids!.map((v) => String(v).trim()).filter(Boolean) : [];
+      if (therapistIds.length === 0) {
+        const { data: proposed } = await supabaseServer
+          .from('matches')
+          .select('therapist_id')
+          .eq('patient_id', patient_id)
+          .not('therapist_id', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(3);
+        therapistIds = ((proposed || []) as Array<{ therapist_id: string }>).map((r) => r.therapist_id);
+      }
+
+      type ApologyTherapistRow = { id: string; first_name: string; last_name?: string; photo_url?: string; modalities?: string[]; city?: string; metadata?: TherapistMeta };
+      let therapistItems: { id: string; first_name: string; last_name?: string; photo_url?: string | null; modalities?: string[] | null; approach_text?: string | null; city?: string | null; isBest?: boolean }[] = [];
+      
+      if (therapistIds.length > 0) {
+        const { data: therapistRows } = await supabaseServer
+          .from('therapists')
+          .select('id, first_name, last_name, photo_url, modalities, city, metadata')
+          .in('id', therapistIds);
+        
+        therapistItems = ((therapistRows || []) as ApologyTherapistRow[]).map((t, idx) => ({
+          id: t.id,
+          first_name: t.first_name,
+          last_name: t.last_name,
+          photo_url: t.photo_url || null,
+          modalities: t.modalities || null,
+          approach_text: t.metadata?.profile?.approach_text || null,
+          city: t.city || null,
+          isBest: idx === 0,
+        }));
+      }
+
+      const matchesUrl = `${BASE_URL}/matches/${secure_uuid}`;
+      content = renderPatientApologyEmail({
+        patientName,
+        matchesUrl,
+        therapists: therapistItems,
+        customMessage: personalizedMessage,
+      });
+
+      // SMS fallback for phone-only patients
+      if ((!patientEmail || isTempEmail) && !patientPhone) {
+        return NextResponse.json({ data: null, error: 'No contact method available' }, { status: 400 });
+      }
+
+      if ((!patientEmail || isTempEmail) && patientPhone) {
+        try {
+          void track({ type: 'sms_attempted', level: 'info', source: 'admin.api.matches.email', props: { template: 'apology', patient_id } });
+          const smsText = `Hallo${patientName ? ' ' + patientName.split(/\s+/)[0] : ''}, Entschuldigung für die Verzögerung! Wir hatten einen technischen Fehler. Hier ist deine Therapeutenauswahl: ${matchesUrl}?direct=1 - Kaufmann Health`;
+          const ok = await sendTransactionalSms(patientPhone, smsText);
+          if (ok) {
+            void track({ type: 'sms_sent', level: 'info', source: 'admin.api.matches.email', props: { template: 'apology', patient_id } });
+            try {
+              const nowIso = new Date().toISOString();
+              const currentMetaRaw = (patient?.metadata ?? null) as unknown;
+              const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+              const currentMeta = isObject(currentMetaRaw) ? currentMetaRaw : {};
+              const nextMeta = { ...currentMeta, apology_sms_sent_at: nowIso } as Record<string, unknown>;
+              await supabaseServer.from('people').update({ metadata: nextMeta }).eq('id', patient_id);
+            } catch {}
+            return NextResponse.json({ data: { ok: true, via: 'sms' }, error: null }, { status: 200 });
+          } else {
+            await logError('admin.api.matches.email', new Error('SMS send returned false'), { stage: 'send_apology_sms_failed', patient_id });
+            return NextResponse.json({ data: null, error: 'SMS send failed' }, { status: 500 });
+          }
+        } catch (e) {
+          await logError('admin.api.matches.email', e, { stage: 'send_apology_sms_exception', patient_id });
+          return NextResponse.json({ data: null, error: 'SMS exception' }, { status: 500 });
+        }
+      }
     } else {
       return NextResponse.json({ data: null, error: 'Invalid template' }, { status: 400 });
     }
 
-    // For non-selection templates, email is required
-    if (template !== 'selection' && (!patientEmail || isTempEmail)) {
+    // For non-selection/apology templates, email is required
+    if (template !== 'selection' && template !== 'apology' && (!patientEmail || isTempEmail)) {
       return NextResponse.json({ data: null, error: 'Patient email missing' }, { status: 400 });
     }
 
     // Await (client never throws; logs internally). Keep response predictable.
     const context: Record<string, unknown> = { kind: 'patient_update', template };
-    if (template === 'selection') {
+    if (template === 'selection' || template === 'apology') {
       context['patient_id'] = patient_id;
     } else if (m) {
       context['match_id'] = m.id;
@@ -362,7 +458,7 @@ export async function POST(req: Request) {
           source: 'admin.api.matches.email',
           props: {
             template,
-            ...(template === 'selection'
+            ...(template === 'selection' || template === 'apology'
               ? { patient_id }
               : m
               ? { match_id: m.id, patient_id: m.patient_id, therapist_id: m.therapist_id }
@@ -380,8 +476,8 @@ export async function POST(req: Request) {
       context,
     });
 
-    // Mark selection email sent (best-effort) so Admin UI can highlight "done for now"
-    if (template === 'selection') {
+    // Mark email sent (best-effort) so Admin UI can highlight "done for now"
+    if (template === 'selection' || template === 'apology') {
       try {
         // Helper to merge JSON metadata
         function isObject(v: unknown): v is Record<string, unknown> {
@@ -390,13 +486,17 @@ export async function POST(req: Request) {
         const nowIso = new Date().toISOString();
         const currentMetaRaw = (patient?.metadata ?? null) as unknown;
         const currentMeta = isObject(currentMetaRaw) ? currentMetaRaw : {};
-        const nextMeta: Record<string, unknown> = {
-          ...currentMeta,
-          selection_email_sent_at: nowIso,
-        };
-        if (typeof selectionTherapistCount === 'number') {
-          nextMeta.selection_email_count = selectionTherapistCount;
+        const nextMeta: Record<string, unknown> = { ...currentMeta };
+        
+        if (template === 'selection') {
+          nextMeta.selection_email_sent_at = nowIso;
+          if (typeof selectionTherapistCount === 'number') {
+            nextMeta.selection_email_count = selectionTherapistCount;
+          }
+        } else if (template === 'apology') {
+          nextMeta.apology_email_sent_at = nowIso;
         }
+        
         if (personalizedMessage) nextMeta.personalized_message = personalizedMessage;
         if (highlightedTherapistId) nextMeta.highlighted_therapist_id = highlightedTherapistId;
         await supabaseServer
@@ -405,7 +505,7 @@ export async function POST(req: Request) {
           .eq('id', patient_id);
       } catch (e) {
         // Non-fatal, just log
-        await logError('admin.api.matches.email', e, { stage: 'mark_selection_sent', patient_id });
+        await logError('admin.api.matches.email', e, { stage: `mark_${template}_sent`, patient_id });
       }
     }
 
