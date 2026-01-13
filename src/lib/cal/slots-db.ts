@@ -54,6 +54,7 @@ interface CalEventType {
   length: number; // minutes
   slotInterval: number | null; // minutes between slots (null = use length)
   userId: number;
+  scheduleId: number | null; // event-type-specific schedule (null = use default)
 }
 
 interface CalAvailability {
@@ -91,7 +92,7 @@ async function getCalUserId(username: string): Promise<number | null> {
 async function getEventType(userId: number, slug: string): Promise<CalEventType | null> {
   const db = getPool();
   const result = await db.query<CalEventType>(
-    `SELECT id, slug, title, length, "slotInterval", "userId" 
+    `SELECT id, slug, title, length, "slotInterval", "userId", "scheduleId" 
      FROM "EventType" 
      WHERE "userId" = $1 AND slug = $2 
      LIMIT 1`,
@@ -101,22 +102,26 @@ async function getEventType(userId: number, slug: string): Promise<CalEventType 
 }
 
 /**
- * Get user's default schedule availability
+ * Get availability for an event type (uses event-specific schedule if set, else user default)
  */
-async function getAvailability(userId: number): Promise<CalAvailability[]> {
+async function getAvailability(userId: number, eventScheduleId: number | null): Promise<CalAvailability[]> {
   const db = getPool();
   
-  // Get default schedule for user
-  const scheduleResult = await db.query<{ id: number }>(
-    `SELECT id FROM "Schedule" WHERE "userId" = $1 LIMIT 1`,
-    [userId]
-  );
+  let scheduleId = eventScheduleId;
   
-  if (!scheduleResult.rows[0]) {
-    return [];
+  // If no event-specific schedule, get user's default
+  if (!scheduleId) {
+    const scheduleResult = await db.query<{ id: number }>(
+      `SELECT id FROM "Schedule" WHERE "userId" = $1 LIMIT 1`,
+      [userId]
+    );
+    
+    if (!scheduleResult.rows[0]) {
+      return [];
+    }
+    
+    scheduleId = scheduleResult.rows[0].id;
   }
-  
-  const scheduleId = scheduleResult.rows[0].id;
   
   // Get availability entries (startTime/endTime are TIME columns, returned as strings)
   const availResult = await db.query<{
@@ -265,10 +270,10 @@ export async function fetchCalSlotsFromDb(
       return null;
     }
     
-    // Get availability
-    const availability = await getAvailability(userId);
+    // Get availability (use event-specific schedule if set)
+    const availability = await getAvailability(userId, eventType.scheduleId);
     if (availability.length === 0) {
-      console.warn(`[cal/slots-db] No availability for user ${calUsername}`);
+      console.warn(`[cal/slots-db] No availability for user ${calUsername} (scheduleId: ${eventType.scheduleId ?? 'default'})`);
       return [];
     }
     
