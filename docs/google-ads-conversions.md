@@ -270,10 +270,10 @@ We grant these consent signals:
 
 Default consent is all denied. Google's Consent Mode v2 sends "cookieless pings" with **limited attribution**. To recover some of these conversions:
 
-1. **Enable Consent Mode modeling** in Google Ads:
-   - Go to Admin → Data → Consent Mode
-   - Enable "Conversion modeling"
-   - Google will estimate conversions for non-consenting users based on patterns
+**Consent Mode modeling** (automatic, no manual enable needed):
+- Google automatically models conversions for non-consenting users
+- **Eligibility threshold**: 700 ad clicks per 7-day period (per country)
+- Once threshold is met, modeled conversions appear in the Conversions column automatically
 
 ### Troubleshooting Low Conversion Count
 
@@ -281,5 +281,5 @@ If Google Ads shows fewer conversions than expected:
 
 1. **Check cookie consent rate** - Query `events` table for `cookie_consent_accepted` vs `cookie_consent_rejected`
 2. **Verify `ad_user_data` is granted on accept** - See `CookieBanner.tsx`
-3. **Enable Consent Mode modeling** in Google Ads for non-consenters
+3. **Check ad click volume** - Need 700 clicks/7 days for consent modeling to kick in
 4. **Check `gtag_conversion_attempted` events** - Verify `gtag_available: true` and `has_gclid: true`
