@@ -15,6 +15,7 @@ import { safeJson } from '@/lib/http';
 export type TherapistHandlerInput = {
   data: { name?: string; email: string; phone?: string; notes?: string };
   city?: string;
+  gender?: 'male' | 'female' | 'non-binary';
   sessionPreferences: ('online' | 'in_person')[];
   specializations: string[];
   session_id?: string;
@@ -22,7 +23,7 @@ export type TherapistHandlerInput = {
 
 export async function handleTherapistLead(ctx: HandlerContext, input: TherapistHandlerInput) {
   const { req, ip, ua } = ctx;
-  const { data, city, sessionPreferences, specializations, session_id } = input;
+  const { data, city, gender, sessionPreferences, specializations, session_id } = input;
   const isTest = isTestRequest(req, data.email);
 
   const fullName = (data.name || '').trim();
@@ -41,6 +42,7 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
       email: data.email,
       phone: data.phone,
       city: city || null,
+      gender: gender || null,
       session_preferences: sessionPreferences,
       modalities,
       status: 'pending_verification',

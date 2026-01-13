@@ -16,6 +16,7 @@ export type LeadPayload = {
   session_preference?: 'online' | 'in_person';
   session_preferences?: ('online' | 'in_person')[];
   gender_preference?: 'male' | 'female' | 'no_preference';
+  gender?: 'male' | 'female' | 'non-binary'; // Therapist's own gender
   type?: LeadType;
   qualification?: string;
   experience?: string;

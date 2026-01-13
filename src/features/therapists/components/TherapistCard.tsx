@@ -437,29 +437,52 @@ export function TherapistCard({
 
         </div>
 
-        {/* Action buttons */}
-        <div className="mt-auto flex flex-col gap-2 pt-4">
-          <Button
-            size="lg"
-            className="w-full bg-emerald-600 hover:bg-emerald-700"
-            onClick={() => handleContactClick('consultation')}
-            disabled={!therapist.accepting_new}
-          >
-            <Video className="mr-2 h-4 w-4" />
-            Online-Kennenlernen (15 min)
-          </Button>
+        {/* Action buttons - differentiate based on cal_bookings_live */}
+        {(() => {
+          const isCalLive = therapist.cal_enabled && therapist.cal_username && therapist.cal_bookings_live;
+          return (
+            <div className="mt-auto flex flex-col gap-2 pt-4">
+              <Button
+                size="lg"
+                className="w-full bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => handleContactClick('consultation')}
+                disabled={!therapist.accepting_new}
+              >
+                {isCalLive ? (
+                  <>
+                    <Video className="mr-2 h-4 w-4" />
+                    Online-Kennenlernen (15 min)
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    Kennenlernen anfragen
+                  </>
+                )}
+              </Button>
 
-          <Button
-            size="lg"
-            variant="outline"
-            className="w-full text-sm"
-            onClick={() => handleContactClick('booking')}
-            disabled={!therapist.accepting_new}
-          >
-            <Calendar className="mr-2 h-4 w-4 shrink-0" />
-            <span className="truncate">{contactedAt ? 'Erneut buchen' : 'Direkt buchen'}</span>
-          </Button>
-        </div>
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full text-sm"
+                onClick={() => handleContactClick('booking')}
+                disabled={!therapist.accepting_new}
+              >
+                {isCalLive ? (
+                  <>
+                    <Calendar className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="truncate">{contactedAt ? 'Erneut buchen' : 'Direkt buchen'}</span>
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="truncate">Nachricht senden</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          );
+        })()}
       </CardContent>
 
       {/* Contact modal */}

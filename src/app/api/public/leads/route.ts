@@ -582,6 +582,10 @@ export async function POST(req: Request) {
     const privacyVersion = sanitize(payload.privacy_version);
     const specializations = normalizeSpecializations(payload.specializations ?? []);
     // Therapist profile fields (qualification/experience/website) not processed in JSON path
+    // Therapist's own gender (for identity verification)
+    const therapistGenderRaw = sanitize(payload.gender as string | undefined);
+    const therapistGender: 'male' | 'female' | 'non-binary' | undefined =
+      therapistGenderRaw === 'male' || therapistGenderRaw === 'female' || therapistGenderRaw === 'non-binary' ? therapistGenderRaw : undefined;
     // Optional gender preference (patient)
     const genderPrefRaw = sanitize(payload.gender_preference as string | undefined);
     const genderPreference: 'male' | 'female' | 'no_preference' | undefined =
@@ -1100,10 +1104,10 @@ export async function POST(req: Request) {
         {
           data: { name: data.name, email: data.email || '', phone: data.phone || '', notes: data.notes || '' },
           city: city || undefined,
+          gender: therapistGender,
           sessionPreferences,
           specializations,
           session_id: session_id || undefined,
-          // No additional profile fields forwarded in this path
         },
       );
     }
