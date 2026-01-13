@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
+import { ADMIN_SESSION_COOKIE, verifySessionTokenWithReason } from '@/lib/auth/adminSession';
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -40,17 +40,21 @@ export async function middleware(req: NextRequest) {
     const url = req.nextUrl.clone();
     url.pathname = '/admin/login';
     url.searchParams.set('next', pathname);
+    url.searchParams.set('reason', 'no_cookie');
     return NextResponse.redirect(url);
   }
   
-  const valid = await verifySessionToken(token);
-  if (!valid) {
-    const tokenExp = parseInt(token.split('.')[0]);
-    const isExpired = !isNaN(tokenExp) && tokenExp < Math.floor(Date.now() / 1000);
-    console.log('[middleware]', pathname, '- Token INVALID. Expired?', isExpired);
+  const result = await verifySessionTokenWithReason(token);
+  if (!result.valid) {
+    console.log('[middleware]', pathname, '- Token INVALID. Reason:', result.reason, 
+      result.expiredHoursAgo ? `(expired ${result.expiredHoursAgo}h ago)` : '');
     const url = req.nextUrl.clone();
     url.pathname = '/admin/login';
     url.searchParams.set('next', pathname);
+    url.searchParams.set('reason', result.reason || 'unknown');
+    if (result.expiredHoursAgo) {
+      url.searchParams.set('expired_hours', String(result.expiredHoursAgo));
+    }
     return NextResponse.redirect(url);
   }
 

@@ -11,6 +11,14 @@ type LoginResponse = {
   message?: string | null;
 };
 
+const REASON_MESSAGES: Record<string, string> = {
+  no_cookie: 'Session-Cookie nicht gefunden. Möglicherweise wurden Cookies gelöscht.',
+  expired: 'Ihre Sitzung ist abgelaufen.',
+  signature_mismatch: 'Sitzung ungültig (Server-Konfiguration geändert).',
+  invalid_format: 'Ungültiges Session-Token.',
+  invalid_expiry: 'Ungültiges Session-Token.',
+};
+
 function AdminLoginInner() {
   const searchParams = useSearchParams();
   const [password, setPassword] = useState('');
@@ -18,6 +26,25 @@ function AdminLoginInner() {
   const [loading, setLoading] = useState(false);
   const nextParam = searchParams.get('next');
   const next = typeof nextParam === 'string' && nextParam.startsWith('/') ? nextParam : '/admin';
+  
+  // Session invalidation reason from middleware
+  const reason = searchParams.get('reason');
+  const expiredHours = searchParams.get('expired_hours');
+  const sessionMessage = reason ? REASON_MESSAGES[reason] || `Sitzung beendet (${reason})` : null;
+
+  useEffect(() => {
+    // Track session invalidation for analytics
+    if (reason) {
+      fetch('/api/public/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'admin_session_invalidated',
+          props: { reason, expired_hours: expiredHours },
+        }),
+      }).catch(() => {});
+    }
+  }, [reason, expiredHours]);
 
   useEffect(() => {
     // Clear error only when the user changes the password after an error.
@@ -69,6 +96,12 @@ function AdminLoginInner() {
     <main className="min-h-screen flex items-center justify-center p-6">
       <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 border rounded-md p-6">
         <h1 className="text-xl font-semibold">Admin Login</h1>
+        {sessionMessage && (
+          <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+            {sessionMessage}
+            {expiredHours && <span className="block text-xs text-amber-600 mt-1">({expiredHours}h abgelaufen)</span>}
+          </div>
+        )}
         <div className="space-y-2">
           <label htmlFor="password" className="block text-sm font-medium">Passwort</label>
           <input
