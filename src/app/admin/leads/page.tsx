@@ -923,12 +923,12 @@ export default function AdminLeadsPage() {
                 {/* Highlighted therapist selection */}
                 <div className="flex items-center gap-2">
                   <Label htmlFor="highlighted-therapist" className="text-sm whitespace-nowrap">⭐ Beste Übereinstimmung:</Label>
-                  <Select value={highlightedTherapistId || ''} onValueChange={(v) => setHighlightedTherapistId(v || null)}>
+                  <Select value={highlightedTherapistId || '__auto__'} onValueChange={(v) => setHighlightedTherapistId(v === '__auto__' ? null : v)}>
                     <SelectTrigger id="highlighted-therapist" className="h-8 text-sm flex-1">
                       <SelectValue placeholder="Automatisch (erster)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Automatisch (erster)</SelectItem>
+                      <SelectItem value="__auto__">Automatisch (erster)</SelectItem>
                       {Array.from(selectedTherapists).map((id) => {
                         const t = therapists.find((th) => th.id === id);
                         const name = t ? `${t.first_name || ''} ${t.last_name || t.name || ''}`.trim() : id;
