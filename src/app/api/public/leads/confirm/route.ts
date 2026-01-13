@@ -587,7 +587,10 @@ export async function GET(req: Request) {
           }
         }
       } catch (err) {
-        await logError('api.leads.confirm', err, { stage: 'draft_booking_processing' });
+        // CAL_ENABLED_SKIP is expected flow control, not an error
+        if (!(err instanceof Error && err.message === 'CAL_ENABLED_SKIP')) {
+          await logError('api.leads.confirm', err, { stage: 'draft_booking_processing' });
+        }
       }
     }
 

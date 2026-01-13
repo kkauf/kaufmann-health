@@ -541,7 +541,10 @@ export async function POST(req: NextRequest) {
                 }
               }
             } catch (err) {
-              await logError('api.verification.verify-code', err, { stage: 'draft_booking_processing' });
+              // CAL_ENABLED_SKIP is expected flow control, not an error
+              if (!(err instanceof Error && err.message === 'CAL_ENABLED_SKIP')) {
+                await logError('api.verification.verify-code', err, { stage: 'draft_booking_processing' });
+              }
             }
           }
 
