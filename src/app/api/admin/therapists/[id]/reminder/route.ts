@@ -103,7 +103,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   try {
     const { data: t, error } = await supabaseServer
       .from('therapists')
-      .select('id, status, first_name, last_name, email, gender, city, accepting_new, photo_url, metadata')
+      .select('id, status, first_name, last_name, email, photo_url, metadata')
       .eq('id', id)
       .single();
 
@@ -168,14 +168,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const uploadUrl = `${BASE_URL}/therapists/upload-documents/${id}`;
     const profileUrl = `${BASE_URL}/therapists/complete-profile/${id}`;
 
-    const genderVal = (t as { gender?: string | null }).gender || null;
-    const cityVal = (t as { city?: string | null }).city || null;
-    const acceptingVal = (t as { accepting_new?: boolean | null }).accepting_new;
-    const genderOk = genderVal === 'male' || genderVal === 'female' || genderVal === 'diverse';
-    const cityOk = typeof cityVal === 'string' && cityVal.trim().length > 0;
-    const acceptingOk = typeof acceptingVal === 'boolean';
-    const missingBasic = !(genderOk && cityOk && acceptingOk);
-
     const token = await createTherapistOptOutToken(id);
     const optOutUrl = `${BASE_URL}/api/therapists/opt-out?token=${encodeURIComponent(token)}`;
     const reminder = renderTherapistReminder({
@@ -185,7 +177,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       missingDocuments,
       missingPhoto,
       missingApproach,
-      missingBasic,
       stageLabel: deriveStageLabel(history.count),
       optOutUrl,
     });

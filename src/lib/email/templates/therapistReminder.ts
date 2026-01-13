@@ -17,7 +17,9 @@ export function renderTherapistReminder(params: {
   missingDocuments: boolean;
   missingPhoto: boolean;
   missingApproach: boolean;
-  missingBasic?: boolean; // gender/city/accepting_new missing
+  missingBasic?: boolean; // deprecated - kept for backwards compatibility
+  missingProfileText?: boolean; // profile text fields incomplete (who_comes_to_me, session_focus, first_session)
+  missingCalBookings?: boolean; // Cal.com online booking not activated
   completionPercentage?: number; // 0..100
   stageLabel?: string; // e.g., "Erinnerung", "Zweite Erinnerung", "Letzte Erinnerung"
   optOutUrl?: string;
@@ -28,7 +30,8 @@ export function renderTherapistReminder(params: {
   if (params.missingDocuments) items.push('Lizenz‑Nachweis');
   if (params.missingPhoto) items.push('Profilfoto');
   // missingApproach is deprecated - therapists complete profile text in portal after verification
-  if (params.missingBasic) items.push('Basisdaten (Stadt, Verfügbarkeit)');
+  if (params.missingProfileText) items.push('Profilbeschreibung');
+  if (params.missingCalBookings) items.push('Online‑Buchung aktivieren');
 
   const missingList = items.length ? items.join(', ') : 'Profilangaben';
 
@@ -45,7 +48,7 @@ export function renderTherapistReminder(params: {
   lines.push('</div>');
 
   // missingApproach is deprecated - removed from targetIsProfile check
-  const targetIsProfile = Boolean(params.missingPhoto || params.missingBasic);
+  const targetIsProfile = Boolean(params.missingPhoto || params.missingBasic || params.missingProfileText || params.missingCalBookings);
   const targetUrl = targetIsProfile ? params.profileUrl : params.uploadUrl;
   const ctaLabel = targetIsProfile ? 'Profil vervollständigen' : 'Dokumente hochladen';
   lines.push(`<div style=\"text-align:center; margin: 24px 0;\">${renderButton(targetUrl, ctaLabel)}</div>`);
