@@ -240,7 +240,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
         subtitle={landingCopy?.subtitle ?? (instantFlow ? neutralHeroSubtitle : copy.hero.subtitle)}
         ctaLabel={isBrowse ? 'Therapeut:innen ansehen' : 'Jetzt Therapeut:in finden'}
         ctaHref={isBrowse ? therapeutenHref : fragebogenHref}
-        backgroundSrc="/images/hero.jpg"
+        backgroundSrc="/images/hero-calm.jpg"
         valueProps={landingCopy?.valueProps}
       />
 

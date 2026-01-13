@@ -4,15 +4,13 @@ import { ServerAnalytics } from '@/lib/server-analytics';
 import { logError } from '@/lib/logger';
 import { 
   computeMismatches, 
-  normalizeSpec, 
-  isEligible,
+  normalizeSpec,
   calculatePlatformScore,
   calculateMatchScore,
   calculateTotalScore,
   type PatientMeta, 
   type TherapistRowForMatch 
 } from '@/features/leads/lib/match';
-import { computeAvailability, getBerlinDayIndex } from '@/lib/availability';
 import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
 import {
   type TherapistRow,
@@ -177,12 +175,6 @@ export async function GET(req: Request) {
       }
     }
 
-    // Compute availability for selected therapists using shared utility
-    const availabilityMap = await computeAvailability(therapistIds, {
-      maxDays: 21,
-      maxSlots: 9,
-    });
-
     // Compute contacted flags (patient-initiated)
     const contactedById = new Map<string, string>(); // therapist_id -> iso string
     for (const m of all) {
@@ -190,13 +182,6 @@ export async function GET(req: Request) {
       if (pi && !contactedById.has(m.therapist_id)) {
         contactedById.set(m.therapist_id, m.created_at ?? '');
       }
-    }
-
-    // Count intake slots within day windows for Platform Score
-    function countSlotsInDays(availability: { date_iso: string }[], days: number): number {
-      const now = new Date();
-      const cutoff = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-      return availability.filter(a => new Date(a.date_iso) <= cutoff).length;
     }
 
     // Rank therapists using new algorithm (see /docs/therapist-matching-algorithm-spec.md)
@@ -214,26 +199,23 @@ export async function GET(req: Request) {
       };
       
       const mm = computeMismatches(patientMeta, tRow);
-      const availability = availabilityMap.get(t.id) || [];
       
-      // Calculate scores per spec
-      const intakeSlots7Days = countSlotsInDays(availability, 7);
-      const intakeSlots14Days = countSlotsInDays(availability, 14);
-      const platformScore = calculatePlatformScore(tRow, intakeSlots7Days, intakeSlots14Days);
+      // Calculate scores per spec (slot counts are 0 - Cal.com handles booking)
+      const platformScore = calculatePlatformScore(tRow, 0, 0);
       const matchScore = calculateMatchScore(tRow, patientMeta);
       const totalScore = calculateTotalScore(matchScore, platformScore);
       
       // "Perfect" = high total score or no mismatches
       const isPerfect = totalScore >= 120 || mm.reasons.length === 0;
       
-      return { t, mm, availability, isPerfect, totalScore, platformScore, matchScore } as const;
+      return { t, mm, isPerfect, totalScore, platformScore, matchScore } as const;
     });
 
     // Sort by totalScore descending (per spec: Match × 1.5 + Platform)
     scored.sort((a, b) => b.totalScore - a.totalScore);
 
     // Build response list and include per-therapist is_perfect
-    const list = scored.map(({ t, availability, isPerfect }) => ({
+    const list = scored.map(({ t, isPerfect }) => ({
       id: t.id,
       first_name: t.first_name,
       last_name: t.last_name,
@@ -247,7 +229,6 @@ export async function GET(req: Request) {
       session_preferences: Array.isArray(t.session_preferences) ? t.session_preferences : (Array.isArray(t.metadata?.session_preferences) ? t.metadata?.session_preferences : []),
       approach_text: t.metadata?.profile?.approach_text || '',
       gender: t.gender || undefined,
-      availability,
       is_perfect: Boolean(isPerfect),
       // Include full metadata for rich profile display (qualification, sections, pricing, etc.)
       metadata: t.metadata || undefined,
@@ -265,30 +246,18 @@ export async function GET(req: Request) {
 
     try {
       const top3 = scored.slice(0, 3);
-      const total_online_slots = top3.reduce((acc, s) => acc + (s.availability?.filter(a => a.format === 'online').length || 0), 0);
-      const total_in_person_slots = top3.reduce((acc, s) => acc + (s.availability?.filter(a => a.format === 'in_person').length || 0), 0);
-      const wantsInPerson = Boolean(
-        (Array.isArray(patientMeta.session_preferences) && patientMeta.session_preferences.includes('in_person')) ||
-        patientMeta.session_preference === 'in_person'
-      );
       void ServerAnalytics.trackEventFromRequest(req, {
-        type: 'match_availability_summary',
+        type: 'match_summary',
         source: 'api.public.matches',
         props: {
           patient_id: patientId,
           match_type: matchType,
           therapist_ids: top3.map(s => s.t.id),
-          total_online_slots,
-          total_in_person_slots,
-          wants_in_person: wantsInPerson,
         },
       });
       const uniqueReasons = new Set<string>();
       for (const s of top3) {
         for (const r of s.mm.reasons) uniqueReasons.add(r);
-      }
-      if (wantsInPerson && total_in_person_slots === 0) {
-        uniqueReasons.add('location');
       }
       const reasonsArr = Array.from(uniqueReasons).filter(r => r === 'gender' || r === 'location' || r === 'modality');
 
@@ -302,11 +271,9 @@ export async function GET(req: Request) {
       const missingRequestedModalities = wantedSpecs.filter(w => !top3Modalities.includes(w));
 
       const insights: string[] = [];
-      if (wantsInPerson && total_in_person_slots === 0) insights.push('in_person_supply_gap');
       if (missingPreferredGender) insights.push('gender_supply_gap');
       if (missingRequestedModalities.length > 0) insights.push('modality_supply_gap');
       if (missingPreferredGender && missingRequestedModalities.length > 0) insights.push('combo_gender_modality_gap');
-      if (missingPreferredGender && wantsInPerson && total_in_person_slots === 0) insights.push('combo_gender_in_person_gap');
 
       if (reasonsArr.length > 0 || insights.length > 0) {
         void ServerAnalytics.trackEventFromRequest(req, {
@@ -317,9 +284,6 @@ export async function GET(req: Request) {
             reasons: reasonsArr,
             insights,
             details: {
-              wants_in_person: wantsInPerson,
-              total_in_person_slots,
-              total_online_slots,
               preferred_gender: preferredGender || null,
               top3_genders: top3Genders,
               top3_modalities: top3Modalities,
@@ -330,7 +294,7 @@ export async function GET(req: Request) {
         });
       }
     } catch (e) {
-      await logError('api.public.matches.get', e, { stage: 'availability_opportunities', uuid, patient_id: patientId });
+      await logError('api.public.matches.get', e, { stage: 'business_opportunities', uuid, patient_id: patientId });
     }
 
     void ServerAnalytics.trackEventFromRequest(req, {

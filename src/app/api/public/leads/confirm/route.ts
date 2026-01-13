@@ -6,11 +6,8 @@ import { ServerAnalytics } from '@/lib/server-analytics';
 import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
 import { maybeFirePatientConversion } from '@/lib/conversion';
 import { sendEmail } from '@/lib/email/client';
-import { renderBookingTherapistNotification } from '@/lib/email/templates/bookingTherapistNotification';
-import { renderBookingClientConfirmation } from '@/lib/email/templates/bookingClientConfirmation';
 import { processDraftContact, clearDraftContact } from '@/features/leads/lib/processDraftContact';
 import { LeadConfirmQuery } from '@/contracts/leads';
-import { buildCalBookingUrl } from '@/lib/cal/booking-url';
 
 export const runtime = 'nodejs';
 
@@ -94,10 +91,9 @@ export async function GET(req: Request) {
     const effectiveRedirect = isSafeRedirect ? redirectPath! : (storedRedirectSafe ? storedRedirectRaw! : undefined);
 
     const personDraftContact = (personMeta?.['draft_contact'] as Record<string, unknown> | undefined) || undefined;
-    const personDraftBooking = (personMeta?.['draft_booking'] as Record<string, unknown> | undefined) || undefined;
     const personFormCompletedAt = typeof personMeta['form_completed_at'] === 'string' ? (personMeta['form_completed_at'] as string) : undefined;
     const personFormIsCompleted = !!(personFormCompletedAt && !Number.isNaN(Date.parse(personFormCompletedAt)));
-    const personHasDraftAction = !!(personDraftContact || personDraftBooking);
+    const personHasDraftAction = !!personDraftContact;
     const redirectSuggestsDraftAction = !!(
       storedRedirectRaw &&
       storedRedirectRaw.startsWith('/therapeuten') &&
@@ -177,13 +173,11 @@ export async function GET(req: Request) {
 
     // Read draft_contact if present (therapist directory flow). Do NOT remove yet; only clear after successful processing.
     const draftContact = (metadata?.['draft_contact'] as Record<string, unknown> | undefined) || undefined;
-    const draftBooking = (metadata?.['draft_booking'] as Record<string, unknown> | undefined) || undefined;
-
     // If the questionnaire was completed already, the lead is actionable: mark as 'new'.
     // Otherwise, keep the transitional 'email_confirmed' status.
     const formCompletedAt = typeof newMetadata['form_completed_at'] === 'string' ? (newMetadata['form_completed_at'] as string) : undefined;
     const formIsCompleted = !!(formCompletedAt && !Number.isNaN(Date.parse(formCompletedAt)));
-    const hasDraftAction = !!(draftContact || draftBooking);
+    const hasDraftAction = !!draftContact;
     const nextStatus: 'email_confirmed' | 'new' = (formIsCompleted || hasDraftAction) ? 'new' : 'email_confirmed';
 
     const { error: upErr } = await supabaseServer
@@ -278,319 +272,6 @@ export async function GET(req: Request) {
         }
       } catch (err) {
         await logError('api.leads.confirm', err, { stage: 'draft_contact_processing' });
-      }
-    }
-
-    // Process draft booking if present (therapist directory flow)
-    if (draftBooking) {
-      try {
-        const therapistId = typeof draftBooking.therapist_id === 'string' ? draftBooking.therapist_id : null;
-        const dateIso = typeof draftBooking.date_iso === 'string' ? draftBooking.date_iso : '';
-        const timeLabel = typeof draftBooking.time_label === 'string' ? draftBooking.time_label : '';
-        const fmt = draftBooking.format === 'in_person' ? 'in_person' : (draftBooking.format === 'online' ? 'online' : null);
-        
-        // Cal.com booking fields
-        const calSlotUtc = typeof draftBooking.cal_slot_utc === 'string' ? draftBooking.cal_slot_utc : null;
-        const calUsername = typeof draftBooking.cal_username === 'string' ? draftBooking.cal_username : null;
-        const calBookingKind = draftBooking.cal_booking_kind === 'full_session' ? 'full_session' : 'intro';
-
-        // Check if therapist is Cal-enabled - skip old booking flow for Cal therapists
-        // This prevents emails being sent before Cal.com confirms the booking
-        if (therapistId) {
-          const { data: therapistCheck } = await supabaseServer
-            .from('therapists')
-            .select('cal_enabled, cal_username, cal_bookings_live')
-            .eq('id', therapistId)
-            .maybeSingle();
-          
-          const isCalEnabled = therapistCheck?.cal_enabled && therapistCheck?.cal_username && therapistCheck?.cal_bookings_live;
-          if (isCalEnabled && !calSlotUtc) {
-            // Cal-enabled therapist but no cal_slot_utc - clear draft_booking and skip
-            try {
-              await ServerAnalytics.trackEventFromRequest(req, {
-                type: 'draft_booking_skipped_cal_enabled',
-                source: 'api.leads.confirm',
-                props: { therapist_id: therapistId },
-              });
-            } catch {}
-            try {
-              const clearedMeta = { ...(newMetadata || {}) } as Record<string, unknown>;
-              delete clearedMeta['draft_booking'];
-              await supabaseServer
-                .from('people')
-                .update({ metadata: clearedMeta })
-                .eq('id', id);
-            } catch {}
-            // Skip draft_booking processing - Cal.com will handle via webhook
-            throw new Error('CAL_ENABLED_SKIP');
-          }
-        }
-
-        // If this is a Cal.com booking (has cal_slot_utc), redirect to Cal.com instead of creating KH booking
-        if (calSlotUtc && calUsername && therapistId) {
-          try {
-            await ServerAnalytics.trackEventFromRequest(req, {
-              type: 'cal_redirect_after_confirm',
-              source: 'api.leads.confirm',
-              session_id: sessionIdHeader,
-              props: { therapist_id: therapistId, cal_username: calUsername, booking_kind: calBookingKind },
-            });
-          } catch {}
-
-          // Clear draft_booking since we're redirecting to Cal
-          try {
-            const clearedMeta = { ...(newMetadata || {}) } as Record<string, unknown>;
-            delete clearedMeta['draft_booking'];
-            await supabaseServer
-              .from('people')
-              .update({ metadata: clearedMeta })
-              .eq('id', id);
-          } catch {}
-
-          // Build Cal.com URL with prefill and slot
-          const calUrl = buildCalBookingUrl({
-            calUsername,
-            eventType: calBookingKind,
-            metadata: {
-              kh_therapist_id: therapistId,
-              kh_patient_id: id,
-              kh_booking_kind: calBookingKind,
-              kh_source: 'email_confirm',
-            },
-            prefillName: person.name || undefined,
-            prefillEmail: person.email,
-            redirectBack: true,
-            slot: calSlotUtc,
-          });
-
-          // Create session cookie and redirect to Cal.com
-          try {
-            const token = await createClientSessionToken({
-              patient_id: id,
-              contact_method: 'email',
-              contact_value: person.email.toLowerCase(),
-              name: person.name || undefined,
-            });
-            const cookie = createClientSessionCookie(token);
-            const resp = NextResponse.redirect(calUrl, 302);
-            resp.headers.set('Set-Cookie', cookie);
-            return resp;
-          } catch {
-            return NextResponse.redirect(calUrl, 302);
-          }
-        }
-
-        const isKhTest = (() => {
-          try {
-            const cookie = req.headers.get('cookie') || '';
-            return cookie.split(';').some((p) => {
-              const [k, v] = p.trim().split('=');
-              return k === 'kh_test' && v === '1';
-            });
-          } catch {
-            return false;
-          }
-        })();
-        const sinkEmail = (process.env.LEADS_NOTIFY_EMAIL || '').trim();
-
-        if (therapistId && dateIso && timeLabel && fmt) {
-          const { data: existing } = await supabaseServer
-            .from('bookings')
-            .select('id')
-            .eq('therapist_id', therapistId)
-            .eq('date_iso', dateIso)
-            .eq('time_label', timeLabel)
-            .maybeSingle();
-
-          if (!existing) {
-            if (isKhTest) {
-              // Dry-run: track, send sink-only emails, do not insert
-              try {
-                await ServerAnalytics.trackEventFromRequest(req, {
-                  type: 'booking_dry_run',
-                  source: 'api.leads.confirm',
-                  session_id: sessionIdHeader,
-                  props: { therapist_id: therapistId, date_iso: dateIso, time_label: timeLabel, format: fmt },
-                });
-              } catch {}
-              try {
-                const { data: t } = await supabaseServer
-                  .from('therapists')
-                  .select('email, first_name, last_name, metadata')
-                  .eq('id', therapistId)
-                  .maybeSingle();
-                let addr = '';
-                if (fmt === 'in_person') {
-                  const { data: slots } = await supabaseServer
-                    .from('therapist_slots')
-                    .select('time_local, format, address, active')
-                    .eq('therapist_id', therapistId)
-                    .eq('active', true);
-                  if (Array.isArray(slots)) {
-                    const m = (slots as { time_local: string | null; format: string; address?: string | null }[])
-                      .find((s) => String(s.time_local || '').slice(0, 5) === timeLabel && s.format === 'in_person');
-                    addr = (m?.address || '').trim();
-                  }
-                }
-                type TR = { email?: string | null; first_name?: string | null; last_name?: string | null; metadata?: unknown } | null;
-                const tRow = (t as unknown) as TR;
-                const therapistName = [tRow?.first_name || '', tRow?.last_name || ''].filter(Boolean).join(' ');
-                const practiceAddr = (() => {
-                  try {
-                    const md = (tRow as unknown as { metadata?: Record<string, unknown> })?.metadata || {};
-                    const prof = md['profile'] as Record<string, unknown> | undefined;
-                    const pa = typeof prof?.['practice_address'] === 'string' ? (prof['practice_address'] as string) : '';
-                    return pa.trim();
-                  } catch {
-                    return '';
-                  }
-                })();
-                if (sinkEmail) {
-                  const content = renderBookingTherapistNotification({
-                    therapistName,
-                    dateIso,
-                    timeLabel,
-                    format: fmt,
-                    address: (addr || practiceAddr) || null,
-                  });
-                  void sendEmail({
-                    to: sinkEmail,
-                    subject: content.subject,
-                    html: content.html,
-                    context: { kind: 'booking_therapist_notification', therapist_id: therapistId, patient_id: id, dry_run: true },
-                  }).catch(() => {});
-                  if (person.email) {
-                    const content2 = renderBookingClientConfirmation({
-                      therapistName,
-                      dateIso,
-                      timeLabel,
-                      format: fmt,
-                      address: (addr || practiceAddr) || null,
-                    });
-                    void sendEmail({
-                      to: sinkEmail,
-                      subject: content2.subject,
-                      html: content2.html,
-                      context: { kind: 'booking_client_confirmation', therapist_id: therapistId, patient_id: id, dry_run: true },
-                    }).catch(() => {});
-                  }
-                }
-              } catch {}
-            } else {
-              const { data: insertedBooking, error: bookErr } = await supabaseServer
-                .from('bookings')
-                .insert({ therapist_id: therapistId, patient_id: id, date_iso: dateIso, time_label: timeLabel, format: fmt })
-                .select('id')
-                .single();
-              if (bookErr || !insertedBooking?.id) {
-                await logError('api.leads.confirm', bookErr, { stage: 'draft_booking_insert', therapistId, dateIso, timeLabel });
-              } else {
-                try {
-                  await ServerAnalytics.trackEventFromRequest(req, {
-                    type: 'booking_created',
-                    source: 'api.leads.confirm',
-                    session_id: sessionIdHeader,
-                    props: { therapist_id: therapistId, date_iso: dateIso, time_label: timeLabel, format: fmt },
-                  });
-                } catch {}
-                try {
-                  const { data: t } = await supabaseServer
-                    .from('therapists')
-                    .select('email, first_name, last_name, metadata')
-                    .eq('id', therapistId)
-                    .maybeSingle();
-                  let addr = '';
-                  if (fmt === 'in_person') {
-                    const { data: slots } = await supabaseServer
-                      .from('therapist_slots')
-                      .select('time_local, format, address, active')
-                      .eq('therapist_id', therapistId)
-                      .eq('active', true);
-                    if (Array.isArray(slots)) {
-                      const m = (slots as { time_local: string | null; format: string; address?: string | null }[])
-                        .find((s) => String(s.time_local || '').slice(0, 5) === timeLabel && s.format === 'in_person');
-                      addr = (m?.address || '').trim();
-                    }
-                  }
-                  type TR2 = { email?: string | null; first_name?: string | null; last_name?: string | null; metadata?: unknown } | null;
-                  const tRow2 = (t as unknown) as TR2;
-                  const therapistEmail = (tRow2?.email || undefined) as string | undefined;
-                  const therapistName2 = [tRow2?.first_name || '', tRow2?.last_name || ''].filter(Boolean).join(' ');
-                  const practiceAddr2 = (() => {
-                    try {
-                      const md = (tRow2 as unknown as { metadata?: Record<string, unknown> })?.metadata || {};
-                      const prof = md['profile'] as Record<string, unknown> | undefined;
-                      const pa = typeof prof?.['practice_address'] === 'string' ? (prof['practice_address'] as string) : '';
-                      return pa.trim();
-                    } catch {
-                      return '';
-                    }
-                  })();
-                  // Build magic link if secure_uuid exists
-                  let secureUuid: string | null = null;
-                  try {
-                    const { data: br } = await supabaseServer
-                      .from('bookings')
-                      .select('secure_uuid')
-                      .eq('id', insertedBooking.id)
-                      .maybeSingle();
-                    secureUuid = ((br as unknown) as { secure_uuid?: string | null } | null)?.secure_uuid || null;
-                  } catch {}
-                  const base = process.env.NEXT_PUBLIC_BASE_URL || '';
-                  const magicUrl = secureUuid ? `${base}${base.startsWith('http') ? '' : ''}/booking/${secureUuid}` : undefined;
-                  if (therapistEmail) {
-                    const content = renderBookingTherapistNotification({
-                      therapistName: therapistName2,
-                      dateIso,
-                      timeLabel,
-                      format: fmt,
-                      address: (addr || practiceAddr2) || null,
-                      magicUrl: magicUrl || null,
-                    });
-                    void sendEmail({
-                      to: therapistEmail,
-                      subject: content.subject,
-                      html: content.html,
-                      context: { kind: 'booking_therapist_notification', therapist_id: therapistId, patient_id: id },
-                    }).catch(() => {});
-                  }
-                  if (person.email) {
-                    const content2 = renderBookingClientConfirmation({
-                      therapistName: therapistName2,
-                      dateIso,
-                      timeLabel,
-                      format: fmt,
-                      address: (addr || practiceAddr2) || null,
-                    });
-                    void sendEmail({
-                      to: person.email,
-                      subject: content2.subject,
-                      html: content2.html,
-                      context: { kind: 'booking_client_confirmation', therapist_id: therapistId, patient_id: id },
-                    }).catch(() => {});
-                  }
-                } catch {}
-              }
-            }
-          }
-
-          // Only clear draft_booking when not in dry-run
-          if (!isKhTest) {
-            try {
-              const clearedMeta = { ...(newMetadata || {}) } as Record<string, unknown>;
-              delete clearedMeta['draft_booking'];
-              await supabaseServer
-                .from('people')
-                .update({ metadata: clearedMeta })
-                .eq('id', id);
-            } catch {}
-          }
-        }
-      } catch (err) {
-        // CAL_ENABLED_SKIP is expected flow control, not an error
-        if (!(err instanceof Error && err.message === 'CAL_ENABLED_SKIP')) {
-          await logError('api.leads.confirm', err, { stage: 'draft_booking_processing' });
-        }
       }
     }
 
