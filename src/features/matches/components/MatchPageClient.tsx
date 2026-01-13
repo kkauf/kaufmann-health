@@ -56,6 +56,8 @@ type TherapistItem = {
   cal_username?: string;
   cal_enabled?: boolean;
   cal_bookings_live?: boolean;
+  // Admin-selected "best match" flag from API
+  is_perfect?: boolean;
 };
 
 type MatchApiData = {
@@ -211,8 +213,9 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
 
   // Find the SINGLE best therapist to highlight with premium styling
   // Priority: 1) Email link (?therapist=...) - always highlight that one
-  //           2) Perfect match with booking slots
-  //           3) First perfect match
+  //           2) Admin-selected "best match" (is_perfect from API)
+  //           3) Computed perfect match with booking slots
+  //           4) First computed perfect match
   const highlightedTherapistId = useMemo(() => {
     // Check for email link - if ?therapist= param present, highlight that therapist
     if (typeof window !== 'undefined') {
@@ -222,7 +225,11 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       }
     }
     
-    // Otherwise, find best perfect match
+    // Check for admin-selected "best match" via is_perfect flag from API
+    const adminSelected = therapistsWithQuality.find(t => t.is_perfect === true);
+    if (adminSelected) return adminSelected.id;
+    
+    // Otherwise, find best computed perfect match
     const perfectMatches = therapistsWithQuality.filter(t => t.matchQuality?.isPerfect === true);
     if (perfectMatches.length === 0) return null;
     if (perfectMatches.length === 1) return perfectMatches[0].id;
