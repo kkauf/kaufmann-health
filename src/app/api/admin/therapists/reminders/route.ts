@@ -123,7 +123,7 @@ export async function GET(req: Request) {
     // Profile fields (who_comes_to_me, session_focus, first_session, about_me) are in metadata JSONB
     const initial = await supabaseServer
       .from('therapists')
-      .select('id, status, first_name, last_name, email, gender, city, accepting_new, photo_url, metadata')
+      .select('id, status, first_name, last_name, email, photo_url, metadata, cal_bookings_live')
       .eq('status', 'verified')
       .limit(limit);
 
@@ -199,10 +199,14 @@ export async function GET(req: Request) {
       const missingDocuments = false; // Verified therapists already have documents approved
       const missingPhoto = !(hasPhotoApproved || hasPhotoPending);
       const missingApproach = false; // Deprecated - using new profile fields
-      const missingProfileFields = !profileComplete;
+      const missingProfileText = !profileComplete;
+      
+      // Check Cal.com activation
+      const calBookingsLive = (t as { cal_bookings_live?: boolean | null }).cal_bookings_live === true;
+      const missingCalBookings = !calBookingsLive;
 
-      // Skip if profile is complete and has photo
-      if (!missingPhoto && !missingProfileFields) {
+      // Skip if everything is complete (profile text, photo, and Cal.com activated)
+      if (!missingPhoto && !missingProfileText && !missingCalBookings) {
         skippedNoMissing++;
         continue;
       }
@@ -215,8 +219,6 @@ export async function GET(req: Request) {
       const uploadUrl = `${BASE_URL}/portal`;
       const profileUrl = `${BASE_URL}/portal`;
 
-      // For verified therapists, basic fields should already be set - use profile completeness
-      const missingBasic = missingProfileFields;
 
       // Opt-out check
       const notificationsUnknown = (metadata as { notifications?: unknown }).notifications;
@@ -247,7 +249,8 @@ export async function GET(req: Request) {
         missingDocuments,
         missingPhoto,
         missingApproach,
-        missingBasic,
+        missingProfileText,
+        missingCalBookings,
         stageLabel: deriveStageLabel(history.count),
         optOutUrl,
       });
@@ -271,7 +274,8 @@ export async function GET(req: Request) {
             const miss: string[] = [];
             if (missingDocuments) miss.push('documents');
             if (missingPhoto) miss.push('photo');
-            if (missingApproach) miss.push('approach');
+            if (missingProfileText) miss.push('profile_text');
+            if (missingCalBookings) miss.push('cal_bookings');
             examples.push({ id: t.id as string, missing: miss });
           }
         } else if (emailResult.reason === 'failed') {
@@ -375,7 +379,7 @@ export async function POST(req: Request) {
     // Profile fields (who_comes_to_me, session_focus, first_session, about_me) are in metadata JSONB
     const initial = await supabaseServer
       .from('therapists')
-      .select('id, status, first_name, last_name, email, gender, city, accepting_new, photo_url, metadata')
+      .select('id, status, first_name, last_name, email, photo_url, metadata, cal_bookings_live')
       .eq('status', 'verified')
       .limit(limit);
 
@@ -452,10 +456,14 @@ export async function POST(req: Request) {
       const missingDocuments = false; // Verified therapists already have documents approved
       const missingPhoto = !(hasPhotoApproved || hasPhotoPending);
       const missingApproach = false; // Deprecated - using new profile fields
-      const missingProfileFields = !profileComplete;
+      const missingProfileText = !profileComplete;
+      
+      // Check Cal.com activation
+      const calBookingsLive = (t as { cal_bookings_live?: boolean | null }).cal_bookings_live === true;
+      const missingCalBookings = !calBookingsLive;
 
-      // Skip if profile is complete and has photo
-      if (!missingPhoto && !missingProfileFields) {
+      // Skip if everything is complete (profile text, photo, and Cal.com activated)
+      if (!missingPhoto && !missingProfileText && !missingCalBookings) {
         skippedNoMissing++;
         continue;
       }
@@ -468,8 +476,6 @@ export async function POST(req: Request) {
       const uploadUrl = `${BASE_URL}/portal`;
       const profileUrl = `${BASE_URL}/portal`;
 
-      // For verified therapists, basic fields should already be set - use profile completeness
-      const missingBasic = missingProfileFields;
 
       // Opt-out check
       const notificationsUnknown = (metadata as { notifications?: unknown }).notifications;
@@ -500,7 +506,8 @@ export async function POST(req: Request) {
         missingDocuments,
         missingPhoto,
         missingApproach,
-        missingBasic,
+        missingProfileText,
+        missingCalBookings,
         stageLabel: deriveStageLabel(history.count),
         optOutUrl,
       });
@@ -524,7 +531,8 @@ export async function POST(req: Request) {
             const miss: string[] = [];
             if (missingDocuments) miss.push('documents');
             if (missingPhoto) miss.push('photo');
-            if (missingApproach) miss.push('approach');
+            if (missingProfileText) miss.push('profile_text');
+            if (missingCalBookings) miss.push('cal_bookings');
             examples.push({ id: t.id as string, missing: miss });
           }
         } else if (emailResult.reason === 'failed') {
