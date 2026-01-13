@@ -30,9 +30,11 @@ export function renderPatientSelectionEmail(params: {
   subjectOverride?: string;
   bannerOverrideHtml?: string; // optional custom banner instead of default urgency box
   matchesUrl?: string; // optional: link to the pre-auth matches page
+  personalizedMessage?: string; // optional: personalized concierge message shown prominently
 }): EmailContent {
   const name = (params.patientName || '').trim();
   const items = Array.isArray(params.items) ? params.items : [];
+  const personalizedMessage = (params.personalizedMessage || '').trim();
  
   // Quality assurance notice (shown after cards by default, can be overridden by admin)
   const qualityBox = params.bannerOverrideHtml ?? `
@@ -49,6 +51,16 @@ export function renderPatientSelectionEmail(params: {
     ${name ? `<p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;">Hallo ${escapeHtml(name)},</p>` : ''}
     <p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">Vielen Dank für deine Anfrage bei Kaufmann Health.</p>
   `;
+ 
+  // Personalized concierge message (shown prominently after greeting when provided)
+  const personalizedBox = personalizedMessage
+    ? `
+      <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important; background-image: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important; padding:20px 24px; border-radius:12px; border:1px solid rgba(59, 130, 246, 0.3); margin:0 0 24px; box-shadow: 0 2px 8px 0 rgba(59, 130, 246, 0.08);">
+        <strong style="display:block; margin-bottom:12px; color:#1e40af !important; font-size:17px; font-weight:700;">💬 Persönliche Nachricht von Katherine:</strong>
+        <p style="margin:0; font-size:16px; line-height:1.65; color:#1e3a8a !important; white-space:pre-wrap;">${escapeHtml(personalizedMessage)}</p>
+      </div>
+    `
+    : '';
  
   // Primary CTA to view matches page (prominent when matchesUrl provided)
   // Add ?direct=1 to skip loading animation on the matches page
@@ -119,7 +131,7 @@ export function renderPatientSelectionEmail(params: {
  
   // Only show cards if no matchesUrl (backward compatibility)
   const cardsSection = params.matchesUrl ? '' : [matchingLine, cardsHtml, actionGuidance, qualityBox].join('\n');
-  const contentHtml = [header, greetingHtml, matchesCta, trustBox, cardsSection, closingHtml].join('\n');
+  const contentHtml = [header, greetingHtml, personalizedBox, matchesCta, trustBox, cardsSection, closingHtml].join('\n');
 
   const actionTarget = items[0]?.selectUrl;
   const schema = actionTarget
