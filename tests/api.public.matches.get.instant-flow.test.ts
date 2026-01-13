@@ -130,34 +130,7 @@ describe('Matches API - Instant Flow Enhancements (EARTH-231)', () => {
     expect(result.data.therapists.length).toBeLessThanOrEqual(3);
   });
 
-  it('includes availability for therapists and filters by time-of-day', async () => {
-    const uuid = 'abc-456';
-    const patientId = 'p1';
-    const ref = { id: 'ref1', created_at: isoDaysAgo(1), patient_id: patientId };
-    const matches = [{ id: 'm1', therapist_id: 't1', created_at: isoDaysAgo(1), metadata: {} }];
-    const therapists = [{ id: 't1', first_name: 'A', last_name: 'One', session_preferences: ['online'], modalities: [], accepting_new: true }];
-    const todayDow = new Date().getDay();
-    const patient = { name: 'Max', status: 'email_confirmed', metadata: { time_slots: ['Morgens (8-12 Uhr)'] } };
-    const slots = [
-      { therapist_id: 't1', day_of_week: todayDow, time_local: '09:00', format: 'online', address: null, active: true },
-      { therapist_id: 't1', day_of_week: todayDow, time_local: '18:00', format: 'online', address: null, active: true },
-    ];
-    const supabase = makeSupabaseMock({ ref, matches, therapists, patient, slots, bookings: [] });
-    const mod = await import('@/lib/supabase-server');
-    // @ts-expect-error override
-    mod.supabaseServer = supabase;
-
-    const { GET } = await import('@/app/api/public/matches/[uuid]/route');
-    const req = new Request(`http://localhost:3000/api/public/matches/${uuid}`);
-    const res = await GET(req as any);
-    const result = await res.json();
-
-    expect(res.status).toBe(200);
-    const availability = result.data.therapists[0]?.availability || [];
-    expect(Array.isArray(availability)).toBe(true);
-    // Morning filter should keep 09:00 and drop 18:00
-    expect(availability.some((s: any) => s.time_label === '09:00')).toBe(true);
-  });
+  // Note: availability test removed - Cal.com now handles all booking availability
 
   it('returns 410 when link expired; 404 for invalid UUID', async () => {
     // Expired
