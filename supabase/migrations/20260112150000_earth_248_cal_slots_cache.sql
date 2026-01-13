@@ -21,16 +21,20 @@ CREATE INDEX IF NOT EXISTS idx_cal_slots_cache_cached_at ON public.cal_slots_cac
 ALTER TABLE public.cal_slots_cache ENABLE ROW LEVEL SECURITY;
 
 -- Anyone can read cached slots (public directory)
+DROP POLICY IF EXISTS "cal_slots_cache_select_public" ON public.cal_slots_cache;
 CREATE POLICY "cal_slots_cache_select_public" ON public.cal_slots_cache
   FOR SELECT USING (true);
 
 -- Only service role can insert/update (via cron job)
+DROP POLICY IF EXISTS "cal_slots_cache_insert_service" ON public.cal_slots_cache;
 CREATE POLICY "cal_slots_cache_insert_service" ON public.cal_slots_cache
   FOR INSERT WITH CHECK (auth.role() = 'service_role');
 
+DROP POLICY IF EXISTS "cal_slots_cache_update_service" ON public.cal_slots_cache;
 CREATE POLICY "cal_slots_cache_update_service" ON public.cal_slots_cache
   FOR UPDATE USING (auth.role() = 'service_role');
 
+DROP POLICY IF EXISTS "cal_slots_cache_delete_service" ON public.cal_slots_cache;
 CREATE POLICY "cal_slots_cache_delete_service" ON public.cal_slots_cache
   FOR DELETE USING (auth.role() = 'service_role');
 

@@ -398,40 +398,30 @@ export async function createInstantMatchesForPatient(
     const therapists = Array.isArray(trows) ? (trows as TR[]) : [];
 
     const tIds = therapists.map(t => t.id);
-    type SlotRow = { therapist_id: string; day_of_week: number; time_local: string; format: string; address: string | null; active: boolean | null };
-    let slotsByTid = new Map<string, SlotRow[]>();
+    
+    // Fetch Cal.com slot counts from cache (replaces old therapist_slots)
+    type CalSlotCache = { therapist_id: string; slots_count: number | null };
+    let slotCountByTid = new Map<string, number>();
     try {
       if (tIds.length > 0) {
-        const { data: srows } = await supabaseServer
-          .from('therapist_slots')
-          .select('therapist_id, day_of_week, time_local, format, address, active')
-          .in('therapist_id', tIds)
-          .eq('active', true)
-          .limit(5000);
-        if (Array.isArray(srows)) {
-          for (const s of srows as SlotRow[]) {
-            const arr = slotsByTid.get(s.therapist_id) || [];
-            arr.push(s);
-            slotsByTid.set(s.therapist_id, arr);
+        const { data: crows } = await supabaseServer
+          .from('cal_slots_cache')
+          .select('therapist_id, slots_count')
+          .in('therapist_id', tIds);
+        if (Array.isArray(crows)) {
+          for (const c of crows as CalSlotCache[]) {
+            slotCountByTid.set(c.therapist_id, c.slots_count || 0);
           }
         }
       }
-    } catch { slotsByTid = new Map(); }
+    } catch { slotCountByTid = new Map(); }
 
-    // Helper: count intake slots within a day window
+    // Helper: get slot count from cache (Cal.com provides 14-day count)
     function countIntakeSlotsInDays(therapistId: string, days: number): number {
-      const slots = slotsByTid.get(therapistId) || [];
-      const now = new Date();
-      let count = 0;
-      for (let offset = 1; offset <= days; offset++) {
-        const d = new Date(now.getTime());
-        d.setUTCDate(d.getUTCDate() + offset);
-        const dow = d.getUTCDay();
-        for (const s of slots) {
-          if (Number(s.day_of_week) === dow) count++;
-        }
-      }
-      return count;
+      const totalSlots = slotCountByTid.get(therapistId) || 0;
+      // cal_slots_cache.slots_count is for 14 days; estimate proportionally for 7 days
+      if (days <= 7) return Math.round(totalSlots / 2);
+      return totalSlots;
     }
 
     // Helper: check if therapist languages match patient preference
@@ -587,17 +577,9 @@ export async function createInstantMatchesForPatient(
       }
       const reasonsArr = Array.from(uniqueReasons).filter(r => r === 'gender' || r === 'location' || r === 'modality');
 
-      // Calculate slot availability for chosen therapists
-      let total_in_person_slots = 0;
-      let total_online_slots = 0;
-      for (const s of chosenScored) {
-        const rows = slotsByTid.get(s.id) || [];
-        for (const row of rows) {
-          const fmt = String(row.format || '').trim();
-          if (fmt === 'in_person' || fmt === 'both') total_in_person_slots++;
-          if (fmt === 'online' || fmt === 'both') total_online_slots++;
-        }
-      }
+      // Slot availability is now handled by Cal.com - we just track if therapists have slots
+      const total_in_person_slots = 0; // Cal.com handles format-specific availability
+      const total_online_slots = 0;
 
       // Analyze supply gaps
       const topTherapists = therapists.filter(t => chosen.includes(t.id));

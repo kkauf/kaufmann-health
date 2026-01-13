@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -564,9 +563,6 @@ export default function AdminTherapistsPage() {
                     />
                     <Button size="sm" onClick={() => openDetail(t.id)}>Dokumente prüfen</Button>
                     <Button size="sm" variant="outline" onClick={() => openDetail(t.id)}>Details</Button>
-                    <Link href={`/admin/therapists/${t.id}/slots`}>
-                      <Button size="sm" variant="outline">Slots</Button>
-                    </Link>
                   </CardAction>
                 </CardHeader>
                 <CardContent>
