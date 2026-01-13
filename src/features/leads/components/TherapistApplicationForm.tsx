@@ -83,6 +83,12 @@ export default function TherapistApplicationForm() {
     const sid = getOrCreateSessionId();
     // TODO(frontend-first): The following profile fields are included for future persistence.
     // For now, focus is on frontend trust signals; backend use can be finalized later.
+    const gender = form.get('gender')?.toString() || '';
+    if (!gender) {
+      setErrors({ gender: 'Bitte wähle dein Geschlecht.' });
+      return;
+    }
+
     const payload = {
       type: 'therapist',
       name: (form.get('name')?.toString() || '').trim() || undefined,
@@ -90,6 +96,7 @@ export default function TherapistApplicationForm() {
       phone: form.get('phone')?.toString() || undefined,
       specializations,
       qualification: qualification || undefined,
+      gender,
       session_id: sid || undefined,
     };
 
@@ -251,7 +258,26 @@ export default function TherapistApplicationForm() {
           {errors.email && <p className="text-xs text-red-600">{errors.email}</p>}
         </div>
 
-        <div className="space-y-2 sm:col-span-2">
+        <div className="space-y-2">
+          <Label htmlFor="gender">Geschlecht</Label>
+          <select
+            id="gender"
+            name="gender"
+            defaultValue=""
+            className={
+              "border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 flex h-9 w-full min-w-0 rounded-md border bg-white px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm" +
+              (errors.gender ? ' border-red-500 focus-visible:ring-red-500' : '')
+            }
+          >
+            <option value="" disabled>Bitte wählen</option>
+            <option value="female">Weiblich</option>
+            <option value="male">Männlich</option>
+            <option value="non-binary">Nicht-binär</option>
+          </select>
+          {errors.gender && <p className="text-xs text-red-600">{errors.gender}</p>}
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="qualification">Qualifikation</Label>
           <select
             id="qualification"
