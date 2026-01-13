@@ -103,7 +103,7 @@ export async function GET(req: Request) {
       await logError('api.public.matches.get', e, { stage: 'create_session', uuid, patient_id: patientId });
     }
 
-    type PatientRow = { name?: string | null; email?: string | null; phone_number?: string | null; status?: string | null; metadata?: { issue?: string; notes?: string; additional_info?: string; city?: string; session_preference?: 'online'|'in_person'; session_preferences?: ('online'|'in_person')[]; specializations?: string[]; schwerpunkte?: string[]; gender_preference?: 'male'|'female'|'no_preference'; start_timing?: string; modality_matters?: boolean } | null };
+    type PatientRow = { name?: string | null; email?: string | null; phone_number?: string | null; status?: string | null; metadata?: { issue?: string; notes?: string; additional_info?: string; city?: string; session_preference?: 'online'|'in_person'; session_preferences?: ('online'|'in_person')[]; specializations?: string[]; schwerpunkte?: string[]; gender_preference?: 'male'|'female'|'no_preference'; start_timing?: string; modality_matters?: boolean; personalized_message?: string; highlighted_therapist_id?: string } | null };
     const p = (patient || null) as PatientRow | null;
     const patientName = (p?.name || '') || null;
     const patientStatus = (p?.status || '') || null;
@@ -111,6 +111,8 @@ export async function GET(req: Request) {
     const sessionPreference = p?.metadata?.session_preference ?? null;
     const startTiming = typeof p?.metadata?.start_timing === 'string' ? p!.metadata!.start_timing : undefined;
     const modalityMatters = typeof p?.metadata?.modality_matters === 'boolean' ? p!.metadata!.modality_matters : undefined;
+    const personalizedMessage = typeof p?.metadata?.personalized_message === 'string' ? p!.metadata!.personalized_message : undefined;
+    const highlightedTherapistId = typeof p?.metadata?.highlighted_therapist_id === 'string' ? p!.metadata!.highlighted_therapist_id : undefined;
     const patientMeta: PatientMeta = {
       city: p?.metadata?.city,
       session_preference: p?.metadata?.session_preference,
@@ -290,8 +292,13 @@ export async function GET(req: Request) {
           start_timing: startTiming,
           modality_matters: modalityMatters,
           status: patientStatus,
+          personalized_message: personalizedMessage,
         },
-        therapists: list.slice(0, 3),
+        therapists: list.slice(0, 3).map((t, idx) => ({
+          ...t,
+          // Override is_perfect if admin selected a specific highlighted therapist
+          is_perfect: highlightedTherapistId ? t.id === highlightedTherapistId : t.is_perfect,
+        })),
         metadata: { match_type: matchType },
       },
       error: null,

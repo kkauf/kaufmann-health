@@ -112,6 +112,8 @@ export async function POST(req: Request) {
   try {
     let patient_id: string;
     let selectionTherapistCount: number | undefined = undefined; // used for metadata hinting
+    let personalizedMessage: string | undefined = undefined; // concierge personalization
+    let highlightedTherapistId: string | undefined = undefined; // highlighted "best match"
     let m: Match | null = null;
     if (template === 'selection') {
       patient_id = String(body?.patient_id || '').trim();
@@ -275,8 +277,8 @@ export async function POST(req: Request) {
       }
 
       // Parse personalized options
-      const personalizedMessage = typeof body?.personalized_message === 'string' ? body.personalized_message.trim().slice(0, 2000) : undefined;
-      const highlightedTherapistId = typeof body?.highlighted_therapist_id === 'string' ? body.highlighted_therapist_id.trim() : undefined;
+      personalizedMessage = typeof body?.personalized_message === 'string' ? body.personalized_message.trim().slice(0, 2000) : undefined;
+      highlightedTherapistId = typeof body?.highlighted_therapist_id === 'string' ? body.highlighted_therapist_id.trim() : undefined;
 
       const items = scored.map((s, idx) => {
         const t = s.t;
@@ -319,6 +321,8 @@ export async function POST(req: Request) {
               const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
               const currentMeta = isObject(currentMetaRaw) ? currentMetaRaw : {};
               const nextMeta = { ...currentMeta, selection_email_sent_at: nowIso, selection_email_count: items.length } as Record<string, unknown>;
+              if (personalizedMessage) nextMeta.personalized_message = personalizedMessage;
+              if (highlightedTherapistId) nextMeta.highlighted_therapist_id = highlightedTherapistId;
               await supabaseServer.from('people').update({ metadata: nextMeta }).eq('id', patient_id);
             } catch {}
             return NextResponse.json({ data: { ok: true, via: 'sms' }, error: null }, { status: 200 });
@@ -393,6 +397,8 @@ export async function POST(req: Request) {
         if (typeof selectionTherapistCount === 'number') {
           nextMeta.selection_email_count = selectionTherapistCount;
         }
+        if (personalizedMessage) nextMeta.personalized_message = personalizedMessage;
+        if (highlightedTherapistId) nextMeta.highlighted_therapist_id = highlightedTherapistId;
         await supabaseServer
           .from('people')
           .update({ metadata: nextMeta })
