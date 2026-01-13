@@ -3,6 +3,8 @@
 //
 // Matching Algorithm Spec: /docs/therapist-matching-algorithm-spec.md
 
+import { getHiddenTherapistIds } from '@/lib/therapist-mapper';
+
 export type PatientMeta = {
   city?: string;
   session_preference?: 'online' | 'in_person';
@@ -395,7 +397,11 @@ export async function createInstantMatchesForPatient(
       .select('id, gender, city, session_preferences, modalities, schwerpunkte, languages, accepting_new, photo_url, approach_text, who_comes_to_me, metadata')
       .eq('status', 'verified')
       .limit(5000);
-    const therapists = Array.isArray(trows) ? (trows as TR[]) : [];
+    const allTherapists = Array.isArray(trows) ? (trows as TR[]) : [];
+    
+    // Filter out hidden/test therapists (HIDE_THERAPIST_IDS env var)
+    const hiddenIds = getHiddenTherapistIds();
+    const therapists = allTherapists.filter(t => !hiddenIds.has(t.id));
 
     const tIds = therapists.map(t => t.id);
     

@@ -1186,14 +1186,14 @@ export function TherapistDetailModal({
               </>
             ) : (
               <>
-                {/* Fallback: existing KH booking flow - consultation (free intro) is primary */}
+                {/* Fallback: message-based contact for non-Cal therapists */}
                 <Button
                   className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
                   onClick={() => handleContactClick('consultation')}
                   disabled={!therapist.accepting_new}
                 >
-                  <Video className="mr-2 h-5 w-5 shrink-0" />
-                  <span className="break-words">Online-Kennenlernen (15 min)</span>
+                  <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
+                  <span className="break-words">Kennenlernen anfragen</span>
                 </Button>
 
                 <Button
@@ -1202,8 +1202,8 @@ export function TherapistDetailModal({
                   onClick={() => handleContactClick('booking')}
                   disabled={!therapist.accepting_new}
                 >
-                  <Calendar className="mr-2 h-5 w-5 shrink-0" />
-                  <span className="break-words">Direkt buchen</span>
+                  <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
+                  <span className="break-words">Nachricht senden</span>
                 </Button>
               </>
             )}
