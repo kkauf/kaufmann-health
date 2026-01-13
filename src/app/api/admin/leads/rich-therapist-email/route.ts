@@ -231,15 +231,14 @@ export async function GET(req: Request) {
         continue;
       }
 
-      // Fetch slot availability to prefer therapists with booking options (consistency with UI)
-      const { data: slotRows } = await supabaseServer
-        .from('therapist_slots')
+      // Fetch Cal.com slot availability to prefer therapists with booking options (consistency with UI)
+      const { data: calSlotRows } = await supabaseServer
+        .from('cal_slots_cache')
         .select('therapist_id')
         .in('therapist_id', therapistIds)
-        .eq('active', true)
-        .limit(500);
+        .gt('slots_count', 0);
       const therapistsWithSlots = new Set(
-        (slotRows as Array<{ therapist_id: string }> | null)?.map(s => s.therapist_id) || []
+        (calSlotRows as Array<{ therapist_id: string }> | null)?.map(s => s.therapist_id) || []
       );
 
       // Score therapists to find best match

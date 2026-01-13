@@ -715,7 +715,7 @@ export async function GET(req: Request) {
         .or('metadata->>is_test.is.null,metadata->>is_test.eq.false')
         .not('email', 'ilike', '%@example.com'),
       supabaseServer
-        .from('bookings')
+        .from('cal_bookings')
         .select('id', { count: 'exact', head: true }),
     ]);
 
@@ -1536,7 +1536,7 @@ export async function GET(req: Request) {
       // Override the top-line "total" with successful bookings in the same window
       try {
         const { count: bookingCount, error: bookingErr } = await supabaseServer
-          .from('bookings')
+          .from('cal_bookings')
           .select('id', { count: 'exact', head: true })
           .gte('created_at', sinceIso);
         if (!bookingErr && typeof bookingCount === 'number') {
