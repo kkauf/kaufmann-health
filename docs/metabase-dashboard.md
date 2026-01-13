@@ -749,6 +749,200 @@ FROM stats;
 
 ---
 
+## Supply Gap Analysis
+
+### Supply Gaps: Recent Unmet Demand (Last N Days)
+
+```sql
+-- Top supply gaps aggregated by combination (schwerpunkt/modality + city + session type)
+-- Shows where patient demand exceeds therapist supply
+SELECT 
+  COALESCE(
+    CASE 
+      WHEN gender = 'female' THEN 'Weibliche '
+      WHEN gender = 'male' THEN 'Männlicher '
+      ELSE ''
+    END ||
+    COALESCE(modality || '-Therapeut:in', '') ||
+    COALESCE('Spezialist:in für ' || schwerpunkt, '') ||
+    CASE WHEN modality IS NULL AND schwerpunkt IS NULL THEN 'Therapeut:in' ELSE '' END ||
+    COALESCE(' in ' || city, '') ||
+    CASE WHEN session_type = 'in_person' THEN ' (vor Ort)' ELSE '' END,
+    'Unbekannt'
+  ) AS gap_description,
+  COUNT(*) AS unmet_requests,
+  COUNT(DISTINCT patient_id) AS unique_patients
+FROM supply_gaps
+WHERE created_at >= NOW() - INTERVAL '{{days_back}}' DAY
+GROUP BY gender, modality, schwerpunkt, city, session_type
+ORDER BY unmet_requests DESC
+LIMIT 25;
+```
+
+### Supply Gaps: By Schwerpunkt (Focus Area)
+
+```sql
+-- Which Schwerpunkte are patients requesting but we can't fulfill?
+SELECT 
+  COALESCE(schwerpunkt, '(Kein Schwerpunkt)') AS schwerpunkt,
+  COUNT(*) AS requests,
+  COUNT(DISTINCT patient_id) AS unique_patients,
+  STRING_AGG(DISTINCT city, ', ' ORDER BY city) AS cities_affected
+FROM supply_gaps
+WHERE created_at >= NOW() - INTERVAL '{{days_back}}' DAY
+  AND schwerpunkt IS NOT NULL
+GROUP BY schwerpunkt
+ORDER BY requests DESC
+LIMIT 15;
+```
+
+### Supply Gaps: By City (In-Person Only)
+
+```sql
+-- Cities where we need more in-person therapists
+SELECT 
+  city,
+  COUNT(*) AS in_person_requests,
+  COUNT(DISTINCT patient_id) AS unique_patients,
+  STRING_AGG(DISTINCT COALESCE(schwerpunkt, modality), ', ' ORDER BY COALESCE(schwerpunkt, modality)) AS topics_needed
+FROM supply_gaps
+WHERE created_at >= NOW() - INTERVAL '{{days_back}}' DAY
+  AND session_type = 'in_person'
+  AND city IS NOT NULL
+GROUP BY city
+ORDER BY in_person_requests DESC
+LIMIT 15;
+```
+
+### Supply Gaps: By Modality
+
+```sql
+-- Which therapy modalities are patients requesting but we can't fulfill?
+SELECT 
+  COALESCE(modality, '(Keine Modalität)') AS modality,
+  COUNT(*) AS requests,
+  COUNT(DISTINCT patient_id) AS unique_patients,
+  COUNT(*) FILTER (WHERE session_type = 'in_person') AS in_person_requests,
+  COUNT(*) FILTER (WHERE session_type = 'online') AS online_requests
+FROM supply_gaps
+WHERE created_at >= NOW() - INTERVAL '{{days_back}}' DAY
+  AND modality IS NOT NULL
+GROUP BY modality
+ORDER BY requests DESC
+LIMIT 15;
+```
+
+### Supply Gaps: Daily Trend
+
+```sql
+-- Daily trend of supply gaps to see if we're improving or getting worse
+SELECT 
+  DATE(created_at) AS day,
+  COUNT(*) AS total_gaps,
+  COUNT(DISTINCT patient_id) AS patients_affected,
+  COUNT(*) FILTER (WHERE schwerpunkt IS NOT NULL) AS schwerpunkt_gaps,
+  COUNT(*) FILTER (WHERE modality IS NOT NULL) AS modality_gaps,
+  COUNT(*) FILTER (WHERE gender IS NOT NULL) AS gender_gaps
+FROM supply_gaps
+WHERE created_at >= NOW() - INTERVAL '{{days_back}}' DAY
+  AND DATE(created_at) < CURRENT_DATE
+GROUP BY DATE(created_at)
+ORDER BY day DESC;
+```
+
+---
+
+## Match Quality Report
+
+### Match Quality Index (Daily)
+
+```sql
+-- Daily match quality index (0-100 scale)
+-- exact=100pts, partial=70pts, none+therapist=40pts, none+empty=0pts
+SELECT 
+  DATE(created_at) AS day,
+  COUNT(*) AS total_matches,
+  ROUND(
+    AVG(
+      CASE 
+        WHEN metadata->>'match_quality' = 'exact' THEN 100
+        WHEN metadata->>'match_quality' = 'partial' THEN 70
+        WHEN therapist_id IS NOT NULL THEN 40
+        ELSE 0
+      END
+    ), 
+    1
+  ) AS quality_index,
+  COUNT(*) FILTER (WHERE metadata->>'match_quality' = 'exact') AS exact_matches,
+  COUNT(*) FILTER (WHERE metadata->>'match_quality' = 'partial') AS partial_matches,
+  COUNT(*) FILTER (WHERE metadata->>'match_quality' IS DISTINCT FROM 'exact' 
+    AND metadata->>'match_quality' IS DISTINCT FROM 'partial' 
+    AND therapist_id IS NOT NULL) AS low_quality_with_therapist,
+  COUNT(*) FILTER (WHERE therapist_id IS NULL) AS empty_matches
+FROM matches
+WHERE created_at >= NOW() - INTERVAL '{{days_back}}' DAY
+  AND DATE(created_at) < CURRENT_DATE
+  AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+GROUP BY DATE(created_at)
+ORDER BY day DESC;
+```
+
+### Match Quality Breakdown (Current Period)
+
+```sql
+-- Match quality breakdown for gauge display
+SELECT 
+  COUNT(*) AS total_matches,
+  ROUND(
+    AVG(
+      CASE 
+        WHEN metadata->>'match_quality' = 'exact' THEN 100
+        WHEN metadata->>'match_quality' = 'partial' THEN 70
+        WHEN therapist_id IS NOT NULL THEN 40
+        ELSE 0
+      END
+    ), 
+    1
+  ) AS quality_index,
+  COUNT(*) FILTER (WHERE metadata->>'match_quality' = 'exact') AS exact,
+  COUNT(*) FILTER (WHERE metadata->>'match_quality' = 'partial') AS partial,
+  COUNT(*) FILTER (WHERE metadata->>'match_quality' IS DISTINCT FROM 'exact' 
+    AND metadata->>'match_quality' IS DISTINCT FROM 'partial' 
+    AND therapist_id IS NOT NULL) AS low_quality,
+  COUNT(*) FILTER (WHERE therapist_id IS NULL) AS empty,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE metadata->>'match_quality' = 'exact') / NULLIF(COUNT(*), 0), 1) AS exact_pct,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE metadata->>'match_quality' = 'partial') / NULLIF(COUNT(*), 0), 1) AS partial_pct
+FROM matches
+WHERE created_at >= NOW() - INTERVAL '{{days_back}}' DAY
+  AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true');
+```
+
+### Patients with Low-Quality Matches (Action Required)
+
+```sql
+-- Patients who received low-quality or empty matches - may need manual intervention
+SELECT 
+  m.created_at,
+  p.name AS patient_name,
+  p.email AS patient_email,
+  p.metadata->>'city' AS city,
+  p.metadata->>'session_preference' AS session_pref,
+  COALESCE(m.metadata->>'match_quality', 'none') AS match_quality,
+  CASE WHEN m.therapist_id IS NULL THEN 'Kein Therapeut' ELSE 'Hat Therapeut' END AS therapist_status
+FROM matches m
+JOIN people p ON p.id = m.patient_id
+WHERE m.created_at >= NOW() - INTERVAL '{{days_back}}' DAY
+  AND (m.metadata->>'is_test' IS NULL OR m.metadata->>'is_test' != 'true')
+  AND (
+    m.metadata->>'match_quality' IS DISTINCT FROM 'exact'
+    AND m.metadata->>'match_quality' IS DISTINCT FROM 'partial'
+  )
+ORDER BY m.created_at DESC
+LIMIT 50;
+```
+
+---
+
 ## Known Data Gaps
 
 1. **`cal_bookings` is empty** - Cal.com webhook integration needs investigation

@@ -50,35 +50,47 @@ export async function createSessionToken(expiresAtSec: number): Promise<string> 
   return `${expiresAtSec}.${signature}`;
 }
 
+export type TokenVerifyResult = {
+  valid: boolean;
+  reason?: 'invalid_format' | 'invalid_expiry' | 'expired' | 'signature_mismatch' | 'exception';
+  expiredHoursAgo?: number;
+};
+
 export async function verifySessionToken(token: string): Promise<boolean> {
+  const result = await verifySessionTokenWithReason(token);
+  return result.valid;
+}
+
+export async function verifySessionTokenWithReason(token: string): Promise<TokenVerifyResult> {
   try {
     const secret = assertEnv();
     const [expStr, sig] = token.split('.');
     if (!expStr || !sig) {
       console.log('[verifySessionToken] Invalid token format');
-      return false;
+      return { valid: false, reason: 'invalid_format' };
     }
     const exp = Number(expStr);
     if (!Number.isFinite(exp)) {
       console.log('[verifySessionToken] Invalid expiry');
-      return false;
+      return { valid: false, reason: 'invalid_expiry' };
     }
     const nowSec = Math.floor(Date.now() / 1000);
     if (exp < nowSec) {
-      const age = Math.floor((nowSec - exp) / 3600);
-      console.log('[verifySessionToken] Token expired', age, 'hours ago');
-      return false;
+      const expiredHoursAgo = Math.floor((nowSec - exp) / 3600);
+      console.log('[verifySessionToken] Token expired', expiredHoursAgo, 'hours ago');
+      return { valid: false, reason: 'expired', expiredHoursAgo };
     }
     const payload = `exp=${exp}`;
     const expected = await hmac(payload, secret);
     const valid = timingSafeEqual(sig, expected);
     if (!valid) {
       console.log('[verifySessionToken] Signature mismatch - ADMIN_PASSWORD may have changed');
+      return { valid: false, reason: 'signature_mismatch' };
     }
-    return valid;
+    return { valid: true };
   } catch (e) {
     console.log('[verifySessionToken] Exception:', e);
-    return false;
+    return { valid: false, reason: 'exception' };
   }
 }
 
