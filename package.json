@@ -35,6 +35,8 @@
     "ads:inspect:bids": "tsx google_ads_api_scripts/inspect.ts --show=bids",
     "ads:test-access:upload": "tsx google_ads_api_scripts/test-access.ts --uploadTestConversion",
     "ads:get-conversions": "tsx google_ads_api_scripts/get-conversion-actions.ts",
+    "ads:sync-spend": "tsx scripts/sync-ad-spend.ts",
+    "ads:sync-spend:week": "tsx scripts/sync-ad-spend.ts --days=7",
     "spam:test": "tsx scripts/send-spam-test.ts",
     "smoke": "tsx scripts/smoke-test.ts",
     "smoke:local": "tsx scripts/smoke-test.ts --base-url=http://localhost:3000",

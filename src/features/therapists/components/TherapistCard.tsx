@@ -32,6 +32,10 @@ interface TherapistCardProps {
   highlighted?: boolean;
   /** Patient's city for match context - when provided, in-person badge only shows if cities match */
   patientCity?: string;
+  /** Whether therapist requires intro before allowing full session booking */
+  requiresIntroBeforeBooking?: boolean;
+  /** Whether patient has completed an intro session with this therapist */
+  hasCompletedIntro?: boolean;
 }
 
 function getInitials(firstName: string, lastName: string) {
@@ -86,6 +90,8 @@ export function TherapistCard({
   onContactClick: customContactHandler,
   highlighted = false,
   patientCity,
+  requiresIntroBeforeBooking = false,
+  hasCompletedIntro = false,
 }: TherapistCardProps) {
   const [imageError, setImageError] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
@@ -440,6 +446,8 @@ export function TherapistCard({
         {/* Action buttons - differentiate based on cal_bookings_live */}
         {(() => {
           const isCalLive = therapist.cal_enabled && therapist.cal_username && therapist.cal_bookings_live;
+          // Hide direct booking button if therapist requires intro and patient hasn't completed one
+          const hideDirectBooking = requiresIntroBeforeBooking && !hasCompletedIntro;
           return (
             <div className="mt-auto flex flex-col gap-2 pt-4">
               <Button
@@ -461,25 +469,28 @@ export function TherapistCard({
                 )}
               </Button>
 
-              <Button
-                size="lg"
-                variant="outline"
-                className="w-full text-sm"
-                onClick={() => handleContactClick('booking')}
-                disabled={!therapist.accepting_new}
-              >
-                {isCalLive ? (
-                  <>
-                    <Calendar className="mr-2 h-4 w-4 shrink-0" />
-                    <span className="truncate">{contactedAt ? 'Erneut buchen' : 'Direkt buchen'}</span>
-                  </>
-                ) : (
-                  <>
-                    <MessageCircle className="mr-2 h-4 w-4 shrink-0" />
-                    <span className="truncate">Nachricht senden</span>
-                  </>
-                )}
-              </Button>
+              {/* Only show direct booking button if therapist doesn't require intro OR patient has completed intro */}
+              {!hideDirectBooking && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full text-sm"
+                  onClick={() => handleContactClick('booking')}
+                  disabled={!therapist.accepting_new}
+                >
+                  {isCalLive ? (
+                    <>
+                      <Calendar className="mr-2 h-4 w-4 shrink-0" />
+                      <span className="truncate">{contactedAt ? 'Erneut buchen' : 'Direkt buchen'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircle className="mr-2 h-4 w-4 shrink-0" />
+                      <span className="truncate">Nachricht senden</span>
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           );
         })()}

@@ -183,11 +183,10 @@ LEFT JOIN daily_verified v ON s.day = v.day
 ORDER BY s.day DESC;
 ```
 
-### 2c. Current Period Gauges (for dashboard cards)
+### 2c. Form Completion Rate (Gauge)
 
 ```sql
--- Single values for gauge display
--- Form Completion Rate
+-- Form Completion Rate gauge (single value)
 SELECT COALESCE(ROUND(
   100.0 * 
   (SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text))
@@ -206,8 +205,12 @@ SELECT COALESCE(ROUND(
   ),
   1
 ), 0) AS form_completion_rate_pct;
+```
 
--- Verification Rate (separate query for gauge)
+### 2d. Verification Rate (Gauge)
+
+```sql
+-- Verification Rate gauge (single value)
 SELECT ROUND(
   100.0 *
   (SELECT COUNT(*) 
@@ -226,6 +229,32 @@ SELECT ROUND(
   ),
   1
 ) AS verification_rate_pct;
+```
+
+### 2e. Customer Lifetime Value (LTV)
+
+```sql
+-- LTV = Avg Sessions per Customer × Avg Session Price
+-- NOTE: Assumes €100 avg session price (adjust as needed)
+WITH customer_sessions AS (
+  SELECT 
+    cb.patient_id,
+    COUNT(*) AS session_count
+  FROM cal_bookings cb
+  LEFT JOIN people p ON p.id = cb.patient_id
+  WHERE cb.booking_kind = 'full_session'
+    AND LOWER(cb.status) != 'cancelled'
+    AND cb.patient_id IS NOT NULL
+    AND (cb.is_test = false OR cb.is_test IS NULL)
+    AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+  GROUP BY cb.patient_id
+)
+SELECT 
+  COUNT(*) AS paying_customers,
+  ROUND(AVG(session_count), 2) AS avg_sessions_per_customer,
+  100 AS assumed_session_price_eur,
+  ROUND(AVG(session_count) * 100, 2) AS ltv_eur
+FROM customer_sessions;
 ```
 
 ### 3. Lead → Intro Call % 
@@ -394,18 +423,72 @@ WHERE type = 'contact_message_sent'
 ### 1. CAC (Customer Acquisition Cost)
 
 ```sql
--- Customers with ≥1 paid session
--- NOTE: Ad spend must be manually input; this query provides the denominator
--- CAC = Total Spend ÷ this count
-SELECT COUNT(DISTINCT cb.patient_id) AS paying_customers
-FROM cal_bookings cb
-LEFT JOIN people p ON p.id = cb.patient_id
-WHERE cb.booking_kind = 'full_session'
-  AND LOWER(cb.status) != 'cancelled'
-  AND cb.patient_id IS NOT NULL
-  AND (cb.is_test = false OR cb.is_test IS NULL)
-  AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-  AND cb.created_at > NOW() - INTERVAL '{{days_back}}' DAY;
+-- CAC = Total Ad Spend ÷ Paying Customers
+-- Uses ad_spend_log table (synced nightly from Google Ads API)
+WITH spend AS (
+  SELECT COALESCE(SUM(spend_eur), 0) AS total_spend
+  FROM ad_spend_log
+  WHERE date >= (CURRENT_DATE - INTERVAL '{{days_back}}' DAY)::date
+),
+customers AS (
+  SELECT COUNT(DISTINCT cb.patient_id) AS paying_customers
+  FROM cal_bookings cb
+  LEFT JOIN people p ON p.id = cb.patient_id
+  WHERE cb.booking_kind = 'full_session'
+    AND LOWER(cb.status) != 'cancelled'
+    AND cb.patient_id IS NOT NULL
+    AND (cb.is_test = false OR cb.is_test IS NULL)
+    AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+    AND cb.created_at > NOW() - INTERVAL '{{days_back}}' DAY
+)
+SELECT 
+    ROUND(spend.total_spend / NULLIF(customers.paying_customers, 0), 2) AS cac_eur,
+    spend.total_spend AS spend_eur,
+  customers.paying_customers
+FROM spend, customers;
+```
+
+### 1b. CPL (Cost per Lead)
+
+```sql
+-- CPL = Total Ad Spend ÷ Confirmed Leads
+-- Uses ad_spend_log table (synced nightly from Google Ads API)
+WITH spend AS (
+  SELECT COALESCE(SUM(spend_eur), 0) AS total_spend
+  FROM ad_spend_log
+  WHERE date >= (CURRENT_DATE - INTERVAL '{{days_back}}' DAY)::date
+),
+leads AS (
+  SELECT COUNT(*) AS confirmed_leads
+  FROM people
+  WHERE type = 'patient'
+    AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
+    AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
+)
+SELECT 
+    ROUND(spend.total_spend / NULLIF(leads.confirmed_leads, 0), 2) AS cpl_eur,
+    spend.total_spend AS spend_eur,
+  leads.confirmed_leads
+FROM spend, leads;
+```
+
+### 1c. Ad Spend by Campaign (Daily)
+
+```sql
+-- Daily spend breakdown by campaign for trend analysis
+SELECT 
+  date,
+  source,
+  campaign_name,
+  spend_eur,
+  clicks,
+  impressions,
+  conversions,
+  ROUND(spend_eur / NULLIF(clicks, 0), 2) AS cpc_eur
+FROM ad_spend_log
+WHERE date >= (CURRENT_DATE - INTERVAL '{{days_back}}' DAY)::date
+ORDER BY date DESC, spend_eur DESC;
 ```
 
 ### 2. Avg Sessions per Customer

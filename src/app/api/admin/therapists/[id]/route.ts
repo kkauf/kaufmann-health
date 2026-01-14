@@ -165,9 +165,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     // Cal.com integration fields (admin can manually set/override)
     const cal_username = typeof payload.cal_username === 'string' ? payload.cal_username.trim() : undefined;
     const cal_enabled = typeof payload.cal_enabled === 'boolean' ? payload.cal_enabled : undefined;
+    // Booking gating: require intro before full session booking
+    const requires_intro_before_booking = typeof payload.requires_intro_before_booking === 'boolean' ? payload.requires_intro_before_booking : undefined;
 
     const hasCalFields = cal_username !== undefined || cal_enabled !== undefined;
-    if (!status && typeof verification_notes !== 'string' && !approve_profile && typeof approach_text !== 'string' && typeof practice_address !== 'string' && !hasCalFields) {
+    const hasBookingSettings = requires_intro_before_booking !== undefined;
+    if (!status && typeof verification_notes !== 'string' && !approve_profile && typeof approach_text !== 'string' && typeof practice_address !== 'string' && !hasCalFields && !hasBookingSettings) {
       return NextResponse.json({ data: null, error: 'Missing fields' }, { status: 400 });
     }
     if (status && !['pending_verification', 'verified', 'rejected'].includes(status)) {
@@ -214,6 +217,15 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     }
     if (typeof practice_address === 'string') {
       profileMeta.practice_address = practice_address.trim();
+    }
+
+    // Update booking_settings in metadata if requires_intro_before_booking is provided
+    if (requires_intro_before_booking !== undefined) {
+      const bookingSettings = isObject(currMeta.booking_settings)
+        ? (currMeta.booking_settings as Record<string, unknown>)
+        : {};
+      bookingSettings.requires_intro_before_booking = requires_intro_before_booking;
+      currMeta.booking_settings = bookingSettings;
     }
 
     if (approve_profile) {

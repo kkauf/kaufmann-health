@@ -42,6 +42,10 @@ interface TherapistDetailModalProps {
     type: 'booking' | 'consultation',
     selectedSlot?: { date_iso: string; time_label: string; format: 'online' | 'in_person' }
   ) => void;
+  /** Whether therapist requires intro before allowing full session booking */
+  requiresIntroBeforeBooking?: boolean;
+  /** Whether patient has completed an intro session with this therapist */
+  hasCompletedIntro?: boolean;
 }
 
 type Slot = { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string };
@@ -68,6 +72,8 @@ export function TherapistDetailModal({
   previewMode = false,
   initialViewMode = 'profile',
   initialCalBookingKind = 'intro',
+  requiresIntroBeforeBooking = false,
+  hasCompletedIntro = false,
 }: TherapistDetailModalProps) {
   const [imageError, setImageError] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
@@ -1165,53 +1171,65 @@ export function TherapistDetailModal({
 
         {/* Action buttons */}
         {viewMode === 'profile' ? (
-          <div className="sticky bottom-0 flex flex-col gap-3 pt-4 sm:flex-row">
-            {/* Cal.com booking CTAs when enabled - open in-modal booking view (EARTH-256) */}
-            {isCalEnabled ? (
-              <>
-                <Button
-                  className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
-                  onClick={() => handleOpenCalBooking('intro')}
-                  disabled={!therapist.accepting_new}
-                >
-                  <Video className="mr-2 h-5 w-5 shrink-0" />
-                  <span className="break-words">Online-Kennenlernen (15 min)</span>
-                </Button>
+          (() => {
+            // Hide direct booking button if therapist requires intro and patient hasn't completed one
+            const hideDirectBooking = requiresIntroBeforeBooking && !hasCompletedIntro;
+            return (
+              <div className="sticky bottom-0 flex flex-col gap-3 pt-4 sm:flex-row">
+                {/* Cal.com booking CTAs when enabled - open in-modal booking view (EARTH-256) */}
+                {isCalEnabled ? (
+                  <>
+                    <Button
+                      className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
+                      onClick={() => handleOpenCalBooking('intro')}
+                      disabled={!therapist.accepting_new}
+                    >
+                      <Video className="mr-2 h-5 w-5 shrink-0" />
+                      <span className="break-words">Online-Kennenlernen (15 min)</span>
+                    </Button>
 
-                <Button
-                  variant="outline"
-                  className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
-                  onClick={() => handleOpenCalBooking('full_session')}
-                  disabled={!therapist.accepting_new}
-                >
-                  <CalendarCheck2 className="mr-2 h-5 w-5 shrink-0" />
-                  <span className="break-words">Sitzung buchen</span>
-                </Button>
-              </>
-            ) : (
-              <>
-                {/* Fallback: message-based contact for non-Cal therapists */}
-                <Button
-                  className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
-                  onClick={() => handleContactClick('consultation')}
-                  disabled={!therapist.accepting_new}
-                >
-                  <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
-                  <span className="break-words">Kennenlernen anfragen</span>
-                </Button>
+                    {/* Only show full session button if therapist doesn't require intro OR patient has completed intro */}
+                    {!hideDirectBooking && (
+                      <Button
+                        variant="outline"
+                        className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
+                        onClick={() => handleOpenCalBooking('full_session')}
+                        disabled={!therapist.accepting_new}
+                      >
+                        <CalendarCheck2 className="mr-2 h-5 w-5 shrink-0" />
+                        <span className="break-words">Sitzung buchen</span>
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Fallback: message-based contact for non-Cal therapists */}
+                    <Button
+                      className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] rounded-md"
+                      onClick={() => handleContactClick('consultation')}
+                      disabled={!therapist.accepting_new}
+                    >
+                      <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
+                      <span className="break-words">Kennenlernen anfragen</span>
+                    </Button>
 
-                <Button
-                  variant="outline"
-                  className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
-                  onClick={() => handleContactClick('booking')}
-                  disabled={!therapist.accepting_new}
-                >
-                  <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
-                  <span className="break-words">Nachricht senden</span>
-                </Button>
-              </>
-            )}
-          </div>
+                    {/* Only show direct message button if therapist doesn't require intro OR patient has completed intro */}
+                    {!hideDirectBooking && (
+                      <Button
+                        variant="outline"
+                        className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
+                        onClick={() => handleContactClick('booking')}
+                        disabled={!therapist.accepting_new}
+                      >
+                        <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
+                        <span className="break-words">Nachricht senden</span>
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })()
         ) : viewMode === 'booking' ? (
           <div className="sticky bottom-0 flex gap-3 pt-4">
             <Button

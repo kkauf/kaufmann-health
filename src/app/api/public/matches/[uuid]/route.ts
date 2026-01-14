@@ -17,6 +17,7 @@ import {
   mapTherapistRow,
   THERAPIST_SELECT_COLUMNS_WITH_GENDER,
 } from '@/lib/therapist-mapper';
+import { batchCheckIntroCompletion, getRequiresIntroBeforeBooking } from '@/lib/cal/intro-completion';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -199,17 +200,27 @@ export async function GET(req: Request) {
     // Sort by totalScore descending (per spec: Match × 1.5 + Platform)
     scored.sort((a, b) => b.totalScore - a.totalScore);
 
+    // Check intro completion for therapists that require it
+    const introCompletionMap = await batchCheckIntroCompletion(patientId, therapistIds);
+
     // Build response list using shared mapper (ensures contract compliance)
     // Then add match-specific fields
     const list = scored.map(({ t, isPerfect }) => {
       // Use shared mapper for all standard therapist fields
       const mapped = mapTherapistRow(t, { includeAdminFields: true });
       
+      // Extract booking settings from metadata
+      const requiresIntro = getRequiresIntroBeforeBooking(t.metadata);
+      const hasCompletedIntro = introCompletionMap.get(t.id) || false;
+      
       return {
         ...mapped,
         // Match-specific fields
         contacted_at: contactedById.get(t.id) || null,
         is_perfect: Boolean(isPerfect),
+        // Booking gating fields
+        requires_intro_before_booking: requiresIntro,
+        has_completed_intro: hasCompletedIntro,
       };
     });
 

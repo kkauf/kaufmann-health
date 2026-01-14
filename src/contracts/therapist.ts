@@ -25,6 +25,17 @@ export const TherapistProfileSchema = z.object({
   qualification: z.string().optional(),
 });
 
+// ============================================================================
+// BOOKING SETTINGS (nested in metadata.booking_settings)
+// ============================================================================
+
+export const TherapistBookingSettingsSchema = z.object({
+  /** When true, hides "Direkt buchen" / "Sitzung buchen" for users who haven't completed an intro */
+  requires_intro_before_booking: z.boolean().optional(),
+});
+
+export type TherapistBookingSettings = z.infer<typeof TherapistBookingSettingsSchema>;
+
 export type TherapistProfile = z.infer<typeof TherapistProfileSchema>;
 
 // ============================================================================
@@ -104,6 +115,7 @@ export const TherapistDataSchema = z.object({
   typical_rate: z.number().nullable().optional(),
   metadata: z.object({
     profile: TherapistProfileSchema.optional(),
+    booking_settings: TherapistBookingSettingsSchema.optional(),
   }).passthrough().optional(),
   availability: z.array(AvailabilitySlotSchema).optional(),
   // Cal.com integration fields
@@ -112,6 +124,10 @@ export const TherapistDataSchema = z.object({
   cal_bookings_live: z.boolean().nullable().optional(),
   // EARTH-248: Pre-cached next intro slot for fast display
   next_intro_slot: NextIntroSlotSchema.optional(),
+  // Booking gating: whether therapist requires intro before allowing full session booking
+  requires_intro_before_booking: z.boolean().optional(),
+  // Match-specific: whether this patient has completed an intro with this therapist
+  has_completed_intro: z.boolean().optional(),
   // Admin-only fields
   gender: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
