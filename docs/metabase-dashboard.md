@@ -72,15 +72,17 @@ WHERE created_at >= {{start_date}}
 -- Total paid sessions booked through Cal.com
 -- NOTE: cal_bookings is currently empty - this will populate once Cal.com integration is live
 SELECT 
-  DATE(created_at) AS day,
+  DATE(cb.created_at) AS day,
   COUNT(*) AS sessions
-FROM cal_bookings
-WHERE booking_kind = 'full_session'
-  AND last_trigger_event = 'BOOKING_CREATED'
-  AND (is_test = false OR is_test IS NULL)
-  AND created_at >= NOW() - INTERVAL '{{days_back}}' DAY
-  AND DATE(created_at) < CURRENT_DATE
-GROUP BY DATE(created_at)
+FROM cal_bookings cb
+LEFT JOIN people p ON p.id = cb.patient_id
+WHERE cb.booking_kind = 'full_session'
+  AND LOWER(cb.status) != 'cancelled'
+  AND (cb.is_test = false OR cb.is_test IS NULL)
+  AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+  AND cb.created_at >= NOW() - INTERVAL '{{days_back}}' DAY
+  AND DATE(cb.created_at) < CURRENT_DATE
+GROUP BY DATE(cb.created_at)
 ORDER BY day DESC;
 ```
 
@@ -261,20 +263,26 @@ FROM leads, intro_bookings;
 -- Paid session bookings ÷ intro bookings (last 90 days)
 -- NOTE: Requires cal_bookings to be populated
 WITH intros AS (
-  SELECT COUNT(DISTINCT patient_id) AS cnt
-  FROM cal_bookings
-  WHERE booking_kind = 'intro'
-    AND last_trigger_event = 'BOOKING_CREATED'
-    AND (is_test = false OR is_test IS NULL)
-    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
+  SELECT COUNT(DISTINCT cb.patient_id) AS cnt
+  FROM cal_bookings cb
+  LEFT JOIN people p ON p.id = cb.patient_id
+  WHERE cb.booking_kind = 'intro'
+    AND LOWER(cb.status) != 'cancelled'
+    AND cb.patient_id IS NOT NULL
+    AND (cb.is_test = false OR cb.is_test IS NULL)
+    AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+    AND cb.created_at > NOW() - INTERVAL '{{days_back}}' DAY
 ),
 sessions AS (
-  SELECT COUNT(DISTINCT patient_id) AS cnt
-  FROM cal_bookings
-  WHERE booking_kind = 'full_session'
-    AND last_trigger_event = 'BOOKING_CREATED'
-    AND (is_test = false OR is_test IS NULL)
-    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
+  SELECT COUNT(DISTINCT cb.patient_id) AS cnt
+  FROM cal_bookings cb
+  LEFT JOIN people p ON p.id = cb.patient_id
+  WHERE cb.booking_kind = 'full_session'
+    AND LOWER(cb.status) != 'cancelled'
+    AND cb.patient_id IS NOT NULL
+    AND (cb.is_test = false OR cb.is_test IS NULL)
+    AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+    AND cb.created_at > NOW() - INTERVAL '{{days_back}}' DAY
 )
 SELECT 
   intros.cnt AS intro_bookings,
@@ -288,11 +296,13 @@ FROM intros, sessions;
 ```sql
 -- Count of intro call bookings in current week
 SELECT COUNT(*) AS intro_calls_this_week
-FROM cal_bookings
-WHERE booking_kind = 'intro'
-  AND last_trigger_event = 'BOOKING_CREATED'
-  AND (is_test = false OR is_test IS NULL)
-  AND created_at >= date_trunc('week', NOW());
+FROM cal_bookings cb
+LEFT JOIN people p ON p.id = cb.patient_id
+WHERE cb.booking_kind = 'intro'
+  AND LOWER(cb.status) != 'cancelled'
+  AND (cb.is_test = false OR cb.is_test IS NULL)
+  AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+  AND cb.created_at >= date_trunc('week', NOW());
 ```
 
 ---
@@ -352,6 +362,31 @@ SELECT
 FROM fallbacks, total_booking_attempts;
 ```
 
+### 4. Contact Messages Sent (Daily Trend)
+
+```sql
+-- Direct messages sent to therapists (via messaging fallback or contact form)
+SELECT 
+  DATE(created_at) AS day,
+  COUNT(*) AS messages_sent
+FROM events
+WHERE type = 'contact_message_sent'
+  AND created_at >= NOW() - INTERVAL '{{days_back}}' DAY
+  AND DATE(created_at) < CURRENT_DATE
+GROUP BY DATE(created_at)
+ORDER BY day DESC;
+```
+
+### 5. Contact Messages This Week
+
+```sql
+-- Weekly count of direct messages to therapists
+SELECT COUNT(*) AS messages_this_week
+FROM events
+WHERE type = 'contact_message_sent'
+  AND created_at >= date_trunc('week', NOW());
+```
+
 ---
 
 ## KPI Dashboard - Unit Economics
@@ -362,12 +397,15 @@ FROM fallbacks, total_booking_attempts;
 -- Customers with ≥1 paid session
 -- NOTE: Ad spend must be manually input; this query provides the denominator
 -- CAC = Total Spend ÷ this count
-SELECT COUNT(DISTINCT patient_id) AS paying_customers
-FROM cal_bookings
-WHERE booking_kind = 'full_session'
-  AND last_trigger_event = 'BOOKING_CREATED'
-  AND (is_test = false OR is_test IS NULL)
-  AND created_at > NOW() - INTERVAL '{{days_back}}' DAY;
+SELECT COUNT(DISTINCT cb.patient_id) AS paying_customers
+FROM cal_bookings cb
+LEFT JOIN people p ON p.id = cb.patient_id
+WHERE cb.booking_kind = 'full_session'
+  AND LOWER(cb.status) != 'cancelled'
+  AND cb.patient_id IS NOT NULL
+  AND (cb.is_test = false OR cb.is_test IS NULL)
+  AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+  AND cb.created_at > NOW() - INTERVAL '{{days_back}}' DAY;
 ```
 
 ### 2. Avg Sessions per Customer
@@ -376,13 +414,16 @@ WHERE booking_kind = 'full_session'
 -- Total paid sessions ÷ unique paying customers
 SELECT 
   COUNT(*) AS total_sessions,
-  COUNT(DISTINCT patient_id) AS unique_customers,
-  ROUND(1.0 * COUNT(*) / NULLIF(COUNT(DISTINCT patient_id), 0), 2) AS avg_sessions_per_customer
-FROM cal_bookings
-WHERE booking_kind = 'full_session'
-  AND last_trigger_event = 'BOOKING_CREATED'
-  AND (is_test = false OR is_test IS NULL)
-  AND created_at > NOW() - INTERVAL '{{days_back}}' DAY;
+  COUNT(DISTINCT cb.patient_id) AS unique_customers,
+  ROUND(1.0 * COUNT(*) / NULLIF(COUNT(DISTINCT cb.patient_id), 0), 2) AS avg_sessions_per_customer
+FROM cal_bookings cb
+LEFT JOIN people p ON p.id = cb.patient_id
+WHERE cb.booking_kind = 'full_session'
+  AND LOWER(cb.status) != 'cancelled'
+  AND cb.patient_id IS NOT NULL
+  AND (cb.is_test = false OR cb.is_test IS NULL)
+  AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+  AND cb.created_at > NOW() - INTERVAL '{{days_back}}' DAY;
 ```
 
 ---
@@ -426,7 +467,9 @@ questionnaire_intros AS (
   JOIN people p ON p.id = cb.patient_id
   WHERE cb.booking_kind = 'intro'
     AND cb.source = 'questionnaire'
+    AND LOWER(cb.status) != 'cancelled'
     AND (cb.is_test = false OR cb.is_test IS NULL)
+    AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
     AND cb.created_at > NOW() - INTERVAL '{{days_back}}' DAY
 ),
 directory_contacts AS (
@@ -438,9 +481,12 @@ directory_contacts AS (
 directory_intros AS (
   SELECT COUNT(DISTINCT cb.patient_id) AS cnt
   FROM cal_bookings cb
+  LEFT JOIN people p ON p.id = cb.patient_id
   WHERE cb.booking_kind = 'intro'
     AND cb.source = 'directory'
+    AND LOWER(cb.status) != 'cancelled'
     AND (cb.is_test = false OR cb.is_test IS NULL)
+    AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
     AND cb.created_at > NOW() - INTERVAL '{{days_back}}' DAY
 )
 SELECT 
@@ -464,19 +510,23 @@ FROM directory_contacts, directory_intros;
 -- Weekly snapshot: intro bookings, session bookings, conversion rate
 WITH intros AS (
   SELECT COUNT(*) AS cnt
-  FROM cal_bookings
-  WHERE booking_kind = 'intro'
-    AND last_trigger_event = 'BOOKING_CREATED'
-    AND (is_test = false OR is_test IS NULL)
-    AND created_at >= date_trunc('week', NOW())
+  FROM cal_bookings cb
+  LEFT JOIN people p ON p.id = cb.patient_id
+  WHERE cb.booking_kind = 'intro'
+    AND LOWER(cb.status) != 'cancelled'
+    AND (cb.is_test = false OR cb.is_test IS NULL)
+    AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+    AND cb.created_at >= date_trunc('week', NOW())
 ),
 sessions AS (
   SELECT COUNT(*) AS cnt
-  FROM cal_bookings
-  WHERE booking_kind = 'full_session'
-    AND last_trigger_event = 'BOOKING_CREATED'
-    AND (is_test = false OR is_test IS NULL)
-    AND created_at >= date_trunc('week', NOW())
+  FROM cal_bookings cb
+  LEFT JOIN people p ON p.id = cb.patient_id
+  WHERE cb.booking_kind = 'full_session'
+    AND LOWER(cb.status) != 'cancelled'
+    AND (cb.is_test = false OR cb.is_test IS NULL)
+    AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+    AND cb.created_at >= date_trunc('week', NOW())
 )
 SELECT 
   intros.cnt AS intro_bookings_this_week,
@@ -703,11 +753,13 @@ SELECT CASE
   WHEN COUNT(*) = 0 THEN 1 
   ELSE 0 
 END AS alert_no_bookings
-FROM cal_bookings
-WHERE booking_kind = 'intro'
-  AND last_trigger_event = 'BOOKING_CREATED'
-  AND (is_test = false OR is_test IS NULL)
-  AND created_at > NOW() - INTERVAL '{{days_back}}' DAY;
+FROM cal_bookings cb
+LEFT JOIN people p ON p.id = cb.patient_id
+WHERE cb.booking_kind = 'intro'
+  AND LOWER(cb.status) != 'cancelled'
+  AND (cb.is_test = false OR cb.is_test IS NULL)
+  AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+  AND cb.created_at > NOW() - INTERVAL '{{days_back}}' DAY;
 ```
 
 ### Alert: Therapist Availability Below Threshold

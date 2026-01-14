@@ -4,7 +4,7 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "dev": "kill-port 3000 && next dev",
+    "dev": "kill-port 3000 && next dev --turbopack",
     "dev:safe": "next dev",
     "build": "next build",
     "start": "next start",

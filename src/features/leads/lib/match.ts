@@ -389,15 +389,25 @@ export async function createInstantMatchesForPatient(
       accepting_new?: boolean | null; 
       photo_url?: string | null;
       approach_text?: string | null;
-      who_comes_to_me?: string | null;
       metadata?: Record<string, unknown> | null;
     };
     const { data: trows } = await supabaseServer
       .from('therapists')
-      .select('id, gender, city, session_preferences, modalities, schwerpunkte, languages, accepting_new, photo_url, approach_text, who_comes_to_me, metadata')
+      .select('id, gender, city, session_preferences, modalities, schwerpunkte, languages, accepting_new, photo_url, approach_text, metadata')
       .eq('status', 'verified')
       .limit(5000);
     const allTherapists = Array.isArray(trows) ? (trows as TR[]) : [];
+    
+    // CRITICAL ALERT: If therapist query returns 0 rows, something is broken
+    if (allTherapists.length === 0) {
+      const { logError } = await import('@/lib/logger');
+      await logError('matching.critical', new Error('Therapist query returned 0 verified therapists - possible schema mismatch'), {
+        patient_id: patientId,
+        query_columns: 'id, gender, city, session_preferences, modalities, schwerpunkte, languages, accepting_new, photo_url, approach_text, metadata',
+        filter: 'status=verified',
+      });
+      console.error('[InstantMatch] CRITICAL: Therapist query returned 0 rows. Check for schema mismatches or RLS issues.');
+    }
     
     // Filter out hidden/test therapists (HIDE_THERAPIST_IDS env var)
     const hiddenIds = getHiddenTherapistIds();
@@ -477,7 +487,6 @@ export async function createInstantMatchesForPatient(
         accepting_new: t.accepting_new,
         photo_url: t.photo_url,
         approach_text: t.approach_text,
-        who_comes_to_me: t.who_comes_to_me,
         metadata: t.metadata as TherapistRowForMatch['metadata'],
       };
 
@@ -536,6 +545,19 @@ export async function createInstantMatchesForPatient(
     // If we used fallbacks, it's always "partial"
     const hasAnyPerfect = !usedFallbacks && chosenScored.some(s => s.totalScore >= 120 || s.reasons.length === 0);
     const matchQuality = chosen.length === 0 ? 'none' : (hasAnyPerfect ? 'exact' : 'partial');
+
+    // ALERT: Non-concierge lead with 0 matches is a critical issue
+    if (chosen.length === 0 && !isConcierge && !isTest) {
+      const { logError } = await import('@/lib/logger');
+      await logError('matching.no_matches', new Error('Non-concierge lead received 0 matches'), {
+        patient_id: patientId,
+        therapists_found: therapists.length,
+        eligible_count: scored.length,
+        fallback_count: fallbackScored.length,
+        patient_preferences: { gender_preference, session_preference, session_preferences, city, schwerpunkte, language_preference },
+      });
+      console.error(`[InstantMatch] ALERT: Patient ${patientId} received 0 matches. ${therapists.length} therapists checked, ${scored.length} eligible.`);
+    }
 
     let secureUuid: string | null = null;
     if (chosen.length === 0) {
