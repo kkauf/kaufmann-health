@@ -541,16 +541,20 @@ export function TherapistDetailModal({
 
             {/* Location & Session Format pills */}
             <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-              <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
-                <MapPin className="h-3.5 w-3.5" />
-                {therapist.city}
-              </Badge>
-              {offersInPerson && practiceAddress && (
-                <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700" title="Praxis-Adresse">
-                  <MapPin className="h-3.5 w-3.5" />
-                  {practiceAddress}
-                </Badge>
-              )}
+              {/* Show practice address if available and more specific than city, otherwise show city */}
+              {(() => {
+                // If practice address exists and contains more info than just the city, show it alone
+                const addressIsMoreSpecific = practiceAddress && 
+                  practiceAddress.toLowerCase() !== therapist.city.toLowerCase() &&
+                  practiceAddress.length > therapist.city.length;
+                
+                return (
+                  <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700" title={addressIsMoreSpecific ? 'Praxis-Adresse' : undefined}>
+                    <MapPin className="h-3.5 w-3.5" />
+                    {addressIsMoreSpecific ? practiceAddress : therapist.city}
+                  </Badge>
+                );
+              })()}
 
               {offersOnline && (
                 <Badge variant="outline" className="gap-1.5 border-sky-200 bg-sky-50 text-sky-700">
