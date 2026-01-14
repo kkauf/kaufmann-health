@@ -337,7 +337,7 @@ export async function POST(req: Request) {
         }
       }
     } else if (template === 'apology') {
-      // Apology template: requires patient_id, fetches their matches and sends apology email
+      // Apology template: simple email with CTA to matches page (no embedded therapist previews)
       personalizedMessage = typeof body?.personalized_message === 'string' ? body.personalized_message : undefined;
 
       // Get secure_uuid from patient's matches
@@ -359,45 +359,10 @@ export async function POST(req: Request) {
         return NextResponse.json({ data: null, error: 'No matches found for patient' }, { status: 400 });
       }
 
-      // Optionally load therapist details for the email
-      let therapistIds: string[] = Array.isArray(body?.therapist_ids) ? body!.therapist_ids!.map((v) => String(v).trim()).filter(Boolean) : [];
-      if (therapistIds.length === 0) {
-        const { data: proposed } = await supabaseServer
-          .from('matches')
-          .select('therapist_id')
-          .eq('patient_id', patient_id)
-          .not('therapist_id', 'is', null)
-          .order('created_at', { ascending: false })
-          .limit(3);
-        therapistIds = ((proposed || []) as Array<{ therapist_id: string }>).map((r) => r.therapist_id);
-      }
-
-      type ApologyTherapistRow = { id: string; first_name: string; last_name?: string; photo_url?: string; modalities?: string[]; city?: string; metadata?: TherapistMeta };
-      let therapistItems: { id: string; first_name: string; last_name?: string; photo_url?: string | null; modalities?: string[] | null; approach_text?: string | null; city?: string | null; isBest?: boolean }[] = [];
-      
-      if (therapistIds.length > 0) {
-        const { data: therapistRows } = await supabaseServer
-          .from('therapists')
-          .select('id, first_name, last_name, photo_url, modalities, city, metadata')
-          .in('id', therapistIds);
-        
-        therapistItems = ((therapistRows || []) as ApologyTherapistRow[]).map((t, idx) => ({
-          id: t.id,
-          first_name: t.first_name,
-          last_name: t.last_name,
-          photo_url: t.photo_url || null,
-          modalities: t.modalities || null,
-          approach_text: t.metadata?.profile?.approach_text || null,
-          city: t.city || null,
-          isBest: idx === 0,
-        }));
-      }
-
       const matchesUrl = `${BASE_URL}/matches/${secure_uuid}`;
       content = renderPatientApologyEmail({
         patientName,
         matchesUrl,
-        therapists: therapistItems,
         customMessage: personalizedMessage,
       });
 
