@@ -58,6 +58,10 @@ type TherapistItem = {
   cal_bookings_live?: boolean;
   // Admin-selected "best match" flag from API
   is_perfect?: boolean;
+  // Booking gating: whether therapist requires intro before allowing full session booking
+  requires_intro_before_booking?: boolean;
+  // Match-specific: whether this patient has completed an intro with this therapist
+  has_completed_intro?: boolean;
 };
 
 type MatchApiData = {
@@ -591,6 +595,8 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
               contactedAt={t.contacted_at || null}
               onContactClick={(type) => handleOpen(t, type)}
               patientCity={data?.patient?.city}
+              requiresIntroBeforeBooking={t.requires_intro_before_booking}
+              hasCompletedIntro={t.has_completed_intro}
             />
           );
         })}
@@ -669,6 +675,8 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           }}
           initialViewMode={detailModalViewMode}
           initialCalBookingKind={detailModalCalKind}
+          requiresIntroBeforeBooking={detailModalTherapist.requires_intro_before_booking}
+          hasCompletedIntro={detailModalTherapist.has_completed_intro}
           onOpenContactModal={(therapistFromProfile: TherapistData, type: 'booking' | 'consultation', selectedSlot?: { date_iso: string; time_label: string; format: 'online' | 'in_person' }) => {
             // Map TherapistData → TherapistItem minimal fields and open ContactModal
             const t: TherapistItem = {

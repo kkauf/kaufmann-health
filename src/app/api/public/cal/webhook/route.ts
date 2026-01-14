@@ -21,6 +21,7 @@ import { logError, track } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { renderCalBookingClientConfirmation } from '@/lib/email/templates/calBookingClientConfirmation';
 import { renderCalBookingTherapistNotification } from '@/lib/email/templates/calBookingTherapistNotification';
+import { buildCalBookingUrl } from '@/lib/cal/booking-url';
 import {
   CalWebhookBody,
   CalWebhookProcessableEvent,
@@ -224,10 +225,20 @@ async function sendIntroFollowupEmail(params: {
     ? `${therapist.first_name || ''} ${therapist.last_name || ''}`.trim()
     : 'Ihr:e Therapeut:in';
 
-  // Build full session URL
-  const calBaseUrl = process.env.NEXT_PUBLIC_CAL_ORIGIN || 'https://cal.kaufmann.health';
+  // Build full session URL with proper metadata for tracking
   const fullSessionUrl = therapist?.cal_username
-    ? `${calBaseUrl}/${therapist.cal_username}/full-session`
+    ? buildCalBookingUrl({
+        calUsername: therapist.cal_username,
+        eventType: 'full_session',
+        metadata: {
+          kh_therapist_id: therapistId,
+          kh_patient_id: patientId,
+          kh_match_id: matchId || undefined,
+          kh_source: 'intro_followup_email',
+        },
+        prefillName: patient.first_name || undefined,
+        prefillEmail: patient.email || undefined,
+      })
     : null;
 
   // Fetch next full session slot from cache

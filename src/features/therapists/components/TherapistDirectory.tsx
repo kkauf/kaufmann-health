@@ -522,6 +522,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
               setInitialCalBookingKind(type === 'consultation' ? 'intro' : 'full_session');
               setSelectedTherapist(therapist);
             }}
+            requiresIntroBeforeBooking={therapist.requires_intro_before_booking}
           />
         ))}
         {/* Desktop/Tablet: Load more tile occupies a grid cell */}
@@ -563,6 +564,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
           onOpenContactModal={handleOpenContactModal}
           initialViewMode={initialModalViewMode}
           initialCalBookingKind={initialCalBookingKind}
+          requiresIntroBeforeBooking={selectedTherapist.requires_intro_before_booking}
         />
       )}
       

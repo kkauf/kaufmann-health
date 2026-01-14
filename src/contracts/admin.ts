@@ -111,6 +111,8 @@ export const AdminTherapistPatchInput = z
     // Cal.com integration fields (admin can manually set/override)
     cal_username: z.string().max(100).optional(),
     cal_enabled: z.boolean().optional(),
+    // Booking gating: require intro session before full session booking
+    requires_intro_before_booking: z.boolean().optional(),
   })
   .passthrough();
 

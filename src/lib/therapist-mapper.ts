@@ -59,6 +59,25 @@ export function isTherapistHidden(row: TherapistRow, hideIds: Set<string>): bool
 }
 
 /**
+ * Extract booking settings from raw metadata
+ */
+function extractBookingSettings(metadata: unknown): { requires_intro_before_booking?: boolean } {
+  const mdObj: Record<string, unknown> = 
+    metadata && typeof metadata === 'object' ? (metadata as Record<string, unknown>) : {};
+  const bookingSettingsUnknown = mdObj['booking_settings'];
+  const bookingSettings: Record<string, unknown> = 
+    bookingSettingsUnknown && typeof bookingSettingsUnknown === 'object' 
+      ? (bookingSettingsUnknown as Record<string, unknown>) 
+      : {};
+
+  return {
+    requires_intro_before_booking: typeof bookingSettings['requires_intro_before_booking'] === 'boolean' 
+      ? bookingSettings['requires_intro_before_booking'] 
+      : undefined,
+  };
+}
+
+/**
  * Extract profile fields from raw metadata
  */
 function extractProfile(metadata: unknown): TherapistProfile {
@@ -114,6 +133,9 @@ export function mapTherapistRow(
     ? row.languages
     : (profile.languages && profile.languages.length > 0 ? profile.languages : undefined);
 
+  // Extract booking settings from metadata
+  const bookingSettings = extractBookingSettings(row.metadata);
+
   const result: TherapistData = {
     id: row.id,
     first_name: String(row.first_name || ''),
@@ -132,6 +154,8 @@ export function mapTherapistRow(
     cal_username: row.cal_username || undefined,
     cal_enabled: row.cal_enabled || false,
     cal_bookings_live: row.cal_bookings_live || false,
+    // Booking gating
+    requires_intro_before_booking: bookingSettings.requires_intro_before_booking,
   };
 
   if (options?.availability) {

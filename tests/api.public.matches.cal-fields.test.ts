@@ -80,6 +80,29 @@ function makeSupabaseMock(ref: any, list: any[], therapists: any[], patient: any
           },
         } as any;
       }
+      if (table === 'cal_bookings') {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  in() {
+                    return {
+                      eq() {
+                        return {
+                          eq() {
+                            return Promise.resolve({ data: [], error: null });
+                          },
+                        } as any;
+                      },
+                    } as any;
+                  },
+                } as any;
+              },
+            } as any;
+          },
+        } as any;
+      }
       return { select: () => ({}) } as any;
     },
   } as any;
