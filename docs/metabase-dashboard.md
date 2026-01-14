@@ -243,7 +243,8 @@ intro_bookings AS (
   SELECT COUNT(DISTINCT patient_id) AS cnt
   FROM cal_bookings
   WHERE booking_kind = 'intro'
-    AND last_trigger_event = 'BOOKING_CREATED'
+    AND LOWER(status) != 'cancelled'
+    AND patient_id IS NOT NULL
     AND (is_test = false OR is_test IS NULL)
     AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
 )

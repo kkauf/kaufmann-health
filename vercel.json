@@ -15,7 +15,8 @@
     { "path": "/api/admin/alerts/user-errors-digest", "schedule": "0 8,20 * * *" },
     { "path": "/api/admin/cal/booking-followups?limit=50", "schedule": "*/30 * * * *" },
     { "path": "/api/admin/alerts/match-quality-report?days=1", "schedule": "0 19 * * *" },
-    { "path": "/api/admin/cal/warm-cache", "schedule": "*/15 * * * *" }
+    { "path": "/api/admin/cal/warm-cache", "schedule": "*/15 * * * *" },
+    { "path": "/api/admin/cal/reconcile-bookings?days=7", "schedule": "0 3 * * *" }
   ],
   "functions": {
     "app/therapie-finden/page.tsx": {

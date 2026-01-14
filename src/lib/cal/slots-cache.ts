@@ -75,7 +75,7 @@ export async function warmCacheForTherapist(
     // Fetch both intro and full_session slots in parallel
     const [introSlots, fullSlots] = await Promise.all([
       fetchCalSlotsFromDb(calUsername, 'intro', start, end, 'Europe/Berlin'),
-      fetchCalSlotsFromDb(calUsername, 'full_session', start, end, 'Europe/Berlin'),
+      fetchCalSlotsFromDb(calUsername, 'full-session', start, end, 'Europe/Berlin'),
     ]);
 
     if (introSlots === null && fullSlots === null) {
