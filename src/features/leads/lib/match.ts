@@ -222,11 +222,6 @@ export function calculatePlatformScore(
 ): number {
   let score = 0;
   
-  // Cal.com bookings live (30 points) - therapist has activated their Cal.com booking page
-  if (therapist.cal_bookings_live === true) {
-    score += 30;
-  }
-  
   // Intake slot availability (mutually exclusive tiers)
   if (intakeSlots7Days >= 3) {
     score += 25;

@@ -200,13 +200,9 @@ export async function GET(req: Request) {
       const missingPhoto = !(hasPhotoApproved || hasPhotoPending);
       const missingApproach = false; // Deprecated - using new profile fields
       const missingProfileText = !profileComplete;
-      
-      // Check Cal.com activation
-      const calBookingsLive = (t as { cal_bookings_live?: boolean | null }).cal_bookings_live === true;
-      const missingCalBookings = !calBookingsLive;
 
-      // Skip if everything is complete (profile text, photo, and Cal.com activated)
-      if (!missingPhoto && !missingProfileText && !missingCalBookings) {
+      // Skip if everything is complete (profile text and photo)
+      if (!missingPhoto && !missingProfileText) {
         skippedNoMissing++;
         continue;
       }
@@ -250,7 +246,6 @@ export async function GET(req: Request) {
         missingPhoto,
         missingApproach,
         missingProfileText,
-        missingCalBookings,
         stageLabel: deriveStageLabel(history.count),
         optOutUrl,
       });
@@ -275,7 +270,6 @@ export async function GET(req: Request) {
             if (missingDocuments) miss.push('documents');
             if (missingPhoto) miss.push('photo');
             if (missingProfileText) miss.push('profile_text');
-            if (missingCalBookings) miss.push('cal_bookings');
             examples.push({ id: t.id as string, missing: miss });
           }
         } else if (emailResult.reason === 'failed') {
@@ -457,13 +451,9 @@ export async function POST(req: Request) {
       const missingPhoto = !(hasPhotoApproved || hasPhotoPending);
       const missingApproach = false; // Deprecated - using new profile fields
       const missingProfileText = !profileComplete;
-      
-      // Check Cal.com activation
-      const calBookingsLive = (t as { cal_bookings_live?: boolean | null }).cal_bookings_live === true;
-      const missingCalBookings = !calBookingsLive;
 
-      // Skip if everything is complete (profile text, photo, and Cal.com activated)
-      if (!missingPhoto && !missingProfileText && !missingCalBookings) {
+      // Skip if everything is complete (profile text and photo)
+      if (!missingPhoto && !missingProfileText) {
         skippedNoMissing++;
         continue;
       }
@@ -507,7 +497,6 @@ export async function POST(req: Request) {
         missingPhoto,
         missingApproach,
         missingProfileText,
-        missingCalBookings,
         stageLabel: deriveStageLabel(history.count),
         optOutUrl,
       });
@@ -532,7 +521,6 @@ export async function POST(req: Request) {
             if (missingDocuments) miss.push('documents');
             if (missingPhoto) miss.push('photo');
             if (missingProfileText) miss.push('profile_text');
-            if (missingCalBookings) miss.push('cal_bookings');
             examples.push({ id: t.id as string, missing: miss });
           }
         } else if (emailResult.reason === 'failed') {

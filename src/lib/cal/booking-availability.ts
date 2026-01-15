@@ -6,7 +6,6 @@
  * Business rules:
  * 1. Therapist must have cal_enabled=true and cal_username set
  * 2. Therapist must have available slots (next_intro_slot exists and is in future)
- * 3. cal_bookings_live=false acts as admin kill switch (overrides slots)
  */
 
 import type { NextIntroSlot } from '@/contracts/therapist';
@@ -14,7 +13,6 @@ import type { NextIntroSlot } from '@/contracts/therapist';
 export interface CalBookingAvailabilityInput {
   cal_enabled?: boolean | null;
   cal_username?: string | null;
-  cal_bookings_live?: boolean | null;
   next_intro_slot?: NextIntroSlot | null;
 }
 
@@ -41,18 +39,12 @@ function isSlotValid(slot: NextIntroSlot | null | undefined): boolean {
  * - cal_enabled is true
  * - cal_username exists
  * - next_intro_slot exists and is in the future
- * - cal_bookings_live is NOT explicitly false (admin kill switch)
  */
 export function isCalBookingAvailable(input: CalBookingAvailabilityInput): boolean {
-  const { cal_enabled, cal_username, cal_bookings_live, next_intro_slot } = input;
+  const { cal_enabled, cal_username, next_intro_slot } = input;
 
   // Must have Cal.com account configured
   if (!cal_enabled || !cal_username) {
-    return false;
-  }
-
-  // Admin kill switch - if explicitly false, disable booking
-  if (cal_bookings_live === false) {
     return false;
   }
 

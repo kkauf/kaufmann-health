@@ -73,29 +73,26 @@ function rankForDirectory(
 }
 
 describe('Directory Ranking (Platform Score)', () => {
-  it('ranks therapist with Cal.com + slots higher than one without', () => {
+  it('ranks therapists with equal slots equally', () => {
     const therapists = [
       createTherapist({
-        id: 'no-calcom',
+        id: 'therapist-a',
         metadata: {},
       }),
       createTherapist({
-        id: 'with-calcom',
-        cal_bookings_live: true,
+        id: 'therapist-b',
       }),
     ];
 
     const slotsMap = new Map([
-      ['no-calcom', { slots7: 3, slots14: 5 }],
-      ['with-calcom', { slots7: 3, slots14: 5 }],
+      ['therapist-a', { slots7: 3, slots14: 5 }],
+      ['therapist-b', { slots7: 3, slots14: 5 }],
     ]);
 
     const ranked = rankForDirectory(therapists, slotsMap);
     
-    expect(ranked[0].id).toBe('with-calcom');
-    expect(ranked[0].platformScore).toBeGreaterThan(ranked[1].platformScore);
-    // Cal.com adds 30 points
-    expect(ranked[0].platformScore - ranked[1].platformScore).toBe(30);
+    // Both have same slots and profile, so equal scores
+    expect(ranked[0].platformScore).toBe(ranked[1].platformScore);
   });
 
   it('ranks therapist with more slots higher than one with fewer', () => {
@@ -208,18 +205,17 @@ describe('Match View Ranking (Total Score = Match × 1.5 + Platform)', () => {
 
   it('Platform Score still matters - therapist with Cal.com + slots can beat schwerpunkte match', () => {
     // This test documents that platform investment is NOT ignored
-    // A therapist with full Cal.com journey + slots can outrank one with better schwerpunkte match
+    // A therapist with more slots can outrank one with better schwerpunkte match
     // This is intentional - we want to reward therapist platform investment
     const therapists = [
       createTherapist({
         id: 'high-platform-low-match',
         schwerpunkte: ['beziehung'], // No schwerpunkte match with patient
-        cal_bookings_live: true,
       }),
       createTherapist({
         id: 'low-platform-high-match',
         schwerpunkte: ['trauma', 'angst'], // 2 schwerpunkte matches
-        metadata: {}, // No Cal.com
+        metadata: {},
       }),
     ];
 
@@ -231,15 +227,15 @@ describe('Match View Ranking (Total Score = Match × 1.5 + Platform)', () => {
     const ranked = rankForMatches(therapists, patient, slotsMap);
     
     // high-platform: gender(+10) + modality(+15) + in-person-city(+20) = 45 match
-    //   Platform = 30 (Cal.com) + 25 (5 slots) + 15 (profile) = 70
-    //   Total = 45*1.5 + 70 = 137.5
+    //   Platform = 25 (5 slots) + 15 (profile) = 40
+    //   Total = 45*1.5 + 40 = 107.5
     // low-platform: schwerpunkte(+30) + gender(+10) + modality(+15) + in-person-city(+20) = 75 match
-    //   Platform = 0 + 0 + 15 (profile) = 15
+    //   Platform = 0 + 15 (profile) = 15
     //   Total = 75*1.5 + 15 = 127.5
-    // high-platform wins with 137.5 > 127.5
-    expect(ranked[0].id).toBe('high-platform-low-match');
-    expect(ranked[0].totalScore).toBe(137.5);
-    expect(ranked[1].totalScore).toBe(127.5);
+    // low-platform wins with 127.5 > 107.5 (schwerpunkte match now more important)
+    expect(ranked[0].id).toBe('low-platform-high-match');
+    expect(ranked[0].totalScore).toBe(127.5);
+    expect(ranked[1].totalScore).toBe(107.5);
   });
 
   it('excludes therapists that fail eligibility filters', () => {

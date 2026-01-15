@@ -1,11 +1,15 @@
 #!/usr/bin/env npx ts-node
 /**
- * Syncs SQL queries from docs/metabase-dashboard.md to Metabase
+ * Syncs SQL queries from docs/metabase-*.md files to Metabase
  * 
  * Usage:
- *   npx ts-node scripts/metabase-sync.ts --list          # List existing Metabase cards
- *   npx ts-node scripts/metabase-sync.ts --sync          # Create/update cards from markdown
- *   npx ts-node scripts/metabase-sync.ts --dry-run       # Preview what would be created
+ *   npx tsx scripts/metabase-sync.ts --list          # List existing Metabase cards
+ *   npx tsx scripts/metabase-sync.ts --sync          # Create/update cards from markdown
+ *   npx tsx scripts/metabase-sync.ts --dry-run       # Preview what would be created
+ * 
+ * Reads from:
+ *   - docs/metabase-kpis.md (KPI single-value cards)
+ *   - docs/metabase-detail.md (trends, funnels, drilldowns)
  * 
  * Requires METABASE_API_KEY in .env.local
  */
@@ -23,7 +27,10 @@ config({ path: path.join(__dirname, '../.env.local') });
 
 const METABASE_URL = 'https://metabase-production-c3d3.up.railway.app';
 const METABASE_API_KEY = process.env.METABASE_API_KEY;
-const MARKDOWN_PATH = path.join(__dirname, '../docs/metabase-dashboard.md');
+const MARKDOWN_PATHS = [
+  path.join(__dirname, '../docs/metabase-kpis.md'),
+  path.join(__dirname, '../docs/metabase-detail.md'),
+];
 
 // No prefix needed - Metabase is KH-only
 
@@ -69,7 +76,22 @@ async function metabaseRequest(endpoint: string, options: RequestInit = {}): Pro
 }
 
 function parseMarkdownQueries(): ParsedQuery[] {
-  const content = fs.readFileSync(MARKDOWN_PATH, 'utf-8');
+  const queries: ParsedQuery[] = [];
+  
+  for (const markdownPath of MARKDOWN_PATHS) {
+    if (!fs.existsSync(markdownPath)) {
+      console.warn(`Warning: ${markdownPath} not found, skipping`);
+      continue;
+    }
+    const content = fs.readFileSync(markdownPath, 'utf-8');
+    const fileQueries = parseFileQueries(content, markdownPath);
+    queries.push(...fileQueries);
+  }
+  
+  return queries;
+}
+
+function parseFileQueries(content: string, sourcePath: string): ParsedQuery[] {
   const queries: ParsedQuery[] = [];
   
   // Match ### headers followed by ```sql blocks
@@ -134,6 +156,11 @@ function parseMarkdownQueries(): ParsedQuery[] {
   return queries;
 }
 
+function getSourceDescription(sourcePath: string): string {
+  const filename = path.basename(sourcePath);
+  return filename.replace('.md', '');
+}
+
 async function listExistingCards(): Promise<MetabaseCard[]> {
   const cards = await metabaseRequest('/api/card') as MetabaseCard[];
   return cards;
@@ -182,7 +209,7 @@ async function createCard(query: ParsedQuery, databaseId: number): Promise<Metab
   
   const payload = {
     name: query.name,
-    description: query.comment || `Query from metabase-dashboard.md: ${query.section}`,
+    description: query.comment || `Query: ${query.section}`,
     display: 'table',
     visualization_settings: {},
     dataset_query: {
@@ -209,7 +236,7 @@ async function updateCard(cardId: number, query: ParsedQuery, databaseId: number
   
   const payload = {
     name: query.name,
-    description: query.comment || `Query from metabase-dashboard.md: ${query.section}`,
+    description: query.comment || `Query: ${query.section}`,
     dataset_query: {
       type: 'native',
       native: {
@@ -258,7 +285,7 @@ async function main() {
         
         // Parse markdown
         const queries = parseMarkdownQueries();
-        console.log(`Found ${queries.length} queries in ${MARKDOWN_PATH}\n`);
+        console.log(`Found ${queries.length} queries in ${MARKDOWN_PATHS.length} files\n`);
         
         if (dryRun) {
           for (const q of queries) {
@@ -311,10 +338,10 @@ Usage:
 Commands:
   --list      List existing Metabase cards
   --dry-run   Preview queries that would be created/updated
-  --sync      Create/update cards from docs/metabase-dashboard.md
+  --sync      Create/update cards from docs/metabase-*.md files
   --help      Show this help message
 
-Queries use section headers from metabase-dashboard.md as names.
+Queries use section headers from metabase-kpis.md and metabase-detail.md as names.
         `);
     }
   } catch (error) {

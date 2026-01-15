@@ -4,7 +4,6 @@
  * Business logic:
  * - If therapist has available slots (next_intro_slot exists), show Cal.com booking UI
  * - If therapist has no available slots, fallback to messaging flow
- * - cal_bookings_live=false should override and disable booking even with slots (admin kill switch)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -47,20 +46,12 @@ describe('isCalBookingAvailable', () => {
       })).toBe(false);
     });
 
-    it('should return false when cal_bookings_live is explicitly false (admin override)', () => {
-      expect(isCalBookingAvailable({
-        ...baseTherapist,
-        cal_bookings_live: false,
-        next_intro_slot: nextIntroSlot,
-      })).toBe(false);
-    });
   });
 
   describe('when therapist has no available slots', () => {
-    it('should return false even when cal_enabled and cal_bookings_live', () => {
+    it('should return false even when cal_enabled', () => {
       expect(isCalBookingAvailable({
         ...baseTherapist,
-        cal_bookings_live: true,
         next_intro_slot: null,
       })).toBe(false);
     });
@@ -68,7 +59,6 @@ describe('isCalBookingAvailable', () => {
     it('should return false when next_intro_slot is undefined', () => {
       expect(isCalBookingAvailable({
         ...baseTherapist,
-        cal_bookings_live: true,
       })).toBe(false);
     });
   });
@@ -87,14 +77,4 @@ describe('isCalBookingAvailable', () => {
     });
   });
 
-  describe('backward compatibility', () => {
-    it('should work with legacy cal_bookings_live=true and no slots (returns false)', () => {
-      // Previously this would show booking, now it should fallback to messaging
-      expect(isCalBookingAvailable({
-        ...baseTherapist,
-        cal_bookings_live: true,
-        next_intro_slot: null,
-      })).toBe(false);
-    });
-  });
 });

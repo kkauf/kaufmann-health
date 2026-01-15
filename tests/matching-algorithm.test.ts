@@ -82,30 +82,28 @@ describe('Eligibility (Hard Filters)', () => {
 });
 
 describe('Platform Score', () => {
-  it('P1: Full Cal.com + 3+ slots + complete profile = 70', () => {
+  it('P1: 3+ slots + complete profile = 40', () => {
     const therapist: TherapistRowForMatch = {
       id: '1',
       photo_url: 'https://example.com/photo.jpg',
       approach_text: 'My approach...',
       who_comes_to_me: 'People who...',
       city: 'Berlin',
-      cal_bookings_live: true,
     };
-    // 30 (Cal.com live) + 25 (3+ slots in 7 days) + 15 (complete profile) = 70
-    expect(calculatePlatformScore(therapist, 4, 4)).toBe(70);
+    // 25 (3+ slots in 7 days) + 15 (complete profile) = 40
+    expect(calculatePlatformScore(therapist, 4, 4)).toBe(40);
   });
 
-  it('P2: Cal.com but no intake slots = 45', () => {
+  it('P2: No intake slots + complete profile = 15', () => {
     const therapist: TherapistRowForMatch = {
       id: '1',
       photo_url: 'https://example.com/photo.jpg',
       approach_text: 'My approach...',
       who_comes_to_me: 'People who...',
       city: 'Berlin',
-      cal_bookings_live: true,
     };
-    // 30 (Cal.com live) + 0 (no slots) + 15 (complete profile) = 45
-    expect(calculatePlatformScore(therapist, 0, 0)).toBe(45);
+    // 0 (no slots) + 15 (complete profile) = 15
+    expect(calculatePlatformScore(therapist, 0, 0)).toBe(15);
   });
 
   it('P3: No Cal.com, basic profile only = 5', () => {
