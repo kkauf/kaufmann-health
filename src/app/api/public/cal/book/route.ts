@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Track result
+    // Track result and pre-insert cal_booking record
     if (result.success) {
       void ServerAnalytics.trackEventFromRequest(req, {
         type: 'native_booking_success',
@@ -168,6 +168,45 @@ export async function POST(req: NextRequest) {
           video_url: result.booking.metadata?.videoCallUrl,
         },
       });
+
+      // CRITICAL: Pre-insert cal_booking record with our metadata
+      // Cal.com's webhook doesn't include our metadata, so we must insert first.
+      // The webhook will upsert and preserve our values.
+      const isTest = Boolean(metadata?.kh_test);
+      void supabaseServer
+        .from('cal_bookings')
+        .upsert(
+          {
+            cal_uid: result.booking.uid,
+            therapist_id,
+            patient_id: metadata?.kh_patient_id || null,
+            booking_kind: kind,
+            source: 'native',
+            is_test: isTest,
+            start_time: result.booking.startTime,
+            end_time: result.booking.endTime || null,
+            organizer_username: therapist.cal_username,
+            event_type_id: eventType.eventTypeId,
+            metadata: {
+              kh_therapist_id: therapist_id,
+              kh_booking_kind: kind,
+              kh_source: 'native',
+              kh_test: isTest,
+              kh_patient_id: metadata?.kh_patient_id,
+              kh_gclid: metadata?.kh_gclid,
+              kh_utm_source: metadata?.kh_utm_source,
+              kh_utm_medium: metadata?.kh_utm_medium,
+              kh_utm_campaign: metadata?.kh_utm_campaign,
+            },
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'cal_uid' }
+        )
+        .then(({ error }) => {
+          if (error) {
+            console.error('[api.cal.book] Failed to pre-insert cal_booking:', error);
+          }
+        });
     } else {
       void ServerAnalytics.trackEventFromRequest(req, {
         type: 'native_booking_failed',
