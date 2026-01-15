@@ -168,6 +168,47 @@ function parseTimeString(timeStr: string): { hours: number; minutes: number } {
 }
 
 /**
+ * Create a Date object for a specific time in a specific timezone
+ * This correctly handles DST and timezone offsets
+ */
+function createDateInTimezone(
+  year: number,
+  month: number, // 0-indexed
+  day: number,
+  hours: number,
+  minutes: number,
+  timeZone: string
+): Date {
+  // Create a UTC date at midnight of the target day
+  const utcDate = new Date(Date.UTC(year, month, day, 12, 0, 0)); // noon UTC to avoid DST edge cases
+  
+  // Format this UTC date in the target timezone to find the offset
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  
+  const parts = formatter.formatToParts(utcDate);
+  const getPart = (type: string) => parts.find(p => p.type === type)?.value || '0';
+  
+  // Get the timezone's representation of our UTC noon
+  const tzHour = parseInt(getPart('hour'), 10);
+  
+  // Calculate offset: if UTC 12:00 shows as 13:00 in Berlin, offset is +1 hour
+  // So Berlin is UTC+1, meaning we subtract 1 hour from local to get UTC
+  const offsetHours = tzHour - 12;
+  
+  // Create the target time in UTC by subtracting the timezone offset
+  // If we want 18:00 Berlin and Berlin is UTC+1, we need 17:00 UTC
+  return new Date(Date.UTC(year, month, day, hours - offsetHours, minutes, 0));
+}
+
+/**
  * Generate available time slots from availability patterns
  */
 function generateSlots(
@@ -196,12 +237,14 @@ function generateSlots(
       const startParsed = parseTimeString(avail.startTime);
       const endParsed = parseTimeString(avail.endTime);
       
-      // Get start/end times for this day
-      const dayStart = new Date(current);
-      dayStart.setHours(startParsed.hours, startParsed.minutes, 0, 0);
+      // Get start/end times for this day IN THE THERAPIST'S TIMEZONE
+      // This is critical: availability times are stored in therapist's local time
+      const year = current.getFullYear();
+      const month = current.getMonth();
+      const day = current.getDate();
       
-      const dayEnd = new Date(current);
-      dayEnd.setHours(endParsed.hours, endParsed.minutes, 0, 0);
+      const dayStart = createDateInTimezone(year, month, day, startParsed.hours, startParsed.minutes, timeZone);
+      const dayEnd = createDateInTimezone(year, month, day, endParsed.hours, endParsed.minutes, timeZone);
       
       // Generate slots at slotInterval spacing
       let slotStart = new Date(dayStart);
