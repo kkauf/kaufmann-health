@@ -60,8 +60,12 @@ async function sendCalBookingEmails(params: {
   startTime: string | null;
   bookingKind: string | null;
   isTest: boolean;
+  // EARTH-273: Enhanced email fields
+  videoUrl?: string | null;
+  locationType?: 'video' | 'in_person';
+  locationAddress?: string | null;
 }): Promise<void> {
-  const { calUid, therapistId, patientId, attendeeEmail, attendeeName, startTime, bookingKind, isTest } = params;
+  const { calUid, therapistId, patientId, attendeeEmail, attendeeName, startTime, bookingKind, isTest, videoUrl, locationType, locationAddress } = params;
   
   // Check if emails already sent (idempotency)
   const { data: booking } = await supabaseServer
@@ -131,11 +135,18 @@ async function sendCalBookingEmails(params: {
   if (!clientAlreadySent && clientRecipient) {
     const content = renderCalBookingClientConfirmation({
       patientName,
+      patientEmail,
       therapistName,
+      therapistEmail,
       dateIso,
       timeLabel,
       isIntro,
       sessionPrice: therapist.typical_rate || null,
+      // EARTH-273: Enhanced email fields
+      bookingUid: calUid,
+      videoUrl,
+      locationType: locationType || 'video',
+      locationAddress,
     });
     
     const sent = await sendEmail({
@@ -545,6 +556,16 @@ export async function POST(req: Request) {
     const patientIdFromMeta = 'kh_patient_id' in khMeta && typeof khMeta.kh_patient_id === 'string' 
       ? khMeta.kh_patient_id 
       : null;
+    
+    // EARTH-273: Extract video URL from metadata
+    const videoCallUrl = 'videoCallUrl' in khMeta && typeof khMeta.videoCallUrl === 'string'
+      ? khMeta.videoCallUrl
+      : null;
+    
+    // EARTH-273: Extract location type from payload.location
+    const locationStr = typeof payload.location === 'string' ? payload.location : '';
+    const isInPerson = locationStr.includes('inPerson') || locationStr.includes('attendeeAddress');
+    const locationType: 'video' | 'in_person' = isInPerson ? 'in_person' : 'video';
 
     // Look up therapist by cal_username
     const organizerUsername = organizer?.username || null;
@@ -648,6 +669,17 @@ export async function POST(req: Request) {
         }
       }
 
+      // EARTH-273: Fetch therapist's practice address for in-person emails
+      let locationAddress: string | null = null;
+      if (locationType === 'in_person' && therapistId) {
+        const { data: therapistData } = await supabaseServer
+          .from('therapists')
+          .select('metadata')
+          .eq('id', therapistId)
+          .maybeSingle();
+        locationAddress = therapistData?.metadata?.profile?.practice_address || null;
+      }
+
       void sendCalBookingEmails({
         calUid: uid,
         therapistId,
@@ -657,6 +689,10 @@ export async function POST(req: Request) {
         startTime: startTime || null,
         bookingKind,
         isTest,
+        // EARTH-273: Enhanced email fields
+        videoUrl: videoCallUrl,
+        locationType,
+        locationAddress,
       }).catch((err: unknown) => {
         void logError('api.public.cal.webhook', err, { stage: 'send_emails', cal_uid: uid });
       });
