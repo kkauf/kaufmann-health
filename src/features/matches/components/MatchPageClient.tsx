@@ -725,14 +725,6 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
                   }
                 }}
                 onBookSession={() => {
-                  console.log('[DEBUG] onBookSession called', { 
-                    therapistData_cal: { 
-                      cal_username: therapistData.cal_username, 
-                      cal_enabled: therapistData.cal_enabled, 
-                      cal_bookings_live: therapistData.cal_bookings_live 
-                    },
-                    isCalBookingEnabled_result: isCalBookingEnabled(therapistData)
-                  });
                   if (isCalBookingEnabled(therapistData)) {
                     setDetailModalViewMode('cal-booking');
                     setDetailModalCalKind('full_session');

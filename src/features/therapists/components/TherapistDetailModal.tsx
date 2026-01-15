@@ -441,6 +441,7 @@ export function TherapistDetailModal({
   useEffect(() => {
     if (viewMode !== 'cal-booking' || previewMode || !onOpenContactModal) return;
     if (calState.slotsLoading) return; // Still loading
+    if (!calState.hasAttemptedFetch) return; // Haven't tried to fetch yet
     
     // Check if we should auto-fallback to messaging
     const shouldFallback = calState.slotsUnavailable || 
@@ -472,7 +473,8 @@ export function TherapistDetailModal({
     viewMode, 
     calState.slotsLoading, 
     calState.slotsUnavailable, 
-    calState.slotsError, 
+    calState.slotsError,
+    calState.hasAttemptedFetch,
     calSortedDays.length,
     previewMode,
     onOpenContactModal,

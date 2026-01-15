@@ -50,6 +50,7 @@ export interface CalBookingState {
   slotsError: string | null;
   slotsUnavailable: boolean; // EARTH-262: Cal.com is unreachable
   selectedSlot: CalNormalizedSlot | null;
+  hasAttemptedFetch: boolean; // True after first fetch attempt completes
 
   // Session state
   session: SessionData | null;
@@ -125,6 +126,7 @@ export function useCalBooking({
   const [slotsLoading, setSlotsLoading] = useState(enabled);
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<CalNormalizedSlot | null>(null);
+  const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
 
   // Session state
   const [session, setSession] = useState<SessionData | null>(null);
@@ -233,6 +235,8 @@ export function useCalBooking({
         if (!res.ok) {
           setSlotsUnavailable(true);
           setSlotsError('Terminkalender vorübergehend nicht verfügbar');
+          setSlotsLoading(false);
+          setHasAttemptedFetch(true);
           return;
         }
 
@@ -244,6 +248,8 @@ export function useCalBooking({
           console.error('[useCalBooking] Malformed JSON response');
           setSlotsUnavailable(true);
           setSlotsError('Terminkalender vorübergehend nicht verfügbar');
+          setSlotsLoading(false);
+          setHasAttemptedFetch(true);
           return;
         }
 
@@ -252,6 +258,8 @@ export function useCalBooking({
           console.error('[useCalBooking] Invalid response structure');
           setSlotsUnavailable(true);
           setSlotsError('Terminkalender vorübergehend nicht verfügbar');
+          setSlotsLoading(false);
+          setHasAttemptedFetch(true);
           return;
         }
 
@@ -261,6 +269,8 @@ export function useCalBooking({
           // EARTH-262: Treat backend errors as unavailable for graceful degradation
           setSlotsUnavailable(true);
           setSlotsError('Terminkalender vorübergehend nicht verfügbar');
+          setSlotsLoading(false);
+          setHasAttemptedFetch(true);
           return;
         }
 
@@ -270,6 +280,8 @@ export function useCalBooking({
           console.error('[useCalBooking] Slots is not an array:', typeof rawSlots);
           setSlotsUnavailable(true);
           setSlotsError('Terminkalender vorübergehend nicht verfügbar');
+          setSlotsLoading(false);
+          setHasAttemptedFetch(true);
           return;
         }
 
@@ -297,6 +309,8 @@ export function useCalBooking({
 
         setSlots(fetchedSlots);
         setSlotsUnavailable(false);
+        setSlotsLoading(false);
+        setHasAttemptedFetch(true);
 
         // Track fetch
         try {
@@ -328,6 +342,8 @@ export function useCalBooking({
 
           setSlotsUnavailable(true);
           setSlotsError('Terminkalender vorübergehend nicht verfügbar');
+          setSlotsLoading(false);
+          setHasAttemptedFetch(true);
 
           // Track ERROR-level event for monitoring
           try {
@@ -348,8 +364,7 @@ export function useCalBooking({
             );
           } catch { }
         }
-      } finally {
-        setSlotsLoading(false);
+        // For aborts (not real failures), don't set hasAttemptedFetch - let the new fetch set it
       }
     }
 
@@ -604,6 +619,7 @@ export function useCalBooking({
     slotsError,
     slotsUnavailable,
     selectedSlot,
+    hasAttemptedFetch,
     session,
     sessionLoading,
     step,
