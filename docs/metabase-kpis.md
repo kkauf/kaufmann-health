@@ -2,7 +2,7 @@
 
 > **Purpose**: Single-value cards for the main KPI dashboard  
 > **Data source**: Supabase (PostgreSQL)  
-> **Variable**: All queries use `{{days_back}}` (default: 28)
+> **Filter**: All queries use `{{created_at}}` field filter (date range picker)
 
 ---
 
@@ -39,7 +39,7 @@ Examples: `NS-Sessions`, `D-Leads`, `S-CalLive`, `U-CAC`
 ```sql
 -- NORTH STAR: Total paid therapy sessions booked in this period.
 -- This is the ultimate success metric - actual revenue-generating sessions.
--- Target: Growing week-over-week. Compare to previous periods using days_back filter.
+-- Target: Growing week-over-week. Compare to previous periods using date filter.
 -- Low values indicate funnel issues upstream (leads, intros, or conversions).
 SELECT COUNT(*) AS sessions
 FROM cal_bookings cb
@@ -48,7 +48,7 @@ WHERE cb.booking_kind = 'full_session'
   AND LOWER(cb.status) != 'cancelled'
   AND (cb.is_test = false OR cb.is_test IS NULL)
   AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-  AND cb.created_at >= NOW() - INTERVAL '{{days_back}}' DAY;
+  AND {{created_at}};
 ```
 
 ---
@@ -67,7 +67,7 @@ FROM people
 WHERE type = 'patient'
   AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
   AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-  AND created_at >= NOW() - INTERVAL '{{days_back}}' DAY;
+  AND {{created_at}};
 ```
 
 ### D-CPL
@@ -80,7 +80,7 @@ WHERE type = 'patient'
 WITH spend AS (
   SELECT COALESCE(SUM(spend_eur), 0) AS total
   FROM ad_spend_log
-  WHERE date >= (CURRENT_DATE - INTERVAL '{{days_back}}' DAY)::date
+  WHERE {{date}}
 ),
 leads AS (
   SELECT COUNT(*) AS cnt
@@ -88,7 +88,7 @@ leads AS (
   WHERE type = 'patient'
     AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
     AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
+    AND {{created_at}}
 )
 SELECT ROUND(spend.total / NULLIF(leads.cnt, 0), 2) AS cpl_eur
 FROM spend, leads;
@@ -109,13 +109,13 @@ SELECT ROUND(
    WHERE type = 'patient'
      AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
      AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-     AND created_at > NOW() - INTERVAL '{{days_back}}' DAY)::numeric /
+     AND {{created_at}})::numeric /
   NULLIF(
     (SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text))
      FROM events
      WHERE type IN ('form_completed', 'questionnaire_completed')
        AND properties->>'is_test' IS DISTINCT FROM 'true'
-       AND created_at > NOW() - INTERVAL '{{days_back}}' DAY),
+       AND {{created_at}}),
     0
   ),
   1
@@ -136,14 +136,14 @@ SELECT COALESCE(ROUND(
    FROM events
    WHERE type IN ('form_completed', 'questionnaire_completed')
      AND properties->>'is_test' IS DISTINCT FROM 'true'
-     AND created_at > NOW() - INTERVAL '{{days_back}}' DAY)::numeric /
+     AND {{created_at}})::numeric /
   NULLIF(
     (SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text))
      FROM events
      WHERE type = 'screen_viewed' 
        AND properties->>'step' = '1'
        AND properties->>'is_test' IS DISTINCT FROM 'true'
-       AND created_at > NOW() - INTERVAL '{{days_back}}' DAY),
+       AND {{created_at}}),
     0
   ),
   1
@@ -163,7 +163,7 @@ WITH leads AS (
   WHERE type = 'patient'
     AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
     AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
+    AND {{created_at}}
 ),
 intros AS (
   SELECT COUNT(DISTINCT cb.patient_id) AS cnt
@@ -173,7 +173,7 @@ intros AS (
     AND LOWER(cb.status) != 'cancelled'
     AND (cb.is_test = false OR cb.is_test IS NULL)
     AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-    AND cb.created_at > NOW() - INTERVAL '{{days_back}}' DAY
+    AND {{created_at}}
 )
 SELECT ROUND(100.0 * intros.cnt / NULLIF(leads.cnt, 0), 1) AS lead_to_intro_pct
 FROM leads, intros;
@@ -194,7 +194,7 @@ WITH intros AS (
     AND LOWER(cb.status) != 'cancelled'
     AND (cb.is_test = false OR cb.is_test IS NULL)
     AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-    AND cb.created_at > NOW() - INTERVAL '{{days_back}}' DAY
+    AND {{created_at}}
 ),
 sessions AS (
   SELECT COUNT(DISTINCT cb.patient_id) AS cnt
@@ -204,7 +204,7 @@ sessions AS (
     AND LOWER(cb.status) != 'cancelled'
     AND (cb.is_test = false OR cb.is_test IS NULL)
     AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-    AND cb.created_at > NOW() - INTERVAL '{{days_back}}' DAY
+    AND {{created_at}}
 )
 SELECT ROUND(100.0 * sessions.cnt / NULLIF(intros.cnt, 0), 1) AS intro_to_session_pct
 FROM intros, sessions;
@@ -285,13 +285,13 @@ WITH total AS (
   SELECT COUNT(*) AS cnt
   FROM events
   WHERE type IN ('cal_slots_viewed', 'cal_auto_fallback_to_messaging', 'cal_slots_fetch_failed')
-    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
+    AND {{created_at}}
 ),
 fallbacks AS (
   SELECT COUNT(*) AS cnt
   FROM events
   WHERE type IN ('cal_auto_fallback_to_messaging', 'cal_slots_fetch_failed')
-    AND created_at > NOW() - INTERVAL '{{days_back}}' DAY
+    AND {{created_at}}
 )
 SELECT ROUND(100.0 * fallbacks.cnt / NULLIF(total.cnt, 0), 1) AS fallback_pct
 FROM fallbacks, total;
@@ -311,7 +311,7 @@ FROM fallbacks, total;
 WITH spend AS (
   SELECT COALESCE(SUM(spend_eur), 0) AS total
   FROM ad_spend_log
-  WHERE date >= (CURRENT_DATE - INTERVAL '{{days_back}}' DAY)::date
+  WHERE {{date}}
 ),
 customers AS (
   SELECT COUNT(DISTINCT cb.patient_id) AS cnt
@@ -321,7 +321,7 @@ customers AS (
     AND LOWER(cb.status) != 'cancelled'
     AND (cb.is_test = false OR cb.is_test IS NULL)
     AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-    AND cb.created_at > NOW() - INTERVAL '{{days_back}}' DAY
+    AND {{created_at}}
 )
 SELECT ROUND(spend.total / NULLIF(customers.cnt, 0), 2) AS cac_eur
 FROM spend, customers;
@@ -374,7 +374,7 @@ FROM customer_sessions;
 ## Metabase Setup
 
 1. **Create one card per query** above
-2. **Dashboard filter**: `{{days_back}}` with default 28, options: 7, 14, 28, 90
+2. **Dashboard filter**: Add `created_at` field filter, configure as "Date" type with date range picker
 3. **Layout**:
    - Row 1: North Star (large card)
    - Row 2: Demand metrics (6 cards)

@@ -712,6 +712,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             <div className="bg-white rounded-xl border-2 border-emerald-400/60 shadow-xl p-4 sm:p-6">
               <TherapistProfile
                 therapist={therapistData}
+                centered={true}
                 requiresIntroBeforeBooking={t.requires_intro_before_booking}
                 hasCompletedIntro={t.has_completed_intro}
                 onBookIntro={() => {
@@ -724,6 +725,14 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
                   }
                 }}
                 onBookSession={() => {
+                  console.log('[DEBUG] onBookSession called', { 
+                    therapistData_cal: { 
+                      cal_username: therapistData.cal_username, 
+                      cal_enabled: therapistData.cal_enabled, 
+                      cal_bookings_live: therapistData.cal_bookings_live 
+                    },
+                    isCalBookingEnabled_result: isCalBookingEnabled(therapistData)
+                  });
                   if (isCalBookingEnabled(therapistData)) {
                     setDetailModalViewMode('cal-booking');
                     setDetailModalCalKind('full_session');
@@ -735,16 +744,16 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
               />
             </div>
 
-            {/* "Not a fit?" CTA - triggers feedback modal */}
+            {/* "Not a fit?" CTA - prominent escape hatch for accessibility */}
             {therapistsWithQuality.length > 1 && (
-              <div className="text-center pt-2">
-                <button
-                  type="button"
+              <div className="text-center pt-4">
+                <Button
+                  variant="outline"
                   onClick={() => setShowRejectionModal(true)}
-                  className="text-gray-500 hover:text-gray-700 text-sm underline underline-offset-2 transition-colors"
+                  className="text-base px-6 py-3 h-auto border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 font-medium"
                 >
                   Passt nicht? Weitere {therapistsWithQuality.length - 1} Optionen ansehen
-                </button>
+                </Button>
               </div>
             )}
           </div>

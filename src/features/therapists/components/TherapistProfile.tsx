@@ -30,6 +30,8 @@ export interface TherapistProfileProps {
   className?: string;
   /** Compact mode hides some sections for smaller displays */
   compact?: boolean;
+  /** Centered layout for hero/single-focus views (default: left-aligned for modal/scroll) */
+  centered?: boolean;
 }
 
 function getInitials(firstName: string, lastName: string) {
@@ -53,6 +55,7 @@ export function TherapistProfile({
   onBookSession,
   className,
   compact = false,
+  centered = false,
 }: TherapistProfileProps) {
   const [imageError, setImageError] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
@@ -104,7 +107,10 @@ export function TherapistProfile({
   return (
     <div className={cn('space-y-6', className)}>
       {/* Hero section with avatar and basic info */}
-      <div className="flex flex-col items-center gap-4 border-b pb-6 sm:flex-row sm:items-start">
+      <div className={cn(
+        'flex flex-col items-center gap-4 border-b pb-6',
+        !centered && 'sm:flex-row sm:items-start'
+      )}>
         <Avatar
           className={cn(
             'h-32 w-32 shrink-0 ring-4 ring-gray-100 transition-all duration-200',
@@ -134,13 +140,19 @@ export function TherapistProfile({
           )}
         </Avatar>
 
-        <div className="min-w-0 flex-1 text-center sm:text-left">
+        <div className={cn(
+          'min-w-0 flex-1 text-center',
+          !centered && 'sm:text-left'
+        )}>
           <h2 className="break-words text-2xl font-bold text-gray-900">
             {therapist.first_name} {therapist.last_name}
           </h2>
 
           {/* Trust + Availability badges */}
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+          <div className={cn(
+            'mt-3 flex flex-wrap items-center justify-center gap-2',
+            !centered && 'sm:justify-start'
+          )}>
             <Badge variant="outline" className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700">
               <ShieldCheck className="h-3.5 w-3.5" />
               Verifiziert
@@ -156,7 +168,10 @@ export function TherapistProfile({
           </div>
 
           {/* Location & Session Format pills */}
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+          <div className={cn(
+            'mt-3 flex flex-wrap items-center justify-center gap-2',
+            !centered && 'sm:justify-start'
+          )}>
             {(() => {
               const addressIsMoreSpecific = practiceAddress && 
                 practiceAddress.toLowerCase() !== therapist.city.toLowerCase() &&
@@ -186,7 +201,10 @@ export function TherapistProfile({
 
           {/* Languages & Experience pills */}
           {(languages.length > 0 || yearsExperience) && (
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+            <div className={cn(
+              'mt-3 flex flex-wrap items-center justify-center gap-2',
+              !centered && 'sm:justify-start'
+            )}>
               {languages.length > 0 && (
                 <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
                   <MessageCircle className="h-3.5 w-3.5" />
@@ -204,7 +222,10 @@ export function TherapistProfile({
 
           {/* Modalities (Hero) */}
           {therapist.modalities && therapist.modalities.length > 0 && (
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+            <div className={cn(
+              'mt-3 flex flex-wrap items-center justify-center gap-2',
+              !centered && 'sm:justify-start'
+            )}>
               {therapist.modalities.map((modality, idx) => {
                 const modalityInfo = getModalityInfo(modality);
                 const scrollToDescription = () => {

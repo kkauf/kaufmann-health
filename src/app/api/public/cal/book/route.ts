@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     // Look up therapist's Cal.com username
     const { data: therapist, error: therapistErr } = await supabaseServer
       .from('therapists')
-      .select('id, name, cal_username, cal_enabled, email')
+      .select('id, first_name, last_name, cal_username, cal_enabled, email')
       .eq('id', therapist_id)
       .single();
 

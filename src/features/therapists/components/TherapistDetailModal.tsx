@@ -1,5 +1,9 @@
 'use client';
 
+// TODO: Refactor to use TherapistProfile component for profile view (viewMode === 'profile')
+// to share code with inline hero view and prevent UI drift. Keep booking/Cal.com views here.
+// See: TherapistProfile.tsx for the shared profile rendering component.
+
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import type React from 'react';
 import {
