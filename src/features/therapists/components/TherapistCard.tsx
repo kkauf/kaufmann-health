@@ -216,7 +216,7 @@ export function TherapistCard({
         </div>
       )}
       <CardContent className="flex flex-1 flex-col p-5 sm:p-7">
-        {/* Clickable summary area (opens profile) */}
+        {/* Clickable summary area (opens profile) - flex-1 ensures buttons stay at bottom */}
         <div
           role="button"
           tabIndex={0}
@@ -228,7 +228,7 @@ export function TherapistCard({
               openDetails();
             }
           }}
-          className="outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer rounded-lg hover:bg-slate-50/50 transition-colors"
+          className="flex-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer rounded-lg hover:bg-slate-50/50 transition-colors"
         >
           {/* Header with avatar and name */}
           <div className="mb-5 flex items-start gap-5">
@@ -470,8 +470,23 @@ export function TherapistCard({
                 )}
               </Button>
 
-              {/* Only show direct booking button if therapist doesn't require intro OR patient has completed intro */}
-              {!hideDirectBooking && (
+              {/* Direct booking button - disabled with explanation if intro required */}
+              {hideDirectBooking ? (
+                <div className="group/tooltip relative">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full text-sm opacity-50 cursor-not-allowed"
+                    disabled
+                  >
+                    <Calendar className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="truncate">Direkt buchen</span>
+                  </Button>
+                  <p className="mt-1.5 text-xs text-gray-500 text-center">
+                    Erst nach Kennenlernen buchbar
+                  </p>
+                </div>
+              ) : (
                 <Button
                   size="lg"
                   variant="outline"

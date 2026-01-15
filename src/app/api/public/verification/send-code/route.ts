@@ -406,10 +406,10 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        // SMS-only mode: treat as server error
+        // SMS-only mode: return specific user-friendly error message
         return NextResponse.json(
-          { error: 'SMS konnte nicht gesendet werden. Bitte versuche es erneut.' },
-          { status: 500 }
+          { error: result.error || 'SMS konnte nicht gesendet werden. Bitte versuche es erneut.' },
+          { status: 400 }
         );
       }
 
