@@ -129,8 +129,14 @@ export async function POST(req: Request) {
         refErr = null;
       }
     }
-    if (refErr || !ref) {
-      await logError('api.public.matches.contact', refErr || 'not_found', { stage: 'load_ref', uuid });
+    if (refErr) {
+      // Actual DB error - log as error
+      await logError('api.public.matches.contact', refErr, { stage: 'load_ref', uuid });
+      return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
+    }
+    if (!ref) {
+      // Expected 404 (old link, typo, bot) - track for analytics but not as error
+      void track({ type: 'matches_not_found', source: 'api.public.matches.contact', props: { uuid } });
       return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
     }
     type RefRow = { id: string; created_at?: string | null; patient_id: string };

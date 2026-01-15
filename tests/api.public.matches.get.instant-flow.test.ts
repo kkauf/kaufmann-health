@@ -4,7 +4,10 @@ vi.mock('@/lib/server-analytics', () => ({
   ServerAnalytics: { trackEventFromRequest: vi.fn() },
 }));
 
-vi.mock('@/lib/logger', () => ({ logError: vi.fn() }));
+vi.mock('@/lib/logger', () => ({ 
+  logError: vi.fn(),
+  track: vi.fn(),
+}));
 // Provide a default stub; we'll overwrite the export per test before importing the route
 vi.mock('@/lib/supabase-server', () => ({ supabaseServer: { from: () => ({}) } }));
 
@@ -53,6 +56,13 @@ function makeSupabaseMock({
                   } as any;
                 }
                 return { single: async () => ({ data: null, error: { message: 'not found' } }) } as any;
+              },
+            } as any;
+          },
+          update(data: any) {
+            return {
+              eq(col: string, val: any) {
+                return Promise.resolve({ data: null, error: null });
               },
             } as any;
           },

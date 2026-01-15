@@ -5,7 +5,10 @@ vi.mock('@/lib/server-analytics', () => ({
   ServerAnalytics: { trackEventFromRequest: vi.fn() },
 }));
 
-vi.mock('@/lib/logger', () => ({ logError: vi.fn() }));
+vi.mock('@/lib/logger', () => ({ 
+  logError: vi.fn(),
+  track: vi.fn(),
+}));
 
 // Simple chainable supabase mock
 function makeSupabaseMock(ref: any, list: any[], therapists: any[], patient: any) {
@@ -39,6 +42,13 @@ function makeSupabaseMock(ref: any, list: any[], therapists: any[], patient: any
                   } as any;
                 }
                 return { single: async () => ({ data: null, error: { message: 'not found' } }) } as any;
+              },
+            } as any;
+          },
+          update(data: any) {
+            return {
+              eq(col: string, val: any) {
+                return Promise.resolve({ data: null, error: null });
               },
             } as any;
           },

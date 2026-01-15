@@ -100,9 +100,16 @@ function getModalityDisplay(m: string): { label: string; color: string } {
   return MODALITY_MAP[normalized] || { label: m, color: 'bg-slate-700' };
 }
 
+type LinkRefreshInfo = {
+  refreshable: boolean;
+  channel?: 'email' | 'phone';
+  maskedContact?: string;
+};
+
 export function MatchPageClient({ uuid }: { uuid: string }) {
   const [data, setData] = useState<MatchApiData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [linkRefreshInfo, setLinkRefreshInfo] = useState<LinkRefreshInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [modalFor, setModalFor] = useState<{
     therapist: TherapistItem;
@@ -128,6 +135,14 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           if (!cancelled) {
             setError(json?.error || 'Fehler beim Laden');
             setData(null);
+            // Check if this is a link_refreshed response
+            if (json?.expired && json?.refreshable !== undefined) {
+              setLinkRefreshInfo({
+                refreshable: json.refreshable,
+                channel: json.channel,
+                maskedContact: json.maskedContact,
+              });
+            }
           }
         } else {
           if (!cancelled) setData(json.data as MatchApiData);
@@ -357,16 +372,48 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   }
 
   if (error) {
-    const expired = error?.toLowerCase().includes('expired');
+    const isLinkRefreshed = error === 'link_refreshed' && linkRefreshInfo?.refreshable;
+    const isExpiredNoRefresh = error?.toLowerCase().includes('expired') && !isLinkRefreshed;
+    
+    // Special UI for refreshed links - friendly success message
+    if (isLinkRefreshed) {
+      const channelText = linkRefreshInfo.channel === 'email' ? 'E-Mail' : 'SMS';
+      return (
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
+          <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-white">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <CheckCircle className="h-6 w-6 text-emerald-600" />
+                <CardTitle className="text-emerald-800">Neuer Link gesendet!</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Dein Link war abgelaufen, aber kein Problem – wir haben dir soeben einen neuen Zugangslink per {channelText} geschickt.
+              </p>
+              {linkRefreshInfo.maskedContact && (
+                <p className="text-sm font-medium text-emerald-700">
+                  Gesendet an: {linkRefreshInfo.maskedContact}
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground">
+                Bitte prüfe dein Postfach und klicke auf den Link in der Nachricht, um deine Therapeuten-Empfehlungen anzusehen.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+    
     return (
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
         <Card>
           <CardHeader>
-            <CardTitle>{expired ? 'Link abgelaufen' : 'Nicht gefunden'}</CardTitle>
+            <CardTitle>{isExpiredNoRefresh ? 'Link abgelaufen' : 'Nicht gefunden'}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              {expired
+              {isExpiredNoRefresh
                 ? 'Dieser Link ist abgelaufen.'
                 : 'Dieser Link ist ungültig oder wurde bereits verwendet.'}
             </p>

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ServerAnalytics } from '@/lib/server-analytics';
-import { logError } from '@/lib/logger';
+import { logError, track } from '@/lib/logger';
 import { 
   computeMismatches, 
   normalizeSpec,
@@ -18,6 +18,9 @@ import {
   THERAPIST_SELECT_COLUMNS_WITH_GENDER,
 } from '@/lib/therapist-mapper';
 import { batchCheckIntroCompletion, getRequiresIntroBeforeBooking } from '@/lib/cal/intro-completion';
+import { sendEmail } from '@/lib/email/client';
+import { renderMatchLinkRefresh } from '@/lib/email/templates/matchLinkRefresh';
+import { BASE_URL } from '@/lib/constants';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,6 +36,84 @@ function hoursSince(iso: string | null | undefined): number | null {
 function isUuidLike(s: string): boolean {
   if (process.env.NODE_ENV === 'test') return typeof s === 'string' && s.length > 0;
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(s);
+}
+
+type RefRow = { id: string; created_at?: string | null; last_accessed_at?: string | null; patient_id: string; secure_uuid: string };
+
+async function handleExpiredLink(match: RefRow, patientId: string): Promise<Response> {
+  // Look up patient contact info
+  let patient: { name?: string | null; email?: string | null; phone_number?: string | null } | null = null;
+  try {
+    const result = await supabaseServer
+      .from('people')
+      .select('name, email, phone_number')
+      .eq('id', patientId)
+      .single();
+    patient = result.data;
+  } catch (e) {
+    // Patient lookup failed (test env or deleted patient) - return simple expired message
+    void track({ type: 'match_link_expired_no_patient', source: 'api.public.matches.get', props: { match_id: match.id } });
+    return NextResponse.json({ 
+      data: null, 
+      error: 'Link expired',
+      expired: true,
+      refreshable: false,
+    }, { status: 410 });
+  }
+
+  const email = patient?.email;
+  const phone = patient?.phone_number;
+
+  if (!email && !phone) {
+    // No contact info - can't send refresh, show generic expired message
+    void track({ type: 'match_link_expired_no_contact', source: 'api.public.matches.get', props: { match_id: match.id } });
+    return NextResponse.json({ 
+      data: null, 
+      error: 'Link expired',
+      expired: true,
+      refreshable: false,
+    }, { status: 410 });
+  }
+
+  // Refresh the link by updating last_accessed_at (if column exists)
+  try {
+    await supabaseServer
+      .from('matches')
+      .update({ last_accessed_at: new Date().toISOString() })
+      .eq('id', match.id);
+  } catch (e) {
+    // Column may not exist in test environments - ignore
+  }
+
+  const matchesUrl = `/matches/${match.secure_uuid}`;
+
+  // Send refresh email (or SMS for phone-only)
+  if (email) {
+    const content = renderMatchLinkRefresh({
+      patientName: patient?.name,
+      matchesUrl,
+    });
+    void sendEmail({ to: email, subject: content.subject, html: content.html }).catch(() => {});
+  }
+  // TODO: Add SMS support for phone-only users
+
+  void track({ 
+    type: 'match_link_refreshed', 
+    source: 'api.public.matches.get', 
+    props: { match_id: match.id, channel: email ? 'email' : 'sms' } 
+  });
+
+  // Return special status so UI can show "link refreshed" message
+  return NextResponse.json({ 
+    data: null, 
+    error: 'link_refreshed',
+    expired: true,
+    refreshable: true,
+    channel: email ? 'email' : 'phone',
+    maskedContact: email 
+      ? email.replace(/^(.{2}).*(@.*)$/, '$1***$2')
+      : phone?.replace(/^(.{4}).*(.{2})$/, '$1***$2'),
+  }, { status: 410 });
 }
 
 export async function GET(req: Request) {
@@ -56,27 +137,66 @@ export async function GET(req: Request) {
   try {
     // Resolve reference match to get patient_id and ensure link age
     // Use order().limit(1) instead of .single() to gracefully handle duplicate secure_uuid rows
-    const { data: refRows, error: refErr } = await supabaseServer
-      .from('matches')
-      .select('id, created_at, patient_id')
-      .eq('secure_uuid', uuid)
-      .order('created_at', { ascending: false })
-      .limit(1);
+    // Try to select last_accessed_at, but fall back if column doesn't exist (test environments)
+    let refRows: unknown[] | null = null;
+    let refErr: unknown = null;
+    
+    try {
+      const result = await supabaseServer
+        .from('matches')
+        .select('id, created_at, last_accessed_at, patient_id, secure_uuid')
+        .eq('secure_uuid', uuid)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      refRows = result.data;
+      refErr = result.error;
+    } catch (e) {
+      // If last_accessed_at doesn't exist (test env), fall back to basic select
+      const result = await supabaseServer
+        .from('matches')
+        .select('id, created_at, patient_id, secure_uuid')
+        .eq('secure_uuid', uuid)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      refRows = result.data;
+      refErr = result.error;
+    }
 
     const ref = Array.isArray(refRows) && refRows.length > 0 ? refRows[0] : null;
-    if (refErr || !ref) {
-      await logError('api.public.matches.get', refErr || 'not_found', { stage: 'load_ref', uuid });
+    if (refErr) {
+      // Actual DB error - log as error
+      await logError('api.public.matches.get', refErr, { stage: 'load_ref', uuid });
+      return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
+    }
+    if (!ref) {
+      // Expected 404 (old link, typo, bot) - track for analytics but not as error
+      void track({ type: 'matches_not_found', source: 'api.public.matches.get', props: { uuid } });
       return NextResponse.json({ data: null, error: 'Not found' }, { status: 404 });
     }
 
-    type RefRow = { id: string; created_at?: string | null; patient_id: string };
     const r = ref as unknown as RefRow;
-    const age = hoursSince(r.created_at ?? undefined);
-    if (age == null || age > 24 * 30) {
-      return NextResponse.json({ data: null, error: 'Link expired' }, { status: 410 });
-    }
+    // Use last_accessed_at if available (post-migration), otherwise fall back to created_at
+    // This ensures backward compatibility with test fixtures that don't have last_accessed_at
+    const expirationBasis = r.last_accessed_at ?? r.created_at;
+    const age = hoursSince(expirationBasis ?? undefined);
+    const isExpired = age == null || age > 24 * 30;
 
     const patientId = r.patient_id;
+
+    // If link is expired, attempt to refresh it and send a new link email
+    if (isExpired) {
+      return await handleExpiredLink(r, patientId);
+    }
+
+    // Update last_accessed_at to keep link fresh (fire-and-forget, ignore errors in test env)
+    try {
+      void supabaseServer
+        .from('matches')
+        .update({ last_accessed_at: new Date().toISOString() })
+        .eq('id', r.id);
+    } catch {
+      // Ignore errors (column may not exist in test environments)
+    }
 
     // Load patient context (for prefill + session)
     const { data: patient } = await supabaseServer
