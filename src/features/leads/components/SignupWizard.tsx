@@ -393,6 +393,39 @@ export default function SignupWizard() {
         void trackEvent('online_mode_prefill', { mode: 'online' });
       }
 
+      // Pre-fill modality based on search keyword (from Google Ads ?kw= param)
+      // If user searched for a specific modality, pre-select it to reduce friction
+      const kwParam = searchParams?.get('kw');
+      if (kwParam) {
+        const kw = decodeURIComponent(kwParam).toLowerCase();
+        // Map keyword → modality (must match METHODS array in NewScreen5_Modality)
+        const keywordModalityMap: Record<string, string> = {
+          'narm': 'NARM (Entwicklungstrauma)',
+          'hakomi': 'Hakomi',
+          'somatic experiencing': 'Somatic Experiencing',
+          'somatic': 'Somatic Experiencing',
+          'core energetics': 'Core Energetics',
+          'core-energetics': 'Core Energetics',
+        };
+        
+        let matchedModality: string | null = null;
+        for (const [keyword, modality] of Object.entries(keywordModalityMap)) {
+          if (kw.includes(keyword)) {
+            matchedModality = modality;
+            break;
+          }
+        }
+        
+        if (matchedModality) {
+          setData((prev) => ({
+            ...prev,
+            modality_matters: true,
+            methods: [matchedModality!],
+          }));
+          void trackEvent('keyword_modality_prefill', { keyword: kw, modality: matchedModality });
+        }
+      }
+
       // Prefer fs from URL if present, otherwise fall back to localStorage
       const fsFromUrl = searchParams?.get('fs');
       const fsid = fsFromUrl || localStorage.getItem(LS_KEYS.sessionId);
