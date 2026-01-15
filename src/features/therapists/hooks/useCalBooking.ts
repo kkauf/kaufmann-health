@@ -515,9 +515,13 @@ export function useCalBooking({
     setStep('booking');
 
     const attrs = getAttribution();
-    const email = verification.state.contactMethod === 'email'
-      ? verification.state.email
-      : undefined;
+    // Use session data for verified users, otherwise use verification state
+    const bookingName = session?.name || verification.state.name;
+    const bookingEmail = session?.verified && session?.contact_method === 'email'
+      ? session.contact_value
+      : verification.state.contactMethod === 'email'
+        ? verification.state.email
+        : undefined;
 
     try {
       const res = await fetch('/api/public/cal/book', {
@@ -527,8 +531,8 @@ export function useCalBooking({
           therapist_id: therapistId,
           kind: bookingKind,
           slot_utc: selectedSlot.time_utc,
-          name: verification.state.name,
-          email: email || `${Date.now()}@placeholder.kh`, // Fallback for phone-only
+          name: bookingName,
+          email: bookingEmail || `${Date.now()}@placeholder.kh`, // Fallback for phone-only
           location_type: locationType,
           metadata: {
             kh_patient_id: session?.patient_id,
@@ -592,7 +596,7 @@ export function useCalBooking({
           retrySlotsFetch(); // Refresh slots
         } else if (json.data.fallbackToRedirect) {
           // Fallback to Cal.com redirect
-          redirectToCal(verification.state.name, email, session?.patient_id);
+          redirectToCal(bookingName, bookingEmail, session?.patient_id);
         } else {
           setBookingError(json.data.message || 'Buchung fehlgeschlagen');
           setStep('confirm');

@@ -34,6 +34,14 @@ const MARKDOWN_PATHS = [
 
 // No prefix needed - Metabase is KH-only
 
+// Batching config to prevent overwhelming Metabase/Railway
+const BATCH_SIZE = 5;          // Cards per batch
+const BATCH_DELAY_MS = 3000;   // 3 seconds between batches
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 interface ParsedQuery {
   name: string;
   section: string;
@@ -307,19 +315,30 @@ async function main() {
         let updated = 0;
         let skipped = 0;
         
-        for (const query of queries) {
-          const existing = cardsByName.get(query.name);
+        // Process in batches to prevent overwhelming Metabase/Railway
+        for (let i = 0; i < queries.length; i += BATCH_SIZE) {
+          const batch = queries.slice(i, i + BATCH_SIZE);
           
-          if (existing) {
-            // Update existing card
-            console.log(`🔄 Updating: ${query.name}`);
-            await updateCard(existing.id, query, databaseId);
-            updated++;
-          } else {
-            // Create new card
-            console.log(`✨ Creating: ${query.name}`);
-            await createCard(query, databaseId);
-            created++;
+          // Process batch
+          for (const query of batch) {
+            const existing = cardsByName.get(query.name);
+            
+            if (existing) {
+              console.log(`🔄 Updating: ${query.name}`);
+              await updateCard(existing.id, query, databaseId);
+              updated++;
+            } else {
+              console.log(`✨ Creating: ${query.name}`);
+              await createCard(query, databaseId);
+              created++;
+            }
+          }
+          
+          // Delay between batches (except after last batch)
+          if (i + BATCH_SIZE < queries.length) {
+            const remaining = queries.length - i - BATCH_SIZE;
+            console.log(`   ⏳ Waiting ${BATCH_DELAY_MS/1000}s before next batch (${remaining} remaining)...`);
+            await sleep(BATCH_DELAY_MS);
           }
         }
         
