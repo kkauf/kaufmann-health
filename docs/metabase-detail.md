@@ -2,7 +2,7 @@
 
 > **Purpose**: Trends, funnels, attribution, and operational drill-downs  
 > **Data source**: Supabase (PostgreSQL)  
-> **Filter**: All queries use `{{start_date}}` and `{{end_date}}` parameters (date range picker)
+> **Filter**: All queries use `{{start_date}}` parameter (single date picker, ends at NOW())
 
 For KPI single-value cards, see `metabase-kpis.md`.
 
@@ -24,7 +24,7 @@ FROM people
 WHERE type = 'patient'
   AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
   AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-  AND created_at >= {{start_date}} AND created_at < {{end_date}}
+  AND created_at >= {{start_date}} AND created_at <= NOW()
 GROUP BY campaign_source
 ORDER BY leads DESC;
 ```
@@ -43,7 +43,7 @@ WITH questionnaire_leads AS (
     AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
     AND metadata->>'form_session_id' IS NOT NULL
     AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-    AND created_at >= {{start_date}} AND created_at < {{end_date}}
+    AND created_at >= {{start_date}} AND created_at <= NOW()
 ),
 questionnaire_intros AS (
   SELECT COUNT(DISTINCT cb.patient_id) AS cnt
@@ -54,13 +54,13 @@ questionnaire_intros AS (
     AND LOWER(cb.status) != 'cancelled'
     AND (cb.is_test = false OR cb.is_test IS NULL)
     AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-    AND created_at >= {{start_date}} AND created_at < {{end_date}}
+    AND created_at >= {{start_date}} AND created_at <= NOW()
 ),
 directory_contacts AS (
   SELECT COUNT(DISTINCT m.patient_id) AS cnt
   FROM matches m
   WHERE m.metadata->>'patient_initiated' = 'true'
-    AND created_at >= {{start_date}} AND created_at < {{end_date}}
+    AND created_at >= {{start_date}} AND created_at <= NOW()
 ),
 directory_intros AS (
   SELECT COUNT(DISTINCT cb.patient_id) AS cnt
@@ -71,7 +71,7 @@ directory_intros AS (
     AND LOWER(cb.status) != 'cancelled'
     AND (cb.is_test = false OR cb.is_test IS NULL)
     AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-    AND created_at >= {{start_date}} AND created_at < {{end_date}}
+    AND created_at >= {{start_date}} AND created_at <= NOW()
 )
 SELECT 'Questionnaire' AS path, questionnaire_leads.cnt AS entries, 
        questionnaire_intros.cnt AS intros,
@@ -97,21 +97,21 @@ WITH funnel AS (
   FROM events
   WHERE type = 'screen_viewed' AND properties->>'step' = '1'
     AND properties->>'is_test' IS DISTINCT FROM 'true'
-    AND created_at >= {{start_date}} AND created_at < {{end_date}}
+    AND created_at >= {{start_date}} AND created_at <= NOW()
   UNION ALL
   SELECT '2. Submitted' AS stage, 2 AS ord,
     COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS users
   FROM events
   WHERE type IN ('form_completed', 'questionnaire_completed')
     AND properties->>'is_test' IS DISTINCT FROM 'true'
-    AND created_at >= {{start_date}} AND created_at < {{end_date}}
+    AND created_at >= {{start_date}} AND created_at <= NOW()
   UNION ALL
   SELECT '3. Verified' AS stage, 3 AS ord, COUNT(*) AS users
   FROM people
   WHERE type = 'patient'
     AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
     AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-    AND created_at >= {{start_date}} AND created_at < {{end_date}}
+    AND created_at >= {{start_date}} AND created_at <= NOW()
 )
 SELECT stage, users,
   ROUND(100.0 * users / NULLIF(FIRST_VALUE(users) OVER (ORDER BY ord), 0), 1) AS pct_of_start
@@ -126,19 +126,19 @@ FROM funnel ORDER BY ord;
 -- Low profile clicks = poor therapist cards. Low contact submit = friction in modal.
 -- Use to identify UX bottlenecks in self-service therapist discovery.
 SELECT 'directory_viewed' AS stage, 1 AS ord, COUNT(*) AS count
-FROM events WHERE type = 'directory_viewed' AND created_at >= {{start_date}} AND created_at < {{end_date}}
+FROM events WHERE type = 'directory_viewed' AND created_at >= {{start_date}} AND created_at <= NOW()
 UNION ALL
 SELECT 'profile_modal_opened', 2, COUNT(*)
-FROM events WHERE type = 'profile_modal_opened' AND created_at >= {{start_date}} AND created_at < {{end_date}}
+FROM events WHERE type = 'profile_modal_opened' AND created_at >= {{start_date}} AND created_at <= NOW()
 UNION ALL
 SELECT 'contact_cta_clicked', 3, COUNT(*)
-FROM events WHERE type = 'contact_cta_clicked' AND created_at >= {{start_date}} AND created_at < {{end_date}}
+FROM events WHERE type = 'contact_cta_clicked' AND created_at >= {{start_date}} AND created_at <= NOW()
 UNION ALL
 SELECT 'contact_modal_opened', 4, COUNT(*)
-FROM events WHERE type = 'contact_modal_opened' AND created_at >= {{start_date}} AND created_at < {{end_date}}
+FROM events WHERE type = 'contact_modal_opened' AND created_at >= {{start_date}} AND created_at <= NOW()
 UNION ALL
 SELECT 'contact_submitted', 5, COUNT(*)
-FROM events WHERE type = 'contact_submitted' AND created_at >= {{start_date}} AND created_at < {{end_date}}
+FROM events WHERE type = 'contact_submitted' AND created_at >= {{start_date}} AND created_at <= NOW()
 ORDER BY ord;
 ```
 
@@ -155,7 +155,7 @@ WITH step_data AS (
   FROM events
   WHERE type = 'screen_viewed'
     AND properties->>'is_test' IS DISTINCT FROM 'true'
-    AND created_at >= {{start_date}} AND created_at < {{end_date}}
+    AND created_at >= {{start_date}} AND created_at <= NOW()
   GROUP BY properties->>'step'
 ),
 labeled AS (
@@ -198,7 +198,7 @@ WHERE cb.booking_kind = 'full_session'
   AND LOWER(cb.status) != 'cancelled'
   AND (cb.is_test = false OR cb.is_test IS NULL)
   AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-  AND created_at >= {{start_date}} AND created_at < {{end_date}}
+  AND created_at >= {{start_date}} AND created_at <= NOW()
 GROUP BY date_trunc('week', cb.created_at)
 ORDER BY week_start DESC;
 ```
@@ -215,7 +215,7 @@ FROM people
 WHERE type = 'patient'
   AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
   AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-  AND created_at >= {{start_date}} AND created_at < {{end_date}}
+  AND created_at >= {{start_date}} AND created_at <= NOW()
   AND DATE(created_at) < CURRENT_DATE
 GROUP BY DATE(created_at) ORDER BY day DESC;
 ```
@@ -234,7 +234,7 @@ WHERE cb.booking_kind = 'full_session'
   AND LOWER(cb.status) != 'cancelled'
   AND (cb.is_test = false OR cb.is_test IS NULL)
   AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-  AND created_at >= {{start_date}} AND created_at < {{end_date}}
+  AND created_at >= {{start_date}} AND created_at <= NOW()
   AND DATE(cb.created_at) < CURRENT_DATE
 GROUP BY DATE(cb.created_at) ORDER BY day DESC;
 ```
@@ -252,7 +252,7 @@ WITH starts AS (
   FROM events
   WHERE type = 'screen_viewed' AND properties->>'step' = '1'
     AND properties->>'is_test' IS DISTINCT FROM 'true'
-    AND created_at >= {{start_date}} AND created_at < {{end_date}}
+    AND created_at >= {{start_date}} AND created_at <= NOW()
     AND DATE(created_at) < CURRENT_DATE
   GROUP BY DATE(created_at)
 ),
@@ -262,7 +262,7 @@ completions AS (
   FROM events
   WHERE type IN ('form_completed', 'questionnaire_completed')
     AND properties->>'is_test' IS DISTINCT FROM 'true'
-    AND created_at >= {{start_date}} AND created_at < {{end_date}}
+    AND created_at >= {{start_date}} AND created_at <= NOW()
     AND DATE(created_at) < CURRENT_DATE
   GROUP BY DATE(created_at)
 )
@@ -282,7 +282,7 @@ ORDER BY s.day DESC;
 SELECT DATE(created_at) AS day, COUNT(*) AS messages
 FROM events
 WHERE type = 'contact_message_sent'
-  AND created_at >= {{start_date}} AND created_at < {{end_date}}
+  AND created_at >= {{start_date}} AND created_at <= NOW()
   AND DATE(created_at) < CURRENT_DATE
 GROUP BY DATE(created_at) ORDER BY day DESC;
 ```
@@ -300,7 +300,7 @@ WITH completions AS (
   FROM events
   WHERE type IN ('form_completed', 'questionnaire_completed')
     AND properties->>'is_test' IS DISTINCT FROM 'true'
-    AND created_at >= {{start_date}} AND created_at < {{end_date}}
+    AND created_at >= {{start_date}} AND created_at <= NOW()
     AND DATE(created_at) < CURRENT_DATE
   GROUP BY DATE(created_at)
 ),
@@ -310,7 +310,7 @@ verified AS (
   WHERE type = 'patient'
     AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
     AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-    AND created_at >= {{start_date}} AND created_at < {{end_date}}
+    AND created_at >= {{start_date}} AND created_at <= NOW()
     AND DATE(created_at) < CURRENT_DATE
   GROUP BY DATE(created_at)
 )
@@ -339,7 +339,7 @@ SELECT
 FROM people
 WHERE type = 'patient' AND status != 'anonymous'
   AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-  AND created_at >= {{start_date}} AND created_at < {{end_date}}
+  AND created_at >= {{start_date}} AND created_at <= NOW()
 GROUP BY campaign_source, campaign_variant
 ORDER BY leads DESC;
 ```
@@ -358,7 +358,7 @@ FROM people
 WHERE type = 'patient'
   AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
   AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
-  AND created_at >= {{start_date}} AND created_at < {{end_date}}
+  AND created_at >= {{start_date}} AND created_at <= NOW()
   AND DATE(created_at) < CURRENT_DATE
 GROUP BY DATE(created_at), campaign_source
 ORDER BY day DESC, leads DESC;
@@ -378,7 +378,7 @@ ORDER BY day DESC, leads DESC;
 SELECT date, campaign_name, spend_eur, clicks, impressions, conversions,
   ROUND(spend_eur / NULLIF(clicks, 0), 2) AS cpc_eur
 FROM ad_spend_log
-WHERE date >= {{start_date}} AND date < {{end_date}}
+WHERE date >= {{start_date}} AND date <= NOW()
 ORDER BY date DESC, spend_eur DESC;
 ```
 
@@ -391,7 +391,7 @@ ORDER BY date DESC, spend_eur DESC;
 -- Best viewed as line chart overlaid with leads trend.
 SELECT date, SUM(spend_eur) AS spend_eur, SUM(clicks) AS clicks, SUM(impressions) AS impressions
 FROM ad_spend_log
-WHERE date >= {{start_date}} AND date < {{end_date}}
+WHERE date >= {{start_date}} AND date <= NOW()
 GROUP BY date ORDER BY date DESC;
 ```
 
@@ -418,7 +418,7 @@ SELECT
   ) AS gap_description,
   COUNT(*) AS requests, COUNT(DISTINCT patient_id) AS patients
 FROM supply_gaps
-WHERE created_at >= {{start_date}} AND created_at < {{end_date}}
+WHERE created_at >= {{start_date}} AND created_at <= NOW()
 GROUP BY gender, modality, schwerpunkt, city, session_type
 ORDER BY requests DESC LIMIT 25;
 ```
@@ -434,7 +434,7 @@ SELECT COALESCE(schwerpunkt, '(Kein Schwerpunkt)') AS schwerpunkt,
   COUNT(*) AS requests, COUNT(DISTINCT patient_id) AS patients,
   STRING_AGG(DISTINCT city, ', ' ORDER BY city) AS cities
 FROM supply_gaps
-WHERE created_at >= {{start_date}} AND created_at < {{end_date}} AND schwerpunkt IS NOT NULL
+WHERE created_at >= {{start_date}} AND created_at <= NOW() AND schwerpunkt IS NOT NULL
 GROUP BY schwerpunkt ORDER BY requests DESC LIMIT 15;
 ```
 
@@ -448,7 +448,7 @@ GROUP BY schwerpunkt ORDER BY requests DESC LIMIT 15;
 SELECT city, COUNT(*) AS requests, COUNT(DISTINCT patient_id) AS patients,
   STRING_AGG(DISTINCT COALESCE(schwerpunkt, modality), ', ') AS topics_needed
 FROM supply_gaps
-WHERE created_at >= {{start_date}} AND created_at < {{end_date}}
+WHERE created_at >= {{start_date}} AND created_at <= NOW()
   AND session_type = 'in_person' AND city IS NOT NULL
 GROUP BY city ORDER BY requests DESC LIMIT 15;
 ```
@@ -465,7 +465,7 @@ SELECT COALESCE(modality, '(Keine Modalität)') AS modality,
   COUNT(*) FILTER (WHERE session_type = 'in_person') AS in_person,
   COUNT(*) FILTER (WHERE session_type = 'online') AS online
 FROM supply_gaps
-WHERE created_at >= {{start_date}} AND created_at < {{end_date}} AND modality IS NOT NULL
+WHERE created_at >= {{start_date}} AND created_at <= NOW() AND modality IS NOT NULL
 GROUP BY modality ORDER BY requests DESC LIMIT 15;
 ```
 
@@ -483,7 +483,7 @@ SELECT DATE(created_at) AS day,
   COUNT(*) FILTER (WHERE modality IS NOT NULL) AS modality_gaps,
   COUNT(*) FILTER (WHERE gender IS NOT NULL) AS gender_gaps
 FROM supply_gaps
-WHERE created_at >= {{start_date}} AND created_at < {{end_date}}
+WHERE created_at >= {{start_date}} AND created_at <= NOW()
   AND DATE(created_at) < CURRENT_DATE
 GROUP BY DATE(created_at) ORDER BY day DESC;
 ```
@@ -509,7 +509,7 @@ SELECT DATE(created_at) AS day, COUNT(*) AS matches,
   COUNT(*) FILTER (WHERE metadata->>'match_quality' = 'partial') AS partial,
   COUNT(*) FILTER (WHERE therapist_id IS NULL) AS empty
 FROM matches
-WHERE created_at >= {{start_date}} AND created_at < {{end_date}}
+WHERE created_at >= {{start_date}} AND created_at <= NOW()
   AND DATE(created_at) < CURRENT_DATE
   AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
 GROUP BY DATE(created_at) ORDER BY day DESC;
@@ -531,7 +531,7 @@ SELECT COUNT(*) AS total,
   ROUND(100.0 * COUNT(*) FILTER (WHERE metadata->>'match_quality' = 'exact') / NULLIF(COUNT(*), 0), 1) AS exact_pct,
   ROUND(100.0 * COUNT(*) FILTER (WHERE metadata->>'match_quality' = 'partial') / NULLIF(COUNT(*), 0), 1) AS partial_pct
 FROM matches
-WHERE created_at >= {{start_date}} AND created_at < {{end_date}}
+WHERE created_at >= {{start_date}} AND created_at <= NOW()
   AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true');
 ```
 
@@ -546,7 +546,7 @@ SELECT m.created_at, p.name, p.email, p.metadata->>'city' AS city,
   COALESCE(m.metadata->>'match_quality', 'none') AS quality,
   CASE WHEN m.therapist_id IS NULL THEN 'Kein Therapeut' ELSE 'Hat Therapeut' END AS status
 FROM matches m JOIN people p ON p.id = m.patient_id
-WHERE created_at >= {{start_date}} AND created_at < {{end_date}}
+WHERE created_at >= {{start_date}} AND created_at <= NOW()
   AND (m.metadata->>'is_test' IS NULL OR m.metadata->>'is_test' != 'true')
   AND m.metadata->>'match_quality' IS DISTINCT FROM 'exact'
   AND m.metadata->>'match_quality' IS DISTINCT FROM 'partial'
@@ -571,13 +571,13 @@ WITH emails_sent AS (
   FROM events
   WHERE type = 'email_sent'
     AND properties->>'template' = 'feedbackRequest'
-    AND created_at >= {{start_date}} AND created_at < {{end_date}}
+    AND created_at >= {{start_date}} AND created_at <= NOW()
 ),
 responses AS (
   SELECT COUNT(DISTINCT properties->>'patient_id') AS cnt
   FROM events
   WHERE type = 'feedback_response'
-    AND created_at >= {{start_date}} AND created_at < {{end_date}}
+    AND created_at >= {{start_date}} AND created_at <= NOW()
 )
 SELECT 
   emails_sent.cnt AS emails_sent,
@@ -607,7 +607,7 @@ SELECT
   ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 1) AS pct
 FROM events
 WHERE type = 'feedback_response'
-  AND created_at >= {{start_date}} AND created_at < {{end_date}}
+  AND created_at >= {{start_date}} AND created_at <= NOW()
 GROUP BY properties->>'reason'
 ORDER BY count DESC;
 ```
@@ -623,13 +623,13 @@ WITH responses AS (
   SELECT COUNT(DISTINCT properties->>'patient_id') AS cnt
   FROM events
   WHERE type = 'feedback_response'
-    AND created_at >= {{start_date}} AND created_at < {{end_date}}
+    AND created_at >= {{start_date}} AND created_at <= NOW()
 ),
 interviews AS (
   SELECT COUNT(DISTINCT properties->>'patient_id') AS cnt
   FROM events
   WHERE type = 'interview_interest'
-    AND created_at >= {{start_date}} AND created_at < {{end_date}}
+    AND created_at >= {{start_date}} AND created_at <= NOW()
 )
 SELECT
   responses.cnt AS feedback_responses,
@@ -662,7 +662,7 @@ SELECT
 FROM events e
 LEFT JOIN people p ON p.id::text = e.properties->>'patient_id'
 WHERE e.type = 'feedback_details'
-  AND created_at >= {{start_date}} AND created_at < {{end_date}}
+  AND created_at >= {{start_date}} AND created_at <= NOW()
 ORDER BY e.created_at DESC
 LIMIT 50;
 ```
@@ -684,7 +684,7 @@ SELECT
   COUNT(*) FILTER (WHERE properties->>'reason' = 'other') AS other
 FROM events
 WHERE type = 'feedback_response'
-  AND created_at >= {{start_date}} AND created_at < {{end_date}}
+  AND created_at >= {{start_date}} AND created_at <= NOW()
 GROUP BY date_trunc('week', created_at)
 ORDER BY week DESC;
 ```

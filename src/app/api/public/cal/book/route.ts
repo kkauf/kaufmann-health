@@ -58,6 +58,19 @@ export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
   const ua = req.headers.get('user-agent') || '';
 
+  // Detect test mode from kh_test cookie (set on staging/preview)
+  let isTestCookie = false;
+  try {
+    const cookieHeader = req.headers.get('cookie');
+    if (cookieHeader) {
+      const parts = cookieHeader.split(';');
+      for (const p of parts) {
+        const [k, v] = p.trim().split('=');
+        if (k === 'kh_test' && v === '1') { isTestCookie = true; break; }
+      }
+    }
+  } catch { /* ignore */ }
+
   try {
     // Parse and validate request body
     const parsed = await parseRequestBody(req, CalNativeBookingInput);
@@ -172,7 +185,8 @@ export async function POST(req: NextRequest) {
       // CRITICAL: Pre-insert cal_booking record with our metadata
       // Cal.com's webhook doesn't include our metadata, so we must insert first.
       // The webhook will upsert and preserve our values.
-      const isTest = Boolean(metadata?.kh_test);
+      // Use cookie-based test detection (kh_test=1) OR metadata flag
+      const isTest = isTestCookie || Boolean(metadata?.kh_test);
       void supabaseServer
         .from('cal_bookings')
         .upsert(
