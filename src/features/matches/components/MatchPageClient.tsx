@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ContactModal } from '@/features/therapists/components/ContactModal';
 import { TherapistDetailModal } from '@/features/therapists/components/TherapistDetailModal';
 import { TherapistCard } from '@/features/therapists/components/TherapistCard';
+import { TherapistProfile } from '@/features/therapists/components/TherapistProfile';
 import { HeroMatchCard } from './HeroMatchCard';
 import { MatchRejectionModal, type RejectionReason } from './MatchRejectionModal';
 import { CheckCircle, Sparkles } from 'lucide-react';
@@ -64,6 +65,8 @@ type TherapistItem = {
   requires_intro_before_booking?: boolean;
   // Match-specific: whether this patient has completed an intro with this therapist
   has_completed_intro?: boolean;
+  // Pricing
+  typical_rate?: number;
 };
 
 type MatchApiData = {
@@ -127,7 +130,6 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   type MatchViewState = 'hero' | 'feedback' | 'directory';
   const [matchViewState, setMatchViewState] = useState<MatchViewState>('hero');
   const [showRejectionModal, setShowRejectionModal] = useState(false);
-  const [heroModalAutoOpened, setHeroModalAutoOpened] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -669,58 +671,85 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         <span>Qualifikationen geprüft · Online-Kennenlernen kostenlos</span>
       </p>
 
-      {/* STATE A: Hero View - Auto-open detail modal for best match */}
-      {matchViewState === 'hero' && topMatch && !detailModalTherapist && !heroModalAutoOpened && (() => {
-        // Auto-open the detail modal for the hero therapist
-        setTimeout(() => {
-          setDetailModalViewMode('profile');
-          setDetailModalTherapist(topMatch);
-          setHeroModalAutoOpened(true);
-        }, 100);
-        return null;
-      })()}
+      {/* STATE A: Hero View - Inline full profile */}
+      {matchViewState === 'hero' && topMatch && (() => {
+        const t = topMatch;
+        const therapistData: TherapistData = {
+          id: t.id,
+          first_name: t.first_name,
+          last_name: t.last_name,
+          photo_url: t.photo_url || undefined,
+          city: t.city || '',
+          accepting_new: t.accepting_new ?? true,
+          modalities: t.modalities || [],
+          schwerpunkte: t.schwerpunkte || [],
+          session_preferences: t.session_preferences || [],
+          approach_text: t.approach_text || '',
+          languages: t.languages,
+          availability: Array.isArray(t.availability) ? t.availability as { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] : [],
+          metadata: t.metadata,
+          cal_username: t.cal_username,
+          cal_enabled: t.cal_enabled,
+          cal_bookings_live: t.cal_bookings_live,
+          typical_rate: t.typical_rate,
+        };
 
-      {/* Hero view hint - shown when modal is open in hero state */}
-      {matchViewState === 'hero' && topMatch && (
-        <div className="space-y-6">
-          {/* Premium header banner */}
-          <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 px-6 py-4 rounded-xl text-center shadow-lg">
-            <span className="text-lg font-semibold text-white tracking-wide flex items-center justify-center gap-2">
-              <Sparkles className="h-5 w-5" />
-              Dein bester Match: {topMatch.first_name} {topMatch.last_name}
-            </span>
-            <p className="text-emerald-100 text-sm mt-1">Sieh dir das vollständige Profil an und buche dein kostenloses Kennenlernen</p>
-          </div>
+        return (
+          <div className="space-y-6">
+            {/* Context banner - why this therapist */}
+            <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 px-6 py-4 rounded-xl shadow-lg">
+              <div className="flex items-center justify-center gap-2 text-lg font-semibold text-white tracking-wide">
+                <Sparkles className="h-5 w-5" />
+                Dein bester Match
+              </div>
+              <p className="text-emerald-100 text-sm mt-1 text-center">
+                Basierend auf deinen Kriterien haben wir {t.first_name} als beste Empfehlung für dich ausgewählt.
+                {therapistsWithQuality.length > 1 && ` Wir haben ${therapistsWithQuality.length} passende Therapeut:innen gefunden.`}
+              </p>
+            </div>
 
-          {/* CTA to re-open profile if closed */}
-          {!detailModalTherapist && (
-            <div className="text-center">
-              <Button
-                onClick={() => {
-                  setDetailModalViewMode('profile');
-                  setDetailModalTherapist(topMatch);
+            {/* Inline full profile */}
+            <div className="bg-white rounded-xl border-2 border-emerald-400/60 shadow-xl p-4 sm:p-6">
+              <TherapistProfile
+                therapist={therapistData}
+                requiresIntroBeforeBooking={t.requires_intro_before_booking}
+                hasCompletedIntro={t.has_completed_intro}
+                onBookIntro={() => {
+                  if (isCalBookingEnabled(therapistData)) {
+                    setDetailModalViewMode('cal-booking');
+                    setDetailModalCalKind('intro');
+                    setDetailModalTherapist(t);
+                  } else {
+                    handleOpen(t, 'consultation');
+                  }
                 }}
-                className="bg-emerald-600 hover:bg-emerald-700"
-              >
-                Profil von {topMatch.first_name} ansehen
-              </Button>
+                onBookSession={() => {
+                  if (isCalBookingEnabled(therapistData)) {
+                    setDetailModalViewMode('cal-booking');
+                    setDetailModalCalKind('full_session');
+                    setDetailModalTherapist(t);
+                  } else {
+                    handleOpen(t, 'booking');
+                  }
+                }}
+              />
             </div>
-          )}
 
-          {/* "Not a fit?" CTA - triggers feedback modal */}
-          {therapistsWithQuality.length > 1 && (
-            <div className="text-center pt-4">
-              <button
-                type="button"
-                onClick={() => setShowRejectionModal(true)}
-                className="text-gray-500 hover:text-gray-700 text-sm underline underline-offset-2 transition-colors"
-              >
-                Kein passender Match? Zeige weitere Optionen
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+            {/* "Not a fit?" CTA - triggers feedback modal */}
+            {therapistsWithQuality.length > 1 && (
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRejectionModal(true)}
+                  className="text-gray-500 hover:text-gray-700 text-sm underline underline-offset-2 transition-colors"
+                >
+                  Passt nicht? Weitere {therapistsWithQuality.length - 1} Optionen ansehen
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* STATE C: Directory View - All matches */}
       {matchViewState === 'directory' && (

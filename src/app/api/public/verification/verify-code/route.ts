@@ -377,8 +377,8 @@ export async function POST(req: NextRequest) {
       // Normalize code (remove whitespace)
       const normalizedCode = code.trim();
       
-      // Staging/test bypass: accept 000000 in non-production
-      const isTestBypass = process.env.NODE_ENV !== 'production' && normalizedCode === '000000';
+      // Staging/test bypass: accept 000000 in non-production (use VERCEL_ENV, not NODE_ENV - Vercel sets NODE_ENV=production on all deployments)
+      const isTestBypass = process.env.VERCEL_ENV !== 'production' && normalizedCode === '000000';
       
       // Find person by email
       type PersonRow = { id: string; name?: string | null; email?: string | null; phone_number?: string | null; campaign_variant?: string | null; metadata?: Record<string, unknown> | null };
