@@ -74,6 +74,12 @@ export interface CalSlot {
   time_utc: string; // ISO datetime
 }
 
+export interface CalSlotsResult {
+  slots: CalSlot[];
+  eventTypeId: number;
+  eventLength: number; // minutes
+}
+
 /**
  * Get Cal.com user ID by username
  */
@@ -87,9 +93,9 @@ async function getCalUserId(username: string): Promise<number | null> {
 }
 
 /**
- * Get event type by user and slug
+ * Get event type by user ID and slug (internal use)
  */
-async function getEventType(userId: number, slug: string): Promise<CalEventType | null> {
+async function getEventTypeByUserId(userId: number, slug: string): Promise<CalEventType | null> {
   const db = getPool();
   const result = await db.query<CalEventType>(
     `SELECT id, slug, title, length, "slotInterval", "userId", "scheduleId" 
@@ -99,6 +105,27 @@ async function getEventType(userId: number, slug: string): Promise<CalEventType 
     [userId, slug]
   );
   return result.rows[0] || null;
+}
+
+/**
+ * Get event type by Cal.com username and event slug (EARTH-271)
+ * Used for native booking to get eventTypeId
+ */
+export async function getEventType(
+  calUsername: string,
+  eventSlug: string
+): Promise<{ eventTypeId: number; length: number; title: string } | null> {
+  const userId = await getCalUserId(calUsername);
+  if (!userId) return null;
+  
+  const eventType = await getEventTypeByUserId(userId, eventSlug);
+  if (!eventType) return null;
+  
+  return {
+    eventTypeId: eventType.id,
+    length: eventType.length,
+    title: eventType.title,
+  };
 }
 
 /**
@@ -307,7 +334,7 @@ export async function fetchCalSlotsFromDb(
     }
     
     // Get event type
-    const eventType = await getEventType(userId, eventSlug);
+    const eventType = await getEventTypeByUserId(userId, eventSlug);
     if (!eventType) {
       console.warn(`[cal/slots-db] Event type not found: ${eventSlug} for user ${calUsername}`);
       return null;

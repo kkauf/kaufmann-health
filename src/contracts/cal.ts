@@ -190,3 +190,107 @@ export const CalEventTypeInfo = z.object({
 });
 
 export type CalEventTypeInfo = z.infer<typeof CalEventTypeInfo>;
+
+// ============================================================================
+// CAL.COM NATIVE BOOKING API (EARTH-271)
+// POST /api/book/event - Cal.com internal booking endpoint
+// ============================================================================
+
+export const CalBookingLocation = z.object({
+  value: z.string(), // e.g., "integrations:daily", "inPerson"
+  optionValue: z.string().optional().default(''),
+});
+
+export type CalBookingLocation = z.infer<typeof CalBookingLocation>;
+
+export const CalBookingResponses = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  location: CalBookingLocation,
+  guests: z.array(z.string().email()).optional(),
+});
+
+export type CalBookingResponses = z.infer<typeof CalBookingResponses>;
+
+export const CalBookingRequest = z.object({
+  eventTypeId: z.number().int().positive(),
+  start: z.string().datetime(), // ISO 8601 UTC
+  responses: CalBookingResponses,
+  timeZone: z.string().default('Europe/Berlin'),
+  language: z.string().default('de'),
+  metadata: CalKhMetadata.optional(),
+});
+
+export type CalBookingRequest = z.infer<typeof CalBookingRequest>;
+
+export const CalBookingSuccessResponse = z.object({
+  id: z.number().int(),
+  uid: z.string().min(1), // Booking reference, e.g., "2wnPXcx33FJ2bck9ntWuA5"
+  eventTypeId: z.number().int(),
+  userId: z.number().int(),
+  startTime: z.string(),
+  endTime: z.string(),
+  status: z.string(),
+  metadata: z
+    .object({
+      videoCallUrl: z.string().url().optional(),
+    })
+    .passthrough()
+    .optional(),
+  responses: CalBookingResponses.optional(),
+});
+
+export type CalBookingSuccessResponse = z.infer<typeof CalBookingSuccessResponse>;
+
+export const CalBookingErrorResponse = z.object({
+  message: z.string(),
+  data: z
+    .object({
+      traceId: z.string().optional(),
+    })
+    .optional(),
+});
+
+export type CalBookingErrorResponse = z.infer<typeof CalBookingErrorResponse>;
+
+// Known error codes from Cal.com /api/book/event
+export const CalBookingErrorCode = z.enum([
+  'no_available_users_found_error',
+  'booking_time_out_of_bounds_error',
+  'invalid_type', // Validation error prefix
+]);
+
+export type CalBookingErrorCode = z.infer<typeof CalBookingErrorCode>;
+
+// Result type for createCalBooking()
+export const CalBookingResultSuccess = z.object({
+  success: z.literal(true),
+  booking: CalBookingSuccessResponse,
+});
+
+export const CalBookingResultSlotMismatch = z.object({
+  success: z.literal(false),
+  error: z.literal('slot_mismatch'),
+  canRetry: z.literal(true),
+  message: z.string().optional(),
+});
+
+export const CalBookingResultApiError = z.object({
+  success: z.literal(false),
+  error: z.literal('api_error'),
+  fallbackToRedirect: z.literal(true),
+  message: z.string().optional(),
+});
+
+export const CalBookingResult = z.discriminatedUnion('success', [
+  CalBookingResultSuccess,
+  z.object({
+    success: z.literal(false),
+    error: z.enum(['slot_mismatch', 'api_error']),
+    canRetry: z.boolean().optional(),
+    fallbackToRedirect: z.boolean().optional(),
+    message: z.string().optional(),
+  }),
+]);
+
+export type CalBookingResult = z.infer<typeof CalBookingResult>;
