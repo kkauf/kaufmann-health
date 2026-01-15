@@ -58,14 +58,15 @@ describe('Cal.com booking flow', () => {
       expect(() => assertCalFieldsPresent(therapist, 'test')).not.toThrow();
     });
 
-    it('throws when cal_bookings_live is missing', () => {
+    it('does NOT throw when cal_bookings_live is missing (no longer required)', () => {
+      // cal_bookings_live is now an optional admin override, not a required field
       const therapist = {
         id: 'test-id',
         cal_enabled: true,
         cal_username: 'peter',
-        // cal_bookings_live missing
+        // cal_bookings_live missing - this is OK now
       };
-      expect(() => assertCalFieldsPresent(therapist, 'test')).toThrow('cal_bookings_live');
+      expect(() => assertCalFieldsPresent(therapist, 'test')).not.toThrow();
     });
 
     it('throws when cal_enabled is missing', () => {

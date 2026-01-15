@@ -12,6 +12,7 @@ import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
 import { getModalityInfo } from '@/lib/modalities';
 import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpunkte';
+import { isCalBookingAvailable } from '@/lib/cal/booking-availability';
 
 interface TherapistCardProps {
   therapist: TherapistData;
@@ -281,10 +282,10 @@ export function TherapistCard({
                 </div>
               )}
 
-              {/* EARTH-248: Next intro slot - only show for therapists with cal_bookings_live=true */}
+              {/* EARTH-248: Next intro slot - only show for therapists with available Cal.com slots */}
               {(() => {
-                // Must match isCalBookingEnabled: cal_enabled && cal_username && cal_bookings_live
-                const isCalLive = therapist.cal_enabled && therapist.cal_username && therapist.cal_bookings_live;
+                // Use availability-based check (slots exist + cal_enabled + not admin-disabled)
+                const isCalLive = isCalBookingAvailable(therapist);
                 if (!isCalLive) return null;
                 
                 const nextSlot = formatNextIntroSlot(therapist.next_intro_slot);
@@ -443,9 +444,9 @@ export function TherapistCard({
 
         </div>
 
-        {/* Action buttons - differentiate based on cal_bookings_live */}
+        {/* Action buttons - differentiate based on slot availability */}
         {(() => {
-          const isCalLive = therapist.cal_enabled && therapist.cal_username && therapist.cal_bookings_live;
+          const isCalLive = isCalBookingAvailable(therapist);
           // Hide direct booking button if therapist requires intro and patient hasn't completed one
           const hideDirectBooking = requiresIntroBeforeBooking && !hasCompletedIntro;
           return (

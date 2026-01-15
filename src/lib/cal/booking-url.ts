@@ -110,7 +110,7 @@ export function buildCalBookingUrl(options: CalBookingUrlOptions): string {
  * Use this to catch API response mismatches early.
  */
 export function assertCalFieldsPresent(therapist: Record<string, unknown>, context: string): void {
-  const requiredFields = ['cal_enabled', 'cal_username', 'cal_bookings_live'] as const;
+  const requiredFields = ['cal_enabled', 'cal_username'] as const;
   const missingFields = requiredFields.filter(field => !(field in therapist));
   
   if (missingFields.length > 0) {
@@ -123,15 +123,21 @@ export function assertCalFieldsPresent(therapist: Record<string, unknown>, conte
 
 /**
  * Check if Cal.com booking is available for a therapist.
+ * 
+ * @deprecated Use isCalBookingAvailable from '@/lib/cal/booking-availability' instead.
+ * This legacy function only checks flags, not actual slot availability.
+ * 
  * Requires:
  * - cal_enabled: technical flag (part of onboarding)
  * - cal_username: Cal.com account exists
- * - cal_bookings_live: therapist has activated their slots (critical flag)
+ * - cal_bookings_live: admin override (false = force disable)
  */
 export function isCalBookingEnabled(therapist: {
   cal_enabled?: boolean | null;
   cal_username?: string | null;
   cal_bookings_live?: boolean | null;
 }): boolean {
-  return Boolean(therapist.cal_enabled && therapist.cal_username && therapist.cal_bookings_live);
+  // Legacy check - still works but doesn't check slot availability
+  // For availability-aware check, use isCalBookingAvailable from booking-availability.ts
+  return Boolean(therapist.cal_enabled && therapist.cal_username && therapist.cal_bookings_live !== false);
 }
