@@ -34,10 +34,9 @@ const MARKDOWN_PATHS = [
 
 // No prefix needed - Metabase is KH-only
 
-// Batching config to prevent overwhelming Metabase/Railway
-// Conservative settings after Railway rate limit issues (500 logs/sec)
-const BATCH_SIZE = 3;           // Cards per batch (reduced from 5)
-const BATCH_DELAY_MS = 10000;   // 10 seconds between batches (increased from 3)
+// Batching config - no delays needed for simple date params (not field filters)
+const BATCH_SIZE = 10;          // Cards per batch
+const BATCH_DELAY_MS = 0;       // No delay needed
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
