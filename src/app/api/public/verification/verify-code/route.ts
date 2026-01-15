@@ -373,19 +373,251 @@ export async function POST(req: NextRequest) {
 
       return response;
     } else {
-      // Email token verification handled by /api/public/leads/confirm
-      // This endpoint just validates the token format
-      if (code.length < 32) {
+      // Email verification: verify 6-digit code against stored code in DB
+      // Normalize code (remove whitespace)
+      const normalizedCode = code.trim();
+      
+      // Staging/test bypass: accept 000000 in non-production
+      const isTestBypass = process.env.NODE_ENV !== 'production' && normalizedCode === '000000';
+      
+      // Find person by email
+      type PersonRow = { id: string; name?: string | null; email?: string | null; phone_number?: string | null; campaign_variant?: string | null; metadata?: Record<string, unknown> | null };
+      const { data: person, error: fetchErr } = await supabaseServer
+        .from('people')
+        .select('id,name,email,phone_number,campaign_variant,metadata')
+        .eq('email', contact)
+        .eq('type', 'patient')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle<PersonRow>();
+      
+      if (fetchErr || !person) {
+        void ServerAnalytics.trackEventFromRequest(req, {
+          type: 'verification_code_failed',
+          source: 'api.verification.verify-code',
+          props: { contact_type: 'email', reason: 'person_not_found' },
+        });
         return NextResponse.json(
-          { error: 'Ungültiger Token' },
+          { error: 'Kein Konto mit dieser E-Mail gefunden' },
           { status: 400 }
         );
       }
-
-      return NextResponse.json({
-        data: { verified: true, method: 'email' },
+      
+      const meta = (person.metadata || {}) as Record<string, unknown>;
+      const storedCode = meta['email_code'] as string | undefined;
+      const expiresAt = meta['email_code_expires_at'] as string | undefined;
+      
+      // Verify code matches (or test bypass)
+      if (!isTestBypass) {
+        if (!storedCode || storedCode !== normalizedCode) {
+          void ServerAnalytics.trackEventFromRequest(req, {
+            type: 'verification_code_failed',
+            source: 'api.verification.verify-code',
+            props: { contact_type: 'email', reason: 'code_mismatch' },
+          });
+          return NextResponse.json(
+            { error: 'Falscher Code' },
+            { status: 400 }
+          );
+        }
+        
+        // Check expiry
+        if (expiresAt && new Date(expiresAt) < new Date()) {
+          void ServerAnalytics.trackEventFromRequest(req, {
+            type: 'verification_code_failed',
+            source: 'api.verification.verify-code',
+            props: { contact_type: 'email', reason: 'code_expired' },
+          });
+          return NextResponse.json(
+            { error: 'Code abgelaufen. Bitte fordere einen neuen an.' },
+            { status: 400 }
+          );
+        }
+      }
+      
+      void ServerAnalytics.trackEventFromRequest(req, {
+        type: 'verification_code_verified',
+        source: 'api.verification.verify-code',
+        props: { contact_type: 'email', is_test_bypass: isTestBypass },
+      });
+      
+      // Mark email as verified and clear the code
+      const updatedMeta: Record<string, unknown> = { ...meta, email_verified: true };
+      delete updatedMeta['email_code'];
+      delete updatedMeta['email_code_sent_at'];
+      delete updatedMeta['email_code_expires_at'];
+      
+      // Extract draft_contact reference for processing
+      const draftContact = meta.draft_contact as Record<string, unknown> | undefined;
+      
+      // Merge form session data if available
+      const fsid = typeof meta['form_session_id'] === 'string' ? (meta['form_session_id'] as string) : undefined;
+      if (fsid) {
+        try {
+          const { data: fs } = await supabaseServer
+            .from('form_sessions')
+            .select('data')
+            .eq('id', fsid)
+            .single<{ data: Record<string, unknown> }>();
+          if (fs?.data) {
+            const d = fs.data;
+            const maybeString = (k: string) => (typeof d[k] === 'string' ? (d[k] as string).trim() : undefined);
+            const maybeArray = (k: string) => (Array.isArray(d[k]) ? (d[k] as unknown[]) : undefined);
+            const cityVal = maybeString('city');
+            if (cityVal) updatedMeta.city = cityVal;
+            const sessionPref = maybeString('session_preference');
+            if (sessionPref) {
+              const s = sessionPref.toLowerCase();
+              if (s === 'online' || s.startsWith('online')) updatedMeta.session_preference = 'online';
+              else if (s === 'in_person' || s.includes('vor ort')) updatedMeta.session_preference = 'in_person';
+              else if (s.startsWith('beides') || s.includes('beides ist okay')) {
+                updatedMeta.session_preferences = ['online', 'in_person'];
+                delete updatedMeta['session_preference'];
+              }
+            }
+            const spArray = maybeArray('session_preferences');
+            if (Array.isArray(spArray)) updatedMeta.session_preferences = spArray;
+            const gender = maybeString('gender');
+            if (gender) {
+              const g = gender.toLowerCase();
+              if (g.includes('mann')) updatedMeta.gender_preference = 'male';
+              else if (g.includes('frau')) updatedMeta.gender_preference = 'female';
+              else if (g.includes('keine')) updatedMeta.gender_preference = 'no_preference';
+            }
+            const methods = maybeArray('methods');
+            if (methods) updatedMeta.specializations = methods;
+            const schwerpunkte = maybeArray('schwerpunkte');
+            if (schwerpunkte) updatedMeta.schwerpunkte = schwerpunkte;
+            const time_slots = maybeArray('time_slots');
+            if (time_slots) updatedMeta.time_slots = time_slots;
+          }
+        } catch { /* non-blocking */ }
+      }
+      
+      await supabaseServer
+        .from('people')
+        .update({ metadata: updatedMeta, status: 'new' })
+        .eq('id', person.id);
+      
+      // Create instant matches
+      const variant = person.campaign_variant || undefined;
+      try {
+        const matchResult = await createInstantMatchesForPatient(person.id, variant, updatedMeta);
+        if (matchResult) {
+          const metaWithMatches = { ...updatedMeta, last_confirm_redirect_path: matchResult.matchesUrl };
+          await supabaseServer
+            .from('people')
+            .update({ metadata: metaWithMatches })
+            .eq('id', person.id);
+          void ServerAnalytics.trackEventFromRequest(req, {
+            type: 'instant_match_created',
+            source: 'api.verification.verify-code',
+            props: { match_quality: matchResult.matchQuality, patient_id: person.id },
+          });
+        }
+      } catch { /* non-blocking */ }
+      
+      // Process draft contact if present
+      if (draftContact) {
+        try {
+          const therapistId = typeof draftContact.therapist_id === 'string' ? draftContact.therapist_id : null;
+          const contactType = (draftContact.contact_type === 'booking' || draftContact.contact_type === 'consultation') ? draftContact.contact_type : 'consultation';
+          const patientReason = typeof draftContact.patient_reason === 'string' ? draftContact.patient_reason : '';
+          const patientMessage = typeof draftContact.patient_message === 'string' ? draftContact.patient_message : '';
+          const sessionFormat = (draftContact.session_format === 'online' || draftContact.session_format === 'in_person') ? draftContact.session_format : undefined;
+          const isTestDraft = draftContact.is_test === true;
+          
+          if (therapistId && (patientReason || patientMessage)) {
+            const result = await processDraftContact({
+              patientId: person.id,
+              patientName: person.name || '',
+              patientEmail: contact,
+              contactMethod: 'email',
+              draftContact: {
+                therapist_id: therapistId,
+                contact_type: contactType,
+                patient_reason: patientReason,
+                patient_message: patientMessage,
+                session_format: sessionFormat,
+              },
+              isTest: isTestDraft,
+            });
+            
+            if (result.success) {
+              await clearDraftContact(person.id);
+              void ServerAnalytics.trackEventFromRequest(req, {
+                type: 'draft_contact_processed',
+                source: 'api.verification.verify-code',
+                props: { therapist_id: therapistId, contact_type: contactType, match_id: result.matchId },
+              });
+            }
+          }
+        } catch (err) {
+          await logError('api.verification.verify-code', err, { stage: 'draft_contact_processing' });
+        }
+      }
+      
+      // Fire Google Ads conversion
+      const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined;
+      const ua = req.headers.get('user-agent') || undefined;
+      await maybeFirePatientConversion({
+        patient_id: person.id,
+        email: contact,
+        phone_number: person.phone_number || undefined,
+        verification_method: 'email',
+        ip,
+        ua,
+      });
+      
+      // Create session cookie
+      let sessionCookie: string | null = null;
+      try {
+        const token = await createClientSessionToken({
+          patient_id: person.id,
+          contact_method: 'email',
+          contact_value: contact,
+          name: person.name || undefined,
+        });
+        sessionCookie = createClientSessionCookie(token);
+      } catch (cookieErr) {
+        await logError('api.verification.verify-code', cookieErr, { stage: 'create_session_cookie' });
+      }
+      
+      // Track completion
+      void ServerAnalytics.trackEventFromRequest(req, {
+        type: 'contact_verification_completed',
+        source: 'api.verification.verify-code',
+        props: { contact_method: 'email' },
+      });
+      
+      const respData: Record<string, unknown> = { verified: true, method: 'email' };
+      if (process.env.NODE_ENV !== 'production') {
+        respData.person_id = person.id;
+      }
+      // Include matches_url for redirect
+      try {
+        const { data: personMeta } = await supabaseServer
+          .from('people')
+          .select('metadata')
+          .eq('id', person.id)
+          .single();
+        const finalMeta = (personMeta?.metadata as Record<string, unknown>) || {};
+        const matchesUrl = finalMeta['last_confirm_redirect_path'] as string | undefined;
+        if (matchesUrl) {
+          respData.matches_url = matchesUrl;
+        }
+      } catch { /* ignore */ }
+      
+      const response = NextResponse.json({
+        data: respData,
         error: null,
       });
+      
+      if (sessionCookie) {
+        response.headers.set('Set-Cookie', sessionCookie);
+      }
+      
+      return response;
     }
   } catch (error) {
     console.error('[api.verification.verify-code] Error:', error);

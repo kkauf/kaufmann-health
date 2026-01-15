@@ -127,6 +127,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   type MatchViewState = 'hero' | 'feedback' | 'directory';
   const [matchViewState, setMatchViewState] = useState<MatchViewState>('hero');
   const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [heroModalAutoOpened, setHeroModalAutoOpened] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -668,46 +669,43 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         <span>Qualifikationen geprüft · Online-Kennenlernen kostenlos</span>
       </p>
 
-      {/* STATE A: Hero View - Single best match */}
+      {/* STATE A: Hero View - Auto-open detail modal for best match */}
+      {matchViewState === 'hero' && topMatch && !detailModalTherapist && !heroModalAutoOpened && (() => {
+        // Auto-open the detail modal for the hero therapist
+        setTimeout(() => {
+          setDetailModalViewMode('profile');
+          setDetailModalTherapist(topMatch);
+          setHeroModalAutoOpened(true);
+        }, 100);
+        return null;
+      })()}
+
+      {/* Hero view hint - shown when modal is open in hero state */}
       {matchViewState === 'hero' && topMatch && (
         <div className="space-y-6">
-          {(() => {
-            const t = topMatch;
-            const therapistData: TherapistData = {
-              id: t.id,
-              first_name: t.first_name,
-              last_name: t.last_name,
-              photo_url: t.photo_url || undefined,
-              city: t.city || '',
-              accepting_new: t.accepting_new ?? true,
-              modalities: t.modalities || [],
-              schwerpunkte: t.schwerpunkte || [],
-              session_preferences: t.session_preferences || [],
-              approach_text: t.approach_text || '',
-              languages: t.languages,
-              availability: Array.isArray(t.availability) ? t.availability as { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] : [],
-              metadata: t.metadata,
-              cal_username: t.cal_username,
-              cal_enabled: t.cal_enabled,
-              cal_bookings_live: t.cal_bookings_live,
-            };
+          {/* Premium header banner */}
+          <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 px-6 py-4 rounded-xl text-center shadow-lg">
+            <span className="text-lg font-semibold text-white tracking-wide flex items-center justify-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              Dein bester Match: {topMatch.first_name} {topMatch.last_name}
+            </span>
+            <p className="text-emerald-100 text-sm mt-1">Sieh dir das vollständige Profil an und buche dein kostenloses Kennenlernen</p>
+          </div>
 
-            return (
-              <HeroMatchCard
-                therapist={therapistData}
-                patientModalities={data?.patient?.specializations || []}
-                patientSchwerpunkte={data?.patient?.schwerpunkte || []}
-                patientCity={data?.patient?.city}
-                onBookIntro={() => handleOpen(t, 'consultation')}
-                onViewProfile={() => {
+          {/* CTA to re-open profile if closed */}
+          {!detailModalTherapist && (
+            <div className="text-center">
+              <Button
+                onClick={() => {
                   setDetailModalViewMode('profile');
-                  setDetailModalTherapist(t);
+                  setDetailModalTherapist(topMatch);
                 }}
-                requiresIntroBeforeBooking={t.requires_intro_before_booking}
-                hasCompletedIntro={t.has_completed_intro}
-              />
-            );
-          })()}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                Profil von {topMatch.first_name} ansehen
+              </Button>
+            </div>
+          )}
 
           {/* "Not a fit?" CTA - triggers feedback modal */}
           {therapistsWithQuality.length > 1 && (
@@ -812,15 +810,17 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         />
       )}
 
-      {/* Footer CTA */}
-      <div className="mt-10 rounded-xl border border-gray-200/60 bg-slate-50/60 p-6 text-center">
-        <p className="text-sm text-gray-600">Keine passende Person dabei?</p>
-        <Button variant="outline" asChild className="mt-3">
-          <CtaLink href="/therapeuten" eventType="cta_click" eventId="alle-therapeuten" data-cta="alle-therapeuten">
-            Alle Therapeuten ansehen
-          </CtaLink>
-        </Button>
-      </div>
+      {/* Footer CTA - only show in directory view (after user has seen matches) */}
+      {matchViewState === 'directory' && (
+        <div className="mt-10 rounded-xl border border-gray-200/60 bg-slate-50/60 p-6 text-center">
+          <p className="text-sm text-gray-600">Keine passende Person dabei?</p>
+          <Button variant="outline" asChild className="mt-3">
+            <CtaLink href="/therapeuten" eventType="cta_click" eventId="alle-therapeuten" data-cta="alle-therapeuten">
+              Alle Therapeuten ansehen
+            </CtaLink>
+          </Button>
+        </div>
+      )}
 
       {/* Modality explanations */}
       {data?.patient?.modality_matters && (

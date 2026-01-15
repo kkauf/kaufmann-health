@@ -30,12 +30,12 @@ function decodeHtmlEntities(str: string): string {
   return str.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
 }
 
-describe('EARTH-204: send-code URL generation (the actual bug)', () => {
+describe('EARTH-204: send-code email verification code', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('includes both token AND id in confirmation URL when person exists', async () => {
+  it('sends 6-digit code email and stores code in metadata when person exists', async () => {
     const email = 'test@example.com';
     const existingPersonId = 'existing-person-123';
     const therapistId = '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d';
@@ -94,36 +94,31 @@ describe('EARTH-204: send-code URL generation (the actual bug)', () => {
     expect(meta.gclid).toBe('test-gclid-123');
     expect(meta.landing_page).toBe('/therapie-finden');
     expect(meta.conversion_path).toBe('directory_contact');
+    
+    // Verify 6-digit code is stored in metadata
+    expect(meta.email_code).toBeTruthy();
+    expect(typeof meta.email_code).toBe('string');
+    expect((meta.email_code as string).length).toBe(6);
+    expect(meta.email_code_expires_at).toBeTruthy();
 
-    // Verify sendEmail was called
+    // Verify sendEmail was called with code-based template
     expect(sendEmail).toHaveBeenCalledTimes(1);
     const emailCall = (sendEmail as any).mock.calls[0][0];
+    expect(emailCall.context.template).toBe('email_verification_code');
+    
+    // Verify the email contains the 6-digit code
     const htmlContent = emailCall.html as string;
-
-    // Extract the confirmation URL from email HTML
-    const hrefMatch = htmlContent.match(/href="([^"]+)"/);
-    expect(hrefMatch).toBeTruthy();
+    expect(htmlContent).toContain(meta.email_code);
     
-    const confirmUrl = decodeHtmlEntities(hrefMatch![1]);
-    const url = new URL(confirmUrl);
-
-    // THIS IS THE CRITICAL TEST: Both token AND id must be present
-    const token = url.searchParams.get('token');
-    const id = url.searchParams.get('id');
-    
-    expect(token).toBeTruthy();
-    expect(token).toHaveLength(64); // hex token
-    expect(id).toBe(existingPersonId);
-
-    // Also verify redirect is included
-    const redirect = url.searchParams.get('redirect');
-    expect(redirect).toBe(redirectPath);
+    // Verify subject contains the code for Apple Mail auto-fill
+    expect(emailCall.subject).toContain(meta.email_code as string);
   });
 
-  it('includes both token AND id when creating new person', async () => {
+  it('sends 6-digit code email when creating new person', async () => {
     const email = 'new@example.com';
     const newPersonId = 'new-person-789';
     const therapistId = 'therapist-999';
+    let insertedMetadata: Record<string, unknown> | null = null;
 
     // Mock no existing person, then successful insert
     let fromCallCount = 0;
@@ -144,13 +139,16 @@ describe('EARTH-204: send-code URL generation (the actual bug)', () => {
       } else {
         // Second call: insert succeeds
         return {
-          insert: vi.fn().mockReturnValue({
-            select: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: { id: newPersonId },
-                error: null,
+          insert: vi.fn().mockImplementation((data: Record<string, unknown>) => {
+            insertedMetadata = data.metadata as Record<string, unknown>;
+            return {
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({
+                  data: { id: newPersonId },
+                  error: null,
+                }),
               }),
-            }),
+            };
           }),
         };
       }
@@ -172,20 +170,21 @@ describe('EARTH-204: send-code URL generation (the actual bug)', () => {
     const res = await POST(req as any);
     expect(res.status).toBe(200);
 
+    // Verify 6-digit code is stored in metadata
+    expect(insertedMetadata).toBeTruthy();
+    expect(insertedMetadata!.email_code).toBeTruthy();
+    expect(typeof insertedMetadata!.email_code).toBe('string');
+    expect((insertedMetadata!.email_code as string).length).toBe(6);
+    expect(insertedMetadata!.email_code_expires_at).toBeTruthy();
+
+    // Verify sendEmail was called with code-based template
     expect(sendEmail).toHaveBeenCalledTimes(1);
     const emailCall = (sendEmail as any).mock.calls[0][0];
-    const htmlContent = emailCall.html as string;
-
-    const hrefMatch = htmlContent.match(/href="([^"]+)"/);
-    expect(hrefMatch).toBeTruthy();
+    expect(emailCall.context.template).toBe('email_verification_code');
     
-    const confirmUrl = decodeHtmlEntities(hrefMatch![1]);
-    const url = new URL(confirmUrl);
-
-    // Both must be present
-    expect(url.searchParams.get('token')).toBeTruthy();
-    expect(url.searchParams.get('id')).toBe(newPersonId);
-    expect(url.searchParams.get('redirect')).toBe(redirectPath);
+    // Verify the email contains the 6-digit code
+    const htmlContent = emailCall.html as string;
+    expect(htmlContent).toContain(insertedMetadata!.email_code);
   });
 
   it('returns 500 and does NOT send email if person insert fails', async () => {
@@ -288,9 +287,10 @@ describe('EARTH-204: send-code URL generation (the actual bug)', () => {
     expect(sendEmail).not.toHaveBeenCalled();
   });
 
-  it('handles provided lead_id and includes it in URL', async () => {
+  it('handles provided lead_id and stores code in metadata', async () => {
     const email = 'with-lead-id@example.com';
     const providedLeadId = 'provided-lead-123';
+    let updatedMetadata: Record<string, unknown> | null = null;
 
     (supabaseServer.from as unknown as Mock).mockReturnValue({
       select: vi.fn().mockReturnValue({
@@ -301,8 +301,11 @@ describe('EARTH-204: send-code URL generation (the actual bug)', () => {
           }),
         }),
       }),
-      update: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
+      update: vi.fn().mockImplementation((data: Record<string, unknown>) => {
+        updatedMetadata = data.metadata as Record<string, unknown>;
+        return {
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        };
       }),
     });
 
@@ -322,16 +325,21 @@ describe('EARTH-204: send-code URL generation (the actual bug)', () => {
     const res = await POST(req as any);
     expect(res.status).toBe(200);
 
+    // Verify 6-digit code is stored in metadata
+    expect(updatedMetadata).toBeTruthy();
+    expect(updatedMetadata!.email_code).toBeTruthy();
+    expect(typeof updatedMetadata!.email_code).toBe('string');
+    expect((updatedMetadata!.email_code as string).length).toBe(6);
+    expect(updatedMetadata!.email_code_expires_at).toBeTruthy();
+
+    // Verify sendEmail was called with code-based template
     expect(sendEmail).toHaveBeenCalledTimes(1);
     const emailCall = (sendEmail as any).mock.calls[0][0];
+    expect(emailCall.context.template).toBe('email_verification_code');
+    expect(emailCall.context.lead_id).toBe(providedLeadId);
+    
+    // Verify the email contains the 6-digit code
     const htmlContent = emailCall.html as string;
-
-    const hrefMatch = htmlContent.match(/href="([^"]+)"/);
-    const confirmUrl = decodeHtmlEntities(hrefMatch![1]);
-    const url = new URL(confirmUrl);
-
-    // Should use the provided lead_id
-    expect(url.searchParams.get('id')).toBe(providedLeadId);
-    expect(url.searchParams.get('token')).toBeTruthy();
+    expect(htmlContent).toContain(updatedMetadata!.email_code);
   });
 });

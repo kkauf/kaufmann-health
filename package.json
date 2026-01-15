@@ -89,7 +89,6 @@
     "google-ads-api": "^21.0.1",
     "husky": "^8.0.0",
     "jsdom": "^26.1.0",
-    "kill-port": "^2.0.1",
     "playwright": "^1.47.2",
     "tailwindcss": "^4",
     "tsx": "^4.19.2",
