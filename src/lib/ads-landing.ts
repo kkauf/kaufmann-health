@@ -103,11 +103,26 @@ export interface LandingPageCopy {
 
 /**
  * Parse keyword from URL (?kw= param from Google Ads ValueTrack)
+ * 
+ * Filters out:
+ * - Empty strings
+ * - Literal ValueTrack placeholders like {keyword}, {KeyWord}, etc.
+ * - Malformed/unsubstituted placeholders
  */
 export function parseKeyword(param: string | string[] | undefined): string | null {
   if (typeof param !== 'string' || param.length === 0) return null;
-  // Decode and lowercase for matching
-  return decodeURIComponent(param).toLowerCase().trim();
+  
+  // Decode and trim
+  const decoded = decodeURIComponent(param).trim();
+  if (decoded.length === 0) return null;
+  
+  // Filter out literal ValueTrack placeholders (Google Ads failed to substitute)
+  // Matches: {keyword}, {KeyWord}, {KEYWORD}, {Keyword:default}, etc.
+  if (/^\{.*\}$/.test(decoded) || /\{keyword/i.test(decoded)) {
+    return null;
+  }
+  
+  return decoded.toLowerCase();
 }
 
 /**

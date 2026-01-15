@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ContactModal } from '@/features/therapists/components/ContactModal';
 import { TherapistDetailModal } from '@/features/therapists/components/TherapistDetailModal';
 import { TherapistCard } from '@/features/therapists/components/TherapistCard';
+import { HeroMatchCard } from './HeroMatchCard';
+import { MatchRejectionModal, type RejectionReason } from './MatchRejectionModal';
 import { CheckCircle, Sparkles } from 'lucide-react';
 import type { TherapistData } from '@/features/therapists/components/TherapistDirectory';
 import { computeMismatches, type PatientMeta } from '@/features/leads/lib/match';
@@ -120,6 +122,11 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   const [detailModalViewMode, setDetailModalViewMode] = useState<'profile' | 'cal-booking'>('profile');
   const [detailModalCalKind, setDetailModalCalKind] = useState<'intro' | 'full_session'>('intro');
   const [autoOpenedTherapist, setAutoOpenedTherapist] = useState(false);
+  
+  // Single-match progressive disclosure state
+  type MatchViewState = 'hero' | 'feedback' | 'directory';
+  const [matchViewState, setMatchViewState] = useState<MatchViewState>('hero');
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -360,6 +367,42 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     );
     setModalFor(null);
   }, [modalFor]);
+
+  // Handle rejection reason selection (from MatchRejectionModal)
+  const handleRejection = useCallback((reason: RejectionReason) => {
+    // Track the rejection event with the highlighted therapist
+    try {
+      const attrs = getAttribution();
+      const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
+      const payload = {
+        type: 'match_rejected',
+        ...attrs,
+        properties: {
+          page_path: pagePath,
+          therapist_id: highlightedTherapistId,
+          reason,
+          secure_uuid: uuid,
+        },
+      };
+      navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+    } catch { }
+
+    // Close modal and reveal all matches
+    setShowRejectionModal(false);
+    setMatchViewState('directory');
+  }, [highlightedTherapistId, uuid]);
+
+  // Get the top match therapist for hero view
+  const topMatch = useMemo(() => {
+    if (!therapistsWithQuality.length) return null;
+    // Sort by highlighted first, then return the first one
+    const sorted = [...therapistsWithQuality].sort((a, b) => {
+      if (a.id === highlightedTherapistId) return -1;
+      if (b.id === highlightedTherapistId) return 1;
+      return 0;
+    });
+    return sorted[0];
+  }, [therapistsWithQuality, highlightedTherapistId]);
 
   if (loading) {
     // Simple spinner - no elaborate animation here
