@@ -53,6 +53,26 @@
 - `match_page_view` — includes only `therapist_count` (no PII)
 - `match_page_preferences_shown` — non‑PII flags summarizing the preference chips (issue present, online/in_person flags, urgent flag, modality_matters)
 
+### Single-Match Flow (Progressive Disclosure)
+
+New events for the "hero view" single-match experience:
+
+- `match_hero_view` — Fired when hero view (single match) is displayed. Properties: `therapist_id`, `therapist_count`, `secure_uuid`
+- `match_rejected` — Fired when user clicks "show more options" and selects a rejection reason. Properties:
+  - `therapist_id` — The rejected therapist
+  - `reason` — One of: `price_insurance`, `gender_mismatch`, `availability_issue`, `location_mismatch`, `vibe_method`
+  - `secure_uuid` — Links to match session
+
+**Business Insights from `match_rejected` reasons:**
+
+| Reason | Business Signal | Action if High |
+|--------|-----------------|----------------|
+| `price_insurance` | Users expect insurance coverage | Marketing targets wrong audience or need Kassensitze |
+| `gender_mismatch` | Algorithm or supply gap | Check if gender therapists exist; recruit if not |
+| `availability_issue` | Time slot mismatch | Recruit for evenings/weekends |
+| `location_mismatch` | Geo mismatch | Need hyperlocal sorting or more remote-willing users |
+| `vibe_method` | Trust/qualification gap | Profile quality issue or credential mismatch |
+
 ### Email‑first wizard (EARTH‑190)
 - Track per‑screen if needed (`screen_viewed`, `screen_completed`, optional `field_change`).
 - Completion emits `form_completed` (server). Ads fire server Enhanced Conversions and a minimal client gtag conversion.

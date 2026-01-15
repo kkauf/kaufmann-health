@@ -44,8 +44,8 @@ export function HeroMatchCard({
   patientCity,
   onBookIntro,
   onViewProfile,
-  requiresIntroBeforeBooking = false,
-  hasCompletedIntro = false,
+  requiresIntroBeforeBooking: _requiresIntroBeforeBooking = false,
+  hasCompletedIntro: _hasCompletedIntro = false,
 }: HeroMatchCardProps) {
   const [imageError, setImageError] = useState(false);
   const [weekIndex, setWeekIndex] = useState(0);

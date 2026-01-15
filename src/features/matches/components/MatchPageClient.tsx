@@ -314,6 +314,27 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     }
   }, [data]);
 
+  // Track hero view shown (single-match mode)
+  useEffect(() => {
+    if (data && matchViewState === 'hero' && highlightedTherapistId) {
+      try {
+        const attrs = getAttribution();
+        const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
+        const payload = {
+          type: 'match_hero_view',
+          ...attrs,
+          properties: {
+            page_path: pagePath,
+            therapist_id: highlightedTherapistId,
+            therapist_count: therapists.length,
+            secure_uuid: uuid,
+          },
+        };
+        navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+      } catch { }
+    }
+  }, [data, matchViewState, highlightedTherapistId, therapists.length, uuid]);
+
   // Track match quality - separate events for partial vs none
   useEffect(() => {
     if (matchType === 'none') {
@@ -528,9 +549,12 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           {(() => {
             const name = (data?.patient?.name || '').trim();
-            if (!name) return 'Deine passenden Therapeut:innen';
-            const first = name.split(/\s+/)[0];
-            return `${first}, deine passenden Therapeut:innen`;
+            const firstName = name ? name.split(/\s+/)[0] : '';
+            // Different headlines for hero vs directory view
+            if (matchViewState === 'hero') {
+              return firstName ? `${firstName}, hier ist dein bester Match` : 'Dein bester Match';
+            }
+            return firstName ? `${firstName}, deine passenden Therapeut:innen` : 'Deine passenden Therapeut:innen';
           })()}
         </h1>
         <p className="mt-2 text-gray-600">
@@ -644,53 +668,122 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         <span>Qualifikationen geprüft · Online-Kennenlernen kostenlos</span>
       </p>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Sort so highlighted/recommended therapist appears first */}
-        {[...therapistsWithQuality].sort((a, b) => {
-          if (a.id === highlightedTherapistId) return -1;
-          if (b.id === highlightedTherapistId) return 1;
-          return 0;
-        }).map((t) => {
-          const isHighlighted = t.id === highlightedTherapistId;
+      {/* STATE A: Hero View - Single best match */}
+      {matchViewState === 'hero' && topMatch && (
+        <div className="space-y-6">
+          {(() => {
+            const t = topMatch;
+            const therapistData: TherapistData = {
+              id: t.id,
+              first_name: t.first_name,
+              last_name: t.last_name,
+              photo_url: t.photo_url || undefined,
+              city: t.city || '',
+              accepting_new: t.accepting_new ?? true,
+              modalities: t.modalities || [],
+              schwerpunkte: t.schwerpunkte || [],
+              session_preferences: t.session_preferences || [],
+              approach_text: t.approach_text || '',
+              languages: t.languages,
+              availability: Array.isArray(t.availability) ? t.availability as { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] : [],
+              metadata: t.metadata,
+              cal_username: t.cal_username,
+              cal_enabled: t.cal_enabled,
+              cal_bookings_live: t.cal_bookings_live,
+            };
 
-          // Convert TherapistItem to TherapistData for the card component
-          const therapistData: TherapistData = {
-            id: t.id,
-            first_name: t.first_name,
-            last_name: t.last_name,
-            photo_url: t.photo_url || undefined,
-            city: t.city || '',
-            accepting_new: t.accepting_new ?? true,
-            modalities: t.modalities || [],
-            schwerpunkte: t.schwerpunkte || [],
-            session_preferences: t.session_preferences || [],
-            approach_text: t.approach_text || '',
-            languages: t.languages,
-            availability: Array.isArray(t.availability) ? t.availability as { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] : [],
-            metadata: t.metadata,
-          };
+            return (
+              <HeroMatchCard
+                therapist={therapistData}
+                patientModalities={data?.patient?.specializations || []}
+                patientSchwerpunkte={data?.patient?.schwerpunkte || []}
+                patientCity={data?.patient?.city}
+                onBookIntro={() => handleOpen(t, 'consultation')}
+                onViewProfile={() => {
+                  setDetailModalViewMode('profile');
+                  setDetailModalTherapist(t);
+                }}
+                requiresIntroBeforeBooking={t.requires_intro_before_booking}
+                hasCompletedIntro={t.has_completed_intro}
+              />
+            );
+          })()}
 
-          return (
-            <TherapistCard
-              key={t.id}
-              therapist={therapistData}
-              onViewDetails={() => {
-                setDetailModalViewMode('profile');
-                setDetailModalTherapist(t);
-              }}
-              patientModalities={data?.patient?.specializations || []}
-              showSchwerpunkte={true}
-              patientSchwerpunkte={data?.patient?.schwerpunkte || []}
-              highlighted={isHighlighted}
-              contactedAt={t.contacted_at || null}
-              onContactClick={(type) => handleOpen(t, type)}
-              patientCity={data?.patient?.city}
-              requiresIntroBeforeBooking={t.requires_intro_before_booking}
-              hasCompletedIntro={t.has_completed_intro}
-            />
-          );
-        })}
-      </div>
+          {/* "Not a fit?" CTA - triggers feedback modal */}
+          {therapistsWithQuality.length > 1 && (
+            <div className="text-center pt-4">
+              <button
+                type="button"
+                onClick={() => setShowRejectionModal(true)}
+                className="text-gray-500 hover:text-gray-700 text-sm underline underline-offset-2 transition-colors"
+              >
+                Kein passender Match? Zeige weitere Optionen
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* STATE C: Directory View - All matches */}
+      {matchViewState === 'directory' && (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Sort so highlighted/recommended therapist appears first */}
+          {[...therapistsWithQuality].sort((a, b) => {
+            if (a.id === highlightedTherapistId) return -1;
+            if (b.id === highlightedTherapistId) return 1;
+            return 0;
+          }).map((t) => {
+            const isHighlighted = t.id === highlightedTherapistId;
+
+            // Convert TherapistItem to TherapistData for the card component
+            const therapistData: TherapistData = {
+              id: t.id,
+              first_name: t.first_name,
+              last_name: t.last_name,
+              photo_url: t.photo_url || undefined,
+              city: t.city || '',
+              accepting_new: t.accepting_new ?? true,
+              modalities: t.modalities || [],
+              schwerpunkte: t.schwerpunkte || [],
+              session_preferences: t.session_preferences || [],
+              approach_text: t.approach_text || '',
+              languages: t.languages,
+              availability: Array.isArray(t.availability) ? t.availability as { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] : [],
+              metadata: t.metadata,
+            };
+
+            return (
+              <TherapistCard
+                key={t.id}
+                therapist={therapistData}
+                onViewDetails={() => {
+                  setDetailModalViewMode('profile');
+                  setDetailModalTherapist(t);
+                }}
+                patientModalities={data?.patient?.specializations || []}
+                showSchwerpunkte={true}
+                patientSchwerpunkte={data?.patient?.schwerpunkte || []}
+                highlighted={isHighlighted}
+                contactedAt={t.contacted_at || null}
+                onContactClick={(type) => handleOpen(t, type)}
+                patientCity={data?.patient?.city}
+                requiresIntroBeforeBooking={t.requires_intro_before_booking}
+                hasCompletedIntro={t.has_completed_intro}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {/* STATE B: Rejection Modal - "Why doesn't this match work?" */}
+      {topMatch && (
+        <MatchRejectionModal
+          open={showRejectionModal}
+          therapistName={topMatch.first_name}
+          onSelect={handleRejection}
+          onClose={() => setShowRejectionModal(false)}
+        />
+      )}
 
       {/* Contact modal (pre-auth) */}
       {modalFor && (

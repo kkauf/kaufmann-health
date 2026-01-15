@@ -28,17 +28,9 @@ export default function NewScreen5_Modality({
 }) {
   const [flashKey, setFlashKey] = React.useState<string | null>(null);
   const [flashNext, setFlashNext] = React.useState(false);
-  const [userInteracted, setUserInteracted] = React.useState(false);
 
-  // Auto-advance when "Nein" is selected (single choice)
-  React.useEffect(() => {
-    if (disabled || values.modality_matters !== false) return;
-    if (suppressAutoAdvance && !userInteracted) return;
-    const timer = setTimeout(() => {
-      onNext();
-    }, 2500); // Allow time to read affirmation message
-    return () => clearTimeout(timer);
-  }, [values.modality_matters, disabled, onNext, suppressAutoAdvance, userInteracted]);
+  // Unused - kept for prop compatibility
+  void suppressAutoAdvance;
 
   const toggle = (val: string) => {
     const set = new Set(values.methods || []);
@@ -69,7 +61,6 @@ export default function NewScreen5_Modality({
               }`}
               onClick={() => {
                 setFlashKey('yes');
-                setUserInteracted(true);
                 onChange({ modality_matters: true });
                 // Keep existing selections when switching back to Yes
               }}
@@ -87,7 +78,6 @@ export default function NewScreen5_Modality({
               }`}
               onClick={() => {
                 setFlashKey('no');
-                setUserInteracted(true);
                 onChange({ modality_matters: false, methods: [] });
               }}
               disabled={disabled}

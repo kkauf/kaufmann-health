@@ -4,7 +4,7 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "dev": "kill-port 3000 && next dev --turbopack",
+    "dev": "lsof -ti:3000 | xargs kill -9 2>/dev/null; next dev --turbopack",
     "dev:safe": "next dev",
     "build": "next build",
     "start": "next start",

@@ -35,17 +35,9 @@ export default function NewScreen2_Timeline({
 }) {
   const [error, setError] = React.useState<string | null>(null);
   const [flashKey, setFlashKey] = React.useState<string | null>(null);
-  const [userInteracted, setUserInteracted] = React.useState(false);
 
-  // Auto-advance after selection
-  React.useEffect(() => {
-    if (disabled || !values.start_timing) return;
-    if (suppressAutoAdvance && !userInteracted) return;
-    const timer = setTimeout(() => {
-      onNext();
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [values.start_timing, disabled, onNext, suppressAutoAdvance, userInteracted]);
+  // Unused - kept for prop compatibility
+  void suppressAutoAdvance;
 
   function validate() {
     if (!values.start_timing) {
@@ -99,7 +91,6 @@ export default function NewScreen2_Timeline({
               aria-disabled={disabled}
               onClick={() => {
                 setFlashKey(opt);
-                setUserInteracted(true);
                 onChange({ start_timing: opt });
               }}
             >

@@ -280,6 +280,25 @@ export async function GET(req: Request) {
       }
     }
 
+    // Fetch cached slot data for Cal.com booking availability
+    type SlotCacheRow = { therapist_id: string; next_intro_date_iso: string | null; next_intro_time_label: string | null; next_intro_time_utc: string | null; slots_count: number | null };
+    const slotCacheMap = new Map<string, SlotCacheRow>();
+    if (therapistIds.length > 0) {
+      try {
+        const { data: slotRows } = await supabaseServer
+          .from('cal_slots_cache')
+          .select('therapist_id, next_intro_date_iso, next_intro_time_label, next_intro_time_utc, slots_count')
+          .in('therapist_id', therapistIds);
+        if (Array.isArray(slotRows)) {
+          for (const row of slotRows as SlotCacheRow[]) {
+            slotCacheMap.set(row.therapist_id, row);
+          }
+        }
+      } catch {
+        // Table may not exist in test environment - continue without slot data
+      }
+    }
+
     // Compute contacted flags (patient-initiated)
     const contactedById = new Map<string, string>(); // therapist_id -> iso string
     for (const m of all) {
@@ -326,8 +345,17 @@ export async function GET(req: Request) {
     // Build response list using shared mapper (ensures contract compliance)
     // Then add match-specific fields
     const list = scored.map(({ t, isPerfect }) => {
+      // Build next_intro_slot from cached data
+      const slotCache = slotCacheMap.get(t.id);
+      const nextIntroSlot = slotCache?.next_intro_time_utc ? {
+        date_iso: slotCache.next_intro_date_iso || '',
+        time_label: slotCache.next_intro_time_label || '',
+        time_utc: slotCache.next_intro_time_utc,
+        slots_count: slotCache.slots_count ?? undefined,
+      } : undefined;
+      
       // Use shared mapper for all standard therapist fields
-      const mapped = mapTherapistRow(t, { includeAdminFields: true });
+      const mapped = mapTherapistRow(t, { includeAdminFields: true, nextIntroSlot });
       
       // Extract booking settings from metadata
       const requiresIntro = getRequiresIntroBeforeBooking(t.metadata);
