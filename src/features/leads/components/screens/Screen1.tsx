@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Clock, ShieldCheck, Check } from 'lucide-react';
+import { Clock, ShieldCheck, Check, Lock } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -72,13 +72,13 @@ export default function Screen1({
     } else if (mode === 'sms') {
       defaultMethod = 'phone';
     } else if (mode === 'choice') {
-      // In choice mode, prefer saved preference, otherwise default to phone (higher conversion rate)
+      // In choice mode, prefer saved preference, otherwise default to email (lower friction)
       const saved = getSavedContactMethod();
       if (saved) {
         defaultMethod = saved;
       } else {
-        // Default to phone for all users - 100% vs 43% verification rate
-        defaultMethod = 'phone';
+        // Default to email - one-click verification, feels less invasive for therapy seekers
+        defaultMethod = 'email';
       }
     }
 
@@ -147,11 +147,13 @@ export default function Screen1({
           value={values.name}
           onChange={(e) => { setNameError(null); onChange({ name: e.target.value }); }}
           aria-invalid={!!nameError}
-          aria-describedby={nameError ? 'name-error' : undefined}
+          aria-describedby={nameError ? 'name-error' : 'name-hint'}
           aria-label="Wie dürfen wir dich ansprechen?"
         />
-        {nameError && (
+        {nameError ? (
           <p id="name-error" className="text-sm text-red-600">{nameError}</p>
+        ) : (
+          <p id="name-hint" className="text-sm text-muted-foreground">Damit dich deine Therapeut:in ansprechen kann</p>
         )}
       </div>
 
@@ -209,8 +211,13 @@ export default function Screen1({
               aria-invalid={!!emailError}
               aria-describedby={emailError ? 'email-error' : undefined}
             />
-            {emailError && (
+            {emailError ? (
               <p id="email-error" className="text-sm text-red-600">{emailError}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                <Lock className="h-3.5 w-3.5 text-emerald-600" />
+                Wir schicken dir einen Bestätigungslink – damit nur du deine Vorschläge siehst.
+              </p>
             )}
           </>
         ) : (
@@ -251,7 +258,7 @@ export default function Screen1({
           disabled={disabled}
           aria-disabled={disabled}
         >
-          Passende Therapeut:innen finden →
+          Meine Therapeut:in anzeigen →
         </Button>
       </div>
     </form>

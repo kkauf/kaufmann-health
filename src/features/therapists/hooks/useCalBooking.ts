@@ -16,6 +16,7 @@ import { USE_NATIVE_BOOKING } from '@/lib/cal/book';
 import { buildCalBookingUrl } from '@/lib/cal/booking-url';
 import { getAttribution } from '@/lib/attribution';
 import { useVerification } from '@/lib/verification/useVerification';
+import { fireIntroBookedConversion, fireSessionBookedConversion } from '@/lib/gtag';
 
 interface SessionData {
   verified: boolean;
@@ -428,18 +429,29 @@ export function useCalBooking({
     window.location.href = calUrl;
   }, [selectedSlot, therapistId, calUsername, bookingKind, session]);
 
+  // EARTH-272: Navigate to confirm step (defined early for use in handleBooking and verifyCode)
+  const proceedToConfirm = useCallback(() => {
+    setStep('confirm');
+    setBookingError(null);
+  }, []);
+
   // Handle booking button - check session first
   const handleBooking = useCallback(() => {
     if (!selectedSlot) return;
 
     if (session?.verified) {
-      const email = session.contact_method === 'email' ? session.contact_value : undefined;
-      redirectToCal(session.name, email, session.patient_id);
+      // EARTH-272: Use native booking when feature flag is enabled
+      if (USE_NATIVE_BOOKING) {
+        proceedToConfirm();
+      } else {
+        const email = session.contact_method === 'email' ? session.contact_value : undefined;
+        redirectToCal(session.name, email, session.patient_id);
+      }
       return;
     }
 
     setStep('verify');
-  }, [selectedSlot, session, redirectToCal]);
+  }, [selectedSlot, session, redirectToCal, proceedToConfirm]);
 
   // Send verification code using shared hook
   const sendCode = useCallback(async () => {
@@ -463,12 +475,6 @@ export function useCalBooking({
       setStep(result.useMagicLink ? 'email-sent' : 'code');
     }
   }, [verification, selectedSlot, therapistId, emailRedirectPath, calUsername, bookingKind]);
-
-  // EARTH-272: Navigate to confirm step (defined early for use in verifyCode)
-  const proceedToConfirm = useCallback(() => {
-    setStep('confirm');
-    setBookingError(null);
-  }, []);
 
   // Verify code and proceed to native booking or redirect
   const verifyCode = useCallback(async () => {
@@ -551,6 +557,16 @@ export function useCalBooking({
       if (json.data.success) {
         setBookingResult(json.data.booking);
         setStep('success');
+
+        // Fire Google Ads conversion based on booking type
+        try {
+          const bookingUid = json.data.booking.uid;
+          if (bookingKind === 'intro') {
+            fireIntroBookedConversion(bookingUid); // €60 secondary conversion
+          } else {
+            fireSessionBookedConversion(bookingUid); // €125 secondary conversion
+          }
+        } catch { }
 
         // Track success
         try {

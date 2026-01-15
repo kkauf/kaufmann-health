@@ -17,10 +17,8 @@ import { isCalBookingEnabled, assertCalFieldsPresent } from '@/lib/cal/booking-u
 import CtaLink from '@/components/CtaLink';
 import FloatingWhatsApp from '@/components/FloatingWhatsApp';
 import { getAttribution } from '@/lib/attribution';
+import { fireLeadVerifiedConversion } from '@/lib/gtag';
 
-const TherapyModalityExplanations = dynamic(() => import('@/components/TherapyModalityExplanations'), {
-  ssr: true,
-});
 
 type TherapistItem = {
   id: string;
@@ -292,6 +290,27 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       } catch { }
     }
   }, [data, therapists.length, uuid]);
+
+  // Fire Google Ads lead verified base conversion for email magic link users
+  // This fires once per uuid to ensure client-side base conversion for attribution
+  useEffect(() => {
+    if (!data || !uuid) return;
+    
+    // Deduplicate: only fire once per match session
+    const storageKey = `ga_conv_lead_verified_${uuid}`;
+    try {
+      if (window.sessionStorage.getItem(storageKey) === '1') return;
+    } catch { }
+    
+    // Fire the base conversion (€12) - CRITICAL for Google Ads attribution
+    // The server-side enhanced conversion has already fired in verify-code route
+    try {
+      // Use uuid as transaction ID since we don't have patient_id client-side here
+      // The sendConversion in gtag.ts will handle its own deduplication
+      fireLeadVerifiedConversion(uuid);
+      window.sessionStorage.setItem(storageKey, '1');
+    } catch { }
+  }, [data, uuid]);
 
   // Track preferences summary shown (non-PII)
   useEffect(() => {
@@ -852,10 +871,6 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         </div>
       )}
 
-      {/* Modality explanations */}
-      {data?.patient?.modality_matters && (
-        <TherapyModalityExplanations />
-      )}
 
       {/* Detail modal */}
       {detailModalTherapist && (

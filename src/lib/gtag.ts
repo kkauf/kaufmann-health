@@ -3,9 +3,15 @@
 import { getGclid } from '@/lib/attribution';
 
 const GA_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
-const LABEL_CLIENT = process.env.NEXT_PUBLIC_GAD_CONV_CLIENT;
+
+// Conversion labels from Google Ads (Goals → Conversions)
+// Primary: kh_lead_verified (€12) - what Google optimizes bids against
+// Secondary: form_complete (€4), intro_booked (€60), session_booked (€125)
+const LABEL_FORM_COMPLETE = process.env.NEXT_PUBLIC_GAD_CONV_FORM_COMPLETE;
+const LABEL_VERIFIED = process.env.NEXT_PUBLIC_GAD_CONV_VERIFIED;
+const LABEL_INTRO_BOOKED = process.env.NEXT_PUBLIC_GAD_CONV_INTRO_BOOKED;
+const LABEL_SESSION_BOOKED = process.env.NEXT_PUBLIC_GAD_CONV_SESSION_BOOKED;
 const LABEL_THERAPIST = process.env.NEXT_PUBLIC_GAD_CONV_THERAPIST;
-const LABEL_BOOKING = process.env.NEXT_PUBLIC_GAD_CONV_BOOKING;
 
 function isTestMode(): boolean {
   try {
@@ -131,15 +137,42 @@ function sendConversion({ label, value, transactionId, dedupePrefix }: { label?:
   } catch {}
 }
 
-export function fireGoogleAdsClientConversion(patientId?: string) {
-  sendConversion({ label: LABEL_CLIENT, value: 10, transactionId: patientId, dedupePrefix: 'ga_conv_client_registration' });
+/**
+ * Fire when questionnaire form is completed (before verification)
+ * Value: €4 (secondary conversion)
+ */
+export function fireFormCompleteConversion(patientId?: string) {
+  sendConversion({ label: LABEL_FORM_COMPLETE, value: 4, transactionId: patientId, dedupePrefix: 'ga_conv_form_complete' });
 }
 
+/**
+ * Fire when user verifies their contact info (email/SMS)
+ * Value: €12 (PRIMARY conversion - Google optimizes bids against this)
+ */
+export function fireLeadVerifiedConversion(patientId?: string) {
+  sendConversion({ label: LABEL_VERIFIED, value: 12, transactionId: patientId, dedupePrefix: 'ga_conv_lead_verified' });
+}
+
+/**
+ * Fire when intro/consultation booking is made
+ * Value: €60 (secondary conversion)
+ */
+export function fireIntroBookedConversion(bookingId?: string) {
+  sendConversion({ label: LABEL_INTRO_BOOKED, value: 60, transactionId: bookingId, dedupePrefix: 'ga_conv_intro_booked' });
+}
+
+/**
+ * Fire when full session booking is made
+ * Value: €125 (secondary conversion - expected CLV)
+ */
+export function fireSessionBookedConversion(bookingId?: string) {
+  sendConversion({ label: LABEL_SESSION_BOOKED, value: 125, transactionId: bookingId, dedupePrefix: 'ga_conv_session_booked' });
+}
+
+/**
+ * Fire when therapist submits application
+ * Value: €25 (legacy)
+ */
 export function fireGoogleAdsTherapistConversion(leadId?: string) {
   sendConversion({ label: LABEL_THERAPIST, value: 25, transactionId: leadId, dedupePrefix: 'ga_conv_therapist_registration' });
-}
-
-export function fireGoogleAdsBookingConversion(bookingId?: string) {
-  // Keep value aligned with current policy; can be adjusted later
-  sendConversion({ label: LABEL_BOOKING, value: 10, transactionId: bookingId, dedupePrefix: 'ga_conv_booking' });
 }

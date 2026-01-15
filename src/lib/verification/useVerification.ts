@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { normalizePhoneNumber, validatePhone } from './phone';
+import { fireLeadVerifiedConversion } from '@/lib/gtag';
 
 // ============================================================================
 // Types
@@ -345,6 +346,14 @@ export function useVerification(options: UseVerificationOptions = {}): UseVerifi
         }
       } catch {
         // Ignore session fetch errors
+      }
+      
+      // Fire Google Ads base conversion (€12) - CRITICAL for attribution
+      // This ensures the client-side base conversion fires for email code entry flow
+      try {
+        fireLeadVerifiedConversion(pid);
+      } catch {
+        // Ignore conversion errors
       }
       
       trackEvent('verification_completed', { contact_method: contactMethod, has_patient_id: !!pid });
