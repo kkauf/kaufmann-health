@@ -11,7 +11,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { CalNormalizedSlot, CalBookingKind } from '@/contracts/cal';
+import type { CalNormalizedSlot, CalBookingKind, CalBookingResult, CalBookingSuccessResponse } from '@/contracts/cal';
+import { USE_NATIVE_BOOKING } from '@/lib/cal/book';
 import { buildCalBookingUrl } from '@/lib/cal/booking-url';
 import { getAttribution } from '@/lib/attribution';
 import { useVerification } from '@/lib/verification/useVerification';
@@ -24,7 +25,10 @@ interface SessionData {
   patient_id?: string;
 }
 
-type BookingStep = 'slots' | 'verify' | 'code' | 'email-sent' | 'fallback';
+type BookingStep = 'slots' | 'verify' | 'code' | 'email-sent' | 'confirm' | 'booking' | 'success' | 'fallback';
+
+// Location type for booking
+export type BookingLocationType = 'video' | 'in_person';
 
 // EARTH-262: Timeout configuration
 // Increased from 5s to 10s to handle Vercel cold starts + Cal DB pool init
@@ -64,6 +68,12 @@ export interface CalBookingState {
 
   // EARTH-262: Retry state
   bookingRetryCount: number;
+
+  // EARTH-272: Native booking state
+  locationType: BookingLocationType;
+  bookingLoading: boolean;
+  bookingError: string | null;
+  bookingResult: CalBookingSuccessResponse | null;
 }
 
 export interface CalBookingActions {
@@ -91,6 +101,12 @@ export interface CalBookingActions {
 
   // EARTH-262: Retry slots fetch
   retrySlotsFetch: () => void;
+
+  // EARTH-272: Native booking actions
+  setLocationType: (type: BookingLocationType) => void;
+  createNativeBooking: () => Promise<void>;
+  proceedToConfirm: () => void;
+  backToVerify: () => void;
 
   // Reset state
   reset: () => void;
@@ -121,6 +137,14 @@ export function useCalBooking({
   const [slotsUnavailable, setSlotsUnavailable] = useState(false);
   const [bookingRetryCount, setBookingRetryCount] = useState(0);
   const [slotsFetchTrigger, setSlotsFetchTrigger] = useState(0); // Trigger re-fetch
+
+  // EARTH-272: Native booking state
+  const [locationType, setLocationType] = useState<BookingLocationType>(
+    bookingKind === 'intro' ? 'video' : 'video' // Default to video, can be overridden
+  );
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
+  const [bookingResult, setBookingResult] = useState<CalBookingSuccessResponse | null>(null);
 
   // Track current fetch to avoid aborting on re-renders (EARTH-262 fix)
   const currentFetchRef = useRef<{ therapistId: string; bookingKind: CalBookingKind } | null>(null);
@@ -425,17 +449,28 @@ export function useCalBooking({
     }
   }, [verification, selectedSlot, therapistId, emailRedirectPath, calUsername, bookingKind]);
 
-  // Verify code and redirect using shared hook
+  // EARTH-272: Navigate to confirm step (defined early for use in verifyCode)
+  const proceedToConfirm = useCallback(() => {
+    setStep('confirm');
+    setBookingError(null);
+  }, []);
+
+  // Verify code and proceed to native booking or redirect
   const verifyCode = useCallback(async () => {
     const result = await verification.verifyCode();
 
     if (result.success) {
-      const email = verification.state.contactMethod === 'email'
-        ? verification.state.email
-        : undefined;
-      redirectToCal(verification.state.name, email, result.patientId);
+      // EARTH-272: Use native booking when feature flag is enabled
+      if (USE_NATIVE_BOOKING) {
+        proceedToConfirm();
+      } else {
+        const email = verification.state.contactMethod === 'email'
+          ? verification.state.email
+          : undefined;
+        redirectToCal(verification.state.name, email, result.patientId);
+      }
     }
-  }, [verification, redirectToCal]);
+  }, [verification, redirectToCal, proceedToConfirm]);
 
   // EARTH-262: Retry slots fetch
   const retrySlotsFetch = useCallback(() => {
@@ -450,6 +485,106 @@ export function useCalBooking({
     setStep('fallback');
   }, []);
 
+  // EARTH-272: Create native booking via KH API
+  const createNativeBooking = useCallback(async () => {
+    if (!selectedSlot) return;
+
+    setBookingLoading(true);
+    setBookingError(null);
+    setStep('booking');
+
+    const attrs = getAttribution();
+    const email = verification.state.contactMethod === 'email'
+      ? verification.state.email
+      : undefined;
+
+    try {
+      const res = await fetch('/api/public/cal/book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          therapist_id: therapistId,
+          kind: bookingKind,
+          slot_utc: selectedSlot.time_utc,
+          name: verification.state.name,
+          email: email || `${Date.now()}@placeholder.kh`, // Fallback for phone-only
+          location_type: locationType,
+          metadata: {
+            kh_patient_id: session?.patient_id,
+            kh_gclid: attrs.gclid,
+            kh_utm_source: attrs.utm_source,
+            kh_utm_medium: attrs.utm_medium,
+            kh_utm_campaign: attrs.utm_campaign,
+          },
+        }),
+      });
+
+      const json = await res.json() as { data: CalBookingResult | null; error: string | null };
+
+      if (json.error) {
+        setBookingError(json.error);
+        setStep('confirm');
+        return;
+      }
+
+      if (!json.data) {
+        setBookingError('Keine Antwort vom Server');
+        setStep('confirm');
+        return;
+      }
+
+      if (json.data.success) {
+        setBookingResult(json.data.booking);
+        setStep('success');
+
+        // Track success
+        try {
+          navigator.sendBeacon?.(
+            '/api/events',
+            new Blob([JSON.stringify({
+              type: 'native_booking_completed',
+              ...attrs,
+              properties: {
+                therapist_id: therapistId,
+                kind: bookingKind,
+                booking_uid: json.data.booking.uid,
+              },
+            })], { type: 'application/json' })
+          );
+        } catch { }
+      } else {
+        // Handle known errors
+        if (json.data.canRetry) {
+          setBookingError('Dieser Termin ist leider nicht mehr verfügbar. Bitte wähle eine andere Zeit.');
+          setBookingRetryCount((c) => c + 1);
+          setStep('slots'); // Go back to slot selection
+          retrySlotsFetch(); // Refresh slots
+        } else if (json.data.fallbackToRedirect) {
+          // Fallback to Cal.com redirect
+          redirectToCal(verification.state.name, email, session?.patient_id);
+        } else {
+          setBookingError(json.data.message || 'Buchung fehlgeschlagen');
+          setStep('confirm');
+        }
+      }
+    } catch (e) {
+      console.error('[useCalBooking] Native booking failed:', e);
+      setBookingError('Verbindungsfehler. Bitte versuche es erneut.');
+      setStep('confirm');
+    } finally {
+      setBookingLoading(false);
+    }
+  }, [
+    selectedSlot, therapistId, bookingKind, locationType, session,
+    verification.state, redirectToCal, retrySlotsFetch
+  ]);
+
+  // EARTH-272: Back to verify from confirm
+  const backToVerify = useCallback(() => {
+    setStep('verify');
+    setBookingError(null);
+  }, []);
+
   // Reset state
   const reset = useCallback(() => {
     setSelectedSlot(null);
@@ -457,7 +592,10 @@ export function useCalBooking({
     verification.reset();
     setSlotsUnavailable(false);
     setBookingRetryCount(0);
-  }, [verification]);
+    setBookingError(null);
+    setBookingResult(null);
+    setLocationType(bookingKind === 'intro' ? 'video' : 'video');
+  }, [verification, bookingKind]);
 
   // Map verification state to CalBookingState interface for backward compatibility
   const state: CalBookingState = {
@@ -479,6 +617,11 @@ export function useCalBooking({
     verifyLoading: verification.state.loading,
     verifyError: verification.state.error,
     bookingRetryCount,
+    // EARTH-272: Native booking state
+    locationType,
+    bookingLoading,
+    bookingError,
+    bookingResult,
   };
 
   // Map actions to shared verification hook
@@ -504,6 +647,11 @@ export function useCalBooking({
     redirectToCal,
     handleBooking,
     retrySlotsFetch,
+    // EARTH-272: Native booking actions
+    setLocationType,
+    createNativeBooking,
+    proceedToConfirm,
+    backToVerify,
     reset,
   };
 

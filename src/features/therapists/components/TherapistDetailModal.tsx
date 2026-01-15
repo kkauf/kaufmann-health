@@ -23,6 +23,7 @@ import { formatSessionPrice } from '@/lib/pricing';
 import { isCalBookingEnabled } from '@/lib/cal/booking-url';
 import { useCalBooking, groupSlotsByDay } from '../hooks/useCalBooking';
 import { CalVerificationForm } from './CalVerificationForm';
+import { CalBookingConfirm } from './CalBookingConfirm';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { CalBookingKind } from '@/contracts/cal';
 
@@ -930,8 +931,21 @@ export function TherapistDetailModal({
               </div>
             </div>
 
-            {/* Verification form for unverified users */}
-            {calState.step !== 'slots' ? (
+            {/* EARTH-272: Native booking confirmation flow */}
+            {(calState.step === 'confirm' || calState.step === 'booking' || calState.step === 'success') ? (
+              <CalBookingConfirm
+                state={calState}
+                actions={calActions}
+                therapistName={`${therapist.first_name} ${therapist.last_name}`}
+                bookingKind={calBookingKind}
+                sessionPrice={therapist.typical_rate}
+                supportsInPerson={therapist.session_preferences?.some(
+                  (p) => p.toLowerCase().replace(/[\s-]+/g, '_') === 'in_person'
+                ) ?? false}
+                practiceAddress={therapist.metadata?.profile?.practice_address}
+              />
+            ) : calState.step !== 'slots' ? (
+              /* Verification form for unverified users */
               <CalVerificationForm
                 state={calState}
                 actions={calActions}
