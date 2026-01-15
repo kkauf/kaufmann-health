@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ContactModal } from '@/features/therapists/components/ContactModal';
 import { TherapistDetailModal } from '@/features/therapists/components/TherapistDetailModal';
 import { TherapistCard } from '@/features/therapists/components/TherapistCard';
+import { TherapistProfile } from '@/features/therapists/components/TherapistProfile';
 import { HeroMatchCard } from './HeroMatchCard';
 import { MatchRejectionModal, type RejectionReason } from './MatchRejectionModal';
 import { CheckCircle, Sparkles } from 'lucide-react';
@@ -16,10 +17,8 @@ import { isCalBookingEnabled, assertCalFieldsPresent } from '@/lib/cal/booking-u
 import CtaLink from '@/components/CtaLink';
 import FloatingWhatsApp from '@/components/FloatingWhatsApp';
 import { getAttribution } from '@/lib/attribution';
+import { fireLeadVerifiedConversion } from '@/lib/gtag';
 
-const TherapyModalityExplanations = dynamic(() => import('@/components/TherapyModalityExplanations'), {
-  ssr: true,
-});
 
 type TherapistItem = {
   id: string;
@@ -64,6 +63,8 @@ type TherapistItem = {
   requires_intro_before_booking?: boolean;
   // Match-specific: whether this patient has completed an intro with this therapist
   has_completed_intro?: boolean;
+  // Pricing
+  typical_rate?: number;
 };
 
 type MatchApiData = {
@@ -289,6 +290,27 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       } catch { }
     }
   }, [data, therapists.length, uuid]);
+
+  // Fire Google Ads lead verified base conversion for email magic link users
+  // This fires once per uuid to ensure client-side base conversion for attribution
+  useEffect(() => {
+    if (!data || !uuid) return;
+    
+    // Deduplicate: only fire once per match session
+    const storageKey = `ga_conv_lead_verified_${uuid}`;
+    try {
+      if (window.sessionStorage.getItem(storageKey) === '1') return;
+    } catch { }
+    
+    // Fire the base conversion (€12) - CRITICAL for Google Ads attribution
+    // The server-side enhanced conversion has already fired in verify-code route
+    try {
+      // Use uuid as transaction ID since we don't have patient_id client-side here
+      // The sendConversion in gtag.ts will handle its own deduplication
+      fireLeadVerifiedConversion(uuid);
+      window.sessionStorage.setItem(storageKey, '1');
+    } catch { }
+  }, [data, uuid]);
 
   // Track preferences summary shown (non-PII)
   useEffect(() => {
@@ -668,61 +690,86 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         <span>Qualifikationen geprüft · Online-Kennenlernen kostenlos</span>
       </p>
 
-      {/* STATE A: Hero View - Single best match */}
-      {matchViewState === 'hero' && topMatch && (
-        <div className="space-y-6">
-          {(() => {
-            const t = topMatch;
-            const therapistData: TherapistData = {
-              id: t.id,
-              first_name: t.first_name,
-              last_name: t.last_name,
-              photo_url: t.photo_url || undefined,
-              city: t.city || '',
-              accepting_new: t.accepting_new ?? true,
-              modalities: t.modalities || [],
-              schwerpunkte: t.schwerpunkte || [],
-              session_preferences: t.session_preferences || [],
-              approach_text: t.approach_text || '',
-              languages: t.languages,
-              availability: Array.isArray(t.availability) ? t.availability as { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] : [],
-              metadata: t.metadata,
-              cal_username: t.cal_username,
-              cal_enabled: t.cal_enabled,
-              cal_bookings_live: t.cal_bookings_live,
-            };
+      {/* STATE A: Hero View - Inline full profile */}
+      {matchViewState === 'hero' && topMatch && (() => {
+        const t = topMatch;
+        const therapistData: TherapistData = {
+          id: t.id,
+          first_name: t.first_name,
+          last_name: t.last_name,
+          photo_url: t.photo_url || undefined,
+          city: t.city || '',
+          accepting_new: t.accepting_new ?? true,
+          modalities: t.modalities || [],
+          schwerpunkte: t.schwerpunkte || [],
+          session_preferences: t.session_preferences || [],
+          approach_text: t.approach_text || '',
+          languages: t.languages,
+          availability: Array.isArray(t.availability) ? t.availability as { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] : [],
+          metadata: t.metadata,
+          cal_username: t.cal_username,
+          cal_enabled: t.cal_enabled,
+          cal_bookings_live: t.cal_bookings_live,
+          typical_rate: t.typical_rate,
+        };
 
-            return (
-              <HeroMatchCard
+        return (
+          <div className="space-y-6">
+            {/* Context banner - why this therapist */}
+            <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 px-6 py-4 rounded-xl shadow-lg">
+              <div className="flex items-center justify-center gap-2 text-lg font-semibold text-white tracking-wide">
+                <Sparkles className="h-5 w-5" />
+                Dein bester Match
+              </div>
+              <p className="text-emerald-100 text-sm mt-1 text-center">
+                Basierend auf deinen Kriterien haben wir {t.first_name} als beste Empfehlung für dich ausgewählt.
+                {therapistsWithQuality.length > 1 && ` Wir haben ${therapistsWithQuality.length} passende Therapeut:innen gefunden.`}
+              </p>
+            </div>
+
+            {/* Inline full profile */}
+            <div className="bg-white rounded-xl border-2 border-emerald-400/60 shadow-xl p-4 sm:p-6">
+              <TherapistProfile
                 therapist={therapistData}
-                patientModalities={data?.patient?.specializations || []}
-                patientSchwerpunkte={data?.patient?.schwerpunkte || []}
-                patientCity={data?.patient?.city}
-                onBookIntro={() => handleOpen(t, 'consultation')}
-                onViewProfile={() => {
-                  setDetailModalViewMode('profile');
-                  setDetailModalTherapist(t);
-                }}
+                centered={true}
                 requiresIntroBeforeBooking={t.requires_intro_before_booking}
                 hasCompletedIntro={t.has_completed_intro}
+                onBookIntro={() => {
+                  if (isCalBookingEnabled(therapistData)) {
+                    setDetailModalViewMode('cal-booking');
+                    setDetailModalCalKind('intro');
+                    setDetailModalTherapist(t);
+                  } else {
+                    handleOpen(t, 'consultation');
+                  }
+                }}
+                onBookSession={() => {
+                  if (isCalBookingEnabled(therapistData)) {
+                    setDetailModalViewMode('cal-booking');
+                    setDetailModalCalKind('full_session');
+                    setDetailModalTherapist(t);
+                  } else {
+                    handleOpen(t, 'booking');
+                  }
+                }}
               />
-            );
-          })()}
-
-          {/* "Not a fit?" CTA - triggers feedback modal */}
-          {therapistsWithQuality.length > 1 && (
-            <div className="text-center pt-4">
-              <button
-                type="button"
-                onClick={() => setShowRejectionModal(true)}
-                className="text-gray-500 hover:text-gray-700 text-sm underline underline-offset-2 transition-colors"
-              >
-                Kein passender Match? Zeige weitere Optionen
-              </button>
             </div>
-          )}
-        </div>
-      )}
+
+            {/* "Not a fit?" CTA - prominent escape hatch for accessibility */}
+            {therapistsWithQuality.length > 1 && (
+              <div className="text-center pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowRejectionModal(true)}
+                  className="text-base px-6 py-3 h-auto border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 font-medium"
+                >
+                  Passt nicht? Weitere {therapistsWithQuality.length - 1} Optionen ansehen
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* STATE C: Directory View - All matches */}
       {matchViewState === 'directory' && (
@@ -812,20 +859,18 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
         />
       )}
 
-      {/* Footer CTA */}
-      <div className="mt-10 rounded-xl border border-gray-200/60 bg-slate-50/60 p-6 text-center">
-        <p className="text-sm text-gray-600">Keine passende Person dabei?</p>
-        <Button variant="outline" asChild className="mt-3">
-          <CtaLink href="/therapeuten" eventType="cta_click" eventId="alle-therapeuten" data-cta="alle-therapeuten">
-            Alle Therapeuten ansehen
-          </CtaLink>
-        </Button>
-      </div>
-
-      {/* Modality explanations */}
-      {data?.patient?.modality_matters && (
-        <TherapyModalityExplanations />
+      {/* Footer CTA - only show in directory view (after user has seen matches) */}
+      {matchViewState === 'directory' && (
+        <div className="mt-10 rounded-xl border border-gray-200/60 bg-slate-50/60 p-6 text-center">
+          <p className="text-sm text-gray-600">Keine passende Person dabei?</p>
+          <Button variant="outline" asChild className="mt-3">
+            <CtaLink href="/therapeuten" eventType="cta_click" eventId="alle-therapeuten" data-cta="alle-therapeuten">
+              Alle Therapeuten ansehen
+            </CtaLink>
+          </Button>
+        </div>
       )}
+
 
       {/* Detail modal */}
       {detailModalTherapist && (

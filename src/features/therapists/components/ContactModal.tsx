@@ -16,7 +16,7 @@ import ConsentSection from '@/components/ConsentSection';
 import { getAttribution } from '@/lib/attribution';
 import { cn } from '@/lib/utils';
 import { formatSessionPrice } from '@/lib/pricing';
-import { fireGoogleAdsClientConversion } from '@/lib/gtag';
+import { fireLeadVerifiedConversion } from '@/lib/gtag';
 
 type ContactType = 'booking' | 'consultation';
 type Slot = { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string };
@@ -658,7 +658,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         } catch { }
       }
       try {
-        fireGoogleAdsClientConversion(pid);
+        fireLeadVerifiedConversion(pid);
       } catch { }
     }
     void maybeFireClientConv();

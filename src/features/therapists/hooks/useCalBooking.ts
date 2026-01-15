@@ -16,6 +16,7 @@ import { USE_NATIVE_BOOKING } from '@/lib/cal/book';
 import { buildCalBookingUrl } from '@/lib/cal/booking-url';
 import { getAttribution } from '@/lib/attribution';
 import { useVerification } from '@/lib/verification/useVerification';
+import { fireIntroBookedConversion, fireSessionBookedConversion } from '@/lib/gtag';
 
 interface SessionData {
   verified: boolean;
@@ -50,6 +51,7 @@ export interface CalBookingState {
   slotsError: string | null;
   slotsUnavailable: boolean; // EARTH-262: Cal.com is unreachable
   selectedSlot: CalNormalizedSlot | null;
+  hasAttemptedFetch: boolean; // True after first fetch attempt completes
 
   // Session state
   session: SessionData | null;
@@ -125,6 +127,7 @@ export function useCalBooking({
   const [slotsLoading, setSlotsLoading] = useState(enabled);
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<CalNormalizedSlot | null>(null);
+  const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
 
   // Session state
   const [session, setSession] = useState<SessionData | null>(null);
@@ -233,6 +236,8 @@ export function useCalBooking({
         if (!res.ok) {
           setSlotsUnavailable(true);
           setSlotsError('Terminkalender vorübergehend nicht verfügbar');
+          setSlotsLoading(false);
+          setHasAttemptedFetch(true);
           return;
         }
 
@@ -244,6 +249,8 @@ export function useCalBooking({
           console.error('[useCalBooking] Malformed JSON response');
           setSlotsUnavailable(true);
           setSlotsError('Terminkalender vorübergehend nicht verfügbar');
+          setSlotsLoading(false);
+          setHasAttemptedFetch(true);
           return;
         }
 
@@ -252,6 +259,8 @@ export function useCalBooking({
           console.error('[useCalBooking] Invalid response structure');
           setSlotsUnavailable(true);
           setSlotsError('Terminkalender vorübergehend nicht verfügbar');
+          setSlotsLoading(false);
+          setHasAttemptedFetch(true);
           return;
         }
 
@@ -261,6 +270,8 @@ export function useCalBooking({
           // EARTH-262: Treat backend errors as unavailable for graceful degradation
           setSlotsUnavailable(true);
           setSlotsError('Terminkalender vorübergehend nicht verfügbar');
+          setSlotsLoading(false);
+          setHasAttemptedFetch(true);
           return;
         }
 
@@ -270,6 +281,8 @@ export function useCalBooking({
           console.error('[useCalBooking] Slots is not an array:', typeof rawSlots);
           setSlotsUnavailable(true);
           setSlotsError('Terminkalender vorübergehend nicht verfügbar');
+          setSlotsLoading(false);
+          setHasAttemptedFetch(true);
           return;
         }
 
@@ -297,6 +310,8 @@ export function useCalBooking({
 
         setSlots(fetchedSlots);
         setSlotsUnavailable(false);
+        setSlotsLoading(false);
+        setHasAttemptedFetch(true);
 
         // Track fetch
         try {
@@ -328,6 +343,8 @@ export function useCalBooking({
 
           setSlotsUnavailable(true);
           setSlotsError('Terminkalender vorübergehend nicht verfügbar');
+          setSlotsLoading(false);
+          setHasAttemptedFetch(true);
 
           // Track ERROR-level event for monitoring
           try {
@@ -348,8 +365,7 @@ export function useCalBooking({
             );
           } catch { }
         }
-      } finally {
-        setSlotsLoading(false);
+        // For aborts (not real failures), don't set hasAttemptedFetch - let the new fetch set it
       }
     }
 
@@ -413,18 +429,29 @@ export function useCalBooking({
     window.location.href = calUrl;
   }, [selectedSlot, therapistId, calUsername, bookingKind, session]);
 
+  // EARTH-272: Navigate to confirm step (defined early for use in handleBooking and verifyCode)
+  const proceedToConfirm = useCallback(() => {
+    setStep('confirm');
+    setBookingError(null);
+  }, []);
+
   // Handle booking button - check session first
   const handleBooking = useCallback(() => {
     if (!selectedSlot) return;
 
     if (session?.verified) {
-      const email = session.contact_method === 'email' ? session.contact_value : undefined;
-      redirectToCal(session.name, email, session.patient_id);
+      // EARTH-272: Use native booking when feature flag is enabled
+      if (USE_NATIVE_BOOKING) {
+        proceedToConfirm();
+      } else {
+        const email = session.contact_method === 'email' ? session.contact_value : undefined;
+        redirectToCal(session.name, email, session.patient_id);
+      }
       return;
     }
 
     setStep('verify');
-  }, [selectedSlot, session, redirectToCal]);
+  }, [selectedSlot, session, redirectToCal, proceedToConfirm]);
 
   // Send verification code using shared hook
   const sendCode = useCallback(async () => {
@@ -448,12 +475,6 @@ export function useCalBooking({
       setStep(result.useMagicLink ? 'email-sent' : 'code');
     }
   }, [verification, selectedSlot, therapistId, emailRedirectPath, calUsername, bookingKind]);
-
-  // EARTH-272: Navigate to confirm step (defined early for use in verifyCode)
-  const proceedToConfirm = useCallback(() => {
-    setStep('confirm');
-    setBookingError(null);
-  }, []);
 
   // Verify code and proceed to native booking or redirect
   const verifyCode = useCallback(async () => {
@@ -494,9 +515,13 @@ export function useCalBooking({
     setStep('booking');
 
     const attrs = getAttribution();
-    const email = verification.state.contactMethod === 'email'
-      ? verification.state.email
-      : undefined;
+    // Use session data for verified users, otherwise use verification state
+    const bookingName = session?.name || verification.state.name;
+    const bookingEmail = session?.verified && session?.contact_method === 'email'
+      ? session.contact_value
+      : verification.state.contactMethod === 'email'
+        ? verification.state.email
+        : undefined;
 
     try {
       const res = await fetch('/api/public/cal/book', {
@@ -506,8 +531,8 @@ export function useCalBooking({
           therapist_id: therapistId,
           kind: bookingKind,
           slot_utc: selectedSlot.time_utc,
-          name: verification.state.name,
-          email: email || `${Date.now()}@placeholder.kh`, // Fallback for phone-only
+          name: bookingName,
+          email: bookingEmail || `${Date.now()}@placeholder.kh`, // Fallback for phone-only
           location_type: locationType,
           metadata: {
             kh_patient_id: session?.patient_id,
@@ -537,6 +562,16 @@ export function useCalBooking({
         setBookingResult(json.data.booking);
         setStep('success');
 
+        // Fire Google Ads conversion based on booking type
+        try {
+          const bookingUid = json.data.booking.uid;
+          if (bookingKind === 'intro') {
+            fireIntroBookedConversion(bookingUid); // €60 secondary conversion
+          } else {
+            fireSessionBookedConversion(bookingUid); // €125 secondary conversion
+          }
+        } catch { }
+
         // Track success
         try {
           navigator.sendBeacon?.(
@@ -561,7 +596,7 @@ export function useCalBooking({
           retrySlotsFetch(); // Refresh slots
         } else if (json.data.fallbackToRedirect) {
           // Fallback to Cal.com redirect
-          redirectToCal(verification.state.name, email, session?.patient_id);
+          redirectToCal(bookingName, bookingEmail, session?.patient_id);
         } else {
           setBookingError(json.data.message || 'Buchung fehlgeschlagen');
           setStep('confirm');
@@ -604,6 +639,7 @@ export function useCalBooking({
     slotsError,
     slotsUnavailable,
     selectedSlot,
+    hasAttemptedFetch,
     session,
     sessionLoading,
     step,

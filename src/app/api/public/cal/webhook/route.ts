@@ -580,28 +580,30 @@ export async function POST(req: Request) {
     const matchId = matchIdFromMeta || null;
 
     // Upsert into cal_bookings (idempotent by cal_uid)
+    // IMPORTANT: Only set booking_kind/source/is_test if webhook has values,
+    // otherwise preserve existing values (native booking pre-inserts these)
+    const upsertData: Record<string, unknown> = {
+      cal_uid: uid,
+      last_trigger_event: triggerEvent,
+      organizer_username: organizerUsername,
+      event_type_id: typeof eventTypeId === 'number' ? eventTypeId : null,
+      start_time: startTime || null,
+      end_time: endTime || null,
+      therapist_id: therapistId,
+      patient_id: patientId,
+      match_id: matchId,
+      status: status || null,
+      updated_at: new Date().toISOString(),
+    };
+    // Only set these if webhook has values (preserve native booking pre-insert)
+    if (bookingKind) upsertData.booking_kind = bookingKind;
+    if (source) upsertData.source = source;
+    if (isTest) upsertData.is_test = isTest;
+    if (Object.keys(khMeta).length > 0) upsertData.metadata = khMeta;
+
     const { error: upsertError } = await supabaseServer
       .from('cal_bookings')
-      .upsert(
-        {
-          cal_uid: uid,
-          last_trigger_event: triggerEvent,
-          organizer_username: organizerUsername,
-          event_type_id: typeof eventTypeId === 'number' ? eventTypeId : null,
-          start_time: startTime || null,
-          end_time: endTime || null,
-          therapist_id: therapistId,
-          patient_id: patientId,
-          match_id: matchId,
-          booking_kind: bookingKind,
-          source: source,
-          status: status || null,
-          is_test: isTest,
-          metadata: khMeta,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'cal_uid' }
-      );
+      .upsert(upsertData, { onConflict: 'cal_uid' });
 
     if (upsertError) {
       // EARTH-262: Track webhook failure and check if we need to alert

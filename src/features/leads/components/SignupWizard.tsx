@@ -17,7 +17,7 @@ import { PRIVACY_VERSION } from '@/lib/privacy';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { useVerification } from '@/lib/verification/useVerification';
 import { getOrCreateSessionId, getGclid } from '@/lib/attribution';
-import { fireGoogleAdsClientConversion } from '@/lib/gtag';
+import { fireFormCompleteConversion, fireLeadVerifiedConversion } from '@/lib/gtag';
 import { getFlowVariant } from '@/lib/flow-randomization';
 
 // Feature toggle for schwerpunkte
@@ -1686,10 +1686,18 @@ export default function SignupWizard() {
         } catch { }
       }
 
-      // Fire client-side Google Ads base conversion (Enhanced Conversions need this)
+      // Fire client-side Google Ads form complete conversion (€4)
       try {
-        fireGoogleAdsClientConversion(leadId);
+        fireFormCompleteConversion(leadId);
       } catch { }
+
+      // For phone-verified users, also fire the lead verified conversion (€12)
+      // Email users will fire this when they click the confirmation link
+      if (data.contact_method === 'phone' && data.phone_verified) {
+        try {
+          fireLeadVerifiedConversion(leadId);
+        } catch { }
+      }
 
       {
         const currentStep2 = data.contact_method === 'phone' ? 8.5 : 8;

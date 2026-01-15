@@ -12,6 +12,17 @@ Kaufmann Health uses **Enhanced Conversions for Leads** - a two-layer system whe
 
 This is NOT offline/import conversions. The conversion action source in Google Ads is **Website**, with Enhanced Conversions enabled via the Google Ads API.
 
+## Conversion Events (Jan 2026)
+
+| Event | Function | Value | When Fired |
+|-------|----------|-------|------------|
+| **KH - Form Complete** | `fireFormCompleteConversion()` | €4 | After questionnaire form submit |
+| **KH - Lead Verified** | `fireLeadVerifiedConversion()` | €12 | After email/SMS verification (**PRIMARY**) |
+| **KH - Intro Booked** | `fireIntroBookedConversion()` | €60 | After intro booking completes |
+| **KH - Session Booked** | `fireSessionBookedConversion()` | €125 | After full session booking |
+
+**Primary conversion**: `KH - Lead Verified` (€12) - Google optimizes bids against this.
+
 ## Architecture Diagram
 
 ```
@@ -23,7 +34,7 @@ This is NOT offline/import conversions. The conversion action source in Google A
 ┌─────────────────────────────────────────────────────────────────────┐
 │ 1. FORM SUBMISSION (SignupWizard)                                   │
 │    - User completes questionnaire                                    │
-│    - fireGoogleAdsClientConversion(patientId) called                │
+│    - fireFormCompleteConversion(patientId) called (€4)              │
 └─────────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
@@ -33,7 +44,7 @@ This is NOT offline/import conversions. The conversion action source in Google A
 │                                                                      │
 │    gtag('event', 'conversion', {                                    │
 │      send_to: 'AW-XXX/label',                                       │
-│      value: 10,                                                      │
+│      value: 4-125,  ← Depends on event type                         │
 │      currency: 'EUR',                                                │
 │      transaction_id: patientId,  ← CRITICAL: Used for matching      │
 │      transport_type: 'beacon'    ← Survives page navigation         │

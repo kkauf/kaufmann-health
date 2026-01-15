@@ -34,6 +34,15 @@ const MARKDOWN_PATHS = [
 
 // No prefix needed - Metabase is KH-only
 
+// Batching config to prevent overwhelming Metabase/Railway
+// Conservative settings after Railway rate limit issues (500 logs/sec)
+const BATCH_SIZE = 3;           // Cards per batch (reduced from 5)
+const BATCH_DELAY_MS = 10000;   // 10 seconds between batches (increased from 3)
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 interface ParsedQuery {
   name: string;
   section: string;
@@ -191,12 +200,26 @@ function buildTemplateTags(sql: string): Record<string, unknown> {
   while ((match = varRegex.exec(sql)) !== null) {
     const varName = match[1];
     if (!tags[varName]) {
+      // Calculate default dates (last 28 days)
+      const today = new Date();
+      const twentyEightDaysAgo = new Date(today);
+      twentyEightDaysAgo.setDate(today.getDate() - 28);
+      
+      let defaultValue: string | null = null;
+      if (varName === 'days_back') {
+        defaultValue = '28';
+      } else if (varName === 'start_date') {
+        defaultValue = twentyEightDaysAgo.toISOString().split('T')[0]; // YYYY-MM-DD
+      } else if (varName === 'end_date') {
+        defaultValue = today.toISOString().split('T')[0]; // YYYY-MM-DD
+      }
+      
       tags[varName] = {
         id: crypto.randomUUID(),
         name: varName,
         'display-name': varName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
         type: varName.includes('date') ? 'date' : 'number',
-        default: varName === 'days_back' ? '28' : null,
+        default: defaultValue,
       };
     }
   }
@@ -307,19 +330,30 @@ async function main() {
         let updated = 0;
         let skipped = 0;
         
-        for (const query of queries) {
-          const existing = cardsByName.get(query.name);
+        // Process in batches to prevent overwhelming Metabase/Railway
+        for (let i = 0; i < queries.length; i += BATCH_SIZE) {
+          const batch = queries.slice(i, i + BATCH_SIZE);
           
-          if (existing) {
-            // Update existing card
-            console.log(`🔄 Updating: ${query.name}`);
-            await updateCard(existing.id, query, databaseId);
-            updated++;
-          } else {
-            // Create new card
-            console.log(`✨ Creating: ${query.name}`);
-            await createCard(query, databaseId);
-            created++;
+          // Process batch
+          for (const query of batch) {
+            const existing = cardsByName.get(query.name);
+            
+            if (existing) {
+              console.log(`🔄 Updating: ${query.name}`);
+              await updateCard(existing.id, query, databaseId);
+              updated++;
+            } else {
+              console.log(`✨ Creating: ${query.name}`);
+              await createCard(query, databaseId);
+              created++;
+            }
+          }
+          
+          // Delay between batches (except after last batch)
+          if (i + BATCH_SIZE < queries.length) {
+            const remaining = queries.length - i - BATCH_SIZE;
+            console.log(`   ⏳ Waiting ${BATCH_DELAY_MS/1000}s before next batch (${remaining} remaining)...`);
+            await sleep(BATCH_DELAY_MS);
           }
         }
         

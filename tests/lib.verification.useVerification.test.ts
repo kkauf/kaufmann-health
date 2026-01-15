@@ -323,7 +323,7 @@ describe('useVerification hook', () => {
       expect(onTrackEvent).toHaveBeenCalledWith('verification_code_sent', expect.any(Object));
     });
 
-    it('should send code successfully for email (magic link)', async () => {
+    it('should send code successfully for email (6-digit code)', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ data: { sent: true } }),
@@ -338,14 +338,14 @@ describe('useVerification hook', () => {
         result.current.setEmail('test@example.com');
       });
       
-      let sendResult: { success: boolean; useMagicLink?: boolean };
+      let sendResult: { success: boolean };
       await act(async () => {
         sendResult = await result.current.sendCode({ name: 'Max Mustermann' });
       });
       
       expect(sendResult!.success).toBe(true);
-      expect(sendResult!.useMagicLink).toBe(true);
-      expect(result.current.state.step).toBe('link');
+      // Email now uses 6-digit code just like SMS
+      expect(result.current.state.step).toBe('code');
     });
 
     it('should handle API error', async () => {

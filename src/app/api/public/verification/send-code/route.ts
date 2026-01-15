@@ -9,7 +9,7 @@ import { sendSmsCode } from '@/lib/verification/sms';
 import { getVerificationMode } from '@/lib/verification/config';
 import { isValidGermanMobile, normalizePhoneNumber } from '@/lib/verification/phone';
 import { ServerAnalytics } from '@/lib/server-analytics';
-import { renderEmailConfirmation } from '@/lib/email/templates/emailConfirmation';
+import { renderEmailVerificationCode } from '@/lib/email/templates/emailConfirmation';
 import { sendEmail } from '@/lib/email/client';
 import { randomBytes } from 'crypto';
 import { supabaseServer } from '@/lib/supabase-server';
@@ -425,34 +425,13 @@ export async function POST(req: NextRequest) {
         error: null,
       });
     } else {
-      // Email verification: generate token and send email
-      const token = randomBytes(32).toString('hex');
-
-      // Determine base URL from request host for local development (localhost or LAN IP)
-      // Falls back to NEXT_PUBLIC_BASE_URL in production
-      let baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-      if (!baseUrl || baseUrl.includes('localhost')) {
-        const host = req.headers.get('host');
-        if (host) {
-          const protocol = host.includes('localhost') || host.startsWith('192.168.') || host.startsWith('10.') ? 'http' : 'https';
-          baseUrl = `${protocol}://${host}`;
-        } else {
-          baseUrl = 'http://localhost:3000';
-        }
-      }
-
-      let confirmUrl = `${baseUrl}/api/public/leads/confirm?token=${token}`;
-      if (form_session_id) {
-        confirmUrl = `${confirmUrl}&fs=${encodeURIComponent(form_session_id)}`;
-      }
-      // If a safe redirect path is provided, include it so the confirm endpoint
-      // can return the user to the correct UI context (e.g. ContactModal on /therapeuten).
-      if (redirect && typeof redirect === 'string') {
-        const isSafe = redirect.startsWith('/') && !redirect.startsWith('/api') && !redirect.startsWith('//');
-        if (isSafe) {
-          confirmUrl = `${confirmUrl}&redirect=${encodeURIComponent(redirect)}`;
-        }
-      }
+      // Email verification: generate 6-digit code (same UX as SMS)
+      // Generate cryptographically random 6-digit code
+      const codeNum = parseInt(randomBytes(4).toString('hex'), 16) % 1000000;
+      const emailCode = codeNum.toString().padStart(6, '0');
+      
+      // Code expires in 10 minutes
+      const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
       // Ensure a person exists for this email so confirmation can succeed.
       // Store the token & timestamp in metadata and include the id in the confirm URL.
@@ -467,8 +446,9 @@ export async function POST(req: NextRequest) {
         if (!selErr && existing && existing.length > 0) {
           personId = existing[0].id as string;
           const meta = (existing[0].metadata as Record<string, unknown>) || {};
-          meta['confirm_token'] = token;
-          meta['confirm_sent_at'] = new Date().toISOString();
+          meta['email_code'] = emailCode;
+          meta['email_code_sent_at'] = new Date().toISOString();
+          meta['email_code_expires_at'] = codeExpiresAt;
           if (isTestCookie) meta['is_test'] = true;
           if (gclid && typeof meta['gclid'] !== 'string') meta['gclid'] = gclid;
           if (campaign_source && typeof meta['landing_page'] !== 'string') meta['landing_page'] = campaign_source;
@@ -537,8 +517,9 @@ export async function POST(req: NextRequest) {
         } else {
           // Create a minimal patient lead row
           const metadata: Record<string, unknown> = {
-            confirm_token: token,
-            confirm_sent_at: new Date().toISOString(),
+            email_code: emailCode,
+            email_code_sent_at: new Date().toISOString(),
+            email_code_expires_at: codeExpiresAt,
             ...(gclid ? { gclid } : {}),
             ...(campaign_source ? { landing_page: campaign_source } : {}),
             ...((draft_contact || draft_booking) ? { conversion_path: 'directory_contact' } : {}),
@@ -608,8 +589,9 @@ export async function POST(req: NextRequest) {
           .eq('id', personId)
           .single();
         const meta = (existing?.metadata as Record<string, unknown>) || {};
-        meta['confirm_token'] = token;
-        meta['confirm_sent_at'] = new Date().toISOString();
+        meta['email_code'] = emailCode;
+        meta['email_code_sent_at'] = new Date().toISOString();
+        meta['email_code_expires_at'] = codeExpiresAt;
         if (isTestCookie) meta['is_test'] = true;
         if (gclid && typeof meta['gclid'] !== 'string') meta['gclid'] = gclid;
         if (campaign_source && typeof meta['landing_page'] !== 'string') meta['landing_page'] = campaign_source;
@@ -691,11 +673,9 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      confirmUrl = `${confirmUrl}&id=${encodeURIComponent(personId)}`;
-
       // Check if this is a booking flow (draft_booking present)
       const isBooking = !!draft_booking;
-      const emailContent = renderEmailConfirmation({ confirmUrl, isBooking });
+      const emailContent = renderEmailVerificationCode({ code: emailCode, isBooking });
 
       let emailResult: { success: boolean; error?: string } = { success: true };
       try {
@@ -705,11 +685,10 @@ export async function POST(req: NextRequest) {
           html: emailContent.html,
           replyTo: 'kontakt@kaufmann-health.de',
           context: {
-            stage: 'email_confirmation',
-            lead_id: lead_id || 'pending',
+            stage: 'email_verification_code',
+            lead_id: lead_id || personId || 'pending',
             lead_type: 'patient',
-            template: 'email_confirmation',
-            email_token: token,
+            template: 'email_verification_code',
           },
         });
       } catch (err) {
@@ -738,7 +717,6 @@ export async function POST(req: NextRequest) {
       const respData: Record<string, unknown> = { sent: true, method: 'email' };
       if (process.env.NODE_ENV !== 'production') {
         respData.person_id = personId;
-        respData.token = token;
       }
       return NextResponse.json({
         data: respData,

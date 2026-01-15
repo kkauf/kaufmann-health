@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { normalizePhoneNumber, validatePhone } from './phone';
+import { fireLeadVerifiedConversion } from '@/lib/gtag';
 
 // ============================================================================
 // Types
@@ -267,13 +268,12 @@ export function useVerification(options: UseVerificationOptions = {}): UseVerifi
         return { success: false, fallbackToEmail: true };
       }
       
-      // Update step based on contact method
-      const useMagicLink = contactMethod === 'email';
-      setStep(useMagicLink ? 'link' : 'code');
+      // Update step to code entry (both email and SMS now use 6-digit codes)
+      setStep('code');
       
-      trackEvent('verification_code_sent', { contact_method: contactMethod, use_magic_link: useMagicLink });
+      trackEvent('verification_code_sent', { contact_method: contactMethod });
       
-      return { success: true, useMagicLink };
+      return { success: true };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten';
       setError(message);
@@ -346,6 +346,14 @@ export function useVerification(options: UseVerificationOptions = {}): UseVerifi
         }
       } catch {
         // Ignore session fetch errors
+      }
+      
+      // Fire Google Ads base conversion (€12) - CRITICAL for attribution
+      // This ensures the client-side base conversion fires for email code entry flow
+      try {
+        fireLeadVerifiedConversion(pid);
+      } catch {
+        // Ignore conversion errors
       }
       
       trackEvent('verification_completed', { contact_method: contactMethod, has_patient_id: !!pid });

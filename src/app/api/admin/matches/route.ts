@@ -403,10 +403,10 @@ export async function POST(req: Request) {
         .from('matches')
         .insert({ patient_id, therapist_id: tid, status: 'proposed', notes })
         .select('id')
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        await logError('admin.api.matches', error, { stage: 'insert', patient_id, therapist_id: tid });
+      if (error || !data) {
+        await logError('admin.api.matches', error || new Error('Insert returned no data'), { stage: 'insert', patient_id, therapist_id: tid });
         continue; // proceed with others
       }
 
