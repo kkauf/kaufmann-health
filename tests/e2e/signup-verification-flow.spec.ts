@@ -75,7 +75,7 @@ async function navigateToContactStep(page: Page) {
   
   // Step 4: Location - select Online
   await expect(page.getByText(/Wie möchtest du die Sitzungen/i)).toBeVisible({ timeout: 5000 });
-  await page.getByRole('button', { name: /^Online$/i }).click();
+  await page.getByRole('button', { name: /Online.*Video/i }).click();
   
   // Step 5: Preferences - skip
   await page.waitForTimeout(500);
