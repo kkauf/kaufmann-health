@@ -29,6 +29,13 @@ test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
                 session_preferences: ['online', 'in_person'],
                 approach_text: '',
                 availability: [],
+                // Cal.com fields required for "Direkt buchen" button
+                cal_enabled: true,
+                cal_username: 'silvia-hoffmann',
+                next_intro_slot: {
+                  time_utc: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week from now
+                  format: 'online',
+                },
               },
             ],
             metadata: { match_type: 'exact' },
@@ -114,8 +121,7 @@ test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
       await loading3.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
       await expect(loading3).toHaveCount(0, { timeout: 15000 });
       // With zero therapists stubbed, empty-state CTA should be visible
-      await expect(page.getByText('Alle Therapeuten ansehen')).toBeVisible();
-      await expect(page.getByText('Alle Therapeuten ansehen')).toBeVisible();
+      await expect(page.getByText('Alle Therapeut:innen ansehen')).toBeVisible();
     });
   });
 
@@ -140,7 +146,7 @@ test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
       });
       await page.goto('/matches/test-uuid');
       // With zero therapists stubbed, empty-state CTA should be visible on mobile
-      await expect(page.getByText('Alle Therapeuten ansehen')).toBeVisible();
+      await expect(page.getByText('Alle Therapeut:innen ansehen')).toBeVisible();
     });
   });
 
