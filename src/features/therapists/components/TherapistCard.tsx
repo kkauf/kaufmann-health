@@ -6,7 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, Calendar, MessageCircle, User, ShieldCheck, ChevronRight, Globe, Clock } from 'lucide-react';
+import { MapPin, Video, Calendar, MessageCircle, User, ShieldCheck, ChevronRight, Globe, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { TherapistData } from './TherapistDirectory';
 import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
@@ -49,33 +50,6 @@ function hashCode(s: string) {
     h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
   }
   return Math.abs(h);
-}
-
-// EARTH-248: Format next intro slot for display
-// Only returns formatted string if slot is still in the future
-function formatNextIntroSlot(slot: { date_iso: string; time_label: string; time_utc?: string } | null | undefined): string | null {
-  if (!slot?.date_iso || !slot?.time_label) return null;
-  try {
-    // Check if slot is in the future (using time_utc if available, otherwise date_iso)
-    const slotTime = slot.time_utc 
-      ? new Date(slot.time_utc).getTime()
-      : new Date(slot.date_iso + 'T' + slot.time_label + ':00').getTime();
-    const now = Date.now();
-    
-    // Don't show slots that are in the past or less than 30 minutes away
-    if (slotTime < now + 30 * 60 * 1000) {
-      return null;
-    }
-
-    const date = new Date(slot.date_iso + 'T12:00:00'); // Noon to avoid timezone issues
-    const weekday = date.toLocaleDateString('de-DE', { weekday: 'short' });
-    const day = date.getDate();
-    const month = date.toLocaleDateString('de-DE', { month: 'short' });
-    // Format: "Mo 13. Jan um 10:00"
-    return `${weekday} ${day}. ${month} um ${slot.time_label}`;
-  } catch {
-    return null;
-  }
 }
 
 
@@ -282,23 +256,6 @@ export function TherapistCard({
                 </div>
               )}
 
-              {/* EARTH-248: Next intro slot - only show for therapists with available Cal.com slots */}
-              {(() => {
-                // Use availability-based check (slots exist + cal_enabled + not admin-disabled)
-                const isCalLive = isCalBookingAvailable(therapist);
-                if (!isCalLive) return null;
-                
-                const nextSlot = formatNextIntroSlot(therapist.next_intro_slot);
-                if (!nextSlot) return null;
-                
-                return (
-                  <div className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-700">
-                    <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span>Nächster Intro-Termin: {nextSlot}</span>
-                  </div>
-                );
-              })()}
-
               {/* Contacted date */}
               {contactedAt && (
                 <div className="mt-1 text-xs text-emerald-700">
@@ -419,28 +376,31 @@ export function TherapistCard({
           </div>
 
           {/* Profile text preview - prefer new structured fields, fallback to legacy */}
-          {(() => {
-            const profile = therapist.metadata?.profile;
-            // Check if therapist offers German - if not, use English labels
-            const offersGerman = therapist.languages?.some(l => l === 'Deutsch') ?? true;
-            // Prefer who_comes_to_me with prefix for context
-            if (profile?.who_comes_to_me) {
+          {/* min-h ensures consistent card height even when no text */}
+          <div className="mb-4 min-h-[4.5rem]">
+            {(() => {
+              const profile = therapist.metadata?.profile;
+              // Check if therapist offers German - if not, use English labels
+              const offersGerman = therapist.languages?.some(l => l === 'Deutsch') ?? true;
+              // Prefer who_comes_to_me with prefix for context
+              if (profile?.who_comes_to_me) {
+                return (
+                  <p className="line-clamp-3 text-sm text-gray-700">
+                    <span className="font-medium">{offersGerman ? 'Zu mir kommen Menschen, die ' : 'People who come to me '}</span>
+                    {profile.who_comes_to_me}
+                  </p>
+                );
+              }
+              // Fallback to session_focus or legacy approach_text
+              const fallbackText = profile?.session_focus || profile?.about_me || therapist.approach_text;
+              if (!fallbackText) return null;
               return (
-                <p className="mb-4 line-clamp-3 text-sm text-gray-700">
-                  <span className="font-medium">{offersGerman ? 'Zu mir kommen Menschen, die ' : 'People who come to me '}</span>
-                  {profile.who_comes_to_me}
+                <p className="line-clamp-3 text-sm text-gray-700">
+                  {fallbackText}
                 </p>
               );
-            }
-            // Fallback to session_focus or legacy approach_text
-            const fallbackText = profile?.session_focus || profile?.about_me || therapist.approach_text;
-            if (!fallbackText) return null;
-            return (
-              <p className="mb-4 line-clamp-3 text-sm text-gray-700">
-                {fallbackText}
-              </p>
-            );
-          })()}
+            })()}
+          </div>
 
         </div>
 
@@ -470,22 +430,31 @@ export function TherapistCard({
                 )}
               </Button>
 
-              {/* Direct booking button - disabled with explanation if intro required */}
+              {/* Direct booking button - disabled with tooltip if intro required */}
               {hideDirectBooking ? (
-                <div className="group/tooltip relative">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full text-sm opacity-50 cursor-not-allowed"
-                    disabled
-                  >
-                    <Calendar className="mr-2 h-4 w-4 shrink-0" />
-                    <span className="truncate">Direkt buchen</span>
-                  </Button>
-                  <p className="mt-1.5 text-xs text-gray-500 text-center">
-                    Erst nach Kennenlernen buchbar
-                  </p>
-                </div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      {/* Wrap in span to allow tooltip on disabled button */}
+                      <span className="w-full" tabIndex={0}>
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          className="w-full text-sm opacity-50 cursor-not-allowed pointer-events-none"
+                          disabled
+                          tabIndex={-1}
+                        >
+                          <Calendar className="mr-2 h-4 w-4 shrink-0" />
+                          <span className="truncate">Direkt buchen</span>
+                          <Info className="ml-1.5 h-3.5 w-3.5 text-gray-400" />
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[200px] text-center">
+                      <p>Erst nach Kennenlernen buchbar</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               ) : (
                 <Button
                   size="lg"
