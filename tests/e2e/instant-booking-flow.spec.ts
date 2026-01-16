@@ -55,7 +55,8 @@ test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
       await expect(page.locator('text=Bitte bestätige deine E‑Mail')).toHaveCount(0);
 
       // Click booking CTA (wait for it to be visible to avoid race)
-      const bookBtn = page.getByRole('button', { name: /Direkt buchen/i }).first();
+      // Note: Button text is "Sitzung buchen" in hero view, "Direkt buchen" in card view
+      const bookBtn = page.getByRole('button', { name: /Sitzung buchen|Direkt buchen/i }).first();
       await bookBtn.scrollIntoViewIfNeeded();
       await expect(bookBtn).toBeVisible();
       await bookBtn.click();
