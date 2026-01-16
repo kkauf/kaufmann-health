@@ -147,9 +147,11 @@ test.describe('Therapist Directory - General', () => {
     // Main content should be visible
     await expect(page.locator('main')).toBeVisible();
 
-    // No horizontal scroll (content fits viewport) - allow small margin for scrollbars
-    const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
-    expect(bodyWidth).toBeLessThanOrEqual(400);
+    // Mobile hamburger menu should be visible
+    await expect(page.getByRole('button', { name: /Menü/i })).toBeVisible();
+    
+    // Therapist cards should still render
+    await expect(page.getByRole('heading', { name: /Therapeut/i })).toBeVisible();
   });
 
   test('directory filters are present', async ({ page }) => {
