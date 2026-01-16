@@ -61,10 +61,13 @@ async function navigateToContactStep(page: Page) {
     await skipSchwerpunkte.click();
   }
   
-  // Step 3: Modality - skip
+  // Step 3: Modality choice - "Möchtest du deine Therapiemethode selbst wählen?"
   await page.waitForTimeout(500);
+  const modalityNo = page.getByRole('button', { name: /Nein, empfehlt mir eine/i });
   const skipModality = page.getByRole('button', { name: /Überspringen/i });
-  if (await skipModality.isVisible({ timeout: 3000 }).catch(() => false)) {
+  if (await modalityNo.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await modalityNo.click();
+  } else if (await skipModality.isVisible({ timeout: 1000 }).catch(() => false)) {
     await skipModality.click();
   }
   
