@@ -94,7 +94,9 @@ describe('Cal.com Slots API Error Handling (EARTH-262)', () => {
       expect(body.error).toBe('Cal.com not enabled for this therapist');
     });
 
-    it('returns 503 when Cal DB not configured', async () => {
+    it('returns 502 when both tRPC and DB fallback fail', async () => {
+      // EARTH-274: Now uses tRPC-first strategy with DB fallback
+      // This test verifies error handling when both methods fail
       const { supabaseServer } = await import('@/lib/supabase-server');
       vi.mocked(supabaseServer.from).mockReturnValueOnce({
         select: vi.fn(() => ({
@@ -107,7 +109,10 @@ describe('Cal.com Slots API Error Handling (EARTH-262)', () => {
         })),
       } as never);
 
-      // Ensure CAL_DATABASE_URL is not set
+      // Mock tRPC to fail (network error)
+      const mockFetch = vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network error'));
+
+      // Ensure CAL_DATABASE_URL is not set so DB fallback also fails
       const originalEnv = process.env.CAL_DATABASE_URL;
       delete process.env.CAL_DATABASE_URL;
 
@@ -121,12 +126,13 @@ describe('Cal.com Slots API Error Handling (EARTH-262)', () => {
         );
 
         const res = await GET(req);
-        expect(res.status).toBe(503);
+        expect(res.status).toBe(502);
         
         const body = await res.json();
-        expect(body.error).toBe('Cal.com database not configured');
+        expect(body.error).toBe('Failed to fetch availability');
       } finally {
         process.env.CAL_DATABASE_URL = originalEnv;
+        mockFetch.mockRestore();
       }
     });
   });

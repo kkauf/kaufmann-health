@@ -1,10 +1,12 @@
 /**
  * GET /api/public/cal/slots
  *
- * Fetch Cal.com availability via direct DB queries (EARTH-256)
+ * Fetch Cal.com availability via tRPC API (primary) or direct DB queries (fallback)
  *
- * WHY: Cal.com Docker deployment doesn't include v2 REST API.
- * We query Cal's Postgres directly (same DB we use for provisioning).
+ * Strategy (EARTH-274):
+ * 1. Try Cal.com's internal tRPC API first - this is the most accurate as it accounts for
+ *    buffer times, date overrides, slot reservations, and all Cal.com booking rules
+ * 2. Fall back to direct DB queries if tRPC fails (network issues, etc.)
  *
  * Contract:
  * - Input: therapist_id, kind (intro|full_session), start?, end?, timeZone?
@@ -22,6 +24,7 @@ import {
   type CalBookingKind,
 } from '@/contracts/cal';
 import { fetchCalSlotsFromDb, isCalDbEnabled } from '@/lib/cal/slots-db';
+import { fetchCalSlotsFromTrpc } from '@/lib/cal/slots-trpc';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -103,24 +106,37 @@ export async function GET(req: NextRequest) {
       } satisfies CalSlotsResponse);
     }
 
-    // Check if Cal DB is configured
-    if (!isCalDbEnabled()) {
-      return NextResponse.json(
-        { data: null, error: 'Cal.com database not configured' } satisfies CalSlotsResponse,
-        { status: 503 }
-      );
-    }
+    // Strategy: Try tRPC API first (most accurate), fall back to direct DB
+    let slots: CalNormalizedSlot[] | null = null;
+    let source: 'trpc' | 'db' = 'trpc';
 
-    // Fetch slots from Cal.com database directly
-    const slots = await fetchCalSlotsFromDb(calUsername, eventSlug, start, end, timeZone);
+    // 1. Try tRPC API first - this accounts for all Cal.com booking rules
+    slots = await fetchCalSlotsFromTrpc(calUsername, eventSlug, start, end, timeZone);
 
     if (slots === null) {
       void ServerAnalytics.trackEventFromRequest(req, {
-        type: 'cal_slots_db_failed',
+        type: 'cal_slots_trpc_failed',
         source: 'api.public.cal.slots',
         props: { therapist_id, kind, cal_username: calUsername },
       });
 
+      // 2. Fall back to direct DB queries
+      if (isCalDbEnabled()) {
+        source = 'db';
+        slots = await fetchCalSlotsFromDb(calUsername, eventSlug, start, end, timeZone);
+
+        if (slots === null) {
+          void ServerAnalytics.trackEventFromRequest(req, {
+            type: 'cal_slots_db_failed',
+            source: 'api.public.cal.slots',
+            props: { therapist_id, kind, cal_username: calUsername },
+          });
+        }
+      }
+    }
+
+    // If both methods failed, return error
+    if (slots === null) {
       return NextResponse.json(
         { data: null, error: 'Failed to fetch availability' } satisfies CalSlotsResponse,
         { status: 502 }
@@ -141,6 +157,7 @@ export async function GET(req: NextRequest) {
         kind,
         cal_username: calUsername,
         slot_count: slots.length,
+        fetch_source: source,
       },
     });
 
