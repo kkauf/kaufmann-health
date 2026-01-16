@@ -34,10 +34,9 @@ const MARKDOWN_PATHS = [
 
 // No prefix needed - Metabase is KH-only
 
-// Batching config to prevent overwhelming Metabase/Railway
-// Conservative settings after Railway rate limit issues (500 logs/sec)
-const BATCH_SIZE = 3;           // Cards per batch (reduced from 5)
-const BATCH_DELAY_MS = 10000;   // 10 seconds between batches (increased from 3)
+// Batching config - no delays needed for simple date params (not field filters)
+const BATCH_SIZE = 10;          // Cards per batch
+const BATCH_DELAY_MS = 0;       // No delay needed
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -361,18 +360,72 @@ async function main() {
         break;
       }
       
+      case '--cleanup': {
+        // Force-clean stale template tags from all cards
+        console.log('Cleaning stale template tags from all cards...\n');
+        
+        const queries = parseMarkdownQueries();
+        const queryByName = new Map(queries.map(q => [q.name, q]));
+        const existingCards = await listExistingCards();
+        const databaseId = await getDatabaseId();
+        
+        let cleaned = 0;
+        for (let i = 0; i < existingCards.length; i += BATCH_SIZE) {
+          const batch = existingCards.slice(i, i + BATCH_SIZE);
+          
+          for (const card of batch) {
+            const query = queryByName.get(card.name);
+            if (!query) {
+              console.log(`⏭️  Skipping: ${card.name} (not in markdown)`);
+              continue;
+            }
+            
+            // Build fresh template tags from current SQL
+            const freshTags = buildTemplateTags(query.sql);
+            
+            // Update card with completely fresh template-tags
+            console.log(`🧹 Cleaning: ${card.name} → tags: [${Object.keys(freshTags).join(', ')}]`);
+            
+            await metabaseRequest(`/api/card/${card.id}`, {
+              method: 'PUT',
+              body: JSON.stringify({
+                dataset_query: {
+                  type: 'native',
+                  native: {
+                    query: query.sql,
+                    'template-tags': freshTags,
+                  },
+                  database: databaseId,
+                },
+              }),
+            });
+            cleaned++;
+          }
+          
+          if (i + BATCH_SIZE < existingCards.length) {
+            const remaining = existingCards.length - i - BATCH_SIZE;
+            console.log(`   ⏳ Waiting ${BATCH_DELAY_MS/1000}s before next batch (${remaining} remaining)...`);
+            await sleep(BATCH_DELAY_MS);
+          }
+        }
+        
+        console.log(`\nDone! Cleaned ${cleaned} cards.`);
+        break;
+      }
+      
       case '--help':
       default:
         console.log(`
 Metabase Query Sync Tool
 
 Usage:
-  npx ts-node scripts/metabase-sync.ts <command>
+  npx tsx scripts/metabase-sync.ts <command>
 
 Commands:
   --list      List existing Metabase cards
   --dry-run   Preview queries that would be created/updated
   --sync      Create/update cards from docs/metabase-*.md files
+  --cleanup   Force-clean stale template tags from all cards
   --help      Show this help message
 
 Queries use section headers from metabase-kpis.md and metabase-detail.md as names.

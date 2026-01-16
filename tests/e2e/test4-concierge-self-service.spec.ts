@@ -75,6 +75,8 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
    */
   async function completeStep1Timeline(page: Page) {
     await page.getByRole('button', { name: /Innerhalb des nächsten Monats|nächsten Monats/i }).click();
+    // Must click "Weiter" to proceed to step 2
+    await page.getByRole('button', { name: 'Weiter →' }).click();
   }
 
   /**

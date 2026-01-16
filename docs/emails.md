@@ -132,6 +132,50 @@ Trigger points:
 - `POST /api/public/verification/verify-code` (when processing `draft_booking`)
 - `GET /api/public/leads/confirm` (when processing `draft_booking`)
 
+### Native Booking Flow (Cal.com Integration)
+
+Cal.com-enabled therapists use a different email flow triggered by the Cal.com webhook.
+
+**Templates:**
+
+- `calBookingClientConfirmation` → `src/lib/email/templates/calBookingClientConfirmation.ts`
+  - Sent to patient after Cal.com booking is confirmed.
+  - Includes: therapist name, date, time, duration, video link (for online), address (for in-person).
+  - Differentiates between **intro** (free 15-min) and **full session** (paid).
+  - Shows pricing context for intro sessions ("Dieses Gespräch ist kostenlos").
+
+- `calBookingTherapistNotification` → `src/lib/email/templates/calBookingTherapistNotification.ts`
+  - Sent to therapist when a patient books via Cal.com.
+  - Includes: patient name/email, session type, date, time, location type.
+
+- `calBookingReminder` → `src/lib/email/templates/calBookingReminder.ts`
+  - Sent 24h before a Cal.com booking (intro or full session).
+  - Includes: therapist name, date/time, video link or address.
+  - Cron: `GET /api/admin/cal/booking-reminders` (runs daily at 09:00)
+
+- `calIntroFollowup` → `src/lib/email/templates/calIntroFollowup.ts`
+  - Sent ~2 hours after an intro session ends.
+  - Purpose: Encourage booking a full session if the intro went well.
+  - Includes: next available slot suggestion, link to book full session, or browse other therapists.
+  - Cron: `GET /api/admin/cal/intro-followup` (runs hourly)
+
+**Trigger points:**
+
+| Event | Trigger | Emails Sent |
+|-------|---------|-------------|
+| Patient books intro | `POST /api/public/cal/webhook` (BOOKING_CREATED) | Client confirmation, Therapist notification |
+| Patient books session | `POST /api/public/cal/webhook` (BOOKING_CREATED) | Client confirmation, Therapist notification |
+| 24h before booking | Cron `/api/admin/cal/booking-reminders` | Client reminder |
+| 2h after intro ends | Cron `/api/admin/cal/intro-followup` | Client followup (upsell) |
+
+**Idempotency columns** (in `cal_bookings` table):
+- `client_confirmation_sent_at` - Prevents duplicate client confirmations
+- `therapist_notification_sent_at` - Prevents duplicate therapist notifications  
+- `reminder_sent_at` - Prevents duplicate reminders
+- `followup_sent_at` - Prevents duplicate followups
+
+**Test mode:** When `kh_test=true` is passed in Cal.com booking metadata (via URL param), emails route to `LEADS_NOTIFY_EMAIL` sink instead of real recipients.
+
 ### Email Cadence (Post-Verification Nurture)
 
 Three-stage follow-up sequence for verified patients who haven't booked:
