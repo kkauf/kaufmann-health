@@ -67,6 +67,8 @@ async function navigateToContactStep(page: Page) {
   const skipModality = page.getByRole('button', { name: /Überspringen/i });
   if (await modalityNo.isVisible({ timeout: 3000 }).catch(() => false)) {
     await modalityNo.click();
+    // After selecting, click Weiter to proceed
+    await page.getByRole('button', { name: 'Weiter →' }).click();
   } else if (await skipModality.isVisible({ timeout: 1000 }).catch(() => false)) {
     await skipModality.click();
   }
