@@ -68,6 +68,12 @@ interface CalBooking {
   endTime: Date;
 }
 
+interface CalDateOverride {
+  date: Date; // The specific date this override applies to
+  startTime: string | null; // Override start time (null = day is blocked)
+  endTime: string | null; // Override end time (null = day is blocked)
+}
+
 export interface CalSlot {
   date_iso: string; // YYYY-MM-DD
   time_label: string; // HH:MM
@@ -187,6 +193,27 @@ async function getBookings(
 }
 
 /**
+ * Get date overrides for a schedule within date range
+ * DateOverride allows therapists to block specific dates or modify availability for specific dates
+ */
+async function getDateOverrides(
+  scheduleId: number,
+  start: Date,
+  end: Date
+): Promise<CalDateOverride[]> {
+  const db = getPool();
+  const result = await db.query<{ date: Date; startTime: string | null; endTime: string | null }>(
+    `SELECT date, "startTime"::text, "endTime"::text
+     FROM "DateOverride"
+     WHERE "scheduleId" = $1
+       AND date >= $2::date
+       AND date <= $3::date`,
+    [scheduleId, start, end]
+  );
+  return result.rows;
+}
+
+/**
  * Parse TIME string 'HH:MM:SS' to hours and minutes
  */
 function parseTimeString(timeStr: string): { hours: number; minutes: number } {
@@ -237,10 +264,12 @@ function createDateInTimezone(
 
 /**
  * Generate available time slots from availability patterns
+ * Respects date overrides which can block entire days or modify availability for specific dates
  */
 function generateSlots(
   availability: CalAvailability[],
   bookings: CalBooking[],
+  dateOverrides: CalDateOverride[],
   eventLength: number,
   slotInterval: number, // spacing between slots (may differ from eventLength)
   startDate: Date,
@@ -251,25 +280,53 @@ function generateSlots(
   const now = new Date();
   const minBookingTime = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
   
+  // Build a map of date overrides for quick lookup (keyed by YYYY-MM-DD)
+  const overrideMap = new Map<string, CalDateOverride>();
+  for (const override of dateOverrides) {
+    const dateKey = new Date(override.date).toISOString().split('T')[0];
+    overrideMap.set(dateKey, override);
+  }
+  
   // Iterate through each day in range
   const current = new Date(startDate);
   while (current < endDate) {
     const dayOfWeek = current.getDay(); // 0=Sunday
+    const year = current.getFullYear();
+    const month = current.getMonth();
+    const day = current.getDate();
+    const dateKey = current.toISOString().split('T')[0];
     
-    // Find availability for this day
-    for (const avail of availability) {
-      if (!avail.days.includes(dayOfWeek)) continue;
-      
+    // Check for date override for this day
+    const override = overrideMap.get(dateKey);
+    
+    // If override exists with null times, the day is completely blocked
+    if (override && override.startTime === null) {
+      current.setDate(current.getDate() + 1);
+      continue;
+    }
+    
+    // Determine availability windows for this day
+    // If override exists with specific times, use those; otherwise use regular availability
+    let availabilityWindows: Array<{ startTime: string; endTime: string }> = [];
+    
+    if (override && override.startTime && override.endTime) {
+      // Use override times for this specific date
+      availabilityWindows = [{ startTime: override.startTime, endTime: override.endTime }];
+    } else {
+      // Use regular availability patterns for this day of week
+      availabilityWindows = availability
+        .filter(avail => avail.days.includes(dayOfWeek))
+        .map(avail => ({ startTime: avail.startTime, endTime: avail.endTime }));
+    }
+    
+    // Generate slots for each availability window
+    for (const window of availabilityWindows) {
       // Parse time strings to get hours/minutes
-      const startParsed = parseTimeString(avail.startTime);
-      const endParsed = parseTimeString(avail.endTime);
+      const startParsed = parseTimeString(window.startTime);
+      const endParsed = parseTimeString(window.endTime);
       
       // Get start/end times for this day IN THE THERAPIST'S TIMEZONE
       // This is critical: availability times are stored in therapist's local time
-      const year = current.getFullYear();
-      const month = current.getMonth();
-      const day = current.getDate();
-      
       const dayStart = createDateInTimezone(year, month, day, startParsed.hours, startParsed.minutes, timeZone);
       const dayEnd = createDateInTimezone(year, month, day, endParsed.hours, endParsed.minutes, timeZone);
       
@@ -340,6 +397,17 @@ export async function fetchCalSlotsFromDb(
       return null;
     }
     
+    // Get the schedule ID (event-specific or user default)
+    const db = getPool();
+    let scheduleId = eventType.scheduleId;
+    if (!scheduleId) {
+      const scheduleResult = await db.query<{ id: number }>(
+        `SELECT id FROM "Schedule" WHERE "userId" = $1 LIMIT 1`,
+        [userId]
+      );
+      scheduleId = scheduleResult.rows[0]?.id ?? null;
+    }
+    
     // Get availability (use event-specific schedule if set)
     const availability = await getAvailability(userId, eventType.scheduleId);
     if (availability.length === 0) {
@@ -354,11 +422,15 @@ export async function fetchCalSlotsFromDb(
     // Get existing bookings
     const bookings = await getBookings(eventType.id, startDate, endDate);
     
+    // Get date overrides (specific date availability exceptions)
+    const dateOverrides = scheduleId ? await getDateOverrides(scheduleId, startDate, endDate) : [];
+    
     // Generate available slots (use slotInterval for spacing, fallback to length)
     const slotInterval = eventType.slotInterval ?? eventType.length;
     const slots = generateSlots(
       availability,
       bookings,
+      dateOverrides,
       eventType.length,
       slotInterval,
       startDate,
