@@ -46,11 +46,19 @@ async function navigateToContactStep(page: Page) {
   // Click Weiter to proceed
   await page.getByRole('button', { name: 'Weiter →' }).click();
   
-  // Step 2/2.5: What brings you / Schwerpunkte - skip
+  // Step 2: What brings you (concierge) - fill minimal text to enable Weiter
   await page.waitForTimeout(500);
-  const skipStep2 = page.getByRole('button', { name: /Überspringen|Weiter/i }).first();
-  if (await skipStep2.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await skipStep2.click();
+  const whatBringsYou = page.locator('textarea[placeholder*="Angst"], textarea[id="issue"]');
+  if (await whatBringsYou.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await whatBringsYou.fill('E2E Test - Stress');
+    await page.getByRole('button', { name: 'Weiter →' }).click();
+  }
+  
+  // Step 2.5: Schwerpunkte (self-service) - skip if present
+  await page.waitForTimeout(500);
+  const skipSchwerpunkte = page.getByRole('button', { name: /Überspringen/i });
+  if (await skipSchwerpunkte.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await skipSchwerpunkte.click();
   }
   
   // Step 3: Modality - skip
