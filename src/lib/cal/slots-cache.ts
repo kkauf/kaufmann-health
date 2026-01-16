@@ -7,6 +7,7 @@
 
 import { supabaseServer } from '@/lib/supabase-server';
 import { fetchCalSlotsFromDb, isCalDbEnabled } from './slots-db';
+import { fetchCalSlotsFromTrpc } from './slots-trpc';
 
 export interface CachedCalSlot {
   therapist_id: string;
@@ -73,9 +74,17 @@ export async function warmCacheForTherapist(
       .split('T')[0];
 
     // Fetch both intro and full_session slots in parallel
+    // Use tRPC first (most accurate), fall back to DB
+    const fetchSlots = async (eventSlug: string) => {
+      const trpcSlots = await fetchCalSlotsFromTrpc(calUsername, eventSlug, start, end, 'Europe/Berlin');
+      if (trpcSlots !== null) return trpcSlots;
+      // Fallback to DB if tRPC fails
+      return fetchCalSlotsFromDb(calUsername, eventSlug, start, end, 'Europe/Berlin');
+    };
+
     const [introSlots, fullSlots] = await Promise.all([
-      fetchCalSlotsFromDb(calUsername, 'intro', start, end, 'Europe/Berlin'),
-      fetchCalSlotsFromDb(calUsername, 'full-session', start, end, 'Europe/Berlin'),
+      fetchSlots('intro'),
+      fetchSlots('full-session'),
     ]);
 
     if (introSlots === null && fullSlots === null) {

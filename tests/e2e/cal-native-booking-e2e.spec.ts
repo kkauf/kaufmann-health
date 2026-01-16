@@ -7,36 +7,13 @@ import { test, expect } from '@playwright/test';
  * This catches the slot synchronization bug where our API showed slots that
  * Cal.com would reject with HTTP 409, causing fallback redirects.
  * 
- * The test:
- * 1. Opens a Cal-enabled therapist profile
- * 2. Selects an available intro slot
- * 3. Fills in contact details
- * 4. Submits the booking
- * 5. Verifies booking succeeds natively (no Cal.com redirect)
- * 
- * Run against local:    npx playwright test cal-native-booking-e2e
- * Run against staging:  E2E_BASE_URL=https://staging.kaufmann-health.de npx playwright test cal-native-booking-e2e
- * Run against prod:     E2E_BASE_URL=https://www.kaufmann-health.de npx playwright test cal-native-booking-e2e
- * 
- * Note: For protected deployments (staging), ensure VERCEL_AUTOMATION_BYPASS_SECRET is set in .env.local
+ * Run against production: SMOKE_TEST_URL=https://www.kaufmann-health.de npx playwright test cal-native-booking-e2e
+ * Run against staging: Uses baseURL from playwright.config.ts (requires VERCEL_AUTOMATION_BYPASS_SECRET)
  */
 
 test.describe('Cal.com Native Booking E2E', () => {
+  // Use SMOKE_TEST_URL for production tests, otherwise use baseURL from config
   const BASE_URL = process.env.SMOKE_TEST_URL || '';
-  const VERCEL_BYPASS = process.env.VERCEL_AUTOMATION_BYPASS_SECRET || '';
-  
-  // Helper to add bypass param for staging
-  const withBypass = (path: string) => {
-    if (!VERCEL_BYPASS) return `${BASE_URL}${path}`;
-    const sep = path.includes('?') ? '&' : '?';
-    return `${BASE_URL}${path}${sep}x-vercel-protection-bypass=${VERCEL_BYPASS}`;
-  };
-  
-  // Test user details (use unique email to avoid conflicts)
-  const testUser = {
-    name: 'E2E Test User',
-    email: `e2e-test-${Date.now()}@test.kaufmann-health.de`,
-  };
 
   test('booking completes natively without Cal.com redirect', async ({ page }) => {
     // Track if we get redirected to Cal.com (the bug we're preventing)
@@ -64,7 +41,7 @@ test.describe('Cal.com Native Booking E2E', () => {
     });
 
     // 1. Navigate to therapist directory
-    await page.goto(withBypass('/therapeuten'));
+    await page.goto(`${BASE_URL}/therapeuten`);
     await page.waitForLoadState('networkidle');
 
     // 2. Find a Cal-enabled therapist with "Online-Kennenlernen" button
@@ -110,10 +87,10 @@ test.describe('Cal.com Native Booking E2E', () => {
     const nameInput = modal.locator('input[name="name"]').or(modal.locator('input[placeholder*="Name"]'));
     
     if (await emailInput.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await emailInput.fill(testUser.email);
+      await emailInput.fill(`e2e-test-${Date.now()}@test.kaufmann-health.de`);
       
       if (await nameInput.isVisible().catch(() => false)) {
-        await nameInput.fill(testUser.name);
+        await nameInput.fill('E2E Test User');
       }
 
       // Submit the booking form
@@ -165,7 +142,7 @@ test.describe('Cal.com Native Booking E2E', () => {
     });
 
     // Navigate and trigger slots fetch
-    await page.goto(withBypass('/therapeuten'));
+    await page.goto(`${BASE_URL}/therapeuten`);
     await page.waitForLoadState('networkidle');
 
     const calButton = page.getByRole('button', { name: /Online-Kennenlernen/ }).first();
@@ -216,7 +193,7 @@ test.describe('Cal.com Native Booking E2E', () => {
     });
 
     // Navigate to therapist and select a slot
-    await page.goto(withBypass('/therapeuten'));
+    await page.goto(`${BASE_URL}/therapeuten`);
     await page.waitForLoadState('networkidle');
 
     const calButton = page.getByRole('button', { name: /Online-Kennenlernen/ }).first();
