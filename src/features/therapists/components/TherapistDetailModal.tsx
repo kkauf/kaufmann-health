@@ -1189,7 +1189,7 @@ export function TherapistDetailModal({
                                 onClick={() => setShowAllTimesForDay(true)}
                                 className="px-3 py-2 rounded-lg border-2 border-dashed border-gray-200 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-600 transition-all"
                               >
-                                +{allSlots.length - filteredSlots.length} mehr
+                                mehr
                               </button>
                             )}
                           </div>
