@@ -115,6 +115,21 @@ export default function RootLayout({
         {process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID ? (
           <Script id="clarity-init" strategy="afterInteractive">
             {`
+              // Skip Clarity for test sessions, localhost, and staging
+              function shouldExcludeRecording() {
+                // Check kh_test cookie
+                if (document.cookie.split(';').some(c => c.trim().startsWith('kh_test=1'))) return true;
+                // Check localhost
+                var h = window.location.hostname;
+                if (h === 'localhost' || h === '127.0.0.1') return true;
+                // Check staging/preview (Vercel previews, non-production domains)
+                if (h.includes('.vercel.app') || h.includes('staging') || h.includes('preview')) return true;
+                return false;
+              }
+              
+              if (shouldExcludeRecording()) {
+                console.log('[Clarity] Excluded: test/localhost/staging');
+              } else {
               // Wait for page to be fully loaded (CSS, fonts, images) before initializing Clarity
               function initClarity() {
                 (function(c,l,a,r,i,t,y){
@@ -159,15 +174,38 @@ export default function RootLayout({
                   setTimeout(tryInit, 500);
                 });
               }
+              } // end else (not excluded)
             `}
           </Script>
         ) : null}
-        {/* Hotjar / Contentsquare - session recordings */}
-        <Script
-          id="hotjar-init"
-          src="https://t.contentsquare.net/uxa/72ed21e97b29d.js"
-          strategy="afterInteractive"
-        />
+        {/* Hotjar / Contentsquare - session recordings (excluded for test/localhost/staging) */}
+        <Script id="hotjar-init" strategy="afterInteractive">
+          {`
+            (function() {
+              // Check kh_test cookie
+              if (document.cookie.split(';').some(c => c.trim().startsWith('kh_test=1'))) {
+                console.log('[Hotjar] Excluded: test cookie');
+                return;
+              }
+              // Check localhost
+              var h = window.location.hostname;
+              if (h === 'localhost' || h === '127.0.0.1') {
+                console.log('[Hotjar] Excluded: localhost');
+                return;
+              }
+              // Check staging/preview
+              if (h.includes('.vercel.app') || h.includes('staging') || h.includes('preview')) {
+                console.log('[Hotjar] Excluded: staging/preview');
+                return;
+              }
+              // Load Hotjar/Contentsquare
+              var s = document.createElement('script');
+              s.src = 'https://t.contentsquare.net/uxa/72ed21e97b29d.js';
+              s.async = true;
+              document.head.appendChild(s);
+            })();
+          `}
+        </Script>
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-gray-900 focus:px-3 focus:py-2 focus:text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-900">
           Zum Inhalt springen
         </a>

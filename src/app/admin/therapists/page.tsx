@@ -24,7 +24,7 @@ type Therapist = {
   phone: string | null;
   gender?: string | null;
   accepting_new?: boolean;
-  status: "pending_verification" | "verified" | "rejected" | string | null;
+  status: "pending_verification" | "verified" | "rejected" | "declined" | string | null;
   metadata: TherapistMeta;
   created_at: string | null;
   opted_out?: boolean;
@@ -74,7 +74,7 @@ function formatDate(iso?: string | null) {
 
 export default function AdminTherapistsPage() {
   // Filters
-  const [status, setStatus] = useState<"pending_verification" | "verified" | "rejected">("verified");
+  const [status, setStatus] = useState<"pending_verification" | "verified" | "rejected" | "declined">("verified");
   const [city, setCity] = useState("");
   const [q, setQ] = useState("");
   const [specialization, setSpecialization] = useState<string>("");
@@ -265,13 +265,18 @@ export default function AdminTherapistsPage() {
     };
   }, [openId, closeDetail]);
 
-  async function updateStatus(newStatus: "verified" | "rejected") {
+  async function updateStatus(newStatus: "verified" | "rejected" | "declined") {
     if (!openId) return;
+    // Declined requires a reason
+    if (newStatus === 'declined' && !notes.trim()) {
+      setMessage('Bitte gib einen Grund für die Ablehnung an (wird dem Therapeuten mitgeteilt).');
+      return;
+    }
     try {
       setUpdating(true);
       setMessage(null);
       type UpdatePayload = {
-        status?: "pending_verification" | "verified" | "rejected";
+        status?: "pending_verification" | "verified" | "rejected" | "declined";
         verification_notes?: string;
         approve_profile?: boolean;
         approach_text?: string;
@@ -290,10 +295,13 @@ export default function AdminTherapistsPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Update fehlgeschlagen");
-      setMessage(newStatus === "verified" ? "Therapeut verifiziert" : "Therapeut abgelehnt");
+      const statusMsg = newStatus === "verified" ? "Therapeut verifiziert" : 
+                        newStatus === "declined" ? "Therapeut abgelehnt (E-Mail gesendet)" : 
+                        "Rückfrage gesendet";
+      setMessage(statusMsg);
       // Refresh list row
       await fetchTherapists();
-      // Close modal after successful verification
+      // Close modal after successful action
       setTimeout(closeDetail, 1500);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
@@ -433,7 +441,7 @@ export default function AdminTherapistsPage() {
             <Label>Status</Label>
             <Select
               value={status}
-              onValueChange={(v) => setStatus(v as "pending_verification" | "verified" | "rejected")}
+              onValueChange={(v) => setStatus(v as "pending_verification" | "verified" | "rejected" | "declined")}
             >
               <SelectTrigger className="min-w-40">
                 <SelectValue />
@@ -441,7 +449,8 @@ export default function AdminTherapistsPage() {
               <SelectContent>
                 <SelectItem value="pending_verification">Ausstehend</SelectItem>
                 <SelectItem value="verified">Verifiziert</SelectItem>
-                <SelectItem value="rejected">Abgelehnt</SelectItem>
+                <SelectItem value="rejected">Rückfrage</SelectItem>
+                <SelectItem value="declined">Abgelehnt</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -648,9 +657,14 @@ export default function AdminTherapistsPage() {
                       </div>
                       <Badge 
                         variant={detail.status === "verified" ? "default" : "secondary"}
-                        className={detail.status === "rejected" ? "bg-red-600 text-white border-transparent" : undefined}
+                        className={
+                          detail.status === "declined" ? "bg-red-600 text-white border-transparent" :
+                          detail.status === "rejected" ? "bg-amber-500 text-white border-transparent" : undefined
+                        }
                       >
-                        {detail.status === "verified" ? "Verifiziert" : detail.status === "rejected" ? "Abgelehnt" : "Ausstehend"}
+                        {detail.status === "verified" ? "Verifiziert" : 
+                         detail.status === "declined" ? "Abgelehnt" : 
+                         detail.status === "rejected" ? "Rückfrage" : "Ausstehend"}
                       </Badge>
                     </div>
 
@@ -1044,20 +1058,26 @@ export default function AdminTherapistsPage() {
                   </div>
                   )}
 
-                  {/* Internal notes */}
-                  <details className="bg-gray-50 rounded-lg border open:bg-white">
-                    <summary className="cursor-pointer px-4 py-3 text-sm font-medium hover:bg-gray-100 rounded-lg">📝 Interne Notizen (nur für Admins sichtbar)</summary>
-                    <div className="p-4 pt-2">
-                      <textarea
-                        id="notes"
-                        rows={3}
-                        className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground w-full rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-                        placeholder="Begründung bei Ablehnung oder interne Hinweise..."
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                      />
-                    </div>
-                  </details>
+                  {/* Notes / Reason field */}
+                  <div className="bg-white rounded-lg border p-4">
+                    <h4 className="font-semibold text-base mb-2 flex items-center gap-2">
+                      📝 Nachricht an Therapeut
+                      {detail.status === 'pending_verification' && (
+                        <span className="text-xs font-normal text-gray-500">(erforderlich bei Rückfrage/Ablehnung)</span>
+                      )}
+                    </h4>
+                    <textarea
+                      id="notes"
+                      rows={3}
+                      className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground w-full rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                      placeholder="z.B. 'Bitte lade dein Zertifikat hoch' oder 'Leider fehlt die HPP-Zulassung...'"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      Diese Nachricht wird dem Therapeuten per E-Mail zugestellt.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -1074,24 +1094,44 @@ export default function AdminTherapistsPage() {
                   <div className="text-xs text-gray-500">
                     <kbd className="px-2 py-1 bg-gray-100 border rounded text-xs">Esc</kbd> zum Schließen
                   </div>
-                  <div className="flex gap-2 justify-end">
+                  <div className="flex gap-2 justify-end flex-wrap">
                     <Button size="sm" variant="outline" disabled={updating} onClick={sendReminder}>
                       📧 Erinnerung
                     </Button>
-                    {detail?.status !== 'verified' && (
+                    {detail?.status !== 'verified' && detail?.status !== 'declined' && (
                       <>
                         <Button 
                           size="sm" 
                           variant="outline"
-                          className="border-red-300 text-red-700 hover:bg-red-50"
+                          className="border-red-400 text-red-700 hover:bg-red-50"
                           disabled={updating} 
                           onClick={() => {
-                            const ok = window.confirm('Therapeut wirklich ablehnen? Dadurch wird eine E-Mail mit Rückfragen verschickt.');
+                            const ok = window.confirm(
+                              '⚠️ ENDGÜLTIGE ABLEHNUNG\n\n' +
+                              'Dies ist eine finale Entscheidung. Der Therapeut wird informiert, dass er nicht ins Netzwerk aufgenommen wird.\n\n' +
+                              'Für Rückfragen (z.B. fehlende Dokumente) nutze stattdessen "Rückfrage".\n\n' +
+                              'Fortfahren?'
+                            );
+                            if (!ok) return;
+                            void updateStatus('declined');
+                          }}
+                          title="Endgültige Ablehnung - Therapeut wird nicht ins Netzwerk aufgenommen"
+                        >
+                          ✗ Ablehnen
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="border-amber-400 text-amber-700 hover:bg-amber-50"
+                          disabled={updating} 
+                          onClick={() => {
+                            const ok = window.confirm('Rückfrage senden? Der Therapeut erhält eine E-Mail mit deinen Anmerkungen und kann sein Profil ergänzen.');
                             if (!ok) return;
                             void updateStatus('rejected');
                           }}
+                          title="Profil unvollständig - Therapeut kann nachbessern"
                         >
-                          ✗ Ablehnen
+                          ↩ Rückfrage
                         </Button>
                         <Button 
                           size="sm" 
@@ -1102,6 +1142,9 @@ export default function AdminTherapistsPage() {
                           ✓ Freigeben {detail?.profile.photo_pending_url ? '(inkl. Foto)' : ''}
                         </Button>
                       </>
+                    )}
+                    {detail?.status === 'declined' && (
+                      <span className="text-sm text-gray-500 italic">Dieser Therapeut wurde bereits abgelehnt.</span>
                     )}
                   </div>
                 </div>

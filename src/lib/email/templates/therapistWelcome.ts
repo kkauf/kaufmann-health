@@ -14,7 +14,7 @@ export function renderTherapistWelcome(params: {
 
   const leadStatusMessage = params.isActiveCity
     ? 'Du kannst schon bald Klienten‑Anfragen über unser Netzwerk erhalten.'
-    : `Kaufmann Health startet bald in ${city || 'deiner Stadt'}. Wir melden uns, sobald wir live sind.`;
+    : `Online‑Sitzungen sind sofort möglich. Für Vor‑Ort‑Termine in ${city || 'deiner Stadt'} melden wir uns, sobald dort Nachfrage besteht.`;
 
   const termsUrl = `${BASE_URL}/therapist-terms?version=${encodeURIComponent(params.termsVersion)}`;
 

@@ -23,9 +23,22 @@ export default function ClarityLoader() {
   const lastNotifiedUrl = useRef<string | null>(null);
 
   useEffect(() => {
+    // Check if should exclude recording entirely (test mode, localhost, staging)
+    const shouldExcludeRecording = () => {
+      // Check kh_test cookie
+      if (document.cookie.split(';').some(c => c.trim().startsWith('kh_test=1'))) return true;
+      // Check localhost
+      const h = window.location.hostname;
+      if (h === 'localhost' || h === '127.0.0.1') return true;
+      // Check staging/preview
+      if (h.includes('.vercel.app') || h.includes('staging') || h.includes('preview')) return true;
+      return false;
+    };
+
     // Stop Clarity on admin pages and therapist acceptance flow (/match/[uuid])
     // Note: /matches/* (patient flow) is intentionally tracked
-    const isExcluded = pathname?.startsWith('/admin') || 
+    const isExcluded = shouldExcludeRecording() ||
+      pathname?.startsWith('/admin') || 
       (pathname?.startsWith('/match/') && !pathname?.startsWith('/matches/'));
 
     const applyClarity = () => {

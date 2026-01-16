@@ -279,6 +279,12 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
         if (!onlineOnly && !hasInPerson) return false;
       }
 
+      // When in-person selected, default to Berlin
+      if (onlineOnly === false) {
+        const city = (t.city || '').toLowerCase().trim();
+        if (city !== 'berlin') return false;
+      }
+
       return true;
     });
 
@@ -488,18 +494,9 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
           <span className="leading-none">Alle Profile verifiziert</span>
           <span className="sr-only">– Qualifikation & Lizenzen geprüft</span>
         </div>
-        <Badge className={cn(
-          "inline-flex items-center gap-1.5 transition-all duration-200",
-          activeFilterCount > 0 
-            ? "bg-amber-100 text-amber-700 hover:bg-amber-100" 
-            : "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-        )}>
+        <Badge className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
           <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>
-            {activeFilterCount > 0 
-              ? `${displayedCount} Therapeut:innen gefunden`
-              : `${displayedCount} Therapeut:innen mit freien Terminen`}
-          </span>
+          <span>{displayedCount} Therapeut:innen mit freien Terminen</span>
         </Badge>
       </div>
 
