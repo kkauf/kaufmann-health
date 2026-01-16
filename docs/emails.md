@@ -183,7 +183,7 @@ Three-stage follow-up sequence for verified patients who haven't booked:
 | Day | Template | Purpose |
 |-----|----------|---------|
 | 1 | `richTherapistEmail` | Personalized spotlight: top match with photo, modalities, approach text |
-| 5 | `selectionNudge` | Reassurance: free intro call, chemistry shows in person, can switch |
+| 5 | `selectionNudge` | Reassurance: free intro call, chemistry shows during meeting, can switch anytime|
 | 10 | `feedbackRequest` | One-click feedback options + interview incentive (€25 voucher) |
 
 ### Therapist Cal.com Onboarding
