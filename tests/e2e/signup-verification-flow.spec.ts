@@ -5,9 +5,15 @@
  * (via SMS or email) BEFORE seeing their therapist matches.
  * 
  * Flow: Steps 1-5 (questionnaire) → Step 6 (contact info) → Step 6.5 (SMS code) → Step 7+ (confirmation)
+ * 
+ * REFACTORED: Now uses full wizard navigation instead of startStep param.
+ * SMS bypass mode (E2E_SMS_BYPASS=true, E2E_SMS_CODE=000000) allows testing verification.
  */
 
 import { test, expect, Page } from '@playwright/test';
+
+const smsBypass = process.env.E2E_SMS_BYPASS === 'true';
+const smsCode = process.env.E2E_SMS_CODE || '000000';
 
 // Clear wizard state before each test for determinism
 async function clearWizardState(page: Page) {
@@ -22,385 +28,310 @@ async function clearWizardState(page: Page) {
   });
 }
 
-// Helper to fill questionnaire steps 1-5
-async function fillQuestionnaireSteps(page: Page) {
-  // Step 1: Timeline
-  await page.waitForSelector('text=Wann möchtest du mit der Therapie beginnen');
-  await page.click('text=Innerhalb der nächsten Woche');
+// Generate unique test identifiers
+const uid = () => Math.random().toString(36).slice(2, 10);
+
+/**
+ * Navigate through questionnaire to contact step using real UI interactions.
+ * Works with both concierge and self-service variants.
+ */
+async function navigateToContactStep(page: Page) {
+  // Step 1: Timeline - select an option
+  await expect(page.getByText(/Wann möchtest du/i)).toBeVisible({ timeout: 10000 });
   
-  // Wait for auto-advance or click next
+  // Click timeline option - triggers auto-advance
+  const timelineOption = page.getByRole('button', { name: /Innerhalb des nächsten Monats|nächsten Monats/i });
+  await timelineOption.click();
+  
+  // Click Weiter to proceed
+  await page.getByRole('button', { name: 'Weiter →' }).click();
+  
+  // Step 2/2.5: What brings you / Schwerpunkte - skip
   await page.waitForTimeout(500);
-  
-  // Step 2: What brings you / Schwerpunkte (depends on variant)
-  // Just click next/skip if available
-  const nextButton = page.getByRole('button', { name: /weiter/i });
-  if (await nextButton.isVisible()) {
-    await nextButton.click();
+  const skipStep2 = page.getByRole('button', { name: /Überspringen|Weiter/i }).first();
+  if (await skipStep2.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await skipStep2.click();
   }
   
-  // Step 3: Modality
+  // Step 3: Modality - skip
   await page.waitForTimeout(500);
-  const skipModality = page.getByRole('button', { name: /überspringen|weiter/i });
-  if (await skipModality.isVisible()) {
+  const skipModality = page.getByRole('button', { name: /Überspringen/i });
+  if (await skipModality.isVisible({ timeout: 3000 }).catch(() => false)) {
     await skipModality.click();
   }
   
-  // Step 4: Location
-  await page.waitForSelector('text=Wie möchtest du die Sitzungen durchführen');
-  await page.click('text=Online');
-  await page.waitForTimeout(500);
+  // Step 4: Location - select Online
+  await expect(page.getByText(/Wie möchtest du die Sitzungen/i)).toBeVisible({ timeout: 5000 });
+  await page.getByRole('button', { name: /^Online$/i }).click();
   
-  // Step 5: Preferences
-  const nextPrefs = page.getByRole('button', { name: /weiter/i });
-  if (await nextPrefs.isVisible()) {
-    await nextPrefs.click();
+  // Step 5: Preferences - skip
+  await page.waitForTimeout(500);
+  const skipPrefs = page.getByRole('button', { name: /Überspringen/i });
+  if (await skipPrefs.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await skipPrefs.click();
   }
+  
+  // Should now be on Step 6: Contact
+  await expect(page.getByText(/Wie heißt du|Dein Name/i)).toBeVisible({ timeout: 10000 });
 }
 
-/**
- * NOTE: These tests rely on ?startStep=6 query param and fillQuestionnaireSteps helper
- * which don't work reliably with the current wizard implementation. The wizard requires
- * completing all steps in sequence and doesn't support jumping to arbitrary steps.
- * Tests are skipped until refactored to work with the full wizard flow.
- */
 test.describe('SignupWizard Verification Flow', () => {
   test.beforeEach(async ({ page }) => {
-    // Skip all tests - startStep param and fillQuestionnaireSteps don't work reliably
-    test.skip(true, 'Tests need refactoring - startStep param and fillQuestionnaireSteps unreliable');
-    
     await clearWizardState(page);
-    // Set test mode cookie
+    // Set test mode cookie for dry-run booking
     await page.context().addCookies([{
       name: 'kh_test',
       value: '1',
-      domain: 'localhost',
+      domain: new URL(page.context().browser()?.version() ? 'http://localhost' : process.env.E2E_BASE_URL || 'http://localhost').hostname,
       path: '/',
     }]);
   });
 
-  test('should show contact info step (6) after questionnaire completion', async ({ page }) => {
-    // Mock the form-sessions API to avoid backend dependency
-    await page.route('**/api/public/form-sessions', async (route) => {
-      await route.fulfill({
-        status: 200,
-        json: { data: { id: 'test-session-id' } },
-      });
-    });
-    await page.route('**/api/public/form-sessions/*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        json: { data: { id: 'test-session-id', data: {} } },
-      });
-    });
-
-    await page.goto('/fragebogen');
+  test('reaches contact step after completing questionnaire', async ({ page }) => {
+    await page.goto('/fragebogen?variant=concierge');
     
-    // Complete steps 1-5
-    await fillQuestionnaireSteps(page);
+    // Navigate through all questionnaire steps
+    await navigateToContactStep(page);
     
     // Should now be on step 6 - Contact Info
-    await expect(page.getByText(/name/i)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/e-mail|handynummer|telefon/i)).toBeVisible();
+    await expect(page.getByText(/Wie heißt du|Dein Name/i)).toBeVisible();
+    // Should see contact method options
+    await expect(page.getByText(/E-Mail|Handynummer/i)).toBeVisible();
   });
 
-  test('should require name before proceeding', async ({ page }) => {
-    await page.route('**/api/public/form-sessions*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        json: { data: { id: 'test-session-id' } },
-      });
-    });
-
-    await page.goto('/fragebogen?startStep=6');
+  test('requires name before proceeding to verification', async ({ page }) => {
+    await page.goto('/fragebogen?variant=concierge');
+    await navigateToContactStep(page);
     
-    // Try to submit without name
-    const submitButton = page.getByRole('button', { name: /weiter|absenden/i });
-    if (await submitButton.isVisible()) {
-      await submitButton.click();
-      
-      // Should show validation error
-      await expect(page.getByText(/name/i)).toBeVisible();
+    // Try to submit without filling name
+    const phoneTab = page.getByRole('tab', { name: /Handynummer/i });
+    if (await phoneTab.isVisible()) {
+      await phoneTab.click();
+    }
+    
+    // Find phone input and fill it (but not name)
+    const phoneInput = page.locator('input[type="tel"]');
+    if (await phoneInput.isVisible()) {
+      await phoneInput.fill('+49 151 12345678');
+    }
+    
+    // The form should require name - submit button should be disabled or show error
+    const submitBtn = page.getByRole('button', { name: /Weiter|Code senden/i });
+    
+    // Either button is disabled OR clicking shows validation
+    const isDisabled = await submitBtn.isDisabled().catch(() => false);
+    if (!isDisabled) {
+      await submitBtn.click();
+      // Should show name validation error
+      await expect(page.getByText(/Name|Pflichtfeld|erforderlich/i)).toBeVisible({ timeout: 3000 });
+    } else {
+      expect(isDisabled).toBe(true);
     }
   });
 
-  test('should show SMS verification step (6.5) for phone users', async ({ page }) => {
-    await page.route('**/api/public/form-sessions*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        json: { data: { id: 'test-session-id' } },
-      });
-    });
+  test('shows SMS verification step for phone users', async ({ page }) => {
+    const testName = `E2E Test ${uid()}`;
+    const testPhone = `+49 151 ${Math.floor(10000000 + Math.random() * 89999999)}`;
     
-    // Mock send-code to succeed
-    await page.route('**/api/public/verification/send-code', async (route) => {
-      await route.fulfill({
-        status: 200,
-        json: { data: { sent: true } },
-      });
-    });
-
-    await page.goto('/fragebogen?startStep=6');
+    await page.goto('/fragebogen?variant=concierge');
+    await navigateToContactStep(page);
     
-    // Fill contact info with phone
-    await page.fill('input[name="name"], input[placeholder*="Name"]', 'Test User');
+    // Fill name
+    const nameInput = page.locator('input[name="name"], input[placeholder*="Name"]').first();
+    await nameInput.fill(testName);
     
-    // Select phone method if there's a toggle
-    const phoneOption = page.getByText(/handynummer|telefon|sms/i);
-    if (await phoneOption.isVisible()) {
-      await phoneOption.click();
+    // Select phone tab
+    const phoneTab = page.getByRole('tab', { name: /Handynummer/i });
+    if (await phoneTab.isVisible()) {
+      await phoneTab.click();
     }
     
     // Fill phone number
-    const phoneInput = page.locator('input[type="tel"], input[name*="phone"], input[placeholder*="Handy"]');
-    if (await phoneInput.isVisible()) {
-      await phoneInput.fill('0176 123 45678');
+    const phoneInput = page.locator('input[type="tel"]');
+    await phoneInput.fill(testPhone);
+    
+    // Submit to trigger SMS
+    const submitBtn = page.getByRole('button', { name: /Weiter|Code senden/i });
+    await submitBtn.click();
+    
+    // Should transition to SMS verification step (6.5)
+    await expect(page.getByText(/Code eingeben|Bestätigungscode|6-stellig/i)).toBeVisible({ timeout: 15000 });
+  });
+
+  test('completes SMS verification with bypass code', async ({ page }) => {
+    // Skip if SMS bypass not configured
+    test.skip(!smsBypass, 'Set E2E_SMS_BYPASS=true and E2E_SMS_CODE to run SMS verification tests');
+    
+    const testName = `E2E Verify ${uid()}`;
+    const testPhone = `+49 151 ${Math.floor(10000000 + Math.random() * 89999999)}`;
+    
+    await page.goto('/fragebogen?variant=concierge');
+    await navigateToContactStep(page);
+    
+    // Fill name
+    const nameInput = page.locator('input[name="name"], input[placeholder*="Name"]').first();
+    await nameInput.fill(testName);
+    
+    // Select phone tab
+    const phoneTab = page.getByRole('tab', { name: /Handynummer/i });
+    if (await phoneTab.isVisible()) {
+      await phoneTab.click();
     }
+    
+    // Fill phone
+    const phoneInput = page.locator('input[type="tel"]');
+    await phoneInput.fill(testPhone);
     
     // Submit
-    const submitButton = page.getByRole('button', { name: /weiter|absenden/i });
-    await submitButton.click();
+    await page.getByRole('button', { name: /Weiter|Code senden/i }).click();
     
-    // Should transition to SMS verification step
-    await expect(page.getByText(/code|bestätigung|verifizierung/i)).toBeVisible({ timeout: 10000 });
-  });
-
-  test('should verify SMS code and show confirmation', async ({ page }) => {
-    await page.route('**/api/public/form-sessions*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        json: { data: { id: 'test-session-id' } },
-      });
-    });
+    // Wait for code entry step
+    await expect(page.getByText(/Code eingeben|Bestätigungscode/i)).toBeVisible({ timeout: 15000 });
     
-    // Mock verify-code to succeed
-    await page.route('**/api/public/verification/verify-code', async (route) => {
-      await route.fulfill({
-        status: 200,
-        json: { data: { verified: true, patient_id: 'test-patient-id' } },
-      });
-    });
+    // Enter bypass code
+    const codeInputs = page.locator('input[inputmode="numeric"], input[type="text"][maxlength="1"]');
+    const inputCount = await codeInputs.count();
     
-    // Mock leads API
-    await page.route('**/api/public/leads', async (route) => {
-      if (route.request().method() === 'POST') {
-        await route.fulfill({
-          status: 200,
-          json: { data: { id: 'test-lead-id' } },
-        });
+    if (inputCount >= 6) {
+      // Individual digit inputs
+      for (let i = 0; i < 6; i++) {
+        await codeInputs.nth(i).fill(smsCode[i]);
       }
-    });
-
-    // Simulate being on step 6.5 with phone data
-    await page.addInitScript(() => {
-      localStorage.setItem('kh_wizard_data', JSON.stringify({
-        name: 'Test User',
-        phone_number: '+4917612345678',
-        contact_method: 'phone',
-        start_timing: 'Innerhalb der nächsten Woche',
-        session_preference: 'online',
-      }));
-      localStorage.setItem('kh_wizard_step', '6.5');
-    });
-
-    await page.goto('/fragebogen');
-    
-    // Should be on SMS verification step
-    const codeInput = page.locator('input[type="text"], input[name*="code"], input[placeholder*="Code"]');
-    await expect(codeInput).toBeVisible({ timeout: 10000 });
-    
-    // Enter code
-    await codeInput.fill('123456');
-    
-    // Submit verification
-    const verifyButton = page.getByRole('button', { name: /bestätigen|verifizieren|prüfen/i });
-    await verifyButton.click();
-    
-    // Should show confirmation screen
-    await expect(page.getByText(/bestätigt|geschafft|erfolgreich/i)).toBeVisible({ timeout: 10000 });
-  });
-
-  test('should NOT redirect to matches without verification', async ({ page }) => {
-    await page.route('**/api/public/form-sessions*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        json: { data: { id: 'test-session-id' } },
-      });
-    });
-
-    // Simulate completing only steps 1-5 (no verification)
-    await page.addInitScript(() => {
-      localStorage.setItem('kh_wizard_data', JSON.stringify({
-        start_timing: 'Innerhalb der nächsten Woche',
-        session_preference: 'online',
-        // Note: NO name, phone, or email - verification not completed
-      }));
-      localStorage.setItem('kh_wizard_step', '5');
-    });
-
-    await page.goto('/fragebogen');
-    
-    // User should be on step 5, NOT redirected to matches
-    // After clicking next, should go to step 6 (contact info), not matches
-    const nextButton = page.getByRole('button', { name: /weiter/i });
-    if (await nextButton.isVisible()) {
-      await nextButton.click();
+    } else {
+      // Single code input
+      const singleInput = page.locator('input[name*="code"], input[placeholder*="Code"]').first();
+      await singleInput.fill(smsCode);
     }
     
-    // Should be on contact info step, not matches page
-    await expect(page).not.toHaveURL(/\/matches\//);
+    // Submit verification
+    const verifyBtn = page.getByRole('button', { name: /Bestätigen|Verifizieren|Prüfen/i });
+    if (await verifyBtn.isVisible()) {
+      await verifyBtn.click();
+    }
     
-    // Should see contact form
-    await expect(page.getByText(/name/i)).toBeVisible({ timeout: 5000 });
+    // Should proceed to confirmation or matches
+    await expect(
+      page.getByText(/Geschafft|Erfolgreich|Empfehlungen|bester Match/i)
+    ).toBeVisible({ timeout: 20000 });
   });
 
-  test('email flow should show magic link instructions', async ({ page }) => {
-    await page.route('**/api/public/form-sessions*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        json: { data: { id: 'test-session-id' } },
-      });
-    });
+  test('does NOT show matches without completing verification', async ({ page }) => {
+    await page.goto('/fragebogen?variant=concierge');
+    await navigateToContactStep(page);
     
-    // Mock send-code for email
-    await page.route('**/api/public/verification/send-code', async (route) => {
-      await route.fulfill({
-        status: 200,
-        json: { data: { sent: true, type: 'magic_link' } },
-      });
-    });
+    // We're on step 6 (contact) - haven't verified yet
+    // URL should NOT be /matches/*
+    await expect(page).not.toHaveURL(/\/matches\//);
+    
+    // Should still be in wizard, not on matches page
+    await expect(page.getByText(/Wie heißt du|Dein Name/i)).toBeVisible();
+  });
 
-    await page.goto('/fragebogen?startStep=6');
+  test('email flow shows confirmation instructions', async ({ page }) => {
+    const testName = `E2E Email ${uid()}`;
+    const testEmail = `e2e-${uid()}@test.kaufmann-health.de`;
     
-    // Fill contact info with email
-    await page.fill('input[name="name"], input[placeholder*="Name"]', 'Test User');
+    await page.goto('/fragebogen?variant=concierge');
+    await navigateToContactStep(page);
     
-    // Select email method
-    const emailOption = page.getByText(/e-mail/i);
-    if (await emailOption.isVisible()) {
-      await emailOption.click();
+    // Fill name
+    const nameInput = page.locator('input[name="name"], input[placeholder*="Name"]').first();
+    await nameInput.fill(testName);
+    
+    // Email tab should be default or select it
+    const emailTab = page.getByRole('tab', { name: /E-Mail/i });
+    if (await emailTab.isVisible()) {
+      await emailTab.click();
     }
     
     // Fill email
-    const emailInput = page.locator('input[type="email"], input[name*="email"]');
-    if (await emailInput.isVisible()) {
-      await emailInput.fill('test@example.com');
-    }
+    const emailInput = page.locator('input[type="email"]');
+    await emailInput.fill(testEmail);
     
     // Submit
-    const submitButton = page.getByRole('button', { name: /weiter|absenden/i });
-    await submitButton.click();
+    await page.getByRole('button', { name: /Weiter|Absenden/i }).click();
     
-    // Should show magic link instructions (not code entry)
-    await expect(page.getByText(/e-mail|link|bestätigung/i)).toBeVisible({ timeout: 10000 });
+    // Should show email confirmation instructions (magic link or code)
+    await expect(
+      page.getByText(/E-Mail gesendet|Posteingang|Bestätigungslink|Code eingeben/i)
+    ).toBeVisible({ timeout: 15000 });
   });
 });
 
 test.describe('Verification Flow - Edge Cases', () => {
   test.beforeEach(async ({ page }) => {
-    // Skip all tests - startStep param doesn't work reliably
-    test.skip(true, 'Tests need refactoring - startStep param unreliable');
     await clearWizardState(page);
   });
 
-  test('should handle invalid phone number', async ({ page }) => {
-    await page.route('**/api/public/form-sessions*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        json: { data: { id: 'test-session-id' } },
-      });
-    });
-
-    await page.goto('/fragebogen?startStep=6');
+  test('validates phone number format', async ({ page }) => {
+    await page.goto('/fragebogen?variant=concierge');
+    await navigateToContactStep(page);
     
-    await page.fill('input[name="name"], input[placeholder*="Name"]', 'Test User');
+    // Fill name
+    const nameInput = page.locator('input[name="name"], input[placeholder*="Name"]').first();
+    await nameInput.fill('Test User');
     
-    const phoneInput = page.locator('input[type="tel"], input[name*="phone"]');
-    if (await phoneInput.isVisible()) {
-      await phoneInput.fill('123'); // Invalid phone
-      
-      const submitButton = page.getByRole('button', { name: /weiter|absenden/i });
-      await submitButton.click();
-      
-      // Should show validation error, not proceed
-      await expect(page.getByText(/gültig|ungültig|format/i)).toBeVisible({ timeout: 5000 });
+    // Select phone tab
+    const phoneTab = page.getByRole('tab', { name: /Handynummer/i });
+    if (await phoneTab.isVisible()) {
+      await phoneTab.click();
     }
+    
+    // Enter invalid phone
+    const phoneInput = page.locator('input[type="tel"]');
+    await phoneInput.fill('123'); // Too short
+    
+    // Try to submit
+    const submitBtn = page.getByRole('button', { name: /Weiter|Code senden/i });
+    await submitBtn.click();
+    
+    // Should show validation error OR button stays disabled
+    // Either way, we should NOT be on code entry step
+    await page.waitForTimeout(1000);
+    const onCodeStep = await page.getByText(/Code eingeben|Bestätigungscode/i).isVisible().catch(() => false);
+    expect(onCodeStep).toBe(false);
   });
 
-  test('should handle wrong verification code', async ({ page }) => {
-    await page.route('**/api/public/form-sessions*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        json: { data: { id: 'test-session-id' } },
-      });
-    });
+  test('handles wrong verification code gracefully', async ({ page }) => {
+    test.skip(!smsBypass, 'Requires SMS bypass to test code entry');
     
-    // Mock verify-code to fail
-    await page.route('**/api/public/verification/verify-code', async (route) => {
-      await route.fulfill({
-        status: 400,
-        json: { data: { verified: false }, error: 'Invalid code' },
-      });
-    });
-
-    await page.addInitScript(() => {
-      localStorage.setItem('kh_wizard_data', JSON.stringify({
-        name: 'Test User',
-        phone_number: '+4917612345678',
-        contact_method: 'phone',
-      }));
-      localStorage.setItem('kh_wizard_step', '6.5');
-    });
-
-    await page.goto('/fragebogen');
+    const testName = `E2E Wrong ${uid()}`;
+    const testPhone = `+49 151 ${Math.floor(10000000 + Math.random() * 89999999)}`;
     
-    const codeInput = page.locator('input[type="text"], input[name*="code"]');
-    if (await codeInput.isVisible()) {
-      await codeInput.fill('wrong');
-      
-      const verifyButton = page.getByRole('button', { name: /bestätigen|verifizieren/i });
-      await verifyButton.click();
-      
-      // Should show error, remain on verification step
-      await expect(page.getByText(/ungültig|falsch|erneut/i)).toBeVisible({ timeout: 5000 });
+    await page.goto('/fragebogen?variant=concierge');
+    await navigateToContactStep(page);
+    
+    // Fill contact info
+    await page.locator('input[name="name"], input[placeholder*="Name"]').first().fill(testName);
+    const phoneTab = page.getByRole('tab', { name: /Handynummer/i });
+    if (await phoneTab.isVisible()) await phoneTab.click();
+    await page.locator('input[type="tel"]').fill(testPhone);
+    await page.getByRole('button', { name: /Weiter|Code senden/i }).click();
+    
+    // Wait for code entry
+    await expect(page.getByText(/Code eingeben|Bestätigungscode/i)).toBeVisible({ timeout: 15000 });
+    
+    // Enter WRONG code
+    const codeInputs = page.locator('input[inputmode="numeric"], input[type="text"][maxlength="1"]');
+    const inputCount = await codeInputs.count();
+    const wrongCode = '999999';
+    
+    if (inputCount >= 6) {
+      for (let i = 0; i < 6; i++) {
+        await codeInputs.nth(i).fill(wrongCode[i]);
+      }
+    } else {
+      await page.locator('input[name*="code"]').first().fill(wrongCode);
     }
-  });
-
-  test('should allow resending SMS code', async ({ page }) => {
-    let sendCount = 0;
     
-    await page.route('**/api/public/form-sessions*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        json: { data: { id: 'test-session-id' } },
-      });
-    });
-    
-    await page.route('**/api/public/verification/send-code', async (route) => {
-      sendCount++;
-      await route.fulfill({
-        status: 200,
-        json: { data: { sent: true, count: sendCount } },
-      });
-    });
-
-    await page.addInitScript(() => {
-      localStorage.setItem('kh_wizard_data', JSON.stringify({
-        name: 'Test User',
-        phone_number: '+4917612345678',
-        contact_method: 'phone',
-      }));
-      localStorage.setItem('kh_wizard_step', '6.5');
-    });
-
-    await page.goto('/fragebogen');
-    
-    // Look for resend button/link
-    const resendButton = page.getByText(/erneut|nochmal|neu senden/i);
-    if (await resendButton.isVisible()) {
-      await resendButton.click();
-      
-      // Verify send-code was called again
-      expect(sendCount).toBeGreaterThan(0);
+    const verifyBtn = page.getByRole('button', { name: /Bestätigen|Verifizieren/i });
+    if (await verifyBtn.isVisible()) {
+      await verifyBtn.click();
     }
+    
+    // Should show error, remain on verification step
+    await expect(
+      page.getByText(/ungültig|falsch|erneut|incorrect/i)
+    ).toBeVisible({ timeout: 5000 });
   });
 });
