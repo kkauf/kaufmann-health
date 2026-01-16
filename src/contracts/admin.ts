@@ -93,7 +93,9 @@ export type AdminUserErrorsInput = z.infer<typeof AdminUserErrorsInput>;
 // Admin therapist update (verification, photo approval, profile edits)
 // ============================================================================
 
-export const AdminTherapistStatus = z.enum(['pending_verification', 'verified', 'rejected']);
+// 'rejected' = transient, profile needs fixes (documents, photo, approach text)
+// 'declined' = terminal, not accepted into network (e.g., missing certification)
+export const AdminTherapistStatus = z.enum(['pending_verification', 'verified', 'rejected', 'declined']);
 export type AdminTherapistStatus = z.infer<typeof AdminTherapistStatus>;
 
 export const AdminTherapistPatchInput = z

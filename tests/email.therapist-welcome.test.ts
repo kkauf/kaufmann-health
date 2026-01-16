@@ -17,14 +17,15 @@ describe('therapist welcome email', () => {
     expect(html).toContain(version);
   });
 
-  it('renders city-specific copy for inactive city', () => {
+  it('renders city-specific copy for inactive city (online available, in-person pending)', () => {
     const { html } = renderTherapistWelcome({
       name: 'Test',
       city: 'Hamburg',
       isActiveCity: false,
       termsVersion: 'v1',
     });
-    expect(html).toContain('Kaufmann Health startet bald in Hamburg');
+    expect(html).toContain('Online‑Sitzungen sind sofort möglich');
+    expect(html).toContain('Für Vor‑Ort‑Termine in Hamburg melden wir uns');
   });
 
   it('includes Gmail JSON-LD schema when uploadUrl is provided', () => {

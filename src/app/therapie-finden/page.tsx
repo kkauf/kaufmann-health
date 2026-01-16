@@ -147,7 +147,7 @@ export default async function TherapieFindenPage({ searchParams }: { searchParam
                 data-cta="recognition-hook"
                 className="inline-flex items-center gap-2 rounded-lg bg-white border-2 border-indigo-600 px-6 sm:px-8 py-3 sm:py-3.5 text-base sm:text-lg font-semibold text-indigo-700 shadow-md hover:bg-indigo-600 hover:text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
               >
-                Unverbindlich anfragen
+                Unterstützung finden
               </CtaLink>
               <p className="text-sm sm:text-base text-gray-600">
                 Wir helfen dir, die richtige Begleitung zu finden.

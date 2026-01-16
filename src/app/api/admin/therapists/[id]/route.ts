@@ -5,6 +5,7 @@ import { logError, track } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { renderTherapistApproval } from '@/lib/email/templates/therapistApproval';
 import { renderTherapistRejection } from '@/lib/email/templates/therapistRejection';
+import { renderTherapistDecline } from '@/lib/email/templates/therapistDecline';
 import { BASE_URL } from '@/lib/constants';
 import { provisionCalUser, isCalProvisioningEnabled, getSquareAvatarUrl, type CalProvisionResult } from '@/lib/cal/provision';
 import { AdminTherapistPatchInput } from '@/contracts/admin';
@@ -173,7 +174,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (!status && typeof verification_notes !== 'string' && !approve_profile && typeof approach_text !== 'string' && typeof practice_address !== 'string' && !hasCalFields && !hasBookingSettings) {
       return NextResponse.json({ data: null, error: 'Missing fields' }, { status: 400 });
     }
-    if (status && !['pending_verification', 'verified', 'rejected'].includes(status)) {
+    if (status && !['pending_verification', 'verified', 'rejected', 'declined'].includes(status)) {
       return NextResponse.json({ data: null, error: 'Invalid status' }, { status: 400 });
     }
     if (approach_text && approach_text.length > 500) {
@@ -274,7 +275,15 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     const newMeta: Record<string, unknown> = { ...currMeta, profile: profileMeta };
     update.metadata = newMeta;
 
-    // If rejecting, ensure the email will include a meaningful reason.
+    // If declining (terminal), require verification_notes as the reason.
+    const decliningNow = status === 'declined' && beforeStatus !== 'declined';
+    if (decliningNow) {
+      if (!(verification_notes || '').trim()) {
+        return NextResponse.json({ data: null, error: 'verification_notes required for decline (reason for therapist)' }, { status: 400 });
+      }
+    }
+
+    // If rejecting (transient, needs fixes), ensure the email will include a meaningful reason.
     const rejectingNow = status === 'rejected' && beforeStatus !== 'rejected';
     let rejectionMissingDocuments = false;
     let rejectionPhotoIssue: string | null = null;
@@ -419,6 +428,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
           await logError('admin.api.therapists.update', new Error('Approval email send failed'), { stage: 'therapist_approval_send_failed', therapist_id: id, email: to });
         }
       } else if (to && status === 'rejected' && finalStatus === 'rejected' && beforeStatus !== 'rejected') {
+        // Transient rejection - needs fixes, can resubmit
         const uploadUrl = rejectionLink || `${BASE_URL}/therapists/complete-profile/${id}`;
         const rejection = renderTherapistRejection({
           name,
@@ -432,6 +442,17 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         const rejectionResult = await sendEmail({ to, subject: rejection.subject, html: rejection.html, context: { stage: 'therapist_rejection', therapist_id: id } });
         if (!rejectionResult.sent && rejectionResult.reason === 'failed') {
           await logError('admin.api.therapists.update', new Error('Rejection email send failed'), { stage: 'therapist_rejection_send_failed', therapist_id: id, email: to });
+        }
+      } else if (to && status === 'declined' && finalStatus === 'declined' && beforeStatus !== 'declined') {
+        // Terminal decline - not accepted into network
+        const decline = renderTherapistDecline({
+          name,
+          reason: verification_notes || '',
+        });
+        void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.update', props: { stage: 'therapist_decline', therapist_id: id, subject: decline.subject } });
+        const declineResult = await sendEmail({ to, subject: decline.subject, html: decline.html, context: { stage: 'therapist_decline', therapist_id: id } });
+        if (!declineResult.sent && declineResult.reason === 'failed') {
+          await logError('admin.api.therapists.update', new Error('Decline email send failed'), { stage: 'therapist_decline_send_failed', therapist_id: id, email: to });
         }
       }
     } catch (e) {
