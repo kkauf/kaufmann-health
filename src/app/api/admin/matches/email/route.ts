@@ -11,6 +11,7 @@ import { computeMismatches } from '@/features/leads/lib/match';
 import { sendTransactionalSms } from '@/lib/sms/client';
 import type { EmailContent } from '@/lib/email/types';
 import { THERAPIST_SELECT_COLUMNS_WITH_GENDER } from '@/lib/therapist-mapper';
+import { buildCalBookingUrl } from '@/lib/cal/booking-url';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -69,7 +70,11 @@ type PatientMetaServer = {
 };
 
 type TherapistMeta = {
-  profile?: { approach_text?: string | null } | null;
+  profile?: { 
+    approach_text?: string | null;
+    who_comes_to_me?: string | null;
+    qualification?: string | null;
+  } | null;
   modalities?: string[] | null;
   session_preferences?: string[] | null;
 };
@@ -208,6 +213,10 @@ export async function POST(req: Request) {
         modalities?: string[] | null;
         metadata?: TherapistMeta | null;
         accepting_new?: boolean | null;
+        typical_rate?: number | null;
+        languages?: string[] | null;
+        cal_username?: string | null;
+        cal_enabled?: boolean | null;
       };
       const { data: therapistRows, error: tErr } = await supabaseServer
         .from('therapists')
@@ -281,11 +290,90 @@ export async function POST(req: Request) {
       personalizedMessage = typeof body?.personalized_message === 'string' ? body.personalized_message.trim().slice(0, 2000) : undefined;
       highlightedTherapistId = typeof body?.highlighted_therapist_id === 'string' ? body.highlighted_therapist_id.trim() : undefined;
 
-      const items = scored.map((s, idx) => {
+      // Check if patient has already booked an intro with any of these therapists
+      // Skip sending email if they've already taken action (conversion already happened)
+      const existingBookings: Set<string> = new Set();
+      try {
+        const { data: bookings } = await supabaseServer
+          .from('cal_bookings')
+          .select('therapist_id, booking_kind, last_trigger_event')
+          .eq('patient_id', patient_id)
+          .in('therapist_id', therapistIds)
+          .eq('booking_kind', 'intro')
+          .neq('last_trigger_event', 'BOOKING_CANCELLED');
+        if (Array.isArray(bookings)) {
+          for (const b of bookings as { therapist_id: string }[]) {
+            existingBookings.add(b.therapist_id);
+          }
+        }
+      } catch {
+        // Table may not exist in test environment
+      }
+
+      // Filter out therapists who already have bookings
+      const filteredTherapistIds = therapistIds.filter(id => !existingBookings.has(id));
+      if (filteredTherapistIds.length === 0) {
+        return NextResponse.json({ 
+          data: null, 
+          error: 'All selected therapists already have intro bookings with this patient' 
+        }, { status: 400 });
+      }
+
+      // Re-filter scored list to only include therapists without existing bookings
+      const filteredScored = scored.filter(s => !existingBookings.has(s.t.id));
+
+      // Fetch cached slot data for Cal.com booking availability (EARTH-248)
+      type SlotCacheRow = { therapist_id: string; next_intro_date_iso: string | null; next_intro_time_label: string | null; next_intro_time_utc: string | null };
+      const slotCacheMap = new Map<string, SlotCacheRow>();
+      try {
+        const { data: slotRows } = await supabaseServer
+          .from('cal_slots_cache')
+          .select('therapist_id, next_intro_date_iso, next_intro_time_label, next_intro_time_utc')
+          .in('therapist_id', filteredTherapistIds);
+        if (Array.isArray(slotRows)) {
+          for (const row of slotRows as SlotCacheRow[]) {
+            slotCacheMap.set(row.therapist_id, row);
+          }
+        }
+      } catch {
+        // Table may not exist in test environment - continue without slot data
+      }
+
+      const matchesUrl = `${BASE_URL}/matches/${secure_uuid}`;
+
+      const items = filteredScored.map((s, idx) => {
         const t = s.t;
         const selectUrl = `${BASE_URL}/api/match/${secure_uuid}/select?therapist=${encodeURIComponent(t.id)}`;
         // Use highlighted_therapist_id if provided, otherwise default to first (best scoring)
         const isBest = highlightedTherapistId ? t.id === highlightedTherapistId : idx === 0;
+        
+        // Get next intro slot from cache
+        const slotCache = slotCacheMap.get(t.id);
+        const nextIntroSlot = slotCache?.next_intro_time_utc ? {
+          date_iso: slotCache.next_intro_date_iso || '',
+          time_label: slotCache.next_intro_time_label || '',
+          time_utc: slotCache.next_intro_time_utc,
+        } : undefined;
+
+        // Build Cal.com booking URL if therapist has Cal enabled and slots available
+        let calBookingUrl: string | undefined;
+        if (t.cal_enabled && t.cal_username && nextIntroSlot?.time_utc) {
+          calBookingUrl = buildCalBookingUrl({
+            calUsername: t.cal_username,
+            eventType: 'intro',
+            metadata: {
+              kh_therapist_id: t.id,
+              kh_patient_id: patient_id,
+              kh_booking_kind: 'intro',
+              kh_source: 'email_confirm',
+            },
+            redirectBack: true,
+          });
+        }
+
+        // Extract profile fields from metadata
+        const profile = t.metadata?.profile;
+
         return {
           id: t.id,
           first_name: (t.first_name || '').trim(),
@@ -297,10 +385,18 @@ export async function POST(req: Request) {
           city: t.city || null,
           selectUrl,
           isBest,
+          // Enhanced profile fields
+          next_intro_slot: nextIntroSlot,
+          cal_username: t.cal_username,
+          typical_rate: t.typical_rate,
+          qualification: profile?.qualification,
+          who_comes_to_me: profile?.who_comes_to_me,
+          languages: t.languages,
+          profileUrl: matchesUrl,
+          calBookingUrl,
         };
       });
 
-      const matchesUrl = `${BASE_URL}/matches/${secure_uuid}`;
       content = renderPatientSelectionEmail({ patientName, items, matchesUrl, personalizedMessage });
 
       // Choose channel: Email preferred; fallback to SMS for phone-only Klient:innen

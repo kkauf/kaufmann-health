@@ -6,6 +6,7 @@ import { renderSelectionNudgeEmail } from '@/lib/email/templates/selectionNudge'
 import { BASE_URL } from '@/lib/constants';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 import { isCronAuthorized as isCronAuthorizedShared, sameOrigin as sameOriginShared } from '@/lib/cron-auth';
+import { buildCalBookingUrl } from '@/lib/cal/booking-url';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -147,6 +148,7 @@ export async function GET(req: Request) {
     let skippedNoMatches = 0;
     let skippedHasSelection = 0;
     let skippedNoD1Email = 0;
+    let skippedHasIntroBooking = 0;
 
     for (const patient of rows) {
       if (processed >= limit) break;
@@ -214,6 +216,28 @@ export async function GET(req: Request) {
         continue;
       }
 
+      // Check if patient has already booked an intro via Cal.com
+      // If they've converted, no need to nudge
+      const therapistIds = matches.map(m => m.therapist_id);
+      let hasIntroBooking = false;
+      try {
+        const { data: bookings } = await supabaseServer
+          .from('cal_bookings')
+          .select('id')
+          .eq('patient_id', patient.id)
+          .in('therapist_id', therapistIds)
+          .eq('booking_kind', 'intro')
+          .neq('last_trigger_event', 'BOOKING_CANCELLED')
+          .limit(1);
+        hasIntroBooking = Array.isArray(bookings) && bookings.length > 0;
+      } catch {
+        // Table may not exist in test environment
+      }
+      if (hasIntroBooking) {
+        skippedHasIntroBooking++;
+        continue;
+      }
+
       // Get secure_uuid for matches page
       const secureUuid = matches.find((m) => m.secure_uuid)?.secure_uuid;
       if (!secureUuid) {
@@ -224,10 +248,82 @@ export async function GET(req: Request) {
       // Build and send email
       const matchesUrl = `${BASE_URL}/matches/${encodeURIComponent(secureUuid)}`;
 
+      // Fetch best therapist data for enhanced email with direct booking
+      type TherapistRow = {
+        id: string;
+        first_name?: string | null;
+        last_name?: string | null;
+        photo_url?: string | null;
+        city?: string | null;
+        modalities?: string[] | null;
+        cal_username?: string | null;
+        cal_enabled?: boolean | null;
+        metadata?: { profile?: { qualification?: string; who_comes_to_me?: string } } | null;
+      };
+      const bestTherapistId = matches[0]?.therapist_id;
+      let bestTherapist: TherapistRow | null = null;
+      let nextIntroSlot: { date_iso: string; time_label: string; time_utc: string } | null = null;
+      let calBookingUrl: string | null = null;
+
+      if (bestTherapistId) {
+        try {
+          // Fetch therapist details
+          const { data: tRow } = await supabaseServer
+            .from('therapists')
+            .select('id, first_name, last_name, photo_url, city, modalities, cal_username, cal_enabled, metadata')
+            .eq('id', bestTherapistId)
+            .maybeSingle();
+          bestTherapist = tRow as TherapistRow | null;
+
+          // Fetch slot cache for next intro
+          if (bestTherapist?.cal_enabled && bestTherapist?.cal_username) {
+            const { data: slotRow } = await supabaseServer
+              .from('cal_slots_cache')
+              .select('next_intro_date_iso, next_intro_time_label, next_intro_time_utc')
+              .eq('therapist_id', bestTherapistId)
+              .maybeSingle();
+            const slot = slotRow as { next_intro_date_iso?: string | null; next_intro_time_label?: string | null; next_intro_time_utc?: string | null } | null;
+            if (slot?.next_intro_time_utc) {
+              nextIntroSlot = {
+                date_iso: slot.next_intro_date_iso || '',
+                time_label: slot.next_intro_time_label || '',
+                time_utc: slot.next_intro_time_utc,
+              };
+              // Build Cal.com booking URL
+              calBookingUrl = buildCalBookingUrl({
+                calUsername: bestTherapist.cal_username,
+                eventType: 'intro',
+                metadata: {
+                  kh_therapist_id: bestTherapistId,
+                  kh_patient_id: patient.id,
+                  kh_booking_kind: 'intro',
+                  kh_source: 'email_confirm',
+                },
+                redirectBack: true,
+              });
+            }
+          }
+        } catch {
+          // Continue without enhanced data
+        }
+      }
+
       try {
         const content = renderSelectionNudgeEmail({
           patientName: patient.name,
           matchesUrl,
+          // Enhanced therapist data for direct booking
+          therapist: bestTherapist ? {
+            first_name: bestTherapist.first_name || '',
+            last_name: bestTherapist.last_name || '',
+            photo_url: bestTherapist.photo_url,
+            city: bestTherapist.city,
+            modalities: bestTherapist.modalities,
+            qualification: bestTherapist.metadata?.profile?.qualification,
+            who_comes_to_me: bestTherapist.metadata?.profile?.who_comes_to_me,
+          } : undefined,
+          nextIntroSlot,
+          calBookingUrl,
         });
 
         void track({
@@ -275,6 +371,7 @@ export async function GET(req: Request) {
         skipped_no_matches: skippedNoMatches,
         skipped_has_selection: skippedHasSelection,
         skipped_no_d1_email: skippedNoD1Email,
+        skipped_has_intro_booking: skippedHasIntroBooking,
         duration_ms: Date.now() - startedAt,
       },
     });
@@ -289,6 +386,7 @@ export async function GET(req: Request) {
         skipped_no_matches: skippedNoMatches,
         skipped_has_selection: skippedHasSelection,
         skipped_no_d1_email: skippedNoD1Email,
+        skipped_has_intro_booking: skippedHasIntroBooking,
       },
       error: null,
     });

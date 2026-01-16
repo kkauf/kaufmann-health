@@ -704,3 +704,97 @@ export function groupSlotsByDay(slots: CalNormalizedSlot[]): Map<string, CalNorm
   }
   return map;
 }
+
+/**
+ * EARTH-XXX: Smart slot filtering to reduce decision paralysis and signal scarcity.
+ * 
+ * Problem: Showing 24+ slots per day creates:
+ * - Decision paralysis
+ * - Perception therapist has no clients
+ * - No urgency to book
+ * 
+ * Solution: Show 1 representative slot per time-of-day block:
+ * - Morning (8:00-11:59): 1 slot
+ * - Afternoon (12:00-16:59): 1 slot  
+ * - Evening (17:00+): 1 slot
+ * 
+ * This turns "24 Termine" into "2-3 Termine" per day.
+ * User can still see all slots if they click "show more" on a specific day.
+ */
+export function filterSlotsForScarcity(slots: CalNormalizedSlot[]): CalNormalizedSlot[] {
+  if (slots.length <= 3) return slots; // Already scarce enough
+  
+  const morning: CalNormalizedSlot[] = [];
+  const afternoon: CalNormalizedSlot[] = [];
+  const evening: CalNormalizedSlot[] = [];
+  
+  for (const slot of slots) {
+    const hour = parseInt(slot.time_label.split(':')[0], 10);
+    if (hour < 12) {
+      morning.push(slot);
+    } else if (hour < 17) {
+      afternoon.push(slot);
+    } else {
+      evening.push(slot);
+    }
+  }
+  
+  // Pick 1 representative slot from each block (prefer middle of block for flexibility)
+  const result: CalNormalizedSlot[] = [];
+  
+  if (morning.length > 0) {
+    // Pick slot closest to 10:00 for morning
+    const target = 10;
+    morning.sort((a, b) => {
+      const hourA = parseInt(a.time_label.split(':')[0], 10);
+      const hourB = parseInt(b.time_label.split(':')[0], 10);
+      return Math.abs(hourA - target) - Math.abs(hourB - target);
+    });
+    result.push(morning[0]);
+  }
+  
+  if (afternoon.length > 0) {
+    // Pick slot closest to 14:00 for afternoon
+    const target = 14;
+    afternoon.sort((a, b) => {
+      const hourA = parseInt(a.time_label.split(':')[0], 10);
+      const hourB = parseInt(b.time_label.split(':')[0], 10);
+      return Math.abs(hourA - target) - Math.abs(hourB - target);
+    });
+    result.push(afternoon[0]);
+  }
+  
+  if (evening.length > 0) {
+    // Pick slot closest to 18:00 for evening
+    const target = 18;
+    evening.sort((a, b) => {
+      const hourA = parseInt(a.time_label.split(':')[0], 10);
+      const hourB = parseInt(b.time_label.split(':')[0], 10);
+      return Math.abs(hourA - target) - Math.abs(hourB - target);
+    });
+    result.push(evening[0]);
+  }
+  
+  // Sort by time for display
+  result.sort((a, b) => a.time_label.localeCompare(b.time_label));
+  
+  return result;
+}
+
+/**
+ * Group slots by day with scarcity filtering applied.
+ * Returns both filtered (for display) and full (for "show more") slot maps.
+ */
+export function groupSlotsByDayWithScarcity(slots: CalNormalizedSlot[]): {
+  filtered: Map<string, CalNormalizedSlot[]>;
+  full: Map<string, CalNormalizedSlot[]>;
+} {
+  const full = groupSlotsByDay(slots);
+  const filtered = new Map<string, CalNormalizedSlot[]>();
+  
+  for (const [day, daySlots] of full.entries()) {
+    filtered.set(day, filterSlotsForScarcity(daySlots));
+  }
+  
+  return { filtered, full };
+}

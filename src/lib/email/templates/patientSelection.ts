@@ -1,6 +1,6 @@
 import { renderLayout, renderButton } from '../layout';
 import type { EmailContent } from '../types';
-import { renderTherapistPreviewEmail } from '../components/therapistPreview';
+import { renderTherapistPreviewEmail, renderEnhancedTherapistPreviewEmail } from '../components/therapistPreview';
 
 function escapeHtml(s: string) {
   return s
@@ -20,8 +20,17 @@ export type PatientSelectionItem = {
   approach_text?: string | null;
   accepting_new?: boolean | null;
   city?: string | null;
-  selectUrl: string; // absolute URL
+  selectUrl: string; // absolute URL (deprecated - use profileUrl)
   isBest?: boolean;
+  // Enhanced profile fields for higher-fidelity email
+  next_intro_slot?: { date_iso: string; time_label: string; time_utc?: string } | null;
+  cal_username?: string | null;
+  typical_rate?: number | null;
+  qualification?: string | null;
+  who_comes_to_me?: string | null;
+  languages?: string[] | null;
+  profileUrl?: string; // link to matches page
+  calBookingUrl?: string; // direct Cal.com booking link (pre-built)
 };
 
 export function renderPatientSelectionEmail(params: {
@@ -35,78 +44,126 @@ export function renderPatientSelectionEmail(params: {
   const name = (params.patientName || '').trim();
   const items = Array.isArray(params.items) ? params.items : [];
   const personalizedMessage = (params.personalizedMessage || '').trim();
+  
+  // Get the best/featured therapist for hero display
+  const bestItem = items.find(it => it.isBest) || items[0];
+  const hasCalBooking = Boolean(bestItem?.calBookingUrl && bestItem?.next_intro_slot);
+  
+  // Dynamic subject based on therapist name
+  const dynamicSubject = bestItem 
+    ? `${bestItem.first_name} wartet auf dich – kostenloser Intro-Termin`
+    : 'Dein kostenloser Intro-Termin wartet';
  
-  // Quality assurance notice (shown after cards by default, can be overridden by admin)
-  const qualityBox = params.bannerOverrideHtml ?? `
-    <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important; background-image: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important; padding:16px 20px; border-radius:12px; border:1px solid rgba(34, 197, 94, 0.3); margin-top:24px; box-shadow: 0 2px 4px 0 rgba(34, 197, 94, 0.1);">
-      <p style="margin:0; font-size:15px; line-height:1.6; color:#14532d !important;"><strong style="font-weight:700; color:#14532d !important;">✓ Qualitätsversprechen:</strong> Jede:r Therapeut:in in dieser Auswahl wurde von uns persönlich geprüft – Qualifikationen, Fortbildungen und aktuelle Verfügbarkeit sind verifiziert.</p>
-    </div>
-  `;
+  // Conversion-focused header - action oriented
+  const header = hasCalBooking
+    ? `<h1 style="color:#0f172a !important; font-size:26px; font-weight:700; margin:0 0 8px; line-height:1.3; letter-spacing:-0.02em; text-align:center;">Dein nächster Schritt: Kennenlernen</h1>
+       <p style="margin:0 0 24px; font-size:15px; color:#64748b !important; text-align:center;">Kostenlos • 15 Minuten • Unverbindlich</p>`
+    : `<h1 style="color:#0f172a !important; font-size:26px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Deine Therapeuten-Empfehlung</h1>`;
+
+  const greetingHtml = name 
+    ? `<p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">Hallo ${escapeHtml(name)},</p>` 
+    : '';
  
-  // Header and greeting/thanks
-  const header = `
-    <h1 style="color:#0f172a !important; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Deine handverlesene Auswahl</h1>
-  `;
-  const greetingHtml = `
-    ${name ? `<p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;">Hallo ${escapeHtml(name)},</p>` : ''}
-    <p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">Vielen Dank für deine Anfrage bei Kaufmann Health.</p>
-  `;
- 
-  // Personalized concierge message (shown prominently after greeting when provided)
+  // Personalized concierge message (compact)
   const personalizedBox = personalizedMessage
     ? `
-      <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important; background-image: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important; padding:20px 24px; border-radius:12px; border:1px solid rgba(59, 130, 246, 0.3); margin:0 0 24px; box-shadow: 0 2px 8px 0 rgba(59, 130, 246, 0.08);">
-        <strong style="display:block; margin-bottom:12px; color:#1e40af !important; font-size:17px; font-weight:700;">💬 Persönliche Nachricht von Katherine:</strong>
-        <p style="margin:0; font-size:16px; line-height:1.65; color:#1e3a8a !important; white-space:pre-wrap;">${escapeHtml(personalizedMessage)}</p>
+      <div style="background:#f8fafc !important; padding:16px 20px; border-radius:10px; border-left:4px solid #3b82f6; margin:0 0 24px;">
+        <p style="margin:0; font-size:15px; line-height:1.6; color:#334155 !important;"><strong style="color:#1e40af !important;">Katherine:</strong> ${escapeHtml(personalizedMessage)}</p>
       </div>
     `
     : '';
+
+  // "What to expect" box - addresses objections, builds confidence
+  const whatToExpectBox = hasCalBooking ? `
+    <div style="background:#fafafa !important; padding:20px 24px; border-radius:12px; margin:24px 0 0;">
+      <div style="font-weight:600; font-size:15px; color:#0f172a !important; margin-bottom:12px;">Was erwartet dich im Intro-Gespräch?</div>
+      <div style="font-size:14px; line-height:1.7; color:#475569 !important;">
+        <div style="margin-bottom:8px;">✓ Du lernst ${bestItem ? escapeHtml(bestItem.first_name) : 'deine:n Therapeut:in'} kennen</div>
+        <div style="margin-bottom:8px;">✓ Ihr besprecht, ob die Chemie stimmt</div>
+        <div style="margin-bottom:8px;">✓ Keine Kosten, keine Verpflichtung</div>
+        <div>✓ Jederzeit absagbar</div>
+      </div>
+    </div>
+  ` : '';
  
-  // Primary CTA to view matches page (prominent when matchesUrl provided)
-  // Add ?direct=1 to skip loading animation on the matches page
+  // Legacy elements (for backward compatibility when no Cal booking)
   const matchesCtaUrl = params.matchesUrl ? `${params.matchesUrl}?direct=1` : null;
-  const matchesCta = matchesCtaUrl
+  const matchesCta = (!hasCalBooking && matchesCtaUrl)
     ? `
-      <div style="margin: 0 0 32px; text-align: center; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important; background-image: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important; padding:24px; border-radius:12px; border:1px solid rgba(34, 197, 94, 0.3); box-shadow: 0 2px 8px 0 rgba(34, 197, 94, 0.1);">
-        ${renderButton(matchesCtaUrl, 'Deine persönliche Therapeutenauswahl ansehen')}
+      <div style="margin: 24px 0; text-align: center;">
+        ${renderButton(matchesCtaUrl, 'Therapeut:in kennenlernen')}
       </div>
     `
     : '';
  
-  // Trust and quality box
-  const trustBox = `
-    <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; background-image: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; padding:20px 24px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); margin:0 0 24px; box-shadow: 0 2px 4px 0 rgba(100, 116, 139, 0.05);">
-      <strong style="display:block; margin-bottom:12px; color:#0f172a !important; font-size:17px; font-weight:700;">Warum diese Auswahl?</strong>
-      <ul style="margin:8px 0 0 18px; padding:0; color:#475569 !important; line-height:1.65;">
-        <li style="margin:8px 0; color:#475569 !important;">Wir haben uns deiner Anfrage persönlich angenommen.</li>
-        <li style="margin:8px 0; color:#475569 !important;">Auf Basis deiner Präferenzen (z.&nbsp;B. online oder vor Ort) ausgewählt.</li>
-        <li style="margin:8px 0; color:#475569 !important;">Wir prüfen die Qualifikationen der Therapeut:innen gründlich (Ausbildung, zertifizierte Fortbildungen, Erfahrung, aktuelle Verfügbarkeit).</li>
-        <li style="margin:8px 0; color:#475569 !important;">Spezielle Ausbildungen für körperorientierte Psychotherapie sind in den farbigen Abzeichen sichtbar (z.&nbsp;B. NARM, Somatic Experiencing, Hakomi, Core Energetics).</li>
-      </ul>
-      <p style="margin:16px 0 0; color:#0f172a !important; font-weight:600;">Sorgfältig geprüfte Profile – persönlich für dich ausgewählt.</p>
+  // Quality seal - compact
+  const qualitySeal = `
+    <div style="text-align:center; margin-top:24px; padding-top:20px; border-top:1px solid #e2e8f0;">
+      <div style="font-size:13px; color:#64748b !important;">
+        ✓ Geprüfte Qualifikationen • ✓ Persönlich ausgewählt • ✓ Schnelle Terminvergabe
+      </div>
     </div>
   `;
+
+  // Hide verbose trust box in enhanced mode
+  const trustBox = hasCalBooking ? '' : `
+    <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; background-image: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; padding:16px 20px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); margin:0 0 20px; box-shadow: 0 2px 4px 0 rgba(100, 116, 139, 0.05);">
+      <p style="margin:0; font-size:14px; line-height:1.6; color:#475569 !important;">Wir haben diese Empfehlung sorgfältig auf Basis deiner Präferenzen ausgewählt. Qualifikationen und Verfügbarkeit sind geprüft.</p>
+    </div>
+  `;
+
+  // Legacy quality box (hidden in enhanced mode)
+  const qualityBox = params.bannerOverrideHtml ?? '';
  
-  // Quality matching framing
-  const matchingLine = `
-    <p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">Folgende Therapeut:innen haben wir sorgfältig auf Basis deiner Präferenzen ausgewählt.</p>
+  // Quality matching framing (simplified for enhanced mode)
+  const matchingLine = hasCalBooking ? '' : `
+    <p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">Basierend auf deinen Angaben haben wir folgende Empfehlung für dich:</p>
   `;
 
   const cardsHtml = items
     .map((it) => {
-      const button = renderButton(it.selectUrl, '✓ Diese:n Therapeut:in auswählen');
-      const preview = renderTherapistPreviewEmail({
-        id: it.id,
-        first_name: it.first_name,
-        last_name: it.last_name,
-        photo_url: it.photo_url,
-        modalities: it.modalities || [],
-        approach_text: it.approach_text || '',
-        accepting_new: it.accepting_new ?? null,
-        city: it.city || null,
-        actionButtonHtml: button,
-      });
-      const bestBadge = it.isBest
+      // Use enhanced preview if new profile fields are available (calBookingUrl or next_intro_slot)
+      const useEnhanced = Boolean(it.calBookingUrl || it.next_intro_slot || it.profileUrl);
+      
+      let preview: string;
+      if (useEnhanced) {
+        // Enhanced preview with direct booking CTA and rich profile data
+        preview = renderEnhancedTherapistPreviewEmail({
+          id: it.id,
+          first_name: it.first_name,
+          last_name: it.last_name,
+          photo_url: it.photo_url,
+          modalities: it.modalities || [],
+          approach_text: it.approach_text || '',
+          accepting_new: it.accepting_new ?? null,
+          city: it.city || null,
+          next_intro_slot: it.next_intro_slot,
+          qualification: it.qualification,
+          who_comes_to_me: it.who_comes_to_me,
+          typical_rate: it.typical_rate,
+          languages: it.languages,
+          calBookingUrl: it.calBookingUrl,
+          profileUrl: it.profileUrl || it.selectUrl,
+          isBest: it.isBest,
+        });
+      } else {
+        // Legacy preview with select button
+        const button = renderButton(it.selectUrl, '✓ Diese:n Therapeut:in auswählen');
+        preview = renderTherapistPreviewEmail({
+          id: it.id,
+          first_name: it.first_name,
+          last_name: it.last_name,
+          photo_url: it.photo_url,
+          modalities: it.modalities || [],
+          approach_text: it.approach_text || '',
+          accepting_new: it.accepting_new ?? null,
+          city: it.city || null,
+          actionButtonHtml: button,
+        });
+      }
+
+      // For enhanced preview, badge is handled inside the component
+      const bestBadge = (!useEnhanced && it.isBest)
         ? `<div style="margin:0 0 12px 0;"><span style="background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; background-image: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; color:#ffffff !important; padding:6px 12px; border-radius:999px; font-size:13px; font-weight:700; display:inline-block; box-shadow: 0 2px 8px 0 rgba(16, 185, 129, 0.25);">⭐ Beste Übereinstimmung</span></div>`
         : '';
       const borderColor = it.isBest ? 'rgba(16, 185, 129, 0.4)' : 'rgba(226, 232, 240, 0.8)';
@@ -120,20 +177,55 @@ export function renderPatientSelectionEmail(params: {
     })
     .join('');
  
-  // Action guidance
-  const actionGuidance = `
-    <p style="margin:12px 0 0; font-size:15px; line-height:1.65; color:#64748b !important;">Mit einem Klick auf „Auswählen" reservierst du unverbindlich den nächsten Schritt. Wir stellen den Kontakt direkt her.</p>
-  `;
- 
-  const closingHtml = `
-    <p style="margin:24px 0 0; font-size:16px; line-height:1.65; color:#475569 !important;">Herzliche Grüße<br/><strong style="color:#0f172a !important;">Dein Team von Kaufmann Health</strong></p>
-  `;
- 
-  // Only show cards if no matchesUrl (backward compatibility)
-  const cardsSection = params.matchesUrl ? '' : [matchingLine, cardsHtml, actionGuidance, qualityBox].join('\n');
-  const contentHtml = [header, greetingHtml, personalizedBox, matchesCta, trustBox, cardsSection, closingHtml].join('\n');
+  // Check if we're using enhanced mode (booking CTAs embedded in cards)
+  const isEnhancedMode = items.some(it => it.calBookingUrl || it.next_intro_slot || it.profileUrl);
 
-  const actionTarget = items[0]?.selectUrl;
+  // Action guidance - only for legacy mode (enhanced has CTA in card)
+  const actionGuidance = isEnhancedMode
+    ? ''
+    : `<p style="margin:12px 0 0; font-size:15px; line-height:1.65; color:#64748b !important;">Mit einem Klick reservierst du unverbindlich den nächsten Schritt.</p>`;
+ 
+  // Closing - compact for enhanced mode
+  const closingHtml = hasCalBooking
+    ? `<p style="margin:20px 0 0; font-size:14px; line-height:1.6; color:#64748b !important; text-align:center;">Fragen? Antworte einfach auf diese E-Mail.<br/>Dein Team von Kaufmann Health</p>`
+    : `<p style="margin:24px 0 0; font-size:16px; line-height:1.65; color:#475569 !important;">Herzliche Grüße<br/><strong style="color:#0f172a !important;">Dein Team von Kaufmann Health</strong></p>`;
+ 
+  // Content assembly - different for enhanced vs legacy mode
+  let contentHtml: string;
+  if (hasCalBooking) {
+    // Enhanced mode: focused on single therapist with booking CTA
+    // Only show the best/featured therapist card
+    const featuredCard = bestItem ? `
+      <div style="border:2px solid rgba(16, 185, 129, 0.4); background:#ffffff !important; padding:24px; margin:0 0 0; border-radius:16px; box-shadow: 0 4px 16px 0 rgba(16, 185, 129, 0.12);">
+        ${renderEnhancedTherapistPreviewEmail({
+          id: bestItem.id,
+          first_name: bestItem.first_name,
+          last_name: bestItem.last_name,
+          photo_url: bestItem.photo_url,
+          modalities: bestItem.modalities || [],
+          approach_text: bestItem.approach_text || '',
+          accepting_new: bestItem.accepting_new ?? null,
+          city: bestItem.city || null,
+          next_intro_slot: bestItem.next_intro_slot,
+          qualification: bestItem.qualification,
+          who_comes_to_me: bestItem.who_comes_to_me,
+          typical_rate: bestItem.typical_rate,
+          languages: bestItem.languages,
+          calBookingUrl: bestItem.calBookingUrl,
+          profileUrl: bestItem.profileUrl || bestItem.selectUrl,
+          isBest: false, // Don't show badge in hero mode
+        })}
+      </div>
+    ` : '';
+    contentHtml = [greetingHtml, personalizedBox, header, featuredCard, whatToExpectBox, qualitySeal, closingHtml].join('\n');
+  } else {
+    // Legacy mode: show all cards with selection buttons
+    const cardsSection = params.matchesUrl ? '' : [matchingLine, cardsHtml, actionGuidance, qualityBox].join('\n');
+    contentHtml = [header, greetingHtml, personalizedBox, matchesCta, trustBox, cardsSection, closingHtml].join('\n');
+  }
+
+  // Schema.org action for email clients
+  const actionTarget = bestItem?.calBookingUrl || bestItem?.profileUrl || items[0]?.selectUrl;
   const schema = actionTarget
     ? {
         '@context': 'http://schema.org',
@@ -142,14 +234,19 @@ export function renderPatientSelectionEmail(params: {
           '@type': 'ViewAction',
           target: actionTarget,
           url: actionTarget,
-          name: 'Therapeuten ansehen',
+          name: hasCalBooking ? 'Intro-Termin buchen' : 'Therapeuten ansehen',
         },
-        description: 'Deine personalisierten Therapeuten-Empfehlungen',
+        description: hasCalBooking ? 'Kostenloser Intro-Termin' : 'Deine Therapeuten-Empfehlung',
       }
     : undefined;
 
+  // Dynamic preheader for better open rates
+  const preheader = hasCalBooking && bestItem
+    ? `${bestItem.first_name} hat Zeit für dich – 15 Min kostenlos kennenlernen`
+    : 'Deine handverlesene Auswahl ist da – antworte gern bei Fragen.';
+
   return {
-    subject: params.subjectOverride || 'Deine handverlesene Therapeuten-Auswahl',
-    html: renderLayout({ title: 'Therapie-Auswahl', contentHtml, preheader: 'Deine handverlesene Auswahl ist da – antworte gern bei Fragen, wir helfen dir weiter.', schema }),
+    subject: params.subjectOverride || dynamicSubject,
+    html: renderLayout({ title: 'Intro-Termin', contentHtml, preheader, schema }),
   };
 }

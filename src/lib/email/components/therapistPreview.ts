@@ -149,3 +149,139 @@ function buildBadgeItems(modalities: string[]): Array<{ label: string; color: st
     return true;
   });
 }
+
+/**
+ * Format next intro slot for email display.
+ * Returns German-formatted date string like "Mo 13. Jan um 10:00"
+ */
+function formatNextIntroSlot(slot: { date_iso: string; time_label: string; time_utc?: string } | null | undefined): string | null {
+  if (!slot?.date_iso || !slot?.time_label) return null;
+  try {
+    // Check if slot is in the future
+    const slotTime = slot.time_utc 
+      ? new Date(slot.time_utc).getTime()
+      : new Date(slot.date_iso + 'T' + slot.time_label + ':00').getTime();
+    const now = Date.now();
+    
+    // Don't show slots in the past or less than 30 min away
+    if (slotTime < now + 30 * 60 * 1000) return null;
+
+    const date = new Date(slot.date_iso + 'T12:00:00');
+    const weekday = date.toLocaleDateString('de-DE', { weekday: 'short' });
+    const day = date.getDate();
+    const month = date.toLocaleDateString('de-DE', { month: 'short' });
+    return `${weekday} ${day}. ${month} um ${slot.time_label}`;
+  } catch {
+    return null;
+  }
+}
+
+export type EnhancedTherapistPreviewParams = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  photo_url?: string | null;
+  modalities?: string[] | null;
+  approach_text?: string | null;
+  accepting_new?: boolean | null;
+  city?: string | null;
+  // Enhanced fields
+  next_intro_slot?: { date_iso: string; time_label: string; time_utc?: string } | null;
+  qualification?: string | null;
+  who_comes_to_me?: string | null;
+  typical_rate?: number | null;
+  languages?: string[] | null;
+  // CTAs
+  calBookingUrl?: string | null; // Direct Cal.com booking link
+  profileUrl?: string | null; // Link to matches/profile page
+  isBest?: boolean; // Show "Für dich empfohlen" badge
+};
+
+/**
+ * Render enhanced therapist preview for high-conversion selection emails.
+ * 
+ * Conversion-focused design:
+ * - Hero slot display with urgency
+ * - Single strong CTA ("Jetzt kostenlos kennenlernen")
+ * - Objection handling (free, 15 min, no commitment)
+ * - Trust signals (qualification, verified)
+ */
+export function renderEnhancedTherapistPreviewEmail(params: EnhancedTherapistPreviewParams): string {
+  const initials = getInitials(params.first_name, params.last_name);
+  const avatarColor = `hsl(${hashCode(params.id) % 360}, 70%, 50%)`;
+  
+  // Prefer who_comes_to_me, fallback to approach_text
+  const profileText = params.who_comes_to_me 
+    ? truncateSentences(params.who_comes_to_me, 2)
+    : truncateSentences(params.approach_text || '', 2);
+
+  const photoSrc = toProxiedPhotoUrl(params.photo_url);
+  const photo = photoSrc
+    ? `<img src="${escapeHtml(photoSrc)}" alt="${escapeHtml(params.first_name)} ${escapeHtml(params.last_name)}" width="96" height="96" style="width:96px;height:96px;object-fit:cover;display:block;border-radius:999px;" />`
+    : `<div style="width:96px;height:96px;color:#fff !important;text-align:center;line-height:96px;font-size:32px;font-weight:600;border-radius:999px;background:${avatarColor} !important;">${escapeHtml(initials)}</div>`;
+
+  // Modality badges - compact
+  const badgeItems = buildBadgeItems(params.modalities || []);
+  const shown = badgeItems.slice(0, 2);
+  const badgeBase = 'display:inline-block;border-radius:999px;font-size:11px;padding:3px 8px;line-height:1.3;vertical-align:middle;margin:2px 4px 2px 0;';
+  const badgesHtml = shown.map((b) => `<span style="${badgeBase}background:${b.color} !important;color:#fff !important;">${escapeHtml(b.label)}</span>`).join('');
+
+  // Next intro slot - HERO ELEMENT with urgency
+  const nextSlotFormatted = formatNextIntroSlot(params.next_intro_slot);
+  const hasCalBooking = Boolean(params.calBookingUrl && nextSlotFormatted);
+  
+  // Primary CTA - conversion focused copy
+  const primaryCtaUrl = params.calBookingUrl || params.profileUrl;
+  const primaryCtaLabel = hasCalBooking 
+    ? `Jetzt kostenlos kennenlernen` 
+    : `${params.first_name} kennenlernen`;
+  
+  const primaryCtaHtml = primaryCtaUrl
+    ? `
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;margin-top:20px;">
+        <tr>
+          <td align="center" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; background-image: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; border-radius:12px; padding:0; box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.35);">
+            <a href="${escapeHtml(primaryCtaUrl)}" target="_blank" style="display:inline-block; width:100%; padding:18px 24px; box-sizing:border-box; color:#ffffff !important; text-decoration:none; font-weight:700; text-align:center; font-size:18px; line-height:1.3; border-radius:12px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">${escapeHtml(primaryCtaLabel)}</a>
+          </td>
+        </tr>
+      </table>
+    `
+    : '';
+
+  // Slot display with urgency - only if Cal booking available
+  const slotHeroHtml = hasCalBooking && nextSlotFormatted
+    ? `
+      <div style="text-align:center;margin:20px 0 0;">
+        <div style="font-size:13px;color:#065f46 !important;font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Nächster freier Termin</div>
+        <div style="font-size:22px;color:#047857 !important;font-weight:700;">${escapeHtml(nextSlotFormatted)}</div>
+        <div style="font-size:13px;color:#059669 !important;margin-top:4px;">15 Min • Video-Call • Kostenlos</div>
+      </div>
+    `
+    : '';
+
+  // Qualification + trust inline
+  const qualificationHtml = params.qualification
+    ? `<span style="color:#166534 !important;font-size:13px;">✓ ${escapeHtml(params.qualification)}</span>`
+    : '<span style="color:#166534 !important;font-size:13px;">✓ Verifiziert</span>';
+
+  // Secondary link - minimal, text only
+  const secondaryCtaHtml = params.calBookingUrl && params.profileUrl
+    ? `<div style="text-align:center;margin-top:14px;"><a href="${escapeHtml(params.profileUrl)}" target="_blank" style="color:#64748b !important;text-decoration:underline;font-size:13px;">Vollständiges Profil ansehen</a></div>`
+    : '';
+
+  return `
+    <div style="text-align:center;">
+      <div style="display:inline-block;width:96px;height:96px;border-radius:999px;overflow:hidden;border:3px solid #10b981;box-shadow:0 4px 12px rgba(16,185,129,0.2);">${photo}</div>
+      <div style="margin-top:16px;">
+        <div style="font-weight:700;font-size:24px;color:#0f172a !important;">${escapeHtml(params.first_name)} ${escapeHtml(params.last_name)}</div>
+        <div style="margin-top:6px;">${qualificationHtml}</div>
+        <div style="color:#64748b !important;font-size:14px;margin-top:4px;">📍 ${escapeHtml(params.city || 'Berlin')}</div>
+        ${badgesHtml ? `<div style="margin-top:8px;">${badgesHtml}</div>` : ''}
+      </div>
+    </div>
+    ${profileText ? `<div style="font-size:15px;color:#475569 !important;line-height:1.65;margin-top:20px;text-align:center;padding:0 12px;"><em>"${escapeHtml(profileText)}"</em></div>` : ''}
+    ${slotHeroHtml}
+    ${primaryCtaHtml}
+    ${secondaryCtaHtml}
+  `;
+}

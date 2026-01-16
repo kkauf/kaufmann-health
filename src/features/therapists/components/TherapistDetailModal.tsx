@@ -25,7 +25,7 @@ import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpun
 import { cn } from '@/lib/utils';
 import { formatSessionPrice } from '@/lib/pricing';
 import { isCalBookingEnabled } from '@/lib/cal/booking-url';
-import { useCalBooking, groupSlotsByDay } from '../hooks/useCalBooking';
+import { useCalBooking, groupSlotsByDay, groupSlotsByDayWithScarcity } from '../hooks/useCalBooking';
 import { CalVerificationForm } from './CalVerificationForm';
 import { CalBookingConfirm } from './CalBookingConfirm';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -416,9 +416,18 @@ export function TherapistDetailModal({
     }
   }, [onClose, selectedSlot, sessionFormat, therapist.id, therapist.typical_rate, calActions]);
 
-  // Cal slots grouped by day
-  const calSlotsByDay = useMemo(() => groupSlotsByDay(calState.slots), [calState.slots]);
-  const calSortedDays = useMemo(() => Array.from(calSlotsByDay.keys()).sort(), [calSlotsByDay]);
+  // Cal slots grouped by day with scarcity filtering
+  // filtered = reduced slots for day chips (1-3 per day)
+  // full = all slots for when user selects a day
+  const { filteredSlotsByDay, fullSlotsByDay } = useMemo(() => {
+    const { filtered, full } = groupSlotsByDayWithScarcity(calState.slots);
+    return { filteredSlotsByDay: filtered, fullSlotsByDay: full };
+  }, [calState.slots]);
+  const calSlotsByDay = fullSlotsByDay; // Keep alias for backward compat in time slot display
+  const calSortedDays = useMemo(() => Array.from(fullSlotsByDay.keys()).sort(), [fullSlotsByDay]);
+  
+  // State for showing all times on selected day (vs scarcity-filtered preview)
+  const [showAllTimesForDay, setShowAllTimesForDay] = useState(false);
 
   // Handle opening Cal booking view
   const handleOpenCalBooking = useCallback((kind: CalBookingKind) => {
@@ -1096,16 +1105,18 @@ export function TherapistDetailModal({
                       )}>
                         {(showAllDays ? calSortedDays : calSortedDays.slice(0, INITIAL_DAYS_TO_SHOW)).map((day) => {
                           const isSelected = calState.selectedSlot?.date_iso === day;
-                          const slotCount = calSlotsByDay.get(day)?.length || 0;
+                          // Use filtered count for display (scarcity) - shows 1-3 instead of 24
+                          const filteredCount = filteredSlotsByDay.get(day)?.length || 0;
                           const d = new Date(day + 'T00:00:00');
 
                           return (
                             <button
                               key={day}
                               onClick={() => {
-                                const firstSlot = calSlotsByDay.get(day)?.[0];
+                                const firstSlot = filteredSlotsByDay.get(day)?.[0];
                                 if (firstSlot && calState.selectedSlot?.date_iso !== day) {
                                   calActions.selectSlot(firstSlot);
+                                  setShowAllTimesForDay(false); // Reset when switching days
                                 }
                               }}
                               className={cn(
@@ -1119,7 +1130,7 @@ export function TherapistDetailModal({
                                 {d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}
                               </div>
                               <div className={cn('text-xs', isSelected ? 'text-emerald-600' : 'text-gray-500')}>
-                                {slotCount} {slotCount === 1 ? 'Termin' : 'Termine'}
+                                {filteredCount} {filteredCount === 1 ? 'Termin' : 'Termine'}
                               </div>
                             </button>
                           );
@@ -1138,36 +1149,53 @@ export function TherapistDetailModal({
                       </div>
                     </div>
 
-                    {/* Time slots for selected day */}
-                    {calState.selectedSlot && (
-                      <div className="pt-2">
-                        <p className="text-sm text-gray-600 mb-2">
-                          Verfügbare Zeiten am {(() => {
-                            const d = new Date(calState.selectedSlot.date_iso + 'T00:00:00');
-                            return d.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' });
-                          })()}:
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {calSlotsByDay.get(calState.selectedSlot.date_iso)?.map((slot) => {
-                            const isSelected = calState.selectedSlot?.time_utc === slot.time_utc;
-                            return (
+                    {/* Time slots for selected day - scarcity filtered with expand option */}
+                    {calState.selectedSlot && (() => {
+                      const selectedDay = calState.selectedSlot.date_iso;
+                      const filteredSlots = filteredSlotsByDay.get(selectedDay) || [];
+                      const allSlots = fullSlotsByDay.get(selectedDay) || [];
+                      const hasMoreSlots = allSlots.length > filteredSlots.length;
+                      const displaySlots = showAllTimesForDay ? allSlots : filteredSlots;
+                      
+                      return (
+                        <div className="pt-2">
+                          <p className="text-sm text-gray-600 mb-2">
+                            Verfügbare Zeiten am {(() => {
+                              const d = new Date(selectedDay + 'T00:00:00');
+                              return d.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' });
+                            })()}:
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {displaySlots.map((slot) => {
+                              const isSelected = calState.selectedSlot?.time_utc === slot.time_utc;
+                              return (
+                                <button
+                                  key={slot.time_utc}
+                                  onClick={() => calActions.selectSlot(slot)}
+                                  className={cn(
+                                    'px-3 py-2 rounded-lg border text-sm font-medium transition-all',
+                                    isSelected
+                                      ? 'bg-emerald-600 border-emerald-600 text-white'
+                                      : 'bg-white border-gray-200 text-gray-900 hover:border-emerald-300'
+                                  )}
+                                >
+                                  {slot.time_label}
+                                </button>
+                              );
+                            })}
+                            {/* Show more times button */}
+                            {hasMoreSlots && !showAllTimesForDay && (
                               <button
-                                key={slot.time_utc}
-                                onClick={() => calActions.selectSlot(slot)}
-                                className={cn(
-                                  'px-3 py-2 rounded-lg border text-sm font-medium transition-all',
-                                  isSelected
-                                    ? 'bg-emerald-600 border-emerald-600 text-white'
-                                    : 'bg-white border-gray-200 text-gray-900 hover:border-emerald-300'
-                                )}
+                                onClick={() => setShowAllTimesForDay(true)}
+                                className="px-3 py-2 rounded-lg border-2 border-dashed border-gray-200 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-600 transition-all"
                               >
-                                {slot.time_label}
+                                +{allSlots.length - filteredSlots.length} mehr
                               </button>
-                            );
-                          })}
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {/* Selected slot summary */}
                     {calState.selectedSlot && (

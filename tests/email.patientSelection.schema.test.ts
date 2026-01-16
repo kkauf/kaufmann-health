@@ -21,7 +21,8 @@ describe('patient selection email schema', () => {
         },
       ],
     });
-    expect(subject).toContain('Deine handverlesene Therapeuten-Auswahl');
+    // Dynamic subject based on best therapist name
+    expect(subject).toContain('Anna');
     expect(html).toContain('<script type="application/ld+json">');
     expect(html).toContain('ViewAction');
     expect(html).toContain(selectUrl);
