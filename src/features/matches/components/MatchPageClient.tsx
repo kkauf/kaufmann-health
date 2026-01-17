@@ -566,21 +566,26 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
-      <div className="mb-8">
+    <div className={`mx-auto px-4 sm:px-6 py-10 sm:py-14 ${matchViewState === 'hero' ? 'max-w-3xl' : 'max-w-7xl'}`}>
+      <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           {(() => {
             const name = (data?.patient?.name || '').trim();
             const firstName = name ? name.split(/\s+/)[0] : '';
             // Different headlines for hero vs directory view
             if (matchViewState === 'hero') {
-              return firstName ? `${firstName}, hier ist dein bester Match` : 'Dein bester Match';
+              return firstName 
+                ? `${firstName}, nur noch ein Schritt!` 
+                : 'Nur noch ein Schritt!';
             }
             return firstName ? `${firstName}, deine passenden Therapeut:innen` : 'Deine passenden Therapeut:innen';
           })()}
         </h1>
-        <p className="mt-2 text-gray-600">
-          Buche jetzt dein kostenloses Online-Kennenlernen (15 min) – unverbindlich und ohne Risiko.
+        <p className="mt-2 text-lg text-gray-600">
+          {matchViewState === 'hero' 
+            ? 'Deine Therapeutin wartet – buche jetzt dein kostenloses Kennenlernen.'
+            : 'Buche jetzt dein kostenloses Online-Kennenlernen (15 min) – unverbindlich und ohne Risiko.'
+          }
         </p>
       </div>
 
@@ -715,17 +720,24 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
 
         return (
           <div className="space-y-6">
-            {/* Context banner - why this therapist */}
-            <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 px-6 py-4 rounded-xl shadow-lg">
-              <div className="flex items-center justify-center gap-2 text-lg font-semibold text-white tracking-wide">
-                <Sparkles className="h-5 w-5" />
-                Dein bester Match
-              </div>
-              <p className="text-emerald-100 text-sm mt-1 text-center">
-                Basierend auf deinen Kriterien haben wir {t.first_name} als beste Empfehlung für dich ausgewählt.
-                {therapistsWithQuality.length > 1 && ` Wir haben ${therapistsWithQuality.length} passende Therapeut:innen gefunden.`}
-              </p>
-            </div>
+            {/* Context banner - action-oriented with urgency */}
+            {(() => {
+              const hasSlots = Array.isArray(t.availability) && t.availability.length > 0;
+              return (
+                <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 px-6 py-4 rounded-xl shadow-lg">
+                  <div className="flex items-center justify-center gap-2 text-lg font-semibold text-white tracking-wide">
+                    <Sparkles className="h-5 w-5" />
+                    Perfekt für dich ausgewählt
+                  </div>
+                  <p className="text-emerald-100 text-sm mt-1 text-center">
+                    {hasSlots 
+                      ? `${t.first_name} passt zu deinen Kriterien und hat diese Woche freie Termine.`
+                      : `${t.first_name} passt perfekt zu deinen Kriterien – persönlich für dich ausgewählt.`
+                    }
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Inline full profile */}
             <div className="bg-white rounded-xl border-2 border-emerald-400/60 shadow-xl p-4 sm:p-6">
