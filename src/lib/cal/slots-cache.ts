@@ -99,6 +99,8 @@ export async function warmCacheForTherapist(
         next_full_time_label: null,
         next_full_time_utc: null,
         full_slots_count: 0,
+        intro_slots: [],
+        full_slots: [],
         cached_at: new Date().toISOString(),
         last_error: 'Failed to fetch slots from Cal DB',
       });
@@ -109,7 +111,7 @@ export async function warmCacheForTherapist(
     const firstIntroSlot = introSlots?.[0] || null;
     const firstFullSlot = fullSlots?.[0] || null;
 
-    // Upsert cache entry with both slot types
+    // Upsert cache entry with both slot types AND full slot arrays
     const { error: upsertError } = await supabaseServer.from('cal_slots_cache').upsert({
       therapist_id: therapistId,
       next_intro_date_iso: firstIntroSlot?.date_iso || null,
@@ -120,6 +122,9 @@ export async function warmCacheForTherapist(
       next_full_time_label: firstFullSlot?.time_label || null,
       next_full_time_utc: firstFullSlot?.time_utc || null,
       full_slots_count: fullSlots?.length || 0,
+      // Store full slot arrays for booking modal (PERF optimization)
+      intro_slots: introSlots || [],
+      full_slots: fullSlots || [],
       cached_at: new Date().toISOString(),
       last_error: null,
     });
@@ -146,6 +151,8 @@ export async function warmCacheForTherapist(
         next_full_time_label: null,
         next_full_time_utc: null,
         full_slots_count: 0,
+        intro_slots: [],
+        full_slots: [],
         cached_at: new Date().toISOString(),
         last_error: errMsg,
       });

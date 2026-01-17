@@ -1,12 +1,12 @@
 /**
  * GET /api/public/cal/slots
  *
- * Fetch Cal.com availability via tRPC API (primary) or direct DB queries (fallback)
+ * Fetch Cal.com availability from pre-warmed cache (instant, ~10ms)
  *
- * Strategy (EARTH-274):
- * 1. Try Cal.com's internal tRPC API first - this is the most accurate as it accounts for
- *    buffer times, date overrides, slot reservations, and all Cal.com booking rules
- * 2. Fall back to direct DB queries if tRPC fails (network issues, etc.)
+ * Strategy (PERF optimization):
+ * - Always use cal_slots_cache table which is warmed by scheduled cron
+ * - No external HTTP calls to Cal.com tRPC API (eliminates 1-8s latency)
+ * - Cache is refreshed every 15 minutes by /api/admin/cal/warm-slots cron
  *
  * Contract:
  * - Input: therapist_id, kind (intro|full_session), start?, end?, timeZone?
@@ -23,15 +23,9 @@ import {
   type CalSlotsResponse,
   type CalBookingKind,
 } from '@/contracts/cal';
-import { fetchCalSlotsFromDb, isCalDbEnabled } from '@/lib/cal/slots-db';
-import { fetchCalSlotsFromTrpc } from '@/lib/cal/slots-trpc';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-// In-memory cache for slots (cleared on deploy)
-const slotsCache = new Map<string, { data: CalNormalizedSlot[]; expires: number }>();
-const CACHE_TTL_MS = 60_000; // 1 minute
 
 /**
  * Map booking kind to Cal.com event type slug
@@ -48,25 +42,24 @@ export async function GET(req: NextRequest) {
       return parsed.response;
     }
 
-    const { therapist_id, kind, timeZone = 'Europe/Berlin' } = parsed.data;
-
-    // Default date range: today + 7 days (extend to 14 if sparse)
-    const today = new Date();
-    const defaultStart = today.toISOString().split('T')[0];
-    const defaultEnd = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split('T')[0];
-
-    const start = parsed.data.start || defaultStart;
-    const end = parsed.data.end || defaultEnd;
+    const { therapist_id, kind } = parsed.data;
     const eventSlug = kindToEventSlug(kind);
 
-    // Look up therapist's cal_username
-    const { data: therapist, error: therapistErr } = await supabaseServer
-      .from('therapists')
-      .select('id, cal_username, cal_enabled')
-      .eq('id', therapist_id)
-      .single();
+    // Fetch therapist info + cached slots in parallel (PERF: single round-trip)
+    const [therapistResult, cacheResult] = await Promise.all([
+      supabaseServer
+        .from('therapists')
+        .select('id, cal_username, cal_enabled')
+        .eq('id', therapist_id)
+        .single(),
+      supabaseServer
+        .from('cal_slots_cache')
+        .select('intro_slots, full_slots, cached_at, last_error')
+        .eq('therapist_id', therapist_id)
+        .single(),
+    ]);
+
+    const { data: therapist, error: therapistErr } = therapistResult;
 
     if (therapistErr || !therapist) {
       return NextResponse.json(
@@ -83,20 +76,26 @@ export async function GET(req: NextRequest) {
     }
 
     const calUsername = therapist.cal_username;
+    const cache = cacheResult.data;
 
-    // Check cache
-    const cacheKey = `${therapist_id}:${kind}:${start}:${end}`;
-    const cached = slotsCache.get(cacheKey);
-    if (cached && cached.expires > Date.now()) {
+    // Check if cache exists and is recent (within 30 minutes)
+    const cacheAge = cache?.cached_at 
+      ? (Date.now() - new Date(cache.cached_at).getTime()) / 1000 / 60 
+      : Infinity;
+    const isCacheStale = cacheAge > 30; // 30 minutes
+
+    if (!cache || isCacheStale) {
       void ServerAnalytics.trackEventFromRequest(req, {
-        type: 'cal_slots_cache_hit',
+        type: 'cal_slots_cache_miss',
         source: 'api.public.cal.slots',
-        props: { therapist_id, kind },
+        props: { therapist_id, kind, cache_age_min: Math.round(cacheAge) },
       });
 
+      // Return empty slots if cache is missing/stale
+      // The cron job will refresh it shortly
       return NextResponse.json({
         data: {
-          slots: cached.data,
+          slots: [],
           therapist_id,
           kind,
           cal_username: calUsername,
@@ -106,66 +105,24 @@ export async function GET(req: NextRequest) {
       } satisfies CalSlotsResponse);
     }
 
-    // Strategy: Try tRPC API first (most accurate), fall back to direct DB
-    let slots: CalNormalizedSlot[] | null = null;
-    let source: 'trpc' | 'db' = 'trpc';
-
-    // 1. Try tRPC API first - this accounts for all Cal.com booking rules
-    slots = await fetchCalSlotsFromTrpc(calUsername, eventSlug, start, end, timeZone);
-
-    if (slots === null) {
-      void ServerAnalytics.trackEventFromRequest(req, {
-        type: 'cal_slots_trpc_failed',
-        source: 'api.public.cal.slots',
-        props: { therapist_id, kind, cal_username: calUsername },
-      });
-
-      // 2. Fall back to direct DB queries
-      if (isCalDbEnabled()) {
-        source = 'db';
-        slots = await fetchCalSlotsFromDb(calUsername, eventSlug, start, end, timeZone);
-
-        if (slots === null) {
-          void ServerAnalytics.trackEventFromRequest(req, {
-            type: 'cal_slots_db_failed',
-            source: 'api.public.cal.slots',
-            props: { therapist_id, kind, cal_username: calUsername },
-          });
-        }
-      }
-    }
-
-    // If both methods failed, return error
-    if (slots === null) {
-      return NextResponse.json(
-        { data: null, error: 'Failed to fetch availability' } satisfies CalSlotsResponse,
-        { status: 502 }
-      );
-    }
-
-    // Cache result
-    slotsCache.set(cacheKey, {
-      data: slots,
-      expires: Date.now() + CACHE_TTL_MS,
-    });
+    // Get slots from cache based on kind
+    const rawSlots = kind === 'intro' ? cache.intro_slots : cache.full_slots;
+    const slots: CalNormalizedSlot[] = Array.isArray(rawSlots) ? rawSlots : [];
 
     void ServerAnalytics.trackEventFromRequest(req, {
-      type: 'cal_slots_fetched',
+      type: 'cal_slots_cache_hit',
       source: 'api.public.cal.slots',
-      props: {
-        therapist_id,
-        kind,
-        cal_username: calUsername,
+      props: { 
+        therapist_id, 
+        kind, 
         slot_count: slots.length,
-        fetch_source: source,
+        cache_age_min: Math.round(cacheAge),
       },
     });
 
-    const normalizedSlots = slots;
-
     return NextResponse.json({
       data: {
-        slots: normalizedSlots,
+        slots,
         therapist_id,
         kind,
         cal_username: calUsername,

@@ -94,46 +94,48 @@ describe('Cal.com Slots API Error Handling (EARTH-262)', () => {
       expect(body.error).toBe('Cal.com not enabled for this therapist');
     });
 
-    it('returns 502 when both tRPC and DB fallback fail', async () => {
-      // EARTH-274: Now uses tRPC-first strategy with DB fallback
-      // This test verifies error handling when both methods fail
+    it('returns empty slots when cache is missing (graceful degradation)', async () => {
+      // PERF optimization: slots API now uses cache-first strategy
+      // When cache is missing/stale, returns empty slots instead of 502
+      // The cron job will refresh the cache shortly
+      
       const { supabaseServer } = await import('@/lib/supabase-server');
-      vi.mocked(supabaseServer.from).mockReturnValueOnce({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            single: vi.fn(() => Promise.resolve({
-              data: { id: 'test-id', cal_username: 'test-user', cal_enabled: true },
-              error: null,
+      
+      // Mock parallel queries: therapist lookup succeeds, cache lookup returns null
+      vi.mocked(supabaseServer.from)
+        .mockReturnValueOnce({
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              single: vi.fn(() => Promise.resolve({
+                data: { id: 'test-id', cal_username: 'test-user', cal_enabled: true },
+                error: null,
+              })),
             })),
           })),
-        })),
-      } as never);
+        } as never)
+        .mockReturnValueOnce({
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              single: vi.fn(() => Promise.resolve({
+                data: null, // No cache entry
+                error: null,
+              })),
+            })),
+          })),
+        } as never);
 
-      // Mock tRPC to fail (network error)
-      const mockFetch = vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network error'));
+      const { GET } = await import('@/app/api/public/cal/slots/route');
+      
+      const req = new NextRequest(
+        'http://localhost:3000/api/public/cal/slots?therapist_id=00000000-0000-0000-0000-000000000000&kind=intro'
+      );
 
-      // Ensure CAL_DATABASE_URL is not set so DB fallback also fails
-      const originalEnv = process.env.CAL_DATABASE_URL;
-      delete process.env.CAL_DATABASE_URL;
-
-      try {
-        // Re-import to pick up env change
-        vi.resetModules();
-        const { GET } = await import('@/app/api/public/cal/slots/route');
-        
-        const req = new NextRequest(
-          'http://localhost:3000/api/public/cal/slots?therapist_id=00000000-0000-0000-0000-000000000000&kind=intro'
-        );
-
-        const res = await GET(req);
-        expect(res.status).toBe(502);
-        
-        const body = await res.json();
-        expect(body.error).toBe('Failed to fetch availability');
-      } finally {
-        process.env.CAL_DATABASE_URL = originalEnv;
-        mockFetch.mockRestore();
-      }
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+      
+      const body = await res.json();
+      expect(body.data.slots).toEqual([]);
+      expect(body.error).toBeNull();
     });
   });
 });
