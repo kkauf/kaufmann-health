@@ -8,6 +8,9 @@ const therapistId = process.env.E2E_THERAPIST_ID || defaultTherapistId;
 // Helper to create a unique key per test run
 const uid = () => Math.random().toString(36).slice(2);
 
+// Skip for remote runs - API behavior may differ and test data could pollute production
+const isRemoteRun = base.includes('staging') || base.includes('kaufmann-health.de') || !!process.env.SMOKE_TEST_URL;
+test.skip(isRemoteRun, 'Skipped for staging/production - creates real contact data');
 test.skip(!therapistId, 'Set E2E_THERAPIST_ID to a verified therapist UUID to run contact E2E tests.');
 
 // Basic contact API E2E (server contract validation)

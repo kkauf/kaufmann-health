@@ -11,6 +11,9 @@ const smsCode = process.env.E2E_SMS_CODE || '000000';
 
 const uid = () => Math.random().toString(36).slice(2);
 
+// Skip for remote runs - requires admin API access to manipulate slots
+const isRemoteRun = base.includes('staging') || base.includes('kaufmann-health.de') || !!process.env.SMOKE_TEST_URL;
+test.skip(isRemoteRun, 'Skipped for staging/production - requires admin API to manipulate slots');
 // Skip entire file if we don't have a target therapist
 test.skip(!therapistId, 'Set E2E_THERAPIST_ID to a verified therapist UUID to run booking E2E tests.');
 // Allow either email (RESEND) or SMS bypass to create a verified client session

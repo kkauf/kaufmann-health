@@ -6,7 +6,10 @@ const hideIdsEnv = (process.env.HIDE_THERAPIST_IDS || '').trim();
 const defaultTherapistId = hideIdsEnv ? hideIdsEnv.split(',').map((s) => s.trim()).filter(Boolean)[0] : undefined;
 const therapistId = process.env.E2E_THERAPIST_ID || defaultTherapistId;
 
+// Skip for remote runs - requires admin API access to manipulate slots
+const isRemoteRun = base.includes('staging') || base.includes('kaufmann-health.de') || !!process.env.SMOKE_TEST_URL;
 test.skip(!therapistId, 'Set E2E_THERAPIST_ID to run booking UI E2E tests.');
+test.skip(isRemoteRun, 'Skipped for staging/production - requires admin API to manipulate slots');
 
 function buildSlotTimes(baseHour = 10) {
   const d = tomorrowInBerlin(1);
