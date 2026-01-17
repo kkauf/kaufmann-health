@@ -16,6 +16,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Mail, Phone, Loader2, MailCheck, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
 import type { UseVerificationReturn } from '@/lib/verification/useVerification';
@@ -33,6 +34,12 @@ export interface VerificationFormProps {
   showContactMethodToggle?: boolean;
   /** Custom class for the container */
   className?: string;
+  /** Optional notes for therapist (Cal.com booking) */
+  notes?: string;
+  /** Callback to update notes */
+  onNotesChange?: (notes: string) => void;
+  /** Label for notes field (e.g., therapist first name) */
+  notesLabel?: string;
   /** Options to pass when sending code */
   sendCodeOptions?: {
     redirect?: string;
@@ -64,6 +71,9 @@ export function VerificationForm({
   backLabel = 'Zurück',
   showContactMethodToggle = true,
   className = '',
+  notes,
+  onNotesChange,
+  notesLabel,
   sendCodeOptions = {},
 }: VerificationFormProps) {
   const { state, setName, setEmail, setPhone, setCode, setContactMethod, sendCode, verifyCode, resendCode } = verification;
@@ -156,6 +166,27 @@ export function VerificationForm({
             />
           )}
         </div>
+
+        {/* Optional notes for therapist */}
+        {onNotesChange && (
+          <div>
+            <Label htmlFor="verification-notes" className="text-sm font-medium text-gray-700">
+              Notiz{notesLabel ? ` für ${notesLabel}` : ''} (optional)
+            </Label>
+            <Textarea
+              id="verification-notes"
+              value={notes || ''}
+              onChange={(e) => onNotesChange(e.target.value)}
+              placeholder="z.B. Ich interessiere mich besonders für Somatic Experiencing..."
+              maxLength={500}
+              rows={2}
+              className="mt-1 resize-none text-sm"
+            />
+            <p className="text-xs text-gray-500 mt-1 text-right">
+              {(notes || '').length}/500
+            </p>
+          </div>
+        )}
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 

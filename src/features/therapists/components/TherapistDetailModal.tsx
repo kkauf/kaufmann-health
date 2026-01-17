@@ -946,8 +946,8 @@ export function TherapistDetailModal({
               </div>
             </div>
 
-            {/* EARTH-272: Native booking confirmation flow */}
-            {(calState.step === 'confirm' || calState.step === 'booking' || calState.step === 'success') ? (
+            {/* EARTH-272: Native booking flow (booking in progress / success) */}
+            {(calState.step === 'booking' || calState.step === 'success') ? (
               <CalBookingConfirm
                 state={calState}
                 actions={calActions}
@@ -964,6 +964,7 @@ export function TherapistDetailModal({
               <CalVerificationForm
                 state={calState}
                 actions={calActions}
+                therapistFirstName={therapist.first_name}
                 slotSummary={calState.selectedSlot && (
                   <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 mb-2">
                     <p className="text-sm text-emerald-900">
@@ -1054,38 +1055,62 @@ export function TherapistDetailModal({
                   <>
                     {/* First available slot quick-book banner */}
                     {(() => {
-                      // Only show banner if no slot is explicitly selected or if the selected slot logic permits?
-                      // Actually always showing it at the top provides good context.
-                      // But maybe hide it if a slot is already selected to reduce noise?
-                      // User feedback said "prominent, direct action". Let's keep it visible.
                       const firstDay = calSortedDays[0];
                       const firstSlot = calSlotsByDay.get(firstDay)?.[0];
                       if (!firstSlot) return null;
+
+                      // Calculate total available slots for urgency messaging
+                      const totalSlots = Array.from(fullSlotsByDay.values()).reduce((sum, slots) => sum + slots.length, 0);
+                      const isOnlySlot = totalSlots === 1;
 
                       const d = new Date(firstSlot.date_iso + 'T00:00:00');
                       const dateStr = d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
 
                       return (
-                        <div className="mb-6 p-4 bg-emerald-50/80 border border-emerald-200/80 rounded-xl shadow-sm">
-                          <p className="text-sm font-medium text-emerald-900 mb-3">
-                            Nächster freier Termin:
+                        <div className={cn(
+                          "mb-6 p-4 rounded-xl shadow-sm",
+                          isOnlySlot 
+                            ? "bg-amber-50/90 border border-amber-300/80" 
+                            : "bg-emerald-50/80 border border-emerald-200/80"
+                        )}>
+                          <p className={cn(
+                            "text-sm font-medium mb-3",
+                            isOnlySlot ? "text-amber-800" : "text-emerald-900"
+                          )}>
+                            {isOnlySlot ? '⚡ Letzter freier Termin:' : 'Nächster freier Termin:'}
                           </p>
                           <div className="flex items-center justify-between gap-4">
-                            <div className="text-emerald-950 font-semibold text-lg">
-                              {dateStr} <span className="text-emerald-900/60 font-normal">um</span> {firstSlot.time_label} Uhr
+                            <div className={cn(
+                              "font-semibold text-lg",
+                              isOnlySlot ? "text-amber-950" : "text-emerald-950"
+                            )}>
+                              {dateStr} <span className={cn("font-normal", isOnlySlot ? "text-amber-800/70" : "text-emerald-900/60")}>um</span> {firstSlot.time_label} Uhr
                             </div>
                             <Button
                               size="sm"
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 font-semibold shadow-sm hover:shadow"
+                              className={cn(
+                                "shrink-0 font-semibold shadow-sm hover:shadow text-white",
+                                isOnlySlot 
+                                  ? "bg-amber-600 hover:bg-amber-700" 
+                                  : "bg-emerald-600 hover:bg-emerald-700"
+                              )}
                               onClick={() => calActions.selectSlot(firstSlot)}
                             >
-                              Wählen
+                              {isOnlySlot ? 'Jetzt sichern' : 'Wählen'}
                             </Button>
                           </div>
+                          {isOnlySlot && (
+                            <p className="text-xs text-amber-700 mt-2">
+                              Nur noch dieser Termin verfügbar – schnell buchen!
+                            </p>
+                          )}
                         </div>
                       );
                     })()}
 
+                    {/* Only show alternate picker if there are multiple slots */}
+                    {Array.from(fullSlotsByDay.values()).reduce((sum, slots) => sum + slots.length, 0) > 1 && (
+                    <>
                     <div className="text-sm text-gray-500 font-medium mb-3">
                       Oder einen anderen Zeitpunkt wählen:
                     </div>
@@ -1196,6 +1221,8 @@ export function TherapistDetailModal({
                         </div>
                       );
                     })()}
+                    </>
+                    )}
 
                     {/* Selected slot summary */}
                     {calState.selectedSlot && (
