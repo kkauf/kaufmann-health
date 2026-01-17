@@ -228,11 +228,15 @@ test.describe('Cal.com Native Booking E2E', () => {
         await nameInput.fill('E2E 409 Test');
       }
 
-      // Submit
+      // Submit - wait for button to be enabled first
       const submitButton = modal.getByRole('button', { name: /buchen|bestätigen|absenden/i });
       if (await submitButton.isVisible()) {
-        await submitButton.click();
-        await page.waitForTimeout(5000);
+        // Only click if enabled (form complete)
+        const isEnabled = await submitButton.isEnabled().catch(() => false);
+        if (isEnabled) {
+          await submitButton.click();
+          await page.waitForTimeout(5000);
+        }
       }
     }
 

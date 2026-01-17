@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
 
+// Skip these tests when running against production (they use mocks)
+const isProductionRun = !!process.env.SMOKE_TEST_URL;
+
 test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
+  test.skip(isProductionRun, 'Skipped for production runs - uses mocked API responses');
+
   test.beforeEach(async ({ page }) => {
     // Set feature flag via environment or admin panel
     // In real test, ensure NEXT_PUBLIC_DIRECT_BOOKING_FLOW=true
