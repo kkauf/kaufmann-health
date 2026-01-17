@@ -18,6 +18,8 @@ interface CalVerificationFormProps {
   state: CalBookingState;
   actions: CalBookingActions;
   slotSummary?: React.ReactNode;
+  /** Therapist first name for notes label */
+  therapistFirstName?: string;
 }
 
 /**
@@ -32,7 +34,7 @@ function mapStep(calStep: CalBookingState['step']): VerificationStep {
   }
 }
 
-export function CalVerificationForm({ state, actions, slotSummary }: CalVerificationFormProps) {
+export function CalVerificationForm({ state, actions, slotSummary, therapistFirstName }: CalVerificationFormProps) {
   // Create adapter that maps CalBooking interface to UseVerificationReturn
   const verificationAdapter: UseVerificationReturn = useMemo(() => ({
     state: {
@@ -79,6 +81,9 @@ export function CalVerificationForm({ state, actions, slotSummary }: CalVerifica
       onBack={actions.backToSlots}
       backLabel="Zurück"
       showContactMethodToggle={true}
+      notes={state.notes}
+      onNotesChange={actions.setNotes}
+      notesLabel={therapistFirstName}
     />
   );
 }

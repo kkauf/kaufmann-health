@@ -198,12 +198,25 @@ export async function GET(req: Request) {
       // Ignore errors (column may not exist in test environments)
     }
 
-    // Load patient context (for prefill + session)
-    const { data: patient } = await supabaseServer
-      .from('people')
-      .select('name, email, phone_number, status, metadata')
-      .eq('id', patientId)
-      .single();
+    // PERF: Parallelize independent queries - patient data and matches can be fetched simultaneously
+    const [patientResult, matchesResult] = await Promise.all([
+      // Load patient context (for prefill + session)
+      supabaseServer
+        .from('people')
+        .select('name, email, phone_number, status, metadata')
+        .eq('id', patientId)
+        .single(),
+      // Fetch all matches for this patient (recent window)
+      supabaseServer
+        .from('matches')
+        .select('id, therapist_id, status, created_at, metadata')
+        .eq('patient_id', patientId)
+        .gte('created_at', new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false }),
+    ]);
+
+    const patient = patientResult.data;
+    const matches = matchesResult.data;
 
     // Build client session token so the user can contact therapists
     // Magic link access proves identity, so we issue a 30-day session cookie
@@ -243,14 +256,6 @@ export async function GET(req: Request) {
       gender_preference: p?.metadata?.gender_preference,
     };
 
-    // Fetch all matches for this patient (recent window)
-    const { data: matches } = await supabaseServer
-      .from('matches')
-      .select('id, therapist_id, status, created_at, metadata')
-      .eq('patient_id', patientId)
-      .gte('created_at', new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString())
-      .order('created_at', { ascending: false });
-
     type MatchMeta = { patient_initiated?: boolean };
     type MatchRow = { id: string; therapist_id: string; status?: string | null; created_at?: string | null; metadata?: MatchMeta | null };
     const all = Array.isArray(matches) ? (matches as unknown as MatchRow[]) : [];
@@ -267,36 +272,50 @@ export async function GET(req: Request) {
     }
     const therapistIds = chosen.map(m => m.therapist_id);
 
-    // Fetch therapist profiles using shared select columns and Zod-validated type
-    let therapistRows: TherapistRow[] = [];
-    if (therapistIds.length > 0) {
-      const { data: trows } = await supabaseServer
-        .from('therapists')
-        .select(THERAPIST_SELECT_COLUMNS_WITH_GENDER)
-        .in('id', therapistIds);
-      if (Array.isArray(trows)) {
-        // Cast DB rows to TherapistRow - contract enforcement happens via mapTherapistRow on output
-        therapistRows = (trows as unknown as TherapistRow[]).filter(t => t.accepting_new !== false);
-      }
-    }
-
-    // Fetch cached slot data for Cal.com booking availability
+    // PERF: Parallelize therapist data fetches - profiles, slot cache, and intro completion are independent
     type SlotCacheRow = { therapist_id: string; next_intro_date_iso: string | null; next_intro_time_label: string | null; next_intro_time_utc: string | null; slots_count: number | null };
+    
+    let therapistRows: TherapistRow[] = [];
     const slotCacheMap = new Map<string, SlotCacheRow>();
+    let introCompletionMap = new Map<string, boolean>();
+
     if (therapistIds.length > 0) {
-      try {
-        const { data: slotRows } = await supabaseServer
-          .from('cal_slots_cache')
-          .select('therapist_id, next_intro_date_iso, next_intro_time_label, next_intro_time_utc, slots_count')
-          .in('therapist_id', therapistIds);
-        if (Array.isArray(slotRows)) {
-          for (const row of slotRows as SlotCacheRow[]) {
-            slotCacheMap.set(row.therapist_id, row);
+      const [therapistsResult, slotCacheResult, introResult] = await Promise.all([
+        // Fetch therapist profiles
+        supabaseServer
+          .from('therapists')
+          .select(THERAPIST_SELECT_COLUMNS_WITH_GENDER)
+          .in('id', therapistIds),
+        // Fetch cached slot data for Cal.com booking availability
+        (async () => {
+          try {
+            return await supabaseServer
+              .from('cal_slots_cache')
+              .select('therapist_id, next_intro_date_iso, next_intro_time_label, next_intro_time_utc, slots_count')
+              .in('therapist_id', therapistIds);
+          } catch {
+            // Table may not exist in test environment
+            return { data: null, error: null };
           }
-        }
-      } catch {
-        // Table may not exist in test environment - continue without slot data
+        })(),
+        // Check intro completion for therapists that require it
+        batchCheckIntroCompletion(patientId, therapistIds),
+      ]);
+
+      // Process therapist profiles
+      if (Array.isArray(therapistsResult.data)) {
+        therapistRows = (therapistsResult.data as unknown as TherapistRow[]).filter(t => t.accepting_new !== false);
       }
+
+      // Process slot cache
+      if (Array.isArray(slotCacheResult.data)) {
+        for (const row of slotCacheResult.data as SlotCacheRow[]) {
+          slotCacheMap.set(row.therapist_id, row);
+        }
+      }
+
+      // Process intro completion
+      introCompletionMap = introResult;
     }
 
     // Compute contacted flags (patient-initiated)
@@ -338,9 +357,6 @@ export async function GET(req: Request) {
 
     // Sort by totalScore descending (per spec: Match × 1.5 + Platform)
     scored.sort((a, b) => b.totalScore - a.totalScore);
-
-    // Check intro completion for therapists that require it
-    const introCompletionMap = await batchCheckIntroCompletion(patientId, therapistIds);
 
     // Build response list using shared mapper (ensures contract compliance)
     // Then add match-specific fields

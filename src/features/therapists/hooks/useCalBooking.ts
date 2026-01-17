@@ -109,7 +109,6 @@ export interface CalBookingActions {
   setLocationType: (type: BookingLocationType) => void;
   setNotes: (notes: string) => void;
   createNativeBooking: () => Promise<void>;
-  proceedToConfirm: () => void;
   backToVerify: () => void;
 
   // Reset state
@@ -432,71 +431,7 @@ export function useCalBooking({
     window.location.href = calUrl;
   }, [selectedSlot, therapistId, calUsername, bookingKind, session]);
 
-  // EARTH-272: Navigate to confirm step (defined early for use in handleBooking and verifyCode)
-  const proceedToConfirm = useCallback(() => {
-    setStep('confirm');
-    setBookingError(null);
-  }, []);
-
-  // Handle booking button - check session first
-  const handleBooking = useCallback(() => {
-    if (!selectedSlot) return;
-
-    if (session?.verified) {
-      // EARTH-272: Use native booking when feature flag is enabled
-      if (USE_NATIVE_BOOKING) {
-        proceedToConfirm();
-      } else {
-        const email = session.contact_method === 'email' ? session.contact_value : undefined;
-        redirectToCal(session.name, email, session.patient_id);
-      }
-      return;
-    }
-
-    setStep('verify');
-  }, [selectedSlot, session, redirectToCal, proceedToConfirm]);
-
-  // Send verification code using shared hook
-  const sendCode = useCallback(async () => {
-    const result = await verification.sendCode({
-      name: verification.state.name,
-      redirect: emailRedirectPath,
-      draftBooking: selectedSlot ? {
-        therapist_id: therapistId,
-        date_iso: selectedSlot.date_iso,
-        time_label: selectedSlot.time_label,
-        format: 'online',
-        // Include Cal.com slot reference for auto-redirect after email confirmation
-        cal_slot_utc: selectedSlot.time_utc,
-        cal_username: calUsername,
-        cal_booking_kind: bookingKind,
-      } : undefined,
-    });
-
-    if (result.success) {
-      // Map verification step to booking step
-      setStep(result.useMagicLink ? 'email-sent' : 'code');
-    }
-  }, [verification, selectedSlot, therapistId, emailRedirectPath, calUsername, bookingKind]);
-
-  // Verify code and proceed to native booking or redirect
-  const verifyCode = useCallback(async () => {
-    const result = await verification.verifyCode();
-
-    if (result.success) {
-      // EARTH-272: Use native booking when feature flag is enabled
-      if (USE_NATIVE_BOOKING) {
-        proceedToConfirm();
-      } else {
-        const email = verification.state.contactMethod === 'email'
-          ? verification.state.email
-          : undefined;
-        redirectToCal(verification.state.name, email, result.patientId);
-      }
-    }
-  }, [verification, redirectToCal, proceedToConfirm]);
-
-  // EARTH-262: Retry slots fetch
+  // EARTH-262: Retry slots fetch (moved up for use in createNativeBooking)
   const retrySlotsFetch = useCallback(() => {
     // Clear refs to force a new fetch
     currentFetchRef.current = null;
@@ -504,12 +439,7 @@ export function useCalBooking({
     setSlotsFetchTrigger((t) => t + 1);
   }, []);
 
-  // EARTH-262: Go to fallback (contact form)
-  const goToFallback = useCallback(() => {
-    setStep('fallback');
-  }, []);
-
-  // EARTH-272: Create native booking via KH API
+  // EARTH-272: Create native booking via KH API (moved up for use in verifyCode and handleBooking)
   const createNativeBooking = useCallback(async () => {
     if (!selectedSlot) return;
 
@@ -552,13 +482,13 @@ export function useCalBooking({
 
       if (json.error) {
         setBookingError(json.error);
-        setStep('confirm');
+        setStep('verify'); // Go back to verify step on error
         return;
       }
 
       if (!json.data) {
         setBookingError('Keine Antwort vom Server');
-        setStep('confirm');
+        setStep('verify');
         return;
       }
 
@@ -603,13 +533,13 @@ export function useCalBooking({
           redirectToCal(bookingName, bookingEmail, session?.patient_id);
         } else {
           setBookingError(json.data.message || 'Buchung fehlgeschlagen');
-          setStep('confirm');
+          setStep('verify');
         }
       }
     } catch (e) {
       console.error('[useCalBooking] Native booking failed:', e);
       setBookingError('Verbindungsfehler. Bitte versuche es erneut.');
-      setStep('confirm');
+      setStep('verify');
     } finally {
       setBookingLoading(false);
     }
@@ -618,7 +548,72 @@ export function useCalBooking({
     verification.state, redirectToCal, retrySlotsFetch
   ]);
 
-  // EARTH-272: Back to verify from confirm
+  // Handle booking button - check session first
+  const handleBooking = useCallback(() => {
+    if (!selectedSlot) return;
+
+    if (session?.verified) {
+      // EARTH-272: Use native booking when feature flag is enabled
+      if (USE_NATIVE_BOOKING) {
+        // Skip verification for verified users - book directly
+        createNativeBooking();
+      } else {
+        const email = session.contact_method === 'email' ? session.contact_value : undefined;
+        redirectToCal(session.name, email, session.patient_id);
+      }
+      return;
+    }
+
+    setStep('verify');
+  }, [selectedSlot, session, redirectToCal, createNativeBooking]);
+
+  // Send verification code using shared hook
+  const sendCode = useCallback(async () => {
+    const result = await verification.sendCode({
+      name: verification.state.name,
+      redirect: emailRedirectPath,
+      draftBooking: selectedSlot ? {
+        therapist_id: therapistId,
+        date_iso: selectedSlot.date_iso,
+        time_label: selectedSlot.time_label,
+        format: 'online',
+        // Include Cal.com slot reference for auto-redirect after email confirmation
+        cal_slot_utc: selectedSlot.time_utc,
+        cal_username: calUsername,
+        cal_booking_kind: bookingKind,
+      } : undefined,
+    });
+
+    if (result.success) {
+      // Map verification step to booking step
+      setStep(result.useMagicLink ? 'email-sent' : 'code');
+    }
+  }, [verification, selectedSlot, therapistId, emailRedirectPath, calUsername, bookingKind]);
+
+  // Verify code and proceed to native booking or redirect
+  const verifyCode = useCallback(async () => {
+    const result = await verification.verifyCode();
+
+    if (result.success) {
+      // EARTH-272: Use native booking when feature flag is enabled
+      if (USE_NATIVE_BOOKING) {
+        // Skip confirm step - book directly after verification
+        createNativeBooking();
+      } else {
+        const email = verification.state.contactMethod === 'email'
+          ? verification.state.email
+          : undefined;
+        redirectToCal(verification.state.name, email, result.patientId);
+      }
+    }
+  }, [verification, redirectToCal, createNativeBooking]);
+
+  // EARTH-262: Go to fallback (contact form)
+  const goToFallback = useCallback(() => {
+    setStep('fallback');
+  }, []);
+
+  // EARTH-272: Back to slots from verify
   const backToVerify = useCallback(() => {
     setStep('verify');
     setBookingError(null);
@@ -693,7 +688,6 @@ export function useCalBooking({
     setLocationType,
     setNotes,
     createNativeBooking,
-    proceedToConfirm,
     backToVerify,
     reset,
   };
