@@ -142,6 +142,7 @@ jobs:
       EMAIL_SUPPRESS_OUTBOUND: 'true'
       E2E_SMS_BYPASS: 'true'
       E2E_SMS_CODE: '000000'
+      E2E_THERAPIST_ID: 'e5de1fb4-90c6-4681-aa23-b4e84e7defa8'
       # Vercel Protection Bypass for authenticated staging deployments
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:

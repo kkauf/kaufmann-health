@@ -7,8 +7,7 @@ test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
   test.skip(isProductionRun, 'Skipped for production runs - uses mocked API responses');
 
   test.beforeEach(async ({ page }) => {
-    // Set feature flag via environment or admin panel
-    // In real test, ensure NEXT_PUBLIC_DIRECT_BOOKING_FLOW=true
+    // Instant booking flow is always enabled
   });
 
   test.describe('Complete Instant Flow - Exact Match', () => {
@@ -132,7 +131,8 @@ test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
   });
 
   test.describe('Legacy Flow Compatibility', () => {
-    test.skip(process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW === 'true', 'Skipped when direct-booking flow is enabled');
+    // Legacy flow removed - instant booking is always enabled
+    test.skip(true, 'Legacy flow no longer exists - instant booking always enabled');
     test('shows step 9 when feature flag disabled', async ({ page }) => {
       await page.goto('/fragebogen');
       await expect(page).toHaveURL('/fragebogen');
@@ -140,7 +140,7 @@ test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
   });
 
   test.describe('Conversion Tracking', () => {
-    test.skip(process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW === 'true', 'Skipped in direct-booking smoke run');
+    // Conversion tracking tests handled elsewhere
   });
 
   test.describe('Mobile Experience', () => {
@@ -163,6 +163,6 @@ test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
       await expect(page.locator('text=Nicht gefunden')).toBeVisible();
     });
 
-    test.skip(process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW === 'true', 'Skipped network timeout flow in direct-booking smoke run');
+    // Network timeout tests are covered by unit tests
   });
 });

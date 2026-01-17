@@ -133,22 +133,19 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
   };
   
   const copy = variant === 'ready-now' ? readyNowCopy : bodyOrientedCopy;
-  // Direct booking feature flag
-  const instantFlow = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
-  const faqs = instantFlow
-    ? copy.faqs.map((f) =>
-        f.id === 'how-it-works'
-          ? {
-              ...f,
-              question: 'Wie funktioniert die Terminbuchung?',
-              answer:
-                variant === 'ready-now'
-                  ? 'Du teilst in 3 Minuten deine Präferenzen. Wir zeigen dir sofort passende Profile und freie Terminslots. Buche in 2 Minuten deinen ersten Termin.'
-                  : 'Du teilst in 3 Minuten deine Präferenzen. Wir zeigen dir sofort passende Profile mit freien Terminen – du entscheidest und buchst direkt online.',
-            }
-          : f,
-      )
-    : copy.faqs;
+  // Update FAQ with instant booking flow copy
+  const faqs = copy.faqs.map((f) =>
+    f.id === 'how-it-works'
+      ? {
+          ...f,
+          question: 'Wie funktioniert die Terminbuchung?',
+          answer:
+            variant === 'ready-now'
+              ? 'Du teilst in 3 Minuten deine Präferenzen. Wir zeigen dir sofort passende Profile und freie Terminslots. Buche in 2 Minuten deinen ersten Termin.'
+              : 'Du teilst in 3 Minuten deine Präferenzen. Wir zeigen dir sofort passende Profile mit freien Terminen – du entscheidest und buchst direkt online.',
+        }
+      : f,
+  );
   const faqSchema = buildFaqJsonLd(faqs.map(({ question, answer }) => ({ question, answer })));
   const businessSchema = buildLocalBusinessJsonLd({ baseUrl, path: '/start', areaServed: { type: 'Country', name: 'Deutschland', addressCountry: 'DE' } });
   const neutralHeroSubtitle = variant === 'ready-now'
@@ -156,8 +153,8 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
     : 'Erfahrene Körpertherapeut:innen, die wirklich verfügbar sind. Geprüftes Netzwerk – Berlin oder online.';
 
   // Variant-specific timeline ("So funktioniert") for Test 1/4
-  // Test 4: isConcierge forces manual curation (24h) regardless of instantFlow
-  const useInstantFlow = instantFlow && !isConcierge;
+  // Test 4: isConcierge forces manual curation (24h)
+  const useInstantFlow = !isConcierge;
   const timelineTagline = isBrowse
     ? 'Verzeichnis durchsuchen. Profil ansehen. Direkt Kontakt aufnehmen – privat und ohne Wartezeit.'
     : (useInstantFlow
@@ -237,7 +234,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
       {/* HERO (no form) - Use keyword/adgroup copy when available for QS optimization */}
       <HeroNoForm
         title={landingCopy?.title ?? copy.hero.title}
-        subtitle={landingCopy?.subtitle ?? (instantFlow ? neutralHeroSubtitle : copy.hero.subtitle)}
+        subtitle={landingCopy?.subtitle ?? neutralHeroSubtitle}
         ctaLabel={isBrowse ? 'Therapeut:innen ansehen' : 'Jetzt Therapeut:in finden'}
         ctaHref={isBrowse ? therapeutenHref : fragebogenHref}
         backgroundSrc="/images/hero-calm.jpeg"
@@ -267,7 +264,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
       <section className="mt-10 sm:mt-14">
         <TherapistTeaserSection
           title="Unser Therapeuten-Netzwerk"
-          subtitle={instantFlow ? 'Geprüfte Spezialist:innen' : 'Persönlich ausgewählte Spezialist:innen'}
+          subtitle="Geprüfte Spezialist:innen"
           limit={3}
         />
         <div className="mt-8 sm:mt-10 text-center">
@@ -294,10 +291,8 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
         heading="Bereit für den ersten Schritt?"
         subtitle={isBrowse
           ? 'Stöbere im Verzeichnis. Profil ansehen und direkt Kontakt aufnehmen.'
-          : (instantFlow
-            ? 'Fülle unseren 3-Minuten Fragebogen aus. Wir zeigen dir sofort passende Profile mit freien Terminen.'
-            : 'Fülle unseren 3-Minuten Fragebogen aus. Wir senden dir innerhalb von 24 Stunden bis zu 3 persönlich ausgewählte Therapeuten-Vorschläge.')}
-        buttonLabel={isBrowse ? 'Therapeut:innen ansehen' : (instantFlow ? 'Jetzt Termin buchen' : 'Jetzt Therapeut:in finden')}
+          : 'Fülle unseren 3-Minuten Fragebogen aus. Wir zeigen dir sofort passende Profile mit freien Terminen.'}
+        buttonLabel={isBrowse ? 'Therapeut:innen ansehen' : 'Jetzt Termin buchen'}
         targetId={isBrowse ? therapeutenHref : fragebogenHref}
         align="center"
         variant="tinted"

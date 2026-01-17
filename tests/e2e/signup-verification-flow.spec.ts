@@ -14,6 +14,8 @@ import { test, expect, Page } from '@playwright/test';
 
 const smsBypass = process.env.E2E_SMS_BYPASS === 'true';
 const smsCode = process.env.E2E_SMS_CODE || '000000';
+const base = process.env.E2E_BASE_URL || process.env.SMOKE_TEST_URL || 'http://localhost:3000';
+const isRemoteRun = base.includes('staging') || base.includes('kaufmann-health.de') || !!process.env.SMOKE_TEST_URL;
 
 // Clear wizard state before each test for determinism
 async function clearWizardState(page: Page) {
@@ -34,66 +36,64 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 /**
  * Navigate through questionnaire to contact step using real UI interactions.
  * Works with both concierge and self-service variants.
+ * Note: Auto-advancing is disabled - must click "Weiter →" after each selection.
  */
 async function navigateToContactStep(page: Page) {
-  // Step 1: Timeline - select an option
+  const weiterBtn = () => page.getByRole('button', { name: /Weiter|→/i });
+  const skipBtn = () => page.getByRole('button', { name: /Überspringen/i });
+  
+  // Step 1: Timeline - select an option and click Weiter
   await expect(page.getByText(/Wann möchtest du/i)).toBeVisible({ timeout: 10000 });
+  await page.getByRole('button', { name: /Innerhalb des nächsten Monats/i }).click();
+  await weiterBtn().click();
   
-  // Click timeline option - triggers auto-advance
-  const timelineOption = page.getByRole('button', { name: /Innerhalb des nächsten Monats|nächsten Monats/i });
-  await timelineOption.click();
+  // Step 2: What brings you (concierge) OR Schwerpunkte (self-service)
+  await page.waitForTimeout(300);
   
-  // Click Weiter to proceed
-  await page.getByRole('button', { name: 'Weiter →' }).click();
-  
-  // Step 2: What brings you (concierge) - fill minimal text to enable Weiter
-  await page.waitForTimeout(500);
-  const whatBringsYou = page.locator('textarea[placeholder*="Angst"], textarea[id="issue"]');
-  if (await whatBringsYou.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await whatBringsYou.fill('E2E Test - Stress');
-    await page.getByRole('button', { name: 'Weiter →' }).click();
+  // Check if we're on "What brings you" (textarea) or Schwerpunkte (checkboxes)
+  const whatBringsYou = page.locator('textarea').first();
+  if (await whatBringsYou.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await whatBringsYou.fill('E2E Test - Stress und Erschöpfung');
+    await weiterBtn().click();
+  } else if (await skipBtn().isVisible({ timeout: 1000 }).catch(() => false)) {
+    // Schwerpunkte step - skip it
+    await skipBtn().click();
   }
   
-  // Step 2.5: Schwerpunkte (self-service) - skip if present
-  await page.waitForTimeout(500);
-  const skipSchwerpunkte = page.getByRole('button', { name: /Überspringen/i });
-  if (await skipSchwerpunkte.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await skipSchwerpunkte.click();
+  // Step 3: Modality choice
+  await page.waitForTimeout(300);
+  const modalityQuestion = page.getByText(/Therapiemethode|Methode/i);
+  if (await modalityQuestion.isVisible({ timeout: 2000 }).catch(() => false)) {
+    // Select "No, recommend one for me"
+    const noBtn = page.getByRole('button', { name: /Nein/i });
+    if (await noBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await noBtn.click();
+      await weiterBtn().click();
+    } else if (await skipBtn().isVisible({ timeout: 1000 }).catch(() => false)) {
+      await skipBtn().click();
+    }
   }
   
-  // Step 3: Modality choice - "Möchtest du deine Therapiemethode selbst wählen?"
-  await page.waitForTimeout(500);
-  const modalityNo = page.getByRole('button', { name: /Nein, empfehlt mir eine/i });
-  const skipModality = page.getByRole('button', { name: /Überspringen/i });
-  if (await modalityNo.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await modalityNo.click();
-    // After selecting, click Weiter to proceed
-    await page.getByRole('button', { name: 'Weiter →' }).click();
-  } else if (await skipModality.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await skipModality.click();
-  }
-  
-  // Step 4: Location - select Online
-  await expect(page.getByText(/Wie möchtest du die Sitzungen/i)).toBeVisible({ timeout: 5000 });
+  // Step 4: Location - select Online and click Weiter
+  await expect(page.getByText('Wie möchtest du die Sitzungen machen?')).toBeVisible({ timeout: 5000 });
   await page.getByRole('button', { name: /Online.*Video/i }).click();
+  await weiterBtn().click();
   
-  // Step 5: Preferences - skip
-  await page.waitForTimeout(500);
-  const skipPrefs = page.getByRole('button', { name: /Überspringen/i });
-  if (await skipPrefs.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await skipPrefs.click();
+  // Step 5: Preferences (gender) - skip
+  await page.waitForTimeout(300);
+  if (await skipBtn().isVisible({ timeout: 2000 }).catch(() => false)) {
+    await skipBtn().click();
+  } else if (await weiterBtn().isVisible({ timeout: 1000 }).catch(() => false)) {
+    await weiterBtn().click();
   }
   
   // Should now be on Step 6: Contact
-  await expect(page.getByText(/Wie heißt du|Dein Name/i)).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText(/Wie heißt du|Dein Name|Name/i)).toBeVisible({ timeout: 10000 });
 }
 
 test.describe('SignupWizard Verification Flow', () => {
-  // TODO: Wizard flow is dynamic and needs more robust step detection.
-  // Current implementation tries to navigate through all steps but button text
-  // and step order can vary. Needs refactoring to detect current step and adapt.
-  // Skipping for now to unblock CI - re-enable after wizard navigation helper is fixed.
-  test.skip(true, 'Wizard navigation needs refactoring - step detection unreliable');
+  // Skip on remote runs - wizard navigation is unreliable due to varying step flows
+  test.skip(isRemoteRun, 'Skipped for staging/production - wizard navigation unreliable');
   
   test.beforeEach(async ({ page }) => {
     await clearWizardState(page);
@@ -278,8 +278,8 @@ test.describe('SignupWizard Verification Flow', () => {
 });
 
 test.describe('Verification Flow - Edge Cases', () => {
-  // TODO: Same wizard navigation issues as main test block
-  test.skip(true, 'Wizard navigation needs refactoring');
+  // Skip on remote runs - wizard navigation is unreliable due to varying step flows
+  test.skip(isRemoteRun, 'Skipped for staging/production - wizard navigation unreliable');
   
   test.beforeEach(async ({ page }) => {
     await clearWizardState(page);
