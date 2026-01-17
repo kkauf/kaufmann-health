@@ -20,6 +20,7 @@ export const CalKhMetadata = z
     kh_booking_kind: CalBookingKind.optional(),
     kh_source: CalBookingSource.optional(),
     kh_test: CalBool.optional(),
+    kh_notes: z.string().max(500).optional(), // Patient notes for therapist
     kh_gclid: OptionalString,
     kh_utm_source: OptionalString,
     kh_utm_medium: OptionalString,

@@ -73,6 +73,7 @@ export interface CalBookingState {
 
   // EARTH-272: Native booking state
   locationType: BookingLocationType;
+  notes: string; // Patient notes for therapist
   bookingLoading: boolean;
   bookingError: string | null;
   bookingResult: CalBookingSuccessResponse | null;
@@ -106,6 +107,7 @@ export interface CalBookingActions {
 
   // EARTH-272: Native booking actions
   setLocationType: (type: BookingLocationType) => void;
+  setNotes: (notes: string) => void;
   createNativeBooking: () => Promise<void>;
   proceedToConfirm: () => void;
   backToVerify: () => void;
@@ -148,6 +150,7 @@ export function useCalBooking({
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [bookingResult, setBookingResult] = useState<CalBookingSuccessResponse | null>(null);
+  const [notes, setNotes] = useState(''); // Patient notes for therapist
 
   // Track current fetch to avoid aborting on re-renders (EARTH-262 fix)
   const currentFetchRef = useRef<{ therapistId: string; bookingKind: CalBookingKind } | null>(null);
@@ -536,6 +539,7 @@ export function useCalBooking({
           location_type: locationType,
           metadata: {
             kh_patient_id: session?.patient_id,
+            kh_notes: notes.trim() || undefined,
             kh_gclid: attrs.gclid,
             kh_utm_source: attrs.utm_source,
             kh_utm_medium: attrs.utm_medium,
@@ -610,7 +614,7 @@ export function useCalBooking({
       setBookingLoading(false);
     }
   }, [
-    selectedSlot, therapistId, bookingKind, locationType, session,
+    selectedSlot, therapistId, bookingKind, locationType, notes, session,
     verification.state, redirectToCal, retrySlotsFetch
   ]);
 
@@ -630,6 +634,7 @@ export function useCalBooking({
     setBookingError(null);
     setBookingResult(null);
     setLocationType(bookingKind === 'intro' ? 'video' : 'video');
+    setNotes('');
   }, [verification, bookingKind]);
 
   // Map verification state to CalBookingState interface for backward compatibility
@@ -655,6 +660,7 @@ export function useCalBooking({
     bookingRetryCount,
     // EARTH-272: Native booking state
     locationType,
+    notes,
     bookingLoading,
     bookingError,
     bookingResult,
@@ -685,6 +691,7 @@ export function useCalBooking({
     retrySlotsFetch,
     // EARTH-272: Native booking actions
     setLocationType,
+    setNotes,
     createNativeBooking,
     proceedToConfirm,
     backToVerify,
