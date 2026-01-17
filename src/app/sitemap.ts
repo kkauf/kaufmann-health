@@ -89,13 +89,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'yearly',
       priority: 0.3,
     },
-    // Exclude /datenschutz from sitemap (but don't noindex it)
-    // It's legally required to be accessible but not search-optimized
-    // Also intentionally excluded:
+    {
+      url: `${baseUrl}/fragebogen`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/datenschutz`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
+    // Intentionally excluded from sitemap:
     // - /admin/* (protected area)
     // - /confirm (noindex confirmation state page)
-    // - /preferences (post-confirmation flow)
     // - /match/* and /auswahl-bestaetigt (transactional flow pages)
     // - /therapists/* (onboarding flows)
+    // - /therapeuten (noindex directory page)
   ]
 }

@@ -15,13 +15,13 @@ export const metadata: Metadata = {
     title: "Beratung – Digitale Infrastruktur für Gesundheits- & Bildungsunternehmen | Kaufmann Health",
     description:
       "Konstantin Kaufmann unterstützt Gesundheits- und Bildungsunternehmen bei der Entwicklung maßgeschneiderter digitaler Lösungen – von MVP bis laufendem Betrieb.",
-    url: "https://kaufmann-health.de/beratung",
+    url: "https://www.kaufmann-health.de/beratung",
     siteName: "Kaufmann Health",
     locale: "de_DE",
     type: "website",
   },
   robots: { index: true, follow: true },
-  alternates: { canonical: "/beratung" },
+  alternates: { canonical: "https://www.kaufmann-health.de/beratung" },
 };
 
 export default function BeratungPage() {
