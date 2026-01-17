@@ -18,7 +18,7 @@ export function renderTherapistAvailabilityReminder({
   introSlots,
   fullSessionSlots,
   calUrl,
-}: AvailabilityReminderProps): { subject: string; html: string } {
+}: AvailabilityReminderProps): EmailContent {
   const firstName = name.split(' ')[0] || name;
   
   const hasLowIntro = introSlots < 3;
@@ -56,19 +56,15 @@ export function renderTherapistAvailabilityReminder({
     
     <p>Falls du mehr Termine freigeben möchtest, kannst du deine Verfügbarkeit direkt in deinem Kalender anpassen:</p>
     
-    <p style="margin: 24px 0;">
-      <a href="${calUrl}" style="display: inline-block; background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">
-        Kalender öffnen
-      </a>
-    </p>
+    ${renderButton(calUrl, 'Kalender öffnen')}
     
-    <p style="color: #6b7280; font-size: 14px;">
+    <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
       Diese E-Mail wird einmal wöchentlich verschickt, wenn deine Verfügbarkeit gering ist.
     </p>
   `;
 
   return {
     subject: 'Stimmt deine Verfügbarkeit so?',
-    html: emailWrapper({ body, preheader: `Du hast nur wenige freie Termine diese Woche` }),
+    html: renderLayout({ contentHtml: body, preheader: 'Du hast nur wenige freie Termine diese Woche' }),
   };
 }
