@@ -9,6 +9,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { Loader2, CheckCircle2, Video, MapPin, AlertCircle, ArrowLeft, Calendar, ExternalLink } from 'lucide-react';
 import type { CalBookingState, CalBookingActions, BookingLocationType } from '../hooks/useCalBooking';
 import type { CalBookingKind } from '@/contracts/cal';
@@ -184,6 +185,25 @@ export function CalBookingConfirm({
               <p className="text-sm text-gray-900">{sessionPrice}€ pro Sitzung</p>
             </div>
           )}
+        </div>
+
+        {/* Notes for therapist */}
+        <div>
+          <label htmlFor="booking-notes" className="text-sm font-medium text-gray-700 block mb-2">
+            Notiz für {therapistName.split(' ')[0]} (optional)
+          </label>
+          <Textarea
+            id="booking-notes"
+            value={state.notes}
+            onChange={(e) => actions.setNotes(e.target.value)}
+            placeholder="z.B. Ich interessiere mich besonders für Somatic Experiencing..."
+            maxLength={500}
+            rows={3}
+            className="resize-none text-sm"
+          />
+          <p className="text-xs text-gray-500 mt-1.5">
+            {state.notes.length}/500 Zeichen
+          </p>
         </div>
 
         {/* Error message */}

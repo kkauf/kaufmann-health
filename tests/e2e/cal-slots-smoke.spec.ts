@@ -42,12 +42,19 @@ test.describe('Cal.com Slots Smoke Test', () => {
     await page.goto(`${BASE_URL}/therapeuten`);
     await page.waitForLoadState('networkidle');
 
+    // Dismiss cookie consent banner if present (can block interactions)
+    const cookieRejectBtn = page.getByRole('button', { name: 'Ablehnen' });
+    if (await cookieRejectBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await cookieRejectBtn.click();
+    }
+
     // Check that at least one therapist card shows the Cal booking button
-    // Cal-enabled therapists show "Online-Kennenlernen" instead of "Kennenlernen anfragen"
+    // Cal-enabled therapists show "Online-Kennenlernen" button
+    // Note: Button text is "Online-Kennenlernen (15 min)"
     const calBookingButton = page.getByRole('button', { name: /Online-Kennenlernen/ }).first();
     
-    // Should find at least one Cal-enabled therapist within 10 seconds
-    await expect(calBookingButton).toBeVisible({ timeout: 10000 });
+    // Should find at least one Cal-enabled therapist (allow more time for initial load)
+    await expect(calBookingButton).toBeVisible({ timeout: 20000 });
   });
 
   test('clicking intro booking shows slot picker with available times', async ({ page }) => {

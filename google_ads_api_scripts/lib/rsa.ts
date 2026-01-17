@@ -61,8 +61,13 @@ export function augmentRsaTextAssets(
   descriptions: string[] | undefined,
   opts: RsaAugmentOpts
 ): { headlines: string[]; descriptions: string[] } {
-  const baseH = uniqueKeepOrder([...(headlines || [])]);
+  let baseH = uniqueKeepOrder([...(headlines || [])]);
   const baseD = uniqueKeepOrder([...(descriptions || [])]);
+
+  // Strip keyword insertion tokens if disabled
+  if (opts?.useKeywordInsertion === false) {
+    baseH = baseH.filter((h) => !/{KeyWord:/i.test(h));
+  }
 
   const kwTokens = Array.from(new Set(opts?.kwTokens || []))
     .map((k) => normalizeText(k))
