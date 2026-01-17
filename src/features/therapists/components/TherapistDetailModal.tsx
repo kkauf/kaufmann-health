@@ -1130,8 +1130,8 @@ export function TherapistDetailModal({
                       )}>
                         {(showAllDays ? calSortedDays : calSortedDays.slice(0, INITIAL_DAYS_TO_SHOW)).map((day) => {
                           const isSelected = calState.selectedSlot?.date_iso === day;
-                          // Use filtered count for display (scarcity) - shows 1-3 instead of 24
-                          const filteredCount = filteredSlotsByDay.get(day)?.length || 0;
+                          // Show full count on chip (accurate) - user sees actual availability
+                          const fullCount = fullSlotsByDay.get(day)?.length || 0;
                           const d = new Date(day + 'T00:00:00');
 
                           return (
@@ -1155,7 +1155,7 @@ export function TherapistDetailModal({
                                 {d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}
                               </div>
                               <div className={cn('text-xs', isSelected ? 'text-emerald-600' : 'text-gray-500')}>
-                                {filteredCount} {filteredCount === 1 ? 'Termin' : 'Termine'}
+                                {fullCount} {fullCount === 1 ? 'Termin' : 'Termine'}
                               </div>
                             </button>
                           );

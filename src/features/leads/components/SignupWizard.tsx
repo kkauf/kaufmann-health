@@ -1734,8 +1734,31 @@ export default function SignupWizard() {
       )}
       <ProgressBar value={progressValue} />
       {renderScreen()}
-      {/* Footer status only (per-screen navigation handles actions) */}
-      <div className="flex items-center justify-end pt-2">
+      {/* Footer status with restart option */}
+      <div className="flex items-center justify-between pt-2">
+        {/* Restart button - only show when user has made progress and not on final confirmation steps */}
+        {step > 1 && step < 7 ? (
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm('Möchtest du wirklich von vorne beginnen? Alle bisherigen Eingaben werden gelöscht.')) {
+                void trackEvent('wizard_restart_clicked', { from_step: step });
+                localStorage.removeItem(LS_KEYS.data);
+                localStorage.removeItem(LS_KEYS.step);
+                localStorage.removeItem(LS_KEYS.sessionId);
+                setData({ name: '' });
+                setStep(1);
+                sessionIdRef.current = null;
+                setSessionId(null);
+              }
+            }}
+            className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
+          >
+            Neu starten
+          </button>
+        ) : (
+          <div />
+        )}
         <div className="text-sm text-muted-foreground">{saving ? 'Speichern…' : 'Gespeichert'}</div>
       </div>
       {submitting && (
