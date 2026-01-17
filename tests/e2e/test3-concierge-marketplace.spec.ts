@@ -24,8 +24,8 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
     await page.route('**/api/public/questionnaire-submit', async (route, request) => {
       const headers = request.headers();
       const variant = String(headers['x-campaign-variant-override'] || '').toLowerCase();
-      const isDirect = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
-      const shouldReturnMatchesUrl = variant === 'concierge' ? true : isDirect;
+      // Instant booking flow is always enabled
+      const shouldReturnMatchesUrl = true;
 
       const body = {
         data: {
@@ -144,19 +144,10 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
   }
 
   test.describe('Concierge Flow (/fragebogen?v=concierge)', () => {
-    // Skip: needsVerificationFlow is now always true, so wizard goes through
-    // full 9-step flow with email/SMS verification before showing matches.
-    // This test was for the deprecated anonymous 5-step flow.
-    test.skip('redirects to matches after questionnaire', async ({ page }) => {
-      await mockMatchesApi(page, true);
+    test('starts questionnaire with concierge variant', async ({ page }) => {
       await page.goto('/fragebogen?v=concierge');
-      await completeQuestionnaire(page);
-      await expect(page).toHaveURL(MOCK_MATCHES_URL);
-
-      const loading = page.getByText('Lade Empfehlungen…');
-      await loading.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
-      await expect(loading).toHaveCount(0, { timeout: 15000 });
-      await expect(page.locator('h1')).toBeVisible();
+      // Should show timeline step
+      await expect(page.getByText(/Wann möchtest du/i)).toBeVisible({ timeout: 10000 });
     });
   });
 
@@ -168,73 +159,30 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
       await expect(ctaLink).toHaveAttribute('href', '/fragebogen?v=marketplace');
     });
 
-    // Skip: needsVerificationFlow is now always true
-    test.skip('shows contact collection after questionnaire', async ({ page }) => {
-      await mockMatchesApi(page, true);
-      await page.goto('/fragebogen?v=marketplace');
-      await completeQuestionnaire(page);
-
-      const isDirect = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
-      if (isDirect) {
-        await expect(page).toHaveURL(MOCK_MATCHES_URL);
-      } else {
-        await expect(page.getByText('Keine Therapeuten gefunden. Bitte versuche es später erneut.')).toBeVisible();
-      }
-    });
   });
 
   test.describe('Variant Parity', () => {
-    // Skip: needsVerificationFlow is now always true
-    test.skip('concierge requires verification before matches', async ({ page }) => {
-      await mockMatchesApi(page, true);
+    test('both variants show timeline step first', async ({ page }) => {
+      // Concierge
       await page.goto('/fragebogen?v=concierge');
-      await completeQuestionnaire(page);
-      await expect(page).toHaveURL(MOCK_MATCHES_URL);
-    });
-
-    // Skip: needsVerificationFlow is now always true
-    test.skip('marketplace requires verification before matches', async ({ page }) => {
-      await mockMatchesApi(page, true);
+      await expect(page.getByText(/Wann möchtest du/i)).toBeVisible({ timeout: 10000 });
+      
+      // Marketplace
       await page.goto('/fragebogen?v=marketplace');
-      await completeQuestionnaire(page);
-
-      const isDirect = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
-      if (isDirect) {
-        await expect(page).toHaveURL(MOCK_MATCHES_URL);
-      } else {
-        await expect(page.getByText('Keine Therapeuten gefunden. Bitte versuche es später erneut.')).toBeVisible();
-      }
+      await expect(page.getByText(/Wann möchtest du/i)).toBeVisible({ timeout: 10000 });
     });
   });
 
   test.describe('Mobile Experience', () => {
-    // Skip: needsVerificationFlow is now always true
-    test.skip('concierge flow works on mobile', async ({ page }) => {
+    test('questionnaire works on mobile viewport', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
-      await mockMatchesApi(page, true);
       await page.goto('/fragebogen?v=concierge');
       
-      // Use the shared helper for consistent flow handling
-      await completeQuestionnaire(page);
+      // Timeline step should be visible on mobile
+      await expect(page.getByText(/Wann möchtest du/i)).toBeVisible({ timeout: 10000 });
       
-      await expect(page).toHaveURL(MOCK_MATCHES_URL);
-    });
-
-    // Skip: needsVerificationFlow is now always true
-    test.skip('marketplace flow works on mobile', async ({ page }) => {
-      await page.setViewportSize({ width: 375, height: 667 });
-      await mockMatchesApi(page, true);
-      await page.goto('/fragebogen?v=marketplace');
-      
-      // Use the shared helper for consistent flow handling
-      await completeQuestionnaire(page);
-      
-      const isDirect = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
-      if (isDirect) {
-        await expect(page).toHaveURL(MOCK_MATCHES_URL);
-      } else {
-        await expect(page.getByText('Keine Therapeuten gefunden. Bitte versuche es später erneut.')).toBeVisible();
-      }
+      // Weiter button should be accessible
+      await expect(page.getByRole('button', { name: /Weiter/i })).toBeVisible();
     });
   });
 });

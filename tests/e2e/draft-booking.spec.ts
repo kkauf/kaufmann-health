@@ -8,6 +8,9 @@ const therapistId = process.env.E2E_THERAPIST_ID || defaultTherapistId;
 
 const uid = () => Math.random().toString(36).slice(2);
 
+// Skip for remote runs - requires admin API access to manipulate slots
+const isRemoteRun = base.includes('staging') || base.includes('kaufmann-health.de') || !!process.env.SMOKE_TEST_URL;
+test.skip(isRemoteRun, 'Skipped for staging/production - requires admin API to manipulate slots');
 test.skip(!therapistId, 'Set E2E_THERAPIST_ID to a verified therapist UUID to run draft booking E2E tests.');
 
 function buildSlotTimes(baseHour = 14) {

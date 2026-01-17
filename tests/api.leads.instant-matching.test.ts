@@ -64,9 +64,8 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
     mockMatchResult = null; // Reset mock between tests
   });
 
-  describe('Feature Flag Gating', () => {
-    it('does not return matchesUrl when verification is required (even if NEXT_PUBLIC_DIRECT_BOOKING_FLOW=true)', async () => {
-      process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW = 'true';
+  describe('Verification Required', () => {
+    it('does not return matchesUrl when verification is required', async () => {
       mockMatchResult = { matchesUrl: '/matches/test-uuid', matchQuality: 'exact' };
       wireSupabaseForInstantMatch({
         patientMeta: { time_slots: ['Morgens (8-12 Uhr)'] },
@@ -81,33 +80,10 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
       expect(json.data.requiresConfirmation).toBe(true);
       expect(json.data.matchesUrl).toBeUndefined();
     });
-
-    it('does not return matchesUrl when flag is false', async () => {
-      process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW = 'false';
-      wireSupabaseForInstantMatch({ patientMeta: {}, therapists: [], slots: [] });
-      const res = await POST(makeReq({ type: 'patient', email: 'patient@example.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })) as Response;
-      const json = await res.json();
-      expect(res.status).toBe(200);
-      expect(json.data.requiresConfirmation).toBe(true);
-      expect(json.data.matchesUrl).toBeUndefined();
-    });
-
-    it('does not return matchesUrl when flag is missing', async () => {
-      delete process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW;
-      wireSupabaseForInstantMatch({ patientMeta: {}, therapists: [], slots: [] });
-      const res = (await POST(
-        makeReq({ type: 'patient', email: 'patient@example.com', contact_method: 'email', consent_share_with_therapists: true, privacy_version: '2024-10-01' })
-      )) as Response;
-      const json = await res.json();
-      expect(res.status).toBe(200);
-      expect(json.data.requiresConfirmation).toBe(true);
-      expect(json.data.matchesUrl).toBeUndefined();
-    });
   });
 
   describe('Match Creation', () => {
     beforeEach(() => {
-      process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW = 'true';
       mockMatchResult = { matchesUrl: '/matches/test-uuid', matchQuality: 'exact' };
     });
 
@@ -142,7 +118,6 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
 
   describe('Time-of-Day Matching', () => {
     beforeEach(() => {
-      process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW = 'true';
       mockMatchResult = { matchesUrl: '/matches/time-uuid', matchQuality: 'exact' };
     });
 
@@ -175,7 +150,6 @@ describe('Leads API - Instant Matching (EARTH-229)', () => {
 
   describe('Edge Cases', () => {
     beforeEach(() => {
-      process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW = 'true';
       mockMatchResult = { matchesUrl: '/matches/edge-uuid', matchQuality: 'partial' };
     });
 

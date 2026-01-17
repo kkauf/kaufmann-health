@@ -344,7 +344,6 @@ export async function createInstantMatchesForPatient(
 ): Promise<{ matchesUrl: string; matchQuality: 'exact' | 'partial' | 'none' } | null> {
   try {
     const isConcierge = variant === 'concierge';
-    if (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW !== 'true' && !isConcierge) return null;
     
     // Dynamic import to avoid module-level initialization in tests
     const { supabaseServer } = await import('@/lib/supabase-server');

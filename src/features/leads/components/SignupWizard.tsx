@@ -58,8 +58,6 @@ const PROGRESS = [0, 14, 28, 43, 57, 71, 86, 100]; // steps 1-7 (step 6.5 uses i
 
 export default function SignupWizard() {
   const searchParams = useSearchParams();
-  // Feature flag: direct booking (5-step anonymous) vs manual curation (9-step with contact)
-  const isDirectBookingFlow = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
   // IMPORTANT: Use state for variant to avoid race condition during hydration.
   // searchParams.get() may return null briefly before hydration completes,
   // causing marketplace/concierge users to incorrectly trigger the anonymous 5-step flow.
@@ -102,11 +100,8 @@ export default function SignupWizard() {
   // - Self-Service: uses Schwerpunkte selector (step 2.5) for auto-filtering
   // - Default (marketplace/other): follows SHOW_SCHWERPUNKTE feature flag
   const usesSchwerpunkteStep = isSelfService || (!isConcierge && SHOW_SCHWERPUNKTE);
-  // Default behavior: ALL users go through verification before matches (9-step flow)
-  // Only explicit opt-out variants (none currently) would skip verification
-  // This ensures we always capture contact info before showing matches
-  const needsVerificationFlow = true; // Was: isConcierge || isMarketplace
-  const maxStep = (isDirectBookingFlow && !needsVerificationFlow) ? 5 : 9; // 5 steps for anonymous, 9 for contact collection
+  // All users go through 9-step verification flow before matches
+  const maxStep = 9;
 
   const [step, setStep] = React.useState<number>(1);
   const [data, setData] = React.useState<WizardData>({ name: '' });
@@ -337,33 +332,30 @@ export default function SignupWizard() {
         window.history.replaceState({}, '', url.pathname + url.search);
       }
 
-      // Check for existing verified session (kh_client cookie from EARTH-204)
-      // Only prefill contact info in manual curation flow (steps 6-9 exist)
-      if (!isDirectBookingFlow) {
-        fetch('/api/public/session')
-          .then(res => res.ok ? res.json() : null)
-          .then(json => {
-            const session = json?.data;
-            if (session?.verified) {
-              const updates: Partial<WizardData> = {};
-              if (session.name) updates.name = session.name;
-              if (session.contact_method === 'email' && session.contact_value) {
-                updates.email = session.contact_value;
-                updates.contact_method = 'email';
-              } else if (session.contact_method === 'phone' && session.contact_value) {
-                updates.phone_number = session.contact_value;
-                updates.contact_method = 'phone';
-                updates.phone_verified = true;
-              }
-              if (Object.keys(updates).length > 0) {
-                setData(prev => ({ ...prev, ...updates }));
-              }
+      // Prefill contact info from existing verified session (kh_client cookie from EARTH-204)
+      fetch('/api/public/session')
+        .then(res => res.ok ? res.json() : null)
+        .then(json => {
+          const session = json?.data;
+          if (session?.verified) {
+            const updates: Partial<WizardData> = {};
+            if (session.name) updates.name = session.name;
+            if (session.contact_method === 'email' && session.contact_value) {
+              updates.email = session.contact_value;
+              updates.contact_method = 'email';
+            } else if (session.contact_method === 'phone' && session.contact_value) {
+              updates.phone_number = session.contact_value;
+              updates.contact_method = 'phone';
+              updates.phone_verified = true;
             }
-          })
-          .catch(() => {
-            // Ignore session check errors
-          });
-      }
+            if (Object.keys(updates).length > 0) {
+              setData(prev => ({ ...prev, ...updates }));
+            }
+          }
+        })
+        .catch(() => {
+          // Ignore session check errors
+        });
 
       // Handle ?timing= param from mid-page conversion (from /start entry options)
       const timingParam = searchParams?.get('timing');
@@ -948,7 +940,7 @@ export default function SignupWizard() {
             }}
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
             onBack={() => safeGoToStep(4)}
-            onNext={(isDirectBookingFlow && !needsVerificationFlow) ? handleQuestionnaireSubmit : () => safeGoToStep(6)}
+            onNext={() => safeGoToStep(6)}
             disabled={navLock || submitting}
           />
         );
@@ -1139,9 +1131,7 @@ export default function SignupWizard() {
             <div className="space-y-4">
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">✓ Geschafft! Deine Handynummer ist bestätigt</h2>
               <p className="text-base leading-relaxed text-gray-700">
-                {isDirectBookingFlow
-                  ? 'Du kannst jetzt Therapeut:innen kontaktieren und direkt Termine buchen.'
-                  : 'Basierend auf deinen Präferenzen haben wir passende Therapeut:innen für dich gefunden.'}
+                Du kannst jetzt Therapeut:innen kontaktieren und direkt Termine buchen.
               </p>
             </div>
 
@@ -1326,9 +1316,7 @@ export default function SignupWizard() {
           <div className="space-y-4">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">✓ Geschafft! Fast fertig</h2>
             <p className="text-base leading-relaxed text-gray-700">
-              {isDirectBookingFlow
-                ? 'Bestätige deine E‑Mail, um Therapeut:innen zu kontaktieren und Termine zu buchen.'
-                : 'Unser Team prüft persönlich deine Anfrage und sucht die besten Therapeut:innen für dich. Du bekommst deine Matches innerhalb von 24 Stunden.'}
+              Bestätige deine E‑Mail, um Therapeut:innen zu kontaktieren und Termine zu buchen.
             </p>
           </div>
 
@@ -1338,9 +1326,7 @@ export default function SignupWizard() {
             <div className="space-y-3">
               <p className="text-base font-semibold text-gray-900">📧 Wichtig: Bitte bestätige deine E‑Mail‑Adresse</p>
               <p className="text-sm leading-relaxed text-gray-700">
-                {isDirectBookingFlow
-                  ? 'Wir haben dir gerade eine Bestätigungs-E-Mail geschickt. Bitte prüfe deinen Posteingang und klicke auf den Link, um fortzufahren. Therapeut:innen kommunizieren per E‑Mail.'
-                  : 'Wir haben dir gerade eine Bestätigungs-E-Mail geschickt. Bitte prüfe deinen Posteingang und klicke auf den Link, damit wir dir deine Therapeuten-Empfehlungen zusenden können.'}
+                Wir haben dir gerade eine Bestätigungs-E-Mail geschickt. Bitte prüfe deinen Posteingang und klicke auf den Link, um fortzufahren. Therapeut:innen kommunizieren per E‑Mail.
               </p>
               <p className="text-xs text-gray-600">Tipp: Falls du nichts findest, schau auch im Spam-Ordner nach.</p>
             </div>

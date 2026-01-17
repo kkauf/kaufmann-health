@@ -43,7 +43,7 @@ test.describe('Cal.com Booking Flow - Real Data', () => {
       await expect(bookingBtn).toBeVisible();
     } else {
       // Fallback: just verify page loaded with therapists
-      await expect(page.locator('main')).toContainText(/Therapeut/i);
+      await expect(page.locator('main').first()).toContainText(/Therapeut/i);
     }
   });
 

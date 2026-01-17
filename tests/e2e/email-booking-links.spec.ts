@@ -32,20 +32,22 @@ test.describe('Email Booking Links - Staging E2E', () => {
   test('directory shows scarcity-filtered slots (1-3 per day instead of many)', async ({ page }) => {
     // Navigate to therapist directory
     await page.goto(`${STAGING_URL}/therapeuten`);
+    await page.waitForLoadState('networkidle');
     
-    // Wait for therapists to load
-    await page.waitForSelector('[data-testid="therapist-card"], .therapist-card, [class*="therapist"]', { timeout: 15000 });
-    
-    // Click on a therapist card to open the modal
-    const therapistCards = page.locator('[data-testid="therapist-card"], .therapist-card, [class*="TherapistCard"]');
-    const cardCount = await therapistCards.count();
-    
-    if (cardCount === 0) {
-      // Try clicking any visible therapist element
-      await page.locator('button, [role="button"]').filter({ hasText: /Sandra|Mandl|Therapeut/i }).first().click();
-    } else {
-      await therapistCards.first().click();
+    // Dismiss cookie banner if present
+    const cookieRejectBtn = page.getByRole('button', { name: 'Ablehnen' });
+    if (await cookieRejectBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await cookieRejectBtn.click();
     }
+    
+    // Find a Cal-enabled therapist (has "Online-Kennenlernen" button)
+    const calButton = page.getByRole('button', { name: /Online-Kennenlernen/ }).first();
+    await expect(calButton).toBeVisible({ timeout: 20000 });
+    
+    // Get the card and click profile button to open modal
+    const card = calButton.locator('xpath=ancestor::div[contains(@class, "group")]');
+    const profileButton = card.getByRole('button', { name: /Profil von .+ ansehen/ });
+    await profileButton.click();
     
     // Wait for modal to open
     await page.waitForSelector('[role="dialog"], [class*="modal"], [class*="Modal"]', { timeout: 10000 });
@@ -82,21 +84,24 @@ test.describe('Email Booking Links - Staging E2E', () => {
   test('booking flow from directory to slot selection', async ({ page }) => {
     // Navigate to therapist directory
     await page.goto(`${STAGING_URL}/therapeuten`);
-    
-    // Wait for page to load
     await page.waitForLoadState('networkidle');
+    
+    // Dismiss cookie banner if present
+    const cookieRejectBtn = page.getByRole('button', { name: 'Ablehnen' });
+    if (await cookieRejectBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await cookieRejectBtn.click();
+    }
     
     // Take screenshot of directory
     await page.screenshot({ path: 'test-results/directory-loaded.png' });
     
-    // Find and click on a therapist
-    const therapistCard = page.locator('[data-testid="therapist-card"]').first();
-    if (await therapistCard.isVisible({ timeout: 5000 })) {
-      await therapistCard.click();
-    } else {
-      // Fallback: click any card-like element
-      await page.locator('[class*="Card"]').filter({ hasText: /Therapeut|Berlin|Online/i }).first().click();
-    }
+    // Find a Cal-enabled therapist and open modal
+    const calButton = page.getByRole('button', { name: /Online-Kennenlernen/ }).first();
+    await expect(calButton).toBeVisible({ timeout: 20000 });
+    
+    const card = calButton.locator('xpath=ancestor::div[contains(@class, "group")]');
+    const profileButton = card.getByRole('button', { name: /Profil von .+ ansehen/ });
+    await profileButton.click();
     
     // Wait for modal
     await page.waitForSelector('[role="dialog"]', { timeout: 10000 });

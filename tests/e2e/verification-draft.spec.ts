@@ -9,6 +9,9 @@ const smsCode = process.env.E2E_SMS_CODE || '000000';
 
 const uid = () => Math.random().toString(36).slice(2);
 
+// Skip for remote runs - creates real verification data and draft contacts
+const isRemoteRun = base.includes('staging') || base.includes('kaufmann-health.de') || !!process.env.SMOKE_TEST_URL;
+test.skip(isRemoteRun, 'Skipped for staging/production - creates real verification/contact data');
 // Require therapist id for these flows
 test.skip(!therapistId, 'Set E2E_THERAPIST_ID to a verified therapist UUID to run draft auto-send E2E tests.');
 

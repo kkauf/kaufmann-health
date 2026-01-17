@@ -23,8 +23,8 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
     await page.route('**/api/public/questionnaire-submit', async (route, request) => {
       const headers = request.headers();
       const variant = String(headers['x-campaign-variant-override'] || '').toLowerCase();
-      const isDirect = (process.env.NEXT_PUBLIC_DIRECT_BOOKING_FLOW || '').toLowerCase() === 'true';
-      const shouldReturnMatchesUrl = variant === 'concierge' ? true : isDirect;
+      // Instant booking flow is always enabled
+      const shouldReturnMatchesUrl = true;
 
       const body = {
         data: {
@@ -171,21 +171,6 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
       await expect(page.getByText(/Was beschäftigt dich\?/i)).toHaveCount(0);
     });
 
-    // Skip: needsVerificationFlow is now always true, wizard requires full
-    // 9-step flow with email/SMS verification before showing matches.
-    test.skip('redirects to matches after questionnaire', async ({ page }) => {
-      await mockMatchesApi(page);
-      await page.goto('/fragebogen?variant=concierge&restart=1');
-      
-      // Complete questionnaire
-      await completeStep1Timeline(page);
-      await completeStep2Or2p5(page);
-      
-      await completeRemainingSteps(page);
-
-      await expect(page).toHaveURL(new RegExp(`${MOCK_MATCHES_URL.replace('/', '\\/')}$`));
-      await expect(page.locator('h1')).toBeVisible({ timeout: 8000 });
-    });
   });
 
   test.describe('Self-Service Flow (/fragebogen?variant=self-service)', () => {
@@ -215,30 +200,6 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
       expect(schwerpunkteVisible).toBe(true);
     });
 
-    // Skip: needsVerificationFlow is now always true
-    test.skip('redirects to matches after questionnaire when direct booking is enabled', async ({ page }) => {
-      await mockMatchesApi(page);
-      await page.goto('/fragebogen?variant=self-service&restart=1');
-      
-      // Complete questionnaire
-      await completeStep1Timeline(page);
-      await completeStep2Or2p5(page);
-      
-      await completeRemainingSteps(page);
-
-      await expect(page).toHaveURL(new RegExp(`${MOCK_MATCHES_URL.replace('/', '\\/')}$`));
-    });
-
-    // Skip: needsVerificationFlow is now always true
-    test.skip('shows inline no-matches message when direct booking is disabled', async ({ page }) => {
-      await page.goto('/fragebogen?variant=self-service&restart=1');
-
-      await completeStep1Timeline(page);
-      await completeStep2Or2p5(page);
-      await completeRemainingSteps(page);
-
-      await expect(page.getByText('Keine Therapeuten gefunden. Bitte versuche es später erneut.')).toBeVisible({ timeout: 8000 });
-    });
   });
 
   test.describe('Landing Page CTAs', () => {
