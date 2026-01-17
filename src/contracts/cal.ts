@@ -209,6 +209,7 @@ export const CalBookingResponses = z.object({
   email: z.string().email(),
   location: CalBookingLocation,
   guests: z.array(z.string().email()).optional(),
+  notes: z.string().max(500).optional(), // Patient notes for therapist
 });
 
 export type CalBookingResponses = z.infer<typeof CalBookingResponses>;

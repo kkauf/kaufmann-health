@@ -83,6 +83,7 @@ type TherapistRow = {
   photo_url?: string | null;
   gender?: string | null;
   modalities?: string[] | null;
+  schwerpunkte?: string[] | null;
   metadata?: Record<string, unknown> | null;
   session_preferences?: unknown;
 };
@@ -221,7 +222,7 @@ export async function GET(req: Request) {
       // Fetch therapist details
       const { data: therapistRows } = await supabaseServer
         .from('therapists')
-        .select('id, first_name, last_name, city, photo_url, gender, modalities, metadata, session_preferences')
+        .select('id, first_name, last_name, city, photo_url, gender, modalities, schwerpunkte, metadata, session_preferences')
         .in('id', therapistIds)
         .eq('status', 'verified');
 
@@ -234,12 +235,14 @@ export async function GET(req: Request) {
       // Fetch Cal.com slot availability to prefer therapists with booking options (consistency with UI)
       const { data: calSlotRows } = await supabaseServer
         .from('cal_slots_cache')
-        .select('therapist_id')
+        .select('therapist_id, slots_count, next_intro_time_utc')
         .in('therapist_id', therapistIds)
         .gt('slots_count', 0);
-      const therapistsWithSlots = new Set(
-        (calSlotRows as Array<{ therapist_id: string }> | null)?.map(s => s.therapist_id) || []
+      const calSlotMap = new Map<string, { slots_count: number; next_intro_time_utc: string | null }>(
+        ((calSlotRows as Array<{ therapist_id: string; slots_count: number; next_intro_time_utc?: string | null }> | null) || [])
+          .map(s => [s.therapist_id, { slots_count: s.slots_count, next_intro_time_utc: s.next_intro_time_utc || null }])
       );
+      const therapistsWithSlots = new Set(calSlotMap.keys());
 
       // Score therapists to find best match
       const patientMeta: PatientMeta = {
@@ -289,6 +292,29 @@ export async function GET(req: Request) {
       // Build email
       const matchesUrl = `${BASE_URL}/matches/${encodeURIComponent(secureUuid)}`;
       
+      // Get patient schwerpunkte for personalization (with fallback for concierge flow)
+      const patientSchwerpunkte = Array.isArray(meta['schwerpunkte']) 
+        ? meta['schwerpunkte'] as string[]
+        : Array.isArray(meta['specializations']) 
+        ? meta['specializations'] as string[]
+        : null;
+      
+      // Get Cal slot info for best match (capped 1-5 for scarcity)
+      const calSlotInfo = calSlotMap.get(bestMatch.therapist.id);
+      const availableSlots = calSlotInfo?.slots_count || null;
+      
+      // Format next slot date for subject line
+      let nextSlotDate: string | null = null;
+      if (calSlotInfo?.next_intro_time_utc) {
+        try {
+          const slotDate = new Date(calSlotInfo.next_intro_time_utc);
+          const weekday = slotDate.toLocaleDateString('de-DE', { weekday: 'short' });
+          const day = slotDate.getDate();
+          const month = slotDate.toLocaleDateString('de-DE', { month: 'short' });
+          nextSlotDate = `${weekday} ${day}. ${month}`;
+        } catch {}
+      }
+      
       try {
         const content = renderRichTherapistEmail({
           patientName: patient.name,
@@ -301,8 +327,12 @@ export async function GET(req: Request) {
             city: bestMatch.therapist.city,
             modalities: bestMatch.therapist.modalities,
             approach_text: bestMatch.approachText,
+            schwerpunkte: bestMatch.therapist.schwerpunkte,
           },
           matchesUrl,
+          patientSchwerpunkte,
+          availableSlots,
+          nextSlotDate,
         });
 
         void track({

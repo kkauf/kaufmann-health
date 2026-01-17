@@ -21,16 +21,21 @@ describe('New Email Cadence Templates', () => {
         matchesUrl: 'https://www.kaufmann-health.de/matches/secure-uuid',
       });
 
-      expect(result.subject).toBe('Anna M. — deine persönliche Empfehlung');
+      // Subject includes therapist name with dynamic suffix (no slots = fallback)
+      expect(result.subject).toContain('Anna M.');
+      expect(result.subject).toContain('deine persönliche Empfehlung');
       expect(result.html).toContain('Hallo Max');
       expect(result.html).toContain('Anna M.');
       expect(result.html).toContain('Berlin');
       expect(result.html).toContain('NARM');
-      expect(result.html).toContain('Kostenloses Kennenlerngespräch');
-      expect(result.html).toContain('Schnelle Terminvergabe');
-      expect(result.html).toContain('Annas Profil ansehen');
+      expect(result.html).toContain('15 Min kostenlos');
+      expect(result.html).toContain('Video-Gespräch');
+      expect(result.html).toContain('Kostenlosen Termin buchen');
       expect(result.html).toContain('Andere Vorschläge ansehen');
       expect(result.html).toContain('Passt nicht zu mir');
+      // Social proof testimonial
+      expect(result.html).toContain('Nach 3 Sessions');
+      expect(result.html).toContain('Patient:in aus Berlin');
     });
 
     it('includes tracking parameters in URLs', () => {
@@ -77,7 +82,7 @@ describe('New Email Cadence Templates', () => {
       });
 
       expect(result.html).toBeDefined();
-      expect(result.subject).toBe('Anna M. — deine persönliche Empfehlung');
+      expect(result.subject).toContain('Anna M.');
     });
   });
 
@@ -88,12 +93,14 @@ describe('New Email Cadence Templates', () => {
         matchesUrl: 'https://www.kaufmann-health.de/matches/secure-uuid',
       });
 
-      expect(result.subject).toBe('Noch unsicher? So findest du die richtige Person');
+      // New subject emphasizes free + unverbindlich
+      expect(result.subject).toContain('kostenlos');
+      expect(result.subject).toContain('unverbindlich');
       expect(result.html).toContain('Hallo Max');
-      expect(result.html).toContain('kostenlose Kennenlerngespräch');
-      expect(result.html).toContain('„Chemie"');
+      expect(result.html).toContain('Kennenlerngespräch');
+      expect(result.html).toContain('Chemie');
       expect(result.html).toContain('jederzeit wechseln');
-      expect(result.html).toContain('Meine Vorschläge ansehen');
+      expect(result.html).toContain('Kostenlosen Termin buchen');
       expect(result.html).toContain('Schreib uns');
     });
 

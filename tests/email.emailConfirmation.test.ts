@@ -4,7 +4,8 @@ import { renderEmailConfirmation } from '@/lib/email/templates/emailConfirmation
 describe('emailConfirmation template', () => {
   it('renders subject and CTA with internal link only', () => {
     const html = renderEmailConfirmation({ confirmUrl: 'http://localhost/api/public/leads/confirm?token=t&id=1' });
-    expect(html.subject).toContain('bestätige');
+    // New conversion-focused subject
+    expect(html.subject).toContain('Therapeuten-Vorschläge');
     expect(html.html).toContain('/api/public/leads/confirm?token=');
     // No known external marketing domains
     const forbidden = ['http://narmtraining.com', 'https://narmtraining.com', 'traumahealing.org', 'hakomi.de', 'coreenergetics.nl'];
