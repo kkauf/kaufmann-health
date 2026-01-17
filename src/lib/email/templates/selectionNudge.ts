@@ -119,12 +119,12 @@ export function renderSelectionNudgeEmail(params: SelectionNudgeEmailParams): Em
     contentHtml = `
       <div style="margin:0 0 24px;">
         ${name ? `<p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;">Hallo ${escapeHtml(name)},</p>` : ''}
-        <p style="margin:0; font-size:16px; line-height:1.65; color:#475569 !important;">die Wahl einer Therapeut:in ist eine wichtige Entscheidung — nimm dir die Zeit, die du brauchst.</p>
+        <p style="margin:0; font-size:16px; line-height:1.65; color:#475569 !important;">deine Therapeuten-Vorschläge warten auf dich. Ein kurzes Kennenlerngespräch zeigt dir schnell, ob es passt.</p>
       </div>
 
       <!-- Reassurance Box -->
       <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; background-image: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; border-radius:16px; border:1px solid rgba(226, 232, 240, 0.8); padding:24px; margin:0 0 24px; box-shadow: 0 2px 8px 0 rgba(100, 116, 139, 0.06);">
-        <p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#334155 !important; font-weight:600;">Falls du unsicher bist, hier ein paar Gedanken:</p>
+        <p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#334155 !important; font-weight:600;">Warum jetzt ausprobieren?</p>
         
         <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
           <tr>
@@ -156,7 +156,7 @@ export function renderSelectionNudgeEmail(params: SelectionNudgeEmailParams): Em
 
       <!-- CTA Button -->
       <div style="margin:0 0 24px;">
-        ${renderButton(profileUrl, 'Meine Vorschläge ansehen')}
+        ${renderButton(profileUrl, 'Kostenlosen Termin buchen')}
       </div>
 
       <!-- Help Section -->
@@ -169,14 +169,14 @@ export function renderSelectionNudgeEmail(params: SelectionNudgeEmailParams): Em
     `;
   }
 
-  // Dynamic subject based on therapist availability
+  // Dynamic subject - emphasize free + low commitment, remove doubt framing
   const subject = hasCalBooking && therapistName
-    ? `${therapistName} hat noch Termine frei – jetzt kennenlernen`
-    : 'Noch unsicher? So findest du die richtige Person';
+    ? `Kostenlos: 15 Min mit ${therapistName} – unverbindlich kennenlernen`
+    : 'Dein kostenloses Kennenlerngespräch wartet – 15 Min, unverbindlich';
   
   const preheader = hasCalBooking && therapistName
-    ? `Kostenloses 15-Min Gespräch mit ${therapistName} – buche jetzt`
-    : 'Das kostenlose Kennenlerngespräch ist unverbindlich – du entscheidest danach.';
+    ? `Kein Risiko, keine Kosten – ${therapistName} hat noch Termine frei`
+    : 'Kein Risiko, keine Kosten – einfach mal reinschnuppern';
 
   const actionUrl = calBookingUrl || profileUrl;
   const schema = {
@@ -192,6 +192,6 @@ export function renderSelectionNudgeEmail(params: SelectionNudgeEmailParams): Em
 
   return {
     subject,
-    html: renderLayout({ title: hasCalBooking ? 'Intro-Termin' : 'Noch unsicher?', contentHtml, preheader, schema }),
+    html: renderLayout({ title: 'Kostenloses Kennenlerngespräch', contentHtml, preheader, schema }),
   };
 }

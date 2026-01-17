@@ -101,6 +101,25 @@ function buildModalityBadges(modalities: string[]): string {
     .join('');
 }
 
+// German-friendly schwerpunkt labels
+const SCHWERPUNKT_LABELS: Record<string, string> = {
+  'angst': 'Angst & Panik',
+  'depression': 'Depression & Erschöpfung',
+  'trauma': 'Trauma & PTBS',
+  'beziehung': 'Beziehungsprobleme',
+  'selbstwert': 'Selbstwert & Scham',
+  'entwicklung': 'Persönliche Entwicklung',
+  'wut': 'Wut & Emotionsregulation',
+  'paare': 'Paartherapie',
+  'trauer': 'Trauer & Verlust',
+  'psychosomatik': 'Psychosomatik',
+  'essstoerung': 'Essstörungen',
+  'sexualitaet': 'Sexualität',
+  'zwang': 'Zwangsstörungen',
+  'identitaet': 'Identität',
+  'krisen': 'Lebenskrisen',
+};
+
 export type RichTherapistEmailParams = {
   patientName?: string | null;
   patientId: string;
@@ -112,12 +131,16 @@ export type RichTherapistEmailParams = {
     city?: string | null;
     modalities?: string[] | null;
     approach_text?: string | null;
+    schwerpunkte?: string[] | null;
   };
   matchesUrl: string; // /matches/[secure_uuid]
+  patientSchwerpunkte?: string[] | null; // Patient's selected issues for personalization
+  availableSlots?: number | null; // Number of intro slots available this week (capped 1-5)
+  nextSlotDate?: string | null; // e.g., "Mo 20. Jan"
 };
 
 export function renderRichTherapistEmail(params: RichTherapistEmailParams): EmailContent {
-  const { patientName, patientId, therapist, matchesUrl } = params;
+  const { patientName, patientId, therapist, matchesUrl, patientSchwerpunkte, availableSlots, nextSlotDate } = params;
   const name = (patientName || '').trim();
   const therapistFirstName = (therapist.first_name || '').trim();
   const therapistLastName = (therapist.last_name || '').trim();
@@ -125,6 +148,17 @@ export function renderRichTherapistEmail(params: RichTherapistEmailParams): Emai
   const therapistDisplayName = `${therapistFirstName} ${therapistInitial}`.trim();
   const city = (therapist.city || 'Online').trim();
   const approachText = truncateText(therapist.approach_text || '', 200);
+  
+  // Schwerpunkt personalization with fallback
+  const patientIssues = Array.isArray(patientSchwerpunkte) ? patientSchwerpunkte : [];
+  const therapistIssues = Array.isArray(therapist.schwerpunkte) ? therapist.schwerpunkte : [];
+  const matchedIssue = patientIssues.find(p => therapistIssues.includes(p));
+  const issueLabel = matchedIssue ? (SCHWERPUNKT_LABELS[matchedIssue] || toTitleCase(matchedIssue)) : null;
+  const primaryModality = (therapist.modalities || [])[0];
+  const modalityLabel = primaryModality ? (MODALITY_MAP[normalizeModality(primaryModality)]?.label || toTitleCase(primaryModality)) : null;
+  
+  // Cap slot count to 1-5 for scarcity
+  const displaySlots = availableSlots ? Math.min(Math.max(availableSlots, 1), 5) : null;
   
   // Photo or initials fallback
   const photoSrc = toProxiedPhotoUrl(therapist.photo_url);
@@ -143,11 +177,32 @@ export function renderRichTherapistEmail(params: RichTherapistEmailParams): Emai
   const otherMatchesUrl = `${matchesUrl}?view=all&utm_source=email&utm_medium=transactional&utm_campaign=rich_therapist_d1`;
   const feedbackUrl = `${BASE_URL}/feedback/quick?patient=${encodeURIComponent(patientId)}&reason=match_dissatisfied&therapist=${encodeURIComponent(therapist.id)}&utm_source=email&utm_campaign=rich_therapist_d1`;
 
+  // Personalized intro based on schwerpunkt (with fallback for concierge flow)
+  const personalizedIntro = issueLabel && modalityLabel
+    ? `Du hast <strong style="color:#0f172a !important;">${escapeHtml(issueLabel)}</strong> angegeben – ${escapeHtml(therapistFirstName)} hat sich darauf spezialisiert und arbeitet mit ${escapeHtml(modalityLabel)}.`
+    : modalityLabel
+    ? `${escapeHtml(therapistFirstName)} arbeitet mit ${escapeHtml(modalityLabel)} – einer bewährten Methode der Körperpsychotherapie.`
+    : `${escapeHtml(therapistFirstName)} ist eine erfahrene Körperpsychotherapeutin, die wir persönlich für dich ausgewählt haben.`;
+
+  // Slot scarcity line (only show if we have data, capped 1-5)
+  const slotScarcityHtml = displaySlots && nextSlotDate
+    ? `<div style="background:#fef3c7 !important; border:1px solid #fcd34d; border-radius:8px; padding:12px 16px; margin:0 0 20px; text-align:center;">
+        <span style="color:#92400e !important; font-size:14px; font-weight:600;">⚡ ${escapeHtml(therapistFirstName)} hat noch ${displaySlots} freie${displaySlots === 1 ? 'n' : ''} Intro-Termin${displaySlots === 1 ? '' : 'e'} diese Woche</span>
+       </div>`
+    : '';
+
   const contentHtml = `
-    <div style="margin:0 0 24px;">
-      ${name ? `<p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;">Hallo ${escapeHtml(name)},</p>` : ''}
-      <p style="margin:0; font-size:16px; line-height:1.65; color:#475569 !important;">basierend auf deinen Angaben haben wir eine Therapeutin für dich ausgewählt:</p>
+    <div style="margin:0 0 20px;">
+      ${name ? `<p style="margin:0 0 12px; font-size:16px; line-height:1.65; color:#475569 !important;">Hallo ${escapeHtml(name)},</p>` : ''}
+      <p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;">${personalizedIntro}</p>
     </div>
+    
+    <!-- CTA Above Fold -->
+    <div style="text-align:center; margin:0 0 24px;">
+      ${renderButton(profileUrl, 'Kostenlosen Termin buchen')}
+    </div>
+    
+    ${slotScarcityHtml}
 
     <!-- Therapist Card -->
     <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; background-image: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; border-radius:16px; border:1px solid rgba(226, 232, 240, 0.8); padding:24px; margin:0 0 24px; box-shadow: 0 4px 12px 0 rgba(100, 116, 139, 0.08);">
@@ -175,12 +230,20 @@ export function renderRichTherapistEmail(params: RichTherapistEmailParams): Emai
 
       <!-- Benefits -->
       <div style="margin-bottom:20px;">
-        <div style="display:inline-block;margin:4px 8px 4px 0;font-size:14px;color:#16a34a !important;font-weight:500;">✓ Kostenloses Kennenlerngespräch</div>
-        <div style="display:inline-block;margin:4px 0;font-size:14px;color:#16a34a !important;font-weight:500;">✓ Schnelle Terminvergabe</div>
+        <div style="display:inline-block;margin:4px 8px 4px 0;font-size:14px;color:#16a34a !important;font-weight:500;">✓ 15 Min kostenlos & unverbindlich</div>
+        <div style="display:inline-block;margin:4px 0;font-size:14px;color:#16a34a !important;font-weight:500;">✓ Video-Gespräch von zu Hause</div>
       </div>
 
-      <!-- CTA Button -->
-      ${renderButton(profileUrl, `${escapeHtml(therapistFirstName)}s Profil ansehen`)}
+      <!-- Secondary CTA -->
+      <div style="text-align:center;">
+        <a href="${escapeHtml(profileUrl)}" style="color:#4f46e5 !important;font-size:14px;text-decoration:underline;font-weight:500;">Vollständiges Profil ansehen →</a>
+      </div>
+    </div>
+    
+    <!-- Social Proof Testimonial -->
+    <div style="background:#f0fdf4 !important; border-left:4px solid #22c55e; padding:16px 20px; margin:0 0 24px; border-radius:0 8px 8px 0;">
+      <p style="margin:0 0 8px; font-size:15px; line-height:1.6; color:#166534 !important; font-style:italic;">„Nach 3 Sessions fühlte ich mich endlich verstanden.“</p>
+      <p style="margin:0; font-size:13px; color:#15803d !important;">— Patient:in aus Berlin</p>
     </div>
 
     <!-- Escape Hatches -->
@@ -192,8 +255,16 @@ export function renderRichTherapistEmail(params: RichTherapistEmailParams): Emai
     </div>
   `;
 
-  const subject = `${therapistDisplayName} — deine persönliche Empfehlung`;
-  const preheader = `Wir haben eine passende Therapeutin für dich gefunden.`;
+  // Dynamic subject with schwerpunkt or slot date
+  const subjectSuffix = nextSlotDate 
+    ? ` – nächster freier Termin: ${nextSlotDate}`
+    : issueLabel 
+    ? ` hilft bei ${issueLabel}`
+    : ' – deine persönliche Empfehlung';
+  const subject = `${therapistDisplayName}${subjectSuffix}`;
+  const preheader = displaySlots 
+    ? `Noch ${displaySlots} freie${displaySlots === 1 ? 'r' : ''} Intro-Termin${displaySlots === 1 ? '' : 'e'} diese Woche – kostenlos & unverbindlich`
+    : 'Kostenloses Kennenlerngespräch verfügbar – jetzt Termin sichern';
 
   const schema = {
     '@context': 'http://schema.org',

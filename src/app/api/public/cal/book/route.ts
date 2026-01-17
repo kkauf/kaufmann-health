@@ -152,6 +152,7 @@ export async function POST(req: NextRequest) {
         name,
         email,
         location,
+        notes: metadata?.kh_notes || undefined, // Pass notes to Cal.com as booking response
       },
       timeZone: 'Europe/Berlin',
       language: 'de',

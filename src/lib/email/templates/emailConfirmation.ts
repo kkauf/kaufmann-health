@@ -69,7 +69,7 @@ export function renderEmailConfirmation(params: {
         <p style="margin:0; font-size:16px; line-height:1.65; color:#166534 !important;">Wir haben Therapeut:innen gefunden, die zu deinen Wünschen passen. Mit einem Klick siehst du deine persönliche Auswahl.</p>
       </div>
       <div style="text-align:center; margin: 0 0 24px;">
-        ${renderButton(params.confirmUrl, 'Jetzt ansehen')}
+        ${renderButton(params.confirmUrl, 'Meine Therapeuten ansehen')}
       </div>
       <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; background-image: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; padding:16px 20px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8);">
         <p style="color:#64748b !important; font-size:14px; margin:0; line-height:1.6;">Der Link ist 24 Stunden gültig. Füge bitte <strong style="color:#475569 !important;">kontakt@kaufmann-health.de</strong> zu deinen Kontakten hinzu, damit dich deine Therapeuten‑Empfehlung sicher erreicht.</p>
@@ -86,8 +86,8 @@ export function renderEmailConfirmation(params: {
       description: 'Deine Therapeutenauswahl ansehen',
     } as const;
     return {
-      subject: 'Deine Therapeutenauswahl wartet auf dich 🌿',
-      html: renderLayout({ title: 'Deine Therapeutenauswahl', contentHtml, preheader: 'Wir haben passende Therapeut:innen für dich gefunden.', schema: reminderSchema }),
+      subject: 'Deine Therapeuten haben noch freie Termine diese Woche',
+      html: renderLayout({ title: 'Deine Therapeutenauswahl', contentHtml, preheader: 'Jetzt Termin sichern – kostenlos & unverbindlich', schema: reminderSchema }),
     };
   }
   
@@ -110,7 +110,7 @@ export function renderEmailConfirmation(params: {
       <p style="margin:0; font-size:16px; line-height:1.65; color:#166534 !important;">${bodyText}</p>
     </div>
     <div style="text-align:center; margin: 0 0 24px;">
-      ${renderButton(params.confirmUrl, 'E‑Mail bestätigen')}
+      ${renderButton(params.confirmUrl, 'Meine Therapeuten ansehen')}
     </div>
     <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; background-image: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; padding:16px 20px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8);">
       <p style="color:#64748b !important; font-size:14px; margin:0; line-height:1.6;">${footerText}</p>
@@ -131,7 +131,7 @@ export function renderEmailConfirmation(params: {
     description: schemaDescription,
   } as const;
   return {
-    subject: 'Bitte bestätige deine E‑Mail‑Adresse',
-    html: renderLayout({ title: 'E-Mail-Bestätigung', contentHtml, preheader: 'Bitte bestätige deine E‑Mail‑Adresse.', schema: confirmSchema }),
+    subject: 'Deine 3 Therapeuten-Vorschläge warten – nur noch 1 Klick',
+    html: renderLayout({ title: 'E-Mail-Bestätigung', contentHtml, preheader: 'Passende Therapeut:innen gefunden – jetzt ansehen', schema: confirmSchema }),
   };
 }
