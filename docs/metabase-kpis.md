@@ -37,8 +37,10 @@ Examples: `NS-Sessions`, `D-Leads`, `S-CalLive`, `U-CAC`
 ### NS-Sessions
 
 ```sql
--- NORTH STAR: Total paid therapy sessions booked in this period.
+-- NORTH STAR: Completed paid therapy sessions in this period.
+-- Only counts sessions that have ACTUALLY OCCURRED (start_time in the past).
 -- This is the ultimate success metric - actual revenue-generating sessions.
+-- Booked future sessions don't count because they can be cancelled/rescheduled.
 -- Target: Growing week-over-week. Compare to previous periods using date filter.
 -- Low values indicate funnel issues upstream (leads, intros, or conversions).
 SELECT COUNT(*) AS sessions
@@ -46,9 +48,10 @@ FROM cal_bookings cb
 LEFT JOIN people p ON p.id = cb.patient_id
 WHERE cb.booking_kind = 'full_session'
   AND LOWER(cb.status) != 'cancelled'
+  AND cb.start_time < NOW()  -- Only completed sessions
   AND (cb.is_test = false OR cb.is_test IS NULL)
   AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-  AND cb.created_at >= {{start_date}} AND cb.created_at <= NOW();
+  AND cb.start_time >= {{start_date}} AND cb.start_time <= NOW();
 ```
 
 ---
@@ -179,35 +182,70 @@ SELECT ROUND(100.0 * intros.cnt / NULLIF(leads.cnt, 0), 1) AS lead_to_intro_pct
 FROM leads, intros;
 ```
 
-### D-IntroToSession
+### D-LeadToSession
 
 ```sql
--- Intro to Session Rate (%) = Patients who booked paid session ÷ patients who had intro.
--- Measures therapist-patient fit and intro call effectiveness.
--- Low rate may indicate: wrong matches, pricing concerns, or therapist no-shows.
--- Target: >40%. This is therapist-dependent - check individual therapist conversion.
-WITH intros AS (
-  SELECT COUNT(DISTINCT cb.patient_id) AS cnt
-  FROM cal_bookings cb
-  LEFT JOIN people p ON p.id = cb.patient_id
-  WHERE cb.booking_kind = 'intro'
-    AND LOWER(cb.status) != 'cancelled'
-    AND (cb.is_test = false OR cb.is_test IS NULL)
-    AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-    AND cb.created_at >= {{start_date}} AND cb.created_at <= NOW()
+-- Lead to Session Rate (%) = Patients with completed paid session ÷ confirmed leads.
+-- Measures overall funnel effectiveness from lead to paying customer (any path).
+-- Includes both intro→session and direct session bookings.
+-- Only counts COMPLETED sessions (start_time in the past).
+-- Target: >10%. This is the key revenue conversion metric.
+WITH leads AS (
+  SELECT COUNT(*) AS cnt
+  FROM people
+  WHERE type = 'patient'
+    AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
+    AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+    AND created_at >= {{start_date}} AND created_at <= NOW()
 ),
-sessions AS (
+paid_customers AS (
   SELECT COUNT(DISTINCT cb.patient_id) AS cnt
   FROM cal_bookings cb
   LEFT JOIN people p ON p.id = cb.patient_id
   WHERE cb.booking_kind = 'full_session'
     AND LOWER(cb.status) != 'cancelled'
+    AND cb.start_time < NOW()  -- Only completed sessions
     AND (cb.is_test = false OR cb.is_test IS NULL)
     AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-    AND cb.created_at >= {{start_date}} AND cb.created_at <= NOW()
+    AND cb.start_time >= {{start_date}} AND cb.start_time <= NOW()
 )
-SELECT ROUND(100.0 * sessions.cnt / NULLIF(intros.cnt, 0), 1) AS intro_to_session_pct
-FROM intros, sessions;
+SELECT ROUND(100.0 * paid_customers.cnt / NULLIF(leads.cnt, 0), 1) AS lead_to_session_pct
+FROM leads, paid_customers;
+```
+
+### D-IntroConversion
+
+```sql
+-- Intro Conversion Rate (%) = Patients who had BOTH intro AND session ÷ patients who had intro.
+-- Measures intro call effectiveness: of those who had an intro, how many converted?
+-- Only counts COMPLETED intros and sessions (start_time in the past).
+-- Unlike D-LeadToSession, this excludes direct session bookings.
+-- Target: >40%. Low rate = intro quality issues or therapist-patient mismatch.
+WITH completed_intros AS (
+  SELECT DISTINCT cb.patient_id
+  FROM cal_bookings cb
+  LEFT JOIN people p ON p.id = cb.patient_id
+  WHERE cb.booking_kind = 'intro'
+    AND LOWER(cb.status) != 'cancelled'
+    AND cb.start_time < NOW()  -- Only completed intros
+    AND (cb.is_test = false OR cb.is_test IS NULL)
+    AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+    AND cb.start_time >= {{start_date}} AND cb.start_time <= NOW()
+),
+intro_to_session AS (
+  SELECT COUNT(DISTINCT cb.patient_id) AS cnt
+  FROM cal_bookings cb
+  WHERE cb.booking_kind = 'full_session'
+    AND LOWER(cb.status) != 'cancelled'
+    AND cb.start_time < NOW()  -- Only completed sessions
+    AND (cb.is_test = false OR cb.is_test IS NULL)
+    AND cb.patient_id IN (SELECT patient_id FROM completed_intros)  -- Must have had intro
+)
+SELECT ROUND(
+  100.0 * intro_to_session.cnt / NULLIF((SELECT COUNT(*) FROM completed_intros), 0), 
+  1
+) AS intro_conversion_pct
+FROM intro_to_session;
 ```
 
 ### D-IntrosThisWeek
@@ -305,7 +343,8 @@ FROM fallbacks, total;
 
 ```sql
 -- Customer Acquisition Cost (€) = Total ad spend ÷ paying customers.
--- "Paying customer" = booked at least one paid session (not just intro).
+-- "Paying customer" = completed at least one paid session (not just booked).
+-- Only counts COMPLETED sessions (start_time in the past) to match NS-Sessions.
 -- This is the true cost to acquire revenue. Compare to CLV for unit economics.
 -- Target: CAC < CLV (ideally CAC < 0.3 × CLV). High CAC = optimize funnel or ads.
 WITH spend AS (
@@ -319,9 +358,10 @@ customers AS (
   LEFT JOIN people p ON p.id = cb.patient_id
   WHERE cb.booking_kind = 'full_session'
     AND LOWER(cb.status) != 'cancelled'
+    AND cb.start_time < NOW()  -- Only completed sessions
     AND (cb.is_test = false OR cb.is_test IS NULL)
     AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-    AND cb.created_at >= {{start_date}} AND cb.created_at <= NOW()
+    AND cb.start_time >= {{start_date}} AND cb.start_time <= NOW()
 )
 SELECT ROUND(spend.total / NULLIF(customers.cnt, 0), 2) AS cac_eur
 FROM spend, customers;

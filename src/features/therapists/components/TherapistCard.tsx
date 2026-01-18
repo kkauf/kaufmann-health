@@ -13,7 +13,7 @@ import { ContactModal } from './ContactModal';
 import { getAttribution } from '@/lib/attribution';
 import { getModalityInfo } from '@/lib/modalities';
 import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpunkte';
-import { isCalBookingAvailable } from '@/lib/cal/booking-availability';
+import { isCalBookingAvailable, isSessionBookingAvailable } from '@/lib/cal/booking-availability';
 
 interface TherapistCardProps {
   therapist: TherapistData;
@@ -406,7 +406,10 @@ export function TherapistCard({
 
         {/* Action buttons - differentiate based on slot availability */}
         {(() => {
-          const isCalLive = isCalBookingAvailable(therapist);
+          // Check intro slot availability for the primary "Kennenlernen" button
+          const hasIntroSlots = isCalBookingAvailable(therapist);
+          // Check full-session slot availability for the "Direkt buchen" button
+          const hasSessionSlots = isSessionBookingAvailable(therapist);
           // Hide direct booking button if therapist requires intro and patient hasn't completed one
           const hideDirectBooking = requiresIntroBeforeBooking && !hasCompletedIntro;
           return (
@@ -417,7 +420,7 @@ export function TherapistCard({
                 onClick={() => handleContactClick('consultation')}
                 disabled={!therapist.accepting_new}
               >
-                {isCalLive ? (
+                {hasIntroSlots ? (
                   <>
                     <Video className="mr-2 h-4 w-4" />
                     Online-Kennenlernen (15 min)
@@ -463,7 +466,7 @@ export function TherapistCard({
                   onClick={() => handleContactClick('booking')}
                   disabled={!therapist.accepting_new}
                 >
-                  {isCalLive ? (
+                  {hasSessionSlots ? (
                     <>
                       <Calendar className="mr-2 h-4 w-4 shrink-0" />
                       <span className="truncate">{contactedAt ? 'Erneut buchen' : 'Direkt buchen'}</span>
@@ -471,7 +474,7 @@ export function TherapistCard({
                   ) : (
                     <>
                       <MessageCircle className="mr-2 h-4 w-4 shrink-0" />
-                      <span className="truncate">Nachricht senden</span>
+                      <span className="truncate">Anfragen</span>
                     </>
                   )}
                 </Button>
