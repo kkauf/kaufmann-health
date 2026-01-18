@@ -273,7 +273,16 @@ export async function GET(req: Request) {
     const therapistIds = chosen.map(m => m.therapist_id);
 
     // PERF: Parallelize therapist data fetches - profiles, slot cache, and intro completion are independent
-    type SlotCacheRow = { therapist_id: string; next_intro_date_iso: string | null; next_intro_time_label: string | null; next_intro_time_utc: string | null; slots_count: number | null };
+    type SlotCacheRow = { 
+      therapist_id: string; 
+      next_intro_date_iso: string | null; 
+      next_intro_time_label: string | null; 
+      next_intro_time_utc: string | null; 
+      slots_count: number | null;
+      next_full_date_iso: string | null;
+      next_full_time_label: string | null;
+      next_full_time_utc: string | null;
+    };
     
     let therapistRows: TherapistRow[] = [];
     const slotCacheMap = new Map<string, SlotCacheRow>();
@@ -291,7 +300,7 @@ export async function GET(req: Request) {
           try {
             return await supabaseServer
               .from('cal_slots_cache')
-              .select('therapist_id, next_intro_date_iso, next_intro_time_label, next_intro_time_utc, slots_count')
+              .select('therapist_id, next_intro_date_iso, next_intro_time_label, next_intro_time_utc, slots_count, next_full_date_iso, next_full_time_label, next_full_time_utc')
               .in('therapist_id', therapistIds);
           } catch {
             // Table may not exist in test environment
@@ -361,7 +370,7 @@ export async function GET(req: Request) {
     // Build response list using shared mapper (ensures contract compliance)
     // Then add match-specific fields
     const list = scored.map(({ t, isPerfect }) => {
-      // Build next_intro_slot from cached data
+      // Build next_intro_slot and next_full_slot from cached data
       const slotCache = slotCacheMap.get(t.id);
       const nextIntroSlot = slotCache?.next_intro_time_utc ? {
         date_iso: slotCache.next_intro_date_iso || '',
@@ -369,9 +378,14 @@ export async function GET(req: Request) {
         time_utc: slotCache.next_intro_time_utc,
         slots_count: slotCache.slots_count ?? undefined,
       } : undefined;
+      const nextFullSlot = slotCache?.next_full_time_utc ? {
+        date_iso: slotCache.next_full_date_iso || '',
+        time_label: slotCache.next_full_time_label || '',
+        time_utc: slotCache.next_full_time_utc,
+      } : undefined;
       
       // Use shared mapper for all standard therapist fields
-      const mapped = mapTherapistRow(t, { includeAdminFields: true, nextIntroSlot });
+      const mapped = mapTherapistRow(t, { includeAdminFields: true, nextIntroSlot, nextFullSlot });
       
       // Extract booking settings from metadata
       const requiresIntro = getRequiresIntroBeforeBooking(t.metadata);

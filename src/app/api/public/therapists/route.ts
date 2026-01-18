@@ -13,7 +13,7 @@ import {
   type TherapistRowForMatch 
 } from '@/features/leads/lib/match';
 import { getCachedCalSlots, type CachedCalSlot } from '@/lib/cal/slots-cache';
-import type { NextIntroSlot } from '@/contracts/therapist';
+import type { NextIntroSlot, NextFullSlot } from '@/contracts/therapist';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -59,8 +59,20 @@ export async function GET() {
       };
     }
 
+    // Helper to convert cached slot to NextFullSlot
+    function toNextFullSlot(cached: CachedCalSlot | undefined): NextFullSlot | undefined {
+      if (!cached?.next_full_date_iso || !cached?.next_full_time_label || !cached?.next_full_time_utc) {
+        return undefined;
+      }
+      return {
+        date_iso: cached.next_full_date_iso,
+        time_label: cached.next_full_time_label,
+        time_utc: cached.next_full_time_utc,
+      };
+    }
+
     // Calculate Platform Score for each therapist and sort (per spec)
-    // Note: Slot counts are 0 since Cal.com now handles all booking availability
+    // Use cached Cal.com slot counts for ranking - therapists with available slots rank higher
     const scoredRows = visibleRows.map((row) => {
       // Build TherapistRowForMatch for scoring
       const mdObj = (row.metadata && typeof row.metadata === 'object') 
@@ -90,8 +102,16 @@ export async function GET() {
         },
       };
       
-      // Slot counts are 0 - Cal.com handles all booking availability
-      const platformScore = calculatePlatformScore(tRow, 0, 0);
+      // Use cached Cal.com slot counts for platform score
+      // This ensures therapists with available slots rank higher
+      const cachedSlot = calSlotsCache.get(row.id);
+      const introSlotsCount = cachedSlot?.slots_count ?? 0;
+      // For 7-day window, use slots_count directly (cache is refreshed with 14-day window)
+      // Approximate: if slots_count >= 3, assume at least some are within 7 days
+      const intakeSlots7Days = introSlotsCount >= 3 ? 3 : introSlotsCount;
+      const intakeSlots14Days = introSlotsCount;
+      
+      const platformScore = calculatePlatformScore(tRow, intakeSlots7Days, intakeSlots14Days);
       
       return { row, platformScore };
     });
@@ -105,10 +125,11 @@ export async function GET() {
     eligibleRows.sort((a, b) => b.platformScore - a.platformScore);
 
     const therapists = eligibleRows.map(({ row }) => {
-      // EARTH-248: Include cached next intro slot for Cal-enabled therapists
+      // EARTH-248: Include cached next intro and full slots for Cal-enabled therapists
       const cachedSlot = calSlotsCache.get(row.id);
       const nextIntroSlot = toNextIntroSlot(cachedSlot);
-      return mapTherapistRow(row, { nextIntroSlot });
+      const nextFullSlot = toNextFullSlot(cachedSlot);
+      return mapTherapistRow(row, { nextIntroSlot, nextFullSlot });
     });
 
     return NextResponse.json(

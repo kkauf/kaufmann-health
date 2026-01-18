@@ -14,6 +14,7 @@ import type {
   TherapistProfile,
   AvailabilitySlot,
   NextIntroSlot,
+  NextFullSlot,
 } from '@/contracts/therapist';
 
 // Re-export types and constants from contracts (single source of truth)
@@ -111,6 +112,8 @@ export function mapTherapistRow(
     includeAdminFields?: boolean;
     /** EARTH-248: Pre-cached next intro slot from cal_slots_cache */
     nextIntroSlot?: NextIntroSlot;
+    /** Pre-cached next full-session slot from cal_slots_cache */
+    nextFullSlot?: NextFullSlot;
   }
 ): TherapistData {
   const profile = extractProfile(row.metadata);
@@ -162,9 +165,12 @@ export function mapTherapistRow(
     result.availability = options.availability;
   }
 
-  // EARTH-248: Include cached next intro slot
+  // EARTH-248: Include cached next slots
   if (options?.nextIntroSlot) {
     result.next_intro_slot = options.nextIntroSlot;
+  }
+  if (options?.nextFullSlot) {
+    result.next_full_slot = options.nextFullSlot;
   }
 
   if (options?.includeAdminFields) {

@@ -91,14 +91,17 @@ export type AvailabilitySlot = z.infer<typeof AvailabilitySlotSchema>;
 // DISPLAY DATA (what components receive)
 // ============================================================================
 
-// EARTH-248: Next intro slot (cached from Cal.com)
-export const NextIntroSlotSchema = z.object({
+// EARTH-248: Next slot schema (cached from Cal.com) - used for both intro and full session
+export const NextSlotSchema = z.object({
   date_iso: z.string(),      // YYYY-MM-DD in Europe/Berlin
   time_label: z.string(),    // HH:MM in Europe/Berlin  
   time_utc: z.string(),      // Full ISO timestamp
 }).nullable();
 
+// Alias for backward compatibility
+export const NextIntroSlotSchema = NextSlotSchema;
 export type NextIntroSlot = z.infer<typeof NextIntroSlotSchema>;
+export type NextFullSlot = z.infer<typeof NextSlotSchema>;
 
 export const TherapistDataSchema = z.object({
   id: z.string().uuid(),
@@ -122,8 +125,9 @@ export const TherapistDataSchema = z.object({
   cal_username: z.string().nullable().optional(),
   cal_enabled: z.boolean().nullable().optional(),
   cal_bookings_live: z.boolean().nullable().optional(),
-  // EARTH-248: Pre-cached next intro slot for fast display
+  // EARTH-248: Pre-cached next slots for fast display
   next_intro_slot: NextIntroSlotSchema.optional(),
+  next_full_slot: NextSlotSchema.optional(),
   // Booking gating: whether therapist requires intro before allowing full session booking
   requires_intro_before_booking: z.boolean().optional(),
   // Match-specific: whether this patient has completed an intro with this therapist
