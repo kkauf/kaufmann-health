@@ -25,8 +25,6 @@ import { buildCalBookingUrl } from '@/lib/cal/booking-url';
 import {
   CalWebhookBody,
   CalWebhookProcessableEvent,
-  CalWebhookBookingEvent,
-  CalWebhookMeetingEvent,
   CalWebhookNoShowEvent,
   CAL_WEBHOOK_SIGNATURE_HEADER,
   type CalWebhookTriggerEvent,

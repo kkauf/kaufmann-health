@@ -105,16 +105,16 @@ export async function GET(req: NextRequest) {
         const therapistSchwerpunkte = new Set(
           Array.isArray(row.schwerpunkte) ? (row.schwerpunkte as string[]) : []
         );
-        const hasOverlap = patientMeta.schwerpunkte.some(s => therapistSchwerpunkte.has(s));
+        const _hasOverlap = patientMeta.schwerpunkte.some(s => therapistSchwerpunkte.has(s));
         // Don't hard-filter on schwerpunkte - count all eligible, but this could be used for "exact match" count
       }
 
       // Additional soft filter: modality overlap
       if (patientMeta.specializations && patientMeta.specializations.length > 0) {
-        const therapistModalities = new Set(
+        const _therapistModalities = new Set(
           (Array.isArray(row.modalities) ? (row.modalities as string[]) : []).map(m => normalizeSpec(String(m)))
         );
-        const patientMods = patientMeta.specializations.map(s => normalizeSpec(String(s)));
+        const _patientMods = patientMeta.specializations.map(s => normalizeSpec(String(s)));
         // Don't hard-filter on modality - count all eligible
       }
 

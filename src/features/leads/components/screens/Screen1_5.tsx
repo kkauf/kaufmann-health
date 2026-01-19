@@ -52,6 +52,7 @@ export default function Screen1_5({
     if (newCode.every(d => d) && value) {
       handleVerify(newCode.join(''));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- handleVerify is defined below
   }, [code]);
 
   const handleKeyDown = React.useCallback((index: number, e: React.KeyboardEvent) => {
@@ -73,6 +74,7 @@ export default function Screen1_5({
       // Auto-submit
       handleVerify(pastedData);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- handleVerify is defined below
   }, []);
 
   const handleVerify = React.useCallback(async (codeString: string) => {

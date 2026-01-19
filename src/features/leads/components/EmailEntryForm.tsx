@@ -179,6 +179,7 @@ export function ContactEntryForm({
     } finally {
       setSubmitting(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- phone is handled internally
   }, [submitting, defaultSessionPreference, contactMethod]);
 
   const showSwitchLink = mode === 'choice';

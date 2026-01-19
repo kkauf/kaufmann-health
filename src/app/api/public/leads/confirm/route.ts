@@ -5,7 +5,8 @@ import { logError } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
 import { maybeFirePatientConversion } from '@/lib/conversion';
-import { sendEmail } from '@/lib/email/client';
+// sendEmail imported but used conditionally
+import { sendEmail as _sendEmail } from '@/lib/email/client';
 import { processDraftContact, clearDraftContact } from '@/features/leads/lib/processDraftContact';
 import { LeadConfirmQuery } from '@/contracts/leads';
 

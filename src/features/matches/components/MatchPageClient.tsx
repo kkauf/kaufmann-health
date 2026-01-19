@@ -1,14 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import dynamic from 'next/dynamic';
+// dynamic import removed - unused
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ContactModal } from '@/features/therapists/components/ContactModal';
 import { TherapistDetailModal } from '@/features/therapists/components/TherapistDetailModal';
 import { TherapistCard } from '@/features/therapists/components/TherapistCard';
 import { TherapistProfile } from '@/features/therapists/components/TherapistProfile';
-import { HeroMatchCard } from './HeroMatchCard';
+// HeroMatchCard import removed - unused
 import { MatchRejectionModal, type RejectionReason } from './MatchRejectionModal';
 import { CheckCircle, Sparkles } from 'lucide-react';
 import type { TherapistData } from '@/features/therapists/components/TherapistDirectory';

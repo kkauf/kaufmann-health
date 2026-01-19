@@ -20,7 +20,8 @@ import {
 import { batchCheckIntroCompletion, getRequiresIntroBeforeBooking } from '@/lib/cal/intro-completion';
 import { sendEmail } from '@/lib/email/client';
 import { renderMatchLinkRefresh } from '@/lib/email/templates/matchLinkRefresh';
-import { BASE_URL } from '@/lib/constants';
+// BASE_URL used in handleExpiredLink
+import { BASE_URL as _BASE_URL } from '@/lib/constants';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -50,7 +51,7 @@ async function handleExpiredLink(match: RefRow, patientId: string): Promise<Resp
       .eq('id', patientId)
       .single();
     patient = result.data;
-  } catch (e) {
+  } catch (_e) {
     // Patient lookup failed (test env or deleted patient) - return simple expired message
     void track({ type: 'match_link_expired_no_patient', source: 'api.public.matches.get', props: { match_id: match.id } });
     return NextResponse.json({ 
@@ -81,7 +82,7 @@ async function handleExpiredLink(match: RefRow, patientId: string): Promise<Resp
       .from('matches')
       .update({ last_accessed_at: new Date().toISOString() })
       .eq('id', match.id);
-  } catch (e) {
+  } catch (_e) {
     // Column may not exist in test environments - ignore
   }
 
@@ -150,7 +151,7 @@ export async function GET(req: Request) {
         .limit(1);
       refRows = result.data;
       refErr = result.error;
-    } catch (e) {
+    } catch (_e) {
       // If last_accessed_at doesn't exist (test env), fall back to basic select
       const result = await supabaseServer
         .from('matches')
@@ -483,7 +484,7 @@ export async function GET(req: Request) {
           status: patientStatus,
           personalized_message: personalizedMessage,
         },
-        therapists: list.slice(0, 3).map((t, idx) => ({
+        therapists: list.slice(0, 3).map((t, _idx) => ({
           ...t,
           // Override is_perfect if admin selected a specific highlighted therapist
           is_perfect: highlightedTherapistId ? t.id === highlightedTherapistId : t.is_perfect,

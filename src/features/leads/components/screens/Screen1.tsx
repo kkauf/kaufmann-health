@@ -120,6 +120,7 @@ export default function Screen1({
         onNext();
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- values.name not needed for validation
   }, [contactMethod, values.email, values.phone_number, onNext]);
 
   return (

@@ -170,7 +170,7 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
   const [languages, setLanguages] = useState<string[]>(initialData.languages);
 
   // Combine address fields for SlotsManager
-  const practiceAddress = [practiceStreet, practicePostalCode, practiceCity].filter(Boolean).join(', ');
+  const _practiceAddress = [practiceStreet, practicePostalCode, practiceCity].filter(Boolean).join(', ');
 
   // Photo state
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -453,6 +453,7 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [therapistId, whoComesToMe, sessionFocus, firstSession, aboutMe, schwerpunkte, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city, photoFile, photoError]);
 
   const handleLogout = useCallback(async () => {

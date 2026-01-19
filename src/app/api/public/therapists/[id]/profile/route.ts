@@ -2,7 +2,7 @@ import { safeJson } from '@/lib/http';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 import { getTherapistSession } from '@/lib/auth/therapistSession';
-import { isValidSchwerpunktId, THERAPIST_SCHWERPUNKTE_MIN, THERAPIST_SCHWERPUNKTE_MAX } from '@/lib/schwerpunkte';
+import { isValidSchwerpunktId } from '@/lib/schwerpunkte';
 import { SERVER_PROFILE_LIMITS } from '@/lib/config/profileLimits';
 import { TherapistProfileUpdate } from '@/contracts/therapist-profile';
 import { parseFormData, parseRequestBody } from '@/lib/api-utils';

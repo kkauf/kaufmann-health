@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, ExternalLink, BookOpen, GraduationCap, Video, Rocket, CheckCircle, Loader2, Square, CheckSquare } from "lucide-react";
+import { Calendar, ExternalLink, BookOpen, GraduationCap, Video, Rocket, CheckCircle, Loader2 } from "lucide-react";
 
 interface Props {
   therapistId: string;

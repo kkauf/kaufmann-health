@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -91,7 +91,7 @@ export function TherapistProfile({
   );
   const showLegacyApproachText = Boolean(therapist.approach_text && !hasStructuredProfileContent);
 
-  const isCalEnabled = isCalBookingEnabled(therapist);
+  const _isCalEnabled = isCalBookingEnabled(therapist);
   const hideDirectBooking = requiresIntroBeforeBooking && !hasCompletedIntro;
 
   const handleImageClick = () => {
@@ -432,6 +432,7 @@ export function TherapistProfile({
 
           <div className="relative w-[min(92vw,560px)] sm:w-[min(85vw,680px)] max-h-[85vh] rounded-2xl bg-white p-3 sm:p-4 shadow-2xl ring-1 ring-black/5 animate-in zoom-in-95 duration-200 flex flex-col overflow-hidden">
             <div className="flex-1 flex items-center justify-center overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element -- dynamic user photo */}
               <img
                 src={photoSrc}
                 alt={`${therapist.first_name} ${therapist.last_name}`}

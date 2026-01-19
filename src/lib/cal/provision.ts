@@ -183,7 +183,7 @@ async function cloneSchedules(
  * Clone event types from template user to new user.
  * Returns the IDs of the cloned intro and full-session event types.
  */
-async function cloneEventTypes(
+async function _cloneEventTypes(
   client: import('pg').PoolClient,
   templateUserId: number,
   newUserId: number,
@@ -301,7 +301,7 @@ function processLocations(locations: unknown, practiceAddress?: string): string 
 export async function provisionCalUser(
   input: ProvisionCalUserInput
 ): Promise<CalProvisionResult> {
-  const { email, firstName, lastName, timeZone = 'Europe/Berlin', avatarUrl, practiceAddress } = input;
+  const { email, firstName, lastName, timeZone = 'Europe/Berlin', avatarUrl, practiceAddress: _practiceAddress } = input;
 
   if (!CAL_DATABASE_URL) {
     throw new Error('CAL_DATABASE_URL not configured - Cal.com provisioning disabled');

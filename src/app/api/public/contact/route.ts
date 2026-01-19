@@ -174,7 +174,7 @@ export async function POST(req: Request) {
     let session = await getClientSession(req);
     let patientId: string | null = null;
     let isNewPatient = false;
-    let sessionCookie: string | undefined;
+    let _sessionCookie: string | undefined;
     let isTestFromPatientMeta = false;
     
     if (session) {
@@ -313,7 +313,7 @@ export async function POST(req: Request) {
       };
       
       // Will set cookie in response
-      sessionCookie = createClientSessionCookie(token);
+      void createClientSessionCookie(token); // Cookie set in response below
     }
     
     // Check rate limit

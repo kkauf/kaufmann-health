@@ -133,7 +133,6 @@ export async function GET(req: Request) {
 
     // level=error OR type=cron_failed, BUT exclude automated attack noise
     // Supabase .or uses a CSV of filters
-    // eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
     query = query.or('level.eq.error,type.eq.cron_failed');
 
     const { data, error } = await query;

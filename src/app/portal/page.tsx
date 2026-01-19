@@ -52,7 +52,6 @@ export default async function PortalPage({
   const cookieName = getTherapistSessionCookieName();
   
   let therapistId: string | null = null;
-  let therapistName: string | undefined;
 
   // If token in URL, redirect to auth route handler which will set the cookie
   if (params.token) {
@@ -65,7 +64,8 @@ export default async function PortalPage({
     const payload = await verifyTherapistSessionToken(cookieValue);
     if (payload?.therapist_id) {
       therapistId = payload.therapist_id;
-      therapistName = payload.name;
+      // therapistName available but unused - keep for future use
+      void payload.name;
     }
   }
 
