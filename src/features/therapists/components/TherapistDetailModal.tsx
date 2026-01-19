@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
-import { MapPin, Video, User, Calendar, MessageCircle, Globe, ShieldCheck, CalendarCheck2, X, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, Euro, ExternalLink } from 'lucide-react';
+import { MapPin, Video, User, Calendar, MessageCircle, Languages, ShieldCheck, CalendarCheck2, X, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, Euro } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { TherapistData } from './TherapistDirectory';
 import { getAttribution } from '@/lib/attribution';
@@ -593,22 +593,31 @@ export function TherapistDetailModal({
             </div>
 
             {/* Languages & Experience pills */}
-            {(languages.length > 0 || yearsExperience) && (
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                {languages.length > 0 && (
-                  <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
-                    <MessageCircle className="h-3.5 w-3.5" />
-                    {languages.join(', ')}
-                  </Badge>
-                )}
-                {yearsExperience && (
-                  <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
-                    <Globe className="h-3.5 w-3.5" />
-                    {yearsExperience} Jahre Erfahrung
-                  </Badge>
-                )}
-              </div>
-            )}
+            {(languages.length > 0 || yearsExperience) && (() => {
+              const offersGerman = languages.some((l: string) => l === 'Deutsch');
+              const isEnglishOnly = !offersGerman && languages.length > 0;
+              return (
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                  {languages.length > 0 && (
+                    <Badge 
+                      variant="outline" 
+                      className={`gap-1.5 ${isEnglishOnly 
+                        ? 'border-amber-300 bg-amber-100 text-amber-800 font-medium' 
+                        : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+                    >
+                      <Languages className="h-3.5 w-3.5" />
+                      {languages.join(' / ')}
+                    </Badge>
+                  )}
+                  {yearsExperience && (
+                    <Badge variant="outline" className="gap-1.5 border-slate-200 bg-slate-50 text-slate-700">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {yearsExperience} Jahre Erfahrung
+                    </Badge>
+                  )}
+                </div>
+              );
+            })()}
             {/* Modalities (Hero) */}
             {therapist.modalities && therapist.modalities.length > 0 && (
               <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
@@ -945,6 +954,19 @@ export function TherapistDetailModal({
                 </p>
               </div>
             </div>
+
+            {/* Language info for non-German sessions - neutral affirmation style */}
+            {(() => {
+              const offersGerman = languages.some((l: string) => l === 'Deutsch') || languages.length === 0;
+              if (offersGerman) return null;
+              const langList = languages.join(' / ');
+              return (
+                <div className="flex items-center gap-2 text-sm text-slate-600 mb-4">
+                  <Languages className="h-4 w-4 text-slate-500" />
+                  <span>Sitzung auf {langList}</span>
+                </div>
+              );
+            })()}
 
             {/* EARTH-272: Native booking flow (booking in progress / success) */}
             {(calState.step === 'booking' || calState.step === 'success') ? (
