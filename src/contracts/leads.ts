@@ -5,9 +5,7 @@ import {
   NonEmptyString,
   OptionalString,
   City,
-  GenderPreference,
   GermanGenderPreference,
-  SessionPreference,
   GermanSessionPreference,
   UUID,
 } from './shared';

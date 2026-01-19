@@ -17,7 +17,8 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
   if (!row) return notFound();
   const status = (row as { status?: string }).status || 'pending_verification';
-  if (status !== 'pending_verification') {
+  // Allow both pending_verification and rejected (Rückfrage) to complete profile
+  if (status !== 'pending_verification' && status !== 'rejected') {
     // Do not 404 to avoid confusion when therapists revisit the email link later.
     // Keep the content generic to avoid information leakage.
     return (

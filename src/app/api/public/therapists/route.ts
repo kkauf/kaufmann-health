@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import {
-  type TherapistRow,
   getHiddenTherapistIds,
   isTherapistHidden,
   mapTherapistRow,

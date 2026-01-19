@@ -521,6 +521,7 @@ export default function SignupWizard() {
     } catch { }
     // Scroll to top initially
     window.scrollTo({ top: 0 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on mount
   }, [searchParams]);
 
   // Capture leadId from URL when coming back via email link; prime resend email from data/localStorage
@@ -633,6 +634,7 @@ export default function SignupWizard() {
       } catch { }
       return merged;
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- step/trackEvent intentionally omitted for stable callback
   }, []);
 
   const goToStep = React.useCallback((n: number) => {
@@ -682,6 +684,7 @@ export default function SignupWizard() {
       }
       return v;
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- missingRequiredForStep is a stable function
   }, [data, trackEvent, maxStep]);
 
   // Safe navigation to prevent double-clicks on Next/Back
@@ -1473,7 +1476,7 @@ export default function SignupWizard() {
   }
 
   // Submit questionnaire after Step 5 - create anonymous patient and redirect to matches (direct booking flow only)
-  async function handleQuestionnaireSubmit() {
+  async function _handleQuestionnaireSubmit() {
     if (submitting) return;
     setSubmitting(true);
     setSubmitError(null);

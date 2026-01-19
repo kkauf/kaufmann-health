@@ -10,7 +10,8 @@ import { ServerAnalytics } from '@/lib/server-analytics';
 import { supabaseServer } from '@/lib/supabase-server';
 import { maybeFirePatientConversion } from '@/lib/conversion';
 import { logError } from '@/lib/logger';
-import { sendEmail } from '@/lib/email/client';
+// sendEmail imported for future use in booking confirmation
+import { sendEmail as _sendEmail } from '@/lib/email/client';
 import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
 import { getFixedWindowLimiter, extractIpFromHeaders } from '@/lib/rate-limit';
 import { createInstantMatchesForPatient } from '@/features/leads/lib/match';

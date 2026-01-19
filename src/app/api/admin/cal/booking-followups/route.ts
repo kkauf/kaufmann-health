@@ -70,7 +70,7 @@ type StageCounters = {
 async function processStage(
   stage: Stage,
   limit: number,
-  ip: string
+  _ip: string
 ): Promise<{ stage: Stage; counters: StageCounters }> {
   const counters: StageCounters = {
     processed: 0,

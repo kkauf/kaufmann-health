@@ -293,7 +293,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
     return filtered;
   }, [therapists, selectedModality, onlineOnly]);
 
-  const availabilityTherapistsCount = useMemo(() =>
+  const _availabilityTherapistsCount = useMemo(() =>
     filteredTherapists.filter(t => Array.isArray(t.availability) && t.availability.length > 0).length
   , [filteredTherapists]);
 
@@ -621,7 +621,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
                     Alle
                   </Badge>
                   {allModalities.map((m) => {
-                    const key = normalizeModality(m);
+                    const _key = normalizeModality(m);
                     const conf = getModalityStyle(m);
                     const Icon = conf.Icon;
                     const selected = draftModality === m;

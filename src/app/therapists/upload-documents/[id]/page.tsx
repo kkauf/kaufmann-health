@@ -21,8 +21,9 @@ export default async function Page(props: { params: Promise<{ id: string }>; sea
 
   if (!row) return notFound();
   // EARTH-71 note: Linear mentions `pending_documents`, our schema uses `pending_verification`.
+  // Allow both pending_verification and rejected (Rückfrage) to upload documents
   const status = (row as { status?: string }).status || 'pending_verification';
-  if (status !== 'pending_verification') {
+  if (status !== 'pending_verification' && status !== 'rejected') {
     // Show a simple 404 to avoid information leak
     return notFound();
   }

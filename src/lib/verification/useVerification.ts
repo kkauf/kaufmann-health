@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { normalizePhoneNumber, validatePhone } from './phone';
+import { validatePhone } from './phone';
 import { fireLeadVerifiedConversion } from '@/lib/gtag';
 
 // ============================================================================

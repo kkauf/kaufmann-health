@@ -69,7 +69,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     ? 'success'
     : (preAuth ? 'compose' : (needsVerification ? 'verify' : (contactType === 'booking' && selectedSlot ? 'verify' : 'compose')));
   const [step, setStep] = useState<Step>(initialStep);
-  const [messageLoading, setMessageLoading] = useState(false);
+  const [_messageLoading, setMessageLoading] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
 
   // Use shared verification hook for name/email/phone/code state and send/verify logic
@@ -143,6 +143,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
 
       setStep('compose');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- setters are stable
   }, [open, preAuth, therapist.first_name, contactType, requireVerification]);
 
   // If preAuth preferred format isn't available for this therapist, fall back to the available format.
@@ -264,6 +265,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     return () => {
       cancelled = true;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- setters are stable
   }, [open, preAuth, therapist.first_name, contactType, awaitingVerificationSend, forceSuccess]);
 
   // Prefill session format if a slot was selected externally
@@ -621,6 +623,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     } finally {
       setMessageLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedBookingSlot/setError are stable
   }, [therapist.id, contactType, name, email, phone, contactMethod, reason, message, sessionFormat, trackEvent, onSuccess, handleClose, preAuth]);
 
   // Auto-send no longer needed - server handles draft_contact processing on verification

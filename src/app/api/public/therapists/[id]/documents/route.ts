@@ -57,7 +57,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return safeJson({ data: null, error: 'Not found' }, { status: 404 });
     }
 
-    if ((therapist as { status?: string }).status !== 'pending_verification') {
+    const therapistStatus = (therapist as { status?: string }).status;
+    // Allow pending_verification and rejected (Rückfrage) to upload documents
+    if (therapistStatus !== 'pending_verification' && therapistStatus !== 'rejected') {
       // Hide details; treat as not found to avoid information leak
       return safeJson({ data: null, error: 'Not found' }, { status: 404 });
     }

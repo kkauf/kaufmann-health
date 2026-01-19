@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, startTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -95,7 +95,7 @@ export default function AdminTherapistsPage() {
   const [approachText, setApproachText] = useState("");
   const [updating, setUpdating] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [approvePhoto, setApprovePhoto] = useState(false);
+  const [_approvePhoto, setApprovePhoto] = useState(false);
   const [page, setPage] = useState<number>(1);
   const pageSize = 20;
   // Cal.com integration state
@@ -181,7 +181,10 @@ export default function AdminTherapistsPage() {
       const res = await fetch(url.toString(), { credentials: "include", cache: "no-store" });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Fehler beim Laden der Therapeuten");
-      setList((json.data || []) as Therapist[]);
+      // Use startTransition to prevent blocking UI during large list re-render
+      startTransition(() => {
+        setList((json.data || []) as Therapist[]);
+      });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
       setError(msg);
@@ -549,7 +552,7 @@ export default function AdminTherapistsPage() {
               : "—";
             const isPending = t.status === "pending_verification";
             const hasPhoto = Boolean(t.profile?.has_photo_pending || t.profile?.has_photo_public);
-            const hasApproach = Boolean(t.profile?.has_approach_text);
+            const _hasApproach = Boolean(t.profile?.has_approach_text);
             return (
               <Card key={t.id} className={`transition-all hover:shadow-md ${isPending ? "border-amber-400 bg-amber-50/50" : "hover:border-gray-300"}`}>
                 <CardHeader>

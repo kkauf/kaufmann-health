@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import * as React from "react";
@@ -289,7 +288,7 @@ function hashCode(s: string) {
   return Math.abs(h);
 }
 
-function truncateSentences(text: string, maxSentences: number) {
+function _truncateSentences(text: string, maxSentences: number) {
   const parts = (text || "").split(/([.!?]\s+)/);
   let count = 0;
   let out = "";

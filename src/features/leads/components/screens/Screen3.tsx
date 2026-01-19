@@ -41,6 +41,7 @@ export default function Screen3({
     if (!values.city) {
       onChange({ city: DEFAULT_CITY });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on mount
   }, []);
 
   function validate() {

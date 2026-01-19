@@ -216,7 +216,7 @@ async function createSingleEventType(
     await page.waitForTimeout(300);
     
     // Set the slug - the URL input
-    const slugInput = page.locator('input').filter({ hasText: '' }).nth(1);
+    const _slugInput = page.locator('input').filter({ hasText: '' }).nth(1);
     // Actually find the slug input by looking for the one after /username/
     const urlInput = page.getByRole('textbox', { name: /URL/ });
     await urlInput.clear();

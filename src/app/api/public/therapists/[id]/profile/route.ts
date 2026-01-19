@@ -2,7 +2,7 @@ import { safeJson } from '@/lib/http';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 import { getTherapistSession } from '@/lib/auth/therapistSession';
-import { isValidSchwerpunktId, THERAPIST_SCHWERPUNKTE_MIN, THERAPIST_SCHWERPUNKTE_MAX } from '@/lib/schwerpunkte';
+import { isValidSchwerpunktId } from '@/lib/schwerpunkte';
 import { SERVER_PROFILE_LIMITS } from '@/lib/config/profileLimits';
 import { TherapistProfileUpdate } from '@/contracts/therapist-profile';
 import { parseFormData, parseRequestBody } from '@/lib/api-utils';
@@ -63,13 +63,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     const status = (therapist as { status?: string }).status;
-    const isPending = status === 'pending_verification';
+    const isPendingOrRejected = status === 'pending_verification' || status === 'rejected';
     const isVerified = status === 'verified';
 
     // Authorization check:
-    // - pending_verification: open access (onboarding flow)
+    // - pending_verification/rejected: open access (onboarding/Rückfrage flow)
     // - verified: requires valid therapist session cookie matching the ID
-    if (!isPending) {
+    if (!isPendingOrRejected) {
       if (!isVerified) {
         return safeJson({ data: null, error: 'Not found' }, { status: 404 });
       }
@@ -462,7 +462,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     });
 
     // Response varies based on status
-    if (isPending) {
+    if (isPendingOrRejected) {
       return safeJson({ data: { ok: true, nextStep: `/therapists/upload-documents/${id}` }, error: null });
     } else {
       return safeJson({ data: { ok: true, photo_url: uploadedPhotoUrl }, error: null });

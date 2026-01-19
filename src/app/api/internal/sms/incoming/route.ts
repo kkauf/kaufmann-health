@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     const tw = parsed.success ? parsed.data : ({} as Partial<TwilioIncomingSmsPayload>);
 
     const from = String(tw.From || '').trim();
-    const to = String(tw.To || '').trim();
+    const _to = String(tw.To || '').trim();
     const body = String(tw.Body || '').trim();
     const messageSid = String(tw.MessageSid || '');
 

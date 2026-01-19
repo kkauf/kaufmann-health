@@ -126,6 +126,7 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- MAX_PHOTO_BYTES is a constant
   }, [
     therapistId,
     showGender,

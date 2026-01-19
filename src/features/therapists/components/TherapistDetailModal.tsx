@@ -25,7 +25,7 @@ import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpun
 import { cn } from '@/lib/utils';
 import { formatSessionPrice } from '@/lib/pricing';
 import { isCalBookingEnabled } from '@/lib/cal/booking-url';
-import { useCalBooking, groupSlotsByDay, groupSlotsByDayWithScarcity } from '../hooks/useCalBooking';
+import { useCalBooking, groupSlotsByDayWithScarcity } from '../hooks/useCalBooking';
 import { CalVerificationForm } from './CalVerificationForm';
 import { CalBookingConfirm } from './CalBookingConfirm';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -90,7 +90,7 @@ export function TherapistDetailModal({
 
   // Cal.com booking state (EARTH-256)
   const [calBookingKind, setCalBookingKind] = useState<CalBookingKind>(initialCalBookingKind);
-  const [calWeekIndex, setCalWeekIndex] = useState(0);
+  const [_calWeekIndex, setCalWeekIndex] = useState(0);
   // Progressive disclosure for slot picker
   const [showAllDays, setShowAllDays] = useState(false);
   const INITIAL_DAYS_TO_SHOW = 3;
@@ -1384,6 +1384,7 @@ export function TherapistDetailModal({
           {/* Card container */}
           <div className="relative w-[min(92vw,560px)] sm:w-[min(85vw,680px)] max-h-[85vh] rounded-2xl bg-white p-3 sm:p-4 shadow-2xl ring-1 ring-black/5 animate-in zoom-in-95 duration-200 flex flex-col overflow-hidden">
             <div className="flex-1 flex items-center justify-center overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element -- dynamic user photo */}
               <img
                 src={photoSrc}
                 alt={`${therapist.first_name} ${therapist.last_name}`}
