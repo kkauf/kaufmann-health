@@ -75,9 +75,28 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       </div>
 
       {totalMissing === 0 ? (
-        <div className="mt-6 rounded-lg border bg-white p-4">
-          <p className="text-sm">Dein Profil ist vollständig. Als Nächstes lade bitte deine Dokumente hoch.</p>
-          <a className="underline mt-2 inline-block" href={`/therapists/upload-documents/${id}`}>Weiter: Dokumente hochladen</a>
+        <div className="mt-6 rounded-lg border bg-white p-6">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100">
+              <svg className="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold text-slate-900">Profildaten vollständig</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                {status === 'rejected' 
+                  ? 'Bitte lade jetzt die fehlenden Dokumente hoch, damit wir dein Profil freischalten können.'
+                  : 'Weiter zum Dokumenten-Upload.'}
+              </p>
+              <a 
+                href={`/therapists/upload-documents/${id}`}
+                className="mt-4 inline-flex items-center justify-center rounded-md bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors"
+              >
+                Dokumente hochladen →
+              </a>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="mt-6">

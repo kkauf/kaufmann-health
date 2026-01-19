@@ -1073,12 +1073,12 @@ export default function AdminTherapistsPage() {
                       id="notes"
                       rows={3}
                       className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground w-full rounded-md border bg-white px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-                      placeholder="z.B. 'Bitte lade dein Zertifikat hoch' oder 'Leider fehlt die HPP-Zulassung...'"
+                      placeholder="Bitte lade noch dein NARM-Zertifikat hoch..."
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                     />
                     <p className="text-xs text-gray-500 mt-2">
-                      Diese Nachricht wird dem Therapeuten per E-Mail zugestellt.
+                      💡 Nur den Inhalt eingeben – Anrede und Signatur werden automatisch hinzugefügt.
                     </p>
                   </div>
                 </div>
