@@ -80,7 +80,10 @@ async function metabaseRequest(endpoint: string, options: RequestInit = {}): Pro
     throw new Error(`Metabase API error: ${res.status} ${res.statusText} - ${text}`);
   }
   
-  return res.json();
+  // Handle empty responses (e.g., DELETE)
+  const text = await res.text();
+  if (!text) return null;
+  return JSON.parse(text);
 }
 
 function parseMarkdownQueries(): ParsedQuery[] {
@@ -413,6 +416,93 @@ async function main() {
         break;
       }
       
+      case '--rename': {
+        // Rename a card: --rename "Old Name" "New Name"
+        const oldName = args[1];
+        const newName = args[2];
+        
+        if (!oldName || !newName) {
+          console.error('Usage: --rename "Old Name" "New Name"');
+          console.error('Example: --rename "D-IntroToSession" "D-IntroConversion"');
+          process.exit(1);
+        }
+        
+        console.log(`Renaming card: "${oldName}" → "${newName}"\n`);
+        
+        const existingCards = await listExistingCards();
+        const card = existingCards.find(c => c.name === oldName);
+        
+        if (!card) {
+          console.error(`Card not found: "${oldName}"`);
+          console.error('\nAvailable cards:');
+          existingCards.forEach(c => console.error(`  [${c.id}] ${c.name}`));
+          process.exit(1);
+        }
+        
+        // Check if new name already exists
+        const conflict = existingCards.find(c => c.name === newName);
+        if (conflict) {
+          console.error(`A card with name "${newName}" already exists (ID: ${conflict.id})`);
+          console.error('Delete it first with --delete, or choose a different name.');
+          process.exit(1);
+        }
+        
+        // Check if there's a query in markdown with the new name
+        const queries = parseMarkdownQueries();
+        const matchingQuery = queries.find(q => q.name === newName);
+        
+        if (matchingQuery) {
+          // Rename AND update the query
+          const databaseId = await getDatabaseId();
+          console.log(`Found matching query in markdown. Updating name and SQL...`);
+          await updateCard(card.id, matchingQuery, databaseId);
+          console.log(`✅ Renamed [${card.id}] "${oldName}" → "${newName}" (with updated SQL)`);
+        } else {
+          // Just rename
+          await metabaseRequest(`/api/card/${card.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ name: newName }),
+          });
+          console.log(`✅ Renamed [${card.id}] "${oldName}" → "${newName}"`);
+          console.log(`   Note: No matching query found in markdown for "${newName}"`);
+        }
+        break;
+      }
+      
+      case '--delete': {
+        // Delete a card: --delete "Card Name" or --delete 123
+        const target = args[1];
+        
+        if (!target) {
+          console.error('Usage: --delete "Card Name" or --delete <card_id>');
+          process.exit(1);
+        }
+        
+        const existingCards = await listExistingCards();
+        let card: MetabaseCard | undefined;
+        
+        // Check if target is a number (ID) or string (name)
+        if (/^\d+$/.test(target)) {
+          card = existingCards.find(c => c.id === parseInt(target, 10));
+        } else {
+          card = existingCards.find(c => c.name === target);
+        }
+        
+        if (!card) {
+          console.error(`Card not found: "${target}"`);
+          process.exit(1);
+        }
+        
+        console.log(`Deleting card: [${card.id}] ${card.name}`);
+        
+        await metabaseRequest(`/api/card/${card.id}`, {
+          method: 'DELETE',
+        });
+        
+        console.log(`✅ Deleted [${card.id}] "${card.name}"`);
+        break;
+      }
+      
       case '--help':
       default:
         console.log(`
@@ -422,11 +512,14 @@ Usage:
   npx tsx scripts/metabase-sync.ts <command>
 
 Commands:
-  --list      List existing Metabase cards
-  --dry-run   Preview queries that would be created/updated
-  --sync      Create/update cards from docs/metabase-*.md files
-  --cleanup   Force-clean stale template tags from all cards
-  --help      Show this help message
+  --list                          List existing Metabase cards
+  --dry-run                       Preview queries that would be created/updated
+  --sync                          Create/update cards from docs/metabase-*.md files
+  --cleanup                       Force-clean stale template tags from all cards
+  --rename "Old Name" "New Name"  Rename a card (updates SQL if matching markdown exists)
+  --delete "Card Name"            Delete a card by name
+  --delete <card_id>              Delete a card by ID
+  --help                          Show this help message
 
 Queries use section headers from metabase-kpis.md and metabase-detail.md as names.
         `);

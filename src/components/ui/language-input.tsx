@@ -18,6 +18,27 @@ const COMMON_LANGUAGES = [
   'Bahasa Indonesia', 'Bahasa Melayu', 'Tagalog', 'Kiswahili', 'Afrikaans',
 ];
 
+// German-language aliases for common languages (maps German name -> native name)
+const LANGUAGE_ALIASES: Record<string, string> = {
+  'türkisch': 'Türkçe',
+  'arabisch': 'العربية',
+  'persisch': 'فارسی',
+  'russisch': 'Русский',
+  'ukrainisch': 'Українська',
+  'polnisch': 'Polski',
+  'griechisch': 'Ελληνικά',
+  'chinesisch': '中文',
+  'japanisch': '日本語',
+  'koreanisch': '한국어',
+  'hebräisch': 'עברית',
+  'kurdisch': 'Kurdî',
+  'englisch': 'English',
+  'französisch': 'Français',
+  'spanisch': 'Español',
+  'italienisch': 'Italiano',
+  'portugiesisch': 'Português',
+};
+
 interface LanguageInputProps {
   value: string[];
   onChange: (languages: string[]) => void;
@@ -32,18 +53,27 @@ export function LanguageInput({ value, onChange, placeholder = 'Sprache eingeben
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Filter suggestions based on input, excluding already selected
+  // Also check German aliases (e.g. "Türkisch" matches "Türkçe")
   const suggestions = inputValue.trim()
-    ? COMMON_LANGUAGES.filter(
-        (lang) =>
-          lang.toLowerCase().includes(inputValue.toLowerCase()) &&
-          !value.includes(lang)
-      ).slice(0, 8)
+    ? COMMON_LANGUAGES.filter((lang) => {
+        if (value.includes(lang)) return false;
+        // Direct match on native name
+        if (lang.toLowerCase().includes(inputValue.toLowerCase())) return true;
+        // Check if input matches a German alias for this language
+        const aliasMatch = Object.entries(LANGUAGE_ALIASES).find(
+          ([alias, native]) => native === lang && alias.includes(inputValue.toLowerCase())
+        );
+        return !!aliasMatch;
+      }).slice(0, 8)
     : [];
 
-  // Check if input matches any suggestion exactly (case-insensitive)
+  // Check if input matches any suggestion exactly (case-insensitive), including aliases
   const exactMatch = COMMON_LANGUAGES.find(
     (lang) => lang.toLowerCase() === inputValue.toLowerCase()
-  );
+  ) || (LANGUAGE_ALIASES[inputValue.toLowerCase()] && 
+        !value.includes(LANGUAGE_ALIASES[inputValue.toLowerCase()]) 
+          ? LANGUAGE_ALIASES[inputValue.toLowerCase()] 
+          : undefined);
 
   // Can add custom if not empty, not already selected, and not an exact match suggestion
   const canAddCustom =
@@ -53,7 +83,15 @@ export function LanguageInput({ value, onChange, placeholder = 'Sprache eingeben
 
   const addLanguage = (lang: string) => {
     const trimmed = lang.trim();
-    if (trimmed && !value.some((v) => v.toLowerCase() === trimmed.toLowerCase())) {
+    // Prevent entries with separators - user should add languages one by one
+    if (trimmed.includes('/') || trimmed.includes(',') || trimmed.toLowerCase().includes(' und ') || trimmed.toLowerCase().includes(' and ')) {
+      // Split and add each part separately
+      const parts = trimmed.split(/[\/,]|\s+und\s+|\s+and\s+/i).map(p => p.trim()).filter(Boolean);
+      const newLangs = parts.filter(p => !value.some(v => v.toLowerCase() === p.toLowerCase()));
+      if (newLangs.length > 0) {
+        onChange([...value, ...newLangs]);
+      }
+    } else if (trimmed && !value.some((v) => v.toLowerCase() === trimmed.toLowerCase())) {
       onChange([...value, trimmed]);
     }
     setInputValue('');

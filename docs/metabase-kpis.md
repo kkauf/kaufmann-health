@@ -185,10 +185,10 @@ FROM leads, intros;
 ### D-LeadToSession
 
 ```sql
--- Lead to Session Rate (%) = Patients with completed paid session ÷ confirmed leads.
+-- Lead to Session Rate (%) = Patients who booked paid session ÷ confirmed leads.
 -- Measures overall funnel effectiveness from lead to paying customer (any path).
 -- Includes both intro→session and direct session bookings.
--- Only counts COMPLETED sessions (start_time in the past).
+-- Counts BOOKED sessions (leading indicator). NS-Sessions uses completed only.
 -- Target: >10%. This is the key revenue conversion metric.
 WITH leads AS (
   SELECT COUNT(*) AS cnt
@@ -204,47 +204,44 @@ paid_customers AS (
   LEFT JOIN people p ON p.id = cb.patient_id
   WHERE cb.booking_kind = 'full_session'
     AND LOWER(cb.status) != 'cancelled'
-    AND cb.start_time < NOW()  -- Only completed sessions
     AND (cb.is_test = false OR cb.is_test IS NULL)
     AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-    AND cb.start_time >= {{start_date}} AND cb.start_time <= NOW()
+    AND cb.created_at >= {{start_date}} AND cb.created_at <= NOW()
 )
-SELECT ROUND(100.0 * paid_customers.cnt / NULLIF(leads.cnt, 0), 1) AS lead_to_session_pct
+SELECT COALESCE(ROUND(100.0 * paid_customers.cnt / NULLIF(leads.cnt, 0), 1), 0) AS lead_to_session_pct
 FROM leads, paid_customers;
 ```
 
-### D-IntroConversion
+### D-IntroToSession
 
 ```sql
--- Intro Conversion Rate (%) = Patients who had BOTH intro AND session ÷ patients who had intro.
+-- Intro to Session Rate (%) = Patients who booked BOTH intro AND session ÷ patients who booked intro.
 -- Measures intro call effectiveness: of those who had an intro, how many converted?
--- Only counts COMPLETED intros and sessions (start_time in the past).
+-- Counts BOOKED (not just completed) to serve as leading indicator.
 -- Unlike D-LeadToSession, this excludes direct session bookings.
 -- Target: >40%. Low rate = intro quality issues or therapist-patient mismatch.
-WITH completed_intros AS (
+WITH booked_intros AS (
   SELECT DISTINCT cb.patient_id
   FROM cal_bookings cb
   LEFT JOIN people p ON p.id = cb.patient_id
   WHERE cb.booking_kind = 'intro'
     AND LOWER(cb.status) != 'cancelled'
-    AND cb.start_time < NOW()  -- Only completed intros
     AND (cb.is_test = false OR cb.is_test IS NULL)
     AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-    AND cb.start_time >= {{start_date}} AND cb.start_time <= NOW()
+    AND cb.created_at >= {{start_date}} AND cb.created_at <= NOW()
 ),
 intro_to_session AS (
   SELECT COUNT(DISTINCT cb.patient_id) AS cnt
   FROM cal_bookings cb
   WHERE cb.booking_kind = 'full_session'
     AND LOWER(cb.status) != 'cancelled'
-    AND cb.start_time < NOW()  -- Only completed sessions
     AND (cb.is_test = false OR cb.is_test IS NULL)
-    AND cb.patient_id IN (SELECT patient_id FROM completed_intros)  -- Must have had intro
+    AND cb.patient_id IN (SELECT patient_id FROM booked_intros)  -- Must have had intro
 )
-SELECT ROUND(
-  100.0 * intro_to_session.cnt / NULLIF((SELECT COUNT(*) FROM completed_intros), 0), 
-  1
-) AS intro_conversion_pct
+SELECT COALESCE(
+  ROUND(100.0 * intro_to_session.cnt / NULLIF((SELECT COUNT(*) FROM booked_intros), 0), 1),
+  0
+) AS intro_to_session_pct
 FROM intro_to_session;
 ```
 

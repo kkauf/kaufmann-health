@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, User, ShieldCheck, Globe, Clock, ChevronLeft, ChevronRight, Star } from 'lucide-react';
+import { MapPin, Video, User, ShieldCheck, Languages, Clock, ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import { getModalityInfo } from '@/lib/modalities';
 import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpunkte';
 import { isCalBookingAvailable } from '@/lib/cal/booking-availability';
@@ -193,12 +193,21 @@ export function HeroMatchCard({
                   Vor Ort
                 </Badge>
               )}
-              {therapist.languages && therapist.languages.length > 0 && !therapist.languages.every(l => l === 'Deutsch') && (
-                <Badge variant="secondary" className="gap-1 bg-violet-50 text-violet-700">
-                  <Globe className="h-3 w-3" />
-                  {therapist.languages.filter(l => l !== 'Deutsch').join(', ')}
-                </Badge>
-              )}
+              {therapist.languages && therapist.languages.length > 0 && !therapist.languages.every(l => l === 'Deutsch') && (() => {
+                const offersGerman = therapist.languages.some(l => l === 'Deutsch');
+                const isEnglishOnly = !offersGerman;
+                return (
+                  <Badge 
+                    variant="secondary" 
+                    className={`gap-1.5 ${isEnglishOnly 
+                      ? 'bg-amber-100 text-amber-800 border border-amber-300 font-medium' 
+                      : 'bg-violet-50 text-violet-700'}`}
+                  >
+                    <Languages className="h-3.5 w-3.5" />
+                    {therapist.languages.join(' / ')}
+                  </Badge>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -318,6 +327,20 @@ export function HeroMatchCard({
             )}
           </div>
         )}
+
+        {/* Language info for non-German sessions - neutral affirmation style */}
+        {(() => {
+          const langs = therapist.languages || [];
+          const offersGerman = langs.some(l => l === 'Deutsch') || langs.length === 0;
+          if (offersGerman) return null;
+          const langList = langs.join(' / ');
+          return (
+            <div className="flex items-center gap-2 text-sm text-slate-600 mb-4">
+              <Languages className="h-4 w-4 text-slate-500" />
+              <span>Sitzungen auf {langList}</span>
+            </div>
+          );
+        })()}
 
         {/* Action buttons */}
         <div className="flex flex-col sm:flex-row gap-3">

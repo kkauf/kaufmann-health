@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, Calendar, MessageCircle, User, ShieldCheck, ChevronRight, Globe, Info } from 'lucide-react';
+import { MapPin, Video, Calendar, MessageCircle, User, ShieldCheck, ChevronRight, Languages, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { TherapistData } from './TherapistDirectory';
 import { ContactModal } from './ContactModal';
@@ -362,17 +362,24 @@ export function TherapistCard({
                 )}
               </div>
             )}
-            {/* Languages - only show if non-German languages available */}
-            {therapist.languages && therapist.languages.length > 0 && !therapist.languages.every(l => l === 'Deutsch') && (
-              <div className="flex flex-wrap items-center gap-2">
-                {therapist.languages.map((lang) => (
-                  <Badge key={lang} variant="secondary" className="gap-1 bg-violet-50 text-violet-700 hover:bg-violet-100">
-                    <Globe className="h-3 w-3" />
-                    {lang}
+            {/* Languages - show if non-German languages available */}
+            {therapist.languages && therapist.languages.length > 0 && !therapist.languages.every(l => l === 'Deutsch') && (() => {
+              const offersGerman = therapist.languages.some(l => l === 'Deutsch');
+              const isEnglishOnly = !offersGerman;
+              return (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge 
+                    variant="secondary" 
+                    className={`gap-1.5 ${isEnglishOnly 
+                      ? 'bg-amber-100 text-amber-800 border border-amber-300 font-medium' 
+                      : 'bg-violet-50 text-violet-700 hover:bg-violet-100'}`}
+                  >
+                    <Languages className="h-3.5 w-3.5" />
+                    {therapist.languages.join(' / ')}
                   </Badge>
-                ))}
-              </div>
-            )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Profile text preview - prefer new structured fields, fallback to legacy */}
