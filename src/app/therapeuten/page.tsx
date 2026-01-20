@@ -15,10 +15,10 @@ export const metadata: Metadata = {
   ...buildLandingMetadata({
     baseUrl,
     path: '/therapeuten',
-    title: 'Therapeuten-Verzeichnis – Kaufmann Health',
-    description: 'Finde den passenden Therapeuten für dich. Filtere nach Standort, Online-Therapie und Modalität.',
+    title: 'Therapeuten für Körperpsychotherapie – Kaufmann Health',
+    description: 'Finde Therapeut:innen für NARM, Somatic Experiencing, Hakomi und Core Energetics. Persönlich geprüfte Profile mit Online- und Vor-Ort-Terminen in Berlin.',
   }),
-  robots: { index: false, follow: false },
+  robots: { index: true, follow: true },
 };
 
 export default async function TherapeutenPage() {

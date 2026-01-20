@@ -1,8 +1,32 @@
 import type { MetadataRoute } from 'next'
 import { getAllModalitySlugs } from '@/features/therapies/modalityConfig'
+import { supabaseServer } from '@/lib/supabase-server'
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.kaufmann-health.de'
+  
+  // Fetch verified therapists with slugs for dynamic entries
+  let therapistEntries: MetadataRoute.Sitemap = [];
+  try {
+    const { data: therapists } = await supabaseServer
+      .from('therapists')
+      .select('slug, updated_at')
+      .eq('status', 'verified')
+      .not('slug', 'is', null);
+    
+    if (therapists && therapists.length > 0) {
+      therapistEntries = therapists
+        .filter((t): t is { slug: string; updated_at: string | null } => Boolean(t.slug))
+        .map((t) => ({
+          url: `${baseUrl}/therapeuten/${t.slug}`,
+          lastModified: t.updated_at ? new Date(t.updated_at) : new Date(),
+          changeFrequency: 'weekly' as const,
+          priority: 0.7,
+        }));
+    }
+  } catch (err) {
+    console.error('[sitemap] Failed to fetch therapists:', err);
+  }
   
   return [
     {
@@ -101,11 +125,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'yearly',
       priority: 0.3,
     },
+    // Therapist directory page
+    {
+      url: `${baseUrl}/therapeuten`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.8,
+    },
+    // Dynamic therapist profile pages
+    ...therapistEntries,
     // Intentionally excluded from sitemap:
     // - /admin/* (protected area)
     // - /confirm (noindex confirmation state page)
     // - /match/* and /auswahl-bestaetigt (transactional flow pages)
     // - /therapists/* (onboarding flows)
-    // - /therapeuten (noindex directory page)
   ]
 }

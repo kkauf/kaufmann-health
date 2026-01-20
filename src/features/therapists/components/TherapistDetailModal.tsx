@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
-import { MapPin, Video, User, Calendar, MessageCircle, Languages, ShieldCheck, CalendarCheck2, X, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, Euro } from 'lucide-react';
+import { MapPin, Video, User, Calendar, MessageCircle, Languages, ShieldCheck, CalendarCheck2, X, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, Euro, Link2, ExternalLink } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { TherapistData } from './TherapistDirectory';
 import { getAttribution } from '@/lib/attribution';
@@ -541,9 +541,37 @@ export function TherapistDetailModal({
           </Avatar>
 
           <div className="min-w-0 flex-1 text-center sm:text-left">
-            <h2 className="break-words text-2xl font-bold text-gray-900">
-              {therapist.first_name} {therapist.last_name}
-            </h2>
+            <div className="flex items-center justify-center gap-2 sm:justify-start">
+              <h2 className="break-words text-2xl font-bold text-gray-900">
+                {therapist.first_name} {therapist.last_name}
+              </h2>
+              {/* Profile actions: copy link + open full page */}
+              {therapist.slug && (
+                <div className="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                    title="Profil-Link kopieren"
+                    onClick={() => {
+                      const url = `${window.location.origin}/therapeuten/${therapist.slug}`;
+                      navigator.clipboard.writeText(url);
+                    }}
+                  >
+                    <Link2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                    title="Profil öffnen"
+                    onClick={() => {
+                      window.open(`/therapeuten/${therapist.slug}`, '_blank');
+                    }}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Trust + Availability badges */}
             <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
