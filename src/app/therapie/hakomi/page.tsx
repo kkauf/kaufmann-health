@@ -327,8 +327,6 @@ export default async function HakomiPage() {
             align="center"
             variant="tinted"
             showAvailabilityNote={false}
-            withEntryOptions={true}
-            targetBasePath="/fragebogen"
           />
         </div>
       </main>

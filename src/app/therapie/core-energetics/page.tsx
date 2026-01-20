@@ -349,8 +349,6 @@ export default async function CoreEnergeticsPage() {
             align="center"
             variant="tinted"
             showAvailabilityNote={false}
-            withEntryOptions={true}
-            targetBasePath="/fragebogen"
           />
         </div>
       </main>

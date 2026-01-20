@@ -277,7 +277,13 @@ export async function GET(req: Request) {
     }
 
     // Success → set client session cookie (EARTH-204)
-    // Build redirect suffix with variant preserved for correct confirmation screen
+    // For self-service variant, redirect directly to matches page (skip intermediate screen)
+    const isSelfService = person.campaign_variant !== 'concierge';
+    const matchesUrl = typeof newMetadata['last_confirm_redirect_path'] === 'string' 
+      ? (newMetadata['last_confirm_redirect_path'] as string) 
+      : null;
+    const directToMatches = isSelfService && matchesUrl && matchesUrl.startsWith('/matches/');
+
     const variantParam = person.campaign_variant ? `&variant=${encodeURIComponent(person.campaign_variant)}` : '';
     try {
       const token = await createClientSessionToken({
@@ -287,6 +293,14 @@ export async function GET(req: Request) {
         name: person.name || undefined,
       });
       const cookie = createClientSessionCookie(token);
+
+      // Self-service: go straight to matches
+      if (directToMatches) {
+        const resp = NextResponse.redirect(`${origin}${matchesUrl}`, 302);
+        resp.headers.set('Set-Cookie', cookie);
+        return resp;
+      }
+
       if (effectiveRedirect) {
         const hasQuery = effectiveRedirect.includes('?');
         const separator = hasQuery ? '&' : '?';
@@ -299,6 +313,11 @@ export async function GET(req: Request) {
       resp.headers.set('Set-Cookie', cookie);
       return resp;
     } catch {
+      // Self-service: go straight to matches (fallback without cookie)
+      if (directToMatches) {
+        return NextResponse.redirect(`${origin}${matchesUrl}`, 302);
+      }
+
       if (effectiveRedirect) {
         const hasQuery = effectiveRedirect.includes('?');
         const separator = hasQuery ? '&' : '?';

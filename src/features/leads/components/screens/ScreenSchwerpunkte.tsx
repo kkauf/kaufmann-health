@@ -13,7 +13,7 @@ export type ScreenSchwerpunkteValues = {
 interface ScreenSchwerpunkteProps {
   values: ScreenSchwerpunkteValues;
   onChange: (values: Partial<ScreenSchwerpunkteValues>) => void;
-  onBack: () => void;
+  onBack?: () => void;  // Optional - may be first step
   onNext: () => void;
   disabled?: boolean;
   therapistCount?: number | null;
@@ -60,17 +60,19 @@ export default function ScreenSchwerpunkte({
 
       {/* Navigation */}
       <div className="flex gap-3 pt-4">
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          onClick={onBack}
-          disabled={disabled}
-          className="h-12 px-4 font-medium"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Zurück
-        </Button>
+        {onBack && (
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={onBack}
+            disabled={disabled}
+            className="h-12 px-4 font-medium"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Zurück
+          </Button>
+        )}
         <Button
           type="button"
           size="lg"
