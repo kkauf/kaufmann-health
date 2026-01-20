@@ -145,6 +145,7 @@ export function mapTherapistRow(
     id: row.id,
     first_name: String(row.first_name || ''),
     last_name: String(row.last_name || ''),
+    slug: row.slug || undefined,
     city: String(row.city || ''),
     modalities: Array.isArray(row.modalities) ? (row.modalities as string[]) : [],
     schwerpunkte: Array.isArray(row.schwerpunkte) ? (row.schwerpunkte as string[]) : [],

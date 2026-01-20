@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, User, MessageCircle, Globe, ShieldCheck, CalendarCheck2, Euro } from 'lucide-react';
+import { MapPin, Video, User, MessageCircle, Globe, ShieldCheck, CalendarCheck2, Euro, ArrowRight } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { TherapistData } from './TherapistDirectory';
 import { getModalityInfo } from '@/lib/modalities';
@@ -378,6 +379,13 @@ export function TherapistProfile({
                   <p className="text-sm leading-relaxed text-gray-600">
                     {modalityInfo.description}
                   </p>
+                  <Link
+                    href={`/therapie/${modalityInfo.id}`}
+                    className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:text-emerald-800 transition-colors"
+                  >
+                    Mehr über {modalityInfo.label} erfahren
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
                 </div>
               );
             })}
