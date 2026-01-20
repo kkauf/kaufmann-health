@@ -116,6 +116,8 @@ export async function GET() {
     });
 
     // Filter: only show therapists accepting new patients (DB flag)
+    // Profile completeness is enforced by the portal UI - therapists can only enable
+    // accepting_new after completing their profile
     const eligibleRows = scoredRows.filter(({ row }) => {
       return row.accepting_new !== false;
     });

@@ -36,6 +36,14 @@ Stores profile and qualification data for therapists. References `people(id)`.
 - `created_at timestamptz`
 - `updated_at timestamptz`
 
+### Directory Visibility Rules
+A therapist appears in the public directory (`/api/public/therapists`) only if:
+1. `status = 'verified'`
+2. `accepting_new = true`
+3. Not in `HIDDEN_THERAPIST_IDS` env or `metadata.hidden = true`
+
+**Profile completeness enforcement:** The `accepting_new` toggle in the therapist portal is only enabled when the profile is complete (photo, 3 profile text fields with min 50 chars each, schwerpunkte, and typical_rate). New therapists default to `accepting_new = false`, so they must complete their profile before being visible.
+
 Notes:
 - `secure_uuid` on `matches` is unique and used for magic links. No PII in emails.
 - Activation rules: patient becomes `new` after confirmation if `form_completed_at` exists; otherwise stays `email_confirmed`.

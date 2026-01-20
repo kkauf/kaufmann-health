@@ -852,20 +852,39 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
           <Card className="border border-gray-200/60 shadow-md bg-white/80 backdrop-blur-sm">
             <div className="p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Verfügbarkeit</h2>
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={acceptingNew}
-                  onChange={(e) => setAcceptingNew(e.target.checked)}
-                  className="mt-0.5 h-5 w-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                />
-                <div>
-                  <span className="text-sm font-medium text-gray-900">Neue Klient:innen annehmen</span>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Wenn deaktiviert, wirst du bei neuen Anfragen nicht angezeigt
-                  </p>
+              {profileCompleteness.isComplete ? (
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={acceptingNew}
+                    onChange={(e) => setAcceptingNew(e.target.checked)}
+                    className="mt-0.5 h-5 w-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-gray-900">Neue Klient:innen annehmen</span>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Wenn deaktiviert, wirst du bei neuen Anfragen nicht angezeigt
+                    </p>
+                  </div>
+                </label>
+              ) : (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <Lock className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-amber-900">
+                        Profil noch nicht vollständig
+                      </p>
+                      <p className="text-xs text-amber-700 mt-1">
+                        Vervollständige dein Profil, um für neue Klient:innen sichtbar zu werden.
+                        Es fehlt noch: {profileCompleteness.missing.join(', ')}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </label>
+              )}
             </div>
           </Card>
 
