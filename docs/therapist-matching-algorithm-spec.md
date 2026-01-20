@@ -1,7 +1,7 @@
 # Therapist Matching & Ranking Algorithm
 
 > **Status:** Approved  
-> **Last Updated:** 2026-01-11  
+> **Last Updated:** 2026-01-20  
 > **Owner:** Konstantin Kaufmann  
 > **Location:** `/docs/algorithms/matching.md`
 
@@ -91,43 +91,84 @@ Ranking determines sort order in two contexts:
 
 ### Scoring Components
 
-#### Platform Score (0-100 points)
+#### Platform Score (0-65 points)
 
 Measures therapist investment in the platform. Used for directory ranking and as tiebreaker in matches.
 
 | Points | Criterion | Data Source |
 |--------|-----------|-------------|
-| +30 | Full Cal.com journey (intake + session booking enabled) | `metadata.cal_username` + both event types configured |
-| +25 | Has 3+ intake slots in next 7 days | `therapist_slots` query |
-| +15 | Has 1-2 intake slots in next 7 days | `therapist_slots` query |
-| +10 | Has any intake slots in next 14 days (fallback) | `therapist_slots` query |
+| **Slot Availability (0-35 points)** | | |
+| +20 | Has 3+ intro slots in next 7 days | `cal_slots_cache.slots_count` |
+| +12 | Has 1-2 intro slots in next 7 days | `cal_slots_cache.slots_count` |
+| +8 | Has any intro slots in next 14 days (fallback) | `cal_slots_cache.slots_count` |
+| +10 | Has full session slots available | `cal_slots_cache.full_slots_count > 0` |
+| +5 | Has BOTH intro AND full session slots | Combo bonus |
+| **Account Tenure (0-10 points)** | | |
+| +10 | Account >90 days old | `therapists.created_at` |
+| +5 | Account >30 days old | `therapists.created_at` |
+| **Profile Completeness (0-15 points)** | | |
 | +15 | Profile complete (photo + approach_text + who_comes_to_me) | `therapists` columns |
 | +5 | Basic profile (photo + location) | `therapists` columns |
+| **Daily Shuffle (±5 points)** | | |
+| ±5 | Deterministic daily rotation | Hash of therapist_id + date |
 
-**Maximum Platform Score:** 100 points (full Cal.com + 3+ slots + complete profile)
+**Maximum Platform Score:** 65 points (all slots + established tenure + complete profile + max shuffle)
 
 ```typescript
-function calculatePlatformScore(therapist: Therapist): number {
+type PlatformScoreOptions = {
+  intakeSlots7Days: number;
+  intakeSlots14Days: number;
+  fullSlotsCount?: number;
+  createdAt?: string | Date | null;
+  dailyShuffleSeed?: string; // therapist_id + date for deterministic daily shuffle
+};
+
+function calculatePlatformScore(
+  therapist: Therapist,
+  intakeSlots7Days: number,
+  intakeSlots14Days: number,
+  options?: Partial<PlatformScoreOptions>
+): number {
   let score = 0;
+  const fullSlotsCount = options?.fullSlotsCount ?? 0;
+  const createdAt = options?.createdAt;
+  const dailyShuffleSeed = options?.dailyShuffleSeed;
   
-  // Cal.com integration (30 points)
-  if (hasFullCalComJourney(therapist)) {
-    score += 30;
-  }
+  // === Slot Availability (0-35 points) ===
   
-  // Intake slot availability (mutually exclusive tiers)
-  const intakeSlots7Days = countIntakeSlotsInDays(therapist, 7);
-  const intakeSlots14Days = countIntakeSlotsInDays(therapist, 14);
-  
+  // Intro slot availability (mutually exclusive tiers)
   if (intakeSlots7Days >= 3) {
-    score += 25;
+    score += 20;
   } else if (intakeSlots7Days >= 1) {
-    score += 15;
+    score += 12;
   } else if (intakeSlots14Days >= 1) {
-    score += 10;
+    score += 8;
   }
   
-  // Profile completeness (can stack)
+  // Full session slot bonus
+  if (fullSlotsCount > 0) {
+    score += 10; // Direct booking capability
+  }
+  
+  // Combo bonus: has BOTH intro AND full session slots
+  const hasIntroSlots = intakeSlots7Days >= 1 || intakeSlots14Days >= 1;
+  if (hasIntroSlots && fullSlotsCount > 0) {
+    score += 5; // Full booking flow available
+  }
+  
+  // === Account Tenure (0-10 points) ===
+  if (createdAt) {
+    const createdDate = typeof createdAt === 'string' ? new Date(createdAt) : createdAt;
+    const daysSinceCreation = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysSinceCreation > 90) {
+      score += 10; // Established therapist
+    } else if (daysSinceCreation > 30) {
+      score += 5;  // Some tenure
+    }
+  }
+  
+  // === Profile Completeness (0-15 points) ===
   const hasPhoto = !!therapist.photo_url;
   const hasApproach = !!therapist.approach_text;
   const hasWhoComes = !!therapist.who_comes_to_me;
@@ -139,18 +180,22 @@ function calculatePlatformScore(therapist: Therapist): number {
     score += 5;  // Basic profile
   }
   
+  // === Daily Shuffle (±5 points) ===
+  // Deterministic shuffle ensures fair rotation while stable within a day
+  if (dailyShuffleSeed) {
+    score += getDailyShuffleOffset(dailyShuffleSeed); // -5 to +5
+  }
+  
   return score;
 }
 
-function hasFullCalComJourney(therapist: Therapist): boolean {
-  // Must have Cal.com username AND both event types configured
-  if (!therapist.metadata?.cal_username) return false;
-  
-  const eventTypes = therapist.metadata?.cal_event_types || [];
-  const hasIntake = eventTypes.includes('intake') || eventTypes.includes('kennenlernen');
-  const hasSession = eventTypes.includes('session') || eventTypes.includes('sitzung');
-  
-  return hasIntake && hasSession;
+function getDailyShuffleOffset(seed: string): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return (Math.abs(hash) % 11) - 5; // -5 to +5
 }
 ```
 
@@ -411,21 +456,29 @@ Test E6: Format filter - both formats accepted
 ### Platform Score Tests
 
 ```
-Test P1: Full Cal.com + 3+ slots + complete profile
-  Input: cal_username set, both event types, 4 intake slots in 7 days, photo + approach + who_comes
-  Expected: Platform Score = 30 + 25 + 15 = 70
+Test P1: 3+ intro slots + complete profile
+  Input: 4 intro slots in 7 days, photo + approach + who_comes
+  Expected: Platform Score = 20 + 15 = 35
 
-Test P2: Cal.com but no intake slots
-  Input: cal_username set, both event types, 0 intake slots
-  Expected: Platform Score = 30 + 0 + 15 = 45
+Test P2: Full session slots + intro slots + complete profile
+  Input: 4 intro slots, 2 full slots, complete profile
+  Expected: Platform Score = 20 (intro) + 10 (full) + 5 (combo) + 15 (profile) = 50
 
-Test P3: No Cal.com, basic profile only
-  Input: no cal_username, photo + location only
-  Expected: Platform Score = 0 + 0 + 5 = 5
+Test P3: No slots, basic profile only
+  Input: 0 slots, photo + location only
+  Expected: Platform Score = 0 + 5 = 5
 
-Test P4: Intake slots in 14-day fallback
+Test P4: Intro slots in 14-day fallback
   Input: 0 slots in 7 days, 2 slots in 14 days
-  Expected: Gets +10 points (fallback tier)
+  Expected: Gets +8 points (fallback tier)
+
+Test P5: Account tenure bonus
+  Input: Account created 100 days ago, complete profile
+  Expected: +10 tenure bonus
+
+Test P6: New therapist (no tenure bonus)
+  Input: Account created 15 days ago
+  Expected: 0 tenure points (prevents new therapists from immediately topping list)
 ```
 
 ### Match Score Tests
@@ -527,6 +580,7 @@ Test R3: Platform Score as tiebreaker
 |------|--------|---------|
 | 2026-01-06 | KK + Claude | Initial specification |
 | 2026-01-11 | KK + Cascade | Removed time_slots (broken for Cal.com), added language filtering |
+| 2026-01-20 | KK + Cascade | Added full session slots, account tenure, daily shuffle to Platform Score |
 
 ---
 
