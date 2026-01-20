@@ -959,6 +959,7 @@ export default function SignupWizard() {
             }}
             initialized={initialized}
             isConcierge={isConcierge}
+            therapistCount={therapistCount}
             onChange={saveLocal}
             onBack={() => safeGoToStep(5)}
             onNext={async () => {
@@ -1735,7 +1736,7 @@ export default function SignupWizard() {
           Du bist offline. Wir speichern deine Eingaben lokal und synchronisieren sie automatisch, sobald du wieder online bist.
         </div>
       )}
-      <ProgressBar value={progressValue} />
+      <ProgressBar value={progressValue} showLabel={step >= 5} />
       {renderScreen()}
       {/* Footer status with restart option */}
       <div className="flex items-center justify-between pt-2">

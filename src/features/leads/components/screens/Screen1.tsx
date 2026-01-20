@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Clock, ShieldCheck, Check, Lock } from 'lucide-react';
+import { Clock, ShieldCheck, Check, Mail, MousePointer, Sparkles } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,7 @@ export default function Screen1({
   disabled,
   initialized = false,
   isConcierge = false,
+  therapistCount,
 }: {
   values: Screen1Values;
   onChange: (patch: Partial<Screen1Values>) => void;
@@ -48,6 +49,7 @@ export default function Screen1({
   disabled?: boolean;
   initialized?: boolean;
   isConcierge?: boolean;
+  therapistCount?: number | null;
 }) {
   const mode = getVerificationModeClient();
   const [emailError, setEmailError] = React.useState<string | null>(null);
@@ -87,6 +89,11 @@ export default function Screen1({
 
   const contactMethod = values.contact_method || 'email';
   const canSwitchMethod = mode === 'choice';
+
+  // Format therapist count for display
+  const countDisplay = therapistCount
+    ? (therapistCount >= 50 ? '50+' : String(therapistCount))
+    : null;
 
   const _handleSwitch = React.useCallback(() => {
     const newMethod: ContactMethod = contactMethod === 'email' ? 'phone' : 'email';
@@ -128,13 +135,21 @@ export default function Screen1({
       className="space-y-6"
       onSubmit={handleSubmit}
     >
+      {/* Match count exciter - shows value before asking for contact */}
+      {countDisplay && (
+        <div className="flex items-center justify-center gap-2 text-base font-medium text-emerald-800 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl py-3 px-4 border border-emerald-200 shadow-sm">
+          <Sparkles className="h-5 w-5 text-emerald-600" />
+          <span><strong>{countDisplay}</strong> passende Therapeut:innen gefunden</span>
+        </div>
+      )}
+
       <div className="space-y-2">
         <h2 className="text-xl font-semibold">Fast geschafft!</h2>
-        <p>Gleich erhältst du passende Therapeut:innen-Vorschläge basierend auf deinen Angaben.</p>
-        <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm font-medium text-gray-700">
-          <span className="inline-flex items-center gap-2"><Clock className="h-4 w-4 text-emerald-600" /><span>Sofortige Ergebnisse</span></span>
-          <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /><span>Du entscheidest</span></span>
-          <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-indigo-600" /><span>Daten bleiben privat</span></span>
+        <p className="text-gray-600">Wohin dürfen wir deine persönlichen Matches schicken?</p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-600">
+          <span className="inline-flex items-center gap-1.5"><Clock className="h-4 w-4 text-emerald-600" /><span>100% kostenlos</span></span>
+          <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-emerald-600" /><span>Du entscheidest</span></span>
+          <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-emerald-600" /><span>Daten bleiben privat</span></span>
         </div>
       </div>
       <div className="space-y-2">
@@ -158,11 +173,12 @@ export default function Screen1({
         )}
       </div>
 
-      <p className="text-sm text-muted-foreground">
-          {isConcierge
-            ? 'Innerhalb von 24h erhältst du deine persönliche Therapeuten-Auswahl per E-Mail.'
-            : 'Gleich siehst du, wer zu dir passt – und kannst direkt schreiben.'}
+      {/* Concierge users need to know about the 24h wait time */}
+      {isConcierge && (
+        <p className="text-sm text-muted-foreground">
+          Innerhalb von 24h erhältst du deine persönliche Therapeuten-Auswahl per E-Mail.
         </p>
+      )}
 
       {/* Contact field - email or phone based on mode */}
       {canSwitchMethod && mounted && (
@@ -212,13 +228,8 @@ export default function Screen1({
               aria-invalid={!!emailError}
               aria-describedby={emailError ? 'email-error' : undefined}
             />
-            {emailError ? (
+            {emailError && (
               <p id="email-error" className="text-sm text-red-600">{emailError}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                <Lock className="h-3.5 w-3.5 text-emerald-600" />
-                Wir schicken dir einen Bestätigungslink – damit nur du deine Vorschläge siehst.
-              </p>
             )}
           </>
         ) : (
@@ -235,7 +246,29 @@ export default function Screen1({
         )}
       </div>
 
-
+      {/* Explicit verification flow - sets clear expectations */}
+      <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-3">
+        <p className="text-xs font-medium text-gray-500 mb-2">So geht&apos;s weiter:</p>
+        <div className="flex items-center gap-2 text-sm text-gray-700">
+          <span className="flex items-center gap-1.5">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-xs font-medium text-emerald-700">1</span>
+            <Mail className="h-3.5 w-3.5 text-gray-400" />
+            <span>{contactMethod === 'email' ? 'E-Mail' : 'SMS'} erhalten</span>
+          </span>
+          <span className="text-gray-300">→</span>
+          <span className="flex items-center gap-1.5">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-xs font-medium text-emerald-700">2</span>
+            <MousePointer className="h-3.5 w-3.5 text-gray-400" />
+            <span>Link klicken</span>
+          </span>
+          <span className="text-gray-300">→</span>
+          <span className="flex items-center gap-1.5">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-xs font-medium text-emerald-700">3</span>
+            <Sparkles className="h-3.5 w-3.5 text-gray-400" />
+            <span className="font-medium">Matches sehen</span>
+          </span>
+        </div>
+      </div>
 
       <ConsentSection actor="patient" className="mt-1" />
 
@@ -255,11 +288,11 @@ export default function Screen1({
         <Button
           type="submit"
           data-testid="wizard-next"
-          className="h-12 w-full md:w-auto text-base"
+          className="h-12 w-full md:w-auto text-base font-semibold"
           disabled={disabled}
           aria-disabled={disabled}
         >
-          Meine Therapeut:in anzeigen →
+          Kostenlos Matches erhalten →
         </Button>
       </div>
     </form>
