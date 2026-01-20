@@ -54,13 +54,13 @@ questionnaire_intros AS (
     AND LOWER(cb.status) != 'cancelled'
     AND (cb.is_test = false OR cb.is_test IS NULL)
     AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-    AND created_at >= {{start_date}} AND created_at <= NOW()
+    AND cb.created_at >= {{start_date}} AND cb.created_at <= NOW()
 ),
 directory_contacts AS (
   SELECT COUNT(DISTINCT m.patient_id) AS cnt
   FROM matches m
   WHERE m.metadata->>'patient_initiated' = 'true'
-    AND created_at >= {{start_date}} AND created_at <= NOW()
+    AND m.created_at >= {{start_date}} AND m.created_at <= NOW()
 ),
 directory_intros AS (
   SELECT COUNT(DISTINCT cb.patient_id) AS cnt
@@ -71,7 +71,7 @@ directory_intros AS (
     AND LOWER(cb.status) != 'cancelled'
     AND (cb.is_test = false OR cb.is_test IS NULL)
     AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
-    AND created_at >= {{start_date}} AND created_at <= NOW()
+    AND cb.created_at >= {{start_date}} AND cb.created_at <= NOW()
 )
 SELECT 'Questionnaire' AS path, questionnaire_leads.cnt AS entries, 
        questionnaire_intros.cnt AS intros,

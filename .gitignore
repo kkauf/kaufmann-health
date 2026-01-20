@@ -61,3 +61,6 @@ next-env.d.ts
 signature.html
 # Playwright auth state
 tests/e2e/.auth/
+
+# MCP server config
+.mcp.json
