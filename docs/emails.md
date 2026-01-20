@@ -157,7 +157,14 @@ Cal.com-enabled therapists use a different email flow triggered by the Cal.com w
   - Sent ~2 hours after an intro session ends.
   - Purpose: Encourage booking a full session if the intro went well.
   - Includes: next available slot suggestion, link to book full session, or browse other therapists.
-  - Cron: `GET /api/admin/cal/intro-followup` (runs hourly)
+  - Triggered via: `MEETING_ENDED` webhook in `/api/public/cal/webhook`
+
+- `calSessionFollowup` → `src/lib/email/templates/calSessionFollowup.ts`
+  - Sent 3-5 days after a full session ends.
+  - Purpose: Encourage booking the next session while momentum is high.
+  - **Only sent if therapist has available slots** (checked via `cal_slots_cache`).
+  - Includes: next available slot suggestion, direct booking link.
+  - Cron: `GET /api/admin/cal/booking-followups?stage=session_followup` (runs every 30 minutes)
 
 **Trigger points:**
 
@@ -165,16 +172,49 @@ Cal.com-enabled therapists use a different email flow triggered by the Cal.com w
 |-------|---------|-------------|
 | Patient books intro | `POST /api/public/cal/webhook` (BOOKING_CREATED) | Client confirmation, Therapist notification |
 | Patient books session | `POST /api/public/cal/webhook` (BOOKING_CREATED) | Client confirmation, Therapist notification |
-| 24h before booking | Cron `/api/admin/cal/booking-reminders` | Client reminder |
-| 2h after intro ends | Cron `/api/admin/cal/intro-followup` | Client followup (upsell) |
+| 24h before booking | Cron `/api/admin/cal/booking-followups?stage=reminder_24h` | Client reminder |
+| 1h before booking | Cron `/api/admin/cal/booking-followups?stage=reminder_1h` | Client reminder (SMS if phone) |
+| Intro session ends | `POST /api/public/cal/webhook` (MEETING_ENDED) | Client followup (upsell) |
+| 3-5 days after full session | Cron `/api/admin/cal/booking-followups?stage=session_followup` | Client followup (if slots available) |
 
 **Idempotency columns** (in `cal_bookings` table):
 - `client_confirmation_sent_at` - Prevents duplicate client confirmations
 - `therapist_notification_sent_at` - Prevents duplicate therapist notifications  
-- `reminder_sent_at` - Prevents duplicate reminders
-- `followup_sent_at` - Prevents duplicate followups
+- `reminder_24h_sent_at` - Prevents duplicate 24h reminders
+- `reminder_1h_sent_at` - Prevents duplicate 1h reminders
+- `followup_sent_at` - Prevents duplicate intro followups
+- `session_followup_sent_at` - Prevents duplicate session followups
 
 **Test mode:** When `kh_test=true` is passed in Cal.com booking metadata (via URL param), emails route to `LEADS_NOTIFY_EMAIL` sink instead of real recipients.
+
+### Cancellation Recovery Flow
+
+When a booking is cancelled, we have a recovery flow to help the patient find another therapist:
+
+**Templates:**
+
+- `cancellationRecovery` → `src/lib/email/templates/cancellationRecovery.ts`
+  - Sent ~2h after a booking is cancelled.
+  - Shows empathy ("Das ist völlig in Ordnung"), highlights other matches, and offers free intro call tip.
+  - Subject: "War [Therapeut] nicht der/die Richtige? Hier sind deine anderen Empfehlungen"
+  - Cron: `GET /api/admin/cal/cancellation-recovery` (runs hourly)
+
+**Trigger points:**
+
+| Event | Trigger | Emails Sent |
+|-------|---------|-------------|
+| Booking cancelled | Cron `/api/admin/cal/cancellation-recovery` (2-4h window) | Recovery email with other matches |
+| 10 days post-verification (with cancelled booking) | Cron `/api/admin/leads/feedback-request` | Feedback request |
+
+**Match page behavior:**
+- Therapists with cancelled bookings are automatically hidden from the patient's `/matches/[uuid]` page.
+- This ensures the patient sees their other options without the cancelled therapist.
+
+**Idempotency & Skip Logic (patient-level):**
+- If patient has ANY successful (non-cancelled) booking → skip (they recovered on their own)
+- Recovery email tracked via `events` table with `kind: 'cancellation_recovery'` and `patient_id`
+- Checked at patient level, not booking level, to prevent duplicates
+- Dedupes by patient_id within each cron run
 
 ### Email Cadence (Post-Verification Nurture)
 

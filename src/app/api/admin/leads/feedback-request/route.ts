@@ -187,21 +187,32 @@ export async function GET(req: Request) {
         continue;
       }
 
-      // Check if patient has booked (skip if they have)
+      // Check if patient has booked successfully (skip if they have a non-cancelled booking)
+      // Patients with only cancelled bookings are still eligible for feedback
       const { data: bookings } = await supabaseServer
         .from('matches')
         .select('id, status, metadata')
         .eq('patient_id', patient.id)
         .limit(100);
 
-      const hasBooking = (bookings || []).some((b: { status?: string | null; metadata?: Record<string, unknown> | null }) => {
+      const hasSuccessfulBooking = (bookings || []).some((b: { status?: string | null; metadata?: Record<string, unknown> | null }) => {
         const status = (b.status || '').toLowerCase();
         const md = b.metadata;
         const contacted = md && typeof md === 'object' && (md as { patient_initiated?: boolean }).patient_initiated === true;
         return status === 'patient_selected' || status === 'booked' || contacted;
       });
 
-      if (hasBooking) {
+      // Also check cal_bookings for completed sessions
+      const { data: calBookings } = await supabaseServer
+        .from('cal_bookings')
+        .select('id, status')
+        .eq('patient_id', patient.id)
+        .neq('status', 'CANCELLED')
+        .limit(10);
+
+      const hasCompletedCalBooking = (calBookings || []).length > 0;
+
+      if (hasSuccessfulBooking || hasCompletedCalBooking) {
         skippedHasBooking++;
         continue;
       }

@@ -7,15 +7,18 @@
  *   GET /api/admin/cal/booking-followups              (processes ALL stages)
  *   GET /api/admin/cal/booking-followups?stage=reminder_24h
  *   GET /api/admin/cal/booking-followups?stage=reminder_1h
+ *   GET /api/admin/cal/booking-followups?stage=session_followup
  *
  * Stages:
  * - reminder_24h: Send reminder 24h before appointment
  * - reminder_1h: Send reminder 1h before appointment
+ * - session_followup: Send "book next session" email 3-5 days after completed full session
+ *                     (only if therapist has available slots)
  *
  * NOTE: post_intro follow-up emails are now sent via MEETING_ENDED webhook
  * in /api/public/cal/webhook for immediate delivery after the call ends.
  *
- * Idempotency: Uses reminder_24h_sent_at, reminder_1h_sent_at columns
+ * Idempotency: Uses reminder_24h_sent_at, reminder_1h_sent_at, session_followup_sent_at columns
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -24,13 +27,16 @@ import { track, logError } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { sendTransactionalSms } from '@/lib/sms/client';
 import { renderCalBookingReminder } from '@/lib/email/templates/calBookingReminder';
+import { renderCalSessionFollowup } from '@/lib/email/templates/calSessionFollowup';
+import { getCachedCalSlots } from '@/lib/cal/slots-cache';
+import { buildCalBookingUrl } from '@/lib/cal/booking-url';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const CRON_SECRET = process.env.CRON_SECRET || '';
 
-type Stage = 'reminder_24h' | 'reminder_1h';
+type Stage = 'reminder_24h' | 'reminder_1h' | 'session_followup';
 
 interface CalBooking {
   id: string;
@@ -45,6 +51,8 @@ interface CalBooking {
   followup_sent_at: string | null;
   reminder_24h_sent_at: string | null;
   reminder_1h_sent_at: string | null;
+  session_followup_sent_at: string | null;
+  status: string | null;
   metadata: Record<string, unknown> | null;
 }
 
@@ -63,6 +71,7 @@ type StageCounters = {
   skipped_already_sent: number;
   skipped_no_patient: number;
   skipped_no_contact: number;
+  skipped_no_availability: number;
   skipped_test: number;
   errors: number;
 };
@@ -79,6 +88,7 @@ async function processStage(
     skipped_already_sent: 0,
     skipped_no_patient: 0,
     skipped_no_contact: 0,
+    skipped_no_availability: 0,
     skipped_test: 0,
     errors: 0,
   };
@@ -112,6 +122,23 @@ async function processStage(
         .is('reminder_1h_sent_at', null)
         .not('patient_id', 'is', null)
         .order('start_time', { ascending: true })
+        .limit(limit);
+      if (error) throw error;
+      bookings = (data || []) as CalBooking[];
+    } else if (stage === 'session_followup') {
+      // 3-5 days after session end (72h to 120h window)
+      const windowStart = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString();
+      const windowEnd = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabaseServer
+        .from('cal_bookings')
+        .select('*')
+        .gte('end_time', windowStart)
+        .lte('end_time', windowEnd)
+        .eq('booking_kind', 'full_session')
+        .is('session_followup_sent_at', null)
+        .not('patient_id', 'is', null)
+        .not('therapist_id', 'is', null)
+        .order('end_time', { ascending: true })
         .limit(limit);
       if (error) throw error;
       bookings = (data || []) as CalBooking[];
@@ -155,7 +182,56 @@ async function processStage(
         : 'Ihr:e Therapeut:in';
 
       try {
-        if (stage === 'reminder_24h' || stage === 'reminder_1h') {
+        if (stage === 'session_followup') {
+          // Check if therapist has available slots before sending
+          const cachedSlots = await getCachedCalSlots([booking.therapist_id!]);
+          const cache = cachedSlots.get(booking.therapist_id!);
+          const hasAvailability = cache && (cache.full_slots_count || 0) > 0;
+
+          if (!hasAvailability) {
+            counters.skipped_no_availability++;
+            continue;
+          }
+
+          // Build booking URL
+          const fullSessionUrl = therapist?.cal_username
+            ? buildCalBookingUrl({
+                calUsername: therapist.cal_username,
+                eventType: 'full_session',
+                metadata: {
+                  kh_therapist_id: booking.therapist_id!,
+                  kh_patient_id: booking.patient_id!,
+                  kh_match_id: booking.match_id || undefined,
+                  kh_source: 'session_followup_email',
+                },
+                prefillName: patient.first_name || undefined,
+                prefillEmail: patient.email || undefined,
+              })
+            : null;
+
+          if (hasEmail && fullSessionUrl) {
+            const content = renderCalSessionFollowup({
+              patientName: patient.first_name || null,
+              therapistName,
+              fullSessionUrl,
+              nextSlotDateIso: cache?.next_full_date_iso || null,
+              nextSlotTimeLabel: cache?.next_full_time_label || null,
+              matchUuid: booking.match_id,
+            });
+            const sent = await sendEmail({
+              to: patient.email!,
+              subject: content.subject,
+              html: content.html,
+              context: { booking_id: booking.id, stage },
+            });
+            if (sent.sent) counters.sent_email++;
+          }
+
+          await supabaseServer
+            .from('cal_bookings')
+            .update({ session_followup_sent_at: now.toISOString() })
+            .eq('id', booking.id);
+        } else if (stage === 'reminder_24h' || stage === 'reminder_1h') {
           const startDate = new Date(booking.start_time);
           const dateStr = startDate.toLocaleDateString('de-DE', { 
             weekday: 'long', 
@@ -227,9 +303,9 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '50', 10), 200);
 
   // If no stage specified, process ALL stages sequentially
-  const stagesToProcess: Stage[] = stageParam && ['reminder_24h', 'reminder_1h'].includes(stageParam)
+  const stagesToProcess: Stage[] = stageParam && ['reminder_24h', 'reminder_1h', 'session_followup'].includes(stageParam)
     ? [stageParam]
-    : ['reminder_24h', 'reminder_1h'];
+    : ['reminder_24h', 'reminder_1h', 'session_followup'];
 
   try {
     const results: Array<{ stage: Stage; counters: StageCounters }> = [];
@@ -248,10 +324,11 @@ export async function GET(req: NextRequest) {
         skipped_already_sent: acc.skipped_already_sent + r.counters.skipped_already_sent,
         skipped_no_patient: acc.skipped_no_patient + r.counters.skipped_no_patient,
         skipped_no_contact: acc.skipped_no_contact + r.counters.skipped_no_contact,
+        skipped_no_availability: acc.skipped_no_availability + r.counters.skipped_no_availability,
         skipped_test: acc.skipped_test + r.counters.skipped_test,
         errors: acc.errors + r.counters.errors,
       }),
-      { processed: 0, sent_email: 0, sent_sms: 0, skipped_already_sent: 0, skipped_no_patient: 0, skipped_no_contact: 0, skipped_test: 0, errors: 0 }
+      { processed: 0, sent_email: 0, sent_sms: 0, skipped_already_sent: 0, skipped_no_patient: 0, skipped_no_contact: 0, skipped_no_availability: 0, skipped_test: 0, errors: 0 } as StageCounters
     );
 
     void track({
