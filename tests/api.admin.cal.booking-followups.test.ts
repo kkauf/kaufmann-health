@@ -153,7 +153,7 @@ describe('Cal.com Booking Followups Cron', () => {
     
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.stages).toEqual(['reminder_24h', 'reminder_1h']);
+    expect(json.stages).toEqual(['reminder_24h', 'reminder_1h', 'session_followup']);
   });
 
   it('processes only specified stage', async () => {

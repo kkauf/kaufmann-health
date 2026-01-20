@@ -273,7 +273,7 @@ export async function GET(req: Request) {
     }
     const therapistIds = chosen.map(m => m.therapist_id);
 
-    // PERF: Parallelize therapist data fetches - profiles, slot cache, and intro completion are independent
+    // PERF: Parallelize therapist data fetches - profiles, slot cache, intro completion, and cancelled bookings are independent
     type SlotCacheRow = { 
       therapist_id: string; 
       next_intro_date_iso: string | null; 
@@ -288,9 +288,10 @@ export async function GET(req: Request) {
     let therapistRows: TherapistRow[] = [];
     const slotCacheMap = new Map<string, SlotCacheRow>();
     let introCompletionMap = new Map<string, boolean>();
+    const cancelledTherapistIds = new Set<string>();
 
     if (therapistIds.length > 0) {
-      const [therapistsResult, slotCacheResult, introResult] = await Promise.all([
+      const [therapistsResult, slotCacheResult, introResult, cancelledResult] = await Promise.all([
         // Fetch therapist profiles
         supabaseServer
           .from('therapists')
@@ -310,11 +311,38 @@ export async function GET(req: Request) {
         })(),
         // Check intro completion for therapists that require it
         batchCheckIntroCompletion(patientId, therapistIds),
+        // Check for cancelled bookings - hide therapists where patient has a cancelled booking
+        (async () => {
+          try {
+            return await supabaseServer
+              .from('cal_bookings')
+              .select('therapist_id')
+              .eq('patient_id', patientId)
+              .eq('status', 'CANCELLED')
+              .in('therapist_id', therapistIds);
+          } catch {
+            return { data: null, error: null };
+          }
+        })(),
       ]);
 
-      // Process therapist profiles
+      // Process therapist profiles (filter out not accepting and those with cancelled bookings)
       if (Array.isArray(therapistsResult.data)) {
         therapistRows = (therapistsResult.data as unknown as TherapistRow[]).filter(t => t.accepting_new !== false);
+      }
+
+      // Process cancelled bookings - add to exclusion set
+      if (Array.isArray(cancelledResult.data)) {
+        for (const row of cancelledResult.data as { therapist_id: string }[]) {
+          if (row.therapist_id) {
+            cancelledTherapistIds.add(row.therapist_id);
+          }
+        }
+      }
+
+      // Filter out therapists with cancelled bookings from this patient
+      if (cancelledTherapistIds.size > 0) {
+        therapistRows = therapistRows.filter(t => !cancelledTherapistIds.has(t.id));
       }
 
       // Process slot cache
