@@ -34,8 +34,8 @@ ORDER BY leads DESC;
 ```sql
 -- Compares conversion rates: Questionnaire flow vs Directory browsing.
 -- Questionnaire = guided matching, Directory = self-service therapist browsing.
+-- Full sessions = primary conversion. Intros = leading indicator.
 -- Higher questionnaire conversion expected (more intent). Low directory = UX issues.
--- Use to decide where to invest: guided flow optimization vs directory features.
 WITH questionnaire_leads AS (
   SELECT COUNT(*) AS cnt
   FROM people
@@ -50,6 +50,17 @@ questionnaire_intros AS (
   FROM cal_bookings cb
   JOIN people p ON p.id = cb.patient_id
   WHERE cb.booking_kind = 'intro'
+    AND cb.source = 'questionnaire'
+    AND LOWER(cb.status) != 'cancelled'
+    AND (cb.is_test = false OR cb.is_test IS NULL)
+    AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+    AND cb.created_at >= {{start_date}} AND cb.created_at <= NOW()
+),
+questionnaire_sessions AS (
+  SELECT COUNT(DISTINCT cb.patient_id) AS cnt
+  FROM cal_bookings cb
+  JOIN people p ON p.id = cb.patient_id
+  WHERE cb.booking_kind = 'full_session'
     AND cb.source = 'questionnaire'
     AND LOWER(cb.status) != 'cancelled'
     AND (cb.is_test = false OR cb.is_test IS NULL)
@@ -72,25 +83,43 @@ directory_intros AS (
     AND (cb.is_test = false OR cb.is_test IS NULL)
     AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
     AND cb.created_at >= {{start_date}} AND cb.created_at <= NOW()
+),
+directory_sessions AS (
+  SELECT COUNT(DISTINCT cb.patient_id) AS cnt
+  FROM cal_bookings cb
+  LEFT JOIN people p ON p.id = cb.patient_id
+  WHERE cb.booking_kind = 'full_session'
+    AND cb.source = 'directory'
+    AND LOWER(cb.status) != 'cancelled'
+    AND (cb.is_test = false OR cb.is_test IS NULL)
+    AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+    AND cb.created_at >= {{start_date}} AND cb.created_at <= NOW()
 )
-SELECT 'Questionnaire' AS path, questionnaire_leads.cnt AS entries, 
+SELECT 'Questionnaire' AS path, 
+       questionnaire_leads.cnt AS entries, 
        questionnaire_intros.cnt AS intros,
-       ROUND(100.0 * questionnaire_intros.cnt / NULLIF(questionnaire_leads.cnt, 0), 1) AS conversion_pct
-FROM questionnaire_leads, questionnaire_intros
+       questionnaire_sessions.cnt AS sessions,
+       ROUND(100.0 * questionnaire_intros.cnt / NULLIF(questionnaire_leads.cnt, 0), 1) AS intro_pct,
+       ROUND(100.0 * questionnaire_sessions.cnt / NULLIF(questionnaire_leads.cnt, 0), 1) AS session_pct
+FROM questionnaire_leads, questionnaire_intros, questionnaire_sessions
 UNION ALL
-SELECT 'Directory' AS path, directory_contacts.cnt AS entries,
+SELECT 'Directory' AS path, 
+       directory_contacts.cnt AS entries,
        directory_intros.cnt AS intros,
-       ROUND(100.0 * directory_intros.cnt / NULLIF(directory_contacts.cnt, 0), 1) AS conversion_pct
-FROM directory_contacts, directory_intros;
+       directory_sessions.cnt AS sessions,
+       ROUND(100.0 * directory_intros.cnt / NULLIF(directory_contacts.cnt, 0), 1) AS intro_pct,
+       ROUND(100.0 * directory_sessions.cnt / NULLIF(directory_contacts.cnt, 0), 1) AS session_pct
+FROM directory_contacts, directory_intros, directory_sessions;
 ```
 
 ### F-CoreFunnel
 
 ```sql
--- Core acquisition funnel: Started form → Submitted → Email verified.
--- Shows drop-off at each stage with % of initial users remaining.
--- Big drop Start→Submit = form UX issues. Big drop Submit→Verify = email issues.
--- Compare to D-FormCompletionRate and D-VerificationRate KPIs.
+-- Core acquisition funnel: Started form → Submitted (with contact) → Verified.
+-- IMPORTANT: Uses submit_succeeded (not form_completed) to count real submissions.
+-- form_completed fires from multiple sources and includes anonymous flow - unreliable.
+-- Excludes anonymous patients who browsed without providing contact info.
+-- Big drop Start→Submit = form UX issues. Big drop Submit→Verify = email/SMS issues.
 WITH funnel AS (
   SELECT '1. Started' AS stage, 1 AS ord,
     COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS users
@@ -99,10 +128,10 @@ WITH funnel AS (
     AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at >= {{start_date}} AND created_at <= NOW()
   UNION ALL
-  SELECT '2. Submitted' AS stage, 2 AS ord,
+  SELECT '2. Submitted (contact provided)' AS stage, 2 AS ord,
     COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS users
   FROM events
-  WHERE type IN ('form_completed', 'questionnaire_completed')
+  WHERE type = 'submit_succeeded'
     AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at >= {{start_date}} AND created_at <= NOW()
   UNION ALL
@@ -116,6 +145,50 @@ WITH funnel AS (
 SELECT stage, users,
   ROUND(100.0 * users / NULLIF(FIRST_VALUE(users) OVER (ORDER BY ord), 0), 1) AS pct_of_start
 FROM funnel ORDER BY ord;
+```
+
+### F-TrueLeadFunnel
+
+```sql
+-- Ground-truth funnel using actual people records (not events).
+-- Joins form_sessions to people via form_session_id for accurate attribution.
+-- Shows the real conversion from questionnaire start to verified lead.
+-- Use this to validate event-based funnels and identify tracking gaps.
+WITH form_sessions_started AS (
+  -- Form sessions that have step data (user interacted with questionnaire)
+  SELECT COUNT(DISTINCT id) AS cnt
+  FROM form_sessions
+  WHERE data->>'step' IS NOT NULL
+    AND created_at >= {{start_date}} AND created_at <= NOW()
+),
+patients_created AS (
+  -- Non-anonymous patients created (provided contact info)
+  SELECT COUNT(*) AS cnt
+  FROM people
+  WHERE type = 'patient'
+    AND status != 'anonymous'
+    AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+    AND created_at >= {{start_date}} AND created_at <= NOW()
+),
+patients_verified AS (
+  -- Verified patients (email confirmed or phone verified)
+  SELECT COUNT(*) AS cnt
+  FROM people
+  WHERE type = 'patient'
+    AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
+    AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+    AND created_at >= {{start_date}} AND created_at <= NOW()
+)
+SELECT '1. Form Sessions Started' AS stage, fs.cnt AS users, 100.0 AS pct
+FROM form_sessions_started fs
+UNION ALL
+SELECT '2. Leads Created (contact provided)', pc.cnt,
+  ROUND(100.0 * pc.cnt / NULLIF((SELECT cnt FROM form_sessions_started), 0), 1)
+FROM patients_created pc
+UNION ALL
+SELECT '3. Leads Verified', pv.cnt,
+  ROUND(100.0 * pv.cnt / NULLIF((SELECT cnt FROM form_sessions_started), 0), 1)
+FROM patients_verified pv;
 ```
 
 ### F-DirectoryFunnel
@@ -146,9 +219,11 @@ ORDER BY ord;
 
 ```sql
 -- Step-by-step questionnaire funnel showing exact drop-off points.
--- Steps: Zeitrahmen → Schwerpunkte → Therapieform → Standort → Präferenzen → Kontakt.
+-- Steps map to SignupWizard.tsx:
+--   1: Zeitrahmen, 2: Anliegen (concierge), 2.5: Schwerpunkte (self-service),
+--   3: Therapieform, 4: Standort, 5: Präferenzen, 6: Kontakt, 6.5: SMS, 7: Bestätigung
+-- Note: Steps 2 and 2.5 are mutually exclusive based on variant.
 -- Identifies which step causes most abandonment. High drop on step = redesign needed.
--- Compare across time periods to measure impact of UX changes.
 WITH step_data AS (
   SELECT properties->>'step' AS step,
     COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS users
@@ -162,22 +237,101 @@ labeled AS (
   SELECT step,
     CASE step
       WHEN '1' THEN '1. Zeitrahmen'
-      WHEN '2' THEN '2. Schwerpunkte'
+      WHEN '2' THEN '2. Anliegen (Concierge)'
+      WHEN '2.5' THEN '2.5 Schwerpunkte (Self-Service)'
       WHEN '3' THEN '3. Therapieform'
       WHEN '4' THEN '4. Standort'
       WHEN '5' THEN '5. Präferenzen'
       WHEN '6' THEN '6. Kontakt'
-      WHEN '7' THEN '7. Zusammenfassung'
+      WHEN '6.5' THEN '6.5 SMS-Verifizierung'
+      WHEN '7' THEN '7. Bestätigung'
+      WHEN '9' THEN '9. Abschluss'
       ELSE step
     END AS label,
     users,
-    CASE step WHEN '1' THEN 1 WHEN '2' THEN 2 WHEN '3' THEN 3 
-              WHEN '4' THEN 4 WHEN '5' THEN 5 WHEN '6' THEN 6 WHEN '7' THEN 7 ELSE 99 END AS ord
+    CASE step
+      WHEN '1' THEN 1.0 WHEN '2' THEN 2.0 WHEN '2.5' THEN 2.5 WHEN '3' THEN 3.0
+      WHEN '4' THEN 4.0 WHEN '5' THEN 5.0 WHEN '6' THEN 6.0 WHEN '6.5' THEN 6.5
+      WHEN '7' THEN 7.0 WHEN '9' THEN 9.0 ELSE 99.0
+    END AS ord
   FROM step_data
 )
 SELECT label, users,
   ROUND(100.0 * users / NULLIF(FIRST_VALUE(users) OVER (ORDER BY ord), 0), 1) AS pct_of_start
 FROM labeled WHERE ord < 99 ORDER BY ord;
+```
+
+### F-EmailConfirmationFunnel
+
+```sql
+-- Email confirmation funnel: tracks email sent → confirmed for patient verification.
+-- Use this to monitor email deliverability and verification friction.
+-- High send count with low confirmation = email deliverability or UX issues.
+-- Includes reminder effectiveness (24h and 72h follow-ups).
+WITH email_stages AS (
+  SELECT
+    properties->>'stage' AS stage,
+    COUNT(*) AS emails_sent,
+    COUNT(DISTINCT COALESCE(properties->>'lead_id', properties->>'patient_id')) AS unique_leads
+  FROM events
+  WHERE type = 'email_sent'
+    AND properties->>'template' = 'email_confirmation'
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
+    AND created_at >= {{start_date}} AND created_at <= NOW()
+  GROUP BY properties->>'stage'
+),
+confirmed AS (
+  SELECT COUNT(*) AS cnt
+  FROM people
+  WHERE type = 'patient'
+    AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
+    AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+    AND (metadata->>'contact_method' = 'email' OR metadata->>'contact_method' IS NULL)
+    AND created_at >= {{start_date}} AND created_at <= NOW()
+)
+SELECT
+  CASE stage
+    WHEN 'email_confirmation' THEN '1. Initial Confirmation'
+    WHEN 'patient_confirmation_reminder_24h' THEN '2. 24h Reminder'
+    WHEN 'patient_confirmation_reminder_72h' THEN '3. 72h Reminder'
+    ELSE stage
+  END AS stage,
+  emails_sent,
+  unique_leads,
+  CASE stage WHEN 'email_confirmation' THEN 1 WHEN 'patient_confirmation_reminder_24h' THEN 2
+             WHEN 'patient_confirmation_reminder_72h' THEN 3 ELSE 4 END AS ord
+FROM email_stages
+UNION ALL
+SELECT '4. Confirmed (email users)' AS stage, confirmed.cnt, confirmed.cnt, 5 AS ord FROM confirmed
+ORDER BY ord;
+```
+
+### F-VerificationByMethod
+
+```sql
+-- Verification funnel split by contact method (email vs phone).
+-- Shows which verification path has better conversion.
+-- Phone users verify via SMS code; email users click confirmation link.
+WITH patients AS (
+  SELECT
+    id,
+    COALESCE(metadata->>'contact_method', 'email') AS contact_method,
+    status
+  FROM people
+  WHERE type = 'patient'
+    AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+    AND created_at >= {{start_date}} AND created_at <= NOW()
+)
+SELECT
+  contact_method,
+  COUNT(*) AS total,
+  COUNT(*) FILTER (WHERE status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')) AS verified,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent'))
+    / NULLIF(COUNT(*), 0), 1) AS verification_rate_pct
+FROM patients
+WHERE contact_method IN ('email', 'phone')
+GROUP BY contact_method
+ORDER BY total DESC;
 ```
 
 ---
