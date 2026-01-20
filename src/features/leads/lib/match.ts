@@ -211,27 +211,76 @@ export function hasFullCalComJourney(therapist: TherapistRowForMatch): boolean {
 }
 
 /**
- * Calculate Platform Score (0-100 points)
+ * Platform Score Options
+ */
+export type PlatformScoreOptions = {
+  intakeSlots7Days: number;
+  intakeSlots14Days: number;
+  fullSlotsCount?: number;
+  createdAt?: string | Date | null;
+  dailyShuffleSeed?: string; // e.g., therapist_id + date for deterministic daily shuffle
+};
+
+/**
+ * Calculate Platform Score (0-65 points)
  * Measures therapist investment in the platform.
  * See: /docs/therapist-matching-algorithm-spec.md - Platform Score
+ * 
+ * Score breakdown:
+ * - Slot availability: 0-35 points (intro + full session + combo bonus)
+ * - Account tenure: 0-10 points
+ * - Profile completeness: 0-15 points
+ * - Daily shuffle: ±5 points (deterministic per day)
  */
 export function calculatePlatformScore(
   therapist: TherapistRowForMatch,
   intakeSlots7Days: number,
-  intakeSlots14Days: number
+  intakeSlots14Days: number,
+  options?: Partial<PlatformScoreOptions>
 ): number {
   let score = 0;
   
-  // Intake slot availability (mutually exclusive tiers)
+  const fullSlotsCount = options?.fullSlotsCount ?? 0;
+  const createdAt = options?.createdAt;
+  const dailyShuffleSeed = options?.dailyShuffleSeed;
+  
+  // === Slot Availability (0-35 points) ===
+  
+  // Intro slot availability (mutually exclusive tiers, reduced from original)
   if (intakeSlots7Days >= 3) {
-    score += 25;
+    score += 20; // was 25
   } else if (intakeSlots7Days >= 1) {
-    score += 15;
+    score += 12; // was 15
   } else if (intakeSlots14Days >= 1) {
-    score += 10;
+    score += 8;  // was 10
   }
   
-  // Profile completeness
+  // Full session slot availability bonus (NEW)
+  if (fullSlotsCount > 0) {
+    score += 10; // Direct booking capability
+  }
+  
+  // Combo bonus: has BOTH intro AND full session slots (NEW)
+  const hasIntroSlots = intakeSlots7Days >= 1 || intakeSlots14Days >= 1;
+  if (hasIntroSlots && fullSlotsCount > 0) {
+    score += 5; // Full booking flow available
+  }
+  
+  // === Account Tenure (0-10 points, NEW) ===
+  if (createdAt) {
+    const createdDate = typeof createdAt === 'string' ? new Date(createdAt) : createdAt;
+    const now = new Date();
+    const daysSinceCreation = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysSinceCreation > 90) {
+      score += 10; // Established therapist
+    } else if (daysSinceCreation > 30) {
+      score += 5;  // Some tenure
+    }
+    // < 30 days = 0 points (new therapist)
+  }
+  
+  // === Profile Completeness (0-15 points, unchanged) ===
   const hasPhoto = Boolean(therapist.photo_url);
   const hasApproach = Boolean(
     therapist.approach_text || 
@@ -249,7 +298,32 @@ export function calculatePlatformScore(
     score += 5;  // Basic profile
   }
   
+  // === Daily Shuffle (±5 points, NEW) ===
+  // Deterministic shuffle based on therapist_id + date
+  // Ensures fair rotation while maintaining stability within a day
+  if (dailyShuffleSeed) {
+    const shuffleOffset = getDailyShuffleOffset(dailyShuffleSeed);
+    score += shuffleOffset; // -5 to +5
+  }
+  
   return score;
+}
+
+/**
+ * Generate deterministic daily shuffle offset (-5 to +5)
+ * Same seed produces same offset, changes daily
+ */
+function getDailyShuffleOffset(seed: string): number {
+  // Simple hash function
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    const char = seed.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  // Map to -5 to +5 range
+  const normalized = Math.abs(hash) % 11; // 0-10
+  return normalized - 5; // -5 to +5
 }
 
 /**
@@ -410,17 +484,20 @@ export async function createInstantMatchesForPatient(
     const tIds = therapists.map(t => t.id);
     
     // Fetch Cal.com slot counts from cache (replaces old therapist_slots)
-    type CalSlotCache = { therapist_id: string; slots_count: number | null };
-    let slotCountByTid = new Map<string, number>();
+    type CalSlotCache = { therapist_id: string; slots_count: number | null; full_slots_count: number | null };
+    let slotCountByTid = new Map<string, { intro: number; full: number }>();
     try {
       if (tIds.length > 0) {
         const { data: crows } = await supabaseServer
           .from('cal_slots_cache')
-          .select('therapist_id, slots_count')
+          .select('therapist_id, slots_count, full_slots_count')
           .in('therapist_id', tIds);
         if (Array.isArray(crows)) {
           for (const c of crows as CalSlotCache[]) {
-            slotCountByTid.set(c.therapist_id, c.slots_count || 0);
+            slotCountByTid.set(c.therapist_id, { 
+              intro: c.slots_count || 0, 
+              full: c.full_slots_count || 0 
+            });
           }
         }
       }
@@ -428,10 +505,16 @@ export async function createInstantMatchesForPatient(
 
     // Helper: get slot count from cache (Cal.com provides 14-day count)
     function countIntakeSlotsInDays(therapistId: string, days: number): number {
-      const totalSlots = slotCountByTid.get(therapistId) || 0;
+      const slotData = slotCountByTid.get(therapistId);
+      const totalSlots = slotData?.intro ?? 0;
       // cal_slots_cache.slots_count is for 14 days; estimate proportionally for 7 days
       if (days <= 7) return Math.round(totalSlots / 2);
       return totalSlots;
+    }
+    
+    // Helper: get full session slot count from cache
+    function getFullSlotsCount(therapistId: string): number {
+      return slotCountByTid.get(therapistId)?.full ?? 0;
     }
 
     // Helper: check if therapist languages match patient preference
@@ -487,9 +570,18 @@ export async function createInstantMatchesForPatient(
       // Calculate slot counts for Platform Score
       const intakeSlots7Days = countIntakeSlotsInDays(t.id, 7);
       const intakeSlots14Days = countIntakeSlotsInDays(t.id, 14);
+      const fullSlotsCount = getFullSlotsCount(t.id);
+      
+      // Generate daily shuffle seed for fair rotation
+      const today = new Date().toISOString().split('T')[0];
+      const dailyShuffleSeed = `${t.id}-${today}`;
       
       // Calculate scores
-      const platformScore = calculatePlatformScore(tRow, intakeSlots7Days, intakeSlots14Days);
+      const platformScore = calculatePlatformScore(tRow, intakeSlots7Days, intakeSlots14Days, {
+        fullSlotsCount,
+        createdAt: (t as Record<string, unknown>).created_at as string | undefined,
+        dailyShuffleSeed,
+      });
       const matchScore = calculateMatchScore(tRow, pMeta);
       const totalScore = calculateTotalScore(matchScore, platformScore);
       
