@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
+import { createTherapistSessionToken } from '@/lib/auth/therapistSession';
 import { logError, track } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { renderTherapistApproval } from '@/lib/email/templates/therapistApproval';
@@ -414,6 +415,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       // Only send status emails when THIS request explicitly changed status.
       if (to && status === 'verified' && finalStatus === 'verified' && beforeStatus !== 'verified') {
         const visible = Boolean((after as { photo_url?: string | null })?.photo_url);
+        // Generate magic link token for portal access
+        const portalToken = await createTherapistSessionToken({
+          therapist_id: id,
+          email: to,
+          name: name || undefined,
+        });
+        const portalUrl = `${BASE_URL}/portal/auth?token=${encodeURIComponent(portalToken)}`;
         const approval = renderTherapistApproval({
           name,
           profileVisible: visible,
@@ -421,6 +429,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
           calEmail: to,
           calUsername: calResult?.cal_username,
           calPassword: calResult?.cal_password,
+          portalUrl,
         });
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.update', props: { stage: 'therapist_approval', therapist_id: id, subject: approval.subject } });
         const approvalResult = await sendEmail({ to, subject: approval.subject, html: approval.html, context: { stage: 'therapist_approval', therapist_id: id } });
