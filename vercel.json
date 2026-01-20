@@ -1,26 +1,16 @@
 {
   "crons": [
-    { "path": "/api/admin/therapists/reminders?limit=200", "schedule": "15 9 * * *" },
-    { "path": "/api/admin/matches/therapist-action-reminders?stage=20h", "schedule": "0 7-20 * * *" },
-    { "path": "/api/admin/ads/monitor?apply=false&lookback=3&excludeToday=true&minSpendNoConv=30&budgetMultiple=2", "schedule": "0 8 * * *" },
-    { "path": "/api/admin/ads/monitor?apply=false&lookback=1&excludeToday=false&minSpendNoConv=30&budgetMultiple=1.5", "schedule": "0 20 * * *" },
-    { "path": "/api/admin/leads/confirmation-reminders?threshold=all&limit=200", "schedule": "0 7-20 * * *" },
-    { "path": "/api/admin/leads/rich-therapist-email?limit=200", "schedule": "0 9 * * *" },
-    { "path": "/api/admin/leads/selection-nudge?limit=200", "schedule": "0 9 * * *" },
-    { "path": "/api/admin/leads/feedback-request?limit=200", "schedule": "0 10 * * *" },
-    { "path": "/api/admin/leads/sms-cadence?limit=100", "schedule": "30 10 * * *" },
-    { "path": "/api/admin/leads/conversions/backfill?limit=200", "schedule": "15 * * * *" },
-    { "path": "/api/admin/alerts/system?minutes=15", "schedule": "*/15 * * * *" },
-    { "path": "/api/admin/alerts/new-leads?hours=6", "schedule": "0 14,20 * * *" },
-    { "path": "/api/admin/alerts/user-errors-digest", "schedule": "0 8,20 * * *" },
-    { "path": "/api/admin/cal/booking-followups?limit=50", "schedule": "*/30 * * * *" },
-    { "path": "/api/admin/cal/cancellation-recovery?limit=50", "schedule": "0 * * * *" },
-    { "path": "/api/admin/alerts/match-quality-report?days=1", "schedule": "0 19 * * *" },
-    { "path": "/api/admin/cal/warm-cache", "schedule": "*/15 * * * *" },
-    { "path": "/api/admin/cal/reconcile-bookings?days=7", "schedule": "0 3 * * *" },
-    { "path": "/api/admin/ads/sync-spend?days=1", "schedule": "0 4 * * *" },
-    { "path": "/api/admin/therapists/availability-reminder?limit=100", "schedule": "0 9 * * 5" },
-    { "path": "/api/internal/indexnow", "schedule": "0 6 * * 1" }
+    { "path": "/api/cron/frequent", "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/cal-followups", "schedule": "*/30 * * * *" },
+    { "path": "/api/cron/business-hours", "schedule": "0 7-20 * * *" },
+    { "path": "/api/cron/morning-alerts", "schedule": "0 8 * * *" },
+    { "path": "/api/cron/lead-nurturing", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/lead-nurturing-late", "schedule": "30 10 * * *" },
+    { "path": "/api/admin/alerts/new-leads?hours=6", "schedule": "0 14 * * *" },
+    { "path": "/api/cron/evening-alerts", "schedule": "0 20 * * *" },
+    { "path": "/api/cron/nightly", "schedule": "0 3 * * *" },
+    { "path": "/api/cron/weekly-friday", "schedule": "0 9 * * 5" },
+    { "path": "/api/cron/weekly-monday", "schedule": "0 6 * * 1" }
   ],
   "functions": {
     "app/therapie-finden/page.tsx": {
