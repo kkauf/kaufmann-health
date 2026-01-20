@@ -122,10 +122,10 @@ test.describe('SignupWizard Verification Flow', () => {
     await page.goto('/fragebogen?variant=concierge');
     await navigateToContactStep(page);
     
-    // Try to submit without filling name
-    const phoneTab = page.getByRole('tab', { name: /Handynummer/i });
-    if (await phoneTab.isVisible()) {
-      await phoneTab.click();
+    // Try to submit without filling name - select SMS mode first
+    const smsButton = page.getByRole('button', { name: /SMS/i });
+    if (await smsButton.isVisible()) {
+      await smsButton.click();
     }
     
     // Find phone input and fill it (but not name)
@@ -135,7 +135,7 @@ test.describe('SignupWizard Verification Flow', () => {
     }
     
     // The form should require name - submit button should be disabled or show error
-    const submitBtn = page.getByRole('button', { name: /Weiter|Code senden/i });
+    const submitBtn = page.getByRole('button', { name: /Weiter|Code senden|anzeigen/i });
     
     // Either button is disabled OR clicking shows validation
     const isDisabled = await submitBtn.isDisabled().catch(() => false);
@@ -155,14 +155,14 @@ test.describe('SignupWizard Verification Flow', () => {
     await page.goto('/fragebogen?variant=concierge');
     await navigateToContactStep(page);
     
-    // Fill name
-    const nameInput = page.locator('input[name="name"], input[placeholder*="Name"]').first();
+    // Fill name (input has id="name", placeholder="Vorname oder Spitzname")
+    const nameInput = page.locator('#name, input[placeholder*="Vorname"]').first();
     await nameInput.fill(testName);
     
-    // Select phone tab
-    const phoneTab = page.getByRole('tab', { name: /Handynummer/i });
-    if (await phoneTab.isVisible()) {
-      await phoneTab.click();
+    // Select phone/SMS mode (button, not tab)
+    const smsButton = page.getByRole('button', { name: /SMS/i });
+    if (await smsButton.isVisible()) {
+      await smsButton.click();
     }
     
     // Fill phone number
@@ -170,7 +170,7 @@ test.describe('SignupWizard Verification Flow', () => {
     await phoneInput.fill(testPhone);
     
     // Submit to trigger SMS
-    const submitBtn = page.getByRole('button', { name: /Weiter|Code senden/i });
+    const submitBtn = page.getByRole('button', { name: /Weiter|Code senden|anzeigen/i });
     await submitBtn.click();
     
     // Should transition to SMS verification step (6.5)
@@ -187,14 +187,14 @@ test.describe('SignupWizard Verification Flow', () => {
     await page.goto('/fragebogen?variant=concierge');
     await navigateToContactStep(page);
     
-    // Fill name
-    const nameInput = page.locator('input[name="name"], input[placeholder*="Name"]').first();
+    // Fill name (input has id="name", placeholder="Vorname oder Spitzname")
+    const nameInput = page.locator('#name, input[placeholder*="Vorname"]').first();
     await nameInput.fill(testName);
     
-    // Select phone tab
-    const phoneTab = page.getByRole('tab', { name: /Handynummer/i });
-    if (await phoneTab.isVisible()) {
-      await phoneTab.click();
+    // Select phone/SMS mode (button, not tab)
+    const smsButton = page.getByRole('button', { name: /SMS/i });
+    if (await smsButton.isVisible()) {
+      await smsButton.click();
     }
     
     // Fill phone
@@ -202,7 +202,7 @@ test.describe('SignupWizard Verification Flow', () => {
     await phoneInput.fill(testPhone);
     
     // Submit
-    await page.getByRole('button', { name: /Weiter|Code senden/i }).click();
+    await page.getByRole('button', { name: /Weiter|Code senden|anzeigen/i }).click();
     
     // Wait for code entry step
     await expect(page.getByText(/Code eingeben|Bestätigungscode/i)).toBeVisible({ timeout: 15000 });
@@ -253,14 +253,14 @@ test.describe('SignupWizard Verification Flow', () => {
     await page.goto('/fragebogen?variant=concierge');
     await navigateToContactStep(page);
     
-    // Fill name
-    const nameInput = page.locator('input[name="name"], input[placeholder*="Name"]').first();
+    // Fill name (input has id="name", placeholder="Vorname oder Spitzname")
+    const nameInput = page.locator('#name, input[placeholder*="Vorname"]').first();
     await nameInput.fill(testName);
     
-    // Email tab should be default or select it
-    const emailTab = page.getByRole('tab', { name: /E-Mail/i });
-    if (await emailTab.isVisible()) {
-      await emailTab.click();
+    // Email mode should be default, or click the button
+    const emailButton = page.getByRole('button', { name: /E.Mail/i });
+    if (await emailButton.isVisible()) {
+      await emailButton.click();
     }
     
     // Fill email
@@ -289,14 +289,14 @@ test.describe('Verification Flow - Edge Cases', () => {
     await page.goto('/fragebogen?variant=concierge');
     await navigateToContactStep(page);
     
-    // Fill name
-    const nameInput = page.locator('input[name="name"], input[placeholder*="Name"]').first();
+    // Fill name (input has id="name", placeholder="Vorname oder Spitzname")
+    const nameInput = page.locator('#name, input[placeholder*="Vorname"]').first();
     await nameInput.fill('Test User');
     
-    // Select phone tab
-    const phoneTab = page.getByRole('tab', { name: /Handynummer/i });
-    if (await phoneTab.isVisible()) {
-      await phoneTab.click();
+    // Select phone/SMS mode (button, not tab)
+    const smsButton = page.getByRole('button', { name: /SMS/i });
+    if (await smsButton.isVisible()) {
+      await smsButton.click();
     }
     
     // Enter invalid phone
