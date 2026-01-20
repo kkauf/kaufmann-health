@@ -22,7 +22,7 @@ export default function NewScreen3_WhatBringsYou({
   values: NewScreen3Values;
   onChange: (patch: Partial<NewScreen3Values>) => void;
   onNext: () => void;
-  onBack: () => void;
+  onBack?: () => void;  // Optional - may be first step
   disabled?: boolean;
 }) {
   const text = values.additional_info?.trim() || '';
@@ -82,15 +82,17 @@ export default function NewScreen3_WhatBringsYou({
       </div>
 
       <div className="flex items-center justify-between pt-2">
-        <Button
-          variant="secondary"
-          className="h-11"
-          onClick={onBack}
-          disabled={disabled}
-          aria-disabled={disabled}
-        >
-          Zurück
-        </Button>
+        {onBack ? (
+          <Button
+            variant="secondary"
+            className="h-11"
+            onClick={onBack}
+            disabled={disabled}
+            aria-disabled={disabled}
+          >
+            Zurück
+          </Button>
+        ) : <div />}
         <Button
           className="h-11"
           onClick={onNext}

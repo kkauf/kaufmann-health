@@ -307,8 +307,6 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
         align="center"
         variant="tinted"
         showAvailabilityNote={false}
-        withEntryOptions={true}
-        targetBasePath={isBrowse ? therapeutenHref : fragebogenHref}
       />
 
       {/* FAQ */}

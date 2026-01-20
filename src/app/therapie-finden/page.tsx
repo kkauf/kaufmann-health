@@ -450,11 +450,9 @@ export default async function TherapieFindenPage({ searchParams }: { searchParam
         subtitle="100% kostenlos & unverbindlich. Wir schlagen dir passende Therapeut:innen vor — du entscheidest, mit wem du Kontakt aufnehmen möchtest."
         buttonLabel="Jetzt Therapeut:in finden"
         targetId={fragebogenHref}
-        targetBasePath={fragebogenHref}
         align="center"
         variant="tinted"
         showAvailabilityNote={false}
-        withEntryOptions={true}
       />
 
       {/* FAQ (low on page) */}

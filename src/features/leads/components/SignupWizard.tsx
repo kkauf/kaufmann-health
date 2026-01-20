@@ -7,7 +7,7 @@ import Screen1, { type Screen1Values } from './screens/Screen1';
 import Screen1_5, { type Screen1_5Values } from './screens/Screen1_5';
 import Screen3 from './screens/Screen3';
 import Screen4 from './screens/Screen4';
-import NewScreen2_Timeline, { type NewScreen2Values } from './screens/NewScreen2_Timeline';
+// NewScreen2_Timeline removed - start_timing question eliminated
 import NewScreen3_WhatBringsYou, { type NewScreen3Values } from './screens/NewScreen3_WhatBringsYou';
 import NewScreen5_Modality from './screens/NewScreen5_Modality';
 import ScreenSchwerpunkte, { type ScreenSchwerpunkteValues } from './screens/ScreenSchwerpunkte';
@@ -31,9 +31,7 @@ const LS_KEYS = {
 
 export type WizardData = Omit<Screen1Values, 'email'> & Screen1_5Values & ScreenSchwerpunkteValues & {
   email?: string; // Make email optional since we might use phone instead
-  // Step 1: Timeline
-  start_timing?: NewScreen2Values['start_timing'];
-  // Step 2: What Brings You (optional)
+  // Step 2: What Brings You (optional) - now first step for Concierge
   additional_info?: NewScreen3Values['additional_info'];
   // Step 2.5: Schwerpunkte (feature-toggled)
   schwerpunkte?: string[];
@@ -51,10 +49,19 @@ export type WizardData = Omit<Screen1Values, 'email'> & Screen1_5Values & Screen
   name: string;
 };
 
-// Progress: 7 main steps (or 8 with SMS verification)
-// Step 1: Timeline (0%), 2: Topic (14%), 3: Modality (28%), 4: Location (43%),
-// 5: Preferences (57%), 6: Contact (71%), 6.5: SMS (86%), 7: Confirmation (100%)
-const PROGRESS = [0, 14, 28, 43, 57, 71, 86, 100]; // steps 1-7 (step 6.5 uses index 6)
+// Progress: 6 main steps (or 7 with SMS verification) - step 1 (Timeline) removed
+// Step 2/2.5: Topic (0%), 3: Modality (17%), 4: Location (33%),
+// 5: Preferences (50%), 6: Contact (67%), 6.5: SMS (83%), 7: Confirmation (100%)
+// Map by step number for clarity after removing step 1
+const PROGRESS_MAP: Record<number, number> = {
+  2: 0, 2.5: 0,     // First step (Topic/Schwerpunkte)
+  3: 17,            // Modality
+  4: 33,            // Location
+  5: 50,            // Preferences
+  6: 67,            // Contact
+  6.5: 83,          // SMS verification
+  7: 100, 8: 100, 8.5: 100, 9: 100,  // Confirmation (legacy step numbers)
+};
 
 export default function SignupWizard() {
   const searchParams = useSearchParams();
@@ -95,15 +102,17 @@ export default function SignupWizard() {
   
   // Test 5: Online mode - skips location step and pre-selects online
   const isOnlineMode = searchParams.get('mode') === 'online';
-  // Test 4: Variant-aware step routing
-  // - Concierge: uses open text field (step 2) for manual curation
-  // - Self-Service: uses Schwerpunkte selector (step 2.5) for auto-filtering
-  // - Default (marketplace/other): follows SHOW_SCHWERPUNKTE feature flag
-  const usesSchwerpunkteStep = isSelfService || (!isConcierge && SHOW_SCHWERPUNKTE);
+  // Variant-aware step routing:
+  // - All variants now start with Schwerpunkte (step 2.5) - lower friction entry
+  // - Concierge ALSO shows "What Brings You" (step 2) after Schwerpunkte for manual curation context
+  // - Self-Service skips "What Brings You" and goes straight to Modality
+  const usesSchwerpunkteStep = true; // All variants use Schwerpunkte as first step
+  const usesWhatBringsYouStep = isConcierge; // Only Concierge gets open text field
   // All users go through 9-step verification flow before matches
   const maxStep = 9;
 
-  const [step, setStep] = React.useState<number>(1);
+  // Step 1 (Timeline) removed - wizard now starts at step 2.5 (Schwerpunkte) for all variants
+  const [step, setStep] = React.useState<number>(2.5);
   const [data, setData] = React.useState<WizardData>({ name: '' });
   const [initialized, setInitialized] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -229,11 +238,7 @@ export default function SignupWizard() {
 
   function missingRequiredForStep(s: number, d: WizardData): string[] {
     switch (s) {
-      case 1: {
-        const miss: string[] = [];
-        if (!d.start_timing) miss.push('start_timing');
-        return miss;
-      }
+      // Step 1 removed - wizard now starts at step 2/2.5
       case 2: {
         // Step 2: What Brings You (TRULY OPTIONAL - no required fields)
         return [];
@@ -299,7 +304,7 @@ export default function SignupWizard() {
           url.searchParams.delete('restart');
           window.history.replaceState({}, '', url.pathname + url.search);
         }
-        setStep(1);
+        setStep(usesSchwerpunkteStep ? 2.5 : 2);
         setData({ name: '' });
         setInitialized(true);
         return;
@@ -318,11 +323,12 @@ export default function SignupWizard() {
       
       // Handle ?startStep= param (e.g., from Katherine's CTA to skip to step 2)
       const startStepParam = searchParams?.get('startStep');
-      const savedStep = Number(localStorage.getItem(LS_KEYS.step) || '1');
+      const savedStep = Number(localStorage.getItem(LS_KEYS.step) || '2');
       // Use startStep if provided, otherwise use saved step
       const targetStep = startStepParam ? Number(startStepParam) : savedStep;
-      // Clamp to valid range: 1-5 for direct booking, 1-9 for manual curation
-      const clampedStep = Math.max(1, Math.min(maxStep, targetStep));
+      // Clamp to valid range: 2-9 (step 1 removed), redirect step 1 to appropriate first step
+      const minStep = usesSchwerpunkteStep ? 2.5 : 2;
+      const clampedStep = targetStep <= 1 ? minStep : Math.min(maxStep, targetStep);
       setStep(clampedStep);
       
       // Clean up startStep from URL to avoid re-triggering on refresh
@@ -357,26 +363,7 @@ export default function SignupWizard() {
           // Ignore session check errors
         });
 
-      // Handle ?timing= param from mid-page conversion (from /start entry options)
-      const timingParam = searchParams?.get('timing');
-      if (timingParam) {
-        let start_timing: string | undefined;
-        switch (timingParam) {
-          case 'immediate':
-            start_timing = 'So schnell wie möglich';
-            break;
-          case 'soon':
-            start_timing = 'In den nächsten 2-4 Wochen';
-            break;
-          case 'flexible':
-            start_timing = 'In 1-2 Monaten';
-            break;
-        }
-        if (start_timing) {
-          setData((prev) => ({ ...prev, start_timing }));
-          void trackEvent('midpage_prefill', { timing: timingParam });
-        }
-      }
+      // ?timing= param handling removed - start_timing question eliminated
 
       // Test 5: Handle ?mode=online param - pre-select online session preference
       const modeParam = searchParams?.get('mode');
@@ -385,36 +372,48 @@ export default function SignupWizard() {
         void trackEvent('online_mode_prefill', { mode: 'online' });
       }
 
-      // Pre-fill modality based on search keyword (from Google Ads ?kw= param)
-      // If user searched for a specific modality, pre-select it to reduce friction
-      const kwParam = searchParams?.get('kw');
-      if (kwParam) {
-        const kw = decodeURIComponent(kwParam).toLowerCase();
-        // Map keyword → modality (must match METHODS array in NewScreen5_Modality)
-        const keywordModalityMap: Record<string, string> = {
-          'narm': 'NARM (Entwicklungstrauma)',
-          'hakomi': 'Hakomi',
-          'somatic experiencing': 'Somatic Experiencing',
-          'somatic': 'Somatic Experiencing',
-          'core energetics': 'Core Energetics',
-          'core-energetics': 'Core Energetics',
-        };
-        
-        let matchedModality: string | null = null;
-        for (const [keyword, modality] of Object.entries(keywordModalityMap)) {
-          if (kw.includes(keyword)) {
-            matchedModality = modality;
-            break;
+      // Pre-fill modality from ?modality= param (from campaign landing pages) or ?kw= param (Google Ads)
+      // Map slug/keyword → modality display name (must match METHODS array in NewScreen5_Modality)
+      const modalityMap: Record<string, string> = {
+        'narm': 'NARM (Entwicklungstrauma)',
+        'hakomi': 'Hakomi',
+        'somatic-experiencing': 'Somatic Experiencing',
+        'somatic experiencing': 'Somatic Experiencing',
+        'somatic': 'Somatic Experiencing',
+        'core-energetics': 'Core Energetics',
+        'core energetics': 'Core Energetics',
+      };
+
+      // Check ?modality= first (from campaign landing pages like /lp/narm)
+      const modalityParam = searchParams?.get('modality');
+      if (modalityParam && modalityMap[modalityParam.toLowerCase()]) {
+        const matchedModality = modalityMap[modalityParam.toLowerCase()];
+        setData((prev) => ({
+          ...prev,
+          modality_matters: true,
+          methods: [matchedModality],
+        }));
+        void trackEvent('modality_prefill', { source: 'param', modality: matchedModality });
+      } else {
+        // Fallback to ?kw= param (from Google Ads keyword tracking)
+        const kwParam = searchParams?.get('kw');
+        if (kwParam) {
+          const kw = decodeURIComponent(kwParam).toLowerCase();
+          let matchedModality: string | null = null;
+          for (const [keyword, modality] of Object.entries(modalityMap)) {
+            if (kw.includes(keyword)) {
+              matchedModality = modality;
+              break;
+            }
           }
-        }
-        
-        if (matchedModality) {
-          setData((prev) => ({
-            ...prev,
-            modality_matters: true,
-            methods: [matchedModality!],
-          }));
-          void trackEvent('keyword_modality_prefill', { keyword: kw, modality: matchedModality });
+          if (matchedModality) {
+            setData((prev) => ({
+              ...prev,
+              modality_matters: true,
+              methods: [matchedModality],
+            }));
+            void trackEvent('modality_prefill', { source: 'keyword', keyword: kw, modality: matchedModality });
+          }
         }
       }
 
@@ -857,21 +856,11 @@ export default function SignupWizard() {
   // Simple screen renderers
   function renderScreen() {
     switch (step) {
-      case 1:
-        // Step 1: Timeline (now first step - no back button)
-        return (
-          <NewScreen2_Timeline
-            values={{ start_timing: data.start_timing }}
-            onChange={saveLocal}
-            onNext={() => safeGoToStep(usesSchwerpunkteStep ? 2.5 : 2)}
-            suppressAutoAdvance={suppressAutoStep === 1}
-            disabled={navLock || submitting}
-            therapistCount={therapistCount}
-          />
-        );
+      // Step 1 (Timeline/start_timing) removed - wizard now starts at step 2.5 (Schwerpunkte)
       case 2:
-        // Step 2: What Brings You (Concierge variant uses this; Self-Service skips to Schwerpunkte)
-        if (usesSchwerpunkteStep) {
+        // Step 2: What Brings You - only for Concierge (after Schwerpunkte)
+        // Self-Service users never see this step
+        if (!usesWhatBringsYouStep) {
           safeGoToStep(3);
           return null;
         }
@@ -879,29 +868,27 @@ export default function SignupWizard() {
           <NewScreen3_WhatBringsYou
             values={{ additional_info: data.additional_info }}
             onChange={saveLocal}
-            onBack={() => safeGoToStep(1)}
+            onBack={() => safeGoToStep(2.5)}
             onNext={() => safeGoToStep(3)}
             disabled={navLock || submitting}
           />
         );
       case 2.5:
-        // Step 2.5: Schwerpunkte (Self-Service variant uses this for auto-filtering)
-        if (!usesSchwerpunkteStep) {
-          safeGoToStep(3);
-          return null;
-        }
+        // Step 2.5: Schwerpunkte - first step for ALL variants
+        // Concierge goes to step 2 (What Brings You) next
+        // Self-Service goes to step 3 (Modality) next
         return (
           <ScreenSchwerpunkte
             values={{ schwerpunkte: data.schwerpunkte }}
             onChange={saveLocal}
-            onBack={() => safeGoToStep(1)}
-            onNext={() => safeGoToStep(3)}
+            onNext={() => safeGoToStep(usesWhatBringsYouStep ? 2 : 3)}
             disabled={navLock || submitting}
             therapistCount={therapistCount}
           />
         );
       case 3:
         // Step 3: Modality Preferences
+        // Back goes to step 2 for Concierge, step 2.5 for Self-Service
         return (
           <NewScreen5_Modality
             values={{
@@ -909,7 +896,7 @@ export default function SignupWizard() {
               methods: data.methods,
             }}
             onChange={saveLocal}
-            onBack={() => safeGoToStep(usesSchwerpunkteStep ? 2.5 : 2)}
+            onBack={() => safeGoToStep(usesWhatBringsYouStep ? 2 : 2.5)}
             onNext={() => safeGoToStep(4)}
             suppressAutoAdvance={suppressAutoStep === 3}
             disabled={navLock || submitting}
@@ -1488,7 +1475,6 @@ export default function SignupWizard() {
       void trackEvent('questionnaire_submitted', {
         step: 5,
         has_city: !!data.city,
-        has_timing: !!data.start_timing,
       });
 
       const sidHeader = webSessionIdRef.current || getOrCreateSessionId() || undefined;
@@ -1505,7 +1491,6 @@ export default function SignupWizard() {
       else if (data.gender === 'Keine Präferenz') backendGender = 'no_preference';
 
       const payload = {
-        start_timing: data.start_timing,
         additional_info: data.additional_info,
         modality_matters: data.modality_matters,
         methods: data.methods || [],
@@ -1721,11 +1706,9 @@ export default function SignupWizard() {
     }
   }
 
-  // Calculate progress value (handle step 8.5 for SMS verification)
+  // Calculate progress value using step-based lookup
   const progressValue = React.useMemo(() => {
-    if (step === 8.5) return PROGRESS[8]; // Use index 8 for step 8.5
-    const idx = Math.max(0, Math.min(PROGRESS.length - 1, Math.floor(step) - 1));
-    return PROGRESS[idx];
+    return PROGRESS_MAP[step] ?? PROGRESS_MAP[Math.floor(step)] ?? 0;
   }, [step]);
 
   return (
@@ -1741,7 +1724,7 @@ export default function SignupWizard() {
       {/* Footer status with restart option */}
       <div className="flex items-center justify-between pt-2">
         {/* Restart button - only show when user has made progress and not on final confirmation steps */}
-        {step > 1 && step < 7 ? (
+        {step > 2.5 && step < 7 ? (
           <button
             type="button"
             onClick={() => {
@@ -1751,7 +1734,7 @@ export default function SignupWizard() {
                 localStorage.removeItem(LS_KEYS.step);
                 localStorage.removeItem(LS_KEYS.sessionId);
                 setData({ name: '' });
-                setStep(1);
+                setStep(usesSchwerpunkteStep ? 2.5 : 2);
                 sessionIdRef.current = null;
                 setSessionId(null);
               }
