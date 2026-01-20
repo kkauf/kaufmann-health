@@ -17,10 +17,13 @@ describe('isCalBookingAvailable', () => {
   };
 
   describe('when therapist has available slots', () => {
+    // Use a date 2 days in the future to avoid timezone issues
+    const futureDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+    const dateIso = futureDate.toISOString().split('T')[0];
     const nextIntroSlot = {
-      date_iso: '2026-01-20',
+      date_iso: dateIso,
       time_label: '10:00',
-      time_utc: '2026-01-20T09:00:00Z',
+      time_utc: `${dateIso}T09:00:00Z`,
     };
 
     it('should return true when cal_enabled and has slots', () => {

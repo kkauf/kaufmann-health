@@ -153,6 +153,11 @@ function buildBadgeItems(modalities: string[]): Array<{ label: string; color: st
 /**
  * Format next intro slot for email display.
  * Returns German-formatted date string like "Mo 13. Jan um 10:00"
+ * 
+ * IMPORTANT: Requires minimum 24h notice for email display.
+ * Data shows median email-to-action time is 44h, with 75% of users
+ * taking >30 min. Showing "next slot in 4h" in an email that won't
+ * be opened for hours creates a poor UX.
  */
 function formatNextIntroSlot(slot: { date_iso: string; time_label: string; time_utc?: string } | null | undefined): string | null {
   if (!slot?.date_iso || !slot?.time_label) return null;
@@ -163,8 +168,10 @@ function formatNextIntroSlot(slot: { date_iso: string; time_label: string; time_
       : new Date(slot.date_iso + 'T' + slot.time_label + ':00').getTime();
     const now = Date.now();
     
-    // Don't show slots in the past or less than 30 min away
-    if (slotTime < now + 30 * 60 * 1000) return null;
+    // Require minimum 24h notice for email display
+    // Median email-to-action time is 44h, so 24h is safe buffer
+    const MIN_NOTICE_MS = 24 * 60 * 60 * 1000; // 24 hours
+    if (slotTime < now + MIN_NOTICE_MS) return null;
 
     const date = new Date(slot.date_iso + 'T12:00:00');
     const weekday = date.toLocaleDateString('de-DE', { weekday: 'short' });
@@ -182,13 +189,20 @@ export type EnhancedTherapistPreviewParams = {
   last_name: string;
   photo_url?: string | null;
   modalities?: string[] | null;
+  /** @legacy Free-text therapist approach description from early onboarding */
   approach_text?: string | null;
   accepting_new?: boolean | null;
   city?: string | null;
   // Enhanced fields
   next_intro_slot?: { date_iso: string; time_label: string; time_utc?: string } | null;
+  /** @legacy Free-text qualification description */
   qualification?: string | null;
+  /** @legacy Free-text describing typical clients */
   who_comes_to_me?: string | null;
+  /** @legacy Free-text about session focus areas */
+  session_focus?: string | null;
+  /** @legacy Free-text about what to expect in first session */
+  first_session?: string | null;
   typical_rate?: number | null;
   languages?: string[] | null;
   // CTAs
@@ -210,10 +224,15 @@ export function renderEnhancedTherapistPreviewEmail(params: EnhancedTherapistPre
   const initials = getInitials(params.first_name, params.last_name);
   const avatarColor = `hsl(${hashCode(params.id) % 360}, 70%, 50%)`;
   
-  // Prefer who_comes_to_me, fallback to approach_text
-  const profileText = params.who_comes_to_me 
-    ? truncateSentences(params.who_comes_to_me, 2)
-    : truncateSentences(params.approach_text || '', 2);
+  // Build profile text from available legacy fields
+  // Priority: session_focus > first_session > who_comes_to_me > approach_text
+  const profileText = params.session_focus
+    ? truncateSentences(params.session_focus, 2)
+    : params.first_session
+      ? truncateSentences(params.first_session, 2)
+      : params.who_comes_to_me 
+        ? truncateSentences(params.who_comes_to_me, 2)
+        : truncateSentences(params.approach_text || '', 2);
 
   const photoSrc = toProxiedPhotoUrl(params.photo_url);
   const photo = photoSrc

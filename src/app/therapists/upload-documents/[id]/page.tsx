@@ -97,6 +97,19 @@ export default async function Page(props: { params: Promise<{ id: string }>; sea
             <UploadForm therapistId={id} mode="certs" />
           </div>
         </>
+      ) : status === 'rejected' ? (
+        // Rückfrage: allow uploading additional documents
+        <>
+          <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-medium text-amber-900">📎 Weitere Dokumente hochladen</p>
+            <p className="mt-1 text-sm text-amber-800">
+              Du hast bereits Dokumente hochgeladen. Falls noch etwas fehlt, kannst du hier weitere Zertifikate ergänzen.
+            </p>
+          </div>
+          <div className="mt-6">
+            <UploadForm therapistId={id} mode="certs" />
+          </div>
+        </>
       ) : (
         <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-6">
           <div className="flex items-start gap-3">

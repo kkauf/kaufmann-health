@@ -17,6 +17,7 @@ export type PatientSelectionItem = {
   last_name: string;
   photo_url?: string | null;
   modalities?: string[] | null;
+  /** @legacy Free-text therapist approach description from early onboarding */
   approach_text?: string | null;
   accepting_new?: boolean | null;
   city?: string | null;
@@ -26,8 +27,14 @@ export type PatientSelectionItem = {
   next_intro_slot?: { date_iso: string; time_label: string; time_utc?: string } | null;
   cal_username?: string | null;
   typical_rate?: number | null;
+  /** @legacy Free-text qualification description */
   qualification?: string | null;
+  /** @legacy Free-text describing typical clients */
   who_comes_to_me?: string | null;
+  /** @legacy Free-text about session focus areas */
+  session_focus?: string | null;
+  /** @legacy Free-text about what to expect in first session */
+  first_session?: string | null;
   languages?: string[] | null;
   profileUrl?: string; // link to matches page
   calBookingUrl?: string; // direct Cal.com booking link (pre-built)
@@ -140,6 +147,8 @@ export function renderPatientSelectionEmail(params: {
           next_intro_slot: it.next_intro_slot,
           qualification: it.qualification,
           who_comes_to_me: it.who_comes_to_me,
+          session_focus: it.session_focus,
+          first_session: it.first_session,
           typical_rate: it.typical_rate,
           languages: it.languages,
           calBookingUrl: it.calBookingUrl,
@@ -209,6 +218,8 @@ export function renderPatientSelectionEmail(params: {
           next_intro_slot: bestItem.next_intro_slot,
           qualification: bestItem.qualification,
           who_comes_to_me: bestItem.who_comes_to_me,
+          session_focus: bestItem.session_focus,
+          first_session: bestItem.first_session,
           typical_rate: bestItem.typical_rate,
           languages: bestItem.languages,
           calBookingUrl: bestItem.calBookingUrl,

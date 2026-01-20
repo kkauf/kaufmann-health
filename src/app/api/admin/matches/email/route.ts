@@ -74,6 +74,10 @@ type TherapistMeta = {
     approach_text?: string | null;
     who_comes_to_me?: string | null;
     qualification?: string | null;
+    /** @legacy Free-text about session focus areas */
+    session_focus?: string | null;
+    /** @legacy Free-text about what to expect in first session */
+    first_session?: string | null;
   } | null;
   modalities?: string[] | null;
   session_preferences?: string[] | null;
@@ -391,6 +395,8 @@ export async function POST(req: Request) {
           typical_rate: t.typical_rate,
           qualification: profile?.qualification,
           who_comes_to_me: profile?.who_comes_to_me,
+          session_focus: profile?.session_focus,
+          first_session: profile?.first_session,
           languages: t.languages,
           profileUrl: matchesUrl,
           calBookingUrl,
