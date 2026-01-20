@@ -15,7 +15,17 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [hasFiles, setHasFiles] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
+
+  // Track file selection to enable/disable submit button
+  function handleFileChange() {
+    const licenseInput = document.querySelector<HTMLInputElement>('#psychotherapy_license');
+    const specInput = document.querySelector<HTMLInputElement>('#specialization_cert');
+    const hasLicense = (licenseInput?.files?.length ?? 0) > 0;
+    const hasSpec = (specInput?.files?.length ?? 0) > 0;
+    setHasFiles(hasLicense || hasSpec);
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -45,18 +55,20 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
         return;
       }
     } else {
-      // certs mode: optional uploads; validate only if provided
-      if (specFiles.length > 0) {
-        const tooLarge = specFiles.find((f) => f.size > MAX_FILE_BYTES);
-        if (tooLarge) {
-          setMessage("Ein Zertifikat überschreitet 4MB. Bitte reduziere die Dateigröße.");
-          return;
-        }
-        const totalBytes = specFiles.reduce((sum, f) => sum + f.size, 0);
-        if (totalBytes > MAX_FILE_BYTES) {
-          setMessage("Gesamtgröße der Zertifikate überschreitet 4MB. Bitte lade eine Datei nach der anderen hoch.");
-          return;
-        }
+      // certs mode: require at least one file to be selected
+      if (specFiles.length === 0) {
+        setMessage("Bitte wähle mindestens ein Zertifikat aus.");
+        return;
+      }
+      const tooLarge = specFiles.find((f) => f.size > MAX_FILE_BYTES);
+      if (tooLarge) {
+        setMessage("Ein Zertifikat überschreitet 4MB. Bitte reduziere die Dateigröße.");
+        return;
+      }
+      const totalBytes = specFiles.reduce((sum, f) => sum + f.size, 0);
+      if (totalBytes > MAX_FILE_BYTES) {
+        setMessage("Gesamtgröße der Zertifikate überschreitet 4MB. Bitte lade eine Datei nach der anderen hoch.");
+        return;
       }
     }
 
@@ -142,7 +154,7 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
               Staatlich anerkannte Psychotherapie-Berechtigung <span className="text-red-600">*</span>{" "}
               <span className="text-xs text-gray-500">(PDF/Bild, max. 4MB)</span>
             </Label>
-            <Input id="psychotherapy_license" name="psychotherapy_license" type="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" required />
+            <Input id="psychotherapy_license" name="psychotherapy_license" type="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" required onChange={handleFileChange} />
             <p className="text-xs text-gray-500">Hinweis: Ein Abschlusszertifikat ist erforderlich. Wenn deine Dateien zusammen größer als 4MB sind, lade zuerst nur deine Zulassung hoch.</p>
           </div>
         ) : (
@@ -150,13 +162,13 @@ export default function UploadForm({ therapistId, mode = 'license' }: Props) {
             <Label htmlFor="specialization_cert">
               Abschlusszertifikat(e) deiner Therapieverfahren <span className="text-xs text-gray-500">(optional, je Datei max. 4MB)</span>
             </Label>
-            <Input id="specialization_cert" name="specialization_cert" type="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" multiple />
+            <Input id="specialization_cert" name="specialization_cert" type="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" multiple onChange={handleFileChange} />
             <p className="text-xs text-gray-500">Du kannst Zertifikate auch später nachreichen.</p>
           </div>
         )}
 
         <div className="flex items-center gap-3">
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading || (mode === 'certs' && !hasFiles)}>
             {loading ? "Hochladen…" : "Dokumente hochladen"}
           </Button>
           {mode === 'license' && (

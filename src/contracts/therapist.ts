@@ -12,16 +12,43 @@ import { z } from 'zod';
 // ============================================================================
 // PROFILE FIELDS (nested in metadata.profile)
 // ============================================================================
+// 
+// LEGACY FIELDS: The following fields were populated during early onboarding
+// via free-text input. They are still displayed in emails and profiles but
+// should be considered legacy data. New therapists use structured fields.
+//
+// Legacy free-text fields:
+// - approach_text: Therapist's self-written description of their approach
+// - who_comes_to_me: Free-text describing typical clients
+// - session_focus: Free-text about session focus areas
+// - first_session: Free-text about what to expect in first session
+// - about_me: General bio/background text
+// - qualification: Free-text qualification description
+//
+// Structured fields (current):
+// - languages: Array of language codes
+// - years_experience: Numeric years
+// - practice_address: Structured address string
+// ============================================================================
 
 export const TherapistProfileSchema = z.object({
+  /** @legacy Free-text therapist approach description from early onboarding */
   approach_text: z.string().optional(),
+  /** @legacy Free-text describing typical clients */
   who_comes_to_me: z.string().optional(),
+  /** @legacy Free-text about session focus areas */
   session_focus: z.string().optional(),
+  /** @legacy Free-text about what to expect in first session */
   first_session: z.string().optional(),
+  /** @legacy General bio/background text */
   about_me: z.string().optional(),
+  /** Structured: Array of language codes (e.g., ['de', 'en']) */
   languages: z.array(z.string()).optional(),
+  /** Structured: Numeric years of experience */
   years_experience: z.number().optional(),
+  /** Structured: Practice address string */
   practice_address: z.string().optional(),
+  /** @legacy Free-text qualification description */
   qualification: z.string().optional(),
 });
 
@@ -111,6 +138,7 @@ export const TherapistDataSchema = z.object({
   modalities: z.array(z.string()),
   schwerpunkte: z.array(z.string()),
   session_preferences: z.array(z.string()),
+  /** @legacy Free-text therapist approach description from early onboarding */
   approach_text: z.string(),
   accepting_new: z.boolean(),
   city: z.string(),

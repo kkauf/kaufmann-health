@@ -89,7 +89,7 @@ describe('Google Ads conversions', () => {
     expect(trackConversion).not.toHaveBeenCalled();
   });
 
-  it('fires client_registration conversion on form completion only when verified', async () => {
+  it('fires lead_verified conversion on form completion only when verified', async () => {
     const leadId = '11111111-1111-4111-8111-111111111111';
     // Mock people row for preferences route to include email
     vi.doMock('@/lib/supabase-server', () => {
@@ -118,8 +118,8 @@ describe('Google Ads conversions', () => {
     await Promise.resolve();
     expect(trackConversion).toHaveBeenCalledTimes(1);
     const call = trackConversion.mock.calls[0][0];
-    expect(call.conversionAction).toBe('client_registration');
-    expect(call.conversionValue).toBe(10);
+    expect(call.conversionAction).toBe('lead_verified');
+    expect(call.conversionValue).toBe(12);
     expect(call.orderId).toBe(leadId);
     expect(call.email).toBe('patient@example.com');
   });

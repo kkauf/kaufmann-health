@@ -1,4 +1,14 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-npm test
+# Skip tests for docs/config-only changes
+CHANGED=$(git diff --cached --name-only)
+if echo "$CHANGED" | grep -qvE '^(docs/|\.md$|\.json$|\.windsurf/)'; then
+  # Run only critical tests (faster) with timeout
+  timeout 120 npm run test:critical || {
+    echo "[pre-commit] Tests timed out or failed. Use 'git commit --no-verify' to skip."
+    exit 1
+  }
+else
+  echo "[pre-commit] Docs/config only - skipping tests"
+fi

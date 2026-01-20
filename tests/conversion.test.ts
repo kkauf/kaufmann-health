@@ -59,8 +59,8 @@ describe('maybeFirePatientConversion', () => {
     expect(result.fired).toBe(true);
     expect(googleAdsTracker.trackConversion).toHaveBeenCalledWith({
       email: 'test@example.com',
-      conversionAction: 'client_registration',
-      conversionValue: 10,
+      conversionAction: 'lead_verified',
+      conversionValue: 12,
       orderId: 'patient-123',
     });
   });
@@ -86,8 +86,8 @@ describe('maybeFirePatientConversion', () => {
     expect(googleAdsTracker.trackConversion).toHaveBeenCalledWith(
       expect.objectContaining({
         email: 'sms-user@example.com',
-        conversionAction: 'client_registration',
-        conversionValue: 10,
+        conversionAction: 'lead_verified',
+        conversionValue: 12,
         orderId: 'patient-456',
       }),
     );
@@ -176,8 +176,8 @@ describe('maybeFirePatientConversion', () => {
     expect(googleAdsTracker.trackConversion).toHaveBeenCalledWith(
       expect.objectContaining({
         phoneNumber: '+4917612345678',
-        conversionAction: 'client_registration',
-        conversionValue: 10,
+        conversionAction: 'lead_verified',
+        conversionValue: 12,
         orderId: 'phone-only-patient',
       }),
     );

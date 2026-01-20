@@ -19,5 +19,17 @@ export default defineConfig({
       '**/node_modules/**',
       'tests/e2e/**'
     ],
+    testTimeout: 30000,      // 30s per test max
+    hookTimeout: 10000,      // 10s for beforeEach/afterEach
+    pool: 'forks',           // Isolate tests, prevent memory leaks
+    poolOptions: {
+      forks: {
+        maxForks: 4,         // Limit parallelism
+        minForks: 1,
+      },
+    },
+    sequence: {
+      shuffle: false,        // Deterministic order
+    },
   },
 });

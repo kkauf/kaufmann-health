@@ -117,7 +117,9 @@ export function mapTherapistRow(
   }
 ): TherapistData {
   const profile = extractProfile(row.metadata);
-  // Legacy: approach_text was stored in metadata.profile.approach_text
+  // @legacy: approach_text was populated during early onboarding via free-text input.
+  // Still displayed in emails and profiles but should be considered legacy data.
+  // See src/contracts/therapist.ts for full list of legacy fields.
   const approach_text = profile.approach_text || '';
 
   // Build clean profile object (only include fields that have values)
