@@ -92,6 +92,9 @@ test.describe('Instant Booking Flow - E2E (EARTH-233)', () => {
                 session_preferences: ['online'], // mismatch format
                 approach_text: '',
                 availability: [],
+                // Cal.com fields required by MatchPageClient validation
+                cal_enabled: false,
+                cal_username: null,
               },
             ],
             metadata: { match_type: 'partial' },

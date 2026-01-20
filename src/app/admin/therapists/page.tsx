@@ -119,7 +119,7 @@ export default function AdminTherapistsPage() {
 
   // Upload state for admin-side uploads
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
-  const [_specFiles, _setSpecFiles] = useState<FileList | null>(null);
+  const [specFiles, setSpecFiles] = useState<FileList | null>(null);
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
 
   const toggleSelected = useCallback((id: string) => {
@@ -729,7 +729,7 @@ export default function AdminTherapistsPage() {
                         ) : (
                           <div className="border-2 border-dashed border-gray-300 rounded-md p-8 text-center">
                             <p className="text-sm text-gray-500 mb-2">Kein Lizenz-Dokument hochgeladen</p>
-                            {detail.status === "pending_verification" && (
+                            {(detail.status === "pending_verification" || detail.status === "rejected") && (
                               <details className="mt-3 text-left">
                                 <summary className="cursor-pointer text-sm font-medium text-blue-700">Für Therapeut hochladen</summary>
                                 <div className="mt-2 space-y-2">
@@ -819,6 +819,52 @@ export default function AdminTherapistsPage() {
                           </div>
                         ) : (
                           <p className="text-sm text-gray-500">Keine Spezialisierungs-Zertifikate hochgeladen</p>
+                        )}
+
+                        {/* Admin cert upload */}
+                        {(detail.status === "pending_verification" || detail.status === "rejected") && (
+                          <details className="mt-3 border-t pt-3">
+                            <summary className="cursor-pointer text-sm font-medium text-blue-700">Zertifikate für Therapeut hochladen</summary>
+                            <div className="mt-2 space-y-2">
+                              <input
+                                id="specFiles"
+                                type="file"
+                                accept="application/pdf,image/jpeg,image/png"
+                                multiple
+                                onChange={(e) => setSpecFiles(e.target.files)}
+                                className="text-sm"
+                              />
+                              <Button
+                                size="sm"
+                                disabled={updating || !specFiles?.length}
+                                onClick={async () => {
+                                  if (!detail?.id || !specFiles?.length) return;
+                                  try {
+                                    setUpdating(true);
+                                    setMessage(null);
+                                    const fd = new FormData();
+                                    Array.from(specFiles).forEach((f) => fd.append('specialization_cert', f));
+                                    const res = await fetch(`/api/public/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
+                                    const json = await res.json();
+                                    if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
+                                    setMessage('Zertifikate hochgeladen');
+                                    setSpecFiles(null);
+                                    // Reset file input
+                                    const input = document.getElementById('specFiles') as HTMLInputElement;
+                                    if (input) input.value = '';
+                                    await openDetail(detail.id);
+                                  } catch (e) {
+                                    const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
+                                    setMessage(msg);
+                                  } finally {
+                                    setUpdating(false);
+                                  }
+                                }}
+                              >
+                                Hochladen
+                              </Button>
+                            </div>
+                          </details>
                         )}
                       </div>
                     </div>
