@@ -38,7 +38,7 @@ describe('Google Ads Enhanced Conversions Architecture', () => {
     process.env.GOOGLE_ADS_REFRESH_TOKEN = 'test-refresh-token';
     process.env.GOOGLE_ADS_DEVELOPER_TOKEN = 'test-developer-token';
     process.env.GOOGLE_ADS_CUSTOMER_ID = '1234567890';
-    process.env.GOOGLE_ADS_CA_CLIENT_REGISTRATION = 'customers/1234567890/conversionActions/111111111';
+    process.env.GOOGLE_ADS_CA_LEAD_VERIFIED = 'customers/1234567890/conversionActions/111111111';
 
     originalFetch = global.fetch;
     mockFetch = vi.fn();
@@ -55,7 +55,7 @@ describe('Google Ads Enhanced Conversions Architecture', () => {
     delete process.env.GOOGLE_ADS_REFRESH_TOKEN;
     delete process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
     delete process.env.GOOGLE_ADS_CUSTOMER_ID;
-    delete process.env.GOOGLE_ADS_CA_CLIENT_REGISTRATION;
+    delete process.env.GOOGLE_ADS_CA_LEAD_VERIFIED;
   });
 
   describe('API Endpoint Verification', () => {
@@ -75,8 +75,8 @@ describe('Google Ads Enhanced Conversions Architecture', () => {
       const tracker = new GoogleAdsTracker();
       await tracker.trackConversion({
         email: 'test@example.com',
-        conversionAction: 'client_registration',
-        conversionValue: 10,
+        conversionAction: 'lead_verified',
+        conversionValue: 12,
         orderId: 'test-order-123',
         gclid: 'test-gclid',
       });
@@ -106,8 +106,8 @@ describe('Google Ads Enhanced Conversions Architecture', () => {
       const tracker = new GoogleAdsTracker();
       await tracker.trackConversion({
         email: 'test@example.com',
-        conversionAction: 'client_registration',
-        conversionValue: 10,
+        conversionAction: 'lead_verified',
+        conversionValue: 12,
         orderId: 'test-order-123',
         gclid: 'CjwKCAtest123',
       });
@@ -136,8 +136,8 @@ describe('Google Ads Enhanced Conversions Architecture', () => {
       const tracker = new GoogleAdsTracker();
       await tracker.trackConversion({
         email: 'test@example.com',
-        conversionAction: 'client_registration',
-        conversionValue: 10,
+        conversionAction: 'lead_verified',
+        conversionValue: 12,
         orderId: 'test-order-123',
       });
 
@@ -165,8 +165,8 @@ describe('Google Ads Enhanced Conversions Architecture', () => {
       const tracker = new GoogleAdsTracker();
       await tracker.trackConversion({
         email: 'test@example.com',
-        conversionAction: 'client_registration',
-        conversionValue: 10,
+        conversionAction: 'lead_verified',
+        conversionValue: 12,
         orderId: 'test-order-123',
       });
 
@@ -216,8 +216,8 @@ describe('Google Ads Enhanced Conversions Architecture', () => {
       const tracker = new GoogleAdsTracker();
       await tracker.trackConversion({
         email: 'test@example.com',
-        conversionAction: 'client_registration',
-        conversionValue: 10,
+        conversionAction: 'lead_verified',
+        conversionValue: 12,
         orderId: 'test-order-123',
       });
 
@@ -248,8 +248,8 @@ describe('Google Ads Enhanced Conversions Architecture', () => {
       const tracker = new GoogleAdsTracker();
       await tracker.trackConversion({
         phoneNumber: '+491234567890',
-        conversionAction: 'client_registration',
-        conversionValue: 10,
+        conversionAction: 'lead_verified',
+        conversionValue: 12,
         orderId: 'test-order-123',
       });
 

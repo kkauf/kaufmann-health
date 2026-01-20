@@ -53,7 +53,8 @@ async function getConversionActions() {
         conversion_action.name,
         conversion_action.resource_name,
         conversion_action.status,
-        conversion_action.type
+        conversion_action.type,
+        conversion_action.tag_snippets
       FROM conversion_action 
       WHERE conversion_action.status = 'ENABLED'
       ORDER BY conversion_action.name
@@ -84,6 +85,9 @@ async function getConversionActions() {
         console.log(`Resource: ${action.resourceName}`);
         console.log(`Status: ${action.status}`);
         console.log(`Type: ${action.type}`);
+        if (action.tagSnippets) {
+          console.log(`Tag Snippets: ${JSON.stringify(action.tagSnippets, null, 2)}`);
+        }
         console.log('---');
       });
       

@@ -65,8 +65,8 @@ describe('Conversion Integration Tests', () => {
       expect(result.fired).toBe(true);
       expect(googleAdsTracker.trackConversion).toHaveBeenCalledWith({
         email: 'verified@example.com',
-        conversionAction: 'client_registration',
-        conversionValue: 10,
+        conversionAction: 'lead_verified',
+        conversionValue: 12,
         orderId: 'email-patient-123',
       });
     });

@@ -89,11 +89,12 @@ export async function maybeFirePatientConversion(ctx: ConversionContext): Promis
     }
 
     // Fire server-side Enhanced Conversion with available identifiers
+    // Uses 'lead_verified' to match GOOGLE_ADS_CA_LEAD_VERIFIED env var
     await googleAdsTracker.trackConversion({
       ...(emailForConversion ? { email: emailForConversion } : {}),
       ...(phoneForConversion ? { phoneNumber: phoneForConversion } : {}),
-      conversionAction: 'client_registration',
-      conversionValue: 10,
+      conversionAction: 'lead_verified',
+      conversionValue: 12, // €12 - matches client-side fireLeadVerifiedConversion
       orderId: ctx.patient_id,
       gclid, // Pass gclid for attribution (primary signal when available)
     });
@@ -128,8 +129,8 @@ export async function maybeFirePatientConversion(ctx: ConversionContext): Promis
       props: {
         patient_id: ctx.patient_id,
         verification_method: ctx.verification_method,
-        conversion_action: 'client_registration',
-        value: 10,
+        conversion_action: 'lead_verified',
+        value: 12,
         has_gclid: !!gclid, // Track whether gclid was available for attribution
       },
     });
