@@ -53,11 +53,21 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
   const isBrowse = rawVariant === 'browse';
   // Test 4: Concierge variant forces manual curation flow (24h) regardless of instantFlow flag
   const isConcierge = rawVariant === 'concierge';
+  // Test 5: Online mode for Germany-wide online campaigns
+  const modeParam = params?.mode;
+  const isOnlineMode = typeof modeParam === 'string' && modeParam.toLowerCase() === 'online';
   // Test 4: Only pass variant if explicitly specified in URL - let fragebogen handle client-side randomization
   // This ensures users get proper concierge/self-service attribution instead of stale 'marketplace'
-  const fragebogenHref = rawVariant ? `/fragebogen?v=${encodeURIComponent(rawVariant)}` : '/fragebogen';
+  // Test 5: Also pass mode=online when present for online campaigns
+  const fragebogenParams = new URLSearchParams();
+  if (rawVariant) fragebogenParams.set('v', rawVariant);
+  if (isOnlineMode) fragebogenParams.set('mode', 'online');
+  const fragebogenHref = fragebogenParams.toString() ? `/fragebogen?${fragebogenParams}` : '/fragebogen';
   // Preserve variant when navigating to the directory so the variant survives into /therapeuten
-  const therapeutenHref = `/therapeuten${rawVariant ? `?v=${encodeURIComponent(rawVariant)}` : ''}`;
+  const therapeutenParams = new URLSearchParams();
+  if (rawVariant) therapeutenParams.set('v', rawVariant);
+  if (isOnlineMode) therapeutenParams.set('format', 'online');
+  const therapeutenHref = therapeutenParams.toString() ? `/therapeuten?${therapeutenParams}` : '/therapeuten';
   
   // Test 4: Keyword-echo for QS optimization
   // Priority: ?kw={keyword} (ValueTrack) > ?adgroup= > page defaults
