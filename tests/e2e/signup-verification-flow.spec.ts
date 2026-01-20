@@ -149,8 +149,12 @@ test.describe('SignupWizard Verification Flow', () => {
   });
 
   test('shows SMS verification step for phone users', async ({ page }) => {
+    // Skip if SMS bypass not configured - requires SMS infrastructure to show verification step
+    test.skip(!smsBypass, 'Set E2E_SMS_BYPASS=true to run SMS verification tests (requires SMS infrastructure)');
+    
     const testName = `E2E Test ${uid()}`;
-    const testPhone = `+49 151 ${Math.floor(10000000 + Math.random() * 89999999)}`;
+    // Phone number without country code - the VerifiedPhoneInput component handles +49 separately
+    const testPhoneLocal = `151${Math.floor(10000000 + Math.random() * 89999999)}`;
     
     await page.goto('/fragebogen?variant=concierge');
     await navigateToContactStep(page);
@@ -165,9 +169,10 @@ test.describe('SignupWizard Verification Flow', () => {
       await smsButton.click();
     }
     
-    // Fill phone number
+    // Fill phone number (without +49, component handles country code)
     const phoneInput = page.locator('input[type="tel"]');
-    await phoneInput.fill(testPhone);
+    await phoneInput.clear();
+    await phoneInput.fill(testPhoneLocal);
     
     // Submit to trigger SMS
     const submitBtn = page.getByRole('button', { name: /Weiter|Code senden|anzeigen/i });
@@ -267,8 +272,8 @@ test.describe('SignupWizard Verification Flow', () => {
     const emailInput = page.locator('input[type="email"]');
     await emailInput.fill(testEmail);
     
-    // Submit
-    await page.getByRole('button', { name: /Weiter|Absenden/i }).click();
+    // Submit (button text is "Meine Therapeut:in anzeigen →")
+    await page.getByRole('button', { name: /Weiter|Absenden|anzeigen/i }).click();
     
     // Should show email confirmation instructions (magic link or code)
     await expect(
@@ -303,8 +308,8 @@ test.describe('Verification Flow - Edge Cases', () => {
     const phoneInput = page.locator('input[type="tel"]');
     await phoneInput.fill('123'); // Too short
     
-    // Try to submit
-    const submitBtn = page.getByRole('button', { name: /Weiter|Code senden/i });
+    // Try to submit (button text is "Meine Therapeut:in anzeigen →")
+    const submitBtn = page.getByRole('button', { name: /Weiter|Code senden|anzeigen/i });
     await submitBtn.click();
     
     // Should show validation error OR button stays disabled
