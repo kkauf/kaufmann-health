@@ -2,75 +2,81 @@
 
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import clarity from '@microsoft/clarity';
 
 declare global {
   interface Window {
     clarity?: (command: string, ...args: unknown[]) => void;
+    clarityInitialized?: boolean;
   }
 }
 
 /**
- * Controls Clarity recording based on current route.
- * Script is loaded in layout.tsx with afterInteractive + readiness check.
+ * Initializes and controls Clarity recording.
+ * Uses official @microsoft/clarity SDK for proper SPA support.
  * 
- * IMPORTANT: Only use clarity('stop') for excluded pages.
- * Do NOT call clarity('start') or clarity('upgrade') on navigation —
- * these can cause session splits in SPAs.
+ * Key: Uses clarity('event', 'pageview') on route changes to maintain
+ * session continuity instead of relying on auto-detection which can
+ * cause session splits in Next.js apps.
  */
 export default function ClarityLoader() {
   const pathname = usePathname();
-  const wasStopped = useRef(false);
-  const lastNotifiedUrl = useRef<string | null>(null);
+  const isExcludedRef = useRef(false);
 
+  // Check if should exclude recording entirely
+  const shouldExcludeRecording = () => {
+    if (typeof window === 'undefined') return true;
+    // Check kh_test cookie
+    if (document.cookie.split(';').some(c => c.trim().startsWith('kh_test=1'))) return true;
+    // Check localhost
+    const h = window.location.hostname;
+    if (h === 'localhost' || h === '127.0.0.1') return true;
+    // Check staging/preview
+    if (h.includes('.vercel.app') || h.includes('staging') || h.includes('preview')) return true;
+    // Check admin pages and therapist acceptance flow (/match/[uuid])
+    if (pathname?.startsWith('/admin')) return true;
+    if (pathname?.startsWith('/match/') && !pathname?.startsWith('/matches/')) return true;
+    return false;
+  };
+
+  // Initialize Clarity once
   useEffect(() => {
-    // Check if should exclude recording entirely (test mode, localhost, staging)
-    const shouldExcludeRecording = () => {
-      // Check kh_test cookie
-      if (document.cookie.split(';').some(c => c.trim().startsWith('kh_test=1'))) return true;
-      // Check localhost
-      const h = window.location.hostname;
-      if (h === 'localhost' || h === '127.0.0.1') return true;
-      // Check staging/preview
-      if (h.includes('.vercel.app') || h.includes('staging') || h.includes('preview')) return true;
-      return false;
-    };
+    const projectId = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
+    if (!projectId || window.clarityInitialized) return;
 
-    // Stop Clarity on admin pages and therapist acceptance flow (/match/[uuid])
-    // Note: /matches/* (patient flow) is intentionally tracked
-    const isExcluded = shouldExcludeRecording() ||
-      pathname?.startsWith('/admin') || 
-      (pathname?.startsWith('/match/') && !pathname?.startsWith('/matches/'));
-
-    const applyClarity = () => {
-      if (typeof window === 'undefined' || !window.clarity) return false;
-      
-      if (isExcluded) {
-        window.clarity('stop');
-        wasStopped.current = true;
-        lastNotifiedUrl.current = null;
-      } else {
-        if (wasStopped.current) {
-          // Resume if we previously stopped (coming from excluded page)
-          window.clarity('start');
-          wasStopped.current = false;
-        }
-        
-        // Notify Clarity of URL change for SPA session continuity
-        // Uses window.location to avoid useSearchParams Suspense requirement
-        const currentUrl = window.location.pathname + window.location.search;
-        if (currentUrl !== lastNotifiedUrl.current) {
-          window.clarity('set', 'page', currentUrl);
-          lastNotifiedUrl.current = currentUrl;
-        }
-      }
-      return true;
-    };
-
-    // Try immediately, then retry after Clarity loads
-    if (!applyClarity()) {
-      const timer = setTimeout(applyClarity, 2000);
-      return () => clearTimeout(timer);
+    if (shouldExcludeRecording()) {
+      console.log('[Clarity] Excluded: test/localhost/staging/admin');
+      isExcludedRef.current = true;
+      return;
     }
+
+    // Initialize using official SDK
+    clarity.init(projectId);
+    window.clarityInitialized = true;
+    console.log('[Clarity] Initialized');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Track SPA page navigation
+  useEffect(() => {
+    // Skip if excluded or not initialized
+    if (isExcludedRef.current || !window.clarityInitialized) return;
+    
+    // Re-check exclusion on route change (e.g., navigating to admin)
+    if (shouldExcludeRecording()) {
+      if (window.clarity) {
+        window.clarity('stop');
+        isExcludedRef.current = true;
+        console.log('[Clarity] Stopped: navigated to excluded page');
+      }
+      return;
+    }
+
+    // Fire pageview event for SPA navigation
+    if (typeof window.clarity === 'function') {
+      window.clarity('event', 'pageview');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   return null;
