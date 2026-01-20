@@ -283,6 +283,7 @@ export async function GET(req: Request) {
       next_full_date_iso: string | null;
       next_full_time_label: string | null;
       next_full_time_utc: string | null;
+      full_slots_count: number | null;
     };
     
     let therapistRows: TherapistRow[] = [];
@@ -382,8 +383,22 @@ export async function GET(req: Request) {
       
       const mm = computeMismatches(patientMeta, tRow);
       
-      // Calculate scores per spec (slot counts are 0 - Cal.com handles booking)
-      const platformScore = calculatePlatformScore(tRow, 0, 0);
+      // Get slot counts from cache for scoring
+      const slotCache = slotCacheMap.get(t.id);
+      const introSlotsCount = slotCache?.slots_count ?? 0;
+      const fullSlotsCount = slotCache?.full_slots_count ?? 0;
+      const intakeSlots7Days = introSlotsCount >= 3 ? 3 : introSlotsCount;
+      const intakeSlots14Days = introSlotsCount;
+      
+      // Generate daily shuffle seed for fair rotation
+      const today = new Date().toISOString().split('T')[0];
+      const dailyShuffleSeed = `${t.id}-${today}`;
+      
+      const platformScore = calculatePlatformScore(tRow, intakeSlots7Days, intakeSlots14Days, {
+        fullSlotsCount,
+        createdAt: (t as Record<string, unknown>).created_at as string | undefined,
+        dailyShuffleSeed,
+      });
       const matchScore = calculateMatchScore(tRow, patientMeta);
       const totalScore = calculateTotalScore(matchScore, platformScore);
       

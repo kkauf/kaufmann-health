@@ -109,8 +109,8 @@ describe('Directory Ranking (Platform Score)', () => {
     const ranked = rankForDirectory(therapists, slotsMap);
     
     expect(ranked[0].id).toBe('many-slots');
-    // 3+ slots in 7 days = 25 points, 1-2 slots = 15 points
-    expect(ranked[0].platformScore - ranked[1].platformScore).toBe(10);
+    // 3+ slots in 7 days = 20 points, 1-2 slots = 12 points
+    expect(ranked[0].platformScore - ranked[1].platformScore).toBe(8);
   });
 
   it('ranks therapist with complete profile higher than basic profile', () => {
@@ -227,15 +227,15 @@ describe('Match View Ranking (Total Score = Match × 1.5 + Platform)', () => {
     const ranked = rankForMatches(therapists, patient, slotsMap);
     
     // high-platform: gender(+10) + modality(+15) + in-person-city(+20) = 45 match
-    //   Platform = 25 (5 slots) + 15 (profile) = 40
-    //   Total = 45*1.5 + 40 = 107.5
+    //   Platform = 20 (5 slots, reduced) + 15 (profile) = 35
+    //   Total = 45*1.5 + 35 = 102.5
     // low-platform: schwerpunkte(+30) + gender(+10) + modality(+15) + in-person-city(+20) = 75 match
     //   Platform = 0 + 15 (profile) = 15
     //   Total = 75*1.5 + 15 = 127.5
-    // low-platform wins with 127.5 > 107.5 (schwerpunkte match now more important)
+    // low-platform wins with 127.5 > 102.5 (schwerpunkte match now more important)
     expect(ranked[0].id).toBe('low-platform-high-match');
     expect(ranked[0].totalScore).toBe(127.5);
-    expect(ranked[1].totalScore).toBe(107.5);
+    expect(ranked[1].totalScore).toBe(102.5);
   });
 
   it('excludes therapists that fail eligibility filters', () => {

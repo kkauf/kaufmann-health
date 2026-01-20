@@ -105,12 +105,21 @@ export async function GET() {
       // This ensures therapists with available slots rank higher
       const cachedSlot = calSlotsCache.get(row.id);
       const introSlotsCount = cachedSlot?.slots_count ?? 0;
+      const fullSlotsCount = cachedSlot?.full_slots_count ?? 0;
       // For 7-day window, use slots_count directly (cache is refreshed with 14-day window)
       // Approximate: if slots_count >= 3, assume at least some are within 7 days
       const intakeSlots7Days = introSlotsCount >= 3 ? 3 : introSlotsCount;
       const intakeSlots14Days = introSlotsCount;
       
-      const platformScore = calculatePlatformScore(tRow, intakeSlots7Days, intakeSlots14Days);
+      // Generate daily shuffle seed for fair rotation
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const dailyShuffleSeed = `${row.id}-${today}`;
+      
+      const platformScore = calculatePlatformScore(tRow, intakeSlots7Days, intakeSlots14Days, {
+        fullSlotsCount,
+        createdAt: (row as Record<string, unknown>).created_at as string | undefined,
+        dailyShuffleSeed,
+      });
       
       return { row, platformScore };
     });
