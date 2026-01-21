@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Button } from '@/components/ui/button';
 import CtaLink from '@/components/CtaLink';
-import { ProcessSteps, FinalCtaSection } from '@/features/landing/components';
+import { ProcessTimeline, FinalCtaSection } from '@/features/landing/components';
 import { buildLandingMetadata, buildLocalBusinessJsonLd } from '@/lib/seo';
 import { MessageCircle, UserCheck, PhoneCall } from 'lucide-react';
 
@@ -47,12 +47,12 @@ export default async function VermittlungPage() {
 
       {/* Ablauf / Prozess */}
       <section id="ablauf" className="scroll-mt-24">
-        <ProcessSteps
-          heading="So funktioniert’s"
+        <ProcessTimeline
+          heading="So funktioniert's"
           items={[
-            { step: 1, title: 'Du schilderst dein Anliegen', icon: <MessageCircle className="h-5 w-5" />, bullets: ['Stadt oder online, Zeitfenster, besondere Themen'] },
-            { step: 2, title: 'Wir wählen bis zu 3 Profile aus', icon: <UserCheck className="h-5 w-5" />, bullets: ['Geprüfte Qualifikationen, passende Methoden, echte Verfügbarkeit'] },
-            { step: 3, title: 'Du wählst & vereinbarst Termine', icon: <PhoneCall className="h-5 w-5" />, bullets: ['Direkter Kontakt, konkrete Vorschläge in 24h'] },
+            { title: 'Du schilderst dein Anliegen', icon: <MessageCircle className="h-5 w-5" />, bullets: ['Stadt oder online, Zeitfenster, besondere Themen'] },
+            { title: 'Wir wählen bis zu 3 Profile aus', icon: <UserCheck className="h-5 w-5" />, bullets: ['Geprüfte Qualifikationen, passende Methoden, echte Verfügbarkeit'] },
+            { title: 'Du wählst & vereinbarst Termine', icon: <PhoneCall className="h-5 w-5" />, bullets: ['Direkter Kontakt, konkrete Vorschläge in 24h'] },
           ]}
         />
       </section>

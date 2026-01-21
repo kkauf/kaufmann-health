@@ -60,7 +60,9 @@ async function main() {
       const campRn = c.resource_name || c.resourceName;
       const attached = await customer.query(`
         SELECT campaign.resource_name, campaign_asset.asset FROM campaign_asset
-        WHERE campaign.resource_name='${campRn}' AND campaign_asset.field_type='SITELINK'
+        WHERE campaign.resource_name='${campRn}'
+          AND campaign_asset.field_type='SITELINK'
+          AND campaign_asset.status != 'REMOVED'
       `);
       const attachedRNs = (attached || []).map((x: any) => x?.campaign_asset?.asset || x?.campaignAsset?.asset).filter(Boolean);
       const map = new Map(all.map(a => [a.resourceName, a.linkText || a.name || '']));

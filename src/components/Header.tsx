@@ -2,7 +2,6 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Menu, X } from 'lucide-react'
@@ -12,14 +11,8 @@ export default function Header() {
   const [open, setOpen] = React.useState(false)
   const closeBtnRef = React.useRef<HTMLButtonElement>(null)
   const [mounted, setMounted] = React.useState(false)
-  const pathname = usePathname()
-  const [entryLanding] = React.useState<string | null>(() => {
-    if (pathname === '/start' || pathname === '/therapie-finden') {
-      return pathname
-    }
-    return null
-  })
-  const logoHref = entryLanding ?? '/start'
+  // Logo always goes to root
+  const logoHref = '/'
 
   // Close on Escape and lock scroll when menu is open
   React.useEffect(() => {

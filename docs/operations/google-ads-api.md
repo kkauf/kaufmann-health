@@ -131,6 +131,27 @@ export const WEEK38_CONFIG = {
 }
 ```
 
+## Sitelinks
+
+Sitelinks are configured in the campaign JSON config under `assets.sitelinks`. The create-campaigns script will:
+1. Check for existing sitelinks by link_text (case-insensitive match)
+2. Reuse existing sitelinks if text matches
+3. Create new sitelinks if no match found
+4. Attach all specified sitelinks to the campaign
+
+**Important**: Sitelink URLs are immutable. To change a URL, create a new sitelink with different text.
+
+Current active sitelinks (Jan 2026):
+- **NARM** → /lp/narm (landing page)
+- **SE Therapie** → /lp/somatic-experiencing (landing page)
+- **Therapeutenverzeichnis** → /therapeuten (directory)
+- **Direkt zum Aufnahmebogen** → /fragebogen (intake)
+
+To list sitelinks and their attachments:
+```bash
+npx tsx google_ads_api_scripts/list-sitelinks.ts --nameLike="KH_Acq"
+```
+
 ## Daily Operations Checklist
 
 - Morning (9:00)

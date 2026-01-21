@@ -28,7 +28,7 @@ export async function ensureSitelinkAssetsForCampaign(customer: any, campaignRn:
     // Create missing sitelinks
     if (toCreate.length) {
       try {
-        const creates = toCreate.map((it) => ({ sitelink_asset: { link_text: it.text, final_urls: [it.url] } }));
+        const creates = toCreate.map((it) => ({ sitelink_asset: { link_text: it.text }, final_urls: [it.url] }));
         const created: any = await customer.assets.create(creates, { partial_failure: true });
         const createdRns: string[] = (created?.results || []).map((r: any) => r?.resource_name).filter(Boolean);
         toAttach.push(...createdRns);
