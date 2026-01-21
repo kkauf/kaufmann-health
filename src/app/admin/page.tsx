@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 import AdminStats from '@/features/admin/components/AdminStats';
+import { AdminQuickActions } from '@/features/admin/components/AdminQuickActions';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,6 +20,8 @@ export default async function AdminHomePage() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Admin Dashboard</h1>
           <p className="mt-1 text-base text-gray-600">Schnellzugriff auf Leads, Matches und Fehler-Logs.</p>
         </header>
+
+        <AdminQuickActions />
 
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
           <AdminStats />
