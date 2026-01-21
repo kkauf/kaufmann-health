@@ -84,6 +84,9 @@ export default async function SomaticExperiencingPage() {
     { id: "unterschied-koerpertherapie", question: "Unterschied zu allgemeiner Körpertherapie?", answer: "SE fokussiert spezifisch auf Trauma und Nervensystem‑Regulation – nicht auf allgemeine Körperarbeit." },
     { id: "beruehrung", question: "Werde ich berührt?", answer: "SE kann mit oder ohne Berührung praktiziert werden. Wenn Berührung, dann ausschließlich mit expliziter Zustimmung." },
     { id: "kostenuebernahme", question: "Kostenübernahme?", answer: "Private Kassen übernehmen teils. Gesetzliche Kassen nur, wenn die behandelnde Person approbiert ist. Viele SE‑Praktiker:innen arbeiten als Heilpraktiker." },
+    { id: "privacy", question: "Wird die Psychotherapie bei meiner Krankenkasse dokumentiert?", answer: "Nein. Es erfolgt keine Kassenabrechnung, kein Eintrag in deiner Krankenakte und keine ICD-10-Diagnose bei der Kasse." },
+    { id: "speed", question: "Wie schnell bekomme ich Vorschläge?", answer: "Du erhältst sofort passende Therapeut:innen-Vorschläge basierend auf deinen Angaben. Termine sind in der Regel noch diese Woche möglich." },
+    { id: "why-body", question: "Warum körperorientierte Psychotherapie?", answer: "Viele Menschen verstehen ihre Probleme bereits – sie wissen, woher ihre Ängste kommen. Aber Verstehen allein führt nicht zu Veränderung. Trauma und festgefahrene Reaktionen leben im Nervensystem. Körperorientierte Psychotherapie arbeitet direkt mit dem Körper, um diese Muster zu lösen." },
   ];
 
   const therapySchema = {

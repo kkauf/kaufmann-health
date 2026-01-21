@@ -1313,8 +1313,8 @@ export function TherapistDetailModal({
                       <span className="break-words">Online-Kennenlernen (15 min)</span>
                     </Button>
 
-                    {/* Only show full session button if therapist doesn't require intro OR patient has completed intro */}
-                    {!hideDirectBooking && (
+                    {/* Show full session button if allowed, otherwise show explanation */}
+                    {!hideDirectBooking ? (
                       <Button
                         variant="outline"
                         className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
@@ -1324,6 +1324,10 @@ export function TherapistDetailModal({
                         <CalendarCheck2 className="mr-2 h-5 w-5 shrink-0" />
                         <span className="break-words">Sitzung buchen</span>
                       </Button>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center px-4 py-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm text-center">
+                        <span>Bitte buche ein kostenloses Kennenlernen mit {therapist.first_name}, bevor du eine vollständige Therapiesitzung buchen kannst.</span>
+                      </div>
                     )}
                   </>
                 ) : (
@@ -1338,8 +1342,8 @@ export function TherapistDetailModal({
                       <span className="break-words">Kennenlernen anfragen</span>
                     </Button>
 
-                    {/* Only show direct message button if therapist doesn't require intro OR patient has completed intro */}
-                    {!hideDirectBooking && (
+                    {/* Show direct message button if allowed, otherwise show explanation */}
+                    {!hideDirectBooking ? (
                       <Button
                         variant="outline"
                         className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
@@ -1349,6 +1353,10 @@ export function TherapistDetailModal({
                         <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
                         <span className="break-words">Nachricht senden</span>
                       </Button>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center px-4 py-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm text-center">
+                        <span>Bitte buche ein kostenloses Kennenlernen mit {therapist.first_name}, bevor du eine vollständige Therapiesitzung buchen kannst.</span>
+                      </div>
                     )}
                   </>
                 )}

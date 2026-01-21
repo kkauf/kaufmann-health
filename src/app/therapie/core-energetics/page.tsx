@@ -83,6 +83,9 @@ export default async function CoreEnergeticsPage() {
     { id: "physical", question: "Muss ich körperlich fit sein?", answer: "Nein. Die Übungen werden an deine Möglichkeiten angepasst. Wichtiger ist die Bereitschaft, mit dem Körper zu arbeiten." },
     { id: "kosten", question: "Was kostet eine Core Energetics Sitzung?", answer: "Die meisten CE-Therapeut:innen arbeiten privat. Rechnen mit 80-120€ pro Sitzung. Manche Zusatzversicherungen übernehmen Anteile." },
     { id: "therapeut-finden", question: "Wie finde ich einen qualifizierten Core Energetics Therapeuten?", answer: "Achte auf abgeschlossene Core Energetics Ausbildung. Unsere Therapeut:innen sind alle zertifiziert." },
+    { id: "privacy", question: "Wird die Psychotherapie bei meiner Krankenkasse dokumentiert?", answer: "Nein. Es erfolgt keine Kassenabrechnung, kein Eintrag in deiner Krankenakte und keine ICD-10-Diagnose bei der Kasse." },
+    { id: "speed", question: "Wie schnell bekomme ich Vorschläge?", answer: "Du erhältst sofort passende Therapeut:innen-Vorschläge basierend auf deinen Angaben. Termine sind in der Regel noch diese Woche möglich." },
+    { id: "why-body", question: "Warum körperorientierte Psychotherapie?", answer: "Viele Menschen verstehen ihre Probleme bereits – sie wissen, woher ihre Ängste kommen. Aber Verstehen allein führt nicht zu Veränderung. Trauma und festgefahrene Reaktionen leben im Nervensystem. Körperorientierte Psychotherapie arbeitet direkt mit dem Körper, um diese Muster zu lösen." },
   ];
 
   const therapySchema = {

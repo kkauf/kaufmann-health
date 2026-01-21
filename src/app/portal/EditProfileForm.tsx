@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Lock, Target, Eye, Globe } from "lucide-react";
+import { ImageCropper } from "@/components/ImageCropper";
 import { TherapistDetailModal } from "@/features/therapists/components/TherapistDetailModal";
 import type { TherapistData } from "@/features/therapists/components/TherapistDirectory";
 import CalendarManagement from "./CalendarManagement";
@@ -176,6 +177,8 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPending, setPhotoPending] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [cropperImageSrc, setCropperImageSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const currentPhotoUrl = photoPreview || initialData.photo_url;
 
@@ -325,15 +328,39 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
         if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
-      setPhotoFile(file);
-      setPhotoPending(true);
+      // Open cropper instead of directly setting the file
       const url = URL.createObjectURL(file);
-      setPhotoPreview((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return url;
-      });
+      setCropperImageSrc(url);
+      setShowCropper(true);
     }
   }, []);
+
+  const onCropComplete = useCallback((croppedBlob: Blob) => {
+    // Create a File from the cropped Blob
+    const croppedFile = new File([croppedBlob], 'profile-photo.jpg', { type: 'image/jpeg' });
+    setPhotoFile(croppedFile);
+    setPhotoPending(true);
+    
+    // Create preview URL from cropped blob
+    const url = URL.createObjectURL(croppedBlob);
+    setPhotoPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return url;
+    });
+    
+    // Clean up cropper state
+    if (cropperImageSrc) URL.revokeObjectURL(cropperImageSrc);
+    setCropperImageSrc(null);
+    setShowCropper(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [cropperImageSrc]);
+
+  const onCropCancel = useCallback(() => {
+    if (cropperImageSrc) URL.revokeObjectURL(cropperImageSrc);
+    setCropperImageSrc(null);
+    setShowCropper(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [cropperImageSrc]);
 
   const clearPhotoSelection = useCallback(() => {
     setPhotoFile(null);
@@ -977,6 +1004,17 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
         onClose={() => setPreviewOpen(false)}
         previewMode
       />
+
+      {/* Image Cropper Modal */}
+      {showCropper && cropperImageSrc && (
+        <ImageCropper
+          imageSrc={cropperImageSrc}
+          onCropComplete={onCropComplete}
+          onCancel={onCropCancel}
+          aspectRatio={1}
+          cropShape="round"
+        />
+      )}
     </div>
   );
 }
