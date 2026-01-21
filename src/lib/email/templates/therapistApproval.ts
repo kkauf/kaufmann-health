@@ -82,7 +82,13 @@ export function renderTherapistApproval(params: {
   `);
 
   // Video tutorial hint
-  lines.push('<p style="margin:0 0 24px; font-size:15px; line-height:1.65; color:#475569 !important;">Im Portal findest du auch ein kurzes <strong style="font-weight:600;">Video-Tutorial</strong>, das dir die Kalender-Einrichtung Schritt für Schritt zeigt – schau gerne rein, falls du Unterstützung brauchst.</p>');
+  lines.push('<p style="margin:0 0 16px; font-size:15px; line-height:1.65; color:#475569 !important;">Im Portal findest du auch ein kurzes <strong style="font-weight:600;">Video-Tutorial</strong>, das dir die Kalender-Einrichtung Schritt für Schritt zeigt – schau gerne rein, falls du Unterstützung brauchst.</p>');
+
+  // Future login explanation
+  lines.push('<div style="background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%) !important; background-image: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%) !important; padding:16px 20px; border-radius:12px; border:1px solid rgba(202, 138, 4, 0.2); margin:0 0 24px;">');
+  lines.push('<p style="margin:0 0 8px; font-size:14px; font-weight:600; color:#854d0e !important;">💡 Gut zu wissen: So loggst du dich später ein</p>');
+  lines.push('<p style="margin:0; font-size:14px; line-height:1.6; color:#713f12 !important;">Besuche einfach <a href="https://www.kaufmann-health.de/portal/login" style="color:#ca8a04; text-decoration:underline;">kaufmann-health.de/portal/login</a> und gib deine E‑Mail-Adresse ein. Du erhältst dann einen Login-Link per E‑Mail – ganz ohne Passwort.</p>');
+  lines.push('</div>');
 
   // Founder signature
   lines.push(`

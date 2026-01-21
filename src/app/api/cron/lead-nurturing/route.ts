@@ -4,7 +4,8 @@ import { NextResponse } from 'next/server';
  * POST /api/cron/lead-nurturing
  * 
  * Runs daily at 9am. Combines:
- * - therapists/reminders - Remind therapists about incomplete profiles
+ * - therapists/document-reminders - Remind pending therapists to upload documents (day 1, 3, 7)
+ * - therapists/reminders - Remind verified therapists about incomplete profiles
  * - leads/rich-therapist-email - Send rich emails with therapist matches
  * - leads/selection-nudge - Nudge leads to select a therapist
  * 
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
 
   // Run sequentially to spread email load
   const jobs = [
+    { name: 'therapist-document-reminders', path: '/api/admin/therapists/document-reminders?limit=100' },
     { name: 'therapist-reminders', path: '/api/admin/therapists/reminders?limit=200' },
     { name: 'rich-therapist-email', path: '/api/admin/leads/rich-therapist-email?limit=200' },
     { name: 'selection-nudge', path: '/api/admin/leads/selection-nudge?limit=200' },
