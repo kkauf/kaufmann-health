@@ -57,7 +57,7 @@ test.describe('Cal.com Slots Smoke Test', () => {
     await expect(calBookingButton).toBeVisible({ timeout: 20000 });
   });
 
-  test('clicking intro booking shows slot picker with available times', async ({ page }) => {
+  test('clicking intro booking shows slot picker or contact fallback', async ({ page }) => {
     const modal = await openCalEnabledTherapistModal(page);
 
     // Click the intro booking button
@@ -65,13 +65,35 @@ test.describe('Cal.com Slots Smoke Test', () => {
     await expect(introButton).toBeVisible({ timeout: 5000 });
     await introButton.click();
 
-    // Should show slot picker - either loading state or actual slots
-    // Look for the slot header or time buttons
+    // Wait for the Cal booking flow to load
+    // EARTH-248: If no Cal slots are available, the modal auto-redirects to ContactModal
+    // So we accept either: slot picker UI OR the contact form fallback
+    await page.waitForTimeout(3000);
+
+    // Check for slot picker elements
     const slotHeader = modal.locator('text=/Nächster freier Termin:/').or(modal.locator('text=/Wähle einen Termin/'));
     const timeButton = modal.getByRole('button', { name: /^\d{2}:\d{2}$/ }).first();
-    
-    // Wait for either header or time slots to appear
-    await expect(slotHeader.or(timeButton)).toBeVisible({ timeout: 10000 });
+    const slotPickerVisible = await slotHeader.or(timeButton).isVisible().catch(() => false);
+
+    if (slotPickerVisible) {
+      // Slot picker is showing - test passes
+      expect(slotPickerVisible).toBe(true);
+    } else {
+      // EARTH-248 fallback: Check if contact modal opened instead (no slots available)
+      // The contact modal has title "Nachricht schreiben" or shows a message textbox
+      const contactDialog = page.getByRole('dialog').filter({ hasText: /Nachricht schreiben|Worum geht es/ });
+      const contactFormVisible = await contactDialog.isVisible().catch(() => false);
+
+      if (contactFormVisible) {
+        console.log('No Cal slots available - contact form fallback activated (EARTH-248)');
+        expect(contactFormVisible).toBe(true);
+      } else {
+        // Check for "no slots" message in modal
+        const noSlotsMsg = modal.locator('text=/keine Termine verfügbar|vorübergehend nicht verfügbar/i');
+        const noSlotsVisible = await noSlotsMsg.isVisible().catch(() => false);
+        expect(noSlotsVisible || contactFormVisible || slotPickerVisible).toBe(true);
+      }
+    }
   });
 
   test('selecting a slot enables confirmation button', async ({ page }) => {

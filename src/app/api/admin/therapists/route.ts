@@ -67,10 +67,7 @@ export async function GET(req: Request) {
     if (status) {
       query = query.eq('status', status);
     }
-    // Only show therapists currently accepting new clients by default when viewing verified therapists
-    if (!status || status === 'verified') {
-      query = query.eq('accepting_new', true);
-    }
+    // Admin should see ALL therapists regardless of accepting_new flag
     if (city) {
       // Case-insensitive partial match on city column
       query = query.ilike('city', `%${city}%`);

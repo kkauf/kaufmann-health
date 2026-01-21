@@ -2,10 +2,12 @@ import { notFound } from "next/navigation";
 import { Clock, Users, ShieldCheck, TrendingUp, Euro, Brain, Activity, Heart, Sparkles } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import CtaLink from "@/components/CtaLink";
+import PageAnalytics from "@/components/PageAnalytics";
 import { HeroNoForm } from "@/features/landing/components/HeroNoForm";
 import { TherapistTeaserSection } from "@/features/landing/components/TherapistTeaserSection";
 import { FinalCtaSection } from "@/features/landing/components/FinalCtaSection";
 import { MODALITIES, type ModalityId } from "@/features/therapies/modalityConfig";
+import { parseKeyword } from "@/lib/ads-landing";
 
 // Campaign landing page - conversion-focused
 // URL: /lp/narm, /lp/somatic-experiencing, etc.
@@ -166,6 +168,9 @@ export default async function CampaignLandingPage({
   // Online mode support
   const isOnlineMode = queryParams?.mode === 'online';
 
+  // Keyword tracking for Google Ads (ValueTrack: ?kw={keyword})
+  const keyword = parseKeyword(queryParams?.kw);
+
   // Build fragebogen URL with modality prefill
   const fragebogenHref = isOnlineMode
     ? `/fragebogen?variant=self-service&modality=${modalityConfig.id}&mode=online`
@@ -178,6 +183,9 @@ export default async function CampaignLandingPage({
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
+      {/* Analytics: page view, scroll depth, CTA clicks */}
+      <PageAnalytics qualifier={`lp-${modalityConfig.id}`} keyword={keyword ?? undefined} />
+
       {/* Hero */}
       <HeroNoForm
         title={isOnlineMode ? copy.onlineHeroTitle : copy.heroTitle}
