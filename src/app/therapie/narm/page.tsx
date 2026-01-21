@@ -84,6 +84,9 @@ export default async function NarmPage() {
     { id: "schocktrauma", question: "Ist NARM auch bei Schocktrauma wirksam?", answer: "NARM fokussiert auf Entwicklungstrauma. Bei PTBS von Einzelereignissen sind andere Methoden wie Somatic Experiencing oft geeigneter." },
     { id: "kosten", question: "Was kostet eine NARM-Sitzung?", answer: "Die meisten NARM-Therapeut:innen arbeiten privat. Rechnen Sie mit 80-120€ pro Sitzung. Manche Zusatzversicherungen übernehmen Anteile." },
     { id: "therapeut-finden", question: "Wie finde ich einen qualifizierten NARM-Therapeuten?", answer: "Achten Sie auf abgeschlossene NARM-Ausbildung (mind. 2 Jahre). Unsere Therapeut:innen sind alle zertifiziert." },
+    { id: "privacy", question: "Wird die Psychotherapie bei meiner Krankenkasse dokumentiert?", answer: "Nein. Es erfolgt keine Kassenabrechnung, kein Eintrag in deiner Krankenakte und keine ICD-10-Diagnose bei der Kasse." },
+    { id: "speed", question: "Wie schnell bekomme ich Vorschläge?", answer: "Du erhältst sofort passende Therapeut:innen-Vorschläge basierend auf deinen Angaben. Termine sind in der Regel noch diese Woche möglich." },
+    { id: "why-body", question: "Warum körperorientierte Psychotherapie?", answer: "Viele Menschen verstehen ihre Probleme bereits – sie wissen, woher ihre Ängste kommen. Aber Verstehen allein führt nicht zu Veränderung. Trauma und festgefahrene Reaktionen leben im Nervensystem. Körperorientierte Psychotherapie arbeitet direkt mit dem Körper, um diese Muster zu lösen." },
   ];
 
   const therapySchema = {

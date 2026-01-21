@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ImageCropper } from "@/components/ImageCropper";
 
 type Props = {
   therapistId: string;
@@ -30,6 +31,10 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
   const [city, setCity] = useState<string>(defaults?.city || "");
   const [acceptingNew, setAcceptingNew] = useState<boolean>(Boolean(defaults?.accepting_new));
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [showCropper, setShowCropper] = useState(false);
+  const [cropperImageSrc, setCropperImageSrc] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const statusRef = useRef<HTMLDivElement>(null);
 
   const storageKey = useMemo(() => `kh_profile_draft_${therapistId}`, [therapistId]);
@@ -63,18 +68,40 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
   const onPhotoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > MAX_PHOTO_BYTES) {
+        setMessage('Profilfoto zu groß (max. 4MB). Bitte reduziere die Dateigröße.');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+      // Open cropper instead of directly setting preview
       const url = URL.createObjectURL(file);
-      setPhotoPreview((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return url;
-      });
-    } else {
-      setPhotoPreview((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return null;
-      });
+      setCropperImageSrc(url);
+      setShowCropper(true);
     }
   }, []);
+
+  const onCropComplete = useCallback((croppedBlob: Blob) => {
+    const croppedFile = new File([croppedBlob], 'profile-photo.jpg', { type: 'image/jpeg' });
+    setPhotoFile(croppedFile);
+    
+    const url = URL.createObjectURL(croppedBlob);
+    setPhotoPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return url;
+    });
+    
+    if (cropperImageSrc) URL.revokeObjectURL(cropperImageSrc);
+    setCropperImageSrc(null);
+    setShowCropper(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [cropperImageSrc]);
+
+  const onCropCancel = useCallback(() => {
+    if (cropperImageSrc) URL.revokeObjectURL(cropperImageSrc);
+    setCropperImageSrc(null);
+    setShowCropper(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [cropperImageSrc]);
 
   const onSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -87,17 +114,11 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
       if (!showCity) form.delete('city'); else form.set('city', city);
       if (!showAcceptingNew) form.delete('accepting_new'); else form.set('accepting_new', acceptingNew ? 'true' : 'false');
       if (!showApproachText) form.delete('approach_text'); else form.set('approach_text', approach);
-      if (!showProfilePhoto) form.delete('profile_photo');
-
-      // Client-side size validation to avoid server 413
-      if (showProfilePhoto) {
-        const input = (e.currentTarget.querySelector('#profile_photo') as HTMLInputElement | null);
-        const file = input?.files?.[0];
-        if (file && file.size > MAX_PHOTO_BYTES) {
-          setMessage('Profilfoto zu groß (max. 4MB). Bitte reduziere die Dateigröße.');
-          setLoading(false);
-          return;
-        }
+      
+      // Use cropped photo file if available
+      form.delete('profile_photo');
+      if (showProfilePhoto && photoFile) {
+        form.set('profile_photo', photoFile);
       }
 
       const res = await fetch(`/api/public/therapists/${therapistId}/profile`, {
@@ -126,7 +147,6 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- MAX_PHOTO_BYTES is a constant
   }, [
     therapistId,
     showGender,
@@ -139,6 +159,7 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
     acceptingNew,
     approach,
     storageKey,
+    photoFile,
   ]);
 
   const remaining = 500 - approach.length;
@@ -228,11 +249,22 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
         {showProfilePhoto && (
           <div className="space-y-2">
             <Label htmlFor="profile_photo">Profilfoto (JPG/PNG, max. 4MB)</Label>
-            <Input id="profile_photo" name="profile_photo" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" onChange={onPhotoChange} />
+            <p className="text-xs text-gray-500 mb-2">
+              Du kannst das Foto nach dem Auswählen zuschneiden und zoomen.
+            </p>
+            <Input 
+              ref={fileInputRef}
+              id="profile_photo" 
+              name="profile_photo" 
+              type="file" 
+              accept="image/jpeg,image/png,.jpg,.jpeg,.png" 
+              onChange={onPhotoChange} 
+            />
             {photoPreview && (
-              <div className="mt-2">
+              <div className="mt-3 flex items-center gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photoPreview} alt="Vorschau" className="h-32 w-32 object-cover rounded-md border" />
+                <img src={photoPreview} alt="Vorschau" className="h-24 w-24 object-cover rounded-full border-2 border-emerald-500" />
+                <span className="text-sm text-emerald-700">✓ Foto zugeschnitten</span>
               </div>
             )}
           </div>
@@ -246,6 +278,17 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
           {!submitted && message && <p className="text-sm text-red-600">{message}</p>}
         </div>
       </form>
+
+      {/* Image Cropper Modal */}
+      {showCropper && cropperImageSrc && (
+        <ImageCropper
+          imageSrc={cropperImageSrc}
+          onCropComplete={onCropComplete}
+          onCancel={onCropCancel}
+          aspectRatio={1}
+          cropShape="round"
+        />
+      )}
     </div>
   );
 }

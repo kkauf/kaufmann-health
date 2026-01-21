@@ -113,34 +113,6 @@ export default function RootLayout({
           </>
         ) : null}
         {/* Clarity is initialized by ClarityLoader component using @microsoft/clarity SDK */}
-        {/* Hotjar / Contentsquare - session recordings (excluded for test/localhost/staging) */}
-        <Script id="hotjar-init" strategy="afterInteractive">
-          {`
-            (function() {
-              // Check kh_test cookie
-              if (document.cookie.split(';').some(c => c.trim().startsWith('kh_test=1'))) {
-                console.log('[Hotjar] Excluded: test cookie');
-                return;
-              }
-              // Check localhost
-              var h = window.location.hostname;
-              if (h === 'localhost' || h === '127.0.0.1') {
-                console.log('[Hotjar] Excluded: localhost');
-                return;
-              }
-              // Check staging/preview
-              if (h.includes('.vercel.app') || h.includes('staging') || h.includes('preview')) {
-                console.log('[Hotjar] Excluded: staging/preview');
-                return;
-              }
-              // Load Hotjar/Contentsquare
-              var s = document.createElement('script');
-              s.src = 'https://t.contentsquare.net/uxa/72ed21e97b29d.js';
-              s.async = true;
-              document.head.appendChild(s);
-            })();
-          `}
-        </Script>
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-gray-900 focus:px-3 focus:py-2 focus:text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-900">
           Zum Inhalt springen
         </a>
