@@ -57,6 +57,28 @@ if (fs.existsSync(envLocalPath)) {
 }
 
 
+// ----- Country code to geo target constant ID mapping -----
+// See: https://developers.google.com/google-ads/api/reference/data/geotargets
+const COUNTRY_GEO_TARGET_IDS: Record<string, number> = {
+  DE: 2276,  // Germany
+  AT: 2040,  // Austria
+  CH: 2756,  // Switzerland
+  US: 2840,  // United States
+  GB: 2826,  // United Kingdom
+  FR: 2250,  // France
+  NL: 2528,  // Netherlands
+  BE: 2056,  // Belgium
+  PL: 2616,  // Poland
+  CZ: 2203,  // Czech Republic
+  DK: 2208,  // Denmark
+  SE: 2752,  // Sweden
+  NO: 2578,  // Norway
+  FI: 2246,  // Finland
+  ES: 2724,  // Spain
+  IT: 2380,  // Italy
+  PT: 2620,  // Portugal
+};
+
 // ----- RSA helpers are provided by lib/rsa -----
 
 type RsaAugmentOpts = { useKeywordInsertion?: boolean; autoComplete?: boolean; kwTokens?: string[] };
@@ -136,7 +158,7 @@ export type CampaignConfig = {
   headlines?: string[];
   descriptions?: string[];
   languages?: string[]; // e.g., ['de']
-  geo?: { mode: 'germany' | 'berlin_proximity'; radius_km?: number };
+  geo?: { mode: 'germany' | 'berlin_proximity' | 'country'; radius_km?: number; country?: string };
   replacements?: Record<string, string>;
   bidding?: { strategy?: 'MANUAL_CPC' | 'MAXIMIZE_CLICKS' | 'MAXIMIZE_CONVERSIONS'; cpc_ceiling_eur?: number };
   ads?: {
@@ -404,8 +426,16 @@ async function main() {
     if (Array.isArray(c.languages) && c.languages.length) {
       await addCampaignLanguages(customer, campaignRn as string, c.languages, dryRun || validateOnly);
     }
-    if (c.geo?.mode === 'germany') {
-      // Germany geo target ID = 2276
+    if (c.geo?.mode === 'country') {
+      const countryCode = c.geo.country?.toUpperCase();
+      const geoTargetId = countryCode ? COUNTRY_GEO_TARGET_IDS[countryCode] : undefined;
+      if (geoTargetId) {
+        await addCampaignLocationIds(customer, campaignRn as string, [geoTargetId], dryRun || validateOnly);
+      } else {
+        console.log(`  • Geo skipped: unknown country code "${c.geo.country}"`);
+      }
+    } else if (c.geo?.mode === 'germany') {
+      // Legacy mode - Germany geo target ID = 2276
       await addCampaignLocationIds(customer, campaignRn as string, [2276], dryRun || validateOnly);
     } else if (c.geo?.mode === 'berlin_proximity') {
       if (typeof c.geo.radius_km !== 'number') {

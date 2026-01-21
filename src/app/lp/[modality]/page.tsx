@@ -3,11 +3,13 @@ import { Clock, Users, ShieldCheck, TrendingUp, Euro, Brain, Activity, Heart, Sp
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import CtaLink from "@/components/CtaLink";
 import PageAnalytics from "@/components/PageAnalytics";
+import FaqAccordion from "@/components/FaqAccordion";
 import { HeroNoForm } from "@/features/landing/components/HeroNoForm";
 import { TherapistTeaserSection } from "@/features/landing/components/TherapistTeaserSection";
 import { FinalCtaSection } from "@/features/landing/components/FinalCtaSection";
 import { MODALITIES, type ModalityId } from "@/features/therapies/modalityConfig";
 import { parseKeyword } from "@/lib/ads-landing";
+import { buildFaqJsonLd } from "@/lib/seo";
 
 // Campaign landing page - conversion-focused
 // URL: /lp/narm, /lp/somatic-experiencing, etc.
@@ -146,6 +148,14 @@ const ICON_MAP = {
   heart: Heart,
   sparkles: Sparkles,
 };
+
+// Combined FAQs from therapie-finden and start pages
+const FAQS = [
+  { id: 'prices', question: 'Was kosten die Sitzungen?', answer: 'In der Regel 80–120€ pro 60 Minuten. Den genauen Satz sprichst du direkt mit deiner Therapeut:in ab.' },
+  { id: 'speed', question: 'Wie schnell bekomme ich Termine?', answer: 'Du erhältst sofort passende Therapeut:innen-Vorschläge basierend auf deinen Angaben. Termine sind in der Regel noch diese Woche möglich.' },
+  { id: 'privacy', question: 'Wird die Psychotherapie bei meiner Krankenkasse dokumentiert?', answer: 'Nein. Es erfolgt keine Kassenabrechnung, kein Eintrag in deiner Krankenakte und keine ICD-10-Diagnose bei der Kasse.' },
+  { id: 'why-body', question: 'Warum körperorientierte Psychotherapie?', answer: 'Viele Menschen verstehen ihre Probleme bereits – sie wissen, woher ihre Ängste kommen, welche Muster sie haben. Aber Verstehen allein führt nicht zu Veränderung. Trauma und festgefahrene Reaktionen leben im Nervensystem. Körperorientierte Psychotherapie arbeitet direkt mit dem Körper, um diese Muster zu lösen.' },
+];
 
 export default async function CampaignLandingPage({
   params,
@@ -392,6 +402,14 @@ export default async function CampaignLandingPage({
         showAvailabilityNote={false}
       />
 
+      {/* FAQ */}
+      <section aria-labelledby="faq-heading" id="faq" className="mt-10 sm:mt-14">
+        <h2 id="faq-heading" className="text-xl font-semibold tracking-tight sm:text-2xl">Häufige Fragen</h2>
+        <div className="mt-4">
+          <FaqAccordion items={FAQS} />
+        </div>
+      </section>
+
       {/* Escape hatch - for high intent users who want to browse */}
       <div className="mt-12 text-center">
         <CtaLink
@@ -403,6 +421,9 @@ export default async function CampaignLandingPage({
           Oder: Alle {modalityConfig.name}-Therapeut:innen direkt ansehen →
         </CtaLink>
       </div>
+
+      {/* JSON-LD */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(buildFaqJsonLd(FAQS.map(({ question, answer }) => ({ question, answer })))) }} />
     </main>
   );
 }
