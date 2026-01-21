@@ -71,40 +71,27 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
     });
 
   /**
-   * Helper to complete Step 1 (Timeline)
+   * Helper to complete the first step (Schwerpunkte).
+   * Timeline step was removed - wizard now starts at Schwerpunkte.
    */
-  async function completeStep1Timeline(page: Page) {
-    await page.getByRole('button', { name: /Innerhalb des nächsten Monats|nächsten Monats/i }).click();
-    // Must click "Weiter" to proceed to step 2
-    await page.getByRole('button', { name: 'Weiter →' }).click();
+  async function completeFirstStep(page: Page) {
+    // Wait for Schwerpunkte to be visible (first step for all variants now)
+    await expect(page.getByText(/Was beschäftigt dich/i)).toBeVisible({ timeout: 8000 });
+    // Skip Schwerpunkte selection
+    await page.getByRole('button', { name: /Überspringen/i }).click();
   }
 
   /**
-   * Helper to complete Step 2/2.5 depending on variant/config.
-   * - Self-service: Schwerpunkte (can skip)
-   * - Concierge: "Was bringt dich zur Therapie?" (must type to enable next)
+   * Helper to complete Step 2 (What Brings You) for Concierge variant.
+   * Self-service skips this and goes directly to Modality.
    */
-  async function completeStep2Or2p5(page: Page) {
+  async function completeWhatBringsYouIfPresent(page: Page) {
     await page.waitForTimeout(1000);
-    // Prefer robust detection: Schwerpunkte screen always has a visible "Überspringen" button
-    const skipBtn = page.getByRole('button', { name: /Überspringen/i });
-    if (await skipBtn.isVisible().catch(() => false)) {
-      await skipBtn.click();
-      return;
-    }
-
     // Concierge path: open text question
     const whatBringsYouVisible = await page.getByText(/Was bringt dich zur Therapie/i).isVisible().catch(() => false);
     if (whatBringsYouVisible) {
       await page.getByLabel(/Was bringt dich zur Therapie/i).fill('E2E Test: kurzbeschreibung');
       await page.getByRole('button', { name: 'Weiter →' }).click();
-      return;
-    }
-
-    // Fallback: if neither detected, try to proceed by clicking any available "Weiter" button
-    const nextBtn = page.getByRole('button', { name: /Weiter/i }).first();
-    if (await nextBtn.isVisible().catch(() => false)) {
-      await nextBtn.click();
     }
   }
 
@@ -160,44 +147,33 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
   }
 
   test.describe('Concierge Flow (/fragebogen?variant=concierge)', () => {
-    test('shows text field (Step 2) instead of Schwerpunkte', async ({ page }) => {
+    test('shows text field (Step 2) after Schwerpunkte', async ({ page }) => {
       await page.goto('/fragebogen?variant=concierge&restart=1');
-      await completeStep1Timeline(page);
-      
+      // First step is Schwerpunkte (Timeline was removed)
+      await completeFirstStep(page);
+
       // Wait for transition
       await page.waitForTimeout(1000);
-      
+
+      // Concierge should show "What Brings You" after Schwerpunkte
       await expect(page.getByText(/Was bringt dich zur Therapie\?/i)).toBeVisible({ timeout: 5000 });
-      await expect(page.getByText(/Was beschäftigt dich\?/i)).toHaveCount(0);
     });
 
   });
 
   test.describe('Self-Service Flow (/fragebogen?variant=self-service)', () => {
-    test('shows Schwerpunkte (Step 2.5) instead of text field', async ({ page }) => {
+    test('starts with Schwerpunkte as first step', async ({ page }) => {
       await page.goto('/fragebogen?variant=self-service&restart=1');
-      await completeStep1Timeline(page);
-      
-      // Wait for transition
-      await page.waitForTimeout(1000);
-      
-      // Should show Schwerpunkte checkboxes
-      const schwerpunkteVisible = await page.getByText(/Was beschäftigt dich|Wähle aus/i).isVisible().catch(() => false);
-      
-      // Self-service should show Schwerpunkte screen
-      expect(schwerpunkteVisible).toBe(true);
+
+      // Self-service starts with Schwerpunkte (Timeline was removed)
+      await expect(page.getByText(/Was beschäftigt dich/i)).toBeVisible({ timeout: 8000 });
     });
 
     test('supports v= alias for self-service', async ({ page }) => {
       await page.goto('/fragebogen?v=self-service&restart=1');
-      await completeStep1Timeline(page);
 
-      // Wait for transition
-      await page.waitForTimeout(1000);
-
-      // Should show Schwerpunkte checkboxes
-      const schwerpunkteVisible = await page.getByText(/Was beschäftigt dich|Wähle aus/i).isVisible().catch(() => false);
-      expect(schwerpunkteVisible).toBe(true);
+      // Should start with Schwerpunkte
+      await expect(page.getByText(/Was beschäftigt dich/i)).toBeVisible({ timeout: 8000 });
     });
 
   });
@@ -228,17 +204,16 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
   });
 
   test.describe('Variant Parity', () => {
-    test('both variants reach step 3 (modality) after step 2', async ({ page }) => {
-      // Concierge
+    test('both variants reach step 3 (modality) after initial steps', async ({ page }) => {
+      // Concierge: Schwerpunkte → What Brings You → Modality
       await page.goto('/fragebogen?variant=concierge&restart=1');
-      await completeStep1Timeline(page);
-      await completeStep2Or2p5(page);
+      await completeFirstStep(page);
+      await completeWhatBringsYouIfPresent(page);
       await expect(page.getByText(/Möchtest du deine Therapiemethode selbst wählen/i)).toBeVisible({ timeout: 8000 });
-      
-      // Self-Service
+
+      // Self-Service: Schwerpunkte → Modality (skips What Brings You)
       await page.goto('/fragebogen?variant=self-service&restart=1');
-      await completeStep1Timeline(page);
-      await completeStep2Or2p5(page);
+      await completeFirstStep(page);
       await expect(page.getByText(/Möchtest du deine Therapiemethode selbst wählen/i)).toBeVisible({ timeout: 8000 });
     });
   });
@@ -247,18 +222,17 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
     test('concierge flow works on mobile', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
       await page.goto('/fragebogen?variant=concierge&restart=1');
-      
-      await completeStep1Timeline(page);
-      await completeStep2Or2p5(page);
+
+      await completeFirstStep(page);
+      await completeWhatBringsYouIfPresent(page);
       await expect(page.getByText(/Möchtest du deine Therapiemethode selbst wählen/i)).toBeVisible({ timeout: 8000 });
     });
 
     test('self-service flow works on mobile', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
       await page.goto('/fragebogen?variant=self-service&restart=1');
-      
-      await completeStep1Timeline(page);
-      await completeStep2Or2p5(page);
+
+      await completeFirstStep(page);
       await expect(page.getByText(/Möchtest du deine Therapiemethode selbst wählen/i)).toBeVisible({ timeout: 8000 });
     });
   });

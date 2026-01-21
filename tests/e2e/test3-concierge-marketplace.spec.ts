@@ -98,47 +98,43 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
 
   /**
    * Helper to complete the questionnaire flow.
-   * Handles both SHOW_SCHWERPUNKTE=true (Schwerpunkte step) and false (What Brings You step).
-   * NOTE: Staging has SHOW_SCHWERPUNKTE=true, so flow is:
-   * Timeline → Schwerpunkte → Modality → Location → Preferences → Contact
+   * Flow after Timeline step removal:
+   * Schwerpunkte (2.5) → [What Brings You (2) for Concierge only] → Modality (3) → Location (4) → Preferences (5) → Contact (6)
    */
   async function completeQuestionnaire(page: Page) {
-    // Step 1: Timeline - select timing
-    await page.getByRole('button', { name: /Innerhalb des nächsten Monats|nächsten Monats/i }).click();
-    
-    // After Timeline, either Schwerpunkte or "What Brings You" appears
-    // Wait a moment for the transition, then check which screen we're on
+    // Step 2.5: Schwerpunkte (first step for all variants now)
+    await expect(page.getByText(/Was beschäftigt dich/i)).toBeVisible({ timeout: 8000 });
+    // Skip Schwerpunkte selection
+    await page.getByRole('button', { name: /Überspringen/i }).click();
+
+    // Wait for transition - check for either "What Brings You" (Concierge) or Modality (others)
     await page.waitForTimeout(1000);
-    const schwerpunkteVisible = await page.getByText(/Was beschäftigt dich/i).isVisible().catch(() => false);
     const whatBringsYouVisible = await page.getByText(/Was bringt dich zur Therapie/i).isVisible().catch(() => false);
-    
-    if (schwerpunkteVisible) {
-      // SHOW_SCHWERPUNKTE=true flow: skip Schwerpunkte selection
-      await page.getByRole('button', { name: /Überspringen/i }).click();
-    } else if (whatBringsYouVisible) {
-      // SHOW_SCHWERPUNKTE=false flow: fill required text and continue
+
+    if (whatBringsYouVisible) {
+      // Concierge variant: fill text and continue
       await page.getByLabel(/Was bringt dich zur Therapie/i).fill('E2E Test: kurzbeschreibung');
       await page.getByRole('button', { name: 'Weiter →' }).click();
     }
-    
+
     // Step 3: Modality - wait for it and select "Nein"
     await expect(page.getByText(/Möchtest du deine Therapiemethode selbst wählen/i)).toBeVisible({ timeout: 5000 });
     const noBtn = page.getByRole('button', { name: /^Nein/i });
     await expect(noBtn).toBeEnabled();
     await noBtn.click();
-    
+
     // Step 4: Location/Session preference
     await expect(page.getByText(/Wie möchtest du die Sitzungen machen\?/i)).toBeVisible({ timeout: 8000 });
     const onlineBtn = page.getByRole('button', { name: /Online \(Video\)/i });
     await expect(onlineBtn).toBeEnabled();
     await onlineBtn.click();
     await page.getByRole('button', { name: 'Weiter →' }).click();
-    
+
     // Step 5: Time preferences
     await expect(page.getByText(/Wann hast du Zeit/i)).toBeVisible({ timeout: 5000 });
     await page.getByRole('button', { name: /Bin flexibel|flexibel/i }).click();
     await page.getByRole('button', { name: 'Weiter →' }).click();
-    
+
     // Step 6: Contact form
     await completeStep6ContactForm(page);
   }
@@ -146,8 +142,8 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
   test.describe('Concierge Flow (/fragebogen?v=concierge)', () => {
     test('starts questionnaire with concierge variant', async ({ page }) => {
       await page.goto('/fragebogen?v=concierge');
-      // Should show timeline step
-      await expect(page.getByText(/Wann möchtest du/i)).toBeVisible({ timeout: 10000 });
+      // Should show Schwerpunkte step first (Timeline step was removed)
+      await expect(page.getByText(/Was beschäftigt dich/i)).toBeVisible({ timeout: 10000 });
     });
   });
 
@@ -162,14 +158,14 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
   });
 
   test.describe('Variant Parity', () => {
-    test('both variants show timeline step first', async ({ page }) => {
-      // Concierge
+    test('both variants show Schwerpunkte step first', async ({ page }) => {
+      // Concierge - starts with Schwerpunkte (Timeline step was removed)
       await page.goto('/fragebogen?v=concierge');
-      await expect(page.getByText(/Wann möchtest du/i)).toBeVisible({ timeout: 10000 });
-      
-      // Marketplace
+      await expect(page.getByText(/Was beschäftigt dich/i)).toBeVisible({ timeout: 10000 });
+
+      // Marketplace - also starts with Schwerpunkte
       await page.goto('/fragebogen?v=marketplace');
-      await expect(page.getByText(/Wann möchtest du/i)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(/Was beschäftigt dich/i)).toBeVisible({ timeout: 10000 });
     });
   });
 
@@ -177,12 +173,14 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
     test('questionnaire works on mobile viewport', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
       await page.goto('/fragebogen?v=concierge');
-      
-      // Timeline step should be visible on mobile
-      await expect(page.getByText(/Wann möchtest du/i)).toBeVisible({ timeout: 10000 });
-      
-      // Weiter button should be accessible
-      await expect(page.getByRole('button', { name: /Weiter/i })).toBeVisible();
+
+      // Schwerpunkte step should be visible on mobile (first step now)
+      await expect(page.getByText(/Was beschäftigt dich/i)).toBeVisible({ timeout: 10000 });
+
+      // Skip button should be accessible (may need scroll on small screens)
+      const skipButton = page.getByRole('button', { name: /Überspringen/i });
+      await skipButton.scrollIntoViewIfNeeded();
+      await expect(skipButton).toBeVisible();
     });
   });
 });

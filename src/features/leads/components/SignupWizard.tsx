@@ -323,11 +323,13 @@ export default function SignupWizard() {
       
       // Handle ?startStep= param (e.g., from Katherine's CTA to skip to step 2)
       const startStepParam = searchParams?.get('startStep');
-      const savedStep = Number(localStorage.getItem(LS_KEYS.step) || '2');
+      // Default to first step: Schwerpunkte (2.5) when enabled, otherwise What Brings You (2)
+      const minStep = usesSchwerpunkteStep ? 2.5 : 2;
+      const savedStepStr = localStorage.getItem(LS_KEYS.step);
+      const savedStep = savedStepStr ? Number(savedStepStr) : minStep;
       // Use startStep if provided, otherwise use saved step
       const targetStep = startStepParam ? Number(startStepParam) : savedStep;
       // Clamp to valid range: 2-9 (step 1 removed), redirect step 1 to appropriate first step
-      const minStep = usesSchwerpunkteStep ? 2.5 : 2;
       const clampedStep = targetStep <= 1 ? minStep : Math.min(maxStep, targetStep);
       setStep(clampedStep);
       

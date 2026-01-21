@@ -12,12 +12,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { warmCacheForAllTherapists } from '@/lib/cal/slots-cache';
 import { isCalDbEnabled } from '@/lib/cal/slots-db';
 import { ServerAnalytics } from '@/lib/server-analytics';
+import { fireCriticalAlert } from '@/lib/critical-alerts';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Allow up to 60s for warming all therapists
 
-export async function GET(req: NextRequest) {
+async function handleRequest(req: NextRequest) {
   // Auth: Check CRON_SECRET or admin cookie
   const authHeader = req.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
@@ -66,6 +67,22 @@ export async function GET(req: NextRequest) {
       console.warn('[cal/warm-cache] Errors:', results.errors.slice(0, 5));
     }
 
+    // CRITICAL: Alert if all therapists failed or high failure rate
+    const failureRate = results.total > 0 ? results.failed / results.total : 0;
+    if (results.total > 0 && (results.success === 0 || failureRate > 0.5)) {
+      fireCriticalAlert({
+        type: 'booking_system_down',
+        message: `Cal.com cache warming has high failure rate: ${results.failed}/${results.total} failed (${Math.round(failureRate * 100)}%)`,
+        details: {
+          total: results.total,
+          success: results.success,
+          failed: results.failed,
+          failure_rate: failureRate,
+          sample_errors: results.errors.slice(0, 3),
+        },
+      });
+    }
+
     return NextResponse.json({
       ok: true,
       ...results,
@@ -81,9 +98,28 @@ export async function GET(req: NextRequest) {
       props: { error: errMsg },
     });
 
+    // CRITICAL: Cache warming failed - booking system will degrade
+    fireCriticalAlert({
+      type: 'booking_system_down',
+      message: `Cal.com cache warming failed: ${errMsg}. Booking system will show fallback to users.`,
+      details: {
+        error: errMsg,
+        stack: err instanceof Error ? err.stack?.slice(0, 500) : undefined,
+      },
+    });
+
     return NextResponse.json(
       { error: 'Cache warming failed', details: errMsg },
       { status: 500 }
     );
   }
+}
+
+// Export both GET and POST handlers (cron uses POST)
+export async function GET(req: NextRequest) {
+  return handleRequest(req);
+}
+
+export async function POST(req: NextRequest) {
+  return handleRequest(req);
 }
