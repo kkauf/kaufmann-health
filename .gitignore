@@ -67,3 +67,6 @@ tests/e2e/.auth/
 
 # MCP server config
 .mcp.json
+
+# Local Claude context (private business docs)
+CLAUDE.local.md
