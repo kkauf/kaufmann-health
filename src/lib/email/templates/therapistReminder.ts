@@ -63,9 +63,9 @@ export function renderTherapistReminder(params: {
   }
 
   const subjectStage = params.stageLabel ? ` – ${params.stageLabel}` : '';
-  let subjectBase = 'Profil vervollständigen';
-  if (params.missingDocuments && !targetIsProfile) subjectBase = 'Lizenz‑Nachweis ausstehend';
-  else if (params.missingPhoto) subjectBase = 'Dein Profil ist fast startklar – Foto fehlt noch';
+  let subjectBase = 'Dein Profil wartet auf dich';
+  if (params.missingDocuments && !targetIsProfile) subjectBase = 'Noch ein Schritt bis zur Freischaltung';
+  else if (params.missingPhoto) subjectBase = 'Nur noch ein Foto – dann bist du startklar';
 
   const titleHtml = `<h1 style="color:#0f172a !important; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">${subjectBase}</h1>`;
 

@@ -41,8 +41,8 @@ const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const MAX_REMINDERS = 3; // after this, stop
 
 function deriveStageLabel(priorSends: number): string | undefined {
-  // 0 -> first reminder, 1 -> second, 2 -> final
-  const stages = ['Erinnerung', 'Zweite Erinnerung', 'Abschließende Erinnerung'] as const;
+  // 0 -> first reminder, 1 -> second, 2 -> final (friendly tone)
+  const stages = ['Freundliche Erinnerung', 'Noch ein Hinweis', 'Letzte Info'] as const;
   return stages[Math.min(priorSends, stages.length - 1)];
 }
 
@@ -183,13 +183,13 @@ export async function GET(req: Request) {
       }
 
       // Check portal profile fields (stored in metadata.profile JSONB)
+      // Note: about_me is OPTIONAL in the portal, so we only require the 3 main fields
       const profileUnknown = (metadata as { profile?: unknown }).profile;
       const profile = isObject(profileUnknown) ? (profileUnknown as Record<string, unknown>) : {};
-      const hasWhoComesToMe = typeof profile.who_comes_to_me === 'string' && (profile.who_comes_to_me as string).trim().length > 50;
-      const hasSessionFocus = typeof profile.session_focus === 'string' && (profile.session_focus as string).trim().length > 50;
-      const hasFirstSession = typeof profile.first_session === 'string' && (profile.first_session as string).trim().length > 50;
-      const hasAboutMe = typeof profile.about_me === 'string' && (profile.about_me as string).trim().length > 50;
-      const profileComplete = hasWhoComesToMe && hasSessionFocus && hasFirstSession && hasAboutMe;
+      const hasWhoComesToMe = typeof profile.who_comes_to_me === 'string' && (profile.who_comes_to_me as string).trim().length >= 50;
+      const hasSessionFocus = typeof profile.session_focus === 'string' && (profile.session_focus as string).trim().length >= 50;
+      const hasFirstSession = typeof profile.first_session === 'string' && (profile.first_session as string).trim().length >= 50;
+      const profileComplete = hasWhoComesToMe && hasSessionFocus && hasFirstSession;
 
       // Check photo
       const hasPhotoPending = typeof profile.photo_pending_path === 'string' && (profile.photo_pending_path as string).length > 0;
@@ -434,13 +434,13 @@ export async function POST(req: Request) {
       }
 
       // Check portal profile fields (stored in metadata.profile JSONB)
+      // Note: about_me is OPTIONAL in the portal, so we only require the 3 main fields
       const profileUnknown = (metadata as { profile?: unknown }).profile;
       const profile = isObject(profileUnknown) ? (profileUnknown as Record<string, unknown>) : {};
-      const hasWhoComesToMe = typeof profile.who_comes_to_me === 'string' && (profile.who_comes_to_me as string).trim().length > 50;
-      const hasSessionFocus = typeof profile.session_focus === 'string' && (profile.session_focus as string).trim().length > 50;
-      const hasFirstSession = typeof profile.first_session === 'string' && (profile.first_session as string).trim().length > 50;
-      const hasAboutMe = typeof profile.about_me === 'string' && (profile.about_me as string).trim().length > 50;
-      const profileComplete = hasWhoComesToMe && hasSessionFocus && hasFirstSession && hasAboutMe;
+      const hasWhoComesToMe = typeof profile.who_comes_to_me === 'string' && (profile.who_comes_to_me as string).trim().length >= 50;
+      const hasSessionFocus = typeof profile.session_focus === 'string' && (profile.session_focus as string).trim().length >= 50;
+      const hasFirstSession = typeof profile.first_session === 'string' && (profile.first_session as string).trim().length >= 50;
+      const profileComplete = hasWhoComesToMe && hasSessionFocus && hasFirstSession;
 
       // Check photo
       const hasPhotoPending = typeof profile.photo_pending_path === 'string' && (profile.photo_pending_path as string).length > 0;

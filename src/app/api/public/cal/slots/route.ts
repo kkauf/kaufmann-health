@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { parseQueryParams } from '@/lib/api-utils';
 import { ServerAnalytics } from '@/lib/server-analytics';
+import { fireCriticalAlert } from '@/lib/critical-alerts';
 import {
   CalSlotsInput,
   CalNormalizedSlot,
@@ -91,6 +92,22 @@ export async function GET(req: NextRequest) {
         props: { therapist_id, kind, cache_age_min: Math.round(cacheAge) },
       });
 
+      // CRITICAL: Cache is stale - booking system may be down
+      // Fire alert if cache is severely stale (>45 min means cron hasn't run in 3+ cycles)
+      if (cacheAge > 45) {
+        fireCriticalAlert({
+          type: 'cal_cache_stale',
+          message: `Cal.com slot cache is ${Math.round(cacheAge)} minutes old for therapist ${therapist_id}. Cron may be failing.`,
+          details: {
+            therapist_id,
+            cal_username: calUsername,
+            cache_age_min: Math.round(cacheAge),
+            last_cached_at: cache?.cached_at,
+            last_error: cache?.last_error,
+          },
+        });
+      }
+
       // Return empty slots if cache is missing/stale
       // The cron job will refresh it shortly
       return NextResponse.json({
@@ -133,10 +150,22 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     console.error('[cal/slots] Unexpected error:', err);
 
+    const errMsg = err instanceof Error ? err.message : 'unknown';
+
     void ServerAnalytics.trackEventFromRequest(req, {
       type: 'cal_slots_error',
       source: 'api.public.cal.slots',
-      props: { error: err instanceof Error ? err.message : 'unknown' },
+      props: { error: errMsg },
+    });
+
+    // Fire critical alert for booking system errors
+    fireCriticalAlert({
+      type: 'booking_system_down',
+      message: `Cal.com slots API threw unexpected error: ${errMsg}`,
+      details: {
+        error: errMsg,
+        stack: err instanceof Error ? err.stack?.slice(0, 500) : undefined,
+      },
     });
 
     return NextResponse.json(
