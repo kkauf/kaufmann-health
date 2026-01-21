@@ -1,5 +1,6 @@
 {
   "crons": [
+    { "path": "/api/cron/cal-cache", "schedule": "*/10 * * * *" },
     { "path": "/api/cron/frequent", "schedule": "*/15 * * * *" },
     { "path": "/api/cron/cal-followups", "schedule": "*/30 * * * *" },
     { "path": "/api/cron/business-hours", "schedule": "0 7-20 * * *" },
