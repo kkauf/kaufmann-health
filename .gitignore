@@ -15,7 +15,10 @@
 /test-results
 /playwright-report
 /.playwright
+.playwright-mcp/
 /tests/e2e/test-results
+page-*.png
+page-*.jpeg
 
 # next.js
 /.next/

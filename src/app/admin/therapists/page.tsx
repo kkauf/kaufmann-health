@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, startTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ImageCropper } from "@/components/ImageCropper";
 
 export const dynamic = "force-dynamic";
 
@@ -120,7 +121,11 @@ export default function AdminTherapistsPage() {
   // Upload state for admin-side uploads
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [specFiles, setSpecFiles] = useState<FileList | null>(null);
-  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+  
+  // Image cropper state
+  const [showCropper, setShowCropper] = useState(false);
+  const [cropperImageSrc, setCropperImageSrc] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const toggleSelected = useCallback((id: string) => {
     setSelected((prev) => {
@@ -730,44 +735,62 @@ export default function AdminTherapistsPage() {
                           <div className="border-2 border-dashed border-gray-300 rounded-md p-8 text-center">
                             <p className="text-sm text-gray-500 mb-2">Kein Lizenz-Dokument hochgeladen</p>
                             {(detail.status === "pending_verification" || detail.status === "rejected") && (
-                              <details className="mt-3 text-left">
-                                <summary className="cursor-pointer text-sm font-medium text-blue-700">Für Therapeut hochladen</summary>
-                                <div className="mt-2 space-y-2">
-                                  <input
-                                    id="licenseFile"
-                                    type="file"
-                                    accept="application/pdf,image/jpeg,image/png"
-                                    onChange={(e) => setLicenseFile(e.target.files?.[0] || null)}
-                                    className="text-sm"
-                                  />
+                              <div className="mt-3 pt-3 border-t">
+                                <input
+                                  id="licenseFile"
+                                  type="file"
+                                  accept="application/pdf,image/jpeg,image/png"
+                                  className="hidden"
+                                  onChange={(e) => setLicenseFile(e.target.files?.[0] || null)}
+                                />
+                                {!licenseFile ? (
                                   <Button
                                     size="sm"
-                                    disabled={updating || !licenseFile}
-                                    onClick={async () => {
-                                      if (!detail?.id || !licenseFile) return;
-                                      try {
-                                        setUpdating(true);
-                                        setMessage(null);
-                                        const fd = new FormData();
-                                        fd.append('psychotherapy_license', licenseFile);
-                                        const res = await fetch(`/api/public/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
-                                        const json = await res.json();
-                                        if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
-                                        setMessage('Lizenz hochgeladen');
-                                        setLicenseFile(null);
-                                        await openDetail(detail.id);
-                                      } catch (e) {
-                                        const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
-                                        setMessage(msg);
-                                      } finally {
-                                        setUpdating(false);
-                                      }
-                                    }}
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={() => document.getElementById('licenseFile')?.click()}
                                   >
-                                    Hochladen
+                                    📤 Lizenz hochladen
                                   </Button>
-                                </div>
-                              </details>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm text-green-700 flex-1">✓ {licenseFile.name}</span>
+                                    <Button
+                                      size="sm"
+                                      disabled={updating}
+                                      onClick={async () => {
+                                        if (!detail?.id || !licenseFile) return;
+                                        try {
+                                          setUpdating(true);
+                                          setMessage(null);
+                                          const fd = new FormData();
+                                          fd.append('psychotherapy_license', licenseFile);
+                                          const res = await fetch(`/api/public/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
+                                          const json = await res.json();
+                                          if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
+                                          setMessage('Lizenz hochgeladen');
+                                          setLicenseFile(null);
+                                          await openDetail(detail.id);
+                                        } catch (e) {
+                                          const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
+                                          setMessage(msg);
+                                        } finally {
+                                          setUpdating(false);
+                                        }
+                                      }}
+                                    >
+                                      Speichern
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => setLicenseFile(null)}
+                                    >
+                                      ✕
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </div>
                         )}
@@ -823,145 +846,156 @@ export default function AdminTherapistsPage() {
 
                         {/* Admin cert upload */}
                         {(detail.status === "pending_verification" || detail.status === "rejected") && (
-                          <details className="mt-3 border-t pt-3">
-                            <summary className="cursor-pointer text-sm font-medium text-blue-700">Zertifikate für Therapeut hochladen</summary>
-                            <div className="mt-2 space-y-2">
-                              <input
-                                id="specFiles"
-                                type="file"
-                                accept="application/pdf,image/jpeg,image/png"
-                                multiple
-                                onChange={(e) => setSpecFiles(e.target.files)}
-                                className="text-sm"
-                              />
+                          <div className="mt-3 pt-3 border-t">
+                            <input
+                              id="specFiles"
+                              type="file"
+                              accept="application/pdf,image/jpeg,image/png"
+                              multiple
+                              className="hidden"
+                              onChange={(e) => setSpecFiles(e.target.files)}
+                            />
+                            {!specFiles?.length ? (
                               <Button
                                 size="sm"
-                                disabled={updating || !specFiles?.length}
-                                onClick={async () => {
-                                  if (!detail?.id || !specFiles?.length) return;
-                                  try {
-                                    setUpdating(true);
-                                    setMessage(null);
-                                    const fd = new FormData();
-                                    Array.from(specFiles).forEach((f) => fd.append('specialization_cert', f));
-                                    const res = await fetch(`/api/public/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
-                                    const json = await res.json();
-                                    if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
-                                    setMessage('Zertifikate hochgeladen');
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => document.getElementById('specFiles')?.click()}
+                              >
+                                📤 Zertifikate hochladen
+                              </Button>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-green-700 flex-1">✓ {specFiles.length} Datei(en)</span>
+                                <Button
+                                  size="sm"
+                                  disabled={updating}
+                                  onClick={async () => {
+                                    if (!detail?.id || !specFiles?.length) return;
+                                    try {
+                                      setUpdating(true);
+                                      setMessage(null);
+                                      const fd = new FormData();
+                                      Array.from(specFiles).forEach((f) => fd.append('specialization_cert', f));
+                                      const res = await fetch(`/api/public/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
+                                      const json = await res.json();
+                                      if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
+                                      setMessage('Zertifikate hochgeladen');
+                                      setSpecFiles(null);
+                                      const input = document.getElementById('specFiles') as HTMLInputElement;
+                                      if (input) input.value = '';
+                                      await openDetail(detail.id);
+                                    } catch (e) {
+                                      const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
+                                      setMessage(msg);
+                                    } finally {
+                                      setUpdating(false);
+                                    }
+                                  }}
+                                >
+                                  Speichern
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
                                     setSpecFiles(null);
-                                    // Reset file input
                                     const input = document.getElementById('specFiles') as HTMLInputElement;
                                     if (input) input.value = '';
-                                    await openDetail(detail.id);
-                                  } catch (e) {
-                                    const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
-                                    setMessage(msg);
-                                  } finally {
-                                    setUpdating(false);
-                                  }
-                                }}
-                              >
-                                Hochladen
-                              </Button>
-                            </div>
-                          </details>
+                                  }}
+                                >
+                                  ✕
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
 
-                    {/* Right column: Profile */}
+                    {/* Right column: Profile Photo */}
                     <div className="space-y-4">
                       <div className="bg-white rounded-lg border p-4">
                         <h4 className="font-semibold text-base mb-3 flex items-center gap-2">
                           📸 Profilfoto
-                          {detail.profile.photo_url && <Badge variant="outline" className="text-green-700 border-green-700">Veröffentlicht</Badge>}
-                          {!detail.profile.photo_url && detail.profile.photo_pending_url && <Badge variant="outline" className="text-amber-700 border-amber-700">Wartet auf Freigabe</Badge>}
+                          {detail.profile.photo_url && !detail.profile.photo_pending_url && (
+                            <Badge className="bg-green-100 text-green-700 border-green-200">✓ Veröffentlicht</Badge>
+                          )}
+                          {detail.profile.photo_pending_url && (
+                            <Badge className="bg-amber-100 text-amber-700 border-amber-200">Wartet auf Freigabe</Badge>
+                          )}
+                          {!detail.profile.photo_url && !detail.profile.photo_pending_url && (
+                            <Badge className="bg-red-100 text-red-700 border-red-200">Fehlt</Badge>
+                          )}
                         </h4>
-                        <div className="grid grid-cols-2 gap-3">
-                          {/* Pending photo */}
-                          <div className="border rounded-md p-3 bg-amber-50">
-                            <div className="text-xs font-medium text-gray-700 mb-2">Zur Freigabe</div>
-                            {detail.profile.photo_pending_url ? (
-                              <div className="space-y-2">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={detail.profile.photo_pending_url} alt="Pending" className="w-full h-40 object-cover rounded" />
+
+                        {/* Single photo display */}
+                        <div className="flex flex-col items-center">
+                          {(detail.profile.photo_pending_url || detail.profile.photo_url) ? (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img 
+                                src={detail.profile.photo_pending_url || String(detail.profile.photo_url)} 
+                                alt="Profilfoto" 
+                                className="w-32 h-32 object-cover rounded-full border-4 border-gray-200 mb-3" 
+                              />
+                              {detail.profile.photo_pending_url && detail.profile.photo_url && (
+                                <p className="text-xs text-gray-500 mb-2">Neues Foto wartet auf Freigabe</p>
+                              )}
+                            </>
+                          ) : (
+                            <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 mb-3 border-4 border-gray-200">
+                              <span className="text-3xl">👤</span>
+                            </div>
+                          )}
+
+                          {/* Action buttons */}
+                          <div className="flex flex-wrap gap-2 justify-center">
+                            {detail.profile.photo_pending_url && (
+                              <>
                                 <Button
                                   size="sm"
-                                  className="w-full"
+                                  variant="outline"
+                                  disabled={updating}
+                                  onClick={() => {
+                                    setCropperImageSrc(detail.profile.photo_pending_url!);
+                                    setShowCropper(true);
+                                  }}
+                                >
+                                  ✂️ Zuschneiden
+                                </Button>
+                                <Button
+                                  size="sm"
                                   disabled={updating}
                                   onClick={approveProfilePhoto}
                                 >
-                                  Jetzt freigeben
+                                  ✓ Freigeben
                                 </Button>
-                              </div>
-                            ) : (
-                              <div className="h-40 flex items-center justify-center bg-gray-100 rounded text-xs text-gray-500">
-                                Kein Foto
-                              </div>
+                              </>
                             )}
-                          </div>
-
-                          {/* Published photo */}
-                          <div className="border rounded-md p-3 bg-green-50">
-                            <div className="text-xs font-medium text-gray-700 mb-2">Veröffentlicht</div>
-                            {detail.profile.photo_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={String(detail.profile.photo_url)} alt="Public" className="w-full h-40 object-cover rounded" />
-                            ) : (
-                              <div className="h-40 flex items-center justify-center bg-gray-100 rounded text-xs text-gray-500">
-                                Noch nicht veröffentlicht
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Upload new photo */}
-                        <details className="mt-3 border-t pt-3">
-                          <summary className="cursor-pointer text-sm font-medium text-blue-700">Neues Foto hochladen</summary>
-                          <div className="mt-2 space-y-2">
                             <input
-                              id="profilePhoto"
+                              ref={photoInputRef}
                               type="file"
                               accept="image/jpeg,image/png"
-                              onChange={(e) => setProfilePhotoFile(e.target.files?.[0] || null)}
-                              className="text-sm w-full"
-                            />
-                            {detail.status !== 'pending_verification' && (
-                              <p className="text-xs text-amber-700">⚠ Admin-Upload wird sofort veröffentlicht</p>
-                            )}
-                            <Button
-                              size="sm"
-                              disabled={updating || !profilePhotoFile}
-                              onClick={async () => {
-                                if (!detail?.id || !profilePhotoFile) return;
-                                try {
-                                  setUpdating(true);
-                                  setMessage(null);
-                                  const fd = new FormData();
-                                  fd.append('profile_photo', profilePhotoFile);
-                                  let res: Response;
-                                  if (detail.status === 'pending_verification') {
-                                    res = await fetch(`/api/public/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
-                                  } else {
-                                    res = await fetch(`/api/admin/therapists/${detail.id}/photo`, { method: 'POST', body: fd, credentials: 'include' });
-                                  }
-                                  const json = await res.json();
-                                  if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
-                                  setMessage('Foto hochgeladen');
-                                  setProfilePhotoFile(null);
-                                  await openDetail(detail.id);
-                                } catch (e) {
-                                  const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
-                                  setMessage(msg);
-                                } finally {
-                                  setUpdating(false);
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const url = URL.createObjectURL(file);
+                                  setCropperImageSrc(url);
+                                  setShowCropper(true);
                                 }
                               }}
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => photoInputRef.current?.click()}
                             >
-                              Hochladen
+                              📤 {detail.profile.photo_pending_url || detail.profile.photo_url ? 'Ersetzen' : 'Hochladen'}
                             </Button>
                           </div>
-                        </details>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1201,6 +1235,55 @@ export default function AdminTherapistsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Image Cropper Modal */}
+      {showCropper && cropperImageSrc && detail && (
+        <ImageCropper
+          imageSrc={cropperImageSrc}
+          onCropComplete={async (croppedBlob) => {
+            // Auto-save immediately - no separate "Speichern" step
+            const croppedFile = new File([croppedBlob], 'profile-photo.jpg', { type: 'image/jpeg' });
+            
+            if (cropperImageSrc) URL.revokeObjectURL(cropperImageSrc);
+            setCropperImageSrc(null);
+            setShowCropper(false);
+            if (photoInputRef.current) photoInputRef.current.value = '';
+            
+            // Upload immediately
+            try {
+              setUpdating(true);
+              setMessage(null);
+              const fd = new FormData();
+              fd.append('profile_photo', croppedFile);
+              const endpoint = detail.status === 'pending_verification'
+                ? `/api/public/therapists/${detail.id}/documents`
+                : `/api/admin/therapists/${detail.id}/photo`;
+              const res = await fetch(endpoint, { 
+                method: 'POST', 
+                body: fd,
+                ...(detail.status !== 'pending_verification' && { credentials: 'include' })
+              });
+              const json = await res.json();
+              if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
+              setMessage('✓ Foto gespeichert');
+              await openDetail(detail.id);
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
+              setMessage(`Fehler: ${msg}`);
+            } finally {
+              setUpdating(false);
+            }
+          }}
+          onCancel={() => {
+            if (cropperImageSrc) URL.revokeObjectURL(cropperImageSrc);
+            setCropperImageSrc(null);
+            setShowCropper(false);
+            if (photoInputRef.current) photoInputRef.current.value = '';
+          }}
+          aspectRatio={1}
+          cropShape="round"
+        />
       )}
     </main>
   );
