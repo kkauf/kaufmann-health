@@ -104,6 +104,8 @@ jobs:
     if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
     env:
       SMOKE_TEST_URL: https://www.kaufmann-health.de
+      # Tell Playwright to use production URL (skips local server startup)
+      E2E_BASE_URL: https://www.kaufmann-health.de
     steps:
       - name: Checkout
         uses: actions/checkout@v4
