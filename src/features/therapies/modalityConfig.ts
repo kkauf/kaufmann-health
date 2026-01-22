@@ -34,7 +34,7 @@ export const MODALITIES: Record<ModalityId, ModalityConfig> = {
     name: 'NARM',
     fullName: 'NeuroAffektives Beziehungsmodell',
     slug: 'narm',
-    metaTitle: 'NARM Therapie (Somatische Therapie) Berlin | Entwicklungstrauma heilen',
+    metaTitle: 'NARM Therapie Berlin | Entwicklungstrauma heilen',
     metaDescription: 'NARM (NeuroAffektives Beziehungsmodell) für Entwicklungstrauma in Berlin & online. Ohne Retraumatisierung zu mehr Selbstregulation. Zertifizierte Therapeut:innen finden.',
     therapistFilter: {
       modalities: ['narm'],
@@ -64,14 +64,14 @@ export const MODALITIES: Record<ModalityId, ModalityConfig> = {
     name: 'Hakomi',
     fullName: 'Hakomi-Methode',
     slug: 'hakomi',
-    metaTitle: 'Hakomi Therapie (Somatische Therapie) Berlin | Achtsamkeitsbasiert',
-    metaDescription: 'Hakomi-Methode: Achtsamkeitsbasierte körperorientierte Therapie in Berlin & online. Sanft, achtsam, transformativ. Zertifizierte Hakomi-Therapeut:innen finden.',
+    metaTitle: 'Hakomi Therapie Berlin | Achtsamkeitsbasierte Körperpsychotherapie',
+    metaDescription: 'Hakomi-Methode: Achtsamkeitsbasierte Körperpsychotherapie in Berlin & online. Sanft, achtsam, transformativ. Zertifizierte Hakomi-Therapeut:innen finden.',
     therapistFilter: {
       modalities: ['hakomi'],
     },
     directoryFilterParams: '?modality=hakomi',
     therapistSectionTitle: 'Unsere Hakomi-Therapeut:innen',
-    therapistSectionSubtitle: 'Zertifiziert in achtsamkeitsbasierter Körpertherapie',
+    therapistSectionSubtitle: 'Zertifiziert in achtsamkeitsbasierter Körperpsychotherapie',
   },
   
   'core-energetics': {

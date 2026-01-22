@@ -6,7 +6,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 
 export const metadata: Metadata = {
   title: 'Fragebogen – Kaufmann Health',
-  description: 'Finde in 3 Minuten passende Therapeut:innen für körperorientierte Psychotherapie. Persönlich ausgewählt, ohne Wartezeit.',
+  description: 'Finde in 3 Minuten passende Therapeut:innen für Körperpsychotherapie. Persönlich ausgewählt, ohne Wartezeit.',
   alternates: { canonical: 'https://www.kaufmann-health.de/fragebogen' },
   robots: { index: true, follow: true },
 };

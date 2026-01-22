@@ -28,11 +28,11 @@ export const metadata: Metadata = {
   title:
     "Therapeut:innen-Empfehlung – Sorgfältig geprüfte Therapeut:innen in deiner Nähe | Kaufmann Health",
   description:
-    "Handverlesene Therapeut:innen-Empfehlungen für körperorientierte Psychotherapie (NARM, Hakomi, Somatic Experiencing). Direkter Kontakt, transparente Auswahl, ohne Wartezeit.",
+    "Handverlesene Therapeut:innen-Empfehlungen für Körperpsychotherapie (NARM, Hakomi, Somatic Experiencing). Direkter Kontakt, transparente Auswahl, ohne Wartezeit.",
   keywords: [
     "Therapeut:innen finden",
     "Therapeut:innen-Empfehlung",
-    "Körperorientierte Psychotherapie",
+    "Körperpsychotherapie",
     "NARM",
     "Hakomi",
     "Somatic Experiencing",
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
         url: "/images/hero.jpg",
         width: 1200,
         height: 630,
-        alt: "Kaufmann Health – Körperorientierte Psychotherapie",
+        alt: "Kaufmann Health – Körperpsychotherapie",
       },
     ],
   },
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Therapeut:innen-Empfehlung | Kaufmann Health",
     description:
-      "Handverlesene Empfehlungen sorgfältig geprüfter Therapeut:innen für körperorientierte Psychotherapie.",
+      "Handverlesene Empfehlungen sorgfältig geprüfter Therapeut:innen für Körperpsychotherapie.",
     images: ["/images/hero.jpg"],
   },
   robots: {

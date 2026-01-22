@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const title = `${fullName} – ${modalityList || 'Körperpsychotherapie'} in ${therapist.city}`;
   const description = therapist.metadata?.profile?.who_comes_to_me 
     || therapist.approach_text?.slice(0, 155) 
-    || `${fullName} ist Therapeut:in für körperorientierte Psychotherapie in ${therapist.city}. Jetzt Profil ansehen und Termin buchen.`;
+    || `${fullName} ist Therapeut:in für Körperpsychotherapie in ${therapist.city}. Jetzt Profil ansehen und Termin buchen.`;
 
   const canonical = `${baseUrl}/therapeuten/${slug}`;
 

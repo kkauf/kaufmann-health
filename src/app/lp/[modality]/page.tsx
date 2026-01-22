@@ -34,14 +34,14 @@ const MODALITY_COPY: Record<ModalityId, {
 }> = {
   'narm': {
     heroTitle: "NARM Therapeut:in finden",
-    heroSubtitle: "Körperorientierte Therapie für Entwicklungstrauma — ohne Retraumatisierung",
+    heroSubtitle: "Körperpsychotherapie für Entwicklungstrauma — ohne Retraumatisierung",
     heroValueProps: [
       '✓ Zertifizierte NARM-Therapeut:innen',
       '✓ Ohne Warteliste',
       '✓ Berlin & Online · 80€–120€',
     ],
     onlineHeroTitle: "Online NARM Therapeut:in finden",
-    onlineHeroSubtitle: "Körperorientierte Therapie für Entwicklungstrauma — von zuhause",
+    onlineHeroSubtitle: "Körperpsychotherapie für Entwicklungstrauma — von zuhause",
     onlineValueProps: [
       '✓ Zertifizierte NARM-Therapeut:innen',
       '✓ Ohne Warteliste',
@@ -88,14 +88,14 @@ const MODALITY_COPY: Record<ModalityId, {
   },
   'hakomi': {
     heroTitle: "Hakomi Therapeut:in finden",
-    heroSubtitle: "Achtsamkeitsbasierte Körpertherapie — sanft und transformativ",
+    heroSubtitle: "Achtsamkeitsbasierte Körperpsychotherapie — sanft und transformativ",
     heroValueProps: [
       '✓ Zertifizierte Hakomi-Therapeut:innen',
       '✓ Ohne Warteliste',
       '✓ Berlin & Online · 80€–120€',
     ],
     onlineHeroTitle: "Online Hakomi Therapeut:in finden",
-    onlineHeroSubtitle: "Achtsamkeitsbasierte Körpertherapie — von zuhause",
+    onlineHeroSubtitle: "Achtsamkeitsbasierte Körperpsychotherapie — von zuhause",
     onlineValueProps: [
       '✓ Zertifizierte Hakomi-Therapeut:innen',
       '✓ Ohne Warteliste',
@@ -154,7 +154,7 @@ const FAQS = [
   { id: 'prices', question: 'Was kosten die Sitzungen?', answer: 'In der Regel 80–120€ pro 60 Minuten. Den genauen Satz sprichst du direkt mit deiner Therapeut:in ab.' },
   { id: 'speed', question: 'Wie schnell bekomme ich Termine?', answer: 'Du erhältst sofort passende Therapeut:innen-Vorschläge basierend auf deinen Angaben. Termine sind in der Regel noch diese Woche möglich.' },
   { id: 'privacy', question: 'Wird die Psychotherapie bei meiner Krankenkasse dokumentiert?', answer: 'Nein. Es erfolgt keine Kassenabrechnung, kein Eintrag in deiner Krankenakte und keine ICD-10-Diagnose bei der Kasse.' },
-  { id: 'why-body', question: 'Warum körperorientierte Psychotherapie?', answer: 'Viele Menschen verstehen ihre Probleme bereits – sie wissen, woher ihre Ängste kommen, welche Muster sie haben. Aber Verstehen allein führt nicht zu Veränderung. Trauma und festgefahrene Reaktionen leben im Nervensystem. Körperorientierte Psychotherapie arbeitet direkt mit dem Körper, um diese Muster zu lösen.' },
+  { id: 'why-body', question: 'Warum Körperpsychotherapie?', answer: 'Viele Menschen verstehen ihre Probleme bereits – sie wissen, woher ihre Ängste kommen, welche Muster sie haben. Aber Verstehen allein führt nicht zu Veränderung. Trauma und festgefahrene Reaktionen leben im Nervensystem. Körperpsychotherapie arbeitet direkt mit dem Körper, um diese Muster zu lösen.' },
 ];
 
 export default async function CampaignLandingPage({

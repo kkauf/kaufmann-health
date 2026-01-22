@@ -89,6 +89,24 @@ Never duplicate events across both systems. See `docs/analytics.md`.
 
 ## Git Workflow
 
-Follow conventional commits: `type(scope): description`
+**Branch strategy**: Work on `staging`, ship to `main` when ready.
+
+```bash
+# During development: commit and push to staging frequently
+git add <files> && git commit -m "..." && git push
+
+# When feature is tested and QA'd: ship to production
+git ship    # merges staging→main, syncs staging, keeps you on staging
+
+# Hotfixes: can push directly to main when urgent
+```
+
+**Commit conventions**: `type(scope): description`
 - Types: feat, fix, refactor, docs, chore, perf, test
 - Include Linear task ID when applicable: `Refs: EARTH-123`
+
+**After completing a feature**:
+1. Update relevant docs in `/docs` (proactive - check what you touched)
+2. Flag if business docs may need updates (Google Drive: Partner Support, etc.)
+3. Run `npm run test:critical` and verify in browser
+4. `git ship` when confident

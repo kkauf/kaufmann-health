@@ -14,25 +14,25 @@ export const revalidate = 3600;
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.kaufmann-health.de";
 
 export const metadata: Metadata = {
-  title: "Körperorientierte Psychotherapie (somatische Therapie) Berlin | NARM, SE, Hakomi",
-  description: "Körperorientierte Psychotherapie (somatische Therapie) in Berlin & online: NARM, Somatic Experiencing, Hakomi, Core Energetics. Wissenschaftlich fundiert für Trauma, Stress & emotionale Blockaden.",
+  title: "Körperpsychotherapie Berlin | NARM, Somatic Experiencing, Hakomi",
+  description: "Körperpsychotherapie in Berlin & online: NARM, Somatic Experiencing, Hakomi, Core Energetics. Wissenschaftlich fundiert für Trauma, Stress & emotionale Blockaden.",
   alternates: { canonical: `${baseUrl}/therapie` },
   robots: { index: true, follow: true },
   openGraph: {
-    title: "Körperorientierte Psychotherapie (somatische Therapie) Berlin | NARM, SE, Hakomi",
-    description: "Körperorientierte Psychotherapie (somatische Therapie) in Berlin & online: NARM, Somatic Experiencing, Hakomi, Core Energetics. Wissenschaftlich fundiert.",
+    title: "Körperpsychotherapie Berlin | NARM, Somatic Experiencing, Hakomi",
+    description: "Körperpsychotherapie in Berlin & online: NARM, Somatic Experiencing, Hakomi, Core Energetics. Wissenschaftlich fundiert.",
     url: `${baseUrl}/therapie`,
     siteName: "Kaufmann Health",
     locale: "de_DE",
     type: "website",
     images: [
-      { url: `${baseUrl}/images/hero.jpg`, width: 1200, height: 630, alt: "Kaufmann Health – Körperorientierte Psychotherapie" },
+      { url: `${baseUrl}/images/hero.jpg`, width: 1200, height: 630, alt: "Kaufmann Health – Körperpsychotherapie" },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Körperorientierte Psychotherapie (somatische Therapie) Berlin | NARM, SE, Hakomi",
-    description: "Körperorientierte Psychotherapie (somatische Therapie) in Berlin & online: NARM, Somatic Experiencing, Hakomi, Core Energetics. Wissenschaftlich fundiert.",
+    title: "Körperpsychotherapie Berlin | NARM, Somatic Experiencing, Hakomi",
+    description: "Körperpsychotherapie in Berlin & online: NARM, Somatic Experiencing, Hakomi, Core Energetics. Wissenschaftlich fundiert.",
     images: [`${baseUrl}/images/hero.jpg`],
   },
 };
@@ -47,10 +47,10 @@ function WhatIsBodyTherapy() {
           <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
           
           <h2 id="what-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
-            Was ist körperorientierte Psychotherapie?
+            Was ist Körperpsychotherapie?
           </h2>
           <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-700">
-            Körperorientierte Psychotherapie (auch <strong>somatische Therapie</strong> genannt) arbeitet mit dem, was im Körper spürbar ist: 
+            Körperpsychotherapie arbeitet mit dem, was im Körper spürbar ist: 
             Atmung, Haltung, Anspannung, innere Empfindungen. Statt nur über Probleme zu sprechen, wird Veränderung 
             <strong> direkt im Nervensystem erlebt und verankert</strong>.
           </p>
@@ -102,7 +102,7 @@ function WhatIsBodyTherapy() {
               Therapeut:innen ansehen
             </CtaLink>
             <p className="text-sm sm:text-base text-gray-600">
-              Finde passende Spezialist:innen für körperorientierte Therapie.
+              Finde passende Spezialist:innen für Körperpsychotherapie.
             </p>
           </div>
         </div>
@@ -129,7 +129,7 @@ function ForWhom() {
               <Users className="h-6 w-6" />
             </div>
             <div>
-              <h2 id="forwho-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Für wen ist körperorientierte Psychotherapie geeignet?</h2>
+              <h2 id="forwho-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Für wen ist Körperpsychotherapie geeignet?</h2>
               <p className="mt-2 text-base sm:text-lg leading-relaxed text-gray-600">Besonders hilfreich bei:</p>
             </div>
           </div>
@@ -160,7 +160,7 @@ export default async function KoerpertherapiePage() {
     { 
       id: "unterschied", 
       question: "Was ist der Unterschied zur Gesprächstherapie?", 
-      answer: "Gespräche helfen zu verstehen und einzuordnen. Körperorientierte Psychotherapie ergänzt dies um das direkte Spüren und Regulieren im Körper. So wird Veränderung nicht nur gedacht, sondern im Nervensystem erlebt und verankert. Beide Ansätze können sich hervorragend ergänzen." 
+      answer: "Gespräche helfen zu verstehen und einzuordnen. Körperpsychotherapie ergänzt dies um das direkte Spüren und Regulieren im Körper. So wird Veränderung nicht nur gedacht, sondern im Nervensystem erlebt und verankert. Beide Ansätze können sich hervorragend ergänzen." 
     },
     { 
       id: "kosten", 
@@ -187,9 +187,9 @@ export default async function KoerpertherapiePage() {
   const therapySchema = {
     "@context": "https://schema.org",
     "@type": "MedicalTherapy",
-    name: "Körperorientierte Psychotherapie (somatische Therapie)",
+    name: "Körperpsychotherapie",
     url: `${baseUrl}/therapie`,
-    description: "Körperorientierte Psychotherapie (somatische Therapie) mit Methoden wie NARM, Somatic Experiencing, Hakomi und Core Energetics zur Behandlung von Trauma, Stress und emotionalen Blockaden. Wissenschaftlich fundiert und ohne Esoterik.",
+    description: "Körperpsychotherapie mit Methoden wie NARM, Somatic Experiencing, Hakomi und Core Energetics zur Behandlung von Trauma, Stress und emotionalen Blockaden. Wissenschaftlich fundiert und ohne Esoterik.",
     sameAs: [
       "https://de.wikipedia.org/wiki/K%C3%B6rperpsychotherapie",
       "https://traumahealing.org/se-research-and-articles/"
@@ -201,8 +201,8 @@ export default async function KoerpertherapiePage() {
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-14">
         
         <HeroNoForm
-          title="Körperorientierte Psychotherapie"
-          subtitle="Körperorientierte Psychotherapie (auch somatische Therapie genannt) arbeitet dort, wo Trauma und Stress im Nervensystem gespeichert sind – wissenschaftlich fundiert, professionell und ohne Esoterik."
+          title="Körperpsychotherapie"
+          subtitle="Körperpsychotherapie arbeitet dort, wo Trauma und Stress im Nervensystem gespeichert sind – wissenschaftlich fundiert, professionell und ohne Esoterik."
           backgroundSrc="/images/hero-calm.jpeg"
           ctaLabel="Therapeut:in finden"
           ctaHref="/therapeuten"
@@ -250,7 +250,7 @@ export default async function KoerpertherapiePage() {
         {/* Therapist showcase - SEO + trust */}
         <section className="mt-14 sm:mt-20 lg:mt-24">
           <TherapistTeaserSection
-            title="Unsere Therapeut:innen für körperorientierte Therapie"
+            title="Unsere Therapeut:innen für Körperpsychotherapie"
             subtitle="Spezialist:innen für NARM, Somatic Experiencing, Hakomi & Core Energetics"
             limit={3}
             showViewAllButton={true}
@@ -266,7 +266,7 @@ export default async function KoerpertherapiePage() {
         <div className="mt-14 sm:mt-20 lg:mt-24">
           <FinalCtaSection 
             heading="Bereit für den ersten Schritt?" 
-            subtitle="Entdecke unsere handverlesenen Therapeut:innen für körperorientierte Psychotherapie. Online oder vor Ort in Berlin."
+            subtitle="Entdecke unsere handverlesenen Therapeut:innen für Körperpsychotherapie. Online oder vor Ort in Berlin."
             buttonLabel="Alle Therapeut:innen ansehen"
             targetId="/therapeuten"
             align="center"

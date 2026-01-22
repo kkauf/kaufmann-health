@@ -11,14 +11,14 @@ export const revalidate = 3600;
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.kaufmann-health.de";
 
 export const metadata: Metadata = {
-  title: "Körperorientierte Psychotherapie – Therapeut:innen finden | Kaufmann Health",
-  description: "Finde handverlesene Therapeut:innen für körperorientierte Psychotherapie. NARM, Somatic Experiencing, Hakomi. Online oder in Berlin. Ohne Wartezeit.",
+  title: "Körperpsychotherapie – Therapeut:innen finden | Kaufmann Health",
+  description: "Finde handverlesene Therapeut:innen für Körperpsychotherapie. NARM, Somatic Experiencing, Hakomi. Online oder in Berlin. Ohne Wartezeit.",
   alternates: {
     canonical: `${baseUrl}/`,
   },
   openGraph: {
-    title: "Körperorientierte Psychotherapie – Therapeut:innen finden | Kaufmann Health",
-    description: "Finde handverlesene Therapeut:innen für körperorientierte Psychotherapie. Online oder in Berlin. Ohne Wartezeit.",
+    title: "Körperpsychotherapie – Therapeut:innen finden | Kaufmann Health",
+    description: "Finde handverlesene Therapeut:innen für Körperpsychotherapie. Online oder in Berlin. Ohne Wartezeit.",
     url: `${baseUrl}/`,
     siteName: "Kaufmann Health",
     locale: "de_DE",
@@ -28,14 +28,14 @@ export const metadata: Metadata = {
         url: `${baseUrl}/images/session.jpeg`,
         width: 1200,
         height: 630,
-        alt: "Kaufmann Health – Körperorientierte Psychotherapie",
+        alt: "Kaufmann Health – Körperpsychotherapie",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Körperorientierte Psychotherapie – Therapeut:innen finden",
-    description: "Finde handverlesene Therapeut:innen für körperorientierte Psychotherapie. Online oder in Berlin. Ohne Wartezeit.",
+    title: "Körperpsychotherapie – Therapeut:innen finden",
+    description: "Finde handverlesene Therapeut:innen für Körperpsychotherapie. Online oder in Berlin. Ohne Wartezeit.",
     images: [`${baseUrl}/images/session.jpeg`],
   },
 };
@@ -48,7 +48,7 @@ export default function Home() {
 
         {/* Hero with Background Image */}
         <HeroNoForm
-          title="Körperorientierte Therapie, die wirklich ankommt."
+          title="Körperpsychotherapie, die wirklich ankommt."
           subtitle="Finde Therapeut:innen, die verstehen, dass Heilung mehr braucht als Worte."
           ctaLabel="Therapeut:in finden"
           ctaHref="/fragebogen"
@@ -116,7 +116,7 @@ export default function Home() {
         <section aria-labelledby="why-body" className="mt-14 sm:mt-20">
           <div className="text-center max-w-3xl mx-auto">
             <h2 id="why-body" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
-              Warum körperorientierte Therapie?
+              Warum Körperpsychotherapie?
             </h2>
             <p className="mt-4 text-base sm:text-lg leading-relaxed text-gray-700">
               Manche Erfahrungen sitzen tiefer als Gedanken. Körperorientierte Verfahren wie NARM, Somatic Experiencing und Hakomi arbeiten mit dem Nervensystem — dort, wo Anspannung, Trauma und alte Muster gespeichert sind.

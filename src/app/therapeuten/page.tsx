@@ -44,7 +44,7 @@ export default async function TherapeutenPage() {
             Unsere Therapeut:innen
           </h1>
           <p className="mt-1 text-base text-gray-600">
-            Persönlich ausgewählte Spezialist:innen für körperorientierte Psychotherapie
+            Persönlich ausgewählte Spezialist:innen für Körperpsychotherapie
           </p>
         </section>
         
