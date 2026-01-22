@@ -85,7 +85,7 @@ export default async function HakomiPage() {
     { id: "therapeut-finden", question: "Wie finde ich einen qualifizierten Hakomi-Therapeuten?", answer: "Achte auf abgeschlossene Hakomi-Ausbildung. Unsere Therapeut:innen sind alle zertifiziert." },
     { id: "privacy", question: "Wird die Psychotherapie bei meiner Krankenkasse dokumentiert?", answer: "Nein. Es erfolgt keine Kassenabrechnung, kein Eintrag in deiner Krankenakte und keine ICD-10-Diagnose bei der Kasse." },
     { id: "speed", question: "Wie schnell bekomme ich Vorschläge?", answer: "Du erhältst sofort passende Therapeut:innen-Vorschläge basierend auf deinen Angaben. Termine sind in der Regel noch diese Woche möglich." },
-    { id: "why-body", question: "Warum körperorientierte Psychotherapie?", answer: "Viele Menschen verstehen ihre Probleme bereits – sie wissen, woher ihre Ängste kommen. Aber Verstehen allein führt nicht zu Veränderung. Trauma und festgefahrene Reaktionen leben im Nervensystem. Körperorientierte Psychotherapie arbeitet direkt mit dem Körper, um diese Muster zu lösen." },
+    { id: "why-body", question: "Warum Körperpsychotherapie?", answer: "Viele Menschen verstehen ihre Probleme bereits – sie wissen, woher ihre Ängste kommen. Aber Verstehen allein führt nicht zu Veränderung. Trauma und festgefahrene Reaktionen leben im Nervensystem. Körperpsychotherapie arbeitet direkt mit dem Körper, um diese Muster zu lösen." },
   ];
 
   const therapySchema = {
@@ -94,7 +94,7 @@ export default async function HakomiPage() {
     name: "Hakomi Therapie",
     alternateName: "Hakomi-Methode",
     url: `${baseUrl}/therapie/hakomi`,
-    description: "Achtsamkeitsbasierte körperorientierte Psychotherapie zur Transformation unbewusster Überzeugungen",
+    description: "Achtsamkeitsbasierte Körperpsychotherapie zur Transformation unbewusster Überzeugungen",
     mainEntityOfPage: `${baseUrl}/therapie/hakomi`,
   } as const;
 
@@ -120,7 +120,7 @@ export default async function HakomiPage() {
             <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-slate-50/30" />
             <h2 id="what-hakomi-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Was ist Hakomi?</h2>
             <p className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-gray-700">
-              Die Hakomi-Methode ist eine achtsamkeitsbasierte, körperorientierte Psychotherapie, entwickelt von Ron Kurtz in den 1970er Jahren. Der Name „Hakomi“ stammt aus der Hopi-Sprache und bedeutet: „Wie stehst du in Beziehung zu diesen vielen Welten?“
+              Die Hakomi-Methode ist eine achtsamkeitsbasierte Körperpsychotherapie, entwickelt von Ron Kurtz in den 1970er Jahren. Der Name „Hakomi“ stammt aus der Hopi-Sprache und bedeutet: „Wie stehst du in Beziehung zu diesen vielen Welten?“
             </p>
             <p className="mt-3 sm:mt-4 text-base sm:text-lg leading-relaxed text-gray-700">
               <strong>Der einzigartige Ansatz:</strong> Hakomi nutzt Achtsamkeit als Forschungswerkzeug. In einem Zustand entspannter innerer Aufmerksamkeit werden unbewusste Überzeugungen direkt erfahrbar – oft in Form von Körperempfindungen, Bildern oder spontanen Erinnerungen.

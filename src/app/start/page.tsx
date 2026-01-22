@@ -30,10 +30,10 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   
   const title = variant === 'ready-now'
     ? 'Kaufmann Health – Psychotherapie ohne Wartezeit (Termine in 24h)'
-    : 'Kaufmann Health – Körperorientierte Psychotherapie (Termine in 24h)';
+    : 'Kaufmann Health – Körperpsychotherapie (Termine in 24h)';
   const description = variant === 'ready-now'
     ? 'Sofort verfügbare Therapeuten in Berlin und online. Persönlich ausgewählt, keine Wartelisten, keine Kassentherapie.'
-    : 'Körperorientierte Traumatherapie in Berlin und online. Handverlesene Spezialist:innen, sofort verfügbar.';
+    : 'Körperpsychotherapie in Berlin und online. Handverlesene Spezialist:innen, sofort verfügbar.';
   
   const base = buildLandingMetadata({
     baseUrl,
@@ -88,8 +88,8 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
     faqs: [
       {
         id: 'why-body',
-        question: 'Warum körperorientierte Psychotherapie?',
-        answer: 'Viele Menschen verstehen ihre Probleme bereits – sie wissen, woher ihre Ängste kommen, welche Muster sie haben. Aber Verstehen allein führt nicht zu Veränderung. Trauma und festgefahrene Reaktionen leben in deinem Nervensystem. Körperorientierte Psychotherapie arbeitet direkt mit deinem Körper, um diese Muster zu lösen. Das Ergebnis: Nachhaltige Veränderung, nicht nur Einsicht.',
+        question: 'Warum Körperpsychotherapie?',
+        answer: 'Viele Menschen verstehen ihre Probleme bereits – sie wissen, woher ihre Ängste kommen, welche Muster sie haben. Aber Verstehen allein führt nicht zu Veränderung. Trauma und festgefahrene Reaktionen leben in deinem Nervensystem. Körperpsychotherapie arbeitet direkt mit deinem Körper, um diese Muster zu lösen. Das Ergebnis: Nachhaltige Veränderung, nicht nur Einsicht.',
       },
       {
         id: 'how-it-works',

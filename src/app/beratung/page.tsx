@@ -123,7 +123,7 @@ export default function BeratungPage() {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Kaufmann Health – Therapie-Plattform</h3>
-                <p className="text-xs sm:text-sm text-gray-600">Marketplace-Plattform für körperorientierte Psychotherapie</p>
+                <p className="text-xs sm:text-sm text-gray-600">Marketplace-Plattform für Körperpsychotherapie</p>
               </div>
             </div>
             <p className="mt-2 text-sm sm:text-base leading-relaxed text-gray-700">
