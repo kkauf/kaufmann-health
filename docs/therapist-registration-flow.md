@@ -9,20 +9,25 @@ Complete documentation of the therapist onboarding journey from signup to direct
 │  1. REGISTRATION    │ ──► │  2. PROFILE +       │ ──► │  3. ADMIN           │ ──► │  4. PORTAL          │
 │     FORM            │     │     DOCUMENTS       │     │     VERIFICATION    │     │     ONBOARDING      │
 │                     │     │                     │     │                     │     │                     │
-│  /fuer-therapeuten  │     │  /therapists/       │     │  Admin Dashboard    │     │  /portal            │
-│                     │     │  complete-profile/  │     │                     │     │                     │
+│  /therapists/       │     │  /therapists/       │     │  Admin Dashboard    │     │  /portal            │
+│  register           │     │  complete-profile/  │     │                     │     │                     │
+│                     │     │  upload-documents/  │     │                     │     │                     │
 │  Status: -          │     │  Status:            │     │  Status: verified   │     │  Status: verified   │
 │                     │     │  pending_verification│    │                     │     │  accepting_new:     │
 │                     │     │  or rejected        │     │                     │     │  true/false         │
 └─────────────────────┘     └─────────────────────┘     └─────────────────────┘     └─────────────────────┘
+
+UI Progress Indicator (OnboardingProgress component):
+Step 0: Registrierung → Step 1: Profil → Step 2: Dokumente → Step 3: Fertig
 ```
 
 ---
 
 ## Phase 1: Registration Form
 
-**URL:** `/fuer-therapeuten`  
-**Component:** `TherapistApplicationForm.tsx`  
+**URL:** `/therapists/register`
+**Component:** `RegistrationForm.tsx` (in `/app/therapists/register/`)
+**Landing page:** `/fuer-therapeuten` (links to registration)
 **Status after:** `pending_verification`
 
 ### Fields Collected
@@ -49,6 +54,8 @@ Complete documentation of the therapist onboarding journey from signup to direct
 - No email confirmation required (unlike patient flow)
 - City, session preferences, approach text are NOT collected here anymore
 - These are collected in Phase 2 (profile completion) or Phase 4 (portal)
+- **localStorage persistence:** Form data is auto-saved to `kh_therapist_registration_draft` key, restored on page revisit
+- Landing page `/fuer-therapeuten` links to `/therapists/register` for the actual form
 
 ---
 
