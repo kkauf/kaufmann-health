@@ -21,6 +21,7 @@
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
+import { logError } from '@/lib/logger';
 
 const CAL_DATABASE_URL = process.env.CAL_DATABASE_URL;
 const CAL_ORIGIN = process.env.NEXT_PUBLIC_CAL_ORIGIN || 'https://cal.kaufmann.health';
@@ -434,10 +435,36 @@ export async function provisionCalUser(
       introId = result.introId;
       fullSessionId = result.fullSessionId;
       if (!result.success) {
-        console.warn('Event type creation via UI had issues:', result.error);
+        // Fire alert for failed event type creation
+        await logError('cal.provision.event_types_failed', new Error(result.error || 'Event type creation failed'), {
+          cal_user_id: userId,
+          cal_username: username,
+          email,
+          intro_created: Boolean(introId),
+          full_session_created: Boolean(fullSessionId),
+          error: result.error,
+        });
       }
     } catch (err) {
-      console.warn('Could not create event types via UI (Playwright may not be available):', err);
+      // Fire alert for Playwright/infrastructure failure
+      await logError('cal.provision.event_types_exception', err instanceof Error ? err : new Error(String(err)), {
+        cal_user_id: userId,
+        cal_username: username,
+        email,
+        stage: 'playwright_unavailable',
+      });
+    }
+    
+    // Alert if event types are missing after provisioning
+    if (!introId || !fullSessionId) {
+      await logError('cal.provision.incomplete', new Error('Cal.com user created but event types missing'), {
+        cal_user_id: userId,
+        cal_username: username,
+        email,
+        intro_id: introId,
+        full_session_id: fullSessionId,
+        action_required: 'Run fix-cal-events for this therapist',
+      });
     }
 
     return {
