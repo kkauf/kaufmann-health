@@ -114,14 +114,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         
         for (const evt of eventDetails) {
           const needsUnhide = evt.hidden === true;
-          const needsSchedule = evt.scheduleId === null;
+          const targetSchedule = evt.slug === 'intro' 
+            ? (kennenlernSchedule || defaultSchedule)
+            : (sitzungenSchedule || defaultSchedule);
           
-          if (needsUnhide || needsSchedule) {
-            const targetSchedule = evt.slug === 'intro' 
-              ? (kennenlernSchedule || defaultSchedule)
-              : (sitzungenSchedule || defaultSchedule);
-            
-            if (needsUnhide && needsSchedule && targetSchedule) {
+          // Check if schedule is missing OR wrong (assigned to incorrect schedule)
+          const needsScheduleFix = targetSchedule && evt.scheduleId !== targetSchedule.id;
+          
+          if (needsUnhide || needsScheduleFix) {
+            if (needsUnhide && needsScheduleFix && targetSchedule) {
               await client.query(
                 'UPDATE "EventType" SET hidden = false, "scheduleId" = $1 WHERE id = $2',
                 [targetSchedule.id, evt.id]
@@ -130,7 +131,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
             } else if (needsUnhide) {
               await client.query('UPDATE "EventType" SET hidden = false WHERE id = $1', [evt.id]);
               fixes.push(`${evt.slug}: unhidden`);
-            } else if (needsSchedule && targetSchedule) {
+            } else if (needsScheduleFix && targetSchedule) {
               await client.query('UPDATE "EventType" SET "scheduleId" = $1 WHERE id = $2', [targetSchedule.id, evt.id]);
               fixes.push(`${evt.slug}: linked to schedule "${targetSchedule.name}"`);
             }
