@@ -36,13 +36,8 @@ Stores profile and qualification data for therapists. References `people(id)`.
 - `created_at timestamptz`
 - `updated_at timestamptz`
 
-### Directory Visibility Rules
-A therapist appears in the public directory (`/api/public/therapists`) only if:
-1. `status = 'verified'`
-2. `accepting_new = true`
-3. Not in `HIDDEN_THERAPIST_IDS` env or `metadata.hidden = true`
-
-**Profile completeness enforcement:** The `accepting_new` toggle in the therapist portal is only enabled when the profile is complete (photo, 3 profile text fields with min 50 chars each, schwerpunkte, and typical_rate). New therapists default to `accepting_new = false`, so they must complete their profile before being visible.
+### Directory Visibility
+Therapists appear in the public directory when verified and accepting new clients. Profile completeness requirements apply.
 
 Notes:
 - `secure_uuid` on `matches` is unique and used for magic links. No PII in emails.
@@ -114,3 +109,94 @@ Ingested bookings from Cal.com.
 - `therapist_notification_sent_at timestamptz`
 - `reminder_24h_sent_at timestamptz`
 - `reminder_1h_sent_at timestamptz`
+
+## public.form_sessions
+Stores partial questionnaire state for email-first flow (EARTH-190). Enables resume via confirmation link.
+- `id uuid pk default gen_random_uuid()`
+- `data jsonb not null default '{}'::jsonb` — form field values (city, session_preference, methods, etc.)
+- `email text` — associated email if known
+- `created_at timestamptz not null default now()`
+- `updated_at timestamptz not null default now()`
+- `expires_at timestamptz` — auto-cleanup after 7 days
+
+RLS: Service role only.
+
+## public.business_opportunities
+Tracks unmet patient preferences for supply-side insights (EARTH-124).
+- `id uuid pk default gen_random_uuid()`
+- `patient_id uuid not null references people(id) on delete cascade`
+- `mismatch_type text not null` — `gender | location | modality`
+- `city text`
+- `created_at timestamptz not null default now()`
+
+Indexes: `created_at`, `mismatch_type + created_at`, `city`.
+
+RLS: Service role only.
+
+## public.session_blockers
+Captures why sessions didn't happen (7-day post-selection feedback, EARTH-127).
+- `id uuid pk default gen_random_uuid()`
+- `match_id uuid not null references matches(id) on delete cascade`
+- `reason text not null` — `scheduling | cost | changed_mind | no_contact | other`
+- `created_at timestamptz not null default now()`
+
+Indexes: `created_at desc`, `reason`, `match_id`.
+
+RLS: Service role only.
+
+## public.therapist_slots
+Recurring availability slots for native booking (deprecated in favor of Cal.com for most therapists).
+- `id uuid pk default gen_random_uuid()`
+- `therapist_id uuid not null references therapists(id) on delete cascade`
+- `day_of_week smallint not null` — 0=Sunday, 6=Saturday
+- `time_local time not null` — Europe/Berlin timezone
+- `format text not null` — `online | in_person`
+- `address text not null default ''` — required for in_person, empty for online
+- `duration_minutes integer not null default 60`
+- `active boolean not null default true`
+- `created_at timestamptz not null default now()`
+
+Indexes: `therapist_id + active`, unique on `(therapist_id, day_of_week, time_local, format, address)`.
+
+## public.cal_slots_cache
+Pre-computed Cal.com availability for fast directory display (EARTH-248).
+- `therapist_id uuid pk references therapists(id) on delete cascade`
+- `next_intro_date_iso text` — YYYY-MM-DD in Europe/Berlin
+- `next_intro_time_label text` — HH:MM in Europe/Berlin
+- `next_intro_time_utc timestamptz`
+- `slots_count integer default 0` — total intro slots in 14 days (for platform scoring)
+- `cached_at timestamptz not null default now()`
+- `last_error text` — null = success
+
+RLS: Public read, service role write (via cron).
+
+## public.short_links
+URL shortening for SMS links.
+- `id uuid pk default gen_random_uuid()`
+- `code varchar(10) unique not null` — short code (e.g., `abc123`)
+- `target_url text not null`
+- `utm_source varchar(50)`
+- `utm_medium varchar(50)`
+- `utm_campaign varchar(100)`
+- `patient_id uuid references people(id) on delete set null`
+- `clicks integer default 0`
+- `created_at timestamptz default now()`
+- `last_clicked_at timestamptz`
+
+RLS: Public read (for redirect), service role write.
+
+## public.ad_spend_log
+Daily ad spend for CAC/CPL calculations (populated via nightly cron from Google Ads API).
+- `id uuid pk default gen_random_uuid()`
+- `date date not null`
+- `spend_eur numeric(10,2) not null`
+- `source text not null default 'google_ads'`
+- `campaign_name text`
+- `clicks integer`
+- `impressions integer`
+- `conversions numeric(10,2)`
+- `created_at timestamptz default now()`
+
+Unique: `(date, source, campaign_name)`.
+
+RLS: Service role only.

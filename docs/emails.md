@@ -216,52 +216,19 @@ When a booking is cancelled, we have a recovery flow to help the patient find an
 - Checked at patient level, not booking level, to prevent duplicates
 - Dedupes by patient_id within each cron run
 
-### Email Cadence (Post-Verification Nurture)
+### Email & SMS Cadence
 
-Three-stage follow-up sequence for verified patients who haven't booked:
+Post-verification nurture sequences are documented separately. See internal documentation for timing details.
 
-| Day | Template | Purpose |
-|-----|----------|---------|
-| 1 | `richTherapistEmail` | Personalized spotlight: top match with photo, modalities, approach text |
-| 5 | `selectionNudge` | Reassurance: free intro call, chemistry shows during meeting, can switch anytime|
-| 10 | `feedbackRequest` | One-click feedback options + interview incentive (€25 voucher) |
+Key templates:
+- `richTherapistEmail` — Personalized therapist spotlight
+- `selectionNudge` — Reassurance about process
+- `feedbackRequest` — Collect feedback from patients
 
 ### Therapist Cal.com Onboarding
 - `therapistCalOnboarding` → `src/lib/email/templates/therapistCalOnboarding.ts`
-  - Sent once a therapist's Cal.com account is provisioned.
-  - Includes: Login credentials (URL, email, generated password), booking profile link, and setup guide.
-  - Features: **Video Tutorial link** (to KH Portal) to help with setup.
-  - Important warning: Activation of Cal.com disables native KH availability slots.
-
-
-Templates: `src/lib/email/templates/richTherapistEmail.ts`, `selectionNudge.ts`, `feedbackRequest.ts`
-
-Crons: `GET /api/admin/leads/rich-therapist-email`, `/selection-nudge`, `/feedback-request`
-
-Feedback landing page: `/feedback/quick?patient=...&reason=...` captures responses and offers interview scheduling.
-
-### SMS Cadence (Phone-Only Patients)
-
-Separate follow-up sequence for patients who verified via SMS and have no email:
-
-| Day | SMS Template |
-|-----|--------------|
-| 2 | `Deine Therapeuten-Auswahl wartet: {url} – Fragen? Antworte "Hilfe" für einen Rückruf.` |
-| 5 | `Noch unsicher? Wir helfen bei der Auswahl. Antworte "Hilfe" und wir rufen dich an. {url}` |
-| 10 | `Kurze Frage: Was hält dich zurück? (Auswahl/Preis/Timing?) Antworte kurz – wir lesen alles persönlich.` |
-
-**Route**: `GET /api/admin/leads/sms-cadence?stage=day2|day5|day10`
-
-**Crons**: 10:30, 10:35, 10:40 daily (staggered after email cadence)
-
-**Eligibility**:
-- Has `phone_number` but NO email (or temp placeholder)
-- Has matches created
-- Hasn't selected a therapist yet
-- Hasn't received this SMS stage yet
-- No SMS sent in last 24h (spam prevention)
-
-**Reply handling**: Incoming SMS forwards to `LEADS_NOTIFY_EMAIL` via `/api/internal/sms/incoming` with callback detection ("Hilfe").
+  - Sent once a therapist's Cal.com account is provisioned
+  - Includes: Login credentials, booking profile link, setup guide
 
 ### Deliverability test (manual)
 
@@ -281,3 +248,109 @@ Separate follow-up sequence for patients who verified via SMS and have no email:
 - When `kh_test=1` is present, booking emails are rerouted to `LEADS_NOTIFY_EMAIL` (therapist and client messages) and the flow runs in **dry‑run** mode: no DB inserts, no `draft_booking` clearing.
 - Analytics event `booking_dry_run` is tracked with the same props as `booking_created`.
 - Scope: booking emails only, at the three trigger points listed above. E2E tests do not rely on this; they run with `RESEND_API_KEY` unset to avoid real sends.
+
+---
+
+## Complete Template Catalog
+
+All templates are located in `src/lib/email/templates/`. This is the authoritative list of all 27 email templates.
+
+### Patient Templates
+
+| Template | File | Trigger | Purpose |
+|----------|------|---------|---------|
+| `emailConfirmation` | `emailConfirmation.ts` | `POST /api/public/leads` | Confirm email address (magic link) |
+| `patientSelection` | `patientSelection.ts` | `POST /api/admin/matches/email?template=selection` | Send therapist recommendations with quality box |
+| `patientApology` | `patientApology.ts` | `POST /api/admin/matches/rebuild?send_notification=true` | Apology + re-sent matches after matching bugs |
+| `patientUpdates` | `patientUpdates.ts` | Manual admin trigger | General patient communication |
+| `matchLinkRefresh` | `matchLinkRefresh.ts` | When patient requests new link | Resend match page access link |
+| `richTherapistEmail` | `richTherapistEmail.ts` | Cron (Day 1) | Personalized spotlight of top match |
+| `selectionNudge` | `selectionNudge.ts` | Cron (Day 5) | Reassurance about free intro call |
+| `feedbackRequest` | `feedbackRequest.ts` | Cron (Day 10) | Collect feedback + interview offer |
+
+### Booking Templates (Native)
+
+| Template | File | Trigger | Purpose |
+|----------|------|---------|---------|
+| `bookingClientConfirmation` | `bookingClientConfirmation.ts` | `POST /api/public/bookings` | Confirm native KH booking to patient |
+| `bookingTherapistNotification` | `bookingTherapistNotification.ts` | `POST /api/public/bookings` | Notify therapist of new native booking |
+
+### Booking Templates (Cal.com)
+
+| Template | File | Trigger | Purpose |
+|----------|------|---------|---------|
+| `calBookingClientConfirmation` | `calBookingClientConfirmation.ts` | Cal.com webhook | Confirm Cal.com booking to patient |
+| `calBookingTherapistNotification` | `calBookingTherapistNotification.ts` | Cal.com webhook | Notify therapist of Cal.com booking |
+| `calBookingReminder` | `calBookingReminder.ts` | Cron (24h/1h before) | Remind patient of upcoming booking |
+| `calIntroFollowup` | `calIntroFollowup.ts` | Cal.com webhook (MEETING_ENDED) | Upsell full session after intro |
+| `calSessionFollowup` | `calSessionFollowup.ts` | Cron (3-5 days after) | Encourage booking next session |
+| `cancellationRecovery` | `cancellationRecovery.ts` | Cron (2-4h after cancel) | Show other matches after cancellation |
+
+### Therapist Onboarding Templates
+
+| Template | File | Trigger | Purpose |
+|----------|------|---------|---------|
+| `therapistWelcome` | `therapistWelcome.ts` | `POST /api/public/leads` (type=therapist) | Welcome + profile completion CTA |
+| `therapistUploadConfirmation` | `therapistUploadConfirmation.ts` | `POST /api/public/therapists/[id]/documents` | Confirm document upload received |
+| `therapistDocumentReminder` | `therapistDocumentReminder.ts` | Cron (Day 1, 3, 7) | Remind to upload license |
+| `therapistReminder` | `therapistReminder.ts` | Cron (daily) | Remind about incomplete profile |
+| `therapistApproval` | `therapistApproval.ts` | `PATCH /api/admin/therapists/[id]` (verified) | Welcome to platform after verification |
+| `therapistRejection` | `therapistRejection.ts` | `PATCH /api/admin/therapists/[id]` (rejected) | Rejection notification |
+| `therapistCalOnboarding` | `therapistCalOnboarding.ts` | Cal.com provisioning | Cal.com login credentials + setup guide |
+| `therapistAvailabilityReminder` | `therapistAvailabilityReminder.ts` | Cron (Fridays) | Weekly reminder to update availability |
+
+### Therapist Match Flow Templates
+
+| Template | File | Trigger | Purpose |
+|----------|------|---------|---------|
+| `therapistNotification` | `therapistNotification.ts` | Patient selects/admin creates match | New patient request with magic link |
+| `therapistMagicLink` | `therapistMagicLink.ts` | Therapist requests portal access | Portal login magic link |
+| `therapistDecline` | `therapistDecline.ts` | Therapist declines match | Notify patient with alternatives |
+
+---
+
+## Template Development Checklist
+
+When creating a new template:
+
+1. **Create the template function** in `src/lib/email/templates/`:
+   ```typescript
+   import { renderLayout, renderButton } from '@/lib/email/layout';
+   import type { EmailContent } from '@/lib/email/types';
+   
+   export function renderTemplateName(params: { ... }): EmailContent {
+     const contentHtml = `...`;
+     return {
+       subject: 'German subject line',
+       html: renderLayout({ title: 'Title', contentHtml, preheader: 'Preview text' }),
+     };
+   }
+   ```
+
+2. **Export from index** (if using barrel exports)
+
+3. **Add trigger point** in the appropriate route handler
+
+4. **Add test** in `tests/email.*.test.ts`
+
+5. **Document here** with trigger and purpose
+
+6. **Use fire-and-forget pattern** to avoid blocking user flows:
+   ```typescript
+   void sendEmail(params).catch(e => {
+     void logError('email.template_name', e, { context });
+   });
+   ```
+
+---
+
+## Email Design Rules
+
+1. **All German** — All patient-facing emails are in German
+2. **No external links** — Only use `BASE_URL` links (spam prevention)
+3. **Proxied images** — Therapist photos via `/api/images/therapist-profiles/`
+4. **Single primary CTA** — One clear action per email
+5. **Human sender** — Always `kontakt@kaufmann-health.de`
+6. **List-Unsubscribe** — Add for recurring therapist emails only
+7. **Plain text fallback** — Auto-generated if not provided
+8. **Preheader text** — Use for better open rates
