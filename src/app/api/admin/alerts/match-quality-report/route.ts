@@ -15,6 +15,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { isCronAuthorized } from '@/lib/cron-auth';
+import { getAdminNotifyEmail } from '@/lib/email/notification-recipients';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -288,8 +289,8 @@ export async function GET(req: Request) {
     const emoji = getQualityEmoji(index);
     const subject = `${emoji} Match-Qualität: ${index}/100 - ${label}`;
     
-    const notifyEmail = process.env.LEADS_NOTIFY_EMAIL;
-    
+    const notifyEmail = getAdminNotifyEmail();
+
     if (dryRun) {
       return NextResponse.json({
         success: true,
@@ -306,11 +307,11 @@ export async function GET(req: Request) {
         },
       });
     }
-    
+
     if (!notifyEmail) {
       return NextResponse.json({
         success: false,
-        error: 'LEADS_NOTIFY_EMAIL not configured',
+        error: 'ADMIN_NOTIFY_EMAIL not configured',
         data: { index, breakdown, totalMatches: matchRows.length },
       });
     }

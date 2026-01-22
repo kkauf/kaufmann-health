@@ -14,8 +14,7 @@
 
 import { sendEmail } from '@/lib/email/client';
 import { track } from '@/lib/logger';
-
-const ALERT_EMAIL = process.env.LEADS_NOTIFY_EMAIL || '';
+import { getAdminNotifyEmail } from '@/lib/email/notification-recipients';
 
 // In-memory rate limiting to avoid spamming (per alert type, 5 min cooldown)
 const alertCooldowns = new Map<string, number>();
@@ -44,9 +43,10 @@ interface CriticalAlertOptions {
  */
 export async function sendCriticalAlert(options: CriticalAlertOptions): Promise<boolean> {
   const { type, message, details, force } = options;
-  
-  if (!ALERT_EMAIL) {
-    console.error('[critical-alerts] LEADS_NOTIFY_EMAIL not configured');
+
+  const alertEmail = getAdminNotifyEmail();
+  if (!alertEmail) {
+    console.error('[critical-alerts] ADMIN_NOTIFY_EMAIL not configured');
     return false;
   }
 
@@ -81,10 +81,10 @@ export async function sendCriticalAlert(options: CriticalAlertOptions): Promise<
 
   try {
     await sendEmail({
-      to: ALERT_EMAIL,
+      to: alertEmail,
       subject,
       text,
-      context: { 
+      context: {
         kind: 'critical_alert',
         alert_type: type,
         timestamp,

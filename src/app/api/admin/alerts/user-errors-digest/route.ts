@@ -17,12 +17,12 @@ import { track, logError } from '@/lib/logger';
 import { isCronAuthorized as isCronAuthorizedShared } from '@/lib/cron-auth';
 import { AdminUserErrorsDigestInput } from '@/contracts/admin';
 import { parseQuery } from '@/lib/api-utils';
+import { getAdminNotifyEmail } from '@/lib/email/notification-recipients';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const DIGEST_HOURS = 12;
-const NOTIFY_EMAIL = process.env.LEADS_NOTIFY_EMAIL || 'kontakt@kaufmann-health.de';
 
 function isCronAuthorized(req: Request): boolean {
   return isCronAuthorizedShared(req);
@@ -262,7 +262,7 @@ export async function GET(req: Request) {
     const subject = `${subjectPrefix} ${events.length} User Error${events.length === 1 ? '' : 's'}${subjectSuffix}`;
 
     const digestResult = await sendEmail({
-      to: NOTIFY_EMAIL,
+      to: getAdminNotifyEmail() || 'kontakt@kaufmann-health.de',
       subject,
       html,
       context: { kind: 'user_errors_digest', count: events.length, auth_errors: authErrors.length, real: realCount, test: testCount },

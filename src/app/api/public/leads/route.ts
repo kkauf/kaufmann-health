@@ -18,6 +18,7 @@ import { isTestRequest } from '@/lib/test-mode';
 import { safeJson } from '@/lib/http';
 import { getClientSession } from '@/lib/auth/clientSession';
 import { createInstantMatchesForPatient } from '@/features/leads/lib/match';
+import { getPartnersNotifyEmail, getLeadsNotifyEmail } from '@/lib/email/notification-recipients';
 
 export const runtime = 'nodejs';
 
@@ -462,9 +463,9 @@ async function handleTherapistMultipart(req: Request) {
 
   // Google Ads conversion moved to documents submission endpoint (see /api/therapists/:id/documents)
 
-  // Internal notification (PII-free)
+  // Internal notification (PII-free) - therapist signups go to partner team
   try {
-    const to = process.env.LEADS_NOTIFY_EMAIL;
+    const to = getPartnersNotifyEmail();
     if (to) {
       const notif = buildInternalLeadNotification({ id: therapistId, metadata: { lead_type: 'therapist', city: city ?? null } });
       void track({
@@ -918,7 +919,7 @@ export async function POST(req: Request) {
               });
               // Send internal notification for returning concierge user
               try {
-                const to = process.env.LEADS_NOTIFY_EMAIL;
+                const to = getLeadsNotifyEmail();
                 if (to) {
                   const cityVal = city || (existing.metadata as Record<string, unknown> | undefined)?.['city'] as string | undefined || 'unknown';
                   const subject = `Rückkehrender Klient (Concierge): ${cityVal}`;

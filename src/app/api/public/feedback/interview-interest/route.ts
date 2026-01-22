@@ -4,6 +4,7 @@ import { sendEmail } from '@/lib/email/client';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { logError } from '@/lib/logger';
 import { extractIpFromHeaders } from '@/lib/rate-limit';
+import { getLeadsNotifyEmail } from '@/lib/email/notification-recipients';
 
 export const runtime = 'nodejs';
 
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
     const city = (patient?.metadata as Record<string, unknown>)?.city || 'Unbekannt';
 
     // Send immediate notification
-    const notifyEmail = process.env.LEADS_NOTIFY_EMAIL;
+    const notifyEmail = getLeadsNotifyEmail();
     if (notifyEmail) {
       const subject = `🎯 Interview-Interesse: ${patientName} (${city})`;
       const html = `

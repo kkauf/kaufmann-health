@@ -32,12 +32,12 @@ import {
 import { warmCacheForTherapist } from '@/lib/cal/slots-cache';
 import { getCachedCalSlots } from '@/lib/cal/slots-cache';
 import { renderCalIntroFollowup } from '@/lib/email/templates/calIntroFollowup';
+import { getQaNotifyEmail, getAdminNotifyEmail } from '@/lib/email/notification-recipients';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const CAL_WEBHOOK_SECRET = process.env.CAL_WEBHOOK_SECRET || '';
-const LEADS_NOTIFY_EMAIL = (process.env.LEADS_NOTIFY_EMAIL || '').trim();
 
 // EARTH-262: Failure tracking threshold for admin alerts
 const WEBHOOK_FAILURE_ALERT_THRESHOLD = 3;
@@ -125,9 +125,10 @@ async function sendCalBookingEmails(params: {
   const isIntro = bookingKind === 'intro';
   const now = new Date().toISOString();
   
-  // Determine recipient emails (test mode routes to sink)
-  const clientRecipient = isTest ? (LEADS_NOTIFY_EMAIL || null) : patientEmail;
-  const therapistRecipient = isTest ? (LEADS_NOTIFY_EMAIL || null) : therapistEmail;
+  // Determine recipient emails (test mode routes to QA sink)
+  const qaEmail = getQaNotifyEmail();
+  const clientRecipient = isTest ? (qaEmail || null) : patientEmail;
+  const therapistRecipient = isTest ? (qaEmail || null) : therapistEmail;
   
   // Send client confirmation
   if (!clientAlreadySent && clientRecipient) {
@@ -270,7 +271,7 @@ async function sendIntroFollowupEmail(params: {
     matchUuid: matchId,
   });
 
-  const recipient = isTest ? (LEADS_NOTIFY_EMAIL || null) : patient.email;
+  const recipient = isTest ? (getQaNotifyEmail() || null) : patient.email;
   if (!recipient) return;
 
   const sent = await sendEmail({
@@ -659,9 +660,10 @@ export async function POST(req: Request) {
           },
         });
         // Send admin alert
-        if (LEADS_NOTIFY_EMAIL) {
+        const adminEmail = getAdminNotifyEmail();
+        if (adminEmail) {
           void sendEmail({
-            to: LEADS_NOTIFY_EMAIL,
+            to: adminEmail,
             subject: `⚠️ Therapist using non-Cal.com video: ${organizerUsername}`,
             text: `Booking ${uid} uses "${location}" instead of Cal.com Video.\n\nThis means we won't receive MEETING_ENDED webhook and cannot automatically send intro follow-up emails.\n\nTherapist should use Cal.com Video for proper tracking.`,
             context: { cal_uid: uid, alert: 'non_cal_video' },
@@ -733,9 +735,10 @@ export async function POST(req: Request) {
         newStatus = 'no_show_host';
         alertType = 'host_no_show';
         // Alert admin - therapist missed the call
-        if (LEADS_NOTIFY_EMAIL) {
+        const noShowAlertEmail = getAdminNotifyEmail();
+        if (noShowAlertEmail) {
           void sendEmail({
-            to: LEADS_NOTIFY_EMAIL,
+            to: noShowAlertEmail,
             subject: `🚨 Therapist no-show: ${organizerUsername}`,
             text: `Therapist ${organizerUsername} did not join booking ${uid}.\n\nStart time: ${startTime}\nPatient email: ${attendeeEmail || 'unknown'}\n\nPlease follow up with the therapist.`,
             context: { cal_uid: uid, alert: alertType },

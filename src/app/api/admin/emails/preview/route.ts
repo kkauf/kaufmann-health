@@ -7,6 +7,7 @@ import { renderEmailConfirmation } from '@/lib/email/templates/emailConfirmation
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 import { BASE_URL } from '@/lib/constants';
 import { isCronAuthorized as isCronAuthorizedShared } from '@/lib/cron-auth';
+import { getQaNotifyEmail } from '@/lib/email/notification-recipients';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -144,10 +145,10 @@ export async function GET(req: Request) {
       });
     }
 
-    // Send to LEADS_NOTIFY_EMAIL
-    const notifyEmail = process.env.LEADS_NOTIFY_EMAIL;
+    // Send to QA email for preview testing
+    const notifyEmail = getQaNotifyEmail();
     if (!notifyEmail) {
-      return NextResponse.json({ error: 'LEADS_NOTIFY_EMAIL not configured' }, { status: 500 });
+      return NextResponse.json({ error: 'QA_NOTIFY_EMAIL not configured' }, { status: 500 });
     }
 
     const results: { subject: string; sent: boolean }[] = [];

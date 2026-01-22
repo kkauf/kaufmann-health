@@ -3,6 +3,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { isCronAuthorized as isCronAuthorizedShared, sameOrigin as sameOriginShared } from '@/lib/cron-auth';
+import { getAdminNotifyEmail } from '@/lib/email/notification-recipients';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -166,9 +167,9 @@ export async function GET(req: Request) {
 
     const { topSources, topTypes, latest } = summarize(rows);
 
-    const to = (process.env.LEADS_NOTIFY_EMAIL || '').trim();
+    const to = getAdminNotifyEmail();
     if (!to) {
-      await logError('admin.api.alerts.system', new Error('Missing LEADS_NOTIFY_EMAIL'), { stage: 'send', minutes }, ip, ua);
+      await logError('admin.api.alerts.system', new Error('Missing ADMIN_NOTIFY_EMAIL'), { stage: 'send', minutes }, ip, ua);
       return NextResponse.json({ data: { sent: false, reason: 'missing_recipient' }, error: null }, { status: 200 });
     }
 

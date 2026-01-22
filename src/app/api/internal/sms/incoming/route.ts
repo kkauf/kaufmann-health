@@ -12,6 +12,7 @@ import { track, logError } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { supabaseServer } from '@/lib/supabase-server';
 import { TwilioIncomingSmsPayload } from '@/contracts/internal';
+import { getLeadsNotifyEmail } from '@/lib/email/notification-recipients';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -117,8 +118,8 @@ export async function POST(req: Request) {
     // Detect callback request
     const wantsCallback = /hilfe|anruf|rückruf|call|help/i.test(body);
 
-    // Forward to admin email
-    const notifyEmail = process.env.LEADS_NOTIFY_EMAIL;
+    // Forward to leads team email
+    const notifyEmail = getLeadsNotifyEmail();
     if (notifyEmail) {
       const safePatientName = escapeHtml(patientName || 'Unbekannt');
       const safeFrom = escapeHtml(from || '');

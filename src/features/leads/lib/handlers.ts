@@ -11,6 +11,7 @@ import { hashIP } from './validation';
 import { isTestRequest } from '@/lib/test-mode';
 import type { HandlerContext } from './types';
 import { safeJson } from '@/lib/http';
+import { getPartnersNotifyEmail } from '@/lib/email/notification-recipients';
 
 export type TherapistHandlerInput = {
   data: { name?: string; email: string; phone?: string; notes?: string };
@@ -83,9 +84,9 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
 
   // Google Ads conversion moved to documents submission endpoint (see /api/therapists/:id/documents)
 
-  // Internal notification (PII-free)
+  // Internal notification (PII-free) - therapist signups go to partner team
   try {
-    const to = process.env.LEADS_NOTIFY_EMAIL;
+    const to = getPartnersNotifyEmail();
     if (to) {
       const notif = buildInternalLeadNotification({ id: therapistId, metadata: { lead_type: 'therapist', city: city ?? null } });
       void track({ type: 'email_attempted', level: 'info', source: 'api.leads', ip, ua, props: { stage: 'internal_notification', lead_id: therapistId, lead_type: 'therapist', subject: notif.subject, ...(session_id ? { session_id } : {}) } });

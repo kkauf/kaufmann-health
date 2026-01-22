@@ -5,8 +5,7 @@ import { sendSmsCode } from '@/lib/verification/sms';
 import { sendEmail } from '@/lib/email/client';
 import { renderLayout } from '@/lib/email/layout';
 import { Webhook as SvixWebhook } from 'svix';
-
-const NOTIFY_EMAIL = process.env.LEADS_NOTIFY_EMAIL || 'kontakt@kaufmann-health.de';
+import { getAdminNotifyEmail } from '@/lib/email/notification-recipients';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -201,8 +200,9 @@ export async function POST(req: Request) {
             </p>
           </div>
         `;
+        const adminNotifyEmail = getAdminNotifyEmail() || 'kontakt@kaufmann-health.de';
         void sendEmail({
-          to: NOTIFY_EMAIL,
+          to: adminNotifyEmail,
           subject: `⚠️ Therapist Email Bounce: ${therapist.name || email}`,
           html: renderLayout({ contentHtml, preheader: `Email to ${therapist.name || email} bounced` }),
           context: { kind: 'therapist_bounce_alert', therapist_id: therapist.id, reason },
