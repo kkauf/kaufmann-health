@@ -17,7 +17,7 @@ import { PRIVACY_VERSION } from '@/lib/privacy';
 import { normalizePhoneNumber } from '@/lib/verification/phone';
 import { useVerification } from '@/lib/verification/useVerification';
 import { getOrCreateSessionId, getGclid } from '@/lib/attribution';
-import { fireFormCompleteConversion, fireLeadVerifiedConversion } from '@/lib/gtag';
+import { fireFormCompleteConversion, fireLeadVerifiedWithEnhancement } from '@/lib/gtag';
 import { getFlowVariant } from '@/lib/flow-randomization';
 
 // Feature toggle for schwerpunkte
@@ -550,6 +550,14 @@ export default function SignupWizard() {
         try { localStorage.setItem(LS_KEYS.step, '9'); } catch { }
         // Analytics: confirmation success rendered
         void trackEvent('confirm_success_rendered', { contact_method: 'email' });
+
+        // Fire Google Ads conversion for email-confirmed users
+        // This fires the base gtag conversion FIRST, then triggers server-side enhancement
+        // CRITICAL: Must fire client-side base conversion before enhancement for Google Ads matching
+        const confirmedLeadId = idFromUrl || localStorage.getItem('leadId') || undefined;
+        if (confirmedLeadId) {
+          void fireLeadVerifiedWithEnhancement(confirmedLeadId, 'email');
+        }
       }
     } catch { }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1668,11 +1676,11 @@ export default function SignupWizard() {
         fireFormCompleteConversion(leadId);
       } catch { }
 
-      // For phone-verified users, also fire the lead verified conversion (€12)
-      // Email users will fire this when they click the confirmation link
+      // For phone-verified users, fire the lead verified conversion with enhancement (€12)
+      // Email users will fire this when they click the confirmation link (handled in confirm=1 detection)
       if (data.contact_method === 'phone' && data.phone_verified) {
         try {
-          fireLeadVerifiedConversion(leadId);
+          void fireLeadVerifiedWithEnhancement(leadId, 'sms');
         } catch { }
       }
 

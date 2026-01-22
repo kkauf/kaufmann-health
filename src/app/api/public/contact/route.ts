@@ -18,7 +18,9 @@ import { PRIVACY_VERSION } from '@/lib/privacy';
 import { TERMS_VERSION } from '@/content/therapist-terms';
 import { BASE_URL } from '@/lib/constants';
 import { ServerAnalytics } from '@/lib/server-analytics';
-import { maybeFirePatientConversion } from '@/lib/conversion';
+// NOTE: maybeFirePatientConversion is now triggered by the CLIENT
+// via fireLeadVerifiedWithEnhancement(). This ensures the gtag base conversion fires
+// BEFORE the server-side enhancement, which is required for Google Ads matching.
 
 const RATE_LIMIT_PER_DAY = 3;
 
@@ -539,21 +541,8 @@ export async function POST(req: Request) {
       });
     } catch {}
 
-    // Fire Enhanced Conversion for verified users only
-    try {
-      const ipAddr = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined;
-      const uaHeader = req.headers.get('user-agent') || undefined;
-      const emailForConv = contact_method === 'email' ? (patient_email || undefined) : undefined;
-      const phoneForConv = contact_method === 'phone' ? (normalizePhoneNumber(patient_phone || '') || patient_phone || undefined) : undefined;
-      await maybeFirePatientConversion({
-        patient_id: patientId,
-        email: emailForConv,
-        phone_number: phoneForConv,
-        verification_method: contact_method === 'email' ? 'email' : 'sms',
-        ip: ipAddr,
-        ua: uaHeader,
-      });
-    } catch {}
+    // NOTE: Google Ads conversion is now triggered by the CLIENT
+    // via fireLeadVerifiedWithEnhancement() after verification completes.
     
     // Send notification email to therapist
     try {

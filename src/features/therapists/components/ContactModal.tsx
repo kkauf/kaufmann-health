@@ -16,7 +16,7 @@ import ConsentSection from '@/components/ConsentSection';
 import { getAttribution } from '@/lib/attribution';
 import { cn } from '@/lib/utils';
 import { formatSessionPrice } from '@/lib/pricing';
-import { fireLeadVerifiedConversion } from '@/lib/gtag';
+import { fireLeadVerifiedWithEnhancement } from '@/lib/gtag';
 
 type ContactType = 'booking' | 'consultation';
 type Slot = { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string };
@@ -660,8 +660,10 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           }
         } catch { }
       }
+      // Fire conversion with enhancement - deduplication prevents double-firing
+      // since useVerification hook also fires this on successful verification
       try {
-        fireLeadVerifiedConversion(pid);
+        void fireLeadVerifiedWithEnhancement(pid, contactMethod === 'phone' ? 'sms' : 'email');
       } catch { }
     }
     void maybeFireClientConv();

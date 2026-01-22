@@ -17,7 +17,7 @@ import { isCalBookingEnabled, assertCalFieldsPresent } from '@/lib/cal/booking-u
 import CtaLink from '@/components/CtaLink';
 import FloatingWhatsApp from '@/components/FloatingWhatsApp';
 import { getAttribution } from '@/lib/attribution';
-import { fireLeadVerifiedConversion } from '@/lib/gtag';
+import { fireLeadVerifiedWithEnhancement } from '@/lib/gtag';
 
 
 type TherapistItem = {
@@ -302,12 +302,12 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
       if (window.sessionStorage.getItem(storageKey) === '1') return;
     } catch { }
     
-    // Fire the base conversion (€12) - CRITICAL for Google Ads attribution
-    // The server-side enhanced conversion has already fired in verify-code route
+    // Fire conversion with enhancement (€12) - CRITICAL for Google Ads attribution
+    // This fires the base gtag conversion FIRST, then triggers server-side enhancement
+    // The proper sequencing ensures Google can match enhancement to base conversion
     try {
       // Use uuid as transaction ID since we don't have patient_id client-side here
-      // The sendConversion in gtag.ts will handle its own deduplication
-      fireLeadVerifiedConversion(uuid);
+      void fireLeadVerifiedWithEnhancement(uuid, 'email');
       window.sessionStorage.setItem(storageKey, '1');
     } catch { }
   }, [data, uuid]);

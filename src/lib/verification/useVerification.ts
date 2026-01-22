@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { validatePhone } from './phone';
-import { fireLeadVerifiedConversion } from '@/lib/gtag';
+import { fireLeadVerifiedWithEnhancement } from '@/lib/gtag';
 
 // ============================================================================
 // Types
@@ -348,10 +348,12 @@ export function useVerification(options: UseVerificationOptions = {}): UseVerifi
         // Ignore session fetch errors
       }
       
-      // Fire Google Ads base conversion (€12) - CRITICAL for attribution
-      // This ensures the client-side base conversion fires for email code entry flow
+      // Fire Google Ads conversion with enhancement (€12) - CRITICAL for attribution
+      // This fires the base gtag conversion FIRST, then triggers server-side enhancement
+      // The server-side enhancement is now triggered by the client (not the API route)
+      // to ensure proper sequencing: base conversion must exist before enhancement
       try {
-        fireLeadVerifiedConversion(pid);
+        void fireLeadVerifiedWithEnhancement(pid, contactMethod === 'phone' ? 'sms' : 'email');
       } catch {
         // Ignore conversion errors
       }

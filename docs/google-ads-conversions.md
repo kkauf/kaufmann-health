@@ -39,23 +39,27 @@ This is NOT offline/import conversions. The conversion action source in Google A
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│ 2. CLIENT-SIDE: BASE CONVERSION                                      │
-│    File: src/lib/gtag.ts                                            │
+│ 2. VERIFICATION COMPLETED (Client-Side)                             │
+│    File: src/lib/gtag.ts → fireLeadVerifiedWithEnhancement()        │
 │                                                                      │
+│    STEP A: Fire base conversion via gtag FIRST                      │
 │    gtag('event', 'conversion', {                                    │
 │      send_to: 'AW-XXX/label',                                       │
-│      value: 4-125,  ← Depends on event type                         │
+│      value: 12,                                                      │
 │      currency: 'EUR',                                                │
 │      transaction_id: patientId,  ← CRITICAL: Used for matching      │
 │      transport_type: 'beacon'    ← Survives page navigation         │
 │    });                                                               │
 │                                                                      │
-│    + Direct pixel fallback via sendBeacon for reliability           │
+│    STEP B: Trigger server-side enhancement via API                  │
+│    POST /api/public/conversions/enhance { patient_id }              │
+│    (Uses sendBeacon for reliability)                                │
 └─────────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │ 3. SERVER-SIDE: ENHANCED CONVERSION                                  │
+│    Endpoint: POST /api/public/conversions/enhance                   │
 │    File: src/lib/google-ads.ts                                      │
 │    Trigger: src/lib/conversion.ts → maybeFirePatientConversion()    │
 │                                                                      │
@@ -77,12 +81,23 @@ This is NOT offline/import conversions. The conversion action source in Google A
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │ 4. GOOGLE MATCHES ENHANCEMENT TO BASE                                │
-│    - Google receives base conversion (Website source)                │
-│    - Google receives enhancement (API source)                        │
+│    - Google receives base conversion (Website source) FIRST         │
+│    - Google receives enhancement (API source) AFTER                 │
 │    - Matches via orderId = transaction_id                           │
 │    - Enriches conversion with hashed user data for attribution      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+## Critical: Conversion Timing
+
+**The base conversion MUST be received by Google BEFORE the enhancement.**
+
+Previously (broken): Server fired enhancement immediately on verification, before client gtag fired.
+Now (fixed): Client fires gtag first, then triggers server enhancement via `/api/public/conversions/enhance`.
+
+The client uses `fireLeadVerifiedWithEnhancement()` which:
+1. Fires gtag base conversion immediately
+2. Calls enhancement endpoint via sendBeacon (network round-trip provides natural delay)
 
 ## Key Concepts
 
@@ -218,7 +233,8 @@ NEXT_PUBLIC_GAD_CONV_CLIENT=AW-XXX/label
 
 | File | Purpose |
 |------|---------|
-| `src/lib/gtag.ts` | Client-side gtag wrapper, fires base conversions |
+| `src/lib/gtag.ts` | Client-side: `fireLeadVerifiedWithEnhancement()` fires base + triggers enhancement |
+| `src/app/api/public/conversions/enhance/route.ts` | API endpoint that triggers server-side enhancement |
 | `src/lib/google-ads.ts` | Server-side API client, uploads enhancements |
 | `src/lib/conversion.ts` | Orchestration - `maybeFirePatientConversion()` |
 | `src/components/GtagLoader.tsx` | Loads gtag.js with Consent Mode v2 |
@@ -231,6 +247,7 @@ NEXT_PUBLIC_GAD_CONV_CLIENT=AW-XXX/label
 | Dec 2025 | Code incorrectly changed to `uploadClickConversions` (offline conversions). This created NEW conversions server-side instead of enhancing website conversions. |
 | Jan 8, 2026 | Fixed client-side reliability with beacon transport and direct pixel fallback. |
 | Jan 10, 2026 | Corrected architecture to use `uploadConversionAdjustments` for Enhanced Conversions. |
+| Jan 22, 2026 | Fixed conversion timing: client now fires base conversion FIRST, then triggers server enhancement via `/api/public/conversions/enhance`. This fixes "sending data too late" error in Google Ads. |
 
 ## The Two APIs - Know the Difference
 

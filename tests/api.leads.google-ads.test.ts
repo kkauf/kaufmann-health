@@ -89,7 +89,12 @@ describe('Google Ads conversions', () => {
     expect(trackConversion).not.toHaveBeenCalled();
   });
 
-  it('fires lead_verified conversion on form completion only when verified', async () => {
+  it('does NOT fire lead_verified conversion server-side on form completion (now handled by client)', async () => {
+    // Jan 2026 architecture change: Server-side conversion firing was moved to client-side
+    // to ensure proper sequencing (gtag base conversion must fire BEFORE server enhancement).
+    // The client now calls fireLeadVerifiedWithEnhancement() which:
+    // 1. Fires gtag base conversion
+    // 2. Calls /api/public/conversions/enhance to trigger server enhancement
     const leadId = '11111111-1111-4111-8111-111111111111';
     // Mock people row for preferences route to include email
     vi.doMock('@/lib/supabase-server', () => {
@@ -116,12 +121,8 @@ describe('Google Ads conversions', () => {
     }) as any);
     expect(prefRes.status).toBe(200);
     await Promise.resolve();
-    expect(trackConversion).toHaveBeenCalledTimes(1);
-    const call = trackConversion.mock.calls[0][0];
-    expect(call.conversionAction).toBe('lead_verified');
-    expect(call.conversionValue).toBe(12);
-    expect(call.orderId).toBe(leadId);
-    expect(call.email).toBe('patient@example.com');
+    // Server no longer fires conversion directly - it's now triggered by client
+    expect(trackConversion).not.toHaveBeenCalled();
   });
 
   it('does NOT fire therapist_registration conversion on therapist lead (fires on documents upload)', async () => {

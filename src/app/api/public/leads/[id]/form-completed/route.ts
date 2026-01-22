@@ -2,7 +2,9 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { safeJson } from '@/lib/http';
 import { logError, track } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
-import { maybeFirePatientConversion } from '@/lib/conversion';
+// NOTE: maybeFirePatientConversion is now triggered by the CLIENT
+// via fireLeadVerifiedWithEnhancement(). This ensures the gtag base conversion fires
+// BEFORE the server-side enhancement, which is required for Google Ads matching.
 import { LeadFormCompletedParams } from '@/contracts/leads';
 
 export const runtime = 'nodejs';
@@ -274,25 +276,9 @@ export async function POST(req: Request) {
       });
     } catch {}
 
-    // Server-side Enhanced Conversions (EARTH-204)
-    // Only fire when the lead is already verified/actionable
-    // (status is 'email_confirmed' or 'new'). Deduplication handled by maybeFirePatientConversion.
-    try {
-      const status = (person.status || '').toLowerCase();
-      if (status === 'email_confirmed' || status === 'new') {
-        const ip = getClientIP(req.headers);
-        const ua = req.headers.get('user-agent') || undefined;
-        await maybeFirePatientConversion({
-          patient_id: id,
-          email: person.email || undefined,
-          verification_method: 'email', // form completion implies email flow (legacy)
-          ip,
-          ua,
-        });
-      }
-    } catch (e) {
-      await logError('api.leads.form_completed', e, { stage: 'google_ads_conversion', id });
-    }
+    // NOTE: Google Ads conversion is now triggered by the CLIENT
+    // via fireLeadVerifiedWithEnhancement() after verification completes.
+    // This ensures proper sequencing: base gtag conversion fires BEFORE enhancement.
 
     // Internal log for ops
     void track({ 

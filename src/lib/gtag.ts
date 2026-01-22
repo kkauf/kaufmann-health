@@ -176,3 +176,57 @@ export function fireSessionBookedConversion(bookingId?: string) {
 export function fireGoogleAdsTherapistConversion(leadId?: string) {
   sendConversion({ label: LABEL_THERAPIST, value: 25, transactionId: leadId, dedupePrefix: 'ga_conv_therapist_registration' });
 }
+
+/**
+ * Fire base conversion AND trigger server-side Enhanced Conversion.
+ *
+ * CRITICAL: This is the correct flow for Enhanced Conversions:
+ * 1. Fire client-side gtag base conversion FIRST
+ * 2. Then trigger server-side enhancement via API
+ *
+ * The base conversion must be received by Google before the enhancement
+ * can be matched to it (via orderId/transaction_id).
+ *
+ * @param patientId - Patient UUID used as transaction_id for matching
+ * @param verificationMethod - 'email' or 'sms' for tracking
+ */
+export async function fireLeadVerifiedWithEnhancement(
+  patientId: string | undefined,
+  verificationMethod: 'email' | 'sms' = 'email'
+): Promise<void> {
+  try {
+    // Step 1: Fire client-side base conversion immediately
+    // This sends the conversion to Google via gtag with transaction_id
+    fireLeadVerifiedConversion(patientId);
+
+    // Step 2: Trigger server-side enhancement
+    // The network round-trip provides a small natural delay, giving Google
+    // time to process the base conversion before receiving the enhancement
+    if (patientId) {
+      try {
+        const body = JSON.stringify({
+          patient_id: patientId,
+          verification_method: verificationMethod,
+        });
+
+        // Use sendBeacon for reliability (survives page navigation)
+        if (navigator.sendBeacon) {
+          const blob = new Blob([body], { type: 'application/json' });
+          navigator.sendBeacon('/api/public/conversions/enhance', blob);
+        } else {
+          // Fallback to fetch with keepalive
+          void fetch('/api/public/conversions/enhance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body,
+            keepalive: true,
+          });
+        }
+      } catch {
+        // Enhancement failure is non-blocking; base conversion was already sent
+      }
+    }
+  } catch {
+    // Ignore errors - conversion tracking should never break the user flow
+  }
+}

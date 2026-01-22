@@ -4,7 +4,9 @@ import { BASE_URL } from '@/lib/constants';
 import { logError } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
-import { maybeFirePatientConversion } from '@/lib/conversion';
+// NOTE: maybeFirePatientConversion is now triggered by the CLIENT after redirect
+// via fireLeadVerifiedWithEnhancement(). This ensures the gtag base conversion fires
+// BEFORE the server-side enhancement, which is required for Google Ads matching.
 // sendEmail imported but used conditionally
 import { sendEmail as _sendEmail } from '@/lib/email/client';
 import { processDraftContact, clearDraftContact } from '@/features/leads/lib/processDraftContact';
@@ -213,20 +215,9 @@ export async function GET(req: Request) {
       });
     } catch {}
 
-    // Fire Google Ads conversion on email verification (EARTH-204)
-    try {
-      const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined;
-      const ua = req.headers.get('user-agent') || undefined;
-      await maybeFirePatientConversion({
-        patient_id: id,
-        email: person.email,
-        verification_method: 'email',
-        ip,
-        ua,
-      });
-    } catch {}
-
-    // Enhanced Conversions handled by maybeFirePatientConversion above
+    // NOTE: Google Ads conversion is now triggered by the CLIENT after redirect
+    // via fireLeadVerifiedWithEnhancement() on the destination page (e.g., SignupWizard, MatchPage)
+    // This ensures the gtag base conversion fires BEFORE the server-side enhancement
 
     // Process draft_contact if present (therapist directory flow)
     if (draftContact) {

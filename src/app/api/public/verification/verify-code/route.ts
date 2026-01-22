@@ -8,7 +8,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifySmsCode } from '@/lib/verification/sms';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { supabaseServer } from '@/lib/supabase-server';
-import { maybeFirePatientConversion } from '@/lib/conversion';
+// NOTE: maybeFirePatientConversion is now triggered by the CLIENT after verification
+// via /api/public/conversions/enhance. This ensures the gtag base conversion fires
+// BEFORE the server-side enhancement, which is required for Google Ads matching.
 import { logError } from '@/lib/logger';
 // sendEmail imported for future use in booking confirmation
 import { sendEmail as _sendEmail } from '@/lib/email/client';
@@ -269,17 +271,11 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          // Fire Google Ads conversion
-          const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined;
-          const ua = req.headers.get('user-agent') || undefined;
-          await maybeFirePatientConversion({
-            patient_id: person.id,
-            email: person.email || undefined,
-            phone_number: contact,
-            verification_method: 'sms',
-            ip,
-            ua,
-          });
+          // NOTE: Google Ads conversion is now triggered by the CLIENT after verification
+          // via fireLeadVerifiedWithEnhancement() which:
+          // 1. Fires gtag base conversion first
+          // 2. Then calls /api/public/conversions/enhance for server-side enhancement
+          // This ensures proper sequencing for Google Ads Enhanced Conversions matching.
 
           // Create session cookie (EARTH-204)
           try {
@@ -307,16 +303,7 @@ export async function POST(req: NextRequest) {
 
           if (!insErr && inserted) {
             effectivePersonId = inserted.id;
-            const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined;
-            const ua = req.headers.get('user-agent') || undefined;
-            await maybeFirePatientConversion({
-              patient_id: inserted.id,
-              email: inserted.email || undefined,
-              phone_number: contact,
-              verification_method: 'sms',
-              ip,
-              ua,
-            });
+            // NOTE: Google Ads conversion triggered by client via fireLeadVerifiedWithEnhancement()
             try {
               const token = await createClientSessionToken({
                 patient_id: inserted.id,
@@ -558,18 +545,8 @@ export async function POST(req: NextRequest) {
         }
       }
       
-      // Fire Google Ads conversion
-      const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined;
-      const ua = req.headers.get('user-agent') || undefined;
-      await maybeFirePatientConversion({
-        patient_id: person.id,
-        email: contact,
-        phone_number: person.phone_number || undefined,
-        verification_method: 'email',
-        ip,
-        ua,
-      });
-      
+      // NOTE: Google Ads conversion triggered by client via fireLeadVerifiedWithEnhancement()
+
       // Create session cookie
       let sessionCookie: string | null = null;
       try {
