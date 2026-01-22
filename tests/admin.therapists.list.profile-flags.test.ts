@@ -23,10 +23,22 @@ let listRows: any[] = [];
 vi.mock('@/lib/supabase-server', () => {
   const supabaseServer: any = {
     from: (table: string) => {
-      if (table !== 'therapists') throw new Error(`Unexpected table ${table}`);
-      return {
-        select: (_cols?: string) => makeQuery(listRows),
-      } as any;
+      if (table === 'therapists') {
+        return {
+          select: (_cols?: string) => makeQuery(listRows),
+        } as any;
+      }
+      if (table === 'cal_slots_cache') {
+        // Return empty slot cache for tests
+        return {
+          select: (_cols?: string) => ({
+            in: (_col?: string, _ids?: string[]) => ({
+              then: (resolve: (v: any) => any) => resolve({ data: [], error: null }),
+            }),
+          }),
+        } as any;
+      }
+      throw new Error(`Unexpected table ${table}`);
     },
   };
   return { supabaseServer };

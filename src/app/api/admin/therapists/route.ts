@@ -80,6 +80,25 @@ export async function GET(req: Request) {
       await logError('admin.api.therapists', error, { stage: 'fetch' });
       return NextResponse.json({ data: null, error: 'Failed to fetch therapists' }, { status: 500 });
     }
+
+    // Fetch Cal.com slot counts from cache for all therapists
+    const therapistIds = (data || []).map((r: { id: string }) => r.id);
+    type CalSlotCache = { therapist_id: string; slots_count: number | null; full_slots_count: number | null };
+    const slotCountByTid = new Map<string, { intro: number; full: number }>();
+    if (therapistIds.length > 0) {
+      const { data: slotRows } = await supabaseServer
+        .from('cal_slots_cache')
+        .select('therapist_id, slots_count, full_slots_count')
+        .in('therapist_id', therapistIds);
+      if (Array.isArray(slotRows)) {
+        for (const s of slotRows as CalSlotCache[]) {
+          slotCountByTid.set(s.therapist_id, {
+            intro: s.slots_count || 0,
+            full: s.full_slots_count || 0,
+          });
+        }
+      }
+    }
     // Normalize to existing shape expected by Admin UI
     type Row = {
       id: string;
@@ -206,6 +225,8 @@ export async function GET(req: Request) {
           has_specialization_docs,
         },
         requires_action,
+        // Cal.com slot counts from cache
+        cal_slots: slotCountByTid.get(r.id) || { intro: 0, full: 0 },
       };
     });
 

@@ -39,6 +39,10 @@ type Therapist = {
     has_specialization_docs?: boolean;
   };
   requires_action?: boolean;
+  cal_slots?: {
+    intro: number;
+    full: number;
+  };
 };
 
 type TherapistDetail = {
@@ -599,6 +603,23 @@ export default function AdminTherapistsPage() {
                     <div className="col-span-2 flex items-center gap-2">
                       <span className="text-gray-500">E‑Mail‑Status:</span>
                       {t.opted_out ? <Badge className="bg-red-100 text-red-700 border-red-200">Opt-out</Badge> : <span className="text-green-700 font-medium">Aktiv</span>}
+                    </div>
+                    <div className="col-span-2 flex items-center gap-2">
+                      <span className="text-gray-500">Kapazität:</span>
+                      {t.accepting_new !== false ? (
+                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Verfügbar</Badge>
+                      ) : (
+                        <Badge className="bg-red-100 text-red-700 border-red-200">Keine Kapazität</Badge>
+                      )}
+                    </div>
+                    <div className="col-span-2 flex items-center gap-2">
+                      <span className="text-gray-500">Cal-Slots:</span>
+                      <Badge className={t.cal_slots?.intro ? "bg-blue-100 text-blue-700 border-blue-200" : "bg-gray-100 text-gray-500 border-gray-200"}>
+                        {t.cal_slots?.intro || 0} Intro
+                      </Badge>
+                      <Badge className={t.cal_slots?.full ? "bg-purple-100 text-purple-700 border-purple-200" : "bg-gray-100 text-gray-500 border-gray-200"}>
+                        {t.cal_slots?.full || 0} Sitzung
+                      </Badge>
                     </div>
                     <div className="col-span-2 text-xs text-gray-500">Eingang: {formatDate(t.created_at)}</div>
                   </div>
