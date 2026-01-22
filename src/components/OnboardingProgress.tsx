@@ -1,13 +1,17 @@
 type Props = {
-  currentStep: 1 | 2 | 3;
+  currentStep: 0 | 1 | 2 | 3;
 };
 
+const allSteps = [
+  { number: 0, label: 'Registrierung' },
+  { number: 1, label: 'Profil' },
+  { number: 2, label: 'Dokumente' },
+  { number: 3, label: 'Fertig' },
+];
+
 export function OnboardingProgress({ currentStep }: Props) {
-  const steps = [
-    { number: 1, label: 'Profil' },
-    { number: 2, label: 'Dokumente' },
-    { number: 3, label: 'Fertig' },
-  ];
+  // For steps 1-3, show all 4 steps; for step 0, also show all 4 steps
+  const steps = allSteps;
 
   return (
     <div className="mb-8">
