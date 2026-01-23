@@ -64,6 +64,9 @@ const strengthConfig: Record<StrengthLevel, { color: string; border: string; bg:
   excellent: { color: 'text-emerald-600', border: 'border-emerald-400', bg: 'bg-emerald-500', label: 'Ausgezeichnet', emoji: '\u2728' },
 };
 
+// Minimum character count for required text fields
+const MIN_CHARS = 50;
+
 // Reusable profile text field with strength indicator
 function ProfileTextField({
   id,
@@ -96,10 +99,18 @@ function ProfileTextField({
   // Calculate fill percentage for the strength bar (cap at 100%)
   const fillPercent = Math.min((value.length / recommended) * 100, 100);
   
+  // Show warning state when field is required but empty or too short
+  const showWarning = !optional && value.length < MIN_CHARS;
+
   return (
-    <div className="space-y-2">
+    <div className={`space-y-2 p-4 rounded-lg -mx-4 transition-colors ${showWarning ? 'bg-amber-50/50' : ''}`}>
       <Label htmlFor={id} className="text-sm font-medium text-gray-900">
-        {label}{optional && <span className="text-gray-400 font-normal"> (optional)</span>}
+        {label}
+        {optional ? (
+          <span className="text-gray-400 font-normal"> (optional)</span>
+        ) : (
+          <span className="text-red-500 ml-0.5">*</span>
+        )}
       </Label>
       <p className="text-xs text-gray-500">{hint}</p>
       <div className="relative">
@@ -111,9 +122,11 @@ function ProfileTextField({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           className={`w-full rounded-lg border-2 bg-white px-3 py-2 text-sm shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 ${
-            value.length === 0
-              ? 'border-gray-200 focus:border-gray-300 focus:ring-gray-200'
-              : `${config.border} focus:ring-emerald-200`
+            showWarning
+              ? 'border-amber-300 focus:border-amber-400 focus:ring-amber-200'
+              : value.length === 0
+                ? 'border-gray-200 focus:border-gray-300 focus:ring-gray-200'
+                : `${config.border} focus:ring-emerald-200`
           }`}
         />
       </div>
@@ -134,6 +147,13 @@ function ProfileTextField({
           )}
         </div>
       </div>
+
+      {/* Required field warning */}
+      {showWarning && value.length > 0 && (
+        <p className="text-xs text-amber-700">
+          Noch {MIN_CHARS - value.length} Zeichen für ein vollständiges Profil
+        </p>
+      )}
     </div>
   );
 }
@@ -222,9 +242,6 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
     return false;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoFile, whoComesToMe, sessionFocus, firstSession, aboutMe, schwerpunkte, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city, languages, saveCount]);
-
-  // Minimum character count for required text fields
-  const MIN_CHARS = 50;
 
   // Transform form state to TherapistData for preview modal
   const previewTherapistData: TherapistData = useMemo(() => ({
@@ -387,6 +404,20 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
     if (firstSession.trim().length < MIN_CHARS) {
       validationErrors.push(`"Das erste Gespräch" benötigt mind. ${MIN_CHARS} Zeichen`);
     }
+
+    // CRITICAL: If trying to enable visibility, validate ALL required fields
+    if (acceptingNew) {
+      if (!typicalRate || parseInt(typicalRate, 10) <= 0) {
+        validationErrors.push('Honorar pro Sitzung ist erforderlich, um sichtbar zu sein');
+      }
+      if (schwerpunkte.length < THERAPIST_SCHWERPUNKTE_MIN) {
+        validationErrors.push(`Mind. ${THERAPIST_SCHWERPUNKTE_MIN} Schwerpunkte erforderlich, um sichtbar zu sein`);
+      }
+      if (!currentPhotoUrl && !photoFile) {
+        validationErrors.push('Profilfoto erforderlich, um sichtbar zu sein');
+      }
+    }
+
     if (validationErrors.length > 0) {
       setError(validationErrors.join('. '));
       return;
@@ -888,11 +919,12 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
                 )}
               </div>
 
-              {/* Typical Rate */}
-              <div className="space-y-2">
+              {/* Typical Rate - REQUIRED */}
+              <div className={`space-y-2 p-4 rounded-lg -mx-4 ${!typicalRate ? 'bg-amber-50 border border-amber-200' : ''}`}>
                 <Label htmlFor="typical_rate" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                   <Euro className="h-4 w-4 text-gray-400" />
                   Honorar pro Sitzung (EUR)
+                  <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="typical_rate"
@@ -902,9 +934,13 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
                   value={typicalRate}
                   onChange={(e) => setTypicalRate(e.target.value)}
                   placeholder="z.B. 100"
-                  className="max-w-32 border-gray-200"
+                  className={`max-w-32 ${!typicalRate ? 'border-amber-400 bg-white' : 'border-gray-200'}`}
                 />
-                <p className="text-xs text-gray-500">Wird Klient:innen als Orientierung angezeigt</p>
+                {!typicalRate ? (
+                  <p className="text-xs text-amber-700 font-medium">Pflichtfeld – Gib einen Preis an, damit dein Profil vollständig ist.</p>
+                ) : (
+                  <p className="text-xs text-gray-500">Wird Klient:innen als Orientierung angezeigt. Bei unterschiedlichen Preisen (online/vor Ort) wähle einen Richtwert.</p>
+                )}
               </div>
             </div>
           </Card>
