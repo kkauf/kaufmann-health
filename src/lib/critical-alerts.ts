@@ -20,13 +20,14 @@ import { getAdminNotifyEmail } from '@/lib/email/notification-recipients';
 const alertCooldowns = new Map<string, number>();
 const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
-export type CriticalAlertType = 
+export type CriticalAlertType =
   | 'booking_system_down'
   | 'cal_cache_stale'
   | 'cal_slots_timeout'
   | 'payment_failure'
   | 'auth_system_error'
-  | 'database_error';
+  | 'database_error'
+  | 'cron_job_failed';
 
 interface CriticalAlertOptions {
   type: CriticalAlertType;
@@ -121,6 +122,8 @@ function typeToTitle(type: CriticalAlertType): string {
       return 'Authentication System Error';
     case 'database_error':
       return 'Database Connectivity Error';
+    case 'cron_job_failed':
+      return 'Cron Job Failed';
     default:
       return type;
   }

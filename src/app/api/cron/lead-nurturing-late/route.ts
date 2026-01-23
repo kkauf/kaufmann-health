@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   for (const job of jobs) {
     try {
       const res = await fetch(`${baseUrl}${job.path}`, {
-        method: 'POST',
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${cronSecret}`,
           'Content-Type': 'application/json',

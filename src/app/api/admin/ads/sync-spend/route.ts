@@ -87,7 +87,7 @@ async function fetchGoogleAdsSpend(since: string, until: string): Promise<SpendR
  * Query params:
  *   days: number of days to sync (default: 1 = yesterday only)
  */
-export async function GET(req: NextRequest) {
+async function handler(req: NextRequest) {
   // Verify cron auth
   const authHeader = req.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
@@ -150,3 +150,6 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+export const GET = handler;
+export const POST = handler;

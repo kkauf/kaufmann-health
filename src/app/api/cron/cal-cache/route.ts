@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 
   try {
     const res = await fetch(`${baseUrl}/api/admin/cal/warm-cache`, {
-      method: 'POST',
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${cronSecret}`,
         'Content-Type': 'application/json',
