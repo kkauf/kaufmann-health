@@ -25,6 +25,20 @@ vi.mock('@/lib/supabase-server', () => {
           },
         } as any;
       }
+      if (table === 'events') {
+        // Handle rejection history query
+        return {
+          select: (_cols?: string) => ({
+            eq: (_col: string, _val: string) => ({
+              contains: (_col2: string, _val2: any) => ({
+                order: (_col3: string, _opts: any) => ({
+                  limit: (_n: number) => Promise.resolve({ data: [], error: null }),
+                }),
+              }),
+            }),
+          }),
+        } as any;
+      }
       throw new Error(`Unexpected table ${table}`);
     },
     storage: {

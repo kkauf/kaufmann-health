@@ -81,6 +81,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       ? (profile.approach_text as string)
       : (typeof (row as Record<string, unknown>).approach_text === 'string' ? ((row as Record<string, unknown>).approach_text as string) : undefined);
 
+    // Extract additional profile text fields for completeness check
+    const whoComesToMe = typeof profile.who_comes_to_me === 'string' ? (profile.who_comes_to_me as string) : undefined;
+    const sessionValues = typeof profile.session_values === 'string' ? (profile.session_values as string) : undefined;
+    const firstSessionExpectations = typeof profile.first_session_expectations === 'string' ? (profile.first_session_expectations as string) : undefined;
+    const aboutMe = typeof profile.about_me === 'string' ? (profile.about_me as string) : undefined;
+    const billingAddress = typeof profile.billing_address === 'string' ? (profile.billing_address as string) : undefined;
+
     let photo_pending_url: string | undefined;
     if (pendingPath) {
       const { data: signed, error: signErr } = await supabaseServer.storage
@@ -103,6 +110,26 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const modalities = Array.isArray((metadata as Record<string, unknown>).specializations)
       ? ((metadata as Record<string, unknown>).specializations as string[])
       : [];
+
+    // Fetch rejection history from events table
+    const { data: rejectionEvents } = await supabaseServer
+      .from('events')
+      .select('created_at, properties')
+      .eq('type', 'email_attempted')
+      .contains('properties', { stage: 'therapist_rejection', therapist_id: id })
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    const rejectionHistory = (rejectionEvents || []).map((evt) => {
+      const props = isObject(evt.properties) ? (evt.properties as Record<string, unknown>) : {};
+      return {
+        sent_at: evt.created_at,
+        admin_notes: typeof props.admin_notes === 'string' ? props.admin_notes : null,
+        missing_documents: Boolean(props.missing_documents),
+        photo_issue: typeof props.photo_issue === 'string' ? props.photo_issue : null,
+        approach_issue: typeof props.approach_issue === 'string' ? props.approach_issue : null,
+      };
+    });
 
     const name = [row.first_name || '', row.last_name || ''].join(' ').trim() || null;
     const rowAny = row as Record<string, unknown>;
@@ -130,6 +157,29 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         cal_username: typeof rowAny.cal_username === 'string' ? rowAny.cal_username : null,
         cal_enabled: Boolean(rowAny.cal_enabled),
         cal_user_id: typeof rowAny.cal_user_id === 'number' ? rowAny.cal_user_id : null,
+        // Rejection history
+        rejection_history: rejectionHistory,
+        // Data completeness check for admin
+        data_completeness: {
+          // Basic info
+          has_name: Boolean(row.first_name?.trim() && row.last_name?.trim()),
+          has_email: Boolean(row.email?.trim()),
+          has_phone: Boolean(row.phone?.trim()),
+          has_city: Boolean(row.city?.trim()),
+          // Profile text
+          has_who_comes_to_me: Boolean(whoComesToMe?.trim()),
+          has_session_values: Boolean(sessionValues?.trim()),
+          has_first_session_expectations: Boolean(firstSessionExpectations?.trim()),
+          has_about_me: Boolean(aboutMe?.trim()),
+          has_approach_text: Boolean(approachText?.trim()),
+          // Addresses
+          has_practice_address: Boolean(practiceAddress?.trim()),
+          has_billing_address: Boolean(billingAddress?.trim()),
+          // Documents & photo
+          has_photo: Boolean(rowAny.photo_url) || Boolean(pendingPath),
+          has_license: hasLicense,
+          has_specialization: hasSpecialization,
+        },
       },
       error: null,
     });
@@ -156,6 +206,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     const verification_notes = typeof payload.verification_notes === 'string' ? payload.verification_notes : undefined;
     const approve_profile = Boolean(payload.approve_profile);
     const approach_text = typeof payload.approach_text === 'string' ? String(payload.approach_text) : undefined;
+    const city = typeof payload.city === 'string' ? String(payload.city).trim() : undefined;
     let practice_address = typeof payload.practice_address === 'string' ? String(payload.practice_address) : undefined;
     if (!practice_address) {
       try {
@@ -172,7 +223,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 
     const hasCalFields = cal_username !== undefined || cal_enabled !== undefined;
     const hasBookingSettings = requires_intro_before_booking !== undefined;
-    if (!status && typeof verification_notes !== 'string' && !approve_profile && typeof approach_text !== 'string' && typeof practice_address !== 'string' && !hasCalFields && !hasBookingSettings) {
+    if (!status && typeof verification_notes !== 'string' && !approve_profile && typeof approach_text !== 'string' && typeof practice_address !== 'string' && typeof city !== 'string' && !hasCalFields && !hasBookingSettings) {
       return NextResponse.json({ data: null, error: 'Missing fields' }, { status: 400 });
     }
     if (status && !['pending_verification', 'verified', 'rejected', 'declined'].includes(status)) {
@@ -188,6 +239,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     // Cal.com fields can be set/overridden by admin
     if (cal_username !== undefined) update.cal_username = cal_username || null;
     if (cal_enabled !== undefined) update.cal_enabled = cal_enabled;
+    // Admin can fix typos in city
+    if (typeof city === 'string') update.city = city || null;
 
     // Load current metadata to optionally update profile info and process photo approval
     const { data: current, error: fetchErr } = await supabaseServer
@@ -447,7 +500,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
           approachIssue: rejectionApproachIssue,
           adminNotes: verification_notes || null,
         });
-        void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.update', props: { stage: 'therapist_rejection', therapist_id: id, subject: rejection.subject } });
+        void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.update', props: { stage: 'therapist_rejection', therapist_id: id, subject: rejection.subject, admin_notes: verification_notes || null, missing_documents: rejectionMissingDocuments, photo_issue: rejectionPhotoIssue, approach_issue: rejectionApproachIssue } });
         const rejectionResult = await sendEmail({ to, subject: rejection.subject, html: rejection.html, context: { stage: 'therapist_rejection', therapist_id: id } });
         if (!rejectionResult.sent && rejectionResult.reason === 'failed') {
           await logError('admin.api.therapists.update', new Error('Rejection email send failed'), { stage: 'therapist_rejection_send_failed', therapist_id: id, email: to });

@@ -48,6 +48,31 @@ type Therapist = {
   };
 };
 
+type RejectionHistoryItem = {
+  sent_at: string;
+  admin_notes: string | null;
+  missing_documents: boolean;
+  photo_issue: string | null;
+  approach_issue: string | null;
+};
+
+type DataCompleteness = {
+  has_name: boolean;
+  has_email: boolean;
+  has_phone: boolean;
+  has_city: boolean;
+  has_who_comes_to_me: boolean;
+  has_session_values: boolean;
+  has_first_session_expectations: boolean;
+  has_about_me: boolean;
+  has_approach_text: boolean;
+  has_practice_address: boolean;
+  has_billing_address: boolean;
+  has_photo: boolean;
+  has_license: boolean;
+  has_specialization: boolean;
+};
+
 type TherapistDetail = {
   id: string;
   name: string | null;
@@ -70,6 +95,10 @@ type TherapistDetail = {
   cal_username?: string | null;
   cal_enabled?: boolean;
   cal_user_id?: number | null;
+  // Rejection history
+  rejection_history?: RejectionHistoryItem[];
+  // Data completeness
+  data_completeness?: DataCompleteness;
 };
 
 function formatDate(iso?: string | null) {
@@ -101,6 +130,7 @@ export default function AdminTherapistsPage() {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [approachText, setApproachText] = useState("");
+  const [editedCity, setEditedCity] = useState("");
   const [updating, setUpdating] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [_approvePhoto, setApprovePhoto] = useState(false);
@@ -222,6 +252,7 @@ export default function AdminTherapistsPage() {
     setDetailError(null);
     setNotes("");
     setApproachText("");
+    setEditedCity("");
     setApprovePhoto(false);
     setCalUsername("");
     setCalEnabled(false);
@@ -232,6 +263,7 @@ export default function AdminTherapistsPage() {
       const d = json.data as TherapistDetail;
       setDetail(d);
       setApproachText(d?.profile?.approach_text || "");
+      setEditedCity(d?.city || "");
       setCalUsername(d?.cal_username || "");
       setCalEnabled(Boolean(d?.cal_enabled));
     } catch (e) {
@@ -247,6 +279,7 @@ export default function AdminTherapistsPage() {
     setDetail(null);
     setNotes("");
     setApproachText("");
+    setEditedCity("");
     setMessage(null);
     setDetailError(null);
     setApprovePhoto(false);
@@ -714,7 +747,47 @@ export default function AdminTherapistsPage() {
                       <div>
                         <h3 className="text-xl font-semibold text-gray-900">{detail.name || "—"}</h3>
                         <div className="text-sm text-gray-600 mt-1">{detail.email || "—"}</div>
-                        <div className="text-sm text-gray-600">{detail.city || "—"}</div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Input
+                            value={editedCity}
+                            onChange={(e) => setEditedCity(e.target.value)}
+                            placeholder="Stadt"
+                            className="h-7 w-40 text-sm"
+                          />
+                          {editedCity !== (detail.city || "") && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              disabled={updating}
+                              onClick={async () => {
+                                setUpdating(true);
+                                try {
+                                  const res = await fetch(`/api/admin/therapists/${detail.id}`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    credentials: "include",
+                                    body: JSON.stringify({ city: editedCity.trim() }),
+                                  });
+                                  const json = await res.json();
+                                  if (!res.ok) throw new Error(json?.error || "Speichern fehlgeschlagen");
+                                  setMessage("Stadt gespeichert");
+                                  // Update local detail state
+                                  setDetail((prev) => prev ? { ...prev, city: editedCity.trim() } : prev);
+                                  // Refresh list
+                                  void fetchTherapists();
+                                } catch (e) {
+                                  const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
+                                  setMessage(msg);
+                                } finally {
+                                  setUpdating(false);
+                                }
+                              }}
+                            >
+                              Speichern
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {/* Preview button - shows what users see in /therapeuten */}
@@ -766,6 +839,81 @@ export default function AdminTherapistsPage() {
                         {/* Approach text no longer required during onboarding - therapists complete in portal after verification */}
                       </div>
                     </div>
+
+                    {/* Data Completeness Overview */}
+                    {detail.data_completeness && (
+                      <div className="bg-white rounded-md p-4 border border-gray-200 mt-4">
+                        <h4 className="font-medium text-sm mb-3 text-gray-900">📋 Datenvollständigkeit</h4>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <span className={detail.data_completeness.has_name ? "text-green-600" : "text-red-500"}>
+                              {detail.data_completeness.has_name ? "✓" : "✗"}
+                            </span>
+                            <span className="text-gray-600">Name</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className={detail.data_completeness.has_email ? "text-green-600" : "text-red-500"}>
+                              {detail.data_completeness.has_email ? "✓" : "✗"}
+                            </span>
+                            <span className="text-gray-600">E-Mail</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className={detail.data_completeness.has_phone ? "text-green-600" : "text-gray-400"}>
+                              {detail.data_completeness.has_phone ? "✓" : "–"}
+                            </span>
+                            <span className="text-gray-600">Telefon</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className={detail.data_completeness.has_city ? "text-green-600" : "text-red-500"}>
+                              {detail.data_completeness.has_city ? "✓" : "✗"}
+                            </span>
+                            <span className="text-gray-600">Stadt</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className={detail.data_completeness.has_practice_address ? "text-green-600" : "text-gray-400"}>
+                              {detail.data_completeness.has_practice_address ? "✓" : "–"}
+                            </span>
+                            <span className="text-gray-600">Praxisadresse</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className={detail.data_completeness.has_billing_address ? "text-green-600" : "text-amber-500"}>
+                              {detail.data_completeness.has_billing_address ? "✓" : "⚠"}
+                            </span>
+                            <span className="text-gray-600">Rechnungsadresse</span>
+                          </div>
+                          <div className="col-span-2 border-t pt-1 mt-1"></div>
+                          <div className="flex items-center gap-1.5">
+                            <span className={detail.data_completeness.has_who_comes_to_me ? "text-green-600" : "text-gray-400"}>
+                              {detail.data_completeness.has_who_comes_to_me ? "✓" : "–"}
+                            </span>
+                            <span className="text-gray-600">Profil: Wer kommt</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className={detail.data_completeness.has_session_values ? "text-green-600" : "text-gray-400"}>
+                              {detail.data_completeness.has_session_values ? "✓" : "–"}
+                            </span>
+                            <span className="text-gray-600">Profil: Sitzungswerte</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className={detail.data_completeness.has_first_session_expectations ? "text-green-600" : "text-gray-400"}>
+                              {detail.data_completeness.has_first_session_expectations ? "✓" : "–"}
+                            </span>
+                            <span className="text-gray-600">Profil: Erste Sitzung</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className={detail.data_completeness.has_about_me ? "text-green-600" : "text-gray-400"}>
+                              {detail.data_completeness.has_about_me ? "✓" : "–"}
+                            </span>
+                            <span className="text-gray-600">Profil: Über mich</span>
+                          </div>
+                        </div>
+                        {!detail.data_completeness.has_billing_address && (
+                          <p className="text-xs text-amber-600 mt-2">
+                            ⚠ Rechnungsadresse fehlt (für Abrechnungen erforderlich)
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -783,7 +931,7 @@ export default function AdminTherapistsPage() {
                                 📄 Lizenz-Dokument vorhanden
                               </div>
                               <p className="text-xs text-gray-500 mb-4">
-                                Aus Sicherheitsgründen kann das Dokument nicht inline angezeigt werden.
+                                Aus Sicherheitsgründen kann das Dokument nicht direkt angezeigt werden.
                               </p>
                               <a
                                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
@@ -1206,6 +1354,46 @@ export default function AdminTherapistsPage() {
                       </div>
                     </div>
                   </div>
+                  )}
+
+                  {/* Rejection History */}
+                  {detail.rejection_history && detail.rejection_history.length > 0 && (
+                    <div className="bg-amber-50 rounded-lg border border-amber-200 p-4">
+                      <h4 className="font-semibold text-base mb-3 text-amber-800">
+                        📋 Bisherige Rückfragen ({detail.rejection_history.length})
+                      </h4>
+                      <div className="space-y-3">
+                        {detail.rejection_history.map((item, idx) => (
+                          <div key={idx} className="bg-white rounded border border-amber-100 p-3 text-sm">
+                            <div className="text-xs text-gray-500 mb-2">
+                              {new Date(item.sent_at).toLocaleString('de-DE', {
+                                day: '2-digit', month: '2-digit', year: 'numeric',
+                                hour: '2-digit', minute: '2-digit'
+                              })}
+                            </div>
+                            {item.admin_notes && (
+                              <div className="text-gray-700 mb-2">
+                                <span className="font-medium">Nachricht:</span> {item.admin_notes}
+                              </div>
+                            )}
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              {item.missing_documents && (
+                                <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded">Dokumente fehlen</span>
+                              )}
+                              {item.photo_issue && (
+                                <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded">Foto-Problem</span>
+                              )}
+                              {item.approach_issue && (
+                                <span className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">Text fehlt</span>
+                              )}
+                              {!item.admin_notes && !item.missing_documents && !item.photo_issue && !item.approach_issue && (
+                                <span className="text-gray-400 italic">Keine Details verfügbar</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
 
                   {/* Notes / Reason field */}

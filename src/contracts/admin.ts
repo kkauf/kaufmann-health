@@ -105,6 +105,8 @@ export const AdminTherapistPatchInput = z
     approve_profile: z.boolean().optional(),
     approach_text: z.string().max(500).optional(),
     practice_address: z.string().optional(),
+    // Admin can fix typos in city field
+    city: z.string().max(100).optional(),
     profile: z
       .object({
         practice_address: z.string().optional(),
