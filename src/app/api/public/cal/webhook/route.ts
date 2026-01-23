@@ -148,14 +148,14 @@ async function sendCalBookingEmails(params: {
       locationAddress,
     });
     
-    const sent = await sendEmail({
+    const result = await sendEmail({
       to: clientRecipient,
       subject: content.subject,
       html: content.html,
       context: { kind: 'cal_booking_client_confirmation', cal_uid: calUid, is_test: isTest },
     });
-    
-    if (sent) {
+
+    if (result.sent) {
       await supabaseServer
         .from('cal_bookings')
         .update({ client_confirmation_sent_at: now })
@@ -174,14 +174,14 @@ async function sendCalBookingEmails(params: {
       isIntro,
     });
     
-    const sent = await sendEmail({
+    const result = await sendEmail({
       to: therapistRecipient,
       subject: content.subject,
       html: content.html,
       context: { kind: 'cal_booking_therapist_notification', cal_uid: calUid, is_test: isTest },
     });
-    
-    if (sent) {
+
+    if (result.sent) {
       await supabaseServer
         .from('cal_bookings')
         .update({ therapist_notification_sent_at: now })
@@ -274,14 +274,14 @@ async function sendIntroFollowupEmail(params: {
   const recipient = isTest ? (getQaNotifyEmail() || null) : patient.email;
   if (!recipient) return;
 
-  const sent = await sendEmail({
+  const result = await sendEmail({
     to: recipient,
     subject: content.subject,
     html: content.html,
     context: { kind: 'cal_intro_followup', cal_uid: calUid, is_test: isTest },
   });
 
-  if (sent) {
+  if (result.sent) {
     await supabaseServer
       .from('cal_bookings')
       .update({ followup_sent_at: new Date().toISOString() })
