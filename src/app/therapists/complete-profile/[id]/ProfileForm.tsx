@@ -13,15 +13,19 @@ type Props = {
   showAcceptingNew: boolean;
   showApproachText: boolean;
   showProfilePhoto: boolean;
+  showBillingAddress: boolean;
   defaults?: {
     gender?: string | null;
     city?: string | null;
     accepting_new?: boolean | null;
     approach_text?: string | null;
+    billing_street?: string | null;
+    billing_postal_code?: string | null;
+    billing_city?: string | null;
   };
 };
 
-export default function ProfileForm({ therapistId, showGender, showCity, showAcceptingNew, showApproachText, showProfilePhoto, defaults }: Props) {
+export default function ProfileForm({ therapistId, showGender, showCity, showAcceptingNew, showApproachText, showProfilePhoto, showBillingAddress, defaults }: Props) {
   const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4MB
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -30,6 +34,9 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
   const [gender, setGender] = useState<string>(defaults?.gender || "");
   const [city, setCity] = useState<string>(defaults?.city || "");
   const [acceptingNew, setAcceptingNew] = useState<boolean>(Boolean(defaults?.accepting_new));
+  const [billingStreet, setBillingStreet] = useState<string>(defaults?.billing_street || "");
+  const [billingPostalCode, setBillingPostalCode] = useState<string>(defaults?.billing_postal_code || "");
+  const [billingCity, setBillingCity] = useState<string>(defaults?.billing_city || "");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [showCropper, setShowCropper] = useState(false);
@@ -49,6 +56,9 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
         if (typeof draft.city === 'string') setCity(draft.city);
         if (typeof draft.approach === 'string') setApproach(draft.approach);
         if (typeof draft.acceptingNew === 'boolean') setAcceptingNew(draft.acceptingNew);
+        if (typeof draft.billingStreet === 'string') setBillingStreet(draft.billingStreet);
+        if (typeof draft.billingPostalCode === 'string') setBillingPostalCode(draft.billingPostalCode);
+        if (typeof draft.billingCity === 'string') setBillingCity(draft.billingCity);
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -58,12 +68,12 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
   useEffect(() => {
     const id = setInterval(() => {
       try {
-        const draft = { gender, city, approach, acceptingNew };
+        const draft = { gender, city, approach, acceptingNew, billingStreet, billingPostalCode, billingCity };
         localStorage.setItem(storageKey, JSON.stringify(draft));
       } catch {}
     }, 30000);
     return () => clearInterval(id);
-  }, [storageKey, gender, city, approach, acceptingNew]);
+  }, [storageKey, gender, city, approach, acceptingNew, billingStreet, billingPostalCode, billingCity]);
 
   const onPhotoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -108,13 +118,27 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
     setMessage(null);
     setLoading(true);
     try {
+      // Validate required billing address fields
+      if (showBillingAddress) {
+        if (!billingStreet.trim() || !billingPostalCode.trim() || !billingCity.trim()) {
+          throw new Error('Bitte fülle alle Felder der Rechnungsadresse aus.');
+        }
+      }
+
       const form = new FormData(e.currentTarget);
       // Include only fields that are shown
       if (!showGender) form.delete('gender'); else form.set('gender', gender);
       if (!showCity) form.delete('city'); else form.set('city', city);
       if (!showAcceptingNew) form.delete('accepting_new'); else form.set('accepting_new', acceptingNew ? 'true' : 'false');
       if (!showApproachText) form.delete('approach_text'); else form.set('approach_text', approach);
-      
+
+      // Include billing address fields
+      if (showBillingAddress) {
+        form.set('billing_street', billingStreet.trim());
+        form.set('billing_postal_code', billingPostalCode.trim());
+        form.set('billing_city', billingCity.trim());
+      }
+
       // Use cropped photo file if available
       form.delete('profile_photo');
       if (showProfilePhoto && photoFile) {
@@ -154,10 +178,14 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
     showAcceptingNew,
     showApproachText,
     showProfilePhoto,
+    showBillingAddress,
     gender,
     city,
     acceptingNew,
     approach,
+    billingStreet,
+    billingPostalCode,
+    billingCity,
     storageKey,
     photoFile,
   ]);
@@ -205,6 +233,50 @@ export default function ProfileForm({ therapistId, showGender, showCity, showAcc
           <div className="space-y-2">
             <Label htmlFor="city">Stadt</Label>
             <Input id="city" name="city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="z.B. Berlin" />
+          </div>
+        )}
+
+        {showBillingAddress && (
+          <div className="space-y-4">
+            <div>
+              <Label className="text-base font-medium">Rechnungsadresse</Label>
+              <p className="text-xs text-gray-500 mt-1">Wird für die Rechnungsstellung verwendet und nicht öffentlich angezeigt.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="billing_street">Straße und Hausnummer</Label>
+              <Input
+                id="billing_street"
+                name="billing_street"
+                value={billingStreet}
+                onChange={(e) => setBillingStreet(e.target.value)}
+                placeholder="z.B. Musterstraße 123"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="billing_postal_code">PLZ</Label>
+                <Input
+                  id="billing_postal_code"
+                  name="billing_postal_code"
+                  value={billingPostalCode}
+                  onChange={(e) => setBillingPostalCode(e.target.value)}
+                  placeholder="12345"
+                  required
+                />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="billing_city">Stadt</Label>
+                <Input
+                  id="billing_city"
+                  name="billing_city"
+                  value={billingCity}
+                  onChange={(e) => setBillingCity(e.target.value)}
+                  placeholder="Berlin"
+                  required
+                />
+              </div>
+            </div>
           </div>
         )}
 

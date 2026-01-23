@@ -92,6 +92,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     let practiceStreet: string | undefined;
     let practicePostalCode: string | undefined;
     let practiceCity: string | undefined;
+    // Billing address (Rechnungsadresse)
+    let billingStreet: string | undefined;
+    let billingPostalCode: string | undefined;
+    let billingCity: string | undefined;
     // New profile text sections (EARTH-234)
     let whoComesToMe: string | undefined;
     let sessionFocus: string | undefined;
@@ -129,6 +133,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const pStreet = form.get('practice_street');
       const pPostal = form.get('practice_postal_code');
       const pCity = form.get('practice_city');
+      // Billing address fields
+      const bStreet = form.get('billing_street');
+      const bPostal = form.get('billing_postal_code');
+      const bCity = form.get('billing_city');
       // New profile text fields
       const wctm = form.get('who_comes_to_me');
       const sf = form.get('session_focus');
@@ -222,6 +230,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (typeof pStreet === 'string') practiceStreet = pStreet.trim();
       if (typeof pPostal === 'string') practicePostalCode = pPostal.trim();
       if (typeof pCity === 'string') practiceCity = pCity.trim();
+      if (typeof bStreet === 'string') billingStreet = bStreet.trim();
+      if (typeof bPostal === 'string') billingPostalCode = bPostal.trim();
+      if (typeof bCity === 'string') billingCity = bCity.trim();
     } else {
       // Assume JSON
       const parsed = await parseRequestBody(req, TherapistProfileUpdate);
@@ -250,6 +261,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const pStreet = body['practice_street'];
       const pPostal = body['practice_postal_code'];
       const pCity = body['practice_city'];
+      // Billing address fields
+      const bStreet = body['billing_street'];
+      const bPostal = body['billing_postal_code'];
+      const bCity = body['billing_city'];
       // New profile text fields
       const wctm = body['who_comes_to_me'];
       const sf = body['session_focus'];
@@ -312,6 +327,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (typeof pStreet === 'string') practiceStreet = pStreet.trim();
       if (typeof pPostal === 'string') practicePostalCode = pPostal.trim();
       if (typeof pCity === 'string') practiceCity = pCity.trim();
+      if (typeof bStreet === 'string') billingStreet = bStreet.trim();
+      if (typeof bPostal === 'string') billingPostalCode = bPostal.trim();
+      if (typeof bCity === 'string') billingCity = bCity.trim();
     }
 
     // Validate gender if provided
@@ -386,6 +404,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     // Also save combined address for backward compatibility (used by slots)
     const combinedAddress = [practiceStreet, practicePostalCode, practiceCity].filter(Boolean).join(', ');
     if (combinedAddress) profile.practice_address = combinedAddress;
+    // Save billing address (Rechnungsadresse)
+    if (typeof billingStreet === 'string') profile.billing_street = billingStreet;
+    if (typeof billingPostalCode === 'string') profile.billing_postal_code = billingPostalCode;
+    if (typeof billingCity === 'string') profile.billing_city = billingCity;
+    // Combined billing address for convenience
+    const combinedBillingAddress = [billingStreet, billingPostalCode, billingCity].filter(Boolean).join(', ');
+    if (combinedBillingAddress) profile.billing_address = combinedBillingAddress;
     metaObj.profile = profile;
 
     const updates: Record<string, unknown> = { metadata: metaObj };
@@ -457,6 +482,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           practice_street: Boolean(practiceStreet),
           practice_postal_code: Boolean(practicePostalCode),
           practice_city: Boolean(practiceCity),
+          billing_street: Boolean(billingStreet),
+          billing_postal_code: Boolean(billingPostalCode),
+          billing_city: Boolean(billingCity),
         } 
       } 
     });
