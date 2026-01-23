@@ -8,12 +8,17 @@
 
 import { getAttribution } from './attribution';
 
-function shouldIgnoreUnhandledMessage(message?: string): boolean {
-  if (!message) return false;
-  const m = message.toLowerCase();
-  if (m.includes('chunkloaderror')) return true;
+function shouldIgnoreUnhandledError(message?: string, errorName?: string): boolean {
+  const m = (message || '').toLowerCase();
+  const n = (errorName || '').toLowerCase();
+  // ChunkLoadError: stale deployment chunks (user cached old HTML, new deploy removed JS chunks)
+  if (n.includes('chunkloaderror') || m.includes('chunkloaderror')) return true;
+  if (m.includes('loading chunk') && m.includes('failed')) return true;
+  // Webpack module loading errors from stale cache
   if (m.includes("cannot read properties of undefined") && m.includes("reading 'call'")) return true;
+  // Firefox extension errors
   if (m.includes('__firefox__')) return true;
+  // Generic/empty errors (usually third-party)
   if (m.trim() === 'uncaught') return true;
   if (m.trim() === 'script error.' || m.trim() === 'script error') return true;
   return false;
@@ -39,7 +44,7 @@ let isInitialized = false;
  */
 export function reportError(error: UserFacingError): void {
   try {
-    if (error.type === 'unhandled' && shouldIgnoreUnhandledMessage(error.message)) {
+    if (error.type === 'unhandled' && shouldIgnoreUnhandledError(error.message, error.error_name)) {
       return;
     }
 
