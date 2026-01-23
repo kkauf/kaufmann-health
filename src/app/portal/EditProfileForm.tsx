@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Lock, Target, Eye, EyeOff, Globe } from "lucide-react";
+import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Lock, Target, Eye, Globe } from "lucide-react";
 import { ImageCropper } from "@/components/ImageCropper";
 import { TherapistDetailModal } from "@/features/therapists/components/TherapistDetailModal";
 import type { TherapistData } from "@/features/therapists/components/TherapistDirectory";
