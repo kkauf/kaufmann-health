@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ImageCropper } from "@/components/ImageCropper";
+import { TherapistDetailModal } from "@/features/therapists/components/TherapistDetailModal";
+import type { TherapistData } from "@/lib/therapist-mapper";
+import { Eye } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -131,6 +134,11 @@ export default function AdminTherapistsPage() {
   const [cropperImageSrc, setCropperImageSrc] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
+  // Profile preview state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<TherapistData | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
   const toggleSelected = useCallback((id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -245,6 +253,30 @@ export default function AdminTherapistsPage() {
     setCalUsername("");
     setCalEnabled(false);
     setCalStatus(null);
+  }, []);
+
+  const openPreview = useCallback(async (therapistId: string) => {
+    setPreviewLoading(true);
+    try {
+      const res = await fetch(`/api/admin/therapists/${therapistId}/preview`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Fehler beim Laden der Vorschau");
+      setPreviewData(json.data as TherapistData);
+      setPreviewOpen(true);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
+      setMessage(msg);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, []);
+
+  const closePreview = useCallback(() => {
+    setPreviewOpen(false);
+    setPreviewData(null);
   }, []);
 
   const fetchCalStatus = useCallback(async (therapistId: string) => {
@@ -684,17 +716,31 @@ export default function AdminTherapistsPage() {
                         <div className="text-sm text-gray-600 mt-1">{detail.email || "—"}</div>
                         <div className="text-sm text-gray-600">{detail.city || "—"}</div>
                       </div>
-                      <Badge 
-                        variant={detail.status === "verified" ? "default" : "secondary"}
-                        className={
-                          detail.status === "declined" ? "bg-red-600 text-white border-transparent" :
-                          detail.status === "rejected" ? "bg-amber-500 text-white border-transparent" : undefined
-                        }
-                      >
-                        {detail.status === "verified" ? "Verifiziert" : 
-                         detail.status === "declined" ? "Abgelehnt" : 
-                         detail.status === "rejected" ? "Rückfrage" : "Ausstehend"}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        {/* Preview button - shows what users see in /therapeuten */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          disabled={previewLoading}
+                          onClick={() => detail.id && openPreview(detail.id)}
+                          title="Profil-Vorschau anzeigen (wie Nutzer es sehen)"
+                        >
+                          <Eye className="h-4 w-4" />
+                          {previewLoading ? "..." : "Vorschau"}
+                        </Button>
+                        <Badge
+                          variant={detail.status === "verified" ? "default" : "secondary"}
+                          className={
+                            detail.status === "declined" ? "bg-red-600 text-white border-transparent" :
+                            detail.status === "rejected" ? "bg-amber-500 text-white border-transparent" : undefined
+                          }
+                        >
+                          {detail.status === "verified" ? "Verifiziert" :
+                           detail.status === "declined" ? "Abgelehnt" :
+                           detail.status === "rejected" ? "Rückfrage" : "Ausstehend"}
+                        </Badge>
+                      </div>
                     </div>
 
                     {/* Approval Checklist */}
@@ -1304,6 +1350,16 @@ export default function AdminTherapistsPage() {
           }}
           aspectRatio={1}
           cropShape="round"
+        />
+      )}
+
+      {/* Profile Preview Modal */}
+      {previewData && (
+        <TherapistDetailModal
+          therapist={previewData}
+          open={previewOpen}
+          onClose={closePreview}
+          previewMode={true}
         />
       )}
     </main>

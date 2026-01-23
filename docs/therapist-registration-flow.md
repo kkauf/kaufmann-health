@@ -187,6 +187,14 @@ The "Neue Klient:innen annehmen" toggle is **locked** until profile is complete:
 
 Once complete, therapist can enable the toggle to become visible in the directory.
 
+### Profile Visibility Warning
+
+When profile is complete but `accepting_new` is OFF, the portal shows:
+- **Top banner (red)**: "Dein Profil ist nicht sichtbar" with "Profil jetzt aktivieren" button
+- **Availability section**: Red border + "Nicht sichtbar" badge to make the disabled state obvious
+
+This prevents therapists from completing their profile but forgetting to enable visibility.
+
 ### Post-Approval Reminders
 
 Verified therapists who haven't completed their profile receive automated reminders:
@@ -280,6 +288,11 @@ Verified therapists who haven't completed their profile receive automated remind
 ### "Therapist can't enable accepting_new"
 - Profile is incomplete - check required fields in portal
 - Cal.com availability not configured
+
+### "Therapist completed profile but isn't visible"
+- `accepting_new` is still OFF - therapist may have missed the toggle
+- Portal now shows prominent red warning banner when this happens
+- Admin can check this status in the admin preview
 
 ### "Therapist didn't receive welcome email"
 - Check spam folder
