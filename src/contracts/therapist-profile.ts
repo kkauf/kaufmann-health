@@ -80,6 +80,10 @@ export const TherapistProfileUpdate = z.object({
   practice_street: OptionalString,
   practice_postal_code: OptionalString,
   practice_city: OptionalString,
+  // Billing address (Rechnungsadresse) - required during onboarding
+  billing_street: OptionalString,
+  billing_postal_code: OptionalString,
+  billing_city: OptionalString,
   who_comes_to_me: OptionalString,
   session_focus: OptionalString,
   first_session: OptionalString,

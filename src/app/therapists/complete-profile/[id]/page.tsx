@@ -47,6 +47,10 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const approach_text = (profile as { approach_text?: string | null }).approach_text ?? null;
   const photo_pending_path = (profile as { photo_pending_path?: string | null }).photo_pending_path ?? null;
   const photo_url = (row as { photo_url?: string | null }).photo_url ?? null;
+  // Billing address fields
+  const billing_street = (profile as { billing_street?: string | null }).billing_street ?? null;
+  const billing_postal_code = (profile as { billing_postal_code?: string | null }).billing_postal_code ?? null;
+  const billing_city = (profile as { billing_city?: string | null }).billing_city ?? null;
 
   const showGender = !(gender === 'male' || gender === 'female' || gender === 'diverse');
   const showCity = !city;
@@ -54,12 +58,14 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   // Skip approach_text during onboarding - therapists complete this in the portal after verification
   const showApproachText = false;
   const showProfilePhoto = !photo_url && !photo_pending_path;
+  // Billing address is required - show if any field is missing
+  const showBillingAddress = !billing_street || !billing_postal_code || !billing_city;
 
   const name = [ (row as { first_name?: string | null }).first_name || '', (row as { last_name?: string | null }).last_name || '' ].join(' ').trim();
 
-  const defaults = { gender, city, accepting_new, approach_text } as const;
+  const defaults = { gender, city, accepting_new, approach_text, billing_street, billing_postal_code, billing_city } as const;
 
-  const totalMissing = [showGender, showCity, showAcceptingNew, showProfilePhoto].filter(Boolean).length;
+  const totalMissing = [showGender, showCity, showAcceptingNew, showProfilePhoto, showBillingAddress].filter(Boolean).length;
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
@@ -107,6 +113,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
             showAcceptingNew={showAcceptingNew}
             showApproachText={showApproachText}
             showProfilePhoto={showProfilePhoto}
+            showBillingAddress={showBillingAddress}
             defaults={defaults}
           />
         </div>
