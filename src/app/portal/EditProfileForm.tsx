@@ -298,23 +298,29 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
   // Profile completeness check (min 50 chars for required fields)
   const profileCompleteness = useMemo(() => {
     const missing: string[] = [];
-    if (!whoComesToMe || whoComesToMe.length < MIN_CHARS) 
+    if (!whoComesToMe || whoComesToMe.length < MIN_CHARS)
       missing.push(`Zu mir kommen Menschen... (mind. ${MIN_CHARS} Zeichen)`);
-    if (!sessionFocus || sessionFocus.length < MIN_CHARS) 
+    if (!sessionFocus || sessionFocus.length < MIN_CHARS)
       missing.push(`In unserer Arbeit... (mind. ${MIN_CHARS} Zeichen)`);
-    if (!firstSession || firstSession.length < MIN_CHARS) 
+    if (!firstSession || firstSession.length < MIN_CHARS)
       missing.push(`Das erste Gespräch (mind. ${MIN_CHARS} Zeichen)`);
     if (schwerpunkte.length < THERAPIST_SCHWERPUNKTE_MIN) missing.push('Schwerpunkte');
     if (!typicalRate) missing.push('Preis pro Sitzung');
     if (!currentPhotoUrl) missing.push('Profilbild');
-    
-    const total = 6;
+    // Session format: must offer at least one
+    if (!offersOnline && !offersInPerson) missing.push('Sitzungsformat (Online oder Vor Ort)');
+    // Practice address: required if offering in-person
+    if (offersInPerson && (!practiceCity.trim() || !practicePostalCode.trim())) {
+      missing.push('Praxisadresse (Stadt + PLZ)');
+    }
+
+    const total = 8; // Updated count
     const completed = total - missing.length;
     const percentage = Math.round((completed / total) * 100);
     const isComplete = missing.length === 0;
-    
+
     return { missing, completed, total, percentage, isComplete };
-  }, [whoComesToMe, sessionFocus, firstSession, schwerpunkte, typicalRate, currentPhotoUrl]);
+  }, [whoComesToMe, sessionFocus, firstSession, schwerpunkte, typicalRate, currentPhotoUrl, offersOnline, offersInPerson, practiceCity, practicePostalCode]);
 
   // Warn before leaving with unsaved changes
   useEffect(() => {
@@ -415,6 +421,12 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
       }
       if (!currentPhotoUrl && !photoFile) {
         validationErrors.push('Profilfoto erforderlich, um sichtbar zu sein');
+      }
+      if (!offersOnline && !offersInPerson) {
+        validationErrors.push('Sitzungsformat (Online oder Vor Ort) erforderlich, um sichtbar zu sein');
+      }
+      if (offersInPerson && (!practiceCity.trim() || !practicePostalCode.trim())) {
+        validationErrors.push('Praxisadresse (Stadt + PLZ) erforderlich für Vor-Ort-Sitzungen');
       }
     }
 
@@ -525,24 +537,70 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
 
   return (
     <div className="space-y-6">
-      {/* Profile Visibility Status - CRITICAL: Show when profile is complete but not visible */}
-      {profileCompleteness.isComplete && !acceptingNew && activeTab === 'profile' && (
-        <div className="p-4 bg-gradient-to-r from-red-50 to-rose-50 border-2 border-red-300 rounded-lg shadow-sm">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 mt-0.5">
-              <EyeOff className="h-6 w-6 text-red-600" />
+      {/* Unified Profile Status & Progress */}
+      {activeTab === 'profile' && (
+        <div className={`p-4 rounded-lg border-2 transition-all ${
+          acceptingNew
+            ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-300'
+            : profileCompleteness.isComplete
+              ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-300'
+              : 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200'
+        }`}>
+          {/* Status Header */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              {acceptingNew ? (
+                <>
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                  <span className="text-sm font-semibold text-emerald-900">Profil aktiv</span>
+                  <span className="text-xs text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">Sichtbar im Verzeichnis</span>
+                </>
+              ) : profileCompleteness.isComplete ? (
+                <>
+                  <Eye className="h-5 w-5 text-amber-600" />
+                  <span className="text-sm font-semibold text-amber-900">Profil bereit zur Aktivierung</span>
+                </>
+              ) : (
+                <>
+                  <Target className="h-5 w-5 text-gray-500" />
+                  <span className="text-sm font-semibold text-gray-700">Profil vervollständigen</span>
+                </>
+              )}
             </div>
-            <div className="flex-1">
-              <h3 className="text-base font-semibold text-red-900">
-                Dein Profil ist nicht sichtbar
-              </h3>
-              <p className="text-sm text-red-700 mt-1">
-                Klient:innen können dich im Verzeichnis nicht finden und du erhältst keine Anfragen.
+            <span className="text-xs text-gray-600">
+              {profileCompleteness.completed}/{profileCompleteness.total} Pflichtfelder
+            </span>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="h-3 bg-gray-100 rounded-full overflow-hidden mb-3">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                acceptingNew
+                  ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
+                  : profileCompleteness.isComplete
+                    ? 'bg-gradient-to-r from-amber-400 to-yellow-400'
+                    : 'bg-gradient-to-r from-gray-300 to-gray-400'
+              }`}
+              style={{ width: `${profileCompleteness.percentage}%` }}
+            />
+          </div>
+
+          {/* Content based on state */}
+          {!profileCompleteness.isComplete ? (
+            <div className="text-xs text-gray-600">
+              <span className="font-medium">Noch offen:</span>{' '}
+              {profileCompleteness.missing.join(', ')}
+            </div>
+          ) : !acceptingNew ? (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <p className="text-sm text-amber-800">
+                Alle Pflichtfelder ausgefüllt. Aktiviere dein Profil, um für Klient:innen sichtbar zu werden.
               </p>
               <Button
                 type="button"
                 size="default"
-                className="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md whitespace-nowrap"
                 onClick={() => {
                   const confirmed = window.confirm(
                     'Profil aktivieren?\n\nDein Profil wird für Klient:innen sichtbar und du kannst Anfragen erhalten.\n\nKlicke danach auf "Speichern" um die Änderung zu übernehmen.'
@@ -552,34 +610,14 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
                   }
                 }}
               >
-                ✓ Profil jetzt aktivieren
+                ✓ Profil aktivieren
               </Button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Profile Completeness Indicator */}
-      {!profileCompleteness.isComplete && activeTab === 'profile' && (
-        <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-amber-900">
-              Profil {profileCompleteness.percentage}% vollständig
-            </span>
-            <span className="text-xs text-amber-700">
-              {profileCompleteness.completed}/{profileCompleteness.total} Felder
-            </span>
-          </div>
-          <div className="h-2 bg-amber-100 rounded-full overflow-hidden mb-2">
-            <div
-              className="h-full bg-gradient-to-r from-amber-400 to-emerald-500 rounded-full transition-all duration-500"
-              style={{ width: `${profileCompleteness.percentage}%` }}
-            />
-          </div>
-          <p className="text-xs text-amber-700">
-            <span className="font-medium">Noch offen:</span>{' '}
-            {profileCompleteness.missing.join(', ')}
-          </p>
+          ) : (
+            <p className="text-xs text-emerald-700">
+              Klient:innen können dich im Verzeichnis finden und Anfragen stellen.
+            </p>
+          )}
         </div>
       )}
 
@@ -810,10 +848,12 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
           <Card className="border border-gray-200/60 shadow-md bg-white/80 backdrop-blur-sm">
             <div className="p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Sitzungsdetails</h2>
-              
-              {/* Session Format */}
-              <div className="space-y-3 mb-6">
-                <Label className="text-sm font-medium text-gray-700">Sitzungsformat</Label>
+
+              {/* Session Format - REQUIRED */}
+              <div className={`space-y-3 mb-6 p-4 rounded-lg -mx-4 ${!offersOnline && !offersInPerson ? 'bg-amber-50 border border-amber-200' : ''}`}>
+                <Label className="text-sm font-medium text-gray-700">
+                  Sitzungsformat <span className="text-red-500">*</span>
+                </Label>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <label className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 cursor-pointer hover:border-emerald-300 transition-all has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50 has-[:checked]:shadow-sm">
                     <input
@@ -836,14 +876,17 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
                     <span className="text-sm font-medium text-gray-700">Vor Ort</span>
                   </label>
                 </div>
+                {!offersOnline && !offersInPerson && (
+                  <p className="text-xs text-amber-700 font-medium">Pflichtfeld – Wähle mindestens ein Sitzungsformat.</p>
+                )}
               </div>
 
-              {/* Practice Address (only if in-person) */}
+              {/* Practice Address (only if in-person) - REQUIRED */}
               {offersInPerson && (
-                <div className="space-y-4 mb-6">
+                <div className={`space-y-4 mb-6 p-4 rounded-lg -mx-4 ${!practiceCity.trim() || !practicePostalCode.trim() ? 'bg-amber-50 border border-amber-200' : ''}`}>
                   <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                     <MapPin className="h-4 w-4 text-gray-400" />
-                    Praxisadresse
+                    Praxisadresse <span className="text-red-500">*</span>
                   </div>
                   <div className="space-y-3">
                     <div>
@@ -878,10 +921,13 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
                           value={practiceCity}
                           onChange={(e) => setPracticeCity(e.target.value)}
                           placeholder="z.B. Berlin"
-                          className="border-gray-200 mt-1"
+                          className={`border-gray-200 mt-1 ${!practiceCity.trim() ? 'border-amber-400' : ''}`}
                         />
                       </div>
                     </div>
+                    {(!practiceCity.trim() || !practicePostalCode.trim()) && (
+                      <p className="text-xs text-amber-700 font-medium">PLZ und Stadt sind Pflichtfelder für Vor-Ort-Sitzungen.</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -945,75 +991,58 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
             </div>
           </Card>
 
-          {/* Availability */}
+          {/* Availability - only show when profile is complete for pause/resume control */}
+          {profileCompleteness.isComplete && (
           <Card
             id="availability-section"
-            className={`shadow-md backdrop-blur-sm transition-all ${
-              profileCompleteness.isComplete && !acceptingNew
-                ? 'border-2 border-red-300 bg-red-50/80 ring-2 ring-red-200'
-                : 'border border-gray-200/60 bg-white/80'
-            }`}
+            className="shadow-md backdrop-blur-sm border border-gray-200/60 bg-white/80"
           >
             <div className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                Verfügbarkeit
-                {profileCompleteness.isComplete && !acceptingNew && (
-                  <span className="text-sm font-normal text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
-                    Nicht sichtbar
-                  </span>
-                )}
-                {profileCompleteness.isComplete && acceptingNew && (
-                  <span className="text-sm font-normal text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
-                    Aktiv
-                  </span>
-                )}
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Profil pausieren
               </h2>
-              {profileCompleteness.isComplete ? (
-                <div className={`rounded-lg p-4 ${!acceptingNew ? 'bg-red-100/50 border border-red-200' : 'bg-emerald-50/50 border border-emerald-200'}`}>
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={acceptingNew}
-                      onChange={(e) => setAcceptingNew(e.target.checked)}
-                      className={`mt-0.5 h-5 w-5 rounded focus:ring-2 ${
-                        acceptingNew
-                          ? 'border-emerald-300 text-emerald-600 focus:ring-emerald-500'
-                          : 'border-red-300 text-red-600 focus:ring-red-500'
-                      }`}
-                    />
-                    <div>
-                      <span className={`text-sm font-medium ${!acceptingNew ? 'text-red-900' : 'text-emerald-900'}`}>
-                        Neue Klient:innen annehmen
-                      </span>
-                      <p className={`text-xs mt-0.5 ${!acceptingNew ? 'text-red-700' : 'text-emerald-700'}`}>
-                        {acceptingNew
-                          ? 'Du wirst im Verzeichnis angezeigt und kannst Anfragen erhalten'
-                          : 'Dein Profil ist aktuell nicht sichtbar für Klient:innen'
-                        }
-                      </p>
-                    </div>
-                  </label>
-                </div>
-              ) : (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 mt-0.5">
-                      <Lock className="h-5 w-5 text-amber-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-amber-900">
-                        Profil noch nicht vollständig
-                      </p>
-                      <p className="text-xs text-amber-700 mt-1">
-                        Vervollständige dein Profil, um für neue Klient:innen sichtbar zu werden.
-                        Es fehlt noch: {profileCompleteness.missing.join(', ')}
-                      </p>
-                    </div>
+              <div className="rounded-lg p-4 bg-gray-50 border border-gray-200">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={acceptingNew}
+                    onChange={(e) => setAcceptingNew(e.target.checked)}
+                    className="mt-0.5 h-5 w-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-gray-900">
+                      Neue Klient:innen annehmen
+                    </span>
+                    <p className="text-xs text-gray-600 mt-0.5">
+                      Deaktiviere dies vorübergehend, wenn du keine Kapazität für neue Anfragen hast.
+                    </p>
                   </div>
-                </div>
-              )}
+                </label>
+              </div>
             </div>
           </Card>
+          )}
+
+          {/* Profile incomplete message - only show when profile is not complete */}
+          {!profileCompleteness.isComplete && (
+            <Card className="shadow-md backdrop-blur-sm border border-amber-200 bg-amber-50/80">
+              <div className="p-6">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <Lock className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-amber-900">
+                      Profil noch nicht vollständig
+                    </p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Vervollständige alle Pflichtfelder oben, um dein Profil aktivieren zu können.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
 
           {/* Submit & Status */}
           <div className="sticky bottom-0 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent pt-4 pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6">
