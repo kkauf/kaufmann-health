@@ -33,7 +33,7 @@ interface CalBooking {
   metadata: Record<string, unknown> | null;
 }
 
-export async function GET(req: Request) {
+async function handler(req: Request) {
   if (!isCronAuthorized(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -195,3 +195,6 @@ export async function GET(req: Request) {
     await pool.end();
   }
 }
+
+export const GET = handler;
+export const POST = handler;

@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     jobs.map(async (job) => {
       try {
         const res = await fetch(`${baseUrl}${job.path}`, {
-          method: 'POST',
+          method: 'GET',
           headers: {
             'Authorization': `Bearer ${cronSecret}`,
             'Content-Type': 'application/json',
