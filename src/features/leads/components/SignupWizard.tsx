@@ -11,6 +11,7 @@ import Screen4 from './screens/Screen4';
 import NewScreen3_WhatBringsYou, { type NewScreen3Values } from './screens/NewScreen3_WhatBringsYou';
 import NewScreen5_Modality from './screens/NewScreen5_Modality';
 import ScreenSchwerpunkte, { type ScreenSchwerpunkteValues } from './screens/ScreenSchwerpunkte';
+import ScreenPaymentInfo, { type ScreenPaymentInfoValues, type PaymentPreference } from './screens/ScreenPaymentInfo';
 import { Button } from '@/components/ui/button';
 import { leadSubmissionSchema } from '@/lib/contracts';
 import { PRIVACY_VERSION } from '@/lib/privacy';
@@ -29,12 +30,14 @@ const LS_KEYS = {
   sessionId: 'kh_form_session_id',
 } as const;
 
-export type WizardData = Omit<Screen1Values, 'email'> & Screen1_5Values & ScreenSchwerpunkteValues & {
+export type WizardData = Omit<Screen1Values, 'email'> & Screen1_5Values & ScreenSchwerpunkteValues & ScreenPaymentInfoValues & {
   email?: string; // Make email optional since we might use phone instead
   // Step 2: What Brings You (optional) - now first step for Concierge
   additional_info?: NewScreen3Values['additional_info'];
   // Step 2.5: Schwerpunkte (feature-toggled)
   schwerpunkte?: string[];
+  // Step 2.6: Payment info
+  payment_preference?: PaymentPreference;
   // Step 3: Modality
   modality_matters?: boolean;
   methods?: string[];
@@ -55,6 +58,7 @@ export type WizardData = Omit<Screen1Values, 'email'> & Screen1_5Values & Screen
 // Map by step number for clarity after removing step 1
 const PROGRESS_MAP: Record<number, number> = {
   2: 0, 2.5: 0,     // First step (Topic/Schwerpunkte)
+  2.6: 8,           // Payment info
   3: 17,            // Modality
   4: 33,            // Location
   5: 50,            // Preferences
@@ -878,27 +882,48 @@ export default function SignupWizard() {
           <NewScreen3_WhatBringsYou
             values={{ additional_info: data.additional_info }}
             onChange={saveLocal}
-            onBack={() => safeGoToStep(2.5)}
+            onBack={() => safeGoToStep(2.6)}
             onNext={() => safeGoToStep(3)}
             disabled={navLock || submitting}
           />
         );
       case 2.5:
         // Step 2.5: Schwerpunkte - first step for ALL variants
-        // Concierge goes to step 2 (What Brings You) next
-        // Self-Service goes to step 3 (Modality) next
+        // Goes to step 2.6 (Payment info) next
         return (
           <ScreenSchwerpunkte
             values={{ schwerpunkte: data.schwerpunkte }}
             onChange={saveLocal}
-            onNext={() => safeGoToStep(usesWhatBringsYouStep ? 2 : 3)}
+            onNext={() => safeGoToStep(2.6)}
             disabled={navLock || submitting}
             therapistCount={therapistCount}
           />
         );
+      case 2.6:
+        // Step 2.6: Payment info - asks about self-pay vs insurance
+        // Concierge goes to step 2 (What Brings You) next
+        // Self-Service goes to step 3 (Modality) next
+        return (
+          <ScreenPaymentInfo
+            values={{ payment_preference: data.payment_preference }}
+            onChange={(patch) => {
+              saveLocal(patch);
+              // Track payment preference selection
+              if (patch.payment_preference) {
+                void trackEvent('payment_preference_selected', {
+                  preference: patch.payment_preference,
+                  step: 2.6
+                });
+              }
+            }}
+            onBack={() => safeGoToStep(2.5)}
+            onNext={() => safeGoToStep(usesWhatBringsYouStep ? 2 : 3)}
+            disabled={navLock || submitting}
+          />
+        );
       case 3:
         // Step 3: Modality Preferences
-        // Back goes to step 2 for Concierge, step 2.5 for Self-Service
+        // Back goes to step 2 for Concierge, step 2.6 for Self-Service
         return (
           <NewScreen5_Modality
             values={{
@@ -906,7 +931,7 @@ export default function SignupWizard() {
               methods: data.methods,
             }}
             onChange={saveLocal}
-            onBack={() => safeGoToStep(usesWhatBringsYouStep ? 2 : 2.5)}
+            onBack={() => safeGoToStep(usesWhatBringsYouStep ? 2 : 2.6)}
             onNext={() => safeGoToStep(4)}
             suppressAutoAdvance={suppressAutoStep === 3}
             disabled={navLock || submitting}
