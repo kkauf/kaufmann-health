@@ -174,11 +174,24 @@ async function processStage(
         continue;
       }
 
-      const { data: patient } = await supabaseServer
+      // Patient lookup - MUST check error to catch schema mismatches
+      const { data: patient, error: patientError } = await supabaseServer
         .from('people')
-        .select('id, email, phone, first_name')
+        .select('id, email, phone_number, name')
         .eq('id', booking.patient_id)
         .single();
+
+      if (patientError) {
+        // Log loudly - this should never happen silently
+        await logError('api.admin.cal.booking-followups', patientError, {
+          booking_id: booking.id,
+          patient_id: booking.patient_id,
+          stage,
+          reason: 'patient_lookup_failed',
+        });
+        counters.errors++;
+        continue;
+      }
 
       if (!patient) {
         counters.skipped_no_patient++;
@@ -186,18 +199,31 @@ async function processStage(
       }
 
       const hasEmail = patient.email && !patient.email.startsWith('temp_');
-      const hasPhone = Boolean(patient.phone);
+      const hasPhone = Boolean(patient.phone_number);
 
       if (!hasEmail && !hasPhone) {
         counters.skipped_no_contact++;
         continue;
       }
 
-      const { data: therapist } = await supabaseServer
+      // Therapist lookup - MUST check error
+      const { data: therapist, error: therapistError } = await supabaseServer
         .from('therapists')
         .select('id, first_name, last_name, cal_username')
         .eq('id', booking.therapist_id)
         .single();
+
+      if (therapistError && therapistError.code !== 'PGRST116') {
+        // PGRST116 = no rows found (acceptable), other errors are not
+        await logError('api.admin.cal.booking-followups', therapistError, {
+          booking_id: booking.id,
+          therapist_id: booking.therapist_id,
+          stage,
+          reason: 'therapist_lookup_failed',
+        });
+        counters.errors++;
+        continue;
+      }
 
       const therapistName = therapist
         ? `${therapist.first_name || ''} ${therapist.last_name || ''}`.trim()
@@ -206,14 +232,32 @@ async function processStage(
       try {
         if (stage === 'confirmation_recovery') {
           // Resend booking confirmation email
-          const { data: therapistData } = await supabaseServer
+          const { data: therapistData, error: therapistDataError } = await supabaseServer
             .from('therapists')
             .select('email, first_name, last_name, typical_rate')
             .eq('id', booking.therapist_id)
             .single();
 
+          if (therapistDataError) {
+            await logError('api.admin.cal.booking-followups', therapistDataError, {
+              booking_id: booking.id,
+              therapist_id: booking.therapist_id,
+              stage,
+              reason: 'therapist_data_lookup_failed',
+            });
+            counters.errors++;
+            continue;
+          }
+
           if (!therapistData) {
-            counters.skipped_no_patient++;
+            // Therapist record doesn't exist - log as error, not silent skip
+            await logError('api.admin.cal.booking-followups', new Error('Therapist not found'), {
+              booking_id: booking.id,
+              therapist_id: booking.therapist_id,
+              stage,
+              reason: 'therapist_not_found',
+            });
+            counters.errors++;
             continue;
           }
 
@@ -234,7 +278,7 @@ async function processStage(
 
           if (hasEmail) {
             const content = renderCalBookingClientConfirmation({
-              patientName: patient.first_name || null,
+              patientName: patient.name || null,
               patientEmail: patient.email,
               therapistName: therapistFullName,
               therapistEmail: therapistData.email,
@@ -260,10 +304,17 @@ async function processStage(
 
             if (result.sent) {
               counters.sent_email++;
-              await supabaseServer
+              const { error: updateError } = await supabaseServer
                 .from('cal_bookings')
                 .update({ client_confirmation_sent_at: now.toISOString() })
                 .eq('id', booking.id);
+              if (updateError) {
+                await logError('api.admin.cal.booking-followups', updateError, {
+                  booking_id: booking.id,
+                  stage,
+                  reason: 'update_sent_at_failed',
+                });
+              }
             }
           }
         } else if (stage === 'session_followup') {
@@ -288,14 +339,14 @@ async function processStage(
                   kh_match_id: booking.match_id || undefined,
                   kh_source: 'session_followup_email',
                 },
-                prefillName: patient.first_name || undefined,
+                prefillName: patient.name || undefined,
                 prefillEmail: patient.email || undefined,
               })
             : null;
 
           if (hasEmail && fullSessionUrl) {
             const content = renderCalSessionFollowup({
-              patientName: patient.first_name || null,
+              patientName: patient.name || null,
               therapistName,
               fullSessionUrl,
               nextSlotDateIso: cache?.next_full_date_iso || null,
@@ -310,10 +361,17 @@ async function processStage(
             });
             if (result.sent) {
               counters.sent_email++;
-              await supabaseServer
+              const { error: updateError } = await supabaseServer
                 .from('cal_bookings')
                 .update({ session_followup_sent_at: now.toISOString() })
                 .eq('id', booking.id);
+              if (updateError) {
+                await logError('api.admin.cal.booking-followups', updateError, {
+                  booking_id: booking.id,
+                  stage,
+                  reason: 'update_session_followup_sent_at_failed',
+                });
+              }
             }
           }
         } else if (stage === 'reminder_24h' || stage === 'reminder_1h') {
@@ -334,7 +392,7 @@ async function processStage(
 
           if (hasEmail) {
             const content = renderCalBookingReminder({
-              patientName: patient.first_name || null,
+              patientName: patient.name || null,
               therapistName,
               dateStr,
               timeStr,
@@ -357,7 +415,7 @@ async function processStage(
             const smsText = stage === 'reminder_24h'
               ? `Erinnerung: Morgen ${timeStr} Uhr Termin mit ${therapistName}. Wir freuen uns auf Sie!`
               : `In 1 Stunde: Termin mit ${therapistName} um ${timeStr} Uhr. Bis gleich!`;
-            const smsResult = await sendTransactionalSms(patient.phone!, smsText);
+            const smsResult = await sendTransactionalSms(patient.phone_number!, smsText);
             if (smsResult) {
               counters.sent_sms++;
               smsSent = true;
@@ -367,10 +425,17 @@ async function processStage(
           // Only mark as sent if at least one delivery succeeded
           if (emailSent || smsSent) {
             const updateField = stage === 'reminder_24h' ? 'reminder_24h_sent_at' : 'reminder_1h_sent_at';
-            await supabaseServer
+            const { error: updateError } = await supabaseServer
               .from('cal_bookings')
               .update({ [updateField]: now.toISOString() })
               .eq('id', booking.id);
+            if (updateError) {
+              await logError('api.admin.cal.booking-followups', updateError, {
+                booking_id: booking.id,
+                stage,
+                reason: 'update_reminder_sent_at_failed',
+              });
+            }
           }
         }
       } catch (err) {

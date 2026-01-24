@@ -220,6 +220,8 @@ When a booking is cancelled, we have a recovery flow to help the patient find an
 
 Post-verification nurture sequences are documented separately. See internal documentation for timing details.
 
+**For the complete post-booking patient journey (reminders, followups, recovery flows), see [`docs/patient-journey-post-booking.md`](./patient-journey-post-booking.md).**
+
 Key templates:
 - `richTherapistEmail` — Personalized therapist spotlight
 - `selectionNudge` — Reassurance about process
