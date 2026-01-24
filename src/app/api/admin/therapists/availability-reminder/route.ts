@@ -26,7 +26,7 @@ type TherapistRow = {
   last_name?: string | null;
   email?: string | null;
   cal_username?: string | null;
-  cal_bookings_live?: boolean | null;
+  cal_enabled?: boolean | null;
   accepting_new?: boolean | null;
 };
 
@@ -126,9 +126,10 @@ export async function GET(req: Request) {
     // Fetch verified therapists with Cal.com enabled and accepting new patients
     const { data: therapists, error: fetchError } = await supabaseServer
       .from('therapists')
-      .select('id, first_name, last_name, email, cal_username, cal_bookings_live, accepting_new')
+      .select('id, first_name, last_name, email, cal_username, cal_enabled, accepting_new')
       .eq('status', 'verified')
-      .eq('cal_bookings_live', true)
+      .eq('cal_enabled', true)
+      .not('cal_username', 'is', null)
       .eq('accepting_new', true)
       .limit(limit);
 

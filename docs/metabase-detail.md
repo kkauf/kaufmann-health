@@ -737,7 +737,9 @@ ORDER BY m.created_at DESC LIMIT 50;
 
 ## Feedback Analysis
 
-Feedback emails are sent 10 days after signup to patients who haven't booked.
+Two feedback sources:
+1. **Day 10 email** → `/feedback/quick` → `feedback_response` events
+2. **Matches page** "Not a fit?" button → `match_rejected` events
 
 ### FB-ResponseRate
 
@@ -750,7 +752,7 @@ WITH emails_sent AS (
   SELECT COUNT(*) AS cnt
   FROM events
   WHERE type = 'email_sent'
-    AND properties->>'template' = 'feedbackRequest'
+    AND properties->>'template' = 'feedback_request'
     AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at >= {{start_date}} AND created_at <= NOW()
 ),
@@ -771,24 +773,71 @@ FROM emails_sent, responses;
 ### FB-ByReason
 
 ```sql
--- Why patients aren't booking - breakdown by reason.
--- Top reasons inform product and pricing strategy.
--- "Preis zu hoch" = consider payment plans. "Unsicher" = improve matching/profiles.
--- Use to prioritize product improvements and messaging.
+-- Combined feedback from both sources: Day 10 email and matches page rejections.
+-- Shows why patients aren't booking, across all feedback channels.
+-- Uses unified reason labels for cross-source analysis.
+WITH combined AS (
+  -- Day 10 email feedback (feedback_response)
+  SELECT
+    CASE properties->>'reason'
+      WHEN 'price_too_high' THEN 'Preis/Kosten'
+      WHEN 'unsure_which_therapist' THEN 'Unsicher welcher Therapeut'
+      WHEN 'need_more_time' THEN 'Brauche mehr Zeit'
+      WHEN 'found_alternative' THEN 'Alternative gefunden'
+      WHEN 'match_dissatisfied' THEN 'Empfehlung passt nicht'
+      WHEN 'other' THEN 'Sonstiges'
+      ELSE properties->>'reason'
+    END AS reason,
+    'day10_email' AS source
+  FROM events
+  WHERE type = 'feedback_response'
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
+    AND created_at >= {{start_date}} AND created_at <= NOW()
+  UNION ALL
+  -- Matches page rejections (match_rejected)
+  SELECT
+    CASE properties->>'reason'
+      WHEN 'vibe_method' THEN 'Passt nicht (Gefühl/Methode)'
+      WHEN 'price_insurance' THEN 'Preis/Kosten'
+      WHEN 'location_mismatch' THEN 'Standort passt nicht'
+      WHEN 'availability_issue' THEN 'Keine passenden Termine'
+      WHEN 'gender_mismatch' THEN 'Geschlecht passt nicht'
+      ELSE properties->>'reason'
+    END AS reason,
+    'matches_page' AS source
+  FROM events
+  WHERE type = 'match_rejected'
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
+    AND created_at >= {{start_date}} AND created_at <= NOW()
+)
+SELECT
+  reason,
+  COUNT(*) AS count,
+  ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 1) AS pct
+FROM combined
+GROUP BY reason
+ORDER BY count DESC;
+```
+
+### FB-MatchRejections
+
+```sql
+-- Match page rejection reasons ("Not a fit?" button on /matches page).
+-- High-signal feedback from users actively evaluating therapists.
+-- Use to improve matching algorithm and therapist supply gaps.
 SELECT
   CASE properties->>'reason'
-    WHEN 'price_too_high' THEN 'Preis zu hoch'
-    WHEN 'unsure_which_therapist' THEN 'Unsicher welcher Therapeut'
-    WHEN 'need_more_time' THEN 'Brauche mehr Zeit'
-    WHEN 'found_alternative' THEN 'Alternative gefunden'
-    WHEN 'match_dissatisfied' THEN 'Empfehlung passt nicht'
-    WHEN 'other' THEN 'Sonstiges'
+    WHEN 'vibe_method' THEN 'Passt nicht (Gefühl/Methode)'
+    WHEN 'price_insurance' THEN 'Preis/Krankenkasse'
+    WHEN 'location_mismatch' THEN 'Standort passt nicht'
+    WHEN 'availability_issue' THEN 'Keine passenden Termine'
+    WHEN 'gender_mismatch' THEN 'Geschlecht passt nicht'
     ELSE properties->>'reason'
   END AS reason,
   COUNT(*) AS count,
   ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 1) AS pct
 FROM events
-WHERE type = 'feedback_response'
+WHERE type = 'match_rejected'
   AND properties->>'is_test' IS DISTINCT FROM 'true'
   AND created_at >= {{start_date}} AND created_at <= NOW()
 GROUP BY properties->>'reason'
@@ -856,20 +905,19 @@ LIMIT 50;
 ### FB-WeeklyTrend
 
 ```sql
--- Weekly feedback trend with reason breakdown.
--- Shows if feedback patterns are changing over time.
--- Rising "price" = market sensitivity. Rising "alternative" = competition.
+-- Weekly match rejection trend (primary feedback source from matches page).
+-- Shows rejection patterns over time. Rising "price" = pricing concerns.
 -- Use to track impact of product changes on user sentiment.
 SELECT
   date_trunc('week', created_at)::date AS week,
-  COUNT(*) AS responses,
-  COUNT(*) FILTER (WHERE properties->>'reason' = 'price_too_high') AS price,
-  COUNT(*) FILTER (WHERE properties->>'reason' = 'unsure_which_therapist') AS unsure,
-  COUNT(*) FILTER (WHERE properties->>'reason' = 'need_more_time') AS need_time,
-  COUNT(*) FILTER (WHERE properties->>'reason' = 'found_alternative') AS alternative,
-  COUNT(*) FILTER (WHERE properties->>'reason' = 'other') AS other
+  COUNT(*) AS rejections,
+  COUNT(*) FILTER (WHERE properties->>'reason' = 'vibe_method') AS vibe_method,
+  COUNT(*) FILTER (WHERE properties->>'reason' = 'price_insurance') AS price,
+  COUNT(*) FILTER (WHERE properties->>'reason' = 'location_mismatch') AS location,
+  COUNT(*) FILTER (WHERE properties->>'reason' = 'availability_issue') AS availability,
+  COUNT(*) FILTER (WHERE properties->>'reason' = 'gender_mismatch') AS gender
 FROM events
-WHERE type = 'feedback_response'
+WHERE type = 'match_rejected'
   AND properties->>'is_test' IS DISTINCT FROM 'true'
   AND created_at >= {{start_date}} AND created_at <= NOW()
 GROUP BY date_trunc('week', created_at)

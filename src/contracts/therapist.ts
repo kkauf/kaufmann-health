@@ -94,7 +94,6 @@ export const TherapistRowSchema = z.object({
   cal_user_id: z.number().int().nullable().optional(),
   cal_username: z.string().nullable().optional(),
   cal_enabled: z.boolean().nullable().optional(),
-  cal_bookings_live: z.boolean().nullable().optional(),
   languages: z.unknown().transform((v): string[] => 
     Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
   ),
@@ -154,7 +153,6 @@ export const TherapistDataSchema = z.object({
   // Cal.com integration fields
   cal_username: z.string().nullable().optional(),
   cal_enabled: z.boolean().nullable().optional(),
-  cal_bookings_live: z.boolean().nullable().optional(),
   // EARTH-248: Pre-cached next slots for fast display
   next_intro_slot: NextIntroSlotSchema.optional(),
   next_full_slot: NextSlotSchema.optional(),
@@ -237,8 +235,8 @@ export function parseTherapistRows(data: unknown[]): TherapistRow[] {
 // SELECT COLUMNS (for consistent Supabase queries)
 // ============================================================================
 
-export const THERAPIST_SELECT_COLUMNS = 
-  'id, first_name, last_name, slug, city, modalities, schwerpunkte, session_preferences, accepting_new, photo_url, status, metadata, typical_rate, cal_username, cal_enabled, cal_bookings_live, languages, created_at';
+export const THERAPIST_SELECT_COLUMNS =
+  'id, first_name, last_name, slug, city, modalities, schwerpunkte, session_preferences, accepting_new, photo_url, status, metadata, typical_rate, cal_username, cal_enabled, languages, created_at';
 
 export const THERAPIST_SELECT_COLUMNS_WITH_GENDER = 
   THERAPIST_SELECT_COLUMNS + ', gender';

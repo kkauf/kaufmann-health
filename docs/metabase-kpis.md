@@ -277,24 +277,26 @@ WHERE cb.booking_kind = 'intro'
 SELECT COUNT(*) AS cal_live_count
 FROM therapists
 WHERE status = 'verified'
-  AND cal_bookings_live = true;
+  AND cal_enabled = true
+  AND cal_username IS NOT NULL;
 ```
 
 ### S-AvailabilityThreshold
 
 ```sql
--- % of Cal-live therapists with 3+ available intro slots in next 14 days.
+-- % of Cal-enabled therapists with 3+ available intro slots in next 14 days.
 -- Measures booking capacity. Low availability = patients can't book = lost conversions.
 -- Target: >80%. Below 60% = therapists need to open more slots or we need more supply.
 -- Triggers Alert-LowAvailability if below 80%.
 SELECT ROUND(
-  100.0 * COUNT(*) FILTER (WHERE c.slots_count >= 3) / NULLIF(COUNT(*), 0), 
+  100.0 * COUNT(*) FILTER (WHERE c.slots_count >= 3) / NULLIF(COUNT(*), 0),
   1
 ) AS pct_with_3plus_slots
 FROM therapists t
 JOIN cal_slots_cache c ON c.therapist_id = t.id
 WHERE t.status = 'verified'
-  AND t.cal_bookings_live = true;
+  AND t.cal_enabled = true
+  AND t.cal_username IS NOT NULL;
 ```
 
 ### S-MessagesThisWeek
@@ -451,7 +453,7 @@ FROM (
   SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE c.slots_count >= 3) / NULLIF(COUNT(*), 0), 1) AS pct
   FROM therapists t
   JOIN cal_slots_cache c ON c.therapist_id = t.id
-  WHERE t.status = 'verified' AND t.cal_bookings_live = true
+  WHERE t.status = 'verified' AND t.cal_enabled = true AND t.cal_username IS NOT NULL
 ) sub;
 ```
 

@@ -123,7 +123,7 @@ export async function GET(req: Request) {
     // Profile fields (who_comes_to_me, session_focus, first_session, about_me) are in metadata JSONB
     const initial = await supabaseServer
       .from('therapists')
-      .select('id, status, first_name, last_name, email, photo_url, metadata, cal_bookings_live')
+      .select('id, status, first_name, last_name, email, photo_url, metadata')
       .eq('status', 'verified')
       .limit(limit);
 
@@ -373,7 +373,7 @@ export async function POST(req: Request) {
     // Profile fields (who_comes_to_me, session_focus, first_session, about_me) are in metadata JSONB
     const initial = await supabaseServer
       .from('therapists')
-      .select('id, status, first_name, last_name, email, photo_url, metadata, cal_bookings_live')
+      .select('id, status, first_name, last_name, email, photo_url, metadata')
       .eq('status', 'verified')
       .limit(limit);
 
