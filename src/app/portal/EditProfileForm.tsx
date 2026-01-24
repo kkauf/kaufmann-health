@@ -40,7 +40,6 @@ type Props = {
     city: string;
     languages: string[];
   };
-  calBookingsLive?: boolean;
 };
 
 
@@ -165,7 +164,7 @@ const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4MB
 
 type Tab = 'profile' | 'calendar';
 
-export default function EditProfileForm({ therapistId, initialData, calBookingsLive }: Props) {
+export default function EditProfileForm({ therapistId, initialData }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('profile');
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -1096,7 +1095,7 @@ export default function EditProfileForm({ therapistId, initialData, calBookingsL
         </form>
       ) : (
         /* Calendar Management Tab */
-        <CalendarManagement therapistId={therapistId} calBookingsLive={calBookingsLive} />
+        <CalendarManagement therapistId={therapistId} />
       )}
 
       {/* Support & Logout Footer */}

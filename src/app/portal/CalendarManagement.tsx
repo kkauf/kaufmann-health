@@ -1,50 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, ExternalLink, BookOpen, GraduationCap, Video, Rocket, CheckCircle, Loader2 } from "lucide-react";
+import { Calendar, ExternalLink, BookOpen, GraduationCap, Video } from "lucide-react";
 
 interface Props {
   therapistId: string;
-  calBookingsLive?: boolean;
 }
 
-export default function CalendarManagement({ therapistId, calBookingsLive: initialCalBookingsLive }: Props) {
-  const [calBookingsLive, setCalBookingsLive] = useState(initialCalBookingsLive ?? false);
-  const [enabling, setEnabling] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Activation checklist state (one-time confirmation)
-  const [hasReviewedAvailability, setHasReviewedAvailability] = useState(false);
-  const [hasSetRealHours, setHasSetRealHours] = useState(false);
-  
-  const canEnable = hasReviewedAvailability && hasSetRealHours;
-
-  const handleGoLive = async () => {
-    if (!canEnable) return;
-    
-    setEnabling(true);
-    setError(null);
-    
-    try {
-      const res = await fetch(`/api/public/therapists/${therapistId}/enable-cal`, {
-        method: 'POST',
-      });
-      
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Fehler beim Aktivieren');
-      }
-      
-      setCalBookingsLive(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unbekannter Fehler');
-    } finally {
-      setEnabling(false);
-    }
-  };
-
+export default function CalendarManagement({ therapistId: _therapistId }: Props) {
   return (
     <div className="space-y-6">
       {/* Main Cal.com Card */}
@@ -71,7 +35,7 @@ export default function CalendarManagement({ therapistId, calBookingsLive: initi
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Button 
+              <Button
                 size="lg"
                 className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg transition-all duration-200 group"
               >
@@ -80,128 +44,16 @@ export default function CalendarManagement({ therapistId, calBookingsLive: initi
                 <ExternalLink className="h-4 w-4 ml-2 opacity-70" />
               </Button>
             </a>
-            
-            {calBookingsLive && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg">
-                <CheckCircle className="h-5 w-5" />
-                <span className="font-medium">Buchungen aktiv</span>
-              </div>
-            )}
           </div>
-          
-          {error && (
-            <p className="mt-3 text-sm text-red-600">{error}</p>
-          )}
-          
-          {/* Activation Checklist - only show when not yet enabled */}
-          {!calBookingsLive && (
-            <div className="mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
-              <h4 className="font-semibold text-gray-900 mb-4">
-                Freischaltung deiner Online-Buchung
-              </h4>
-              
-              <p className="text-sm text-gray-600 mb-4">
-                Bitte bestätige, dass du deine Verfügbarkeit in Cal.com eingerichtet hast:
-              </p>
-              
-              {/* Checkbox 1 */}
-              <button
-                type="button"
-                onClick={() => setHasReviewedAvailability(!hasReviewedAvailability)}
-                className={`w-full flex items-start gap-3 p-3 rounded-lg border transition-all duration-200 mb-3 text-left ${
-                  hasReviewedAvailability 
-                    ? 'bg-emerald-50 border-emerald-300' 
-                    : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
-                }`}
-              >
-                <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                  hasReviewedAvailability 
-                    ? 'bg-emerald-500 border-emerald-500' 
-                    : 'border-gray-300'
-                }`}>
-                  {hasReviewedAvailability && (
-                    <CheckCircle className="h-3.5 w-3.5 text-white" />
-                  )}
-                </div>
-                <div>
-                  <span className={`font-medium ${hasReviewedAvailability ? 'text-emerald-800' : 'text-gray-900'}`}>
-                    Ich habe meine Verfügbarkeit in Cal.com überprüft
-                  </span>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Eingeloggt und den Bereich &bdquo;Availability&ldquo; angeschaut
-                  </p>
-                </div>
-              </button>
-              
-              {/* Checkbox 2 */}
-              <button
-                type="button"
-                onClick={() => setHasSetRealHours(!hasSetRealHours)}
-                className={`w-full flex items-start gap-3 p-3 rounded-lg border transition-all duration-200 mb-4 text-left ${
-                  hasSetRealHours 
-                    ? 'bg-emerald-50 border-emerald-300' 
-                    : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
-                }`}
-              >
-                <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                  hasSetRealHours 
-                    ? 'bg-emerald-500 border-emerald-500' 
-                    : 'border-gray-300'
-                }`}>
-                  {hasSetRealHours && (
-                    <CheckCircle className="h-3.5 w-3.5 text-white" />
-                  )}
-                </div>
-                <div>
-                  <span className={`font-medium ${hasSetRealHours ? 'text-emerald-800' : 'text-gray-900'}`}>
-                    Ich habe meine tatsächlichen Arbeitszeiten eingetragen
-                  </span>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Nicht nur die Beispielzeiten – sondern wann ich wirklich verfügbar bin
-                  </p>
-                </div>
-              </button>
-              
-              {/* Enable Button */}
-              <Button 
-                size="lg"
-                onClick={handleGoLive}
-                disabled={!canEnable || enabling}
-                className={`w-full transition-all duration-200 ${
-                  canEnable 
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg' 
-                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                }`}
-              >
-                {enabling ? (
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                ) : (
-                  <Rocket className="h-5 w-5 mr-2" />
-                )}
-                {enabling ? 'Wird aktiviert...' : 'Buchungen freischalten'}
-              </Button>
-              
-              {!canEnable && (
-                <p className="text-xs text-gray-500 text-center mt-2">
-                  Bitte bestätige beide Punkte, um fortzufahren
-                </p>
-              )}
-            </div>
-          )}
-          
-          {/* Success state - show after enabling */}
-          {calBookingsLive && (
-            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <h4 className="font-medium text-green-900 mb-2 flex items-center gap-2">
-                <CheckCircle className="h-5 w-5" />
-                Deine Buchungsseite ist live!
-              </h4>
-              <p className="text-sm text-green-800">
-                Klient:innen können ab sofort Termine bei dir buchen. Änderungen an deiner Verfügbarkeit 
-                kannst du jederzeit in Cal.com vornehmen – sie werden automatisch übernommen.
-              </p>
-            </div>
-          )}
+
+          {/* Info about availability setup */}
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>Hinweis:</strong> Sobald du in Cal.com Verfügbarkeit eingerichtet hast,
+              erscheinen die Buchungsbuttons automatisch auf deinem Profil. Neue Accounts
+              starten ohne Verfügbarkeit – richte diese in Cal.com unter &bdquo;Availability&ldquo; ein.
+            </p>
+          </div>
         </div>
       </Card>
 
@@ -212,7 +64,7 @@ export default function CalendarManagement({ therapistId, calBookingsLive: initi
             <BookOpen className="h-5 w-5 text-blue-600" />
             Anleitungen & Dokumentation
           </h3>
-          
+
           <div className="space-y-4">
             {/* Getting Started Guide */}
             <a
@@ -289,16 +141,6 @@ export default function CalendarManagement({ therapistId, calBookingsLive: initi
             ❓ Häufige Fragen
           </h3>
           <div className="space-y-4 text-sm">
-            {/* Slot Migration Warning */}
-            <div className="border-b border-amber-100 pb-4">
-              <h4 className="font-medium text-gray-900 mb-1">Was passiert mit meinen bisherigen Slots?</h4>
-              <p className="text-gray-600">
-                Mit der Aktivierung von Cal.com werden deine bisherigen Verfügbarkeits-Slots im Portal deaktiviert. 
-                Bitte richte deine Verfügbarkeit direkt in Cal.com ein – dort hast du deutlich mehr Flexibilität 
-                (z.B. Kalender-Sync, Pufferzeiten, individuelle Buchungsregeln).
-              </p>
-            </div>
-            
             {/* Booking Notice */}
             <div className="border-b border-amber-100 pb-4">
               <h4 className="font-medium text-gray-900 mb-1">Wie kurzfristig können Klient:innen buchen?</h4>
@@ -308,43 +150,43 @@ export default function CalendarManagement({ therapistId, calBookingsLive: initi
                 <span className="text-xs text-gray-500 mt-1 block">Ändern: Cal.com → Ereignistyp → Limits → &bdquo;Mindestvorlaufzeit&ldquo;</span>
               </p>
             </div>
-            
+
             {/* Intro Call */}
             <div className="border-b border-amber-100 pb-4">
               <h4 className="font-medium text-gray-900 mb-1">Was ist das &bdquo;Kostenloses Kennenlerngespräch&ldquo;?</h4>
               <p className="text-gray-600">
-                Ein 15-minütiges Videogespräch zum Kennenlernen. Der Video-Link wird automatisch von Cal.com generiert 
+                Ein 15-minütiges Videogespräch zum Kennenlernen. Der Video-Link wird automatisch von Cal.com generiert
                 und in der Buchungsbestätigung an beide Parteien verschickt. Du musst nichts einrichten.
               </p>
             </div>
-            
+
             {/* Full Session */}
             <div className="border-b border-amber-100 pb-4">
               <h4 className="font-medium text-gray-900 mb-1">Wie funktioniert die &bdquo;Therapiesitzung&ldquo;?</h4>
               <p className="text-gray-600">
-                Eine 50-minütige Sitzung. Standard ist ein automatisch generierter Cal Video-Link. 
+                Eine 50-minütige Sitzung. Standard ist ein automatisch generierter Cal Video-Link.
                 Für Präsenz-Termine wird deine Praxisadresse angezeigt.
               </p>
             </div>
-            
+
             {/* Custom Video Link */}
             <div className="border-b border-amber-100 pb-4">
               <h4 className="font-medium text-gray-900 mb-1">Kann ich meinen eigenen Video-Link nutzen (z.B. Zoom)?</h4>
               <p className="text-gray-600">
-                Ja! Gehe in Cal.com zu deinem Ereignistyp → &bdquo;Ort&ldquo; → wähle &bdquo;Zoom&ldquo;, &bdquo;Google Meet&ldquo; oder füge eine 
+                Ja! Gehe in Cal.com zu deinem Ereignistyp → &bdquo;Ort&ldquo; → wähle &bdquo;Zoom&ldquo;, &bdquo;Google Meet&ldquo; oder füge eine
                 eigene URL hinzu. Die Standard-Einstellung ist Cal Video (kostenlos, DSGVO-konform, keine Installation nötig).
               </p>
             </div>
-            
+
             {/* Practice Address */}
             <div className="border-b border-amber-100 pb-4">
               <h4 className="font-medium text-gray-900 mb-1">Wo stelle ich meine Praxisadresse ein?</h4>
               <p className="text-gray-600">
-                Im Reiter &bdquo;Profil&ldquo; oben auf dieser Seite. Wenn du dort &bdquo;Vor Ort&ldquo; als Sitzungsformat 
+                Im Reiter &bdquo;Profil&ldquo; oben auf dieser Seite. Wenn du dort &bdquo;Vor Ort&ldquo; als Sitzungsformat
                 auswählst und deine Praxisadresse eingibst, wird diese automatisch mit Cal.com synchronisiert.
               </p>
             </div>
-            
+
             {/* Critical Warning about slugs */}
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 -mx-1">
               <h4 className="font-medium text-red-800 mb-1">⚠️ Wichtig: Bitte NICHT ändern!</h4>
