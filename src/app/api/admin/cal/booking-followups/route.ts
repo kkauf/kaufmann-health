@@ -5,11 +5,13 @@
  *
  * Usage:
  *   GET /api/admin/cal/booking-followups              (processes ALL stages)
+ *   GET /api/admin/cal/booking-followups?stage=confirmation_recovery
  *   GET /api/admin/cal/booking-followups?stage=reminder_24h
  *   GET /api/admin/cal/booking-followups?stage=reminder_1h
  *   GET /api/admin/cal/booking-followups?stage=session_followup
  *
  * Stages:
+ * - confirmation_recovery: Resend booking confirmations that failed during webhook
  * - reminder_24h: Send reminder 24h before appointment
  * - reminder_1h: Send reminder 1h before appointment
  * - session_followup: Send "book next session" email 3-5 days after completed full session
@@ -18,7 +20,7 @@
  * NOTE: post_intro follow-up emails are now sent via MEETING_ENDED webhook
  * in /api/public/cal/webhook for immediate delivery after the call ends.
  *
- * Idempotency: Uses reminder_24h_sent_at, reminder_1h_sent_at, session_followup_sent_at columns
+ * Idempotency: Uses client_confirmation_sent_at, reminder_*_sent_at, session_followup_sent_at columns
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -28,6 +30,7 @@ import { sendEmail } from '@/lib/email/client';
 import { sendTransactionalSms } from '@/lib/sms/client';
 import { renderCalBookingReminder } from '@/lib/email/templates/calBookingReminder';
 import { renderCalSessionFollowup } from '@/lib/email/templates/calSessionFollowup';
+import { renderCalBookingClientConfirmation } from '@/lib/email/templates/calBookingClientConfirmation';
 import { getCachedCalSlots } from '@/lib/cal/slots-cache';
 import { buildCalBookingUrl } from '@/lib/cal/booking-url';
 
@@ -36,7 +39,7 @@ export const dynamic = 'force-dynamic';
 
 const CRON_SECRET = process.env.CRON_SECRET || '';
 
-type Stage = 'reminder_24h' | 'reminder_1h' | 'session_followup';
+type Stage = 'confirmation_recovery' | 'reminder_24h' | 'reminder_1h' | 'session_followup';
 
 interface CalBooking {
   id: string;
@@ -48,6 +51,8 @@ interface CalBooking {
   end_time: string;
   booking_kind: string | null;
   is_test: boolean;
+  client_confirmation_sent_at: string | null;
+  therapist_notification_sent_at: string | null;
   followup_sent_at: string | null;
   reminder_24h_sent_at: string | null;
   reminder_1h_sent_at: string | null;
@@ -97,7 +102,24 @@ async function processStage(
   let bookings: CalBooking[] = [];
 
   try {
-    if (stage === 'reminder_24h') {
+    if (stage === 'confirmation_recovery') {
+      // Find bookings where confirmation emails weren't sent
+      // Created > 10 min ago (give webhook time), start_time in future, has patient+therapist
+      const tenMinAgo = new Date(now.getTime() - 10 * 60 * 1000).toISOString();
+      const { data, error } = await supabaseServer
+        .from('cal_bookings')
+        .select('*')
+        .lt('created_at', tenMinAgo)
+        .gt('start_time', now.toISOString())
+        .is('client_confirmation_sent_at', null)
+        .not('patient_id', 'is', null)
+        .not('therapist_id', 'is', null)
+        .in('status', ['ACCEPTED', 'PENDING'])
+        .order('created_at', { ascending: true })
+        .limit(limit);
+      if (error) throw error;
+      bookings = (data || []) as CalBooking[];
+    } else if (stage === 'reminder_24h') {
       const windowStart = new Date(now.getTime() + 23 * 60 * 60 * 1000).toISOString();
       const windowEnd = new Date(now.getTime() + 25 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabaseServer
@@ -152,11 +174,24 @@ async function processStage(
         continue;
       }
 
-      const { data: patient } = await supabaseServer
+      // Patient lookup - MUST check error to catch schema mismatches
+      const { data: patient, error: patientError } = await supabaseServer
         .from('people')
-        .select('id, email, phone, first_name')
+        .select('id, email, phone_number, name')
         .eq('id', booking.patient_id)
         .single();
+
+      if (patientError) {
+        // Log loudly - this should never happen silently
+        await logError('api.admin.cal.booking-followups', patientError, {
+          booking_id: booking.id,
+          patient_id: booking.patient_id,
+          stage,
+          reason: 'patient_lookup_failed',
+        });
+        counters.errors++;
+        continue;
+      }
 
       if (!patient) {
         counters.skipped_no_patient++;
@@ -164,25 +199,125 @@ async function processStage(
       }
 
       const hasEmail = patient.email && !patient.email.startsWith('temp_');
-      const hasPhone = Boolean(patient.phone);
+      const hasPhone = Boolean(patient.phone_number);
 
       if (!hasEmail && !hasPhone) {
         counters.skipped_no_contact++;
         continue;
       }
 
-      const { data: therapist } = await supabaseServer
+      // Therapist lookup - MUST check error
+      const { data: therapist, error: therapistError } = await supabaseServer
         .from('therapists')
         .select('id, first_name, last_name, cal_username')
         .eq('id', booking.therapist_id)
         .single();
+
+      if (therapistError && therapistError.code !== 'PGRST116') {
+        // PGRST116 = no rows found (acceptable), other errors are not
+        await logError('api.admin.cal.booking-followups', therapistError, {
+          booking_id: booking.id,
+          therapist_id: booking.therapist_id,
+          stage,
+          reason: 'therapist_lookup_failed',
+        });
+        counters.errors++;
+        continue;
+      }
 
       const therapistName = therapist
         ? `${therapist.first_name || ''} ${therapist.last_name || ''}`.trim()
         : 'Ihr:e Therapeut:in';
 
       try {
-        if (stage === 'session_followup') {
+        if (stage === 'confirmation_recovery') {
+          // Resend booking confirmation email
+          const { data: therapistData, error: therapistDataError } = await supabaseServer
+            .from('therapists')
+            .select('email, first_name, last_name, typical_rate')
+            .eq('id', booking.therapist_id)
+            .single();
+
+          if (therapistDataError) {
+            await logError('api.admin.cal.booking-followups', therapistDataError, {
+              booking_id: booking.id,
+              therapist_id: booking.therapist_id,
+              stage,
+              reason: 'therapist_data_lookup_failed',
+            });
+            counters.errors++;
+            continue;
+          }
+
+          if (!therapistData) {
+            // Therapist record doesn't exist - log as error, not silent skip
+            await logError('api.admin.cal.booking-followups', new Error('Therapist not found'), {
+              booking_id: booking.id,
+              therapist_id: booking.therapist_id,
+              stage,
+              reason: 'therapist_not_found',
+            });
+            counters.errors++;
+            continue;
+          }
+
+          const therapistFullName = [therapistData.first_name, therapistData.last_name]
+            .filter(Boolean)
+            .join(' ');
+
+          // Parse date/time from start_time
+          const startDate = new Date(booking.start_time);
+          const dateIso = startDate.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+          const timeLabel = startDate.toLocaleTimeString('de-DE', {
+            timeZone: 'Europe/Berlin',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+
+          const isIntro = booking.booking_kind === 'intro';
+
+          if (hasEmail) {
+            const content = renderCalBookingClientConfirmation({
+              patientName: patient.name || null,
+              patientEmail: patient.email,
+              therapistName: therapistFullName,
+              therapistEmail: therapistData.email,
+              dateIso,
+              timeLabel,
+              isIntro,
+              sessionPrice: therapistData.typical_rate || null,
+              bookingUid: booking.cal_uid,
+              locationType: 'video',
+            });
+
+            const result = await sendEmail({
+              to: patient.email!,
+              subject: content.subject,
+              html: content.html,
+              context: {
+                kind: 'cal_booking_client_confirmation',
+                cal_uid: booking.cal_uid,
+                is_test: booking.is_test,
+                recovery: true,
+              },
+            });
+
+            if (result.sent) {
+              counters.sent_email++;
+              const { error: updateError } = await supabaseServer
+                .from('cal_bookings')
+                .update({ client_confirmation_sent_at: now.toISOString() })
+                .eq('id', booking.id);
+              if (updateError) {
+                await logError('api.admin.cal.booking-followups', updateError, {
+                  booking_id: booking.id,
+                  stage,
+                  reason: 'update_sent_at_failed',
+                });
+              }
+            }
+          }
+        } else if (stage === 'session_followup') {
           // Check if therapist has available slots before sending
           const cachedSlots = await getCachedCalSlots([booking.therapist_id!]);
           const cache = cachedSlots.get(booking.therapist_id!);
@@ -204,77 +339,104 @@ async function processStage(
                   kh_match_id: booking.match_id || undefined,
                   kh_source: 'session_followup_email',
                 },
-                prefillName: patient.first_name || undefined,
+                prefillName: patient.name || undefined,
                 prefillEmail: patient.email || undefined,
               })
             : null;
 
           if (hasEmail && fullSessionUrl) {
             const content = renderCalSessionFollowup({
-              patientName: patient.first_name || null,
+              patientName: patient.name || null,
               therapistName,
               fullSessionUrl,
               nextSlotDateIso: cache?.next_full_date_iso || null,
               nextSlotTimeLabel: cache?.next_full_time_label || null,
               matchUuid: booking.match_id,
             });
-            const sent = await sendEmail({
+            const result = await sendEmail({
               to: patient.email!,
               subject: content.subject,
               html: content.html,
               context: { booking_id: booking.id, stage },
             });
-            if (sent.sent) counters.sent_email++;
+            if (result.sent) {
+              counters.sent_email++;
+              const { error: updateError } = await supabaseServer
+                .from('cal_bookings')
+                .update({ session_followup_sent_at: now.toISOString() })
+                .eq('id', booking.id);
+              if (updateError) {
+                await logError('api.admin.cal.booking-followups', updateError, {
+                  booking_id: booking.id,
+                  stage,
+                  reason: 'update_session_followup_sent_at_failed',
+                });
+              }
+            }
           }
-
-          await supabaseServer
-            .from('cal_bookings')
-            .update({ session_followup_sent_at: now.toISOString() })
-            .eq('id', booking.id);
         } else if (stage === 'reminder_24h' || stage === 'reminder_1h') {
           const startDate = new Date(booking.start_time);
-          const dateStr = startDate.toLocaleDateString('de-DE', { 
-            weekday: 'long', 
-            day: 'numeric', 
-            month: 'long' 
+          const dateStr = startDate.toLocaleDateString('de-DE', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long'
           });
-          const timeStr = startDate.toLocaleTimeString('de-DE', { 
-            hour: '2-digit', 
+          const timeStr = startDate.toLocaleTimeString('de-DE', {
+            hour: '2-digit',
             minute: '2-digit',
             timeZone: 'Europe/Berlin'
           });
 
+          let emailSent = false;
+          let smsSent = false;
+
           if (hasEmail) {
             const content = renderCalBookingReminder({
-              patientName: patient.first_name || null,
+              patientName: patient.name || null,
               therapistName,
               dateStr,
               timeStr,
               isOnline: booking.booking_kind !== 'in_person',
               hoursUntil: stage === 'reminder_24h' ? 24 : 1,
             });
-            const sent = await sendEmail({
+            const result = await sendEmail({
               to: patient.email!,
               subject: content.subject,
               html: content.html,
               context: { booking_id: booking.id, stage },
             });
-            if (sent.sent) counters.sent_email++;
+            if (result.sent) {
+              counters.sent_email++;
+              emailSent = true;
+            }
           }
 
           if (hasPhone) {
             const smsText = stage === 'reminder_24h'
               ? `Erinnerung: Morgen ${timeStr} Uhr Termin mit ${therapistName}. Wir freuen uns auf Sie!`
               : `In 1 Stunde: Termin mit ${therapistName} um ${timeStr} Uhr. Bis gleich!`;
-            const smsResult = await sendTransactionalSms(patient.phone!, smsText);
-            if (smsResult) counters.sent_sms++;
+            const smsResult = await sendTransactionalSms(patient.phone_number!, smsText);
+            if (smsResult) {
+              counters.sent_sms++;
+              smsSent = true;
+            }
           }
 
-          const updateField = stage === 'reminder_24h' ? 'reminder_24h_sent_at' : 'reminder_1h_sent_at';
-          await supabaseServer
-            .from('cal_bookings')
-            .update({ [updateField]: now.toISOString() })
-            .eq('id', booking.id);
+          // Only mark as sent if at least one delivery succeeded
+          if (emailSent || smsSent) {
+            const updateField = stage === 'reminder_24h' ? 'reminder_24h_sent_at' : 'reminder_1h_sent_at';
+            const { error: updateError } = await supabaseServer
+              .from('cal_bookings')
+              .update({ [updateField]: now.toISOString() })
+              .eq('id', booking.id);
+            if (updateError) {
+              await logError('api.admin.cal.booking-followups', updateError, {
+                booking_id: booking.id,
+                stage,
+                reason: 'update_reminder_sent_at_failed',
+              });
+            }
+          }
         }
       } catch (err) {
         counters.errors++;
@@ -303,9 +465,10 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '50', 10), 200);
 
   // If no stage specified, process ALL stages sequentially
-  const stagesToProcess: Stage[] = stageParam && ['reminder_24h', 'reminder_1h', 'session_followup'].includes(stageParam)
+  const allStages: Stage[] = ['confirmation_recovery', 'reminder_24h', 'reminder_1h', 'session_followup'];
+  const stagesToProcess: Stage[] = stageParam && allStages.includes(stageParam)
     ? [stageParam]
-    : ['reminder_24h', 'reminder_1h', 'session_followup'];
+    : allStages;
 
   try {
     const results: Array<{ stage: Stage; counters: StageCounters }> = [];
