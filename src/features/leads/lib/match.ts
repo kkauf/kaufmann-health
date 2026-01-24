@@ -27,7 +27,6 @@ export type TherapistRowForMatch = {
   photo_url?: string | null;
   approach_text?: string | null;
   who_comes_to_me?: string | null;
-  cal_bookings_live?: boolean | null;
   metadata?: {
     hide_from_directory?: boolean;
     cal_username?: string;

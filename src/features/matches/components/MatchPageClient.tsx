@@ -56,7 +56,6 @@ type TherapistItem = {
   // Cal.com integration fields
   cal_username?: string;
   cal_enabled?: boolean;
-  cal_bookings_live?: boolean;
   // Admin-selected "best match" flag from API
   is_perfect?: boolean;
   // Booking gating: whether therapist requires intro before allowing full session booking
@@ -719,7 +718,6 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           metadata: t.metadata,
           cal_username: t.cal_username,
           cal_enabled: t.cal_enabled,
-          cal_bookings_live: t.cal_bookings_live,
           typical_rate: t.typical_rate,
         };
 
@@ -911,7 +909,6 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
             // Cal.com integration fields for booking UI
             cal_username: detailModalTherapist.cal_username,
             cal_enabled: detailModalTherapist.cal_enabled,
-            cal_bookings_live: detailModalTherapist.cal_bookings_live,
           } as TherapistData}
           open={!!detailModalTherapist}
           onClose={() => {

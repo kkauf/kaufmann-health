@@ -36,7 +36,8 @@ type Therapist = {
   city: string | null;
   session_preferences: string[] | null;
   accepting_new: boolean | null;
-  cal_bookings_live: boolean | null;
+  cal_enabled: boolean | null;
+  cal_username: string | null;
   schwerpunkte: string[] | null;
   photo_url: string | null;
   metadata?: { profile?: { approach_text?: string; who_comes_to_me?: string } } | null;
@@ -82,7 +83,7 @@ function scoreTherapist(t: Therapist, meta: PatientMeta): number {
   let score = 0;
   
   // Platform Score (max 70)
-  if (t.cal_bookings_live) score += 30;
+  if (t.cal_enabled && t.cal_username) score += 30;
   const hasApproach = Boolean(t.metadata?.profile?.approach_text);
   const hasWhoComes = Boolean(t.metadata?.profile?.who_comes_to_me);
   if (t.photo_url && hasApproach && hasWhoComes) score += 15;
@@ -114,7 +115,7 @@ async function rebuildMatches(dryRun: boolean) {
   // Load therapists
   const { data: allTherapists, error: tErr } = await supabase
     .from('therapists')
-    .select('id, first_name, gender, city, session_preferences, accepting_new, cal_bookings_live, schwerpunkte, photo_url, metadata')
+    .select('id, first_name, gender, city, session_preferences, accepting_new, cal_enabled, cal_username, schwerpunkte, photo_url, metadata')
     .eq('status', 'verified')
     .neq('id', HIDE_THERAPIST_ID);
   

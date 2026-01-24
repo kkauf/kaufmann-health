@@ -30,7 +30,6 @@ export type Therapist = {
   // Cal.com integration fields
   cal_username?: string | null;
   cal_enabled?: boolean | null;
-  cal_bookings_live?: boolean | null;
   // Admin-only optional fields
   email?: string | null;
   phone?: string | null;
