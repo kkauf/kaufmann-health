@@ -92,17 +92,43 @@ async function sendCalBookingEmails(params: {
   // Fetch patient details (if we have a patient_id)
   let patientName = attendeeName || null;
   let patientEmail = attendeeEmail || null;
-  
+  // Patient context from questionnaire
+  let patientPhone: string | null = null;
+  let patientCity: string | null = null;
+  let patientConcerns: string | null = null;
+  let patientSchwerpunkte: string[] = [];
+  let patientSessionPreference: 'online' | 'in_person' | null = null;
+
   if (patientId) {
     const { data: patient } = await supabaseServer
       .from('people')
-      .select('name, email')
+      .select('name, email, phone_number, metadata')
       .eq('id', patientId)
       .maybeSingle();
-    
+
     if (patient) {
       patientName = patient.name || patientName;
       patientEmail = patient.email || patientEmail;
+      patientPhone = patient.phone_number || null;
+
+      // Extract questionnaire context from metadata
+      const meta = patient.metadata as Record<string, unknown> | null;
+      if (meta) {
+        patientCity = typeof meta.city === 'string' ? meta.city : null;
+        patientConcerns = typeof meta.additional_info === 'string' ? meta.additional_info : null;
+
+        // schwerpunkte can be an array of strings
+        if (Array.isArray(meta.schwerpunkte)) {
+          patientSchwerpunkte = meta.schwerpunkte.filter((s): s is string => typeof s === 'string');
+        }
+
+        // session_preference or session_preferences (first value)
+        const sessionPref = meta.session_preference ??
+                           (Array.isArray(meta.session_preferences) ? meta.session_preferences[0] : null);
+        if (sessionPref === 'online' || sessionPref === 'in_person') {
+          patientSessionPreference = sessionPref;
+        }
+      }
     }
   }
   
@@ -172,6 +198,12 @@ async function sendCalBookingEmails(params: {
       dateIso,
       timeLabel,
       isIntro,
+      // Patient context from questionnaire
+      patientPhone,
+      patientCity,
+      patientConcerns,
+      patientSchwerpunkte,
+      patientSessionPreference,
     });
     
     const result = await sendEmail({

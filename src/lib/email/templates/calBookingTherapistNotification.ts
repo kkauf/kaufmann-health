@@ -26,6 +26,12 @@ export type CalBookingTherapistNotificationParams = {
   dateIso: string;
   timeLabel: string; // HH:MM
   isIntro: boolean; // true for free intro sessions
+  // Patient context from questionnaire (helps therapist prepare)
+  patientPhone?: string | null;
+  patientCity?: string | null;
+  patientConcerns?: string | null; // additional_info free text
+  patientSchwerpunkte?: string[]; // focus areas (Trauma, Burnout, etc.)
+  patientSessionPreference?: 'online' | 'in_person' | null;
 };
 
 /**
@@ -44,6 +50,12 @@ export function renderCalBookingTherapistNotification(params: CalBookingTherapis
   const date = formatDate(params.dateIso);
   const time = params.timeLabel;
   const isIntro = params.isIntro;
+  // Patient context fields
+  const pPhone = (params.patientPhone || '').trim();
+  const pCity = (params.patientCity || '').trim();
+  const pConcerns = (params.patientConcerns || '').trim();
+  const pSchwerpunkte = params.patientSchwerpunkte || [];
+  const pSessionPref = params.patientSessionPreference;
 
   const lines: string[] = [];
   
@@ -72,7 +84,7 @@ export function renderCalBookingTherapistNotification(params: CalBookingTherapis
   lines.push('</div>');
 
   // Client info (if available)
-  if (pName || pEmail) {
+  if (pName || pEmail || pPhone) {
     lines.push('<div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; padding:16px 20px; border-radius:12px; border:1px solid rgba(226,232,240,0.8); margin-top:16px;">');
     lines.push('<p style="margin:0 0 8px; color:#475569 !important; font-size:14px; line-height:1.6;"><strong>Klient:in:</strong></p>');
     if (pName) {
@@ -81,6 +93,33 @@ export function renderCalBookingTherapistNotification(params: CalBookingTherapis
     if (pEmail) {
       lines.push(`<p style="margin:0; color:#334155 !important; font-size:14px; line-height:1.6;">E-Mail: ${esc(pEmail)}</p>`);
     }
+    if (pPhone) {
+      lines.push(`<p style="margin:0; color:#334155 !important; font-size:14px; line-height:1.6;">Telefon: ${esc(pPhone)}</p>`);
+    }
+    lines.push('</div>');
+  }
+
+  // Patient context from questionnaire (if available)
+  const hasContext = pCity || pSessionPref || pConcerns || pSchwerpunkte.length > 0;
+  if (hasContext) {
+    lines.push('<div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important; padding:16px 20px; border-radius:12px; border:1px solid rgba(59,130,246,0.3); margin-top:16px;">');
+    lines.push('<p style="margin:0 0 12px; color:#1e40af !important; font-size:14px; line-height:1.6; font-weight:600;">Kontext zur Anfrage:</p>');
+
+    if (pCity) {
+      lines.push(`<p style="margin:0 0 4px; color:#1e3a8a !important; font-size:14px; line-height:1.6;"><strong>Wohnort:</strong> ${esc(pCity)}</p>`);
+    }
+    if (pSessionPref) {
+      const formatLabel = pSessionPref === 'online' ? 'Online' : 'Vor Ort';
+      lines.push(`<p style="margin:0 0 4px; color:#1e3a8a !important; font-size:14px; line-height:1.6;"><strong>Bevorzugtes Format:</strong> ${formatLabel}</p>`);
+    }
+    if (pSchwerpunkte.length > 0) {
+      lines.push(`<p style="margin:0 0 4px; color:#1e3a8a !important; font-size:14px; line-height:1.6;"><strong>Schwerpunkte:</strong> ${pSchwerpunkte.map(s => esc(s)).join(', ')}</p>`);
+    }
+    if (pConcerns) {
+      lines.push(`<p style="margin:8px 0 0; color:#1e3a8a !important; font-size:14px; line-height:1.6;"><strong>Anliegen:</strong></p>`);
+      lines.push(`<p style="margin:4px 0 0; color:#334155 !important; font-size:14px; line-height:1.6; white-space:pre-wrap;">${esc(pConcerns)}</p>`);
+    }
+
     lines.push('</div>');
   }
 
