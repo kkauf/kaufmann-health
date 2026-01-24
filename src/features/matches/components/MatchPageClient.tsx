@@ -125,8 +125,13 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   const [autoOpenedTherapist, setAutoOpenedTherapist] = useState(false);
   
   // Single-match progressive disclosure state
+  // Check URL param ?view=all to skip directly to directory view (from email escape hatch)
   type MatchViewState = 'hero' | 'feedback' | 'directory';
-  const [matchViewState, setMatchViewState] = useState<MatchViewState>('hero');
+  const [matchViewState, setMatchViewState] = useState<MatchViewState>(() => {
+    if (typeof window === 'undefined') return 'hero';
+    const params = new URLSearchParams(window.location.search);
+    return params.get('view') === 'all' ? 'directory' : 'hero';
+  });
   const [showRejectionModal, setShowRejectionModal] = useState(false);
 
   useEffect(() => {
