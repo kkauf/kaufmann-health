@@ -128,13 +128,14 @@ SELECT ROUND(
 ### D-FormCompletionRate
 
 ```sql
--- Form Completion Rate (%) = Users who finished questionnaire ÷ users who started step 1.
+-- Form Completion Rate (%) = Users who finished questionnaire ÷ users who started.
 -- Measures questionnaire UX and intent quality.
 -- This is BEFORE email verification - just form submission.
 -- Target: >70%. Below 50% = review questionnaire length, mobile UX, or step complexity.
 -- Use F-StepByStep to identify which step has highest drop-off.
+-- NOTE: Step 1 (Zeitrahmen) was removed. Wizard now starts at step 2.5 (Schwerpunkte).
 SELECT COALESCE(ROUND(
-  100.0 * 
+  100.0 *
   (SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text))
    FROM events
    WHERE type IN ('form_completed', 'questionnaire_completed')
@@ -143,8 +144,8 @@ SELECT COALESCE(ROUND(
   NULLIF(
     (SELECT COUNT(DISTINCT COALESCE(properties->>'session_id', id::text))
      FROM events
-     WHERE type = 'screen_viewed' 
-       AND properties->>'step' = '1'
+     WHERE type = 'screen_viewed'
+       AND properties->>'step' = '2.5'
        AND properties->>'is_test' IS DISTINCT FROM 'true'
        AND created_at >= {{start_date}} AND created_at <= NOW()),
     0
@@ -306,6 +307,7 @@ WHERE t.status = 'verified'
 SELECT COUNT(*) AS messages_this_week
 FROM events
 WHERE type = 'contact_message_sent'
+  AND properties->>'is_test' IS DISTINCT FROM 'true'
   AND created_at >= date_trunc('week', NOW());
 ```
 
@@ -320,12 +322,14 @@ WITH total AS (
   SELECT COUNT(*) AS cnt
   FROM events
   WHERE type IN ('cal_slots_viewed', 'cal_auto_fallback_to_messaging', 'cal_slots_fetch_failed')
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at >= {{start_date}} AND created_at <= NOW()
 ),
 fallbacks AS (
   SELECT COUNT(*) AS cnt
   FROM events
   WHERE type IN ('cal_auto_fallback_to_messaging', 'cal_slots_fetch_failed')
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at >= {{start_date}} AND created_at <= NOW()
 )
 SELECT ROUND(100.0 * fallbacks.cnt / NULLIF(total.cnt, 0), 1) AS fallback_pct
@@ -456,11 +460,12 @@ FROM (
 ```sql
 -- Returns 1 if fallback rate > 30%
 WITH stats AS (
-  SELECT 
+  SELECT
     COUNT(*) FILTER (WHERE type IN ('cal_auto_fallback_to_messaging', 'cal_slots_fetch_failed')) AS fallbacks,
     COUNT(*) AS total
   FROM events
   WHERE type IN ('cal_slots_viewed', 'cal_auto_fallback_to_messaging', 'cal_slots_fetch_failed')
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at > NOW() - INTERVAL '7 days'
 )
 SELECT CASE WHEN 100.0 * fallbacks / NULLIF(total, 0) > 30 THEN 1 ELSE 0 END AS alert

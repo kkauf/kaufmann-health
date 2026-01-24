@@ -36,6 +36,8 @@ ORDER BY leads DESC;
 -- Questionnaire = guided matching, Directory = self-service therapist browsing.
 -- Full sessions = primary conversion. Intros = leading indicator.
 -- Higher questionnaire conversion expected (more intent). Low directory = UX issues.
+-- NOTE: Directory "entries" uses cal_bookings source='directory' rather than matches,
+-- since users can book directly without creating a match record.
 WITH questionnaire_leads AS (
   SELECT COUNT(*) AS cnt
   FROM people
@@ -67,11 +69,16 @@ questionnaire_sessions AS (
     AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
     AND cb.created_at >= {{start_date}} AND cb.created_at <= NOW()
 ),
-directory_contacts AS (
-  SELECT COUNT(DISTINCT m.patient_id) AS cnt
-  FROM matches m
-  WHERE m.metadata->>'patient_initiated' = 'true'
-    AND m.created_at >= {{start_date}} AND m.created_at <= NOW()
+-- Directory entries: count unique patients who booked from directory (any booking type)
+directory_entries AS (
+  SELECT COUNT(DISTINCT cb.patient_id) AS cnt
+  FROM cal_bookings cb
+  LEFT JOIN people p ON p.id = cb.patient_id
+  WHERE cb.source = 'directory'
+    AND LOWER(cb.status) != 'cancelled'
+    AND (cb.is_test = false OR cb.is_test IS NULL)
+    AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+    AND cb.created_at >= {{start_date}} AND cb.created_at <= NOW()
 ),
 directory_intros AS (
   SELECT COUNT(DISTINCT cb.patient_id) AS cnt
@@ -95,21 +102,21 @@ directory_sessions AS (
     AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
     AND cb.created_at >= {{start_date}} AND cb.created_at <= NOW()
 )
-SELECT 'Questionnaire' AS path, 
-       questionnaire_leads.cnt AS entries, 
+SELECT 'Questionnaire' AS path,
+       questionnaire_leads.cnt AS entries,
        questionnaire_intros.cnt AS intros,
        questionnaire_sessions.cnt AS sessions,
        ROUND(100.0 * questionnaire_intros.cnt / NULLIF(questionnaire_leads.cnt, 0), 1) AS intro_pct,
        ROUND(100.0 * questionnaire_sessions.cnt / NULLIF(questionnaire_leads.cnt, 0), 1) AS session_pct
 FROM questionnaire_leads, questionnaire_intros, questionnaire_sessions
 UNION ALL
-SELECT 'Directory' AS path, 
-       directory_contacts.cnt AS entries,
+SELECT 'Directory' AS path,
+       directory_entries.cnt AS entries,
        directory_intros.cnt AS intros,
        directory_sessions.cnt AS sessions,
-       ROUND(100.0 * directory_intros.cnt / NULLIF(directory_contacts.cnt, 0), 1) AS intro_pct,
-       ROUND(100.0 * directory_sessions.cnt / NULLIF(directory_contacts.cnt, 0), 1) AS session_pct
-FROM directory_contacts, directory_intros, directory_sessions;
+       ROUND(100.0 * directory_intros.cnt / NULLIF(directory_entries.cnt, 0), 1) AS intro_pct,
+       ROUND(100.0 * directory_sessions.cnt / NULLIF(directory_entries.cnt, 0), 1) AS session_pct
+FROM directory_entries, directory_intros, directory_sessions;
 ```
 
 ### F-CoreFunnel
@@ -120,11 +127,12 @@ FROM directory_contacts, directory_intros, directory_sessions;
 -- form_completed fires from multiple sources and includes anonymous flow - unreliable.
 -- Excludes anonymous patients who browsed without providing contact info.
 -- Big drop Start→Submit = form UX issues. Big drop Submit→Verify = email/SMS issues.
+-- NOTE: Step 1 (Timeline) was removed. Wizard now starts at step 2.5 (Schwerpunkte).
 WITH funnel AS (
   SELECT '1. Started' AS stage, 1 AS ord,
     COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS users
   FROM events
-  WHERE type = 'screen_viewed' AND properties->>'step' = '1'
+  WHERE type = 'screen_viewed' AND properties->>'step' = '2.5'
     AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at >= {{start_date}} AND created_at <= NOW()
   UNION ALL
@@ -199,19 +207,19 @@ FROM patients_verified pv;
 -- Low profile clicks = poor therapist cards. Low contact submit = friction in modal.
 -- Use to identify UX bottlenecks in self-service therapist discovery.
 SELECT 'directory_viewed' AS stage, 1 AS ord, COUNT(*) AS count
-FROM events WHERE type = 'directory_viewed' AND created_at >= {{start_date}} AND created_at <= NOW()
+FROM events WHERE type = 'directory_viewed' AND properties->>'is_test' IS DISTINCT FROM 'true' AND created_at >= {{start_date}} AND created_at <= NOW()
 UNION ALL
 SELECT 'profile_modal_opened', 2, COUNT(*)
-FROM events WHERE type = 'profile_modal_opened' AND created_at >= {{start_date}} AND created_at <= NOW()
+FROM events WHERE type = 'profile_modal_opened' AND properties->>'is_test' IS DISTINCT FROM 'true' AND created_at >= {{start_date}} AND created_at <= NOW()
 UNION ALL
 SELECT 'contact_cta_clicked', 3, COUNT(*)
-FROM events WHERE type = 'contact_cta_clicked' AND created_at >= {{start_date}} AND created_at <= NOW()
+FROM events WHERE type = 'contact_cta_clicked' AND properties->>'is_test' IS DISTINCT FROM 'true' AND created_at >= {{start_date}} AND created_at <= NOW()
 UNION ALL
 SELECT 'contact_modal_opened', 4, COUNT(*)
-FROM events WHERE type = 'contact_modal_opened' AND created_at >= {{start_date}} AND created_at <= NOW()
+FROM events WHERE type = 'contact_modal_opened' AND properties->>'is_test' IS DISTINCT FROM 'true' AND created_at >= {{start_date}} AND created_at <= NOW()
 UNION ALL
 SELECT 'contact_submitted', 5, COUNT(*)
-FROM events WHERE type = 'contact_submitted' AND created_at >= {{start_date}} AND created_at <= NOW()
+FROM events WHERE type = 'contact_submitted' AND properties->>'is_test' IS DISTINCT FROM 'true' AND created_at >= {{start_date}} AND created_at <= NOW()
 ORDER BY ord;
 ```
 
@@ -219,10 +227,11 @@ ORDER BY ord;
 
 ```sql
 -- Step-by-step questionnaire funnel showing exact drop-off points.
--- Steps map to SignupWizard.tsx:
---   1: Zeitrahmen, 2: Anliegen (concierge), 2.5: Schwerpunkte (self-service),
---   3: Therapieform, 4: Standort, 5: Präferenzen, 6: Kontakt, 6.5: SMS, 7: Bestätigung
--- Note: Steps 2 and 2.5 are mutually exclusive based on variant.
+-- Steps map to SignupWizard.tsx (as of Jan 2026):
+--   2.5: Schwerpunkte (ALL users start here now), 2: Anliegen (concierge only, after 2.5),
+--   3: Therapieform, 4: Standort, 5: Präferenzen, 6: Kontakt, 6.5: SMS, 7: Bestätigung, 9: Abschluss
+-- NOTE: Step 1 (Zeitrahmen) was removed. Funnel now starts at step 2.5.
+-- Step 2 only appears for Concierge variant (after step 2.5).
 -- Identifies which step causes most abandonment. High drop on step = redesign needed.
 WITH step_data AS (
   SELECT properties->>'step' AS step,
@@ -233,12 +242,15 @@ WITH step_data AS (
     AND created_at >= {{start_date}} AND created_at <= NOW()
   GROUP BY properties->>'step'
 ),
+-- Get the starting step count (step 2.5) for percentage calculation
+start_users AS (
+  SELECT COALESCE(MAX(users) FILTER (WHERE step = '2.5'), 0) AS cnt FROM step_data
+),
 labeled AS (
   SELECT step,
     CASE step
-      WHEN '1' THEN '1. Zeitrahmen'
-      WHEN '2' THEN '2. Anliegen (Concierge)'
-      WHEN '2.5' THEN '2.5 Schwerpunkte (Self-Service)'
+      WHEN '2.5' THEN '1. Schwerpunkte (Start)'
+      WHEN '2' THEN '2. Anliegen (Concierge only)'
       WHEN '3' THEN '3. Therapieform'
       WHEN '4' THEN '4. Standort'
       WHEN '5' THEN '5. Präferenzen'
@@ -250,14 +262,14 @@ labeled AS (
     END AS label,
     users,
     CASE step
-      WHEN '1' THEN 1.0 WHEN '2' THEN 2.0 WHEN '2.5' THEN 2.5 WHEN '3' THEN 3.0
+      WHEN '2.5' THEN 1.0 WHEN '2' THEN 1.5 WHEN '3' THEN 3.0
       WHEN '4' THEN 4.0 WHEN '5' THEN 5.0 WHEN '6' THEN 6.0 WHEN '6.5' THEN 6.5
       WHEN '7' THEN 7.0 WHEN '9' THEN 9.0 ELSE 99.0
     END AS ord
   FROM step_data
 )
 SELECT label, users,
-  ROUND(100.0 * users / NULLIF(FIRST_VALUE(users) OVER (ORDER BY ord), 0), 1) AS pct_of_start
+  ROUND(100.0 * users / NULLIF((SELECT cnt FROM start_users), 0), 1) AS pct_of_start
 FROM labeled WHERE ord < 99 ORDER BY ord;
 ```
 
@@ -400,11 +412,12 @@ GROUP BY DATE(cb.created_at) ORDER BY day DESC;
 -- Helps identify days with UX issues, slow load times, or broken steps.
 -- Consistent rate = stable UX. Sudden drops = investigate that day's changes.
 -- Target: >70% daily. Below 50% consistently = major UX problem.
+-- NOTE: Step 1 (Zeitrahmen) was removed. Wizard now starts at step 2.5 (Schwerpunkte).
 WITH starts AS (
   SELECT DATE(created_at) AS day,
     COUNT(DISTINCT COALESCE(properties->>'session_id', id::text)) AS cnt
   FROM events
-  WHERE type = 'screen_viewed' AND properties->>'step' = '1'
+  WHERE type = 'screen_viewed' AND properties->>'step' = '2.5'
     AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at >= {{start_date}} AND created_at <= NOW()
     AND DATE(created_at) < CURRENT_DATE
@@ -436,6 +449,7 @@ ORDER BY s.day DESC;
 SELECT DATE(created_at) AS day, COUNT(*) AS messages
 FROM events
 WHERE type = 'contact_message_sent'
+  AND properties->>'is_test' IS DISTINCT FROM 'true'
   AND created_at >= {{start_date}} AND created_at <= NOW()
   AND DATE(created_at) < CURRENT_DATE
 GROUP BY DATE(created_at) ORDER BY day DESC;
@@ -560,20 +574,22 @@ GROUP BY date ORDER BY date DESC;
 -- Shows combinations of gender, modality, schwerpunkt, city, session type.
 -- High counts = recruit therapists with these attributes.
 -- Use to prioritize therapist outreach and geographic expansion.
-SELECT 
+SELECT
   COALESCE(
-    CASE WHEN gender = 'female' THEN 'Weibliche ' WHEN gender = 'male' THEN 'Männlicher ' ELSE '' END ||
-    COALESCE(modality || '-Therapeut:in', '') ||
-    COALESCE('Spezialist:in für ' || schwerpunkt, '') ||
-    CASE WHEN modality IS NULL AND schwerpunkt IS NULL THEN 'Therapeut:in' ELSE '' END ||
-    COALESCE(' in ' || city, '') ||
-    CASE WHEN session_type = 'in_person' THEN ' (vor Ort)' ELSE '' END,
+    CASE WHEN sg.gender = 'female' THEN 'Weibliche ' WHEN sg.gender = 'male' THEN 'Männlicher ' ELSE '' END ||
+    COALESCE(sg.modality || '-Therapeut:in', '') ||
+    COALESCE('Spezialist:in für ' || sg.schwerpunkt, '') ||
+    CASE WHEN sg.modality IS NULL AND sg.schwerpunkt IS NULL THEN 'Therapeut:in' ELSE '' END ||
+    COALESCE(' in ' || sg.city, '') ||
+    CASE WHEN sg.session_type = 'in_person' THEN ' (vor Ort)' ELSE '' END,
     'Unbekannt'
   ) AS gap_description,
-  COUNT(*) AS requests, COUNT(DISTINCT patient_id) AS patients
-FROM supply_gaps
-WHERE created_at >= {{start_date}} AND created_at <= NOW()
-GROUP BY gender, modality, schwerpunkt, city, session_type
+  COUNT(*) AS requests, COUNT(DISTINCT sg.patient_id) AS patients
+FROM supply_gaps sg
+LEFT JOIN people p ON p.id = sg.patient_id
+WHERE sg.created_at >= {{start_date}} AND sg.created_at <= NOW()
+  AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+GROUP BY sg.gender, sg.modality, sg.schwerpunkt, sg.city, sg.session_type
 ORDER BY requests DESC LIMIT 25;
 ```
 
@@ -584,12 +600,15 @@ ORDER BY requests DESC LIMIT 25;
 -- Shows which specialties patients want but we lack supply for.
 -- Use to guide therapist recruitment: prioritize high-request specialties.
 -- "cities" column shows where demand is concentrated.
-SELECT COALESCE(schwerpunkt, '(Kein Schwerpunkt)') AS schwerpunkt,
-  COUNT(*) AS requests, COUNT(DISTINCT patient_id) AS patients,
-  STRING_AGG(DISTINCT city, ', ' ORDER BY city) AS cities
-FROM supply_gaps
-WHERE created_at >= {{start_date}} AND created_at <= NOW() AND schwerpunkt IS NOT NULL
-GROUP BY schwerpunkt ORDER BY requests DESC LIMIT 15;
+SELECT COALESCE(sg.schwerpunkt, '(Kein Schwerpunkt)') AS schwerpunkt,
+  COUNT(*) AS requests, COUNT(DISTINCT sg.patient_id) AS patients,
+  STRING_AGG(DISTINCT sg.city, ', ' ORDER BY sg.city) AS cities
+FROM supply_gaps sg
+LEFT JOIN people p ON p.id = sg.patient_id
+WHERE sg.created_at >= {{start_date}} AND sg.created_at <= NOW()
+  AND sg.schwerpunkt IS NOT NULL
+  AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+GROUP BY sg.schwerpunkt ORDER BY requests DESC LIMIT 15;
 ```
 
 ### G-ByCity
@@ -599,12 +618,14 @@ GROUP BY schwerpunkt ORDER BY requests DESC LIMIT 15;
 -- Shows cities where patients want in-person but we lack therapists.
 -- Online requests excluded (can be served by any location).
 -- Use to prioritize geographic expansion and local therapist recruitment.
-SELECT city, COUNT(*) AS requests, COUNT(DISTINCT patient_id) AS patients,
-  STRING_AGG(DISTINCT COALESCE(schwerpunkt, modality), ', ') AS topics_needed
-FROM supply_gaps
-WHERE created_at >= {{start_date}} AND created_at <= NOW()
-  AND session_type = 'in_person' AND city IS NOT NULL
-GROUP BY city ORDER BY requests DESC LIMIT 15;
+SELECT sg.city, COUNT(*) AS requests, COUNT(DISTINCT sg.patient_id) AS patients,
+  STRING_AGG(DISTINCT COALESCE(sg.schwerpunkt, sg.modality), ', ') AS topics_needed
+FROM supply_gaps sg
+LEFT JOIN people p ON p.id = sg.patient_id
+WHERE sg.created_at >= {{start_date}} AND sg.created_at <= NOW()
+  AND sg.session_type = 'in_person' AND sg.city IS NOT NULL
+  AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+GROUP BY sg.city ORDER BY requests DESC LIMIT 15;
 ```
 
 ### G-ByModality
@@ -614,13 +635,16 @@ GROUP BY city ORDER BY requests DESC LIMIT 15;
 -- Shows which modalities patients request but we can't match.
 -- in_person vs online columns show session type preference.
 -- Use to identify modality training needs or recruitment priorities.
-SELECT COALESCE(modality, '(Keine Modalität)') AS modality,
-  COUNT(*) AS requests, COUNT(DISTINCT patient_id) AS patients,
-  COUNT(*) FILTER (WHERE session_type = 'in_person') AS in_person,
-  COUNT(*) FILTER (WHERE session_type = 'online') AS online
-FROM supply_gaps
-WHERE created_at >= {{start_date}} AND created_at <= NOW() AND modality IS NOT NULL
-GROUP BY modality ORDER BY requests DESC LIMIT 15;
+SELECT COALESCE(sg.modality, '(Keine Modalität)') AS modality,
+  COUNT(*) AS requests, COUNT(DISTINCT sg.patient_id) AS patients,
+  COUNT(*) FILTER (WHERE sg.session_type = 'in_person') AS in_person,
+  COUNT(*) FILTER (WHERE sg.session_type = 'online') AS online
+FROM supply_gaps sg
+LEFT JOIN people p ON p.id = sg.patient_id
+WHERE sg.created_at >= {{start_date}} AND sg.created_at <= NOW()
+  AND sg.modality IS NOT NULL
+  AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+GROUP BY sg.modality ORDER BY requests DESC LIMIT 15;
 ```
 
 ### G-DailyTrend
@@ -630,16 +654,18 @@ GROUP BY modality ORDER BY requests DESC LIMIT 15;
 -- Decreasing trend = better supply coverage. Increasing = growing unmet demand.
 -- Breakdown by gap type helps identify which dimensions need attention.
 -- Best viewed as stacked area chart over 90 days.
-SELECT DATE(created_at) AS day,
+SELECT DATE(sg.created_at) AS day,
   COUNT(*) AS total_gaps,
-  COUNT(DISTINCT patient_id) AS patients_affected,
-  COUNT(*) FILTER (WHERE schwerpunkt IS NOT NULL) AS schwerpunkt_gaps,
-  COUNT(*) FILTER (WHERE modality IS NOT NULL) AS modality_gaps,
-  COUNT(*) FILTER (WHERE gender IS NOT NULL) AS gender_gaps
-FROM supply_gaps
-WHERE created_at >= {{start_date}} AND created_at <= NOW()
-  AND DATE(created_at) < CURRENT_DATE
-GROUP BY DATE(created_at) ORDER BY day DESC;
+  COUNT(DISTINCT sg.patient_id) AS patients_affected,
+  COUNT(*) FILTER (WHERE sg.schwerpunkt IS NOT NULL) AS schwerpunkt_gaps,
+  COUNT(*) FILTER (WHERE sg.modality IS NOT NULL) AS modality_gaps,
+  COUNT(*) FILTER (WHERE sg.gender IS NOT NULL) AS gender_gaps
+FROM supply_gaps sg
+LEFT JOIN people p ON p.id = sg.patient_id
+WHERE sg.created_at >= {{start_date}} AND sg.created_at <= NOW()
+  AND DATE(sg.created_at) < CURRENT_DATE
+  AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+GROUP BY DATE(sg.created_at) ORDER BY day DESC;
 ```
 
 ---
@@ -725,15 +751,17 @@ WITH emails_sent AS (
   FROM events
   WHERE type = 'email_sent'
     AND properties->>'template' = 'feedbackRequest'
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at >= {{start_date}} AND created_at <= NOW()
 ),
 responses AS (
   SELECT COUNT(DISTINCT properties->>'patient_id') AS cnt
   FROM events
   WHERE type = 'feedback_response'
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at >= {{start_date}} AND created_at <= NOW()
 )
-SELECT 
+SELECT
   emails_sent.cnt AS emails_sent,
   responses.cnt AS responses,
   ROUND(100.0 * responses.cnt / NULLIF(emails_sent.cnt, 0), 1) AS response_rate_pct
@@ -747,7 +775,7 @@ FROM emails_sent, responses;
 -- Top reasons inform product and pricing strategy.
 -- "Preis zu hoch" = consider payment plans. "Unsicher" = improve matching/profiles.
 -- Use to prioritize product improvements and messaging.
-SELECT 
+SELECT
   CASE properties->>'reason'
     WHEN 'price_too_high' THEN 'Preis zu hoch'
     WHEN 'unsure_which_therapist' THEN 'Unsicher welcher Therapeut'
@@ -761,6 +789,7 @@ SELECT
   ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 1) AS pct
 FROM events
 WHERE type = 'feedback_response'
+  AND properties->>'is_test' IS DISTINCT FROM 'true'
   AND created_at >= {{start_date}} AND created_at <= NOW()
 GROUP BY properties->>'reason'
 ORDER BY count DESC;
@@ -777,12 +806,14 @@ WITH responses AS (
   SELECT COUNT(DISTINCT properties->>'patient_id') AS cnt
   FROM events
   WHERE type = 'feedback_response'
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at >= {{start_date}} AND created_at <= NOW()
 ),
 interviews AS (
   SELECT COUNT(DISTINCT properties->>'patient_id') AS cnt
   FROM events
   WHERE type = 'interview_interest'
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at >= {{start_date}} AND created_at <= NOW()
 )
 SELECT
@@ -799,7 +830,7 @@ FROM responses, interviews;
 -- Shows patients who took time to write additional comments.
 -- Read these regularly for product insights and pain points.
 -- High-value qualitative data - consider following up personally.
-SELECT 
+SELECT
   e.created_at,
   p.name,
   p.email,
@@ -816,7 +847,8 @@ SELECT
 FROM events e
 LEFT JOIN people p ON p.id::text = e.properties->>'patient_id'
 WHERE e.type = 'feedback_details'
-  AND created_at >= {{start_date}} AND created_at <= NOW()
+  AND e.properties->>'is_test' IS DISTINCT FROM 'true'
+  AND e.created_at >= {{start_date}} AND e.created_at <= NOW()
 ORDER BY e.created_at DESC
 LIMIT 50;
 ```
@@ -828,7 +860,7 @@ LIMIT 50;
 -- Shows if feedback patterns are changing over time.
 -- Rising "price" = market sensitivity. Rising "alternative" = competition.
 -- Use to track impact of product changes on user sentiment.
-SELECT 
+SELECT
   date_trunc('week', created_at)::date AS week,
   COUNT(*) AS responses,
   COUNT(*) FILTER (WHERE properties->>'reason' = 'price_too_high') AS price,
@@ -838,6 +870,7 @@ SELECT
   COUNT(*) FILTER (WHERE properties->>'reason' = 'other') AS other
 FROM events
 WHERE type = 'feedback_response'
+  AND properties->>'is_test' IS DISTINCT FROM 'true'
   AND created_at >= {{start_date}} AND created_at <= NOW()
 GROUP BY date_trunc('week', created_at)
 ORDER BY week DESC;
