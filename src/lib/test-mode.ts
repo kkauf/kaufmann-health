@@ -7,6 +7,22 @@ export function isTestEmail(email?: string | null): boolean {
 
 export function isLocalhostRequest(req: Request): boolean {
   try {
+    // In Vercel serverless, req.url may not have the actual host.
+    // Check x-forwarded-host header first (Vercel pattern), then fall back to req.url.
+    const hostHeader = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').toLowerCase();
+    if (hostHeader) {
+      return (
+        hostHeader === 'localhost' ||
+        hostHeader.startsWith('localhost:') ||
+        hostHeader === '127.0.0.1' ||
+        hostHeader.startsWith('127.0.0.1:') ||
+        hostHeader === '0.0.0.0' ||
+        hostHeader.startsWith('0.0.0.0:') ||
+        hostHeader === '::1' ||
+        hostHeader.startsWith('[::1]:')
+      );
+    }
+    // Fallback to URL parsing
     const { hostname } = new URL(req.url);
     return (
       hostname === 'localhost' ||
@@ -21,6 +37,13 @@ export function isLocalhostRequest(req: Request): boolean {
 
 export function isStagingRequest(req: Request): boolean {
   try {
+    // In Vercel serverless, req.url may not have the actual host.
+    // Check x-forwarded-host header first (Vercel pattern), then fall back to req.url.
+    const hostHeader = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').toLowerCase();
+    if (hostHeader) {
+      return hostHeader === 'staging.kaufmann-health.de';
+    }
+    // Fallback to URL parsing
     const { hostname } = new URL(req.url);
     return hostname === 'staging.kaufmann-health.de';
   } catch {
