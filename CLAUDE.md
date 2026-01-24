@@ -72,6 +72,29 @@ For specific features:
 2. **Check patterns**: look at similar features, follow established conventions
 3. **Verify state**: `supabase migration list` if touching database
 
+## Resilience & Avoiding Silent Failures
+
+When building features that involve async processes (webhooks, crons, emails):
+
+1. **Verify return types** - Don't assume. `if (result)` on `{sent: false}` is truthy! Always check the actual property: `if (result.sent)`.
+
+2. **Validate schema before querying** - Run your query against production data via Supabase MCP to confirm column names exist. Schema mismatches return empty results, not errors.
+
+3. **Think in outcomes, not processes** - A cron that runs successfully but processes 0 items is often broken, not idle. Add sanity checks:
+   - Expected N bookings to get emails → verify N emails were sent
+   - If 0 processed for multiple runs → alert
+
+4. **Fail loudly** - Silent failures compound. When a query returns unexpectedly empty results or a send fails, log at error level with context.
+
+5. **Build fallback chains** - Primary path fails → cron catches it → sanity check alerts if both fail:
+   ```
+   Webhook sends email → if fails, flag stays NULL
+   Cron retries unsent → if schema broken, 0 processed
+   Sanity check alerts → "7 bookings missing emails"
+   ```
+
+6. **Test the actual path** - After writing a cron or recovery mechanism, manually trigger it and verify it actually finds and processes the expected records.
+
 ## Testing Protocol
 
 - After route changes → `npm run build`
@@ -108,5 +131,6 @@ git ship    # merges staging→main, syncs staging, keeps you on staging
 **After completing a feature**:
 1. Update relevant docs in `/docs` (proactive - check what you touched)
 2. Flag if business docs may need updates (Google Drive: Partner Support, etc.)
-3. Run `npm run test:critical` and verify in browser
-4. `git ship` when confident
+3. **If touching funnels/analytics**: Check if Metabase queries need updating (`docs/metabase-*.md`), then run `npx tsx scripts/metabase-sync.ts --sync`
+4. Run `npm run test:critical` and verify in browser
+5. `git ship` when confident
