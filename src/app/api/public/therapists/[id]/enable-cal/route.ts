@@ -100,12 +100,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       
       const totalEnabled = (introResult.rowCount || 0) + (fullSessionResult.rowCount || 0);
 
-      // Mark therapist as live in our database
-      await supabaseServer
-        .from('therapists')
-        .update({ cal_bookings_live: true })
-        .eq('id', id);
-
       void track({
         type: 'therapist_cal_enabled',
         level: 'info',

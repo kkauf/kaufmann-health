@@ -1,12 +1,16 @@
 /**
  * Cal.com Booking Availability Logic
- * 
+ *
  * Determines if Cal.com booking UI should be shown for a therapist.
- * 
+ *
  * Business rules:
  * 1. Therapist must have cal_enabled=true and cal_username set
  * 2. For intro booking: next_intro_slot must exist and be in future
  * 3. For session booking: next_full_slot must exist and be in future
+ *
+ * Note: Availability is determined solely by cached slot data. New Cal.com accounts
+ * are created with 0 availability, so booking buttons only appear once the therapist
+ * sets up their availability in Cal.com.
  */
 
 import type { NextIntroSlot, NextFullSlot } from '@/contracts/therapist';
@@ -37,7 +41,7 @@ function isSlotValid(slot: NextIntroSlot | NextFullSlot | null | undefined): boo
 /**
  * Determine if Cal.com INTRO booking should be available for this therapist.
  * Used for the primary "Kennenlernen" CTA button.
- * 
+ *
  * Returns true only if:
  * - cal_enabled is true
  * - cal_username exists
@@ -62,7 +66,7 @@ export function isCalBookingAvailable(input: CalBookingAvailabilityInput): boole
 /**
  * Determine if Cal.com SESSION booking should be available for this therapist.
  * Used for the "Direkt buchen" button - requires full-session slots.
- * 
+ *
  * Returns true only if:
  * - cal_enabled is true
  * - cal_username exists

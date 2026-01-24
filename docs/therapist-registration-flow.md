@@ -157,8 +157,12 @@ Therapists must complete these to become visible in the directory:
 |------|-------|------------------------|
 | Change Cal.com password | Cal.com | No (security recommendation) |
 | Complete profile text | Portal | **Yes** (gated) |
-| Set up Cal.com availability | Cal.com | **Yes** (gated) |
+| Set up Cal.com availability | Cal.com | **Yes** (automatic - booking buttons only appear when slots exist) |
 | Enable "Accepting new clients" | Portal | **Yes** (toggle) |
+
+**Note:** Cal.com booking availability is automatic. New accounts are created with 0 availability.
+Once the therapist sets up their availability in Cal.com, booking buttons appear automatically
+on their profile (no manual activation needed).
 
 ### Profile Fields (Portal)
 
@@ -273,7 +277,7 @@ Verified therapists who haven't completed their profile receive automated remind
 | `accepting_new` | Portal | Portal (gated on completeness) |
 | `status` | Registration → Admin | Admin only |
 | `cal_username` | Admin approval | System |
-| `cal_bookings_live` | Admin | Admin, Portal |
+| `cal_enabled` | Admin approval | System (true when Cal.com account exists) |
 | `metadata.profile.*` | Step 1, Portal | Portal |
 | `metadata.documents.*` | Step 2 | System (uploads) |
 
