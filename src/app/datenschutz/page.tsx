@@ -5,7 +5,7 @@ export default function DatenschutzPage() {
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
       <section aria-labelledby="ds-title" className="rounded-2xl border bg-white p-6 sm:p-8">
         <h1 id="ds-title" className="text-3xl font-semibold tracking-tight sm:text-4xl">Datenschutzerklärung</h1>
-        <p className="mt-2 text-sm text-gray-500">Stand: Januar 2026</p>
+        <p className="mt-2 text-sm text-gray-500">Stand: 24. Januar 2026</p>
 
         <div className="mt-6 space-y-10 text-gray-700">
           <section aria-labelledby="ueberblick">
@@ -310,6 +310,58 @@ export default function DatenschutzPage() {
               </div>
 
               <div>
+                <h3 className="font-medium">Kalenderbuchungen (Cal.com & Google Calendar)</h3>
+                <div className="mt-2 space-y-2">
+                  <p>
+                    Für die Terminbuchung nutzen wir Cal.com (selbst gehostet unter cal.kaufmann.health). Therapeut:innen
+                    können ihren Google Kalender mit Cal.com verbinden, um ihre Verfügbarkeit anzuzeigen und Buchungen
+                    automatisch zu synchronisieren.
+                  </p>
+                  <p>Bei der Google Calendar-Integration werden folgende Daten verarbeitet:</p>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li>
+                      <strong>Kalenderverfügbarkeit:</strong> Wir lesen bestehende Kalendereinträge (nur Titel und Zeitraum),
+                      um freie Termine anzuzeigen
+                    </li>
+                    <li>
+                      <strong>Buchungsereignisse:</strong> Bei einer Terminbuchung wird ein Kalendereintrag mit Datum,
+                      Uhrzeit und Teilnehmerdaten erstellt
+                    </li>
+                  </ul>
+                  <p><strong>Datenschutzmaßnahmen:</strong></p>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li>
+                      <strong>Verschlüsselung:</strong> Alle Datenübertragungen erfolgen ausschließlich über TLS-verschlüsselte
+                      Verbindungen (HTTPS)
+                    </li>
+                    <li>
+                      <strong>Zugriffskontrolle:</strong> Der Zugriff auf Kalenderdaten ist strikt auf die für den
+                      Buchungsvorgang notwendigen Informationen beschränkt
+                    </li>
+                    <li>
+                      <strong>Keine dauerhafte Speicherung:</strong> Kalenderdaten werden nicht dauerhaft in unseren
+                      Systemen gespeichert, sondern nur zur Laufzeit abgefragt
+                    </li>
+                    <li>
+                      <strong>Keine Weitergabe:</strong> Kalenderdaten werden nicht an Dritte weitergegeben
+                    </li>
+                  </ul>
+                  <p>
+                    Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung) sowie Art. 6 Abs. 1 lit. a DSGVO
+                    (Einwilligung), da Therapeut:innen die Kalenderverbindung aktiv herstellen.
+                  </p>
+                  <p>
+                    <strong>Widerruf:</strong> Therapeut:innen können die Google Calendar-Verbindung jederzeit in den
+                    Cal.com-Einstellungen trennen. Nach dem Trennen werden keine weiteren Kalenderdaten abgerufen.
+                  </p>
+                  <p>
+                    Google LLC hat seinen Sitz in den USA. Die Datenübermittlung erfolgt auf Grundlage des EU-US Data
+                    Privacy Framework (Angemessenheitsbeschluss der Europäischen Kommission gemäß Art. 45 DSGVO).
+                  </p>
+                </div>
+              </div>
+
+              <div>
                 <h3 className="font-medium">Newsletter</h3>
                 <p className="mt-2">
                   Für den Bezug des Newsletters verarbeiten wir Ihre E-Mail-Adresse auf Grundlage Ihrer Einwilligung
@@ -439,7 +491,7 @@ export default function DatenschutzPage() {
           </section>
 
           <div className="mt-8 pt-4 border-t text-sm text-gray-500">
-            <p>Version: v2.0</p>
+            <p>Version: v2.1 – Kalenderbuchungen (Cal.com & Google Calendar) hinzugefügt</p>
           </div>
         </div>
       </section>
