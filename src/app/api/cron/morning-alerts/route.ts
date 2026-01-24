@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server';
 
 /**
  * POST /api/cron/morning-alerts
- * 
+ *
  * Runs daily at 8am. Combines:
  * - ads/monitor (morning check with 3-day lookback)
  * - alerts/user-errors-digest
- * 
+ * - alerts/booking-emails (sanity check for missed emails)
+ *
  * Morning monitoring and error digest.
  */
 export async function POST(req: Request) {
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
   const jobs = [
     { name: 'ads-monitor-morning', path: '/api/admin/ads/monitor?apply=false&lookback=3&excludeToday=true&minSpendNoConv=30&budgetMultiple=2' },
     { name: 'user-errors-digest', path: '/api/admin/alerts/user-errors-digest' },
+    { name: 'booking-emails-sanity', path: '/api/admin/alerts/booking-emails' },
   ];
 
   await Promise.all(
