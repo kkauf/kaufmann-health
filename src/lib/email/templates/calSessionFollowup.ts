@@ -39,12 +39,12 @@ export function renderCalSessionFollowup(params: CalSessionFollowupParams): Emai
   const hasNextSlot = params.nextSlotDateIso && params.nextSlotTimeLabel;
 
   const lines: string[] = [];
-  lines.push('<h1 style="color:#0f172a !important; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Bereit für Ihre nächste Sitzung?</h1>');
+  lines.push('<h1 style="color:#0f172a !important; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Für Ihre nächste Sitzung</h1>');
   lines.push(`<p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;">Hallo${name ? ` ${esc(name)}` : ''},</p>`);
-  lines.push(`<p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;">Wir hoffen, Ihre letzte Sitzung mit <strong>${therapist}</strong> war hilfreich für Sie.</p>`);
+  lines.push(`<p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;">Wir hoffen, Sie konnten Ihre Sitzung mit <strong>${therapist}</strong> gut verarbeiten.</p>`);
 
   lines.push('<div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important; padding:20px 24px; border-radius:12px; border:1px solid rgba(16, 185, 129, 0.3); margin: 16px 0;">');
-  lines.push('<p style="margin:0 0 12px; font-size:16px; line-height:1.65; color:#064e3b !important;"><strong>Möchten Sie einen Folgetermin buchen?</strong></p>');
+  lines.push('<p style="margin:0 0 12px; font-size:16px; line-height:1.65; color:#064e3b !important;"><strong>Wenn Sie bereit sind, können Sie hier Ihren nächsten Termin buchen:</strong></p>');
   
   if (hasNextSlot) {
     const formattedDate = formatDate(params.nextSlotDateIso!);
@@ -68,13 +68,13 @@ export function renderCalSessionFollowup(params: CalSessionFollowupParams): Emai
 
   lines.push('<p style="margin:20px 0 0; font-size:14px; color:#64748b !important;">Bei Fragen antworten Sie einfach auf diese E-Mail.</p>');
 
-  const subject = `Bereit für Ihre nächste Sitzung mit ${params.therapistName}?`;
+  const subject = `Für Ihre nächste Sitzung mit ${params.therapistName}`;
   const html = renderLayout({
-    title: 'Bereit für Ihre nächste Sitzung?',
+    title: 'Für Ihre nächste Sitzung',
     contentHtml: lines.join(''),
-    preheader: hasNextSlot 
-      ? `Nächster Termin: ${formatDate(params.nextSlotDateIso!)} ${params.nextSlotTimeLabel} Uhr` 
-      : `Buchen Sie Ihren nächsten Termin mit ${params.therapistName}`,
+    preheader: hasNextSlot
+      ? `Nächster freier Termin: ${formatDate(params.nextSlotDateIso!)} ${params.nextSlotTimeLabel} Uhr`
+      : `Buchen Sie jederzeit Ihren nächsten Termin`,
   });
 
   return { subject, html };
