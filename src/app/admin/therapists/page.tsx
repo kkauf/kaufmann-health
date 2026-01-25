@@ -42,6 +42,7 @@ type Therapist = {
     has_specialization_docs?: boolean;
   };
   requires_action?: boolean;
+  is_test?: boolean;
   cal_slots?: {
     intro: number;
     full: number;
@@ -118,6 +119,14 @@ export default function AdminTherapistsPage() {
   const [profileFilter, setProfileFilter] = useState<"all" | "complete" | "photo_only" | "approach_only" | "incomplete">("all");
   const [requireActionOnly, setRequireActionOnly] = useState<boolean>(true);
   const [optedOutOnly, setOptedOutOnly] = useState<boolean>(false);
+  const [testAccountsOnly, setTestAccountsOnly] = useState<boolean>(false);
+
+  // Detect staging environment for showing test filter
+  const [isStaging, setIsStaging] = useState(false);
+  useEffect(() => {
+    const host = window.location.hostname;
+    setIsStaging(host === 'staging.kaufmann-health.de' || host === 'localhost' || host === '127.0.0.1');
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -186,6 +195,8 @@ export default function AdminTherapistsPage() {
       if (!matchesText) return false;
       if (requireActionOnly && !t.requires_action) return false;
       if (optedOutOnly && !t.opted_out) return false;
+      // Test accounts filter: when enabled, only show test accounts
+      if (testAccountsOnly && !t.is_test) return false;
       if (profileFilter === "all") return true;
       const p = t.profile || {};
       const hasPhoto = Boolean(p.has_photo_pending || p.has_photo_public);
@@ -203,7 +214,7 @@ export default function AdminTherapistsPage() {
           return true;
       }
     });
-  }, [q, list, profileFilter, requireActionOnly, optedOutOnly]);
+  }, [q, list, profileFilter, requireActionOnly, optedOutOnly, testAccountsOnly]);
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -214,7 +225,7 @@ export default function AdminTherapistsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [status, city, q, specialization, profileFilter, requireActionOnly, optedOutOnly, list.length]);
+  }, [status, city, q, specialization, profileFilter, requireActionOnly, optedOutOnly, testAccountsOnly, list.length]);
 
   const fetchTherapists = useCallback(async () => {
     setLoading(true);
@@ -598,6 +609,17 @@ export default function AdminTherapistsPage() {
             />
             Nur Opt-out
           </label>
+          {isStaging && (
+            <label className="flex items-center gap-2 text-sm text-orange-600 font-medium">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-orange-500"
+                checked={testAccountsOnly}
+                onChange={(e) => setTestAccountsOnly(e.target.checked)}
+              />
+              Nur Test-Accounts
+            </label>
+          )}
           </div>
           {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
         </div>
@@ -631,7 +653,10 @@ export default function AdminTherapistsPage() {
               <Card key={t.id} className={`transition-all hover:shadow-md ${isPending ? "border-amber-400 bg-amber-50/50" : "hover:border-gray-300"}`}>
                 <CardHeader>
                   <div className="min-w-0">
-                    <CardTitle className="truncate" title={t.name || undefined}>{t.name || "—"}</CardTitle>
+                    <CardTitle className="truncate flex items-center gap-2" title={t.name || undefined}>
+                      {t.name || "—"}
+                      {t.is_test && <Badge className="bg-orange-100 text-orange-700 border-orange-300 text-xs">TEST</Badge>}
+                    </CardTitle>
                     <CardDescription className="truncate" title={t.email || undefined}>{t.email || "—"}</CardDescription>
                     {t.phone && (
                       <CardDescription className="truncate" title={t.phone || undefined}>

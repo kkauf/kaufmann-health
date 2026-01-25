@@ -54,6 +54,7 @@ type Person = {
   gender?: string | null;
   photo_url?: string | null; // public profile photo (if approved)
   campaign_variant?: string | null; // Test 4: concierge | self-service | marketplace
+  is_test?: boolean; // Test account flag
   // Enhanced therapist profile data
   schwerpunkte?: string[];
   typical_rate?: number | null;
@@ -96,6 +97,15 @@ export default function AdminLeadsPage() {
   const [viewFilter, setViewFilter] = useState<'action' | 'all'>('action');
   // Filter for concierge leads that need manual matching
   const [onlyConcierge, setOnlyConcierge] = useState<boolean>(true);
+  // Filter for test accounts only (staging)
+  const [testAccountsOnly, setTestAccountsOnly] = useState<boolean>(false);
+
+  // Detect staging environment for showing test filter
+  const [isStaging, setIsStaging] = useState(false);
+  useEffect(() => {
+    const host = window.location.hostname;
+    setIsStaging(host === 'staging.kaufmann-health.de' || host === 'localhost' || host === '127.0.0.1');
+  }, []);
 
   const [selectedPatient, setSelectedPatient] = useState<Person | null>(null);
 
@@ -535,6 +545,10 @@ export default function AdminLeadsPage() {
     if (onlyConcierge) {
       base = base.filter((p) => p.campaign_variant === 'concierge');
     }
+    // Filter for test accounts only when checkbox is checked
+    if (testAccountsOnly) {
+      base = base.filter((p) => p.is_test === true);
+    }
     if (!deprioritizedPatients || deprioritizedPatients.size === 0) return base;
     const needs: Person[] = [];
     const noAction: Person[] = [];
@@ -543,7 +557,7 @@ export default function AdminLeadsPage() {
     }
     if (viewFilter === 'action') return needs;
     return [...needs, ...noAction];
-  }, [leads, deprioritizedPatients, hideLost, viewFilter, onlyConcierge]);
+  }, [leads, deprioritizedPatients, hideLost, viewFilter, onlyConcierge, testAccountsOnly]);
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -608,6 +622,18 @@ export default function AdminLeadsPage() {
                   <input id="hide-lost" type="checkbox" className="h-4 w-4 accent-black" checked={hideLost} onChange={(e) => setHideLost(e.target.checked)} />
                   <span>Verlorene ausblenden</span>
                 </label>
+                {isStaging && (
+                  <label className="flex items-center gap-2 text-sm text-orange-600 font-medium">
+                    <input
+                      id="only-test"
+                      type="checkbox"
+                      className="h-4 w-4 accent-orange-500"
+                      checked={testAccountsOnly}
+                      onChange={(e) => setTestAccountsOnly(e.target.checked)}
+                    />
+                    <span>Nur Test-Accounts</span>
+                  </label>
+                )}
                 <Button onClick={fetchLeads} disabled={loadingLeads} className="ml-auto">{loadingLeads ? 'Lädt…' : 'Filtern'}</Button>
               </div>
             </div>
@@ -627,7 +653,10 @@ export default function AdminLeadsPage() {
                 <Card key={p.id} className={`transition-all ${isSelected ? 'border-amber-400 bg-amber-50/50 shadow-md' : 'hover:shadow-sm hover:border-gray-300'} ${isDeprioritized ? 'opacity-60' : ''}`} aria-selected={isSelected}>
                   <CardHeader>
                     <div className="min-w-0">
-                      <CardTitle className="truncate" title={p.name || undefined}>{p.name || '—'}</CardTitle>
+                      <CardTitle className="truncate flex items-center gap-2" title={p.name || undefined}>
+                        {p.name || '—'}
+                        {p.is_test && <Badge className="bg-orange-100 text-orange-700 border-orange-300 text-xs">TEST</Badge>}
+                      </CardTitle>
                       <CardDescription className="truncate" title={p.email || undefined}>{p.email || '—'}</CardDescription>
                       {p.phone && (
                         <CardDescription className="truncate" title={p.phone || undefined}>

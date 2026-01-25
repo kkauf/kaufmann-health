@@ -103,8 +103,13 @@ export async function GET(req: Request) {
     }
 
     // Map phone_number/phone -> phone for UI backward compatibility
+    // Also extract is_test flag for UI display
     type Row = { phone_number?: string | null; phone?: string | null; metadata?: unknown } & Record<string, unknown>;
-    let result = ((data || []) as Row[]).map((r) => ({ ...r, phone: (r.phone_number ?? r.phone ?? null) }));
+    let result = ((data || []) as Row[]).map((r) => {
+      const meta = (r?.metadata ?? {}) as Record<string, unknown>;
+      const is_test = Boolean(meta.is_test === true);
+      return { ...r, phone: (r.phone_number ?? r.phone ?? null), is_test };
+    });
     // Fallback filter: exclude E2E/test leads by metadata flag or recognizable patterns (production only)
     if (!showTestLeads) {
       result = result.filter((r) => {
