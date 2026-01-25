@@ -160,11 +160,11 @@ Cal.com-enabled therapists use a different email flow triggered by the Cal.com w
   - Triggered via: `MEETING_ENDED` webhook in `/api/public/cal/webhook`
 
 - `calSessionFollowup` → `src/lib/email/templates/calSessionFollowup.ts`
-  - Sent 3-5 days after a full session ends.
-  - Purpose: Encourage booking the next session while momentum is high.
+  - Sent the morning after a full session ends (10-30h window).
+  - Purpose: Provide booking link for when patient is ready — not pushy, just informative.
   - **Only sent if therapist has available slots** (checked via `cal_slots_cache`).
-  - Includes: next available slot suggestion, direct booking link.
-  - Cron: `GET /api/admin/cal/booking-followups?stage=session_followup` (runs every 30 minutes)
+  - Includes: next available slot suggestion, direct booking link, reassurance they can take their time.
+  - Cron: `GET /api/admin/cal/booking-followups?stage=session_followup` (runs hourly)
 
 **Trigger points:**
 
@@ -175,7 +175,7 @@ Cal.com-enabled therapists use a different email flow triggered by the Cal.com w
 | 24h before booking | Cron `/api/admin/cal/booking-followups?stage=reminder_24h` | Client reminder |
 | 1h before booking | Cron `/api/admin/cal/booking-followups?stage=reminder_1h` | Client reminder (SMS if phone) |
 | Intro session ends | `POST /api/public/cal/webhook` (MEETING_ENDED) | Client followup (upsell) |
-| 3-5 days after full session | Cron `/api/admin/cal/booking-followups?stage=session_followup` | Client followup (if slots available) |
+| Morning after full session | Cron `/api/admin/cal/booking-followups?stage=session_followup` | Client followup (if slots available) |
 
 **Idempotency columns** (in `cal_bookings` table):
 - `client_confirmation_sent_at` - Prevents duplicate client confirmations
@@ -285,7 +285,7 @@ All templates are located in `src/lib/email/templates/`. This is the authoritati
 | `calBookingTherapistNotification` | `calBookingTherapistNotification.ts` | Cal.com webhook | Notify therapist of Cal.com booking |
 | `calBookingReminder` | `calBookingReminder.ts` | Cron (24h/1h before) | Remind patient of upcoming booking |
 | `calIntroFollowup` | `calIntroFollowup.ts` | Cal.com webhook (MEETING_ENDED) | Upsell full session after intro |
-| `calSessionFollowup` | `calSessionFollowup.ts` | Cron (3-5 days after) | Encourage booking next session |
+| `calSessionFollowup` | `calSessionFollowup.ts` | Cron (next morning) | Provide booking link for next session |
 | `cancellationRecovery` | `cancellationRecovery.ts` | Cron (2-4h after cancel) | Show other matches after cancellation |
 
 ### Therapist Onboarding Templates

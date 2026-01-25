@@ -9,7 +9,7 @@ describe('calSessionFollowup email template', () => {
       fullSessionUrl: 'https://cal.kaufmann.health/dr-schmidt/full-session',
     });
 
-    expect(result.subject).toBe('Bereit für Ihre nächste Sitzung mit Dr. Schmidt?');
+    expect(result.subject).toBe('Für Ihre nächste Sitzung mit Dr. Schmidt');
     expect(result.html).toContain('Hallo Anna');
     expect(result.html).toContain('Dr. Schmidt');
     expect(result.html).toContain('Nächsten Termin buchen');
@@ -38,7 +38,7 @@ describe('calSessionFollowup email template', () => {
     expect(result.html).toContain('Sonntag, 25. Januar');
     expect(result.html).toContain('10:00 Uhr');
     // Preheader is rendered in HTML hidden span
-    expect(result.html).toContain('Nächster Termin:');
+    expect(result.html).toContain('Nächster freier Termin:');
   });
 
   it('renders without next slot showing generic message', () => {

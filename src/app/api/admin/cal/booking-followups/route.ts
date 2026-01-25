@@ -14,7 +14,7 @@
  * - confirmation_recovery: Resend booking confirmations that failed during webhook
  * - reminder_24h: Send reminder 24h before appointment
  * - reminder_1h: Send reminder 1h before appointment
- * - session_followup: Send "book next session" email 3-5 days after completed full session
+ * - session_followup: Send "book next session" email next morning after completed full session
  *                     (only if therapist has available slots)
  *
  * NOTE: post_intro follow-up emails are now sent via MEETING_ENDED webhook
@@ -148,9 +148,10 @@ async function processStage(
       if (error) throw error;
       bookings = (data || []) as CalBooking[];
     } else if (stage === 'session_followup') {
-      // 3-5 days after session end (72h to 120h window)
-      const windowStart = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString();
-      const windowEnd = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString();
+      // Next morning after session (10-30h window)
+      // e.g., session at 5pm Monday → email Tuesday 8am (~15h later)
+      const windowStart = new Date(now.getTime() - 30 * 60 * 60 * 1000).toISOString();
+      const windowEnd = new Date(now.getTime() - 10 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabaseServer
         .from('cal_bookings')
         .select('*')
