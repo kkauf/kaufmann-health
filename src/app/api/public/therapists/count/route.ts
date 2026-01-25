@@ -80,10 +80,12 @@ export async function GET(req: NextRequest) {
     for (const row of rows) {
       // Skip hidden therapists
       if (hideIds.has(row.id)) continue;
-      
-      // Skip therapists hidden from directory
+
+      // Skip therapists hidden from directory or test accounts
       const metadata = row.metadata as Record<string, unknown> | null;
       if (metadata?.hide_from_directory === true) continue;
+      if (metadata?.hidden === true) continue;
+      if (metadata?.is_test === true) continue;
 
       // Build therapist row for eligibility check
       const tRow: TherapistRowForMatch = {
