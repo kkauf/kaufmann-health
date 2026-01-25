@@ -137,7 +137,10 @@ export default function ScreenPaymentInfo({
             </ul>
             <button
               type="button"
-              onClick={() => handleSelect('self_pay')}
+              onClick={() => {
+                handleSelect('self_pay');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
               className="mt-4 w-full text-center py-2 px-4 rounded-lg text-sm font-medium text-indigo-700 bg-indigo-100 hover:bg-indigo-200 transition-colors"
             >
               Ich probier&apos;s aus →
