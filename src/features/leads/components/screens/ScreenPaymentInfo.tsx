@@ -35,10 +35,12 @@ export default function ScreenPaymentInfo({
   return (
     <div className="space-y-6">
       {/* Context */}
-      <div className="space-y-2">
-        <h2 className="text-xl font-semibold text-gray-900">Wie möchtest du Therapie finanzieren?</h2>
-        <p className="text-sm text-gray-600">
-          Unsere Therapeut:innen arbeiten ausschließlich mit Selbstzahlern.
+      <div className="space-y-3">
+        <h2 className="text-xl font-semibold text-gray-900">Kurzer Hinweis zur Finanzierung</h2>
+        <p className="text-base text-gray-700">
+          Unsere Therapeut:innen arbeiten mit Selbstzahlern (€80–120 pro Sitzung).
+          Viele unserer Klient:innen sehen das als Investition in sich selbst –
+          in ihre Gesundheit, ihre Beziehungen und ihre Lebensqualität.
         </p>
       </div>
 
@@ -56,7 +58,7 @@ export default function ScreenPaymentInfo({
           }`}
         >
           <div className="flex items-start gap-3">
-            <div className={`mt-0.5 h-5 w-5 rounded-md border-2 flex items-center justify-center ${
+            <div className={`mt-0.5 h-5 w-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${
               selected === 'self_pay'
                 ? 'border-indigo-500 bg-indigo-500'
                 : 'border-gray-300'
@@ -68,8 +70,8 @@ export default function ScreenPaymentInfo({
               )}
             </div>
             <div>
-              <span className="text-base font-medium text-gray-900">Ich zahle selbst</span>
-              <p className="text-sm text-gray-600 mt-1">€80–120 pro Sitzung · Sofort starten · Freie Therapeutenwahl</p>
+              <span className="text-base font-medium text-gray-900">Das passt für mich</span>
+              <p className="text-sm text-gray-600 mt-1">Sofort starten · Freie Therapeutenwahl · Volle Flexibilität</p>
             </div>
           </div>
         </button>
@@ -86,7 +88,7 @@ export default function ScreenPaymentInfo({
           }`}
         >
           <div className="flex items-start gap-3">
-            <div className={`mt-0.5 h-5 w-5 rounded-md border-2 flex items-center justify-center ${
+            <div className={`mt-0.5 h-5 w-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${
               selected === 'insurance_waitlist'
                 ? 'border-indigo-500 bg-indigo-500'
                 : 'border-gray-300'
@@ -98,28 +100,56 @@ export default function ScreenPaymentInfo({
               )}
             </div>
             <div>
-              <span className="text-base font-medium text-gray-900">Ich suche einen Kassenplatz</span>
-              <p className="text-sm text-gray-600 mt-1">Leider können wir dir dabei nicht helfen</p>
+              <span className="text-base font-medium text-gray-900">Ich brauche einen Kassenplatz</span>
             </div>
           </div>
         </button>
       </div>
 
-      {/* Show helpful resource when insurance_waitlist is selected */}
+      {/* Show helpful info when insurance_waitlist is selected */}
       {selected === 'insurance_waitlist' && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 sm:p-5">
-          <p className="text-sm text-gray-700 mb-3">
-            Für kassenfinanzierte Therapieplätze hilft dir die Terminservicestelle der Kassenärztlichen Vereinigung:
-          </p>
-          <a
-            href="https://www.116117.de/de/terminservice.php"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 underline underline-offset-2"
-          >
-            <span>Zur Terminservicestelle (116117)</span>
-            <ExternalLink className="h-4 w-4" />
-          </a>
+        <div className="space-y-4">
+          {/* Helpful alternatives */}
+          <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 sm:p-5">
+            <p className="text-sm font-medium text-gray-900 mb-2">Gut zu wissen:</p>
+            <ul className="text-sm text-gray-700 space-y-2">
+              <li className="flex gap-2">
+                <span className="text-gray-400">•</span>
+                <span>Private Krankenzusatzversicherungen erstatten oft 80–100% der Kosten</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-gray-400">•</span>
+                <span>Manche Arbeitgeber übernehmen Therapiekosten als Gesundheits-Benefit</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-gray-400">•</span>
+                <span>Du kannst auch selbstzahlend starten und später zu einem Kassenplatz wechseln</span>
+              </li>
+            </ul>
+            <button
+              type="button"
+              onClick={() => handleSelect('self_pay')}
+              className="mt-4 text-sm font-medium text-indigo-600 hover:text-indigo-800"
+            >
+              Doch selbst zahlen →
+            </button>
+          </div>
+
+          {/* KV Terminservicestelle link */}
+          <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 sm:p-5">
+            <p className="text-sm text-gray-700 mb-3">
+              Für kassenfinanzierte Plätze hilft dir die Terminservicestelle:
+            </p>
+            <a
+              href="https://www.116117.de/de/terminservice.php"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 underline underline-offset-2"
+            >
+              <span>Zur Terminservicestelle (116117)</span>
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </div>
         </div>
       )}
 
