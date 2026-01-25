@@ -100,7 +100,8 @@ export default function ScreenPaymentInfo({
               )}
             </div>
             <div>
-              <span className="text-base font-medium text-gray-900">Ich brauche einen Kassenplatz</span>
+              <span className="text-base font-medium text-gray-900">Nein, ich brauche einen Kassenplatz</span>
+              <p className="text-sm text-gray-600 mt-1">Oft 6+ Monate Wartezeit · Zugewiesene:r Therapeut:in · Eintrag in Patientenakte</p>
             </div>
           </div>
         </button>
@@ -109,30 +110,55 @@ export default function ScreenPaymentInfo({
       {/* Show helpful info when insurance_waitlist is selected */}
       {selected === 'insurance_waitlist' && (
         <div className="space-y-4">
+          {/* Caring message + value proposition */}
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50/30 p-4 sm:p-5">
+            <p className="text-sm font-medium text-gray-900 mb-3">
+              Wir verstehen das – und würden dir trotzdem gerne helfen.
+            </p>
+            <ul className="text-sm text-gray-700 space-y-2">
+              <li className="flex gap-2">
+                <span className="text-indigo-400">•</span>
+                <span>Die Wartezeit auf kassenfinanzierte Therapie beträgt oft über 6 Monate</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-indigo-400">•</span>
+                <span>Einen Kassenplatz bei Expert:innen für Körperpsychotherapie zu finden ist nahezu unmöglich</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-indigo-400">•</span>
+                <span>Unsere Klient:innen berichten oft schon nach 3 Sitzungen von spürbaren Verbesserungen</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-indigo-400">•</span>
+                <span>Ein kostenloses Kennenlerngespräch ist möglich – um zu sehen, ob es das Richtige für dich ist</span>
+              </li>
+            </ul>
+            <button
+              type="button"
+              onClick={() => handleSelect('self_pay')}
+              className="mt-4 w-full text-center py-2 px-4 rounded-lg text-sm font-medium text-indigo-700 bg-indigo-100 hover:bg-indigo-200 transition-colors"
+            >
+              Ich probier's aus →
+            </button>
+          </div>
+
           {/* Helpful alternatives */}
           <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 sm:p-5">
             <p className="text-sm font-medium text-gray-900 mb-2">Gut zu wissen:</p>
             <ul className="text-sm text-gray-700 space-y-2">
               <li className="flex gap-2">
                 <span className="text-gray-400">•</span>
-                <span>Private Krankenzusatzversicherungen erstatten oft 80–100% der Kosten</span>
+                <span>Private Zusatzversicherungen erstatten oft 80–100% der Kosten</span>
               </li>
               <li className="flex gap-2">
                 <span className="text-gray-400">•</span>
-                <span>Manche Arbeitgeber übernehmen Therapiekosten als Gesundheits-Benefit</span>
+                <span>Manche Arbeitgeber übernehmen Therapiekosten als Benefit</span>
               </li>
               <li className="flex gap-2">
                 <span className="text-gray-400">•</span>
-                <span>Du kannst auch selbstzahlend starten und später zu einem Kassenplatz wechseln</span>
+                <span>Du kannst selbstzahlend starten und später zu einem Kassenplatz wechseln</span>
               </li>
             </ul>
-            <button
-              type="button"
-              onClick={() => handleSelect('self_pay')}
-              className="mt-4 text-sm font-medium text-indigo-600 hover:text-indigo-800"
-            >
-              Doch selbst zahlen →
-            </button>
           </div>
 
           {/* KV Terminservicestelle link */}
