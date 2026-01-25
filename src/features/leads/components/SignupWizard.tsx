@@ -11,7 +11,7 @@ import Screen4 from './screens/Screen4';
 import NewScreen3_WhatBringsYou, { type NewScreen3Values } from './screens/NewScreen3_WhatBringsYou';
 import NewScreen5_Modality from './screens/NewScreen5_Modality';
 import ScreenSchwerpunkte, { type ScreenSchwerpunkteValues } from './screens/ScreenSchwerpunkte';
-import ScreenPaymentInfo, { type ScreenPaymentInfoValues, type PaymentPreference } from './screens/ScreenPaymentInfo';
+import ScreenPaymentInfo, { type ScreenPaymentInfoValues } from './screens/ScreenPaymentInfo';
 import { Button } from '@/components/ui/button';
 import { leadSubmissionSchema } from '@/lib/contracts';
 import { PRIVACY_VERSION } from '@/lib/privacy';
@@ -36,8 +36,7 @@ export type WizardData = Omit<Screen1Values, 'email'> & Screen1_5Values & Screen
   additional_info?: NewScreen3Values['additional_info'];
   // Step 2.5: Schwerpunkte (feature-toggled)
   schwerpunkte?: string[];
-  // Step 2.6: Payment info
-  payment_preference?: PaymentPreference;
+  // Step 2.6: Payment info - defined in ScreenPaymentInfoValues
   // Step 3: Modality
   modality_matters?: boolean;
   methods?: string[];
@@ -906,7 +905,6 @@ export default function SignupWizard() {
         return (
           <ScreenPaymentInfo
             values={{ payment_preference: data.payment_preference }}
-            schwerpunkte={data.schwerpunkte}
             onChange={(patch) => {
               saveLocal(patch);
               // Track payment preference selection
