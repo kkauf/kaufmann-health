@@ -26,7 +26,7 @@ export default function ScreenPaymentInfo({
   disabled = false,
 }: ScreenPaymentInfoProps) {
   const selected = values.payment_preference;
-  const canContinue = !!selected;
+  const canContinue = selected === 'self_pay';
 
   const handleSelect = (preference: PaymentPreference) => {
     onChange({ payment_preference: preference });
@@ -97,21 +97,41 @@ export default function ScreenPaymentInfo({
         </button>
       </div>
 
-      {/* Show KV Terminservicestelle link when insurance_waitlist is selected */}
+      {/* Show info panel when insurance_waitlist is selected */}
       {selected === 'insurance_waitlist' && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 sm:p-5">
-          <p className="text-sm text-gray-700 mb-3">
-            Die Kassenärztliche Vereinigung bietet einen kostenlosen Terminservice für kassenfinanzierte Therapieplätze:
-          </p>
-          <a
-            href="https://www.116117.de/de/terminservice.php"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 underline underline-offset-2"
-          >
-            <span>Zur Terminservicestelle (116117)</span>
-            <ExternalLink className="h-4 w-4" />
-          </a>
+        <div className="space-y-4">
+          {/* Reconsider panel */}
+          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 sm:p-5">
+            <p className="text-sm font-medium text-gray-900 mb-2">Gut zu wissen:</p>
+            <ul className="text-sm text-gray-700 space-y-1.5 list-disc list-inside">
+              <li>Viele Klient:innen starten selbstzahlend und wechseln später zur Kasse</li>
+              <li>Private Krankenzusatzversicherungen erstatten oft 80–100%</li>
+              <li>Manche Arbeitgeber übernehmen Therapiekosten als Benefit</li>
+            </ul>
+            <button
+              type="button"
+              onClick={() => handleSelect('self_pay')}
+              className="mt-3 text-sm font-medium text-indigo-600 hover:text-indigo-800 underline underline-offset-2"
+            >
+              Doch lieber selbst zahlen →
+            </button>
+          </div>
+
+          {/* KV Terminservicestelle link */}
+          <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 sm:p-5">
+            <p className="text-sm text-gray-700 mb-3">
+              Die Kassenärztliche Vereinigung bietet einen kostenlosen Terminservice für kassenfinanzierte Therapieplätze:
+            </p>
+            <a
+              href="https://www.116117.de/de/terminservice.php"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 underline underline-offset-2"
+            >
+              <span>Zur Terminservicestelle (116117)</span>
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </div>
         </div>
       )}
 
