@@ -906,6 +906,7 @@ export default function SignupWizard() {
         return (
           <ScreenPaymentInfo
             values={{ payment_preference: data.payment_preference }}
+            schwerpunkte={data.schwerpunkte}
             onChange={(patch) => {
               saveLocal(patch);
               // Track payment preference selection

@@ -3,6 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ArrowRight, ExternalLink } from 'lucide-react';
+import { getSchwerpunktLabel } from '@/lib/schwerpunkte';
 
 export type PaymentPreference = 'self_pay' | 'insurance_waitlist';
 
@@ -12,14 +13,36 @@ export type ScreenPaymentInfoValues = {
 
 interface ScreenPaymentInfoProps {
   values: ScreenPaymentInfoValues;
+  schwerpunkte?: string[];
   onChange: (values: Partial<ScreenPaymentInfoValues>) => void;
   onBack: () => void;
   onNext: () => void;
   disabled?: boolean;
 }
 
+// Investment framing based on schwerpunkt - what waiting 6+ months costs them
+const INVESTMENT_FRAMING: Record<string, string> = {
+  trauma: '6 weitere Monate mit Flashbacks, Albträumen oder ständiger Anspannung',
+  angst: '6 weitere Monate, in denen Angst deinen Alltag einschränkt',
+  depression: '6 weitere Monate Erschöpfung und das Gefühl, nicht weiterzukommen',
+  selbstwert: '6 weitere Monate innerer Kritik und Selbstzweifel',
+  trauer: '6 weitere Monate, den Schmerz alleine zu tragen',
+  psychosomatik: '6 weitere Monate körperlicher Beschwerden ohne Lösung',
+  essstoerung: '6 weitere Monate im Kampf mit Essen und Körperbild',
+  wut: '6 weitere Monate, in denen Emotionen dich überwältigen',
+  zwang: '6 weitere Monate unter dem Druck von Zwängen und Kontrolle',
+  sexualitaet: '6 weitere Monate Blockaden in deiner Intimität',
+  beziehung: '6 weitere Monate Beziehungsstress und Einsamkeit',
+  paare: '6 weitere Monate Konflikte statt Verbindung',
+  krisen: '6 weitere Monate in der Krise ohne professionelle Begleitung',
+  identitaet: '6 weitere Monate Unsicherheit über dich selbst',
+  neurodivergenz: '6 weitere Monate ohne passende Unterstützung für dein Gehirn',
+  entwicklung: '6 weitere Monate Stillstand statt Wachstum',
+};
+
 export default function ScreenPaymentInfo({
   values,
+  schwerpunkte = [],
   onChange,
   onBack,
   onNext,
@@ -32,13 +55,31 @@ export default function ScreenPaymentInfo({
     onChange({ payment_preference: preference });
   };
 
+  // Get personalized investment framing based on first schwerpunkt
+  const primarySchwerpunkt = schwerpunkte[0];
+  const investmentMessage = primarySchwerpunkt ? INVESTMENT_FRAMING[primarySchwerpunkt] : null;
+  const schwerpunktLabel = primarySchwerpunkt ? getSchwerpunktLabel(primarySchwerpunkt) : null;
+
   return (
     <div className="space-y-6">
-      {/* Notice */}
-      <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 sm:p-5">
-        <p className="text-sm leading-relaxed text-gray-700">
-          <strong>Hinweis:</strong> Unsere Therapeut:innen arbeiten mit Selbstzahlern (€80–120/Sitzung).
-          Die Wartezeit auf kassenfinanzierte Therapie beträgt oft 6+ Monate.
+      {/* Investment framing */}
+      <div className="space-y-3">
+        <p className="text-base leading-relaxed text-gray-700">
+          Unsere Therapeut:innen arbeiten mit Selbstzahlern (€80–120/Sitzung).
+        </p>
+        {investmentMessage && (
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50/30 p-4">
+            <p className="text-sm text-gray-600 mb-1">Die Wartezeit auf einen Kassenplatz bedeutet oft:</p>
+            <p className="text-base font-medium text-gray-900">{investmentMessage}</p>
+          </div>
+        )}
+        {!investmentMessage && (
+          <p className="text-sm text-gray-600">
+            Die Wartezeit auf kassenfinanzierte Therapie beträgt oft 6+ Monate.
+          </p>
+        )}
+        <p className="text-sm text-gray-700">
+          <strong>Therapie ist eine Investition in dich selbst</strong> – in deine Gesundheit, deine Beziehungen und deine Lebensqualität.
         </p>
       </div>
 
