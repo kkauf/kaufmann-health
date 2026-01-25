@@ -101,7 +101,9 @@ export default function ScreenPaymentInfo({
             </div>
             <div>
               <span className="text-base font-medium text-gray-900">Nein, ich brauche einen Kassenplatz</span>
-              <p className="text-sm text-gray-600 mt-1">Oft 6+ Monate Wartezeit · Zugewiesene:r Therapeut:in · Eintrag in Patientenakte</p>
+              {selected === 'insurance_waitlist' && (
+                <p className="text-sm text-gray-600 mt-1">Oft 6+ Monate Wartezeit · Zugewiesene:r Therapeut:in · Eintrag in Patientenakte</p>
+              )}
             </div>
           </div>
         </button>
