@@ -98,26 +98,28 @@ test.describe('Test 3: Concierge vs Marketplace Flow', () => {
 
   /**
    * Helper to complete the questionnaire flow.
-   * Flow after Timeline step removal:
-   * Schwerpunkte (2.5) → [What Brings You (2) for Concierge only] → Modality (3) → Location (4) → Preferences (5) → Contact (6)
+   * Flow: Schwerpunkte (2.5) → Payment Info (2.6) → [What Brings You (2) for Concierge] → Modality (3) → Location (4) → Preferences (5) → Contact (6)
    */
   async function completeQuestionnaire(page: Page) {
-    // Step 2.5: Schwerpunkte (first step for all variants now)
+    // Step 2.5: Schwerpunkte (first step for all variants)
     await expect(page.getByText(/Was beschäftigt dich/i)).toBeVisible({ timeout: 8000 });
-    // Skip Schwerpunkte selection
     await page.getByRole('button', { name: /Überspringen/i }).click();
 
-    // Wait for transition - check for either "What Brings You" (Concierge) or Modality (others)
+    // Step 2.6: Payment info - select "Das passt für mich" then click Weiter
+    await expect(page.getByText(/Finanzierung/i)).toBeVisible({ timeout: 8000 });
+    await page.getByRole('button', { name: /passt für mich/i }).click();
+    await page.getByRole('button', { name: /Weiter/i }).click();
+
+    // Check for "What Brings You" (Concierge only) or proceed to Modality
     await page.waitForTimeout(1000);
     const whatBringsYouVisible = await page.getByText(/Was bringt dich zur Therapie/i).isVisible().catch(() => false);
 
     if (whatBringsYouVisible) {
-      // Concierge variant: fill text and continue
       await page.getByLabel(/Was bringt dich zur Therapie/i).fill('E2E Test: kurzbeschreibung');
       await page.getByRole('button', { name: 'Weiter →' }).click();
     }
 
-    // Step 3: Modality - wait for it and select "Nein"
+    // Step 3: Modality
     await expect(page.getByText(/Möchtest du deine Therapiemethode selbst wählen/i)).toBeVisible({ timeout: 5000 });
     const noBtn = page.getByRole('button', { name: /^Nein/i });
     await expect(noBtn).toBeEnabled();

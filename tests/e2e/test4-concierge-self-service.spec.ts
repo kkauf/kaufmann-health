@@ -71,14 +71,18 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
     });
 
   /**
-   * Helper to complete the first step (Schwerpunkte).
-   * Timeline step was removed - wizard now starts at Schwerpunkte.
+   * Helper to complete the initial steps (Schwerpunkte + Payment Info).
+   * Flow: Schwerpunkte (2.5) → Payment Info (2.6)
    */
-  async function completeFirstStep(page: Page) {
-    // Wait for Schwerpunkte to be visible (first step for all variants now)
+  async function completeInitialSteps(page: Page) {
+    // Step 2.5: Schwerpunkte
     await expect(page.getByText(/Was beschäftigt dich/i)).toBeVisible({ timeout: 8000 });
-    // Skip Schwerpunkte selection
     await page.getByRole('button', { name: /Überspringen/i }).click();
+
+    // Step 2.6: Payment info - select "Das passt für mich" then click Weiter
+    await expect(page.getByText(/Finanzierung/i)).toBeVisible({ timeout: 8000 });
+    await page.getByRole('button', { name: /passt für mich/i }).click();
+    await page.getByRole('button', { name: /Weiter/i }).click();
   }
 
   /**
@@ -87,7 +91,6 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
    */
   async function completeWhatBringsYouIfPresent(page: Page) {
     await page.waitForTimeout(1000);
-    // Concierge path: open text question
     const whatBringsYouVisible = await page.getByText(/Was bringt dich zur Therapie/i).isVisible().catch(() => false);
     if (whatBringsYouVisible) {
       await page.getByLabel(/Was bringt dich zur Therapie/i).fill('E2E Test: kurzbeschreibung');
@@ -147,16 +150,13 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
   }
 
   test.describe('Concierge Flow (/fragebogen?variant=concierge)', () => {
-    test('shows text field (Step 2) after Schwerpunkte', async ({ page }) => {
+    test('shows text field (Step 2) after initial steps', async ({ page }) => {
       await page.goto('/fragebogen?variant=concierge&restart=1');
-      // First step is Schwerpunkte (Timeline was removed)
-      await completeFirstStep(page);
+      // Complete Schwerpunkte + Payment Info
+      await completeInitialSteps(page);
 
-      // Wait for transition
-      await page.waitForTimeout(1000);
-
-      // Concierge should show "What Brings You" after Schwerpunkte
-      await expect(page.getByText(/Was bringt dich zur Therapie\?/i)).toBeVisible({ timeout: 5000 });
+      // Concierge should show "What Brings You" after payment info
+      await expect(page.getByText(/Was bringt dich zur Therapie\?/i)).toBeVisible({ timeout: 8000 });
     });
 
   });
@@ -207,13 +207,13 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
     test('both variants reach step 3 (modality) after initial steps', async ({ page }) => {
       // Concierge: Schwerpunkte → What Brings You → Modality
       await page.goto('/fragebogen?variant=concierge&restart=1');
-      await completeFirstStep(page);
+      await completeInitialSteps(page);
       await completeWhatBringsYouIfPresent(page);
       await expect(page.getByText(/Möchtest du deine Therapiemethode selbst wählen/i)).toBeVisible({ timeout: 8000 });
 
       // Self-Service: Schwerpunkte → Modality (skips What Brings You)
       await page.goto('/fragebogen?variant=self-service&restart=1');
-      await completeFirstStep(page);
+      await completeInitialSteps(page);
       await expect(page.getByText(/Möchtest du deine Therapiemethode selbst wählen/i)).toBeVisible({ timeout: 8000 });
     });
   });
@@ -223,7 +223,7 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
       await page.setViewportSize({ width: 375, height: 667 });
       await page.goto('/fragebogen?variant=concierge&restart=1');
 
-      await completeFirstStep(page);
+      await completeInitialSteps(page);
       await completeWhatBringsYouIfPresent(page);
       await expect(page.getByText(/Möchtest du deine Therapiemethode selbst wählen/i)).toBeVisible({ timeout: 8000 });
     });
@@ -232,7 +232,7 @@ test.describe('Test 4: Concierge vs Self-Service', () => {
       await page.setViewportSize({ width: 375, height: 667 });
       await page.goto('/fragebogen?variant=self-service&restart=1');
 
-      await completeFirstStep(page);
+      await completeInitialSteps(page);
       await expect(page.getByText(/Möchtest du deine Therapiemethode selbst wählen/i)).toBeVisible({ timeout: 8000 });
     });
   });
