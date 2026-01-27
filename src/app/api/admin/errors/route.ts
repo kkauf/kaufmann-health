@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 import { logError } from '@/lib/logger';
+import { parseQuery } from '@/lib/api-utils';
+import { AdminErrorsQueryInput } from '@/contracts/admin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,20 +44,15 @@ export async function GET(req: Request) {
 
   try {
     const url = new URL(req.url);
-    const sinceHoursRaw = url.searchParams.get('since_hours') || '24';
-    const source = (url.searchParams.get('source') || '').trim();
-    const type = (url.searchParams.get('type') || '').trim();
-    const limitRaw = url.searchParams.get('limit') || '200';
-    const levelsCsv = (url.searchParams.get('levels') || '').trim();
-    const levelSingle = (url.searchParams.get('level') || '').trim();
+    const parsed = parseQuery(AdminErrorsQueryInput, url.searchParams);
+    if (!parsed.success) return parsed.response;
 
-    let sinceHours = Number.parseInt(sinceHoursRaw, 10);
-    if (!Number.isFinite(sinceHours) || sinceHours <= 0) sinceHours = 24;
-    if (sinceHours > 720) sinceHours = 720; // cap at 30 days
-
-    let limit = Number.parseInt(limitRaw, 10);
-    if (!Number.isFinite(limit) || limit <= 0) limit = 200;
-    if (limit > 500) limit = 500;
+    const sinceHours = parsed.data.since_hours ?? 24;
+    const source = (parsed.data.source || '').trim();
+    const type = (parsed.data.type || '').trim();
+    const limit = parsed.data.limit ?? 200;
+    const levelsCsv = (parsed.data.levels || '').trim();
+    const levelSingle = (parsed.data.level || '').trim();
 
     const sinceIso = new Date(Date.now() - sinceHours * 60 * 60 * 1000).toISOString();
 
@@ -73,7 +70,7 @@ export async function GET(req: Request) {
 
     let query = supabaseServer
       .from('events')
-      .select('id, level, type, properties, created_at')
+      .select('id, level, type, properties, created_at, hashed_ip, user_agent')
       .gte('created_at', sinceIso)
       .order('created_at', { ascending: false })
       .limit(limit);

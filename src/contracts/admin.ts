@@ -141,3 +141,16 @@ export const AdminUserErrorsDigestInput = z
   .passthrough();
 
 export type AdminUserErrorsDigestInput = z.infer<typeof AdminUserErrorsDigestInput>;
+
+export const AdminErrorsQueryInput = z
+  .object({
+    since_hours: z.coerce.number().int().min(1).max(720).optional(),
+    source: z.string().trim().optional(),
+    type: z.string().trim().optional(),
+    limit: z.coerce.number().int().min(1).max(500).optional(),
+    levels: z.string().trim().optional(),
+    level: z.string().trim().optional(),
+  })
+  .passthrough();
+
+export type AdminErrorsQueryInput = z.infer<typeof AdminErrorsQueryInput>;

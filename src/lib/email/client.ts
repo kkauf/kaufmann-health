@@ -261,6 +261,12 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
       return { sent: false, reason: 'failed' }; // give up
     } catch (e) {
       clearTimeout(timer);
+      const err = e as {
+        name?: string;
+        message?: string;
+        cause?: unknown;
+      };
+      const cause = err?.cause as { code?: unknown; errno?: unknown; message?: unknown; name?: unknown } | undefined;
       // Network error or timeout; log and maybe retry.
       if (attempt < maxAttempts) {
         await track({
@@ -274,6 +280,11 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
             has_text: Boolean(params.text || params.html),
             attempt,
             timeout_ms: timeoutMs,
+            error_name: err?.name,
+            error_message: err?.message,
+            error_cause_code: typeof cause?.code === 'string' ? cause.code : undefined,
+            error_cause_errno: typeof cause?.errno === 'string' ? cause.errno : undefined,
+            error_cause_message: typeof cause?.message === 'string' ? cause.message : undefined,
             ...(params.context || {}),
           },
         });
@@ -287,6 +298,11 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
         has_text: Boolean(params.text || params.html),
         attempt,
         timeout_ms: timeoutMs,
+        error_name: err?.name,
+        error_message: err?.message,
+        error_cause_code: typeof cause?.code === 'string' ? cause.code : undefined,
+        error_cause_errno: typeof cause?.errno === 'string' ? cause.errno : undefined,
+        error_cause_message: typeof cause?.message === 'string' ? cause.message : undefined,
         ...(params.context || {}),
       });
       return { sent: false, reason: 'failed' };
