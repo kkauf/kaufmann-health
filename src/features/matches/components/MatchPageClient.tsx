@@ -83,7 +83,7 @@ type MatchApiData = {
     personalized_message?: string;
   };
   therapists: TherapistItem[];
-  metadata?: { match_type?: 'exact' | 'partial' | 'none' };
+  metadata?: { match_type?: 'exact' | 'partial' | 'none'; patient_id?: string };
 };
 
 const MODALITY_MAP: Record<string, { label: string; color: string }> = {
@@ -296,25 +296,25 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
   }, [data, therapists.length, uuid]);
 
   // Fire Google Ads lead verified base conversion for email magic link users
-  // This fires once per uuid to ensure client-side base conversion for attribution
+  // This fires once per patient to ensure client-side base conversion for attribution
+  // CRITICAL: Must use patient_id (not uuid) so orderId matches between gtag and API
+  const patientIdFromApi = data?.metadata?.patient_id;
   useEffect(() => {
-    if (!data || !uuid) return;
-    
-    // Deduplicate: only fire once per match session
-    const storageKey = `ga_conv_lead_verified_${uuid}`;
+    if (!data || !patientIdFromApi) return;
+
+    // Deduplicate: only fire once per patient
+    const storageKey = `ga_conv_lead_verified_${patientIdFromApi}`;
     try {
       if (window.sessionStorage.getItem(storageKey) === '1') return;
     } catch { }
-    
+
     // Fire conversion with enhancement (€12) - CRITICAL for Google Ads attribution
-    // This fires the base gtag conversion FIRST, then triggers server-side enhancement
-    // The proper sequencing ensures Google can match enhancement to base conversion
+    // Uses patient_id as transaction_id to match server-side orderId
     try {
-      // Use uuid as transaction ID since we don't have patient_id client-side here
-      void fireLeadVerifiedWithEnhancement(uuid, 'email');
+      void fireLeadVerifiedWithEnhancement(patientIdFromApi, 'email');
       window.sessionStorage.setItem(storageKey, '1');
     } catch { }
-  }, [data, uuid]);
+  }, [data, patientIdFromApi]);
 
   // Track preferences summary shown (non-PII)
   useEffect(() => {
