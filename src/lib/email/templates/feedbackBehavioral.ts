@@ -2,6 +2,7 @@ import { renderLayout, renderButton } from '../layout';
 import type { EmailContent } from '../types';
 import type { PatientBehaviorSegment } from '../patientBehavior';
 import { BASE_URL } from '@/lib/constants';
+import { toProxiedPhotoUrl, hashCode, getInitials, truncateSentences, formatNextIntroSlot } from '../components/therapistPreview';
 
 function escapeHtml(s: string) {
   return (s || '')
@@ -86,6 +87,16 @@ export type TherapistInfo = {
   city?: string | null;
   modalities?: string[] | null;
   approach_text?: string | null;
+  photo_url?: string | null;
+  gender?: string | null;
+  schwerpunkte?: string[] | null;
+  session_preferences?: string[] | null;
+  who_comes_to_me?: string | null;
+  session_focus?: string | null;
+  first_session?: string | null;
+  about_me?: string | null;
+  qualification?: string | null;
+  next_intro_slot?: { date_iso: string; time_label: string; time_utc?: string } | null;
 };
 
 export type BehavioralFeedbackParams = {
@@ -103,7 +114,7 @@ export type BehavioralFeedbackParams = {
 // Interview CTA (shared across variants, with segment-aware copy)
 // ============================================================================
 
-function renderInterviewCta(segment: PatientBehaviorSegment, patientId: string, source: string): string {
+function renderInterviewCta(segment: PatientBehaviorSegment, patientId: string, source: string, buttonVariant: 'primary' | 'outline' = 'primary'): string {
   const calendarUrl = process.env.NEXT_PUBLIC_BOOKING_URL || 'https://cal.com/kkauf/15min';
   const feedbackUrl = `${BASE_URL}/feedback/quick?patient=${encodeURIComponent(patientId)}&reason=${encodeURIComponent(interviewReason(segment))}&utm_source=email&utm_campaign=${encodeURIComponent(source)}`;
 
@@ -138,7 +149,7 @@ function renderInterviewCta(segment: PatientBehaviorSegment, patientId: string, 
     `;
   }
 
-  // Secondary CTA: lighter styling
+  // Secondary CTA: lighter styling with configurable button variant
   return `
     <div style="border-top:1px solid rgba(226,232,240,0.8); padding-top:24px; margin-top:24px;">
       <div style="background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%) !important; background-image: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%) !important; border-radius:16px; border:1px solid rgba(99, 102, 241, 0.2); padding:24px; box-shadow: 0 2px 8px 0 rgba(99, 102, 241, 0.08);">
@@ -152,7 +163,7 @@ function renderInterviewCta(segment: PatientBehaviorSegment, patientId: string, 
             <td style="vertical-align:top;">
               <p style="margin:0 0 8px; font-size:17px; font-weight:700; color:#0f172a !important;">${escapeHtml(heading)}</p>
               <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#4338ca !important;">${escapeHtml(description)} <strong style="color:#312e81 !important;">25\u20AC Amazon-Gutschein</strong>.</p>
-              ${renderButton(calendarUrl, 'Termin vereinbaren')}
+              ${renderButton(calendarUrl, 'Termin vereinbaren', buttonVariant)}
             </td>
           </tr>
         </table>
@@ -200,27 +211,98 @@ function isPrimaryInterviewRejection(reasons: { reason: string }[]): boolean {
 // Mini therapist card (for variants A & D)
 // ============================================================================
 
+function genderTitle(gender?: string | null): string {
+  if (gender === 'male') return 'K\u00F6rperpsychotherapeut';
+  if (gender === 'female') return 'K\u00F6rperpsychotherapeutin';
+  return 'K\u00F6rperpsychotherapeut:in';
+}
+
+function renderSessionFormatBadges(prefs: string[] | null | undefined): string {
+  if (!Array.isArray(prefs) || prefs.length === 0) return '';
+  const pillBase = 'display:inline-block;border-radius:999px;font-size:12px;padding:3px 10px;line-height:1.3;vertical-align:middle;margin:2px 6px 2px 0;';
+  const pills: string[] = [];
+  const normalized = prefs.map(p => p.toLowerCase().trim());
+  if (normalized.includes('online')) {
+    pills.push(`<span style="${pillBase}background:#dbeafe !important;color:#1e40af !important;">Online</span>`);
+  }
+  if (normalized.includes('in_person') || normalized.includes('in-person') || normalized.includes('vor_ort')) {
+    pills.push(`<span style="${pillBase}background:#fef3c7 !important;color:#92400e !important;">Vor Ort</span>`);
+  }
+  return pills.join('');
+}
+
 function renderMiniTherapistCard(therapist: TherapistInfo, matchesUrl: string): string {
   const firstName = (therapist.first_name || '').trim();
   const lastInitial = (therapist.last_name || '').trim().charAt(0);
   const displayName = `${firstName} ${lastInitial ? lastInitial + '.' : ''}`.trim();
   const city = (therapist.city || 'Online').trim();
-  const approachText = truncateText(therapist.approach_text || '', 150);
+
+  // Profile text priority with section heading (mirrors therapist detail modal labels)
+  let profileLabel = '';
+  let profileText = '';
+  if (therapist.who_comes_to_me) {
+    profileLabel = 'Zu mir kommen Menschen, die';
+    profileText = truncateSentences(therapist.who_comes_to_me, 2);
+  } else if (therapist.session_focus) {
+    profileLabel = 'In unserer Arbeit';
+    profileText = truncateSentences(therapist.session_focus, 2);
+  } else if (therapist.first_session) {
+    profileLabel = 'Das erste Gespr\u00E4ch';
+    profileText = truncateSentences(therapist.first_session, 2);
+  } else if (therapist.about_me) {
+    profileLabel = '\u00DCber mich';
+    profileText = truncateSentences(therapist.about_me, 2);
+  } else if (therapist.approach_text) {
+    profileText = truncateSentences(therapist.approach_text, 2);
+  }
+  const profileTextTruncated = truncateText(profileText, 180);
+
   const modalityBadges = buildModalityBadges(therapist.modalities || []);
+  const title = genderTitle(therapist.gender);
+  const sessionBadges = renderSessionFormatBadges(therapist.session_preferences);
+
+  // Photo or avatar fallback
+  const photoSrc = toProxiedPhotoUrl(therapist.photo_url);
+  const initials = getInitials(therapist.first_name, therapist.last_name);
+  const avatarColor = `hsl(${hashCode(therapist.id) % 360}, 70%, 50%)`;
+  const photoHtml = photoSrc
+    ? `<img src="${escapeHtml(photoSrc)}" alt="${escapeHtml(displayName)}" width="72" height="72" style="width:72px;height:72px;object-fit:cover;display:block;border-radius:999px;" />`
+    : `<div style="width:72px;height:72px;color:#fff !important;text-align:center;line-height:72px;font-size:24px;font-weight:600;border-radius:999px;background:${avatarColor} !important;">${escapeHtml(initials)}</div>`;
+
+  // Next available slot
+  const nextSlotFormatted = formatNextIntroSlot(therapist.next_intro_slot);
+  const slotHtml = nextSlotFormatted
+    ? `<div style="background:#ecfdf5 !important;border-radius:8px;padding:10px 16px;margin:12px 0 0;text-align:center;">
+        <span style="color:#047857 !important;font-size:13px;font-weight:600;">N\u00E4chster freier Termin: ${escapeHtml(nextSlotFormatted)}</span>
+       </div>`
+    : '';
 
   const profileUrl = `${matchesUrl}?therapist=${encodeURIComponent(therapist.id)}&utm_source=email&utm_medium=transactional&utm_campaign=feedback_behavioral_d10`;
 
   return `
     <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; background-image: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; border-radius:16px; border:1px solid rgba(226, 232, 240, 0.8); padding:24px; margin:0 0 24px; box-shadow: 0 4px 12px 0 rgba(100, 116, 139, 0.08);">
-      <div style="font-size:20px;font-weight:700;color:#0f172a !important;margin-bottom:4px;">${escapeHtml(displayName)}</div>
-      <div style="font-size:14px;color:#64748b !important;margin-bottom:8px;">K\u00F6rperpsychotherapeutin \u00B7 ${escapeHtml(city)}</div>
-      <div style="margin-bottom:12px;">${modalityBadges}</div>
-      ${approachText ? `
-        <div style="border-top:1px solid rgba(226, 232, 240, 0.8);padding-top:12px;margin-bottom:12px;">
-          <p style="margin:0;font-size:14px;line-height:1.6;color:#334155 !important;font-style:italic;">\u201E${escapeHtml(approachText)}\u201C</p>
+      <!-- Photo + Name row -->
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+        <tr>
+          <td width="84" style="vertical-align:top;padding-right:12px;">
+            <div style="width:72px;height:72px;border-radius:999px;overflow:hidden;border:2px solid #10b981;">${photoHtml}</div>
+          </td>
+          <td style="vertical-align:top;">
+            <div style="font-size:20px;font-weight:700;color:#0f172a !important;margin-bottom:2px;">${escapeHtml(displayName)}</div>
+            <div style="font-size:14px;color:#64748b !important;margin-bottom:6px;">${escapeHtml(title)} \u00B7 ${escapeHtml(city)}</div>
+            <div>${modalityBadges}</div>
+          </td>
+        </tr>
+      </table>
+      ${sessionBadges ? `<div style="margin-top:10px;">${sessionBadges}</div>` : ''}
+      ${profileTextTruncated ? `
+        <div style="border-top:1px solid rgba(226, 232, 240, 0.8);padding-top:12px;margin-top:12px;margin-bottom:12px;">
+          ${profileLabel ? `<p style="margin:0 0 4px;font-size:13px;font-weight:600;color:#0f172a !important;">${escapeHtml(profileLabel)}</p>` : ''}
+          <p style="margin:0;font-size:14px;line-height:1.6;color:#334155 !important;font-style:italic;">\u201E${escapeHtml(profileTextTruncated)}\u201C</p>
         </div>
       ` : ''}
-      <div style="margin-bottom:12px;">
+      ${slotHtml}
+      <div style="margin-top:12px;margin-bottom:12px;">
         <span style="display:inline-block;margin-right:12px;font-size:13px;color:#16a34a !important;font-weight:500;">\u2713 15 Min kostenlos</span>
         <span style="display:inline-block;font-size:13px;color:#16a34a !important;font-weight:500;">\u2713 Unverbindlich</span>
       </div>
@@ -253,7 +335,7 @@ function renderAlmostBooked(params: BehavioralFeedbackParams): { contentHtml: st
     ${therapist ? renderMiniTherapistCard(therapist, matchesUrl) : ''}
 
     <div style="margin:0 0 24px;">
-      ${renderButton(bookingCta, 'Jetzt kostenlosen Termin buchen')}
+      ${renderButton(bookingCta, 'Jetzt kostenlosen Termin buchen', 'outline')}
     </div>
 
     <div style="text-align:center;margin:0 0 24px;">
@@ -305,7 +387,7 @@ function renderNeverVisited(params: BehavioralFeedbackParams): { contentHtml: st
       ${renderButton(profileUrl, 'Kostenlosen Termin buchen')}
     </div>
 
-    ${renderInterviewCta(params.segment, patientId, 'feedback_behavioral_d10_never_visited')}
+    ${renderInterviewCta(params.segment, patientId, 'feedback_behavioral_d10_never_visited', 'outline')}
   `;
 
   const subject = therapistFirstName
@@ -372,7 +454,7 @@ function renderVisitedNoAction(params: BehavioralFeedbackParams): { contentHtml:
       ${renderButton(profileUrl, 'Vorschl\u00E4ge nochmal ansehen')}
     </div>
 
-    ${renderInterviewCta(params.segment, patientId, 'feedback_behavioral_d10_visited_no_action')}
+    ${renderInterviewCta(params.segment, patientId, 'feedback_behavioral_d10_visited_no_action', 'outline')}
   `;
 
   const subject = '85% buchen nach dem Kennenlernen eine Sitzung';
@@ -425,7 +507,7 @@ function getRejectionCopy(
           ${greeting}
           <p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;">wir haben gesehen, dass die vorgeschlagene Methode nicht ganz deinen Vorstellungen entspricht.</p>
           <p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;">K\u00F6rperpsychotherapie-Methoden wie NARM, Hakomi oder Somatic Experiencing arbeiten <strong style="color:#0f172a !important;">mit dem K\u00F6rper statt nur \u00FCber das Gespr\u00E4ch</strong>. Im kostenlosen Kennenlernen kannst du erleben, wie sich das anf\u00FChlt.</p>
-          ${renderButton(profileUrl, 'Vorschl\u00E4ge nochmal ansehen')}
+          ${renderButton(profileUrl, 'Vorschl\u00E4ge nochmal ansehen', 'outline')}
         `,
       };
 
@@ -442,7 +524,7 @@ function getRejectionCopy(
             <p style="margin:0; font-size:15px; line-height:1.6; color:#166534 !important;">\u2713 Keine Verpflichtung, keine versteckten Kosten</p>
           </div>
           <p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;">Viele Therapeut:innen bieten au\u00DFerdem flexible Preisgestaltung an. Im Kennenlerngespräch kannst du das direkt ansprechen.</p>
-          ${renderButton(profileUrl, 'Kostenlosen Termin buchen')}
+          ${renderButton(profileUrl, 'Kostenlosen Termin buchen', 'outline')}
         `,
       };
 
@@ -478,7 +560,7 @@ function getRejectionCopy(
               </tr>
             </table>
           </div>
-          ${renderButton(profileUrl, 'Kostenlosen Termin buchen')}
+          ${renderButton(profileUrl, 'Kostenlosen Termin buchen', 'outline')}
         `,
       };
 
@@ -535,12 +617,16 @@ function renderRejected(params: BehavioralFeedbackParams): { contentHtml: string
 
   const copy = getRejectionCopy(segment.reasons, name, params.matchesUrl);
 
+  // Interview is primary for method_wrong, too_expensive, wants_insurance → booking button is outline (handled in getRejectionCopy).
+  // For other rejection reasons, interview is secondary → use outline for interview button.
+  const interviewButtonVariant = isPrimaryInterviewRejection(segment.reasons) ? 'primary' as const : 'outline' as const;
+
   const contentHtml = `
     <div style="margin:0 0 20px;">
       ${copy.bodyHtml}
     </div>
 
-    ${renderInterviewCta(params.segment, patientId, `feedback_behavioral_d10_rejected_${segment.reasons[0]?.reason || 'other'}`)}
+    ${renderInterviewCta(params.segment, patientId, `feedback_behavioral_d10_rejected_${segment.reasons[0]?.reason || 'other'}`, interviewButtonVariant)}
   `;
 
   return { contentHtml, subject: copy.subject, preheader: copy.preheader };

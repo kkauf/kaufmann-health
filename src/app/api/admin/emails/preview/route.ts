@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { sendEmail } from '@/lib/email/client';
 import { renderRichTherapistEmail } from '@/lib/email/templates/richTherapistEmail';
 import { renderSelectionNudgeEmail } from '@/lib/email/templates/selectionNudge';
-import { renderFeedbackRequestEmail } from '@/lib/email/templates/feedbackRequest';
 import { renderEmailConfirmation } from '@/lib/email/templates/emailConfirmation';
 import { renderBehavioralFeedbackEmail } from '@/lib/email/templates/feedbackBehavioral';
 import type { PatientBehaviorSegment } from '@/lib/email/patientBehavior';
@@ -41,14 +40,24 @@ function isCronAuthorized(req: Request): boolean {
 }
 
 // Sample data for email previews
+// Real test therapist from staging (HIDE_THERAPIST_IDS) for realistic previews
 const SAMPLE_THERAPIST = {
-  id: 'preview-therapist',
-  first_name: 'Anna',
-  last_name: 'Müller',
+  id: 'e5de1fb4-90c6-4681-aa23-b4e84e7defa8',
+  first_name: 'Konstantin',
+  last_name: 'Testapeut',
   city: 'Berlin',
-  photo_url: null,
-  modalities: ['narm', 'somatic-experiencing'],
-  approach_text: 'Ich begleite Menschen auf ihrem Weg zur Heilung. Mein Ansatz verbindet körperorientierte Methoden mit einem tiefen Verständnis für die Verbindung zwischen Körper und Psyche.',
+  photo_url: 'https://lvglocnygvmgwzdayqlc.supabase.co/storage/v1/object/public/therapist-profiles/profiles/e5de1fb4-90c6-4681-aa23-b4e84e7defa8/photo-1764785953430.jpg',
+  modalities: ['core-energetics'],
+  approach_text: null as string | null,
+  gender: 'male' as const,
+  schwerpunkte: ['entwicklung', 'trauma', 'wut', 'zwang', 'paare'],
+  session_preferences: ['online', 'in_person'],
+  who_comes_to_me: 'Menschen die Probleme haben. üadnuncüadfn üaknüfknüsofkmüofi',
+  session_focus: 'Wünsche, Träume, Ängste, innere Blockaden und Widerstände. Wir arbeiten mit Atmung und Haltung, Ausdruck und Emotion. Wenn du willst.',
+  first_session: 'Wir werden ein Gespräch führen, und uns kennen lernen.',
+  about_me: 'Ich bin eigentlich studierter Volkswirt, doch habe mich voll der Arbeit mit Menschen hingegeben. Ich spreche auch fließend Englisch und bin Vater.',
+  qualification: 'Heilpraktiker (Psychotherapie)',
+  next_intro_slot: { date_iso: '2026-02-09', time_label: '09:00', time_utc: '2026-02-09T08:00:00Z' },
 };
 
 const SAMPLE_PATIENT = {
@@ -56,7 +65,7 @@ const SAMPLE_PATIENT = {
   name: 'Max Mustermann',
 };
 
-type TemplateType = 'rich_therapist' | 'selection_nudge' | 'feedback_request' | 'feedback_behavioral' | 'email_confirmation' | 'all';
+type TemplateType = 'rich_therapist' | 'selection_nudge' | 'feedback_behavioral' | 'email_confirmation' | 'all';
 
 // Sample behavioral segments for previewing each variant
 const BEHAVIORAL_SEGMENTS: { label: string; segment: PatientBehaviorSegment }[] = [
@@ -96,14 +105,6 @@ function renderTemplate(template: TemplateType): { subject: string; html: string
     if (email.html) results.push({ subject: email.subject, html: email.html });
   }
 
-  if (template === 'feedback_request' || template === 'all') {
-    const email = renderFeedbackRequestEmail({
-      patientName: SAMPLE_PATIENT.name,
-      patientId: SAMPLE_PATIENT.id,
-    });
-    if (email.html) results.push({ subject: email.subject, html: email.html });
-  }
-
   if (template === 'feedback_behavioral' || template === 'all') {
     for (const { label, segment } of BEHAVIORAL_SEGMENTS) {
       const email = renderBehavioralFeedbackEmail({
@@ -118,9 +119,19 @@ function renderTemplate(template: TemplateType): { subject: string; html: string
           city: SAMPLE_THERAPIST.city,
           modalities: SAMPLE_THERAPIST.modalities,
           approach_text: SAMPLE_THERAPIST.approach_text,
+          photo_url: SAMPLE_THERAPIST.photo_url,
+          gender: SAMPLE_THERAPIST.gender,
+          schwerpunkte: SAMPLE_THERAPIST.schwerpunkte,
+          session_preferences: SAMPLE_THERAPIST.session_preferences,
+          who_comes_to_me: SAMPLE_THERAPIST.who_comes_to_me,
+          session_focus: SAMPLE_THERAPIST.session_focus,
+          first_session: SAMPLE_THERAPIST.first_session,
+          about_me: SAMPLE_THERAPIST.about_me,
+          qualification: SAMPLE_THERAPIST.qualification,
+          next_intro_slot: SAMPLE_THERAPIST.next_intro_slot,
         },
-        availableSlots: 3,
-        nextSlotDate: 'Mi 29. Jan',
+        availableSlots: 7,
+        nextSlotDate: 'Mo 9. Feb',
       });
       if (email.html) results.push({ subject: `[${label}] ${email.subject}`, html: email.html });
     }
@@ -158,7 +169,7 @@ export async function GET(req: Request) {
     const template = (url.searchParams.get('template') || 'all') as TemplateType;
     const shouldSend = url.searchParams.get('send') === 'true';
 
-    const validTemplates: TemplateType[] = ['rich_therapist', 'selection_nudge', 'feedback_request', 'feedback_behavioral', 'email_confirmation', 'all'];
+    const validTemplates: TemplateType[] = ['rich_therapist', 'selection_nudge', 'feedback_behavioral', 'email_confirmation', 'all'];
     if (!validTemplates.includes(template)) {
       return NextResponse.json({ 
         error: `Invalid template. Valid options: ${validTemplates.join(', ')}` 

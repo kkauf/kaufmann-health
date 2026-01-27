@@ -54,6 +54,8 @@ export function parseCampaignFromRequest(req: Request): {
     ? '/ankommen-in-dir'
     : pathname?.includes('/wieder-lebendig')
     ? '/wieder-lebendig'
+    : pathname?.includes('/lp/')
+    ? (pathname.match(/\/lp\/[^/?#]+/)?.[0] || '/lp')
     : pathname?.includes('/fragebogen')
     ? '/fragebogen'
     : '/therapie-finden';

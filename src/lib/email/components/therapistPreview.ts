@@ -1,4 +1,4 @@
-import { BASE_URL } from '@/lib/constants';
+import { BASE_URL, EMAIL_ASSETS_URL } from '@/lib/constants';
 
 function escapeHtml(s: string) {
   return (s || "")
@@ -9,13 +9,13 @@ function escapeHtml(s: string) {
     .replaceAll("'", "&#39;");
 }
 
-function getInitials(first?: string | null, last?: string | null) {
+export function getInitials(first?: string | null, last?: string | null) {
   const f = (first?.trim() || "").charAt(0);
   const l = (last?.trim() || "").charAt(0);
   return `${f}${l}`.toUpperCase();
 }
 
-function hashCode(s: string) {
+export function hashCode(s: string) {
   let h = 0;
   for (let i = 0; i < s.length; i++) {
     h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
@@ -23,7 +23,7 @@ function hashCode(s: string) {
   return Math.abs(h);
 }
 
-function truncateSentences(text: string, maxSentences: number) {
+export function truncateSentences(text: string, maxSentences: number) {
   const parts = (text || "").split(/([.!?]\s+)/);
   let count = 0;
   let out = "";
@@ -34,12 +34,18 @@ function truncateSentences(text: string, maxSentences: number) {
   return out || text || "";
 }
 
-// Convert Supabase public bucket URLs to our domain proxy for deliverability in emails
-function toProxiedPhotoUrl(url?: string | null): string | null {
+// Convert Supabase public bucket URLs to our domain proxy for deliverability in emails.
+// Always use EMAIL_ASSETS_URL (production domain) so images load in emails sent from any environment.
+export function toProxiedPhotoUrl(url?: string | null): string | null {
   const raw = (url || '').trim();
   if (!raw) return null;
-  // Already proxied or already our domain
-  if (raw.startsWith(`${BASE_URL}/api/images/therapist-profiles/`) || raw.startsWith(BASE_URL)) return raw;
+  const emailBase = EMAIL_ASSETS_URL;
+  // Already proxied or already our production domain
+  if (raw.startsWith(`${emailBase}/api/images/therapist-profiles/`)) return raw;
+  // Also accept BASE_URL-proxied URLs (rewrite to production)
+  if (raw.startsWith(`${BASE_URL}/api/images/therapist-profiles/`)) {
+    return raw.replace(BASE_URL, emailBase);
+  }
   try {
     const u = new URL(raw);
     const path = u.pathname;
@@ -48,9 +54,8 @@ function toProxiedPhotoUrl(url?: string | null): string | null {
     //  - /storage/v1/render/image/public/therapist-profiles/<path>
     const m = path.match(/\/storage\/v1\/(?:object|render\/image)\/public\/therapist-profiles\/(.+)$/);
     if (m && m[1]) {
-      // Preserve any query string from the original URL? Public URLs shouldn't need it; drop to maximize cacheability.
       const proxiedPath = m[1];
-      return `${BASE_URL}/api/images/therapist-profiles/${proxiedPath}`;
+      return `${emailBase}/api/images/therapist-profiles/${proxiedPath}`;
     }
   } catch {}
   return raw; // Fallback: leave as-is if not a Supabase public URL
@@ -159,7 +164,7 @@ function buildBadgeItems(modalities: string[]): Array<{ label: string; color: st
  * taking >30 min. Showing "next slot in 4h" in an email that won't
  * be opened for hours creates a poor UX.
  */
-function formatNextIntroSlot(slot: { date_iso: string; time_label: string; time_utc?: string } | null | undefined): string | null {
+export function formatNextIntroSlot(slot: { date_iso: string; time_label: string; time_utc?: string } | null | undefined): string | null {
   if (!slot?.date_iso || !slot?.time_label) return null;
   try {
     // Check if slot is in the future

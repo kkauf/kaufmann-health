@@ -1,8 +1,27 @@
 import { BASE_URL, EMAIL_ASSETS_URL } from '@/lib/constants';
 
-export function renderButton(href: string, label: string) {
+export function renderButton(href: string, label: string, variant: 'primary' | 'outline' = 'primary') {
   // Use table-based button for maximum email client compatibility (incl. Yahoo Mail iOS, Outlook)
   // VML fallback provides rounded corners in Outlook Windows
+  if (variant === 'outline') {
+    return `
+      <!--[if mso]>
+      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(href)}" style="height:52px;v-text-anchor:middle;width:100%;" arcsize="23%" strokecolor="#10b981" fillcolor="#ecfdf5">
+      <w:anchorlock/>
+      <center style="color:#047857;font-family:sans-serif;font-size:17px;font-weight:bold;">${escapeHtml(label)}</center>
+      </v:roundrect>
+      <![endif]-->
+      <!--[if !mso]><!-->
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">
+        <tr>
+          <td align="center" style="background-color:transparent; border:2px solid #10b981; border-radius:12px; padding:0;">
+            <a href="${escapeHtml(href)}" target="_blank" style="display:inline-block; width:100%; padding:14px 24px; box-sizing:border-box; background-color:transparent; color:#10b981; text-decoration:none; font-weight:700; text-align:center; font-size:17px; line-height:1.3; border-radius:12px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">${escapeHtml(label)}</a>
+          </td>
+        </tr>
+      </table>
+      <!--<![endif]-->
+    `;
+  }
   return `
     <!--[if mso]>
     <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(href)}" style="height:52px;v-text-anchor:middle;width:100%;" arcsize="23%" strokecolor="#059669" fillcolor="#10b981">
