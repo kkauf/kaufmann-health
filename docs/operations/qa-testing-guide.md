@@ -24,6 +24,17 @@ This sets a `kh_test=1` cookie that:
 - Routes booking emails to a sink address (not real therapists)
 - Enables dry-run mode for bookings
 
+## Test Accounts
+
+On staging, any therapist you register is **automatically flagged as a test account** (`is_test: true`). This means:
+- Test therapists do NOT appear in the public directory on production
+- Test therapists are excluded from the matching algorithm on production
+- Test therapists are excluded from public therapist counts
+- In the admin panel, test accounts show an orange **TEST** badge
+- On staging, you can toggle "Nur Test-Accounts" in admin to filter
+
+You can also use `+test` in email addresses (e.g., `marta+test1@gmail.com`) for extra clarity.
+
 ## User Signup Flow
 
 ### Entry Points
@@ -34,7 +45,7 @@ Test both landing pages:
 
 ### Verification Options
 
-After completing the questionnaire (Steps 1-5), you'll need to verify via email or phone.
+After completing the questionnaire, you'll need to verify via email or phone.
 
 #### Option A: SMS Verification (Recommended for QA)
 
@@ -46,7 +57,7 @@ This works because staging has `E2E_SMS_BYPASS` enabled.
 
 #### Option B: Email Verification
 
-**⚠️ Important**: On staging, confirmation emails are routed to an internal sink address, not your actual email.
+**Important**: On staging, confirmation emails are routed to an internal sink address, not your actual email.
 
 To test email verification:
 1. Use an email address you control
@@ -56,7 +67,7 @@ To test email verification:
 ### After Verification
 
 - **Self-service flow**: You'll see a matches page with therapist cards
-- **Concierge flow**: You'll see a confirmation that matches are being curated
+- **Concierge flow**: You'll see a confirmation that matches are being curated (admin curates manually within 24h)
 
 ## Two-Phase Testing Approach
 
@@ -94,7 +105,7 @@ To test booking functionality, use the **designated test therapist** only:
 
 | Phase 1 (Matching) | Phase 2 (Booking) |
 |--------------------|-------------------|
-| Questionnaire steps 1-5 | Slot selection UI |
+| Questionnaire all steps | Slot selection UI |
 | SMS/email verification | Booking form submission |
 | Matches display & sorting | Confirmation emails (via preview) |
 | Therapist profile views | Calendar integration |
@@ -135,6 +146,432 @@ All test data is automatically filtered:
 
 No manual cleanup is typically needed.
 
+---
+
+## Test Cases
+
+Below are all test cases organized by flow and priority. Each test case has an ID for reference in bug reports.
+
+### I. Patient Journey
+
+#### I.1. Questionnaire — Self-Service Path
+
+The questionnaire has multiple steps. Step 1 (Timeline) was removed — the wizard now starts at Step 2.5.
+
+**TC-I.1.1: Complete Self-Service questionnaire (happy path)**
+```
+Steps:
+  1. Navigate to /start or click "Therapeut:in finden" CTA on homepage
+  2. Step 2.5 (Schwerpunkte): Select 2+ focus areas
+     → Verify live therapist count updates as selections change
+  3. Step 2.6 (Payment): Select self-pay option
+  4. Step 3 (Modality): Select one or more modalities (e.g., NARM)
+     → Verify "Ist mir egal" checkbox works
+  5. Step 4 (Location): Select session format (Online / Vor Ort / Beides)
+     → If "Vor Ort" or "Beides": verify city field appears and is required
+     → Select language preference
+  6. Step 5 (Gender): Select preference (male / female / no preference)
+  7. Step 6 (Contact): Enter name + email, select email method
+  8. Verify confirmation screen: "Bestätigung ausstehend"
+  9. Receive confirmation email (<30 seconds)
+  10. Click confirmation link
+  11. Verify redirect to /matches/{uuid} with therapist recommendations
+Expected: All steps complete, instant matches shown
+```
+
+**TC-I.1.2: Questionnaire — Phone verification path**
+```
+Steps:
+  1. Complete steps 2.5-5 as above
+  2. Step 6: Enter name + phone number, select phone method
+  3. Step 6.5: Receive 6-digit SMS code (use 000000 on staging)
+  4. Enter code → verify "Handynummer bestätigt" screen
+  5. Verify instant matches shown (Self-Service)
+  6. Optionally: Click "E-Mail hinzufügen" and add email
+Expected: Phone verification works, matches shown
+```
+
+**TC-I.1.3: Questionnaire — Navigation**
+```
+Steps:
+  1. Start questionnaire, advance to Step 4
+  2. Click "Zurück" → verify Step 3 shown with data preserved
+  3. Use browser back button → verify previous step shown, data preserved
+  4. Close browser, reopen with same ?fs= URL parameter → verify form state restored
+Expected: Navigation preserves data, form sessions allow resume
+```
+
+**TC-I.1.4: Questionnaire — Field validation**
+```
+Steps:
+  1. Step 6: Leave name empty → click "Weiter" → verify validation error
+  2. Step 6: Enter invalid email (e.g., "abc") → verify validation error
+  3. Step 6: Enter invalid phone (e.g., "12345") → verify validation error
+  4. Step 4: Select "Vor Ort" but leave city empty → verify validation
+Expected: Required fields enforced, clear error messages shown
+```
+
+**TC-I.1.5: Questionnaire — Concierge path**
+```
+Steps:
+  1. Navigate to /therapie-finden (Concierge entry)
+  2. Step 2.5: Select Schwerpunkte
+  3. Step 2.6: Select insurance/Krankenkasse option
+  4. Verify Step 2 appears: open text field "Was führt dich her?"
+  5. Complete remaining steps, verify via SMS
+  6. Verify confirmation screen says matches will be curated (NOT instant matches)
+  7. Verify NO instant matches page shown
+Expected: Concierge path correctly separates from Self-Service
+```
+
+**TC-I.1.6: Verification — Negative cases**
+```
+Steps:
+  1. Phone: Enter wrong SMS code → verify error message
+  2. Phone: Wait >10 minutes, enter original code → verify "Code expired"
+  3. Phone: Request resend 3+ times → verify rate limit message
+  4. Email: Click confirmation link with invalid ID → verify error page
+Expected: All error states handled gracefully
+```
+
+#### I.2. Matches & Therapist Recommendations
+
+**TC-I.2.1: Match results display**
+```
+Precondition: Completed and verified Self-Service questionnaire
+Steps:
+  1. View /matches/{uuid} page
+  2. Verify at least 3 therapist recommendations shown (system always shows 3+)
+  3. Verify each card shows: photo, name, modalities, location, availability
+  4. Verify quality badges appear where applicable
+  5. Verify no duplicate therapists in results
+Expected: Meaningful recommendations with complete profile information
+```
+
+**TC-I.2.2: Match results — Edge case preferences**
+```
+Steps:
+  1. Submit questionnaire with very specific preferences (rare modality + specific city + specific gender)
+  2. Verify matches page still shows at least 3 therapists (fallback behavior)
+  3. Note: Some may be "partial" matches — this is expected when exact matches are limited
+Expected: Never an empty results page
+```
+
+#### I.3. Therapist Contact Flow
+
+**TC-I.3.1: Contact therapist from matches (happy path)**
+```
+Precondition: Verified patient with matches
+Steps:
+  1. On matches page, click booking/contact button on a therapist
+  2. ContactModal opens → verify patient info pre-filled
+  3. Write message in reason field
+  4. Click send → verify confirmation shown
+  5. Therapist receives email with link (check sink on staging)
+Expected: Contact request sent, therapist notified
+```
+
+**TC-I.3.2: Contact rate limiting**
+```
+Precondition: Verified patient session
+Steps:
+  1. Contact therapist #1 via directory or matches → success
+  2. Contact therapist #2 → success
+  3. Contact therapist #3 → success
+  4. Attempt to contact therapist #4 → verify rate limit error shown
+Expected: Maximum 3 therapist contacts per 24 hours enforced
+```
+
+**TC-I.3.3: Contact requires verification**
+```
+Steps:
+  1. Clear cookies / use incognito browser
+  2. Navigate to /therapeuten, click contact on a therapist
+  3. Verify verification step required before contact form is accessible
+Expected: Unverified users cannot contact therapists
+```
+
+#### I.4. Booking via Cal.com
+
+**TC-I.4.1: Book intro session (happy path)**
+```
+Precondition: Test therapist with Cal.com enabled and available slots
+Steps:
+  1. Find test therapist in directory or matches
+  2. Click booking button → Cal.com modal opens
+  3. Select available intro slot (15-minute, free)
+  4. Confirm booking
+  5. Verify booking confirmation shown
+  6. Check email sink: patient confirmation email sent (date, time, format, link if online)
+  7. Check email sink: therapist notification email sent
+Expected: Booking created, both parties notified
+```
+
+**TC-I.4.2: Booking — No available slots**
+```
+Steps:
+  1. Find therapist with no Cal.com slots configured
+  2. Click booking → verify appropriate message (no slots available)
+Expected: Graceful handling when therapist has no availability
+```
+
+#### I.5. Therapist Directory
+
+**TC-I.5.1: Directory display and pagination**
+```
+Steps:
+  1. Navigate to /therapeuten
+  2. Verify initial load shows therapists (up to 5 initially)
+  3. Click "Mehr anzeigen" → verify additional therapists appear
+  4. Verify each card shows: photo, name, modalities, city, availability indicator
+  5. Click a therapist card → verify detail modal with full profile
+Expected: Directory loads, pagination works, profiles display correctly
+```
+
+**TC-I.5.2: Directory filtering — Modality**
+```
+Steps:
+  1. Navigate to /therapeuten
+  2. Filter: NARM → verify only NARM therapists shown
+  3. Filter: Hakomi → verify only Hakomi therapists shown
+  4. Filter: Somatic Experiencing → verify only SE therapists shown
+  5. Filter: Core Energetics → verify only CE therapists shown
+  6. Filter: Alle → verify all therapists shown
+Expected: Each filter correctly restricts results
+```
+
+**TC-I.5.3: Directory filtering — Format**
+```
+Steps:
+  1. Filter: Online → verify only online-available therapists shown
+  2. Filter: Vor Ort → verify only in-person therapists shown
+  3. Filter: Alle → verify all therapists shown
+Expected: Format filter works correctly
+```
+
+**TC-I.5.4: Directory — Responsive design**
+```
+Steps:
+  1. View /therapeuten on desktop (1440px width)
+  2. View on tablet (768px)
+  3. View on mobile (375px)
+  4. Verify cards, filters, and detail modal adapt correctly
+Expected: Responsive layout at all breakpoints
+```
+
+#### I.6. Static Pages & Navigation
+
+**TC-I.6.1: Homepage**
+```
+Steps:
+  1. Navigate to / → verify page loads
+  2. Verify CTAs: "Therapeut:in finden", "Jetzt Therapeut:in finden", "Alle Therapeut:innen ansehen"
+  3. Click each CTA → verify correct redirect
+  4. Verify images load, navigation menu works, footer links functional
+  5. Test responsive: mobile (375px) and desktop (1440px)
+Expected: All elements load and function correctly
+```
+
+**TC-I.6.2: Therapy information pages**
+```
+Steps:
+  1. Navigate to /therapie → verify page loads with overview content
+  2. Navigate to /therapie/narm → verify NARM-specific content
+  3. Navigate to /therapie/hakomi → verify Hakomi content
+  4. Navigate to /therapie/somatic-experiencing → verify SE content
+  5. Navigate to /therapie/core-energetics → verify CE content
+  6. On each page: verify CTAs navigate correctly, images load
+Expected: All therapy pages accessible with correct content
+```
+
+**TC-I.6.3: Über uns page**
+```
+Steps:
+  1. Navigate to /ueber-uns
+  2. Verify content and images load
+  3. Verify CTAs and links work
+Expected: Page loads correctly
+```
+
+**TC-I.6.4: Beratung page**
+```
+Steps:
+  1. Navigate to /beratung
+  2. Verify content loads, CTAs navigate correctly
+Expected: Page loads correctly
+```
+
+**TC-I.6.5: Legal pages**
+```
+Steps:
+  1. Navigate to /agb → verify loads
+  2. Navigate to /datenschutz → verify loads
+  3. Navigate to /impressum → verify loads
+  4. Verify footer links point to correct pages
+Expected: All legal pages accessible
+```
+
+---
+
+### II. Therapist Journey
+
+#### II.1. Registration & Onboarding
+
+The therapist onboarding is a 4-step flow. Profile completion and document upload are **separate steps** (by design, to reduce dropout).
+
+**TC-II.1.1: Full registration flow (happy path)**
+```
+Steps:
+  1. Navigate to /fuer-therapeuten → click "Jetzt registrieren"
+  2. Step 1 — Registration (/therapists/register):
+     → Fill: first name, last name, email, city (all required)
+     → Optionally: phone, gender, modalities, accepting_new, session preferences, languages
+     → Submit
+  3. Verify redirect to /therapists/complete-profile/{id}
+  4. Step 2 — Profile:
+     → Upload photo (required)
+     → Write approach text / "Who comes to me?" (required)
+     → Optionally: first session description, about me, session focus, typical rate
+     → Submit
+  5. Verify redirect to /therapists/upload-documents/{id}
+  6. Step 3 — Documents:
+     → Upload license/certification (required)
+     → Optionally: additional certificates
+     → Submit
+  7. Verify redirect to /therapists/onboarding-complete/{id}
+  8. Verify confirmation page shown with next steps
+  9. Verify welcome email received (check sink on staging)
+Expected: 4-step flow completes without errors
+```
+
+**TC-II.1.2: Registration — Field validation**
+```
+Steps:
+  1. Step 1: Leave first name empty → verify validation error
+  2. Step 1: Leave email empty → verify validation error
+  3. Step 1: Enter duplicate email (already registered) → verify error
+  4. Step 1: Leave city empty → verify validation error
+  5. Step 2: Skip photo upload → verify validation error
+  6. Step 2: Skip approach text → verify validation error
+  7. Step 3: Skip license upload → verify validation error
+Expected: Required fields enforced at each step
+```
+
+**TC-II.1.3: Registration — Progress indicator**
+```
+Steps:
+  1. At each step, verify progress indicator shows correct state
+  2. Steps: Registrierung → Profil → Dokumente → Fertig
+  3. Verify current step is highlighted, completed steps are marked
+Expected: Progress indicator accurately reflects current position
+```
+
+**TC-II.1.4: Registration — Navigation links**
+```
+Steps:
+  1. On /therapists/register: verify "Zurück zur Übersicht" links to /fuer-therapeuten
+  2. On /therapists/register: verify "Zum Mitglieder-Login" links to /portal/login
+Expected: Navigation links work
+```
+
+#### II.2. Therapist Portal
+
+**TC-II.2.1: Portal login (magic link)**
+```
+Steps:
+  1. Navigate to /portal/login
+  2. Enter registered therapist email
+  3. Receive magic link email (check sink on staging)
+  4. Click magic link → verify redirect to /portal with authenticated session
+  5. Verify profile data loaded correctly
+Note: There is NO password login — authentication is via magic link only
+Expected: Passwordless login works
+```
+
+**TC-II.2.2: Portal — Profile editing**
+```
+Precondition: Logged into therapist portal
+Steps:
+  1. Change city → save → verify updated
+  2. Change approach text → save → verify updated
+  3. Update modalities → save → verify updated
+  4. Toggle accepting_new → save → verify updated
+Expected: All profile fields editable and persist
+```
+
+**TC-II.2.3: Portal — Zurück zur Therapeuten-Seite**
+```
+Steps:
+  1. On /portal/login, click "Zurück zur Therapeuten-Seite"
+  2. Verify redirect to /fuer-therapeuten
+Expected: Link works
+```
+
+#### II.3. Für Therapeut:innen Page
+
+**TC-II.3.1: Page content and CTAs**
+```
+Steps:
+  1. Navigate to /fuer-therapeuten → verify page loads
+  2. Verify "Jetzt registrieren" button → /therapists/register
+  3. Verify "Mitglieder-Login" button → /portal/login
+  4. Verify FAQ dropdowns expand/collapse correctly
+  5. Verify additional CTAs navigate correctly (e.g., "Mehr zu Beratung & digitalen Lösungen")
+  6. Verify images and content load
+Expected: All elements functional
+```
+
+---
+
+### III. Cross-Cutting Concerns
+
+**TC-III.1: Responsive design (all major pages)**
+```
+Pages to test: /, /therapeuten, /fragebogen, /therapie, /fuer-therapeuten, /ueber-uns
+Breakpoints: Mobile (375px), Tablet (768px), Desktop (1440px)
+Check: Layout, readability, touch targets, image scaling, modal behavior
+Expected: All pages usable at all breakpoints
+```
+
+**TC-III.2: Browser back button**
+```
+Steps:
+  1. During questionnaire: press back → verify previous step with data preserved
+  2. On matches page: press back → verify reasonable behavior (no form re-submit)
+  3. In directory: apply filter, press back → verify filter state
+Expected: Back button behavior is intuitive, no data loss
+```
+
+**TC-III.3: Test account isolation**
+```
+Precondition: Register a test therapist on staging
+Steps:
+  1. Verify test therapist has orange TEST badge in admin panel
+  2. Navigate to /therapeuten → verify test therapist does NOT appear
+  3. Submit a questionnaire → verify test therapist is NOT in matches
+  4. In admin: toggle "Nur Test-Accounts" → verify filter shows only test accounts
+Expected: Complete isolation of test data from public views
+```
+
+---
+
+### Negative / Edge Case Tests
+
+| ID | Scenario | Expected Result |
+|----|----------|-----------------|
+| NEG-1 | Submit questionnaire with empty required fields (name) | Validation error, form not submitted |
+| NEG-2 | Enter invalid email format at Step 6 | Validation error |
+| NEG-3 | Enter invalid phone number (not E.164 format) | Validation error |
+| NEG-4 | Enter wrong SMS code | Error message shown |
+| NEG-5 | SMS code expired (>10 minutes) | "Code expired" message, must resend |
+| NEG-6 | Resend SMS code >3 times in 24h | Rate limit error |
+| NEG-7 | Access /matches/{uuid} with invalid UUID | 404 or error page |
+| NEG-8 | Therapist registration with duplicate email | Error: email already exists |
+| NEG-9 | Close questionnaire mid-flow, reopen with ?fs= param | Form state restored from session |
+| NEG-10 | Access therapist portal without valid session | Redirect to login |
+
+---
+
 ## Quick Reference
 
 | Task | How |
@@ -145,15 +582,18 @@ No manual cleanup is typically needed.
 | Test booking | Use designated test therapist only (Phase 2) |
 | Preview emails | Use `/api/admin/emails/preview` endpoint |
 | Accidental real booking | Cancel via Cal.com email, notify project owner |
+| Register test therapist | Register on staging — auto-flagged as test |
+| Find test accounts in admin | Use "Nur Test-Accounts" toggle |
 
 ## Reporting Issues
 
 When reporting bugs, include:
-1. The URL where the issue occurred
-2. Steps to reproduce
-3. Expected vs actual behavior
-4. Browser console errors (if any)
-5. Your test email/phone if relevant
+1. **Test case ID** (e.g., TC-I.1.1) if applicable
+2. The URL where the issue occurred
+3. Steps to reproduce
+4. Expected vs actual behavior
+5. Screenshot or browser console errors (if any)
+6. Your test email/phone if relevant
 
 ## Contact
 

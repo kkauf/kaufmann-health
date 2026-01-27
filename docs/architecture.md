@@ -45,7 +45,7 @@ Why this design:
 
 ### Two-Step Therapist Onboarding (EARTH-129)
 - Why: Conversion dropped when profile text/photo and compliance docs were coupled. Many therapists abandon if they can't scan the license immediately. Splitting flows reduces time-to-first-success.
-- Design: Step 1 (fun & fast) collects only profile basics and pending photo; Step 2 (compliance) uploads the license (certificates optional). Public pages mirror this logic so users always see the next actionable step.
+- Design: Step 1 (fun & fast) collects profile basics, billing address (Rechnungsadresse), and pending photo; Step 2 (compliance) uploads the license (certificates optional). Public pages mirror this logic so users always see the next actionable step.
 - Emails/Reminders: Subjects and CTAs adapt to what's actually missing (license vs profile). This keeps nudges relevant without extra client logic.
 
 ### Patient-Initiated Contact Flow (EARTH-203/205/206)

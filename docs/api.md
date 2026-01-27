@@ -360,10 +360,25 @@ __Note__: Native bookings are now secondary to Cal.com for most therapists. Cal.
   - `city?`: string
   - `accepting_new?`: boolean (JSON) or `'true'|'false'` (form)
   - `approach_text?`: string (max 500)
+  - `billing_street?`: string — Rechnungsadresse street
+  - `billing_postal_code?`: string — Rechnungsadresse postal code
+  - `billing_city?`: string — Rechnungsadresse city
   - `profile_photo?`: JPEG/PNG (max 4MB). Stored pending approval.
 - __Storage__:
   - `profile_photo` is stored in private bucket `therapist-applications` under `applications/<id>/profile-photo-<ts>.(jpg|png)`
-  - `approach_text` and `photo_pending_path` are merged into `therapists.metadata.profile`
+  - `approach_text`, `photo_pending_path`, and billing address fields are merged into `therapists.metadata.profile`:
+    ```json
+    {
+      "profile": {
+        "photo_pending_path": "applications/<id>/profile-photo-<ts>.jpg",
+        "approach_text": "<therapeutic approach>",
+        "billing_street": "Musterstraße 123",
+        "billing_postal_code": "12345",
+        "billing_city": "Berlin",
+        "billing_address": "Musterstraße 123, 12345, Berlin"
+      }
+    }
+    ```
 - __Response__:
   - 200: `{ data: { ok: true, nextStep: '/therapists/upload-documents/<id>' }, error: null }`
   - 400: `{ data: null, error: 'invalid gender' | 'approach_text too long (max 500 chars)' | 'profile_photo: <reason>' }`

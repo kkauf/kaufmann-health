@@ -28,7 +28,11 @@ Stores profile and qualification data for therapists. References `people(id)`.
 - `city text`
 - `address text`
 - `accepting_new boolean`
-- `metadata jsonb` — stores `profile` (photo paths, approach text), `documents` (license, certificates), and Cal.com event IDs.
+- `metadata jsonb` — stores `profile` (photo paths, approach text, billing address), `documents` (license, certificates), and Cal.com event IDs.
+  - `metadata.profile.billing_street` — Rechnungsadresse street (set during onboarding Step 1)
+  - `metadata.profile.billing_postal_code` — Rechnungsadresse postal code
+  - `metadata.profile.billing_city` — Rechnungsadresse city
+  - `metadata.profile.billing_address` — Combined billing address string (convenience field)
 - `cal_username text`
 - `cal_enabled boolean`
 - `cal_intro_event_type_id integer`

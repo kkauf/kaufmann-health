@@ -78,9 +78,14 @@ Step 0: Registrierung → Step 1: Profil → Step 2: Dokumente → Step 3: Ferti
 | Geschlecht | If missing | Only shown if not already set | `therapists.gender` |
 | Stadt | If missing | Only shown if not already set | `therapists.city` |
 | Akzeptiert neue Klienten | If null | Only shown if not already set | `therapists.accepting_new` |
+| Rechnungsadresse (Straße) | **Yes** | Only shown if not already set | `metadata.profile.billing_street` |
+| Rechnungsadresse (PLZ) | **Yes** | Only shown if not already set | `metadata.profile.billing_postal_code` |
+| Rechnungsadresse (Stadt) | **Yes** | Only shown if not already set | `metadata.profile.billing_city` |
 | Profilfoto | **Yes** | Only shown if no photo exists | `metadata.profile.photo_pending_path` |
 
-**Note:** `approach_text` is NOT collected during onboarding - therapists fill this in the portal after verification.
+**Notes:**
+- `approach_text` is NOT collected during onboarding - therapists fill this in the portal after verification.
+- Billing address (Rechnungsadresse) is required during onboarding for invoicing. It is not publicly displayed. All three fields must be filled.
 
 ### Step 2: Document Upload
 
@@ -278,6 +283,7 @@ Verified therapists who haven't completed their profile receive automated remind
 | `status` | Registration → Admin | Admin only |
 | `cal_username` | Admin approval | System |
 | `cal_enabled` | Admin approval | System (true when Cal.com account exists) |
+| `metadata.profile.billing_*` | Step 1 | Admin only (set during onboarding) |
 | `metadata.profile.*` | Step 1, Portal | Portal |
 | `metadata.documents.*` | Step 2 | System (uploads) |
 

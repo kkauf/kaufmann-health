@@ -116,7 +116,9 @@ curl "https://www.kaufmann-health.de/api/admin/emails/preview?template=all&send=
 open "https://www.kaufmann-health.de/api/admin/emails/preview?template=rich_therapist&token=YOUR_CRON_SECRET"
 ```
 
-Templates: `rich_therapist`, `selection_nudge`, `feedback_request`, `email_confirmation`, `all`
+Templates: `rich_therapist`, `selection_nudge`, `feedback_request`, `feedback_behavioral`, `email_confirmation`, `all`
+
+Note: `feedback_behavioral` renders all 10 variants (4 segments + 7 rejection sub-variants) in one batch.
 
 ### Booking templates
 
