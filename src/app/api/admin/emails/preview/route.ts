@@ -4,6 +4,8 @@ import { renderRichTherapistEmail } from '@/lib/email/templates/richTherapistEma
 import { renderSelectionNudgeEmail } from '@/lib/email/templates/selectionNudge';
 import { renderFeedbackRequestEmail } from '@/lib/email/templates/feedbackRequest';
 import { renderEmailConfirmation } from '@/lib/email/templates/emailConfirmation';
+import { renderBehavioralFeedbackEmail } from '@/lib/email/templates/feedbackBehavioral';
+import type { PatientBehaviorSegment } from '@/lib/email/patientBehavior';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 import { BASE_URL } from '@/lib/constants';
 import { isCronAuthorized as isCronAuthorizedShared } from '@/lib/cron-auth';
@@ -54,7 +56,21 @@ const SAMPLE_PATIENT = {
   name: 'Max Mustermann',
 };
 
-type TemplateType = 'rich_therapist' | 'selection_nudge' | 'feedback_request' | 'email_confirmation' | 'all';
+type TemplateType = 'rich_therapist' | 'selection_nudge' | 'feedback_request' | 'feedback_behavioral' | 'email_confirmation' | 'all';
+
+// Sample behavioral segments for previewing each variant
+const BEHAVIORAL_SEGMENTS: { label: string; segment: PatientBehaviorSegment }[] = [
+  { label: 'D: almost_booked', segment: { segment: 'almost_booked', therapist_id: 'preview-therapist' } },
+  { label: 'A: never_visited', segment: { segment: 'never_visited' } },
+  { label: 'B: visited_no_action', segment: { segment: 'visited_no_action', visitCount: 3 } },
+  { label: 'C: rejected (not_right_fit)', segment: { segment: 'rejected', reasons: [{ reason: 'not_right_fit', therapist_id: 'preview-therapist' }] } },
+  { label: 'C: rejected (method_wrong)', segment: { segment: 'rejected', reasons: [{ reason: 'method_wrong', therapist_id: 'preview-therapist' }] } },
+  { label: 'C: rejected (too_expensive)', segment: { segment: 'rejected', reasons: [{ reason: 'too_expensive', therapist_id: 'preview-therapist' }] } },
+  { label: 'C: rejected (wants_insurance)', segment: { segment: 'rejected', reasons: [{ reason: 'wants_insurance', therapist_id: 'preview-therapist' }] } },
+  { label: 'C: rejected (no_availability)', segment: { segment: 'rejected', reasons: [{ reason: 'no_availability', therapist_id: 'preview-therapist' }] } },
+  { label: 'C: rejected (location_wrong)', segment: { segment: 'rejected', reasons: [{ reason: 'location_wrong', therapist_id: 'preview-therapist' }] } },
+  { label: 'C: rejected (other)', segment: { segment: 'rejected', reasons: [{ reason: 'other', therapist_id: 'preview-therapist', details: 'Ich bin mir einfach nicht sicher.' }] } },
+];
 
 function renderTemplate(template: TemplateType): { subject: string; html: string }[] {
   const matchesUrl = `${BASE_URL}/matches/preview-uuid`;
@@ -88,6 +104,28 @@ function renderTemplate(template: TemplateType): { subject: string; html: string
     if (email.html) results.push({ subject: email.subject, html: email.html });
   }
 
+  if (template === 'feedback_behavioral' || template === 'all') {
+    for (const { label, segment } of BEHAVIORAL_SEGMENTS) {
+      const email = renderBehavioralFeedbackEmail({
+        patientName: SAMPLE_PATIENT.name,
+        patientId: SAMPLE_PATIENT.id,
+        segment,
+        matchesUrl,
+        therapist: {
+          id: SAMPLE_THERAPIST.id,
+          first_name: SAMPLE_THERAPIST.first_name,
+          last_name: SAMPLE_THERAPIST.last_name,
+          city: SAMPLE_THERAPIST.city,
+          modalities: SAMPLE_THERAPIST.modalities,
+          approach_text: SAMPLE_THERAPIST.approach_text,
+        },
+        availableSlots: 3,
+        nextSlotDate: 'Mi 29. Jan',
+      });
+      if (email.html) results.push({ subject: `[${label}] ${email.subject}`, html: email.html });
+    }
+  }
+
   if (template === 'email_confirmation' || template === 'all') {
     const email = renderEmailConfirmation({ confirmUrl });
     if (email.html) results.push({ subject: email.subject, html: email.html });
@@ -98,14 +136,15 @@ function renderTemplate(template: TemplateType): { subject: string; html: string
 
 /**
  * GET /api/admin/emails/preview?template=rich_therapist&send=true
- * 
+ *
  * Query params:
- * - template: rich_therapist | selection_nudge | feedback_request | email_confirmation | all
+ * - template: rich_therapist | selection_nudge | feedback_request | feedback_behavioral | email_confirmation | all
  * - send: true to send to LEADS_NOTIFY_EMAIL, false to just return HTML
- * 
+ *
  * Examples:
  * - Preview HTML: /api/admin/emails/preview?template=rich_therapist&token=YOUR_CRON_SECRET
  * - Send to inbox: /api/admin/emails/preview?template=all&send=true&token=YOUR_CRON_SECRET
+ * - Send behavioral variants: /api/admin/emails/preview?template=feedback_behavioral&send=true&token=YOUR_CRON_SECRET
  */
 export async function GET(req: Request) {
   try {
@@ -119,7 +158,7 @@ export async function GET(req: Request) {
     const template = (url.searchParams.get('template') || 'all') as TemplateType;
     const shouldSend = url.searchParams.get('send') === 'true';
 
-    const validTemplates: TemplateType[] = ['rich_therapist', 'selection_nudge', 'feedback_request', 'email_confirmation', 'all'];
+    const validTemplates: TemplateType[] = ['rich_therapist', 'selection_nudge', 'feedback_request', 'feedback_behavioral', 'email_confirmation', 'all'];
     if (!validTemplates.includes(template)) {
       return NextResponse.json({ 
         error: `Invalid template. Valid options: ${validTemplates.join(', ')}` 

@@ -101,6 +101,12 @@ A profile is **complete** when:
 - New: `practice_street`, `practice_postal_code`, `practice_city`
 - Portal auto-parses legacy format on load
 
+### Billing Address (Rechnungsadresse)
+- Collected during onboarding Step 1 (not editable in the portal)
+- Stored in `metadata.profile.billing_street`, `billing_postal_code`, `billing_city`
+- Used for invoicing; not publicly displayed
+- To update billing address, therapists must contact support
+
 ---
 
 ## Security Considerations

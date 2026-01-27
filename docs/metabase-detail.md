@@ -739,20 +739,24 @@ ORDER BY m.created_at DESC LIMIT 50;
 
 Two feedback sources:
 1. **Day 10 email** → `/feedback/quick` → `feedback_response` events
+   - Generic template (`feedback_request`) or behavior-aware variants (`feedback_behavioral`)
+   - Behavioral variants: `almost_booked`, `never_visited`, `visited_no_action`, `rejected`
+   - Both templates share `kind = 'feedback_request_d10'`; variant tracked in `properties->>'variant'`
 2. **Matches page** "Not a fit?" button → `match_rejected` events
 
 ### FB-ResponseRate
 
 ```sql
 -- Feedback email response rate (day-10 email campaign).
--- Measures engagement with "What's holding you back?" email.
+-- Includes both generic (feedback_request) and behavioral (feedback_behavioral) templates.
+-- Both share kind = 'feedback_request_d10'.
 -- Good response rate = email is reaching people, content resonates.
 -- Target: >10%. Low = check email deliverability or timing.
 WITH emails_sent AS (
   SELECT COUNT(*) AS cnt
   FROM events
   WHERE type = 'email_sent'
-    AND properties->>'template' = 'feedback_request'
+    AND properties->>'kind' = 'feedback_request_d10'
     AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at >= {{start_date}} AND created_at <= NOW()
 ),
@@ -768,6 +772,85 @@ SELECT
   responses.cnt AS responses,
   ROUND(100.0 * responses.cnt / NULLIF(emails_sent.cnt, 0), 1) AS response_rate_pct
 FROM emails_sent, responses;
+```
+
+### FB-BehavioralVariants
+
+```sql
+-- Day 10 behavioral email performance by variant.
+-- Compares send volume and response rates across behavioral segments:
+--   almost_booked (D), never_visited (A), visited_no_action (B), rejected (C).
+-- Generic = no segment data available (fallback to old template).
+-- Use to identify which variant drives most engagement.
+WITH sends AS (
+  SELECT
+    COALESCE(properties->>'variant', 'generic') AS variant,
+    properties->>'template' AS template,
+    COUNT(*) AS sent,
+    COUNT(DISTINCT properties->>'patient_id') AS unique_patients
+  FROM events
+  WHERE type = 'email_sent'
+    AND properties->>'kind' = 'feedback_request_d10'
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
+    AND created_at >= {{start_date}} AND created_at <= NOW()
+  GROUP BY properties->>'variant', properties->>'template'
+),
+responses AS (
+  SELECT
+    properties->>'patient_id' AS patient_id
+  FROM events
+  WHERE type = 'feedback_response'
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
+    AND created_at >= {{start_date}} AND created_at <= NOW()
+),
+-- Join back to sends to attribute responses to variants
+send_events AS (
+  SELECT
+    COALESCE(properties->>'variant', 'generic') AS variant,
+    properties->>'patient_id' AS patient_id
+  FROM events
+  WHERE type = 'email_sent'
+    AND properties->>'kind' = 'feedback_request_d10'
+    AND properties->>'is_test' IS DISTINCT FROM 'true'
+    AND created_at >= {{start_date}} AND created_at <= NOW()
+),
+variant_responses AS (
+  SELECT
+    se.variant,
+    COUNT(DISTINCT r.patient_id) AS responses
+  FROM send_events se
+  JOIN responses r ON se.patient_id = r.patient_id
+  GROUP BY se.variant
+)
+SELECT
+  s.variant,
+  s.template,
+  s.sent,
+  s.unique_patients,
+  COALESCE(vr.responses, 0) AS responses,
+  ROUND(100.0 * COALESCE(vr.responses, 0) / NULLIF(s.unique_patients, 0), 1) AS response_rate_pct
+FROM sends s
+LEFT JOIN variant_responses vr ON s.variant = vr.variant
+ORDER BY s.sent DESC;
+```
+
+### FB-RejectedSubVariants
+
+```sql
+-- Breakdown of rejected-segment emails by rejection reason.
+-- Shows which match rejection reasons triggered behavioral emails.
+-- Use to understand why patients reject matches and whether targeted copy helps.
+SELECT
+  properties->>'rejection_reason' AS rejection_reason,
+  COUNT(*) AS sent
+FROM events
+WHERE type = 'email_sent'
+  AND properties->>'kind' = 'feedback_request_d10'
+  AND properties->>'variant' = 'rejected'
+  AND properties->>'is_test' IS DISTINCT FROM 'true'
+  AND created_at >= {{start_date}} AND created_at <= NOW()
+GROUP BY properties->>'rejection_reason'
+ORDER BY sent DESC;
 ```
 
 ### FB-ByReason
@@ -787,6 +870,12 @@ WITH combined AS (
       WHEN 'found_alternative' THEN 'Alternative gefunden'
       WHEN 'match_dissatisfied' THEN 'Empfehlung passt nicht'
       WHEN 'other' THEN 'Sonstiges'
+      -- Behavioral email reasons (Jan 2026+)
+      WHEN 'method_preference' THEN 'Methodenpräferenz'
+      WHEN 'price_feedback' THEN 'Preis-Feedback'
+      WHEN 'insurance_preference' THEN 'Kassentherapie-Präferenz'
+      WHEN 'almost_booked_feedback' THEN 'Fast gebucht — Feedback'
+      WHEN 'profile_feedback' THEN 'Profil-Feedback'
       ELSE properties->>'reason'
     END AS reason,
     'day10_email' AS source
@@ -906,6 +995,12 @@ SELECT
     WHEN 'found_alternative' THEN 'Alternative gefunden'
     WHEN 'match_dissatisfied' THEN 'Empfehlung passt nicht'
     WHEN 'other' THEN 'Sonstiges'
+    -- Behavioral email reasons (Jan 2026+)
+    WHEN 'method_preference' THEN 'Methodenpräferenz'
+    WHEN 'price_feedback' THEN 'Preis-Feedback'
+    WHEN 'insurance_preference' THEN 'Kassentherapie-Präferenz'
+    WHEN 'almost_booked_feedback' THEN 'Fast gebucht — Feedback'
+    WHEN 'profile_feedback' THEN 'Profil-Feedback'
     ELSE e.properties->>'reason'
   END AS reason,
   e.properties->>'details' AS details
@@ -1037,3 +1132,12 @@ LIMIT 50;
 4. **Operations Dashboard** (this file, G-*, M-* queries)
    - Supply gaps tables
    - Match quality charts
+
+5. **Feedback Dashboard** (this file, FB-* queries)
+   - FB-ResponseRate → Single value card
+   - FB-BehavioralVariants → Table (variant performance)
+   - FB-ByReason → Horizontal bar chart
+   - FB-MatchRejections → Horizontal bar chart
+   - FB-WeeklyTrend → Stacked area chart
+   - FB-RejectedSubVariants → Horizontal bar chart
+   - FB-Details, FB-RejectionDetails → Tables
