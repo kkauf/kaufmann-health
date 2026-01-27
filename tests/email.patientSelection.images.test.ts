@@ -23,6 +23,6 @@ describe('email: patientSelection therapist images are proxied', () => {
     // Should not include the Supabase storage host
     expect(html).not.toContain('supabase.co/storage/v1/object/public/therapist-profiles/');
     // Should include our proxy prefix
-    expect(html).toContain('https://kaufmann-health.de/api/images/therapist-profiles/t1.jpg');
+    expect(html).toContain('https://www.kaufmann-health.de/api/images/therapist-profiles/t1.jpg');
   });
 });

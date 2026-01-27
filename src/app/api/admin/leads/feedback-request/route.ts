@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
-import { renderFeedbackRequestEmail } from '@/lib/email/templates/feedbackRequest';
 import { renderBehavioralFeedbackEmail } from '@/lib/email/templates/feedbackBehavioral';
 import { batchClassifyBehavior, type PatientBehaviorSegment } from '@/lib/email/patientBehavior';
 import { BASE_URL } from '@/lib/constants';
@@ -104,7 +103,7 @@ async function selectionNudgeEmailSent(patientId: string): Promise<boolean> {
 
 type PatientRow = { id: string; name?: string | null; email?: string | null; metadata?: Record<string, unknown> | null };
 type MatchRow = { id: string; therapist_id: string; status?: string | null; secure_uuid?: string | null; metadata?: Record<string, unknown> | null };
-type TherapistRow = { id: string; first_name?: string | null; last_name?: string | null; city?: string | null; modalities?: string[] | null; approach_text?: string | null };
+type TherapistRow = { id: string; first_name?: string | null; last_name?: string | null; city?: string | null; modalities?: string[] | null; approach_text?: string | null; photo_url?: string | null; gender?: string | null; schwerpunkte?: string[] | null; session_preferences?: string[] | null; metadata?: Record<string, unknown> | null };
 
 export async function GET(req: Request) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
@@ -290,7 +289,7 @@ export async function GET(req: Request) {
 
       // Batch-fetch therapist details and Cal slots
       const therapistMap = new Map<string, TherapistRow>();
-      const calSlotMap = new Map<string, { slots_count: number; next_intro_time_utc: string | null }>();
+      const calSlotMap = new Map<string, { slots_count: number; next_intro_time_utc: string | null; next_intro_date_iso: string | null; next_intro_time_label: string | null }>();
 
       if (therapistIdsNeeded.size > 0) {
         const tIds = [...therapistIdsNeeded];
@@ -298,12 +297,12 @@ export async function GET(req: Request) {
         const [therapistResult, calSlotResult] = await Promise.all([
           supabaseServer
             .from('therapists')
-            .select('id, first_name, last_name, city, modalities, approach_text')
+            .select('id, first_name, last_name, city, modalities, approach_text, photo_url, gender, schwerpunkte, session_preferences, metadata')
             .in('id', tIds)
             .eq('status', 'verified'),
           supabaseServer
             .from('cal_slots_cache')
-            .select('therapist_id, slots_count, next_intro_time_utc')
+            .select('therapist_id, slots_count, next_intro_time_utc, next_intro_date_iso, next_intro_time_label')
             .in('therapist_id', tIds)
             .gt('slots_count', 0),
         ]);
@@ -312,8 +311,8 @@ export async function GET(req: Request) {
           therapistMap.set(t.id, t);
         }
 
-        for (const s of ((calSlotResult.data || []) as Array<{ therapist_id: string; slots_count: number; next_intro_time_utc?: string | null }>)) {
-          calSlotMap.set(s.therapist_id, { slots_count: s.slots_count, next_intro_time_utc: s.next_intro_time_utc || null });
+        for (const s of ((calSlotResult.data || []) as Array<{ therapist_id: string; slots_count: number; next_intro_time_utc?: string | null; next_intro_date_iso?: string | null; next_intro_time_label?: string | null }>)) {
+          calSlotMap.set(s.therapist_id, { slots_count: s.slots_count, next_intro_time_utc: s.next_intro_time_utc || null, next_intro_date_iso: s.next_intro_date_iso || null, next_intro_time_label: s.next_intro_time_label || null });
         }
       }
 
@@ -344,7 +343,7 @@ export async function GET(req: Request) {
 
             // Resolve therapist for segments that need it
             let therapistInfo: TherapistRow | null = null;
-            let calSlotInfo: { slots_count: number; next_intro_time_utc: string | null } | null = null;
+            let calSlotInfo: { slots_count: number; next_intro_time_utc: string | null; next_intro_date_iso: string | null; next_intro_time_label: string | null } | null = null;
 
             if (segment.segment === 'almost_booked') {
               therapistInfo = therapistMap.get(segment.therapist_id) || null;
@@ -369,6 +368,18 @@ export async function GET(req: Request) {
               } catch {}
             }
 
+            // Extract profile fields from metadata JSONB
+            const profile = (therapistInfo?.metadata as Record<string, unknown> | null)?.profile as Record<string, unknown> | undefined;
+
+            // Build next_intro_slot from cal cache data
+            const nextIntroSlot = calSlotInfo?.next_intro_date_iso && calSlotInfo?.next_intro_time_label
+              ? {
+                  date_iso: calSlotInfo.next_intro_date_iso,
+                  time_label: calSlotInfo.next_intro_time_label,
+                  time_utc: calSlotInfo.next_intro_time_utc || undefined,
+                }
+              : null;
+
             content = renderBehavioralFeedbackEmail({
               patientName: patient.name,
               patientId: patient.id,
@@ -381,6 +392,16 @@ export async function GET(req: Request) {
                 city: therapistInfo.city,
                 modalities: therapistInfo.modalities,
                 approach_text: therapistInfo.approach_text,
+                photo_url: therapistInfo.photo_url,
+                gender: therapistInfo.gender,
+                schwerpunkte: therapistInfo.schwerpunkte,
+                session_preferences: therapistInfo.session_preferences,
+                who_comes_to_me: typeof profile?.who_comes_to_me === 'string' ? profile.who_comes_to_me : null,
+                session_focus: typeof profile?.session_focus === 'string' ? profile.session_focus : null,
+                first_session: typeof profile?.first_session === 'string' ? profile.first_session : null,
+                about_me: typeof profile?.about_me === 'string' ? profile.about_me : null,
+                qualification: typeof profile?.qualification === 'string' ? profile.qualification : null,
+                next_intro_slot: nextIntroSlot,
               } : null,
               availableSlots: calSlotInfo?.slots_count || null,
               nextSlotDate,
@@ -391,15 +412,23 @@ export async function GET(req: Request) {
             rejectionReason = segment.segment === 'rejected' ? segment.reasons[0]?.reason : undefined;
             sentBehavioral++;
           } else {
-            // Fall back to generic template (no matches or classification failed)
+            // Fall back to behavioral template with visited_no_action as default segment
             if (!secureUuid) skippedNoMatches++;
 
-            content = renderFeedbackRequestEmail({
+            const fallbackMatchesUrl = secureUuid
+              ? `${BASE_URL}/matches/${encodeURIComponent(secureUuid)}`
+              : `${BASE_URL}/fragebogen`;
+
+            content = renderBehavioralFeedbackEmail({
               patientName: patient.name,
               patientId: patient.id,
+              segment: { segment: 'visited_no_action', visitCount: 0 },
+              matchesUrl: fallbackMatchesUrl,
+              therapist: null,
             });
 
-            templateName = 'feedback_request';
+            templateName = 'feedback_behavioral';
+            variant = 'visited_no_action_fallback';
             sentGeneric++;
           }
 

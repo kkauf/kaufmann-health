@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderRichTherapistEmail } from '@/lib/email/templates/richTherapistEmail';
 import { renderSelectionNudgeEmail } from '@/lib/email/templates/selectionNudge';
-import { renderFeedbackRequestEmail } from '@/lib/email/templates/feedbackRequest';
+import { renderBehavioralFeedbackEmail } from '@/lib/email/templates/feedbackBehavioral';
 
 describe('New Email Cadence Templates', () => {
   describe('Rich Therapist Email (Day 1)', () => {
@@ -113,51 +113,70 @@ describe('New Email Cadence Templates', () => {
     });
   });
 
-  describe('Feedback Request Email (Day 10)', () => {
-    it('renders with one-click feedback options', () => {
-      const result = renderFeedbackRequestEmail({
+  describe('Behavioral Feedback Email (Day 10)', () => {
+    it('renders visited_no_action variant with social proof', () => {
+      const result = renderBehavioralFeedbackEmail({
         patientName: 'Max',
         patientId: 'p-123',
+        segment: { segment: 'visited_no_action', visitCount: 3 },
+        matchesUrl: 'https://www.kaufmann-health.de/matches/secure-uuid',
+        therapist: null,
       });
 
-      expect(result.subject).toBe('Kurze Frage: Was hält dich zurück?');
+      expect(result.subject).toContain('85%');
       expect(result.html).toContain('Hallo Max');
-      expect(result.html).toContain('Preis ist zu hoch');
-      expect(result.html).toContain('Unsicher, welche:r Therapeut:in passt');
-      expect(result.html).toContain('Brauche mehr Zeit');
-      expect(result.html).toContain('Habe andere Lösung gefunden');
-      expect(result.html).toContain('Etwas anderes');
+      expect(result.html).toContain('Chemie');
+      expect(result.html).toContain('kostenlos und unverbindlich');
+    });
+
+    it('renders almost_booked with therapist card and outline booking CTA', () => {
+      const result = renderBehavioralFeedbackEmail({
+        patientName: 'Max',
+        patientId: 'p-123',
+        segment: { segment: 'almost_booked', therapist_id: 't-456' },
+        matchesUrl: 'https://www.kaufmann-health.de/matches/secure-uuid',
+        therapist: {
+          id: 't-456',
+          first_name: 'Anna',
+          last_name: 'Müller',
+          city: 'Berlin',
+          modalities: ['narm'],
+          approach_text: 'Ich begleite Menschen.',
+          gender: 'female',
+        },
+      });
+
+      expect(result.html).toContain('Anna M.');
+      // Booking CTA should be outline (border style)
+      expect(result.html).toContain('border:2px solid #10b981');
+      // Interview CTA should be solid primary
+      expect(result.html).toContain('background-color:#10b981');
+      // Gender-aware title
+      expect(result.html).toContain('K\u00F6rperpsychotherapeutin');
     });
 
     it('includes interview CTA with voucher offer', () => {
-      const result = renderFeedbackRequestEmail({
+      const result = renderBehavioralFeedbackEmail({
         patientId: 'p-123',
+        segment: { segment: 'never_visited' },
+        matchesUrl: 'https://www.kaufmann-health.de/matches/secure-uuid',
+        therapist: null,
       });
 
-      expect(result.html).toContain('15 Minuten');
-      expect(result.html).toContain('25€ Amazon-Gutschein');
+      expect(result.html).toContain('25\u20AC Amazon-Gutschein');
       expect(result.html).toContain('Termin vereinbaren');
     });
 
-    it('links feedback options to quick survey page', () => {
-      const result = renderFeedbackRequestEmail({
+    it('renders rejection variants', () => {
+      const result = renderBehavioralFeedbackEmail({
         patientId: 'p-123',
+        segment: { segment: 'rejected', reasons: [{ reason: 'too_expensive', therapist_id: 't-456' }] },
+        matchesUrl: 'https://www.kaufmann-health.de/matches/secure-uuid',
+        therapist: null,
       });
 
-      expect(result.html).toContain('/feedback/quick?patient=p-123');
-      expect(result.html).toContain('reason=price_too_high');
-      expect(result.html).toContain('reason=unsure_which_therapist');
-      expect(result.html).toContain('reason=need_more_time');
-      expect(result.html).toContain('reason=found_alternative');
-      expect(result.html).toContain('reason=other');
-    });
-
-    it('includes tracking parameters', () => {
-      const result = renderFeedbackRequestEmail({
-        patientId: 'p-123',
-      });
-
-      expect(result.html).toContain('utm_campaign=feedback_request_d10');
+      expect(result.subject).toContain('kostenlos');
+      expect(result.html).toContain('Kennenlerngespräch ist kostenlos');
     });
   });
 
@@ -169,7 +188,12 @@ describe('New Email Cadence Templates', () => {
         matchesUrl: 'https://example.com/matches/uuid',
       });
       const nudge = renderSelectionNudgeEmail({ matchesUrl: 'https://example.com/matches/uuid' });
-      const feedback = renderFeedbackRequestEmail({ patientId: 'p-123' });
+      const feedback = renderBehavioralFeedbackEmail({
+        patientId: 'p-123',
+        segment: { segment: 'visited_no_action', visitCount: 0 },
+        matchesUrl: 'https://example.com/matches/uuid',
+        therapist: null,
+      });
 
       for (const result of [rich, nudge, feedback]) {
         expect(result.html).toContain('color-scheme" content="light only"');
