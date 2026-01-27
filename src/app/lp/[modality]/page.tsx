@@ -8,7 +8,7 @@ import { HeroNoForm } from "@/features/landing/components/HeroNoForm";
 import { TherapistTeaserSection } from "@/features/landing/components/TherapistTeaserSection";
 import { FinalCtaSection } from "@/features/landing/components/FinalCtaSection";
 import { MODALITIES, type ModalityId } from "@/features/therapies/modalityConfig";
-import { parseKeyword } from "@/lib/ads-landing";
+import { parseKeyword, getLandingPageCopy } from "@/lib/ads-landing";
 import { buildFaqJsonLd } from "@/lib/seo";
 
 // Campaign landing page - conversion-focused
@@ -178,8 +178,9 @@ export default async function CampaignLandingPage({
   // Online mode support
   const isOnlineMode = queryParams?.mode === 'online';
 
-  // Keyword tracking for Google Ads (ValueTrack: ?kw={keyword})
+  // Keyword injection for Google Ads QS (ValueTrack: ?kw={keyword})
   const keyword = parseKeyword(queryParams?.kw);
+  const keywordCopy = keyword ? getLandingPageCopy(keyword, null) : null;
 
   // Build fragebogen URL with modality prefill
   const fragebogenHref = isOnlineMode
@@ -198,7 +199,7 @@ export default async function CampaignLandingPage({
 
       {/* Hero */}
       <HeroNoForm
-        title={isOnlineMode ? copy.onlineHeroTitle : copy.heroTitle}
+        title={keywordCopy?.title || (isOnlineMode ? copy.onlineHeroTitle : copy.heroTitle)}
         subtitle={isOnlineMode ? copy.onlineHeroSubtitle : copy.heroSubtitle}
         ctaLabel="Jetzt Therapeut:in finden"
         ctaHref={fragebogenHref}

@@ -44,9 +44,26 @@ const keywordToTitle: Record<string, string> = {
   
   // Modality keywords → "Finde deine [X] in Berlin" pattern
   'narm therapie berlin': 'Finde deine NARM Therapie in Berlin',
+  'narm berlin': 'Finde deine NARM Therapie in Berlin',
+  'narm therapeut berlin': 'Finde deine NARM Therapeut:in in Berlin',
+  'entwicklungstrauma therapie berlin': 'Entwicklungstrauma-Therapie in Berlin',
+  'entwicklungstrauma therapie': 'Entwicklungstrauma-Therapie — ohne Warteliste',
   'hakomi therapie berlin': 'Finde deine Hakomi Therapie in Berlin',
+  'hakomi berlin': 'Finde deine Hakomi Therapie in Berlin',
   'somatic experiencing berlin': 'Starte mit Somatic Experiencing in Berlin',
   'somatic experiencing': 'Starte mit Somatic Experiencing in Berlin',
+
+  // Online modality keywords
+  'narm therapie online': 'Online NARM Therapie — deutschlandweit',
+  'narm online': 'Online NARM Therapie — deutschlandweit',
+  'narm therapie': 'NARM Therapie — ohne Warteliste',
+  'entwicklungstrauma therapie online': 'Online Entwicklungstrauma-Therapie — deutschlandweit',
+  'hakomi therapie online': 'Online Hakomi Therapie — deutschlandweit',
+  'hakomi therapie': 'Hakomi Therapie — ohne Warteliste',
+  'somatic experiencing online': 'Online Somatic Experiencing — deutschlandweit',
+  'körperpsychotherapie online': 'Online Körperpsychotherapie — deutschlandweit',
+  'körpertherapie online': 'Online Körpertherapie — deutschlandweit',
+  'traumatherapie online': 'Online Traumatherapie — körperorientiert & deutschlandweit',
 };
 
 /**
