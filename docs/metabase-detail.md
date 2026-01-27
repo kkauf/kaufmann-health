@@ -776,6 +776,7 @@ FROM emails_sent, responses;
 -- Combined feedback from both sources: Day 10 email and matches page rejections.
 -- Shows why patients aren't booking, across all feedback channels.
 -- Uses unified reason labels for cross-source analysis.
+-- Handles both old (pre-2026-01) and new reason codes for backwards compatibility.
 WITH combined AS (
   -- Day 10 email feedback (feedback_response)
   SELECT
@@ -794,11 +795,18 @@ WITH combined AS (
     AND properties->>'is_test' IS DISTINCT FROM 'true'
     AND created_at >= {{start_date}} AND created_at <= NOW()
   UNION ALL
-  -- Matches page rejections (match_rejected)
+  -- Matches page rejections (match_rejected) — old + new reason codes
   SELECT
     CASE properties->>'reason'
+      -- New codes (Jan 2026+)
+      WHEN 'method_wrong' THEN 'Andere Methode gewünscht'
+      WHEN 'profile_not_convincing' THEN 'Profil überzeugt nicht'
+      WHEN 'too_expensive' THEN 'Zu teuer'
+      WHEN 'wants_insurance' THEN 'Suche Kassentherapie'
+      -- Old codes (pre Jan 2026) — kept for historical data
       WHEN 'vibe_method' THEN 'Passt nicht (Gefühl/Methode)'
       WHEN 'price_insurance' THEN 'Preis/Kosten'
+      -- Unchanged codes
       WHEN 'location_mismatch' THEN 'Standort passt nicht'
       WHEN 'availability_issue' THEN 'Keine passenden Termine'
       WHEN 'gender_mismatch' THEN 'Geschlecht passt nicht'
@@ -825,10 +833,18 @@ ORDER BY count DESC;
 -- Match page rejection reasons ("Not a fit?" button on /matches page).
 -- High-signal feedback from users actively evaluating therapists.
 -- Use to improve matching algorithm and therapist supply gaps.
+-- Handles both old (pre-2026-01) and new reason codes for backwards compatibility.
 SELECT
   CASE properties->>'reason'
+    -- New codes (Jan 2026+)
+    WHEN 'method_wrong' THEN 'Andere Methode gewünscht'
+    WHEN 'profile_not_convincing' THEN 'Profil überzeugt nicht'
+    WHEN 'too_expensive' THEN 'Zu teuer'
+    WHEN 'wants_insurance' THEN 'Suche Kassentherapie'
+    -- Old codes (pre Jan 2026) — kept for historical data
     WHEN 'vibe_method' THEN 'Passt nicht (Gefühl/Methode)'
     WHEN 'price_insurance' THEN 'Preis/Krankenkasse'
+    -- Unchanged codes
     WHEN 'location_mismatch' THEN 'Standort passt nicht'
     WHEN 'availability_issue' THEN 'Keine passenden Termine'
     WHEN 'gender_mismatch' THEN 'Geschlecht passt nicht'
@@ -908,20 +924,94 @@ LIMIT 50;
 -- Weekly match rejection trend (primary feedback source from matches page).
 -- Shows rejection patterns over time. Rising "price" = pricing concerns.
 -- Use to track impact of product changes on user sentiment.
+-- Includes both old and new reason codes. Old codes will stop appearing after deploy.
 SELECT
   date_trunc('week', created_at)::date AS week,
   COUNT(*) AS rejections,
-  COUNT(*) FILTER (WHERE properties->>'reason' = 'vibe_method') AS vibe_method,
-  COUNT(*) FILTER (WHERE properties->>'reason' = 'price_insurance') AS price,
+  -- New codes (Jan 2026+)
+  COUNT(*) FILTER (WHERE properties->>'reason' = 'method_wrong') AS method_wrong,
+  COUNT(*) FILTER (WHERE properties->>'reason' = 'profile_not_convincing') AS profile_unconvincing,
+  COUNT(*) FILTER (WHERE properties->>'reason' = 'too_expensive') AS too_expensive,
+  COUNT(*) FILTER (WHERE properties->>'reason' = 'wants_insurance') AS wants_insurance,
+  -- Unchanged codes
   COUNT(*) FILTER (WHERE properties->>'reason' = 'location_mismatch') AS location,
   COUNT(*) FILTER (WHERE properties->>'reason' = 'availability_issue') AS availability,
-  COUNT(*) FILTER (WHERE properties->>'reason' = 'gender_mismatch') AS gender
+  COUNT(*) FILTER (WHERE properties->>'reason' = 'gender_mismatch') AS gender,
+  -- Old codes (pre Jan 2026) — will show 0 for new weeks
+  COUNT(*) FILTER (WHERE properties->>'reason' = 'vibe_method') AS vibe_method_legacy,
+  COUNT(*) FILTER (WHERE properties->>'reason' = 'price_insurance') AS price_legacy
 FROM events
 WHERE type = 'match_rejected'
   AND properties->>'is_test' IS DISTINCT FROM 'true'
   AND created_at >= {{start_date}} AND created_at <= NOW()
 GROUP BY date_trunc('week', created_at)
 ORDER BY week DESC;
+```
+
+### FB-RejectionContext
+
+```sql
+-- Cross-reference rejection reasons with patient/therapist context.
+-- Uses enriched context payload added Jan 2026 (events before that lack context).
+-- Answer: "Are 'method_wrong' rejections all NARM seekers shown SE therapists?"
+-- Use to diagnose whether rejections are supply problems or product problems.
+SELECT
+  properties->>'reason' AS reason,
+  COUNT(*) AS count,
+  -- Therapist context
+  properties->'context'->>'therapist_city' AS therapist_city,
+  properties->'context'->>'therapist_gender' AS therapist_gender,
+  properties->'context'->'therapist_modalities' AS therapist_modalities,
+  -- Patient context
+  properties->'context'->>'patient_city' AS patient_city,
+  properties->'context'->>'patient_gender_pref' AS patient_gender_pref,
+  properties->'context'->'patient_modalities' AS patient_modalities,
+  properties->'context'->'patient_session_prefs' AS patient_session_prefs
+FROM events
+WHERE type = 'match_rejected'
+  AND properties->>'is_test' IS DISTINCT FROM 'true'
+  AND properties->'context' IS NOT NULL
+  AND created_at >= {{start_date}} AND created_at <= NOW()
+GROUP BY
+  properties->>'reason',
+  properties->'context'->>'therapist_city',
+  properties->'context'->>'therapist_gender',
+  properties->'context'->'therapist_modalities',
+  properties->'context'->>'patient_city',
+  properties->'context'->>'patient_gender_pref',
+  properties->'context'->'patient_modalities',
+  properties->'context'->'patient_session_prefs'
+ORDER BY count DESC
+LIMIT 50;
+```
+
+### FB-RejectionDetails
+
+```sql
+-- Free-text details from match page rejections (optional field added Jan 2026).
+-- High-value qualitative data - read regularly for product insights.
+-- Only events with non-empty details field are shown.
+SELECT
+  e.created_at,
+  CASE e.properties->>'reason'
+    WHEN 'method_wrong' THEN 'Andere Methode gewünscht'
+    WHEN 'profile_not_convincing' THEN 'Profil überzeugt nicht'
+    WHEN 'too_expensive' THEN 'Zu teuer'
+    WHEN 'wants_insurance' THEN 'Suche Kassentherapie'
+    WHEN 'location_mismatch' THEN 'Standort passt nicht'
+    WHEN 'availability_issue' THEN 'Keine passenden Termine'
+    WHEN 'gender_mismatch' THEN 'Geschlecht passt nicht'
+    ELSE e.properties->>'reason'
+  END AS reason,
+  e.properties->>'details' AS details,
+  e.properties->>'therapist_id' AS therapist_id
+FROM events e
+WHERE e.type = 'match_rejected'
+  AND e.properties->>'details' IS NOT NULL
+  AND e.properties->>'is_test' IS DISTINCT FROM 'true'
+  AND e.created_at >= {{start_date}} AND e.created_at <= NOW()
+ORDER BY e.created_at DESC
+LIMIT 50;
 ```
 
 ---

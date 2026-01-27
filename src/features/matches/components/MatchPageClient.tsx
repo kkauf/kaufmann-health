@@ -415,9 +415,21 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     setModalFor(null);
   }, [modalFor]);
 
+  // Get the top match therapist for hero view (must be before handleRejection which uses it)
+  const topMatch = useMemo(() => {
+    if (!therapistsWithQuality.length) return null;
+    // Sort by highlighted first, then return the first one
+    const sorted = [...therapistsWithQuality].sort((a, b) => {
+      if (a.id === highlightedTherapistId) return -1;
+      if (b.id === highlightedTherapistId) return 1;
+      return 0;
+    });
+    return sorted[0];
+  }, [therapistsWithQuality, highlightedTherapistId]);
+
   // Handle rejection reason selection (from MatchRejectionModal)
-  const handleRejection = useCallback((reason: RejectionReason) => {
-    // Track the rejection event with the highlighted therapist
+  const handleRejection = useCallback((reason: RejectionReason, details?: string) => {
+    // Track the rejection event with the highlighted therapist + match context
     try {
       const attrs = getAttribution();
       const pagePath = typeof window !== 'undefined' ? window.location.pathname : '';
@@ -429,6 +441,17 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           therapist_id: highlightedTherapistId,
           reason,
           secure_uuid: uuid,
+          ...(details ? { details } : {}),
+          // Match context for cross-referencing without joins
+          context: {
+            therapist_modalities: topMatch?.modalities || [],
+            therapist_city: topMatch?.city || null,
+            therapist_gender: topMatch?.gender || null,
+            patient_city: data?.patient?.city || null,
+            patient_modalities: data?.patient?.specializations || [],
+            patient_session_prefs: data?.patient?.session_preferences || [],
+            patient_gender_pref: data?.patient?.gender_preference || null,
+          },
         },
       };
       navigator.sendBeacon?.('/api/events', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
@@ -437,19 +460,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
     // Close modal and reveal all matches
     setShowRejectionModal(false);
     setMatchViewState('directory');
-  }, [highlightedTherapistId, uuid]);
-
-  // Get the top match therapist for hero view
-  const topMatch = useMemo(() => {
-    if (!therapistsWithQuality.length) return null;
-    // Sort by highlighted first, then return the first one
-    const sorted = [...therapistsWithQuality].sort((a, b) => {
-      if (a.id === highlightedTherapistId) return -1;
-      if (b.id === highlightedTherapistId) return 1;
-      return 0;
-    });
-    return sorted[0];
-  }, [therapistsWithQuality, highlightedTherapistId]);
+  }, [highlightedTherapistId, uuid, topMatch, data]);
 
   if (loading) {
     // Simple spinner - no elaborate animation here

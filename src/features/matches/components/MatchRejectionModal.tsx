@@ -9,14 +9,17 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Euro, User, Clock, MapPin, Heart } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Euro, CreditCard, User, Clock, MapPin, Compass, UserX } from 'lucide-react';
 
-export type RejectionReason = 
-  | 'price_insurance'
+export type RejectionReason =
+  | 'too_expensive'
+  | 'wants_insurance'
   | 'gender_mismatch'
   | 'availability_issue'
   | 'location_mismatch'
-  | 'vibe_method';
+  | 'method_wrong'
+  | 'profile_not_convincing';
 
 interface RejectionOption {
   id: RejectionReason;
@@ -26,36 +29,46 @@ interface RejectionOption {
 
 const REJECTION_OPTIONS: RejectionOption[] = [
   {
-    id: 'price_insurance',
-    label: 'Keine Kassenabrechnung / Zu teuer',
+    id: 'method_wrong',
+    label: 'Andere Methode/Richtung gewünscht',
+    icon: Compass,
+  },
+  {
+    id: 'profile_not_convincing',
+    label: 'Profil überzeugt mich nicht',
+    icon: UserX,
+  },
+  {
+    id: 'too_expensive',
+    label: 'Zu teuer',
     icon: Euro,
   },
   {
+    id: 'wants_insurance',
+    label: 'Suche Kassentherapie',
+    icon: CreditCard,
+  },
+  {
     id: 'gender_mismatch',
-    label: 'Ich suche ein anderes Geschlecht',
+    label: 'Anderes Geschlecht gewünscht',
     icon: User,
   },
   {
-    id: 'availability_issue',
-    label: 'Termine passen mir nicht',
-    icon: Clock,
-  },
-  {
     id: 'location_mismatch',
-    label: 'Praxis ist zu weit weg / Nur Online',
+    label: 'Standort passt nicht / Nur Online',
     icon: MapPin,
   },
   {
-    id: 'vibe_method',
-    label: 'Methode/Profil spricht mich nicht an',
-    icon: Heart,
+    id: 'availability_issue',
+    label: 'Keine passenden Termine',
+    icon: Clock,
   },
 ];
 
 interface MatchRejectionModalProps {
   open: boolean;
   therapistName: string;
-  onSelect: (reason: RejectionReason) => void;
+  onSelect: (reason: RejectionReason, details?: string) => void;
   onClose: () => void;
 }
 
@@ -66,16 +79,17 @@ export function MatchRejectionModal({
   onClose,
 }: MatchRejectionModalProps) {
   const [selectedReason, setSelectedReason] = useState<RejectionReason | null>(null);
+  const [details, setDetails] = useState('');
 
   const handleSubmit = () => {
     if (selectedReason) {
-      onSelect(selectedReason);
+      onSelect(selectedReason, details.trim() || undefined);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">
             Hilf uns, den Algorithmus zu verbessern
@@ -106,6 +120,16 @@ export function MatchRejectionModal({
             );
           })}
         </div>
+
+        {selectedReason && (
+          <Textarea
+            placeholder="Möchtest du mehr sagen? (Optional)"
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            className="resize-none"
+            rows={2}
+          />
+        )}
 
         <div className="flex gap-3 pt-2">
           <Button
