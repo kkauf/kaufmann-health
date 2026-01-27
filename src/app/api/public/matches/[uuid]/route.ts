@@ -532,7 +532,7 @@ export async function GET(req: Request) {
           // Override is_perfect if admin selected a specific highlighted therapist
           is_perfect: highlightedTherapistId ? t.id === highlightedTherapistId : t.is_perfect,
         })),
-        metadata: { match_type: matchType },
+        metadata: { match_type: matchType, patient_id: patientId },
       },
       error: null,
     });
