@@ -460,6 +460,8 @@ export default function SignupWizard() {
             src = '/therapie-finden';
           } else if (ref.includes('/start')) {
             src = '/start';
+          } else if (ref.includes('/lp/')) {
+            src = ref.match(/\/lp\/[^/?#]+/)?.[0] || '/lp';
           } else {
             // Default based on variant: concierge → /therapie-finden, others → /start
             src = vParam === 'concierge' ? '/therapie-finden' : '/start';
@@ -478,6 +480,13 @@ export default function SignupWizard() {
               } catch { }
             } else if (ref.includes('/start')) {
               src = '/start';
+              try {
+                const u = new URL(ref);
+                const vp = u.searchParams.get('variant') || u.searchParams.get('v') || undefined;
+                variant = vp || undefined;
+              } catch { }
+            } else if (ref.includes('/lp/')) {
+              src = ref.match(/\/lp\/[^/?#]+/)?.[0] || '/lp';
               try {
                 const u = new URL(ref);
                 const vp = u.searchParams.get('variant') || u.searchParams.get('v') || undefined;
@@ -513,6 +522,10 @@ export default function SignupWizard() {
         }
         if (src) campaignSourceOverrideRef.current = src;
         if (variant) campaignVariantOverrideRef.current = variant;
+        // Online campaign override: distinguish online campaign leads from self-service
+        if (searchParams?.get('mode') === 'online') {
+          campaignVariantOverrideRef.current = 'online';
+        }
       } catch { }
 
       // Mark initialization complete only after attempting to load saved state
