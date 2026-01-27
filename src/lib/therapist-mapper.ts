@@ -46,14 +46,26 @@ export function getHiddenTherapistIds(): Set<string> {
 }
 
 /**
- * Check if a therapist row should be hidden (via env or metadata.hidden)
+ * Check if a therapist row should be hidden from public views.
+ * Hidden when:
+ * - Listed in HIDE_THERAPIST_IDS env var
+ * - metadata.hidden is true
+ * - metadata.is_test is true (test accounts created on staging/localhost or with +test email)
  */
 export function isTherapistHidden(row: TherapistRow, hideIds: Set<string>): boolean {
   if (hideIds.has(row.id)) return true;
   try {
     const md = (row.metadata || {}) as Record<string, unknown>;
     const hiddenVal: unknown = md['hidden'];
-    return hiddenVal === true || String(hiddenVal).toLowerCase() === 'true';
+    if (hiddenVal === true || String(hiddenVal).toLowerCase() === 'true') {
+      return true;
+    }
+    // Hide test accounts from public views (created on staging/localhost or with +test email)
+    const isTestVal: unknown = md['is_test'];
+    if (isTestVal === true || String(isTestVal).toLowerCase() === 'true') {
+      return true;
+    }
+    return false;
   } catch {
     return false;
   }

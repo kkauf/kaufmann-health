@@ -15,6 +15,11 @@ const REASON_LABELS: Record<string, string> = {
   need_more_time: 'Brauche mehr Zeit',
   found_alternative: 'Habe andere Lösung gefunden',
   match_dissatisfied: 'Empfehlung passt nicht',
+  method_preference: 'Methodenpräferenz',
+  price_feedback: 'Preis-Feedback',
+  insurance_preference: 'Kassentherapie-Präferenz',
+  almost_booked_feedback: 'Fast gebucht — was hat dich gestoppt?',
+  profile_feedback: 'Profil-Feedback',
   other: 'Etwas anderes',
 };
 

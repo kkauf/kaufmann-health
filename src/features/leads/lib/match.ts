@@ -476,9 +476,16 @@ export async function createInstantMatchesForPatient(
       console.error('[InstantMatch] CRITICAL: Therapist query returned 0 rows. Check for schema mismatches or RLS issues.');
     }
     
-    // Filter out hidden/test therapists (HIDE_THERAPIST_IDS env var)
+    // Filter out hidden/test therapists (HIDE_THERAPIST_IDS env var + metadata flags)
     const hiddenIds = getHiddenTherapistIds();
-    const therapists = allTherapists.filter(t => !hiddenIds.has(t.id));
+    const therapists = allTherapists.filter(t => {
+      if (hiddenIds.has(t.id)) return false;
+      // Also filter by metadata flags (hidden, is_test)
+      const md = t.metadata || {};
+      if (md.hidden === true) return false;
+      if (md.is_test === true) return false;
+      return true;
+    });
 
     const tIds = therapists.map(t => t.id);
     
