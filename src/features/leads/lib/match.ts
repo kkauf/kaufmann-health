@@ -651,7 +651,11 @@ export async function createInstantMatchesForPatient(
         .insert({
           patient_id: patientId,
           status: 'proposed',
-          metadata: { match_quality: matchQuality, ...(isTest ? { is_test: true } : {}) },
+          metadata: {
+            match_quality: matchQuality,
+            used_fallback: false,
+            ...(isTest ? { is_test: true } : {}),
+          },
         })
         .select('secure_uuid')
         .single();
@@ -667,7 +671,16 @@ export async function createInstantMatchesForPatient(
             patient_id: patientId,
             therapist_id: tid,
             status: 'proposed',
-            metadata: { match_quality: matchQuality, therapist_match_quality: therapistQuality, ...(isTest ? { is_test: true } : {}) }
+            metadata: {
+              match_quality: matchQuality,
+              therapist_match_quality: therapistQuality,
+              match_score: s.matchScore,
+              platform_score: s.platformScore,
+              total_score: s.totalScore,
+              used_fallback: usedFallbacks,
+              mismatch_reasons: s.reasons,
+              ...(isTest ? { is_test: true } : {}),
+            }
           })
           .select('secure_uuid')
           .single();

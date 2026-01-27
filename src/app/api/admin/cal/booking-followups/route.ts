@@ -178,7 +178,7 @@ async function processStage(
       // Patient lookup - MUST check error to catch schema mismatches
       const { data: patient, error: patientError } = await supabaseServer
         .from('people')
-        .select('id, email, phone_number, name')
+        .select('id, email, phone_number, name, metadata')
         .eq('id', booking.patient_id)
         .single();
 
@@ -196,6 +196,18 @@ async function processStage(
 
       if (!patient) {
         counters.skipped_no_patient++;
+        continue;
+      }
+
+      const patientMeta = patient.metadata as Record<string, unknown> | null;
+      if (patientMeta?.is_test === true) {
+        void track({
+          type: 'followup_skipped_test_patient',
+          level: 'info',
+          source: 'api.admin.cal.booking-followups',
+          props: { booking_id: booking.id, patient_id: patient.id, stage },
+        });
+        counters.skipped_test++;
         continue;
       }
 

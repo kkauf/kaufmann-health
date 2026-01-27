@@ -13,6 +13,8 @@ type EventRow = {
   type: string;
   properties?: Record<string, unknown> | null;
   created_at?: string | null;
+  hashed_ip?: string | null;
+  user_agent?: string | null;
 };
 
 function formatDate(iso?: string | null) {
@@ -233,6 +235,8 @@ export default function AdminErrorsPage() {
                     <th className="text-left py-3 px-3 font-semibold text-gray-700">Level</th>
                     <th className="text-left py-3 px-3 font-semibold text-gray-700">Typ</th>
                     <th className="text-left py-3 px-3 font-semibold text-gray-700">Quelle</th>
+                    <th className="text-left py-3 px-3 font-semibold text-gray-700">IP</th>
+                    <th className="text-left py-3 px-3 font-semibold text-gray-700">UA</th>
                     <th className="text-left py-3 px-3 font-semibold text-gray-700">Nachricht</th>
                     <th className="text-left py-3 px-3 font-semibold text-gray-700">Details</th>
                   </tr>
@@ -241,6 +245,8 @@ export default function AdminErrorsPage() {
                 {filteredRows.map((r) => {
                   const src = (getProp(r.properties, 'source') as string) || '—';
                   const msg = (getProp(r.properties, 'error.message') as string) || (getProp(r.properties, 'message') as string) || '—';
+                  const ip = r.hashed_ip || '—';
+                  const ua = r.user_agent || '—';
                   const isOpen = expanded === r.id;
                   return (
                     <tr key={r.id} className="align-top hover:bg-gray-50 transition-colors">
@@ -250,6 +256,8 @@ export default function AdminErrorsPage() {
                       </td>
                       <td className="py-3 px-3 whitespace-nowrap text-gray-700">{r.type || 'error'}</td>
                       <td className="py-3 px-3 whitespace-nowrap text-gray-700">{src}</td>
+                      <td className="py-3 px-3 whitespace-nowrap text-gray-700 font-mono text-xs" title={ip}>{ip}</td>
+                      <td className="py-3 px-3 max-w-64 truncate text-gray-700" title={ua}>{ua}</td>
                       <td className="py-3 px-3 max-w-96 truncate text-gray-700" title={typeof msg === 'string' ? msg : ''}>{typeof msg === 'string' ? msg : '—'}</td>
                       <td className="py-3 px-3">
                         <Button variant="outline" size="sm" onClick={() => setExpanded(isOpen ? null : r.id)}>
@@ -257,7 +265,11 @@ export default function AdminErrorsPage() {
                         </Button>
                         {isOpen && (
                           <pre className="mt-3 max-w-[80vw] overflow-x-auto whitespace-pre-wrap rounded-lg bg-gray-100 p-3 text-xs border border-gray-200">
-                            {JSON.stringify(r.properties ?? {}, null, 2)}
+                            {JSON.stringify({
+                              hashed_ip: r.hashed_ip,
+                              user_agent: r.user_agent,
+                              properties: r.properties ?? {},
+                            }, null, 2)}
                           </pre>
                         )}
                       </td>

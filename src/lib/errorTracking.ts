@@ -132,10 +132,19 @@ function wrapFetch(): void {
           // Body not JSON or couldn't be read - use statusText
         }
 
+        const urlNoQuery = url.split('?')[0];
+        const isVerifyCodeEndpoint = urlNoQuery === '/api/public/verification/verify-code';
+        const isExpectedWrongCode =
+          response.status === 400 &&
+          (errorMessage === 'Falscher Code' || errorMessage === 'Ungültiger Code');
+        if (isVerifyCodeEndpoint && isExpectedWrongCode) {
+          return response;
+        }
+
         reportError({
           type: isAuthError ? 'auth_error' : 'api_error',
           status: response.status,
-          url: url.split('?')[0], // Strip query params
+          url: urlNoQuery, // Strip query params
           message: errorMessage,
         });
       }
