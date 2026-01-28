@@ -81,11 +81,14 @@ BOOKING ────────────────────────
 
 ---
 
-### 5. Intro Followup (Webhook-triggered)
+### 5. Intro Followup (Webhook + Cron Fallback)
 
-**Trigger:** Cal.com `MEETING_ENDED` webhook → `/api/public/cal/webhook`
+**Primary Trigger:** Cal.com `MEETING_ENDED` webhook → `/api/public/cal/webhook`
+**Fallback Trigger:** Cron `/api/admin/cal/booking-followups?stage=intro_followup`
 
-**Timing:** ~2 hours after intro session ends
+**Timing:**
+- Webhook: Immediately after intro session ends (if Cal.com video used)
+- Fallback: 2-4 hours after `end_time` if `followup_sent_at` is NULL
 
 **Purpose:** Prompt patient to book a full session while experience is fresh
 
@@ -96,7 +99,10 @@ BOOKING ────────────────────────
 
 **Idempotency:** `followup_sent_at` column
 
-**Important:** Only fires if therapist uses Cal.com video. External video providers (Zoom, Whereby) don't trigger `MEETING_ENDED`.
+**Note:** The cron fallback catches cases where:
+- Therapist didn't use Cal.com video (used Zoom, phone, etc.)
+- `MEETING_ENDED` webhook failed to fire
+- Webhook wasn't properly configured (historical bug, fixed Jan 2026)
 
 ---
 
