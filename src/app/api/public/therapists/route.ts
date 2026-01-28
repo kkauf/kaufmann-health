@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import {
   getHiddenTherapistIds,
+  hasCompleteProfile,
   isTherapistHidden,
   mapTherapistRow,
   parseTherapistRows,
@@ -123,11 +124,11 @@ export async function GET() {
       return { row, platformScore };
     });
 
-    // Filter: only show therapists accepting new patients (DB flag)
-    // Profile completeness is enforced by the portal UI - therapists can only enable
-    // accepting_new after completing their profile
+    // Filter: only show therapists who are accepting new patients AND have a complete profile.
+    // The portal UI enforces completeness before enabling accepting_new, but the onboarding
+    // form allows it without full validation — so we enforce server-side as defense-in-depth.
     const eligibleRows = scoredRows.filter(({ row }) => {
-      return row.accepting_new !== false;
+      return row.accepting_new !== false && hasCompleteProfile(row);
     });
 
     // Sort by Platform Score descending (per spec: directory uses Platform Score only)

@@ -190,11 +190,15 @@ on their profile (no manual activation needed).
 ### Visibility Gating
 
 The "Neue Klient:innen annehmen" toggle is **locked** until profile is complete:
-- All required profile text fields filled
-- Cal.com availability configured
-- At least 3 Schwerpunkte selected
+- All required profile text fields filled (>= 50 chars each: who_comes_to_me, session_focus, first_session)
+- Profile photo uploaded
+- At least 1 Schwerpunkt selected
+- Typical rate set
+- At least 1 session format (online/in-person)
 
 Once complete, therapist can enable the toggle to become visible in the directory.
+
+**Server-side enforcement:** The directory API, landing pages, and match results also enforce profile completeness via `hasCompleteProfile()` in `src/lib/therapist-mapper.ts`. This is defense-in-depth — the onboarding form allows enabling `accepting_new` before text fields are filled, so the server-side check prevents incomplete profiles from appearing publicly.
 
 ### Profile Visibility Warning
 
