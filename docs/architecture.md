@@ -83,7 +83,7 @@ Why this design:
 ### Cal.com Integration (EARTH-265)
 - **Provisioning Trigger**: When an admin approves a therapist (sets `status='verified'` via `PATCH /api/admin/therapists/:id`), the system automatically calls `provisionCalUser()` to create their Cal.com account.
 - **Provisioning**: Managed via `src/lib/cal/provision.ts`. Approved therapists get a Cal.com account cloned from a "golden template" (including schedules and availability).
-- **Event Types**: Cloned via Playwright-driven UI automation (SQL inserts for event types are unstable in Cal.com).
+- **Event Types**: Created via Cal.com's internal tRPC API (SQL inserts for event types 404 on booking pages).
 - **Slot Fetching**: `src/lib/cal/slots-db.ts` queries the Cal.com database directly for performance and real-time accuracy.
 - **Webhooks**: Each provisioned user has an individual webhook pointing to `POST /api/public/cal/webhook` for booking ingestion (created, rescheduled, cancelled).
 - **Address Sync**: `src/lib/cal/syncAddress.ts` syncs therapist practice addresses to Cal.com event type locations.

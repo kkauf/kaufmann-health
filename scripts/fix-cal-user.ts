@@ -1,7 +1,7 @@
 /**
  * Fix Cal.com event types for a specific therapist
  * 
- * Creates missing event types via Playwright UI automation.
+ * Creates missing event types via Cal.com tRPC API.
  * 
  * Run: npx tsx scripts/fix-cal-user.ts <therapist_email_or_cal_username>
  * Example: npx tsx scripts/fix-cal-user.ts astrid-peacock
@@ -93,8 +93,8 @@ async function main() {
       return;
     }
 
-    // Need to create missing event types via Playwright
-    console.log('\n⚠️  Missing event types - creating via Playwright...');
+    // Need to create missing event types via tRPC
+    console.log('\n⚠️  Missing event types - creating via tRPC...');
     console.log(`  Missing: ${!hasIntro ? 'intro ' : ''}${!hasFullSession ? 'full-session' : ''}`);
 
     // Generate a temporary password for login
@@ -109,13 +109,13 @@ async function main() {
     client.release();
 
     // Create event types via Playwright
-    const { createEventTypesViaUI, KH_INTRO_EVENT, KH_FULL_SESSION_EVENT } = await import('../src/lib/cal/createEventTypes');
+    const { createEventTypesViaTrpc, KH_INTRO_EVENT, KH_FULL_SESSION_EVENT } = await import('../src/lib/cal/createEventTypes');
     
     const toCreate = [];
     if (!hasIntro) toCreate.push(KH_INTRO_EVENT);
     if (!hasFullSession) toCreate.push(KH_FULL_SESSION_EVENT);
     
-    const result = await createEventTypesViaUI(user.email, tempPassword, user.username, toCreate);
+    const result = await createEventTypesViaTrpc(user.email, tempPassword, user.username, toCreate);
     
     if (result.success) {
       console.log('\n✅ Event types created successfully!');
@@ -132,7 +132,8 @@ async function main() {
     }
 
   } finally {
-    client.release();
+    // client may have been released earlier (line 109) if Playwright path was taken
+    try { client.release(); } catch { /* already released */ }
     await pool.end();
   }
 }

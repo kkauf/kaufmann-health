@@ -200,7 +200,7 @@
 - **Why**: We needed a robust, automated way to manage therapist availability and bookings without building a full scheduling engine. Cal.com provided the right primitives, but required custom orchestration to fit our "gated infrastructure" model.
 - **Decision** (EARTH-265):
   - **Template-based Provisioning**: Use a "golden template" user to clone schedules and availability. This handles schema drift gracefully and ensures a "known good" state for new therapists.
-  - **UI-Automation for Event Types**: SQL-created event types 404 on Cal.com booking pages. We use Playwright to automate event type creation through the UI during provisioning.
+  - **tRPC for Event Types**: SQL-created event types 404 on Cal.com booking pages. We use Cal.com's internal tRPC endpoint (`eventTypesHeavy/create`) to create event types during provisioning. Auth via NextAuth credentials flow (CSRF token → session cookie).
   - **Direct SQL Access**: Query the Cal.com database (Railway) directly for slot fetching instead of relying on their Public API/Webhooks for real-time availability. This provides sub-second latency.
   - **Per-user Webhooks**: Create unique webhooks for each provisioned user to ingest bookings (created, rescheduled, cancelled) into `public.cal_bookings`.
 - **Consequences**:
