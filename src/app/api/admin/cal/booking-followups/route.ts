@@ -8,19 +8,22 @@
  *   GET /api/admin/cal/booking-followups?stage=confirmation_recovery
  *   GET /api/admin/cal/booking-followups?stage=reminder_24h
  *   GET /api/admin/cal/booking-followups?stage=reminder_1h
+ *   GET /api/admin/cal/booking-followups?stage=intro_followup
  *   GET /api/admin/cal/booking-followups?stage=session_followup
  *
  * Stages:
  * - confirmation_recovery: Resend booking confirmations that failed during webhook
  * - reminder_24h: Send reminder 24h before appointment
  * - reminder_1h: Send reminder 1h before appointment
+ * - intro_followup: FALLBACK for intro sessions where MEETING_ENDED webhook didn't fire
+ *                   Sends 2-4h after end_time if followup_sent_at is NULL
  * - session_followup: Send "book next session" email next morning after completed full session
  *                     (only if therapist has available slots)
  *
- * NOTE: post_intro follow-up emails are now sent via MEETING_ENDED webhook
- * in /api/public/cal/webhook for immediate delivery after the call ends.
+ * NOTE: Intro follow-up emails are also sent via MEETING_ENDED webhook for immediate delivery.
+ * This cron stage is a fallback for cases where the webhook doesn't fire (e.g., non-Cal video).
  *
- * Idempotency: Uses client_confirmation_sent_at, reminder_*_sent_at, session_followup_sent_at columns
+ * Idempotency: Uses client_confirmation_sent_at, reminder_*_sent_at, followup_sent_at, session_followup_sent_at columns
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -31,6 +34,7 @@ import { sendTransactionalSms } from '@/lib/sms/client';
 import { renderCalBookingReminder } from '@/lib/email/templates/calBookingReminder';
 import { renderCalSessionFollowup } from '@/lib/email/templates/calSessionFollowup';
 import { renderCalBookingClientConfirmation } from '@/lib/email/templates/calBookingClientConfirmation';
+import { renderCalIntroFollowup } from '@/lib/email/templates/calIntroFollowup';
 import { getCachedCalSlots } from '@/lib/cal/slots-cache';
 import { buildCalBookingUrl } from '@/lib/cal/booking-url';
 
@@ -39,7 +43,7 @@ export const dynamic = 'force-dynamic';
 
 const CRON_SECRET = process.env.CRON_SECRET || '';
 
-type Stage = 'confirmation_recovery' | 'reminder_24h' | 'reminder_1h' | 'session_followup';
+type Stage = 'confirmation_recovery' | 'reminder_24h' | 'reminder_1h' | 'intro_followup' | 'session_followup';
 
 interface CalBooking {
   id: string;
@@ -144,6 +148,25 @@ async function processStage(
         .is('reminder_1h_sent_at', null)
         .not('patient_id', 'is', null)
         .order('start_time', { ascending: true })
+        .limit(limit);
+      if (error) throw error;
+      bookings = (data || []) as CalBooking[];
+    } else if (stage === 'intro_followup') {
+      // FALLBACK: Send intro followup 2-4h after session ended
+      // This catches cases where MEETING_ENDED webhook didn't fire
+      const windowStart = new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString();
+      const windowEnd = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabaseServer
+        .from('cal_bookings')
+        .select('*')
+        .gte('end_time', windowStart)
+        .lte('end_time', windowEnd)
+        .eq('booking_kind', 'intro')
+        .is('followup_sent_at', null)
+        .not('patient_id', 'is', null)
+        .not('therapist_id', 'is', null)
+        .in('status', ['ACCEPTED', 'PENDING']) // Not cancelled
+        .order('end_time', { ascending: true })
         .limit(limit);
       if (error) throw error;
       bookings = (data || []) as CalBooking[];
@@ -330,6 +353,71 @@ async function processStage(
               }
             }
           }
+        } else if (stage === 'intro_followup') {
+          // FALLBACK: Send intro followup email
+          // Build full session booking URL
+          const fullSessionUrl = therapist?.cal_username
+            ? buildCalBookingUrl({
+                calUsername: therapist.cal_username,
+                eventType: 'full_session',
+                metadata: {
+                  kh_therapist_id: booking.therapist_id!,
+                  kh_patient_id: booking.patient_id!,
+                  kh_match_id: booking.match_id || undefined,
+                  kh_source: 'intro_followup_email',
+                },
+                prefillName: patient.name || undefined,
+                prefillEmail: patient.email || undefined,
+              })
+            : null;
+
+          // Get next available slot from cache
+          let nextSlotDateIso: string | null = null;
+          let nextSlotTimeLabel: string | null = null;
+          if (booking.therapist_id) {
+            const cachedSlots = await getCachedCalSlots([booking.therapist_id]);
+            const cache = cachedSlots.get(booking.therapist_id);
+            if (cache?.next_full_date_iso && cache?.next_full_time_label) {
+              nextSlotDateIso = cache.next_full_date_iso;
+              nextSlotTimeLabel = cache.next_full_time_label;
+            }
+          }
+
+          if (hasEmail && fullSessionUrl) {
+            const content = renderCalIntroFollowup({
+              patientName: patient.name || null,
+              therapistName,
+              fullSessionUrl,
+              nextSlotDateIso,
+              nextSlotTimeLabel,
+              matchUuid: booking.match_id,
+            });
+            const result = await sendEmail({
+              to: patient.email!,
+              subject: content.subject,
+              html: content.html,
+              context: {
+                kind: 'cal_intro_followup',
+                booking_id: booking.id,
+                stage,
+                recovery: true, // Mark as recovery/fallback
+              },
+            });
+            if (result.sent) {
+              counters.sent_email++;
+              const { error: updateError } = await supabaseServer
+                .from('cal_bookings')
+                .update({ followup_sent_at: now.toISOString() })
+                .eq('id', booking.id);
+              if (updateError) {
+                await logError('api.admin.cal.booking-followups', updateError, {
+                  booking_id: booking.id,
+                  stage,
+                  reason: 'update_followup_sent_at_failed',
+                });
+              }
+            }
+          }
         } else if (stage === 'session_followup') {
           // Check if therapist has available slots before sending
           const cachedSlots = await getCachedCalSlots([booking.therapist_id!]);
@@ -478,7 +566,7 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '50', 10), 200);
 
   // If no stage specified, process ALL stages sequentially
-  const allStages: Stage[] = ['confirmation_recovery', 'reminder_24h', 'reminder_1h', 'session_followup'];
+  const allStages: Stage[] = ['confirmation_recovery', 'reminder_24h', 'reminder_1h', 'intro_followup', 'session_followup'];
   const stagesToProcess: Stage[] = stageParam && allStages.includes(stageParam)
     ? [stageParam]
     : allStages;

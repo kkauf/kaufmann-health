@@ -410,13 +410,14 @@ export async function provisionCalUser(
 
     // Create per-user webhook for this therapist
     // This ensures only KH-managed therapists' bookings trigger our webhook
+    // Events: booking lifecycle + meeting ended (for intro followup) + no-show detection
     const webhookUrl = process.env.KH_CAL_WEBHOOK_URL || 'https://www.kaufmann-health.de/api/public/cal/webhook';
     const webhookSecret = process.env.CAL_WEBHOOK_SECRET || '';
-    
+
     await client.query(
       `INSERT INTO "Webhook" (id, "userId", "subscriberUrl", active, "eventTriggers", secret, "createdAt", time, "timeUnit", version)
-       VALUES (gen_random_uuid(), $1, $2, true, 
-         '{BOOKING_CREATED,BOOKING_CANCELLED,BOOKING_RESCHEDULED}',
+       VALUES (gen_random_uuid(), $1, $2, true,
+         '{BOOKING_CREATED,BOOKING_CANCELLED,BOOKING_RESCHEDULED,MEETING_ENDED,BOOKING_NO_SHOW_UPDATED,AFTER_HOSTS_CAL_VIDEO_NO_SHOW,AFTER_GUESTS_CAL_VIDEO_NO_SHOW}',
          $3, NOW(), 5, 'minute', '2021-10-20')
        ON CONFLICT DO NOTHING`,
       [userId, webhookUrl, webhookSecret]
