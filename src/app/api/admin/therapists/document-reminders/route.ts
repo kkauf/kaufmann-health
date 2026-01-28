@@ -10,14 +10,15 @@ import { isCronAuthorized as isCronAuthorizedShared, sameOrigin as sameOriginSha
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Reminder thresholds: 1 day, 3 days, 7 days after signup
+// Reminder thresholds: 3 days, 10 days, 21 days after signup
+// Spaced out to respect therapists' time for gathering documents
 const THRESHOLDS: Record<ReminderStage, number> = {
-  day1: 1 * 24 * 60 * 60 * 1000,
   day3: 3 * 24 * 60 * 60 * 1000,
-  day7: 7 * 24 * 60 * 60 * 1000,
+  day10: 10 * 24 * 60 * 60 * 1000,
+  day21: 21 * 24 * 60 * 60 * 1000,
 };
 
-// Max reminders before stopping (after day7, we stop)
+// Max reminders before stopping (after day21, we stop)
 const MAX_REMINDERS = 3;
 
 type TherapistRow = {
@@ -102,18 +103,18 @@ async function getReminderHistory(therapistId: string): Promise<{ count: number;
 function determineReminderStage(createdAt: Date, sentStages: Set<string>): ReminderStage | null {
   const now = Date.now();
   const age = now - createdAt.getTime();
-  
-  // Check each stage in order
-  if (age >= THRESHOLDS.day7 && !sentStages.has('therapist_document_reminder_day7')) {
-    return 'day7';
+
+  // Check each stage in reverse order (latest first)
+  if (age >= THRESHOLDS.day21 && !sentStages.has('therapist_document_reminder_day21')) {
+    return 'day21';
+  }
+  if (age >= THRESHOLDS.day10 && !sentStages.has('therapist_document_reminder_day10')) {
+    return 'day10';
   }
   if (age >= THRESHOLDS.day3 && !sentStages.has('therapist_document_reminder_day3')) {
     return 'day3';
   }
-  if (age >= THRESHOLDS.day1 && !sentStages.has('therapist_document_reminder_day1')) {
-    return 'day1';
-  }
-  
+
   return null;
 }
 
@@ -160,8 +161,8 @@ async function processBatch(limit: number, req: Request) {
       continue;
     }
 
-    // Check if signed up less than 1 day ago
-    if (now - createdAt.getTime() < THRESHOLDS.day1) {
+    // Check if signed up less than 3 days ago
+    if (now - createdAt.getTime() < THRESHOLDS.day3) {
       skippedTooRecent++;
       continue;
     }
