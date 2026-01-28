@@ -128,7 +128,7 @@ describe('Matches API Cal.com fields regression', () => {
     const ref = { id: 'ref-1', created_at: isoDaysAgo(1), patient_id: patientId };
     const list = [{ id: 'm1', therapist_id: therapistId, created_at: isoDaysAgo(1), metadata: {} }];
 
-    // Therapist with Cal.com fields set
+    // Therapist with Cal.com fields set (includes complete profile fields for hasCompleteProfile gate)
     const therapists = [
       {
         id: therapistId,
@@ -139,6 +139,15 @@ describe('Matches API Cal.com fields regression', () => {
         modalities: ['narm'],
         schwerpunkte: ['trauma'],
         session_preferences: ['online'],
+        photo_url: 'https://example.com/photo.jpg',
+        typical_rate: 100,
+        metadata: {
+          profile: {
+            who_comes_to_me: 'Zu mir kommen Menschen, die unter Angst und Panik leiden und sich mehr Sicherheit wünschen.',
+            session_focus: 'In unserer Arbeit liegt der Fokus auf dem körperlichen Erleben und der Regulation des Nervensystems.',
+            first_session: 'Im ersten Gespräch lernen wir uns kennen und besprechen deine Anliegen und Erwartungen an die Therapie.',
+          },
+        },
         // Cal.com fields - this is what we're testing
         cal_username: 'peter-schindler',
         cal_enabled: true,

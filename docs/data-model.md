@@ -41,7 +41,12 @@ Stores profile and qualification data for therapists. References `people(id)`.
 - `updated_at timestamptz`
 
 ### Directory Visibility
-Therapists appear in the public directory when verified and accepting new clients. Profile completeness requirements apply.
+Therapists appear in the public directory, landing pages, and match results when ALL of the following are met:
+- `status = 'verified'`
+- `accepting_new != false`
+- Profile is complete: photo, 3 text fields >= 50 chars (`who_comes_to_me`, `session_focus`, `first_session`), `typical_rate` > 0, >= 1 schwerpunkt, >= 1 session format
+
+Enforced server-side via `hasCompleteProfile()` in `src/lib/therapist-mapper.ts`. See `docs/therapist-matching-algorithm-spec.md` for full eligibility rules.
 
 Notes:
 - `secure_uuid` on `matches` is unique and used for magic links. No PII in emails.

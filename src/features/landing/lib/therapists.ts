@@ -1,6 +1,7 @@
 import { supabaseServer } from '@/lib/supabase-server';
 import {
   type TherapistData,
+  hasCompleteProfile,
   mapTherapistRow,
   getHiddenTherapistIds,
   isTherapistHidden,
@@ -27,9 +28,9 @@ export async function getTherapistsByIds(ids: string[]): Promise<TherapistData[]
     return [];
   }
 
-  // Validate with Zod schema
+  // Validate with Zod schema, filter incomplete profiles
   return parseTherapistRows(data || [])
-    .filter((row) => !isTherapistHidden(row, hideIds))
+    .filter((row) => !isTherapistHidden(row, hideIds) && hasCompleteProfile(row))
     .map((row) => mapTherapistRow(row));
 }
 
@@ -65,9 +66,9 @@ export async function getTherapistsForLanding(options?: {
     return [];
   }
 
-  // Validate with Zod schema
+  // Validate with Zod schema, filter incomplete profiles
   const mapped = parseTherapistRows(data || [])
-    .filter((row) => !isTherapistHidden(row, hideIds))
+    .filter((row) => !isTherapistHidden(row, hideIds) && hasCompleteProfile(row))
     .map((row) => mapTherapistRow(row));
 
   if (options?.modalities && options.modalities.length > 0) {

@@ -602,10 +602,14 @@ export default function SignupWizard() {
       .then(json => {
         if (json?.data?.matchesUrl) {
           setMatchesUrl(json.data.matchesUrl);
+          // Auto-redirect confirmed email users to matches (skip intermediate CTA screen)
+          if (isEmailConfirmed && !isConcierge) {
+            window.location.assign(json.data.matchesUrl);
+          }
         }
       })
       .catch(() => { });
-  }, [step, data.contact_method, data.phone_verified, isEmailConfirmed]);
+  }, [step, data.contact_method, data.phone_verified, isEmailConfirmed, isConcierge]);
 
   // If we have a session id (possibly from URL), try to load remote state once
   React.useEffect(() => {

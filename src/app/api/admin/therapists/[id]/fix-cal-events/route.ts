@@ -2,7 +2,7 @@
  * POST /api/admin/therapists/[id]/fix-cal-events
  *
  * Fix missing Cal.com event types for a therapist who already has a Cal account.
- * Uses Playwright to create event types via UI (SQL-created ones don't work on booking pages).
+ * Uses Cal.com tRPC API to create event types (SQL-created ones don't work on booking pages).
  *
  * Contract:
  * - Input: None (therapist ID from URL)
@@ -17,7 +17,7 @@ import { Pool } from 'pg';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // Playwright needs more time
+export const maxDuration = 30; // tRPC calls are fast
 
 const CAL_DATABASE_URL = process.env.CAL_DATABASE_URL;
 
@@ -171,7 +171,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         });
       }
       
-      // Need to create missing event types via Playwright
+      // Need to create missing event types via tRPC
       // First, we need the user's password - generate a new one and update it
       const bcrypt = await import('bcryptjs');
       const tempPassword = Array.from({ length: 16 }, () => 
@@ -185,8 +185,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       );
       client.release();
       
-      // Now use Playwright to create events
-      const { createEventTypesViaUI } = await import('@/lib/cal/createEventTypes');
+      // Now use tRPC to create events
+      const { createEventTypesViaTrpc } = await import('@/lib/cal/createEventTypes');
       
       const eventsToCreate = [];
       if (!hasIntro) {
@@ -198,7 +198,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         eventsToCreate.push(KH_FULL_SESSION_EVENT);
       }
       
-      const result = await createEventTypesViaUI(email!, tempPassword, calUsername, eventsToCreate);
+      const result = await createEventTypesViaTrpc(email!, tempPassword, calUsername, eventsToCreate);
       
       // Update KH database with new event IDs
       const updateData: Record<string, unknown> = {};

@@ -9,9 +9,9 @@
  * - UserPassword table (bcrypt hash)
  * - Schedule + Availability (cloned from template user)
  *
- * NOTE: Event types are NOT cloned because SQL-created event types don't work
- * on Cal.com booking pages (404 error). Therapists must create their own event
- * types through the Cal.com UI after logging in.
+ * NOTE: Event types are NOT cloned via SQL because SQL-created event types don't
+ * work on Cal.com booking pages (404 error). Instead, event types are created
+ * via Cal.com's internal tRPC API (see createEventTypes.ts).
  *
  * Template-based cloning: We clone schedules/availability from a "golden template"
  * user. This avoids reverse-engineering every required column and handles
@@ -424,14 +424,14 @@ export async function provisionCalUser(
 
     await client.query('COMMIT');
 
-    // Create event types via Playwright UI automation
+    // Create event types via Cal.com tRPC API
     // SQL-created event types don't work on Cal.com booking pages (404 error)
     let introId: number | null = null;
     let fullSessionId: number | null = null;
     
     try {
-      const { createEventTypesViaUI } = await import('./createEventTypes');
-      const result = await createEventTypesViaUI(email, password, username);
+      const { createEventTypesViaTrpc } = await import('./createEventTypes');
+      const result = await createEventTypesViaTrpc(email, password, username);
       introId = result.introId;
       fullSessionId = result.fullSessionId;
       if (!result.success) {
@@ -451,7 +451,7 @@ export async function provisionCalUser(
         cal_user_id: userId,
         cal_username: username,
         email,
-        stage: 'playwright_unavailable',
+        stage: 'trpc_call_failed',
       });
     }
     

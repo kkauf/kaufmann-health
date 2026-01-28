@@ -14,6 +14,7 @@ import {
 import { createClientSessionToken, createClientSessionCookie } from '@/lib/auth/clientSession';
 import {
   type TherapistRow,
+  hasCompleteProfile,
   mapTherapistRow,
   THERAPIST_SELECT_COLUMNS_WITH_GENDER,
 } from '@/lib/therapist-mapper';
@@ -327,9 +328,9 @@ export async function GET(req: Request) {
         })(),
       ]);
 
-      // Process therapist profiles (filter out not accepting and those with cancelled bookings)
+      // Process therapist profiles (filter out not accepting, incomplete profiles, and cancelled bookings)
       if (Array.isArray(therapistsResult.data)) {
-        therapistRows = (therapistsResult.data as unknown as TherapistRow[]).filter(t => t.accepting_new !== false);
+        therapistRows = (therapistsResult.data as unknown as TherapistRow[]).filter(t => t.accepting_new !== false && hasCompleteProfile(t));
       }
 
       // Process cancelled bookings - add to exclusion set

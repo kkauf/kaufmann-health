@@ -72,6 +72,28 @@ export function isTherapistHidden(row: TherapistRow, hideIds: Set<string>): bool
 }
 
 /**
+ * Check if a therapist row has a complete public profile.
+ * Mirrors the portal's completeness check (EditProfileForm.tsx) but runs server-side.
+ * Used by: directory API, landing page helpers, match results.
+ */
+const MIN_PROFILE_CHARS = 50;
+
+export function hasCompleteProfile(row: TherapistRow): boolean {
+  const profile = extractProfile(row.metadata);
+
+  const hasRequiredText =
+    (profile.who_comes_to_me?.length ?? 0) >= MIN_PROFILE_CHARS &&
+    (profile.session_focus?.length ?? 0) >= MIN_PROFILE_CHARS &&
+    (profile.first_session?.length ?? 0) >= MIN_PROFILE_CHARS;
+  const hasPhoto = Boolean(row.photo_url);
+  const hasRate = typeof row.typical_rate === 'number' && row.typical_rate > 0;
+  const hasSchwerpunkte = Array.isArray(row.schwerpunkte) && row.schwerpunkte.length >= 1;
+  const hasSessionFormat = Array.isArray(row.session_preferences) && row.session_preferences.length >= 1;
+
+  return hasRequiredText && hasPhoto && hasRate && hasSchwerpunkte && hasSessionFormat;
+}
+
+/**
  * Extract booking settings from raw metadata
  */
 function extractBookingSettings(metadata: unknown): { requires_intro_before_booking?: boolean } {

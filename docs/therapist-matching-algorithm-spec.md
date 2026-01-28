@@ -31,6 +31,7 @@ Therapists must pass ALL hard filters to appear in any results. These are true d
 |----|--------|-----------|-----------|
 | E1 | Verified | `therapists.status = 'verified'` | Quality gate |
 | E2 | Accepting Clients | `therapists.accepting_new != false` | Respect availability |
+| E2b | Profile Complete | `hasCompleteProfile(row)` — see below | Prevent incomplete profiles in public listings |
 | E3 | Not Hidden | `metadata.hide_from_directory != true` | Respect opt-out |
 
 ### Conditional Filters (Applied Only When Patient Specifies)
@@ -47,6 +48,7 @@ function isEligible(therapist: Therapist, patient?: PatientPreferences): boolean
   // Universal filters (always apply)
   if (therapist.status !== 'verified') return false;
   if (therapist.accepting_new === false) return false;
+  if (!hasCompleteProfile(therapist)) return false; // E2b: server-side completeness gate
   if (therapist.metadata?.hide_from_directory === true) return false;
   
   // Conditional filters (only when patient context exists)
@@ -67,6 +69,20 @@ function isEligible(therapist: Therapist, patient?: PatientPreferences): boolean
 }
 ```
 
+### E2b: Profile Completeness Requirements
+
+Server-side check via `hasCompleteProfile()` in `src/lib/therapist-mapper.ts`. All criteria must be met:
+
+- `metadata.profile.who_comes_to_me` >= 50 chars
+- `metadata.profile.session_focus` >= 50 chars
+- `metadata.profile.first_session` >= 50 chars
+- `photo_url` exists
+- `typical_rate` > 0
+- `schwerpunkte` array has >= 1 entry
+- `session_preferences` array has >= 1 entry
+
+**Why server-side?** The portal UI gates the `accepting_new` toggle on profile completeness, but the onboarding form allows enabling `accepting_new` before text fields are filled. The server-side check is defense-in-depth, applied in: directory API, landing page helpers, and match results.
+
 ### What Is NOT a Hard Filter
 
 The following affect ranking but do not exclude therapists:
@@ -74,7 +90,6 @@ The following affect ranking but do not exclude therapists:
 - Schwerpunkte overlap (soft filter)
 - Modality overlap (soft filter)
 - City match (soft filter)
-- Profile completeness (soft filter)
 - Cal.com integration (soft filter)
 - Intake slot availability (soft filter)
 
