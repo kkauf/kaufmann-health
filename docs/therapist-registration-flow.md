@@ -108,9 +108,9 @@ Shows confirmation message:
 ### Automated Reminders
 
 If therapist doesn't complete profile/upload documents:
-- **Day 1:** First reminder email
-- **Day 3:** Second reminder email  
-- **Day 7:** Final reminder email
+- **Day 3:** First reminder email
+- **Day 10:** Second reminder email
+- **Day 21:** Final reminder email
 
 Reminders stop after 3 emails or after documents are uploaded.
 
@@ -220,9 +220,9 @@ Verified therapists who haven't completed their profile receive automated remind
 | Trigger | Email Template | When Sent |
 |---------|---------------|-----------|
 | Signup | `therapistWelcome` | Immediately after registration |
-| Day 1 without docs | `therapistDocumentReminder` (day1) | 1 day after signup |
 | Day 3 without docs | `therapistDocumentReminder` (day3) | 3 days after signup |
-| Day 7 without docs | `therapistDocumentReminder` (day7) | 7 days after signup |
+| Day 10 without docs | `therapistDocumentReminder` (day10) | 10 days after signup |
+| Day 21 without docs | `therapistDocumentReminder` (day21) | 21 days after signup |
 | Admin: Rückfrage | `therapistRejection` | When admin requests changes |
 | Admin: Approve | `therapistApproval` | When admin approves |
 | Admin: Decline | `therapistDecline` | When admin declines |

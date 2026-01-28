@@ -11,21 +11,21 @@ function escapeHtml(s: string) {
     .replaceAll("'", '&#39;');
 }
 
-export type ReminderStage = 'day1' | 'day3' | 'day7';
+export type ReminderStage = 'day3' | 'day10' | 'day21';
 
 const STAGE_CONFIG: Record<ReminderStage, { subject: string; headline: string; urgency: string }> = {
-  day1: {
+  day3: {
     subject: 'Erinnerung: Deine Unterlagen fehlen noch',
     headline: 'Deine Anmeldung ist fast abgeschlossen',
     urgency: 'Nur noch ein Schritt, dann können wir dein Profil prüfen.',
   },
-  day3: {
+  day10: {
     subject: 'Noch keine Unterlagen erhalten – können wir helfen?',
     headline: 'Wir warten noch auf deine Unterlagen',
     urgency: 'Damit wir dein Profil freischalten können, benötigen wir deine Qualifikationsnachweise.',
   },
-  day7: {
-    subject: 'Letzte Erinnerung: Dein Profil wartet auf dich',
+  day21: {
+    subject: 'Dein Profil wartet noch auf dich',
     headline: 'Dein Profil ist noch unvollständig',
     urgency: 'Wir möchten dich gerne ins Netzwerk aufnehmen – bitte vervollständige deine Anmeldung.',
   },
@@ -33,7 +33,7 @@ const STAGE_CONFIG: Record<ReminderStage, { subject: string; headline: string; u
 
 /**
  * Reminder email for therapists who signed up but haven't uploaded documents.
- * Sent at day 1, 3, and 7 after signup.
+ * Sent at day 3, 10, and 21 after signup.
  */
 export function renderTherapistDocumentReminder(params: {
   name?: string | null;
