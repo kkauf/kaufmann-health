@@ -2,9 +2,9 @@
  * GET /api/admin/cal/warm-cache
  *
  * Cron endpoint to warm Cal.com slots cache for all therapists (EARTH-248)
- * 
+ *
  * Called by Vercel cron every 15 minutes to ensure fresh availability data.
- * 
+ *
  * Auth: CRON_SECRET or admin session
  */
 
@@ -13,22 +13,47 @@ import { warmCacheForAllTherapists } from '@/lib/cal/slots-cache';
 import { isCalDbEnabled } from '@/lib/cal/slots-db';
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { fireCriticalAlert } from '@/lib/critical-alerts';
+import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Allow up to 60s for warming all therapists
 
+function parseCookie(header?: string | null): Map<string, string> {
+  const map = new Map<string, string>();
+  if (!header) return map;
+  const parts = header.split(';');
+  for (const part of parts) {
+    const [k, v] = part.trim().split('=');
+    if (k && typeof v === 'string') map.set(k, decodeURIComponent(v));
+  }
+  return map;
+}
+
+async function checkAdminSession(req: NextRequest): Promise<boolean> {
+  try {
+    const header = req.headers.get('cookie');
+    const token = parseCookie(header).get(ADMIN_SESSION_COOKIE);
+    if (!token) return false;
+    return await verifySessionToken(token);
+  } catch {
+    return false;
+  }
+}
+
 async function handleRequest(req: NextRequest) {
-  // Auth: Check CRON_SECRET or admin cookie
+  // Auth: Check CRON_SECRET or admin session cookie
   const authHeader = req.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
   const tokenParam = req.nextUrl.searchParams.get('token');
 
-  const isAuthorized =
+  const isCronAuth =
     (cronSecret && authHeader === `Bearer ${cronSecret}`) ||
     (cronSecret && tokenParam === cronSecret);
 
-  if (!isAuthorized) {
+  const isAdminSession = await checkAdminSession(req);
+
+  if (!isCronAuth && !isAdminSession) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
