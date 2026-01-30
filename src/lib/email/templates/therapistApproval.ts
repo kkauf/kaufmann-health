@@ -60,7 +60,8 @@ export function renderTherapistApproval(params: {
     lines.push('<p style="margin:0 0 12px; font-size:15px; font-weight:600; color:#1e40af !important;">📅 Deine Kalender-Zugangsdaten</p>');
     lines.push('<p style="margin:0 0 12px; font-size:14px; line-height:1.65; color:#1e3a8a !important;">Mit diesen Daten kannst du dich in deinen Buchungskalender einloggen und deine Verfügbarkeit hinterlegen:</p>');
     lines.push('<table style="width:100%; border-collapse:collapse; margin:12px 0; background:#fff; border-radius:8px;">');
-    lines.push('<tr><td style="padding:10px 12px; color:#64748b; font-size:14px; width:90px; border-bottom:1px solid #e2e8f0;">Login:</td><td style="padding:10px 12px; color:#1e3a8a; font-size:14px; border-bottom:1px solid #e2e8f0;"><a href="' + escapeHtml(params.calLoginUrl!) + '" style="color:#2563eb; text-decoration:underline;">cal.com/auth/login</a></td></tr>');
+    const calDisplayUrl = params.calLoginUrl!.replace(/^https?:\/\//, '');
+    lines.push('<tr><td style="padding:10px 12px; color:#64748b; font-size:14px; width:90px; border-bottom:1px solid #e2e8f0;">Login:</td><td style="padding:10px 12px; color:#1e3a8a; font-size:14px; border-bottom:1px solid #e2e8f0;"><a href="' + escapeHtml(params.calLoginUrl!) + '" style="color:#2563eb; text-decoration:underline;">' + escapeHtml(calDisplayUrl) + '</a></td></tr>');
     lines.push('<tr><td style="padding:10px 12px; color:#64748b; font-size:14px; border-bottom:1px solid #e2e8f0;">E‑Mail:</td><td style="padding:10px 12px; color:#1e3a8a; font-size:14px; font-family:monospace; border-bottom:1px solid #e2e8f0;">' + escapeHtml(params.calEmail!) + '</td></tr>');
     lines.push('<tr><td style="padding:10px 12px; color:#64748b; font-size:14px;">Passwort:</td><td style="padding:10px 12px; color:#1e3a8a; font-size:14px; font-family:monospace; background:#fef3c7; border-radius:4px;">' + escapeHtml(params.calPassword!) + '</td></tr>');
     lines.push('</table>');
