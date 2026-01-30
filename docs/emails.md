@@ -296,7 +296,7 @@ All templates are located in `src/lib/email/templates/`. This is the authoritati
 | `calBookingClientConfirmation` | `calBookingClientConfirmation.ts` | Cal.com webhook | Confirm Cal.com booking to patient |
 | `calBookingTherapistNotification` | `calBookingTherapistNotification.ts` | Cal.com webhook | Notify therapist of Cal.com booking + rebooking CTA |
 | `calBookingReminder` | `calBookingReminder.ts` | Cron (24h/1h before) | Remind patient of upcoming booking |
-| `calIntroFollowup` | `calIntroFollowup.ts` | Cal.com webhook (MEETING_ENDED) | Upsell full session after intro |
+| `calIntroFollowup` | `calIntroFollowup.ts` | Cron (10-30m after intro) | Upsell full session after intro (skipped if therapist booked) |
 | `calSessionFollowup` | `calSessionFollowup.ts` | Cron (next morning) | Provide booking link for next session |
 | `cancellationRecovery` | `cancellationRecovery.ts` | Cron (2-4h after cancel) | Show other matches after cancellation |
 
