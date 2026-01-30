@@ -7,3 +7,6 @@ export const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufman
 export const EMAIL_ASSETS_URL = 'https://www.kaufmann-health.de';
 
 export const EMAIL_FROM_DEFAULT = 'kontakt@kaufmann-health.de';
+
+// Therapist-related emails use partners@ for better organization
+export const EMAIL_FROM_THERAPISTS = 'partners@kaufmann-health.de';

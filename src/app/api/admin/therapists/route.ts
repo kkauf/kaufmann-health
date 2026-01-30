@@ -165,6 +165,7 @@ export async function GET(req: Request) {
       const opted_out = Boolean((notificationsObj as { reminders_opt_out?: unknown }).reminders_opt_out === true);
       const requires_action = Boolean(has_license_doc || has_specialization_docs || has_photo_pending || has_approach_text);
       const is_test = Boolean(md.is_test === true);
+      const is_hidden = md.hidden === true || String(md.hidden).toLowerCase() === 'true';
 
       // Extract practice address from profile metadata
       const practiceStreet = typeof profileMeta.practice_street === 'string' ? profileMeta.practice_street : '';
@@ -227,6 +228,7 @@ export async function GET(req: Request) {
         },
         requires_action,
         is_test,
+        is_hidden,
         // Cal.com slot counts from cache
         cal_slots: slotCountByTid.get(r.id) || { intro: 0, full: 0 },
       };

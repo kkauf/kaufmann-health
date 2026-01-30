@@ -7,7 +7,8 @@ import { sendEmail } from '@/lib/email/client';
 import { renderTherapistApproval } from '@/lib/email/templates/therapistApproval';
 import { renderTherapistRejection } from '@/lib/email/templates/therapistRejection';
 import { renderTherapistDecline } from '@/lib/email/templates/therapistDecline';
-import { BASE_URL } from '@/lib/constants';
+import { renderTherapistProfileHidden } from '@/lib/email/templates/therapistProfileHidden';
+import { BASE_URL, EMAIL_FROM_THERAPISTS } from '@/lib/constants';
 import { provisionCalUser, isCalProvisioningEnabled, getSquareAvatarUrl, type CalProvisionResult } from '@/lib/cal/provision';
 import { AdminTherapistPatchInput } from '@/contracts/admin';
 import { parseRequestBody } from '@/lib/api-utils';
@@ -335,6 +336,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     }
 
     // Update hidden flag in metadata (for hiding profiles with bouncing emails, etc.)
+    const wasHidden = currMeta.hidden === true;
+    const isNowHidden = hidden === true;
+    const newlyHidden = !wasHidden && isNowHidden;
     if (hidden !== undefined) {
       currMeta.hidden = hidden;
     }
@@ -528,6 +532,23 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         const declineResult = await sendEmail({ to, subject: decline.subject, html: decline.html, context: { stage: 'therapist_decline', therapist_id: id } });
         if (!declineResult.sent && declineResult.reason === 'failed') {
           await logError('admin.api.therapists.update', new Error('Decline email send failed'), { stage: 'therapist_decline_send_failed', therapist_id: id, email: to });
+        }
+      }
+
+      // Send notification when profile is newly hidden
+      if (to && newlyHidden) {
+        const hiddenEmail = renderTherapistProfileHidden({ name });
+        void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.update', props: { stage: 'therapist_profile_hidden', therapist_id: id, subject: hiddenEmail.subject } });
+        const hiddenResult = await sendEmail({
+          to,
+          subject: hiddenEmail.subject,
+          html: hiddenEmail.html,
+          from: EMAIL_FROM_THERAPISTS,
+          replyTo: EMAIL_FROM_THERAPISTS,
+          context: { stage: 'therapist_profile_hidden', therapist_id: id },
+        });
+        if (!hiddenResult.sent && hiddenResult.reason === 'failed') {
+          await logError('admin.api.therapists.update', new Error('Profile hidden email send failed'), { stage: 'therapist_profile_hidden_send_failed', therapist_id: id, email: to });
         }
       }
     } catch (e) {
