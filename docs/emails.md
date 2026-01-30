@@ -149,6 +149,9 @@ Cal.com-enabled therapists use a different email flow triggered by the Cal.com w
 - `calBookingTherapistNotification` → `src/lib/email/templates/calBookingTherapistNotification.ts`
   - Sent to therapist when a patient books via Cal.com.
   - Includes: patient name/email, session type, date, time, location type.
+  - **Rebooking CTA**: Yellow box with "Nach dem Kennenlernen/der Sitzung: Nächsten Termin vereinbaren" button.
+    - Opens Cal.com with patient name/email prefilled for therapist-initiated follow-up booking.
+    - Addresses therapist workflow: "What about next Wednesday?" → click button → pick slot → done.
 
 - `calBookingReminder` → `src/lib/email/templates/calBookingReminder.ts`
   - Sent 24h before a Cal.com booking (intro or full session).
@@ -292,7 +295,7 @@ All templates are located in `src/lib/email/templates/`. This is the authoritati
 | Template | File | Trigger | Purpose |
 |----------|------|---------|---------|
 | `calBookingClientConfirmation` | `calBookingClientConfirmation.ts` | Cal.com webhook | Confirm Cal.com booking to patient |
-| `calBookingTherapistNotification` | `calBookingTherapistNotification.ts` | Cal.com webhook | Notify therapist of Cal.com booking |
+| `calBookingTherapistNotification` | `calBookingTherapistNotification.ts` | Cal.com webhook | Notify therapist of Cal.com booking + rebooking CTA |
 | `calBookingReminder` | `calBookingReminder.ts` | Cron (24h/1h before) | Remind patient of upcoming booking |
 | `calIntroFollowup` | `calIntroFollowup.ts` | Cal.com webhook (MEETING_ENDED) | Upsell full session after intro |
 | `calSessionFollowup` | `calSessionFollowup.ts` | Cron (next morning) | Provide booking link for next session |

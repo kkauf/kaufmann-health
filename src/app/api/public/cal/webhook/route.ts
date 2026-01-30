@@ -65,22 +65,23 @@ async function sendCalBookingEmails(params: {
 }): Promise<void> {
   const { calUid, therapistId, patientId, attendeeEmail, attendeeName, startTime, bookingKind, isTest, videoUrl, locationType, locationAddress } = params;
   
-  // Check if emails already sent (idempotency)
+  // Check if emails already sent (idempotency) + get match_id for rebooking URL
   const { data: booking } = await supabaseServer
     .from('cal_bookings')
-    .select('client_confirmation_sent_at, therapist_notification_sent_at')
+    .select('client_confirmation_sent_at, therapist_notification_sent_at, match_id')
     .eq('cal_uid', calUid)
     .maybeSingle();
-  
+
   const clientAlreadySent = Boolean(booking?.client_confirmation_sent_at);
   const therapistAlreadySent = Boolean(booking?.therapist_notification_sent_at);
-  
+  const matchId = booking?.match_id || null;
+
   if (clientAlreadySent && therapistAlreadySent) return;
   
-  // Fetch therapist details
+  // Fetch therapist details (including cal_username for rebooking URL)
   const { data: therapist } = await supabaseServer
     .from('therapists')
-    .select('email, first_name, last_name, typical_rate')
+    .select('email, first_name, last_name, typical_rate, cal_username')
     .eq('id', therapistId)
     .maybeSingle();
   
@@ -191,6 +192,23 @@ async function sendCalBookingEmails(params: {
   
   // Send therapist notification
   if (!therapistAlreadySent && therapistRecipient) {
+    // Build rebooking URL for therapist-initiated follow-up booking
+    // This lets therapist book the next session for this client directly
+    const rebookUrl = therapist.cal_username
+      ? buildCalBookingUrl({
+          calUsername: therapist.cal_username,
+          eventType: 'full_session',
+          prefillName: patientName || undefined,
+          prefillEmail: patientEmail || undefined,
+          metadata: {
+            kh_therapist_id: therapistId,
+            kh_patient_id: patientId || undefined,
+            kh_match_id: matchId || undefined,
+            kh_source: 'therapist_notification_email',
+          },
+        })
+      : null;
+
     const content = renderCalBookingTherapistNotification({
       therapistName,
       patientName,
@@ -204,6 +222,8 @@ async function sendCalBookingEmails(params: {
       patientConcerns,
       patientSchwerpunkte,
       patientSessionPreference,
+      // Therapist-initiated rebooking
+      rebookUrl,
     });
     
     const result = await sendEmail({

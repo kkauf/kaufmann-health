@@ -68,6 +68,9 @@ This is a concise, high-signal overview. It complements the detailed `docs/api.m
 - `GET /api/public/cal/slots` → high-speed slot fetching via direct DB access
 - `POST /api/public/cal/webhook` → booking ingestion (create/reschedule/cancel)
 
+## Therapist Portal (protected by `kh_therapist` cookie)
+- `GET /api/portal/clients` → recent clients from `cal_bookings` (patient_id, name, email, last_session, session_count)
+
 
 ## Conversions (Google Ads)
 - Server Enhanced Conversions (`src/lib/google-ads.ts`) for `client_registration` and `therapist_registration`.
