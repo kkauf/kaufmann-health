@@ -40,6 +40,8 @@ type Props = {
     city: string;
     languages: string[];
     requires_intro_before_booking: boolean;
+    // Cal.com integration
+    cal_username?: string;
   };
 };
 
@@ -1137,7 +1139,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
         </form>
       ) : (
         /* Calendar Management Tab */
-        <CalendarManagement therapistId={therapistId} />
+        <CalendarManagement therapistId={therapistId} calUsername={initialData.cal_username} />
       )}
 
       {/* FAQ & Documentation Section */}

@@ -32,6 +32,8 @@ export type CalBookingTherapistNotificationParams = {
   patientConcerns?: string | null; // additional_info free text
   patientSchwerpunkte?: string[]; // focus areas (Trauma, Burnout, etc.)
   patientSessionPreference?: 'online' | 'in_person' | null;
+  // EARTH-XXX: Therapist-initiated rebooking URL
+  rebookUrl?: string | null;
 };
 
 /**
@@ -127,6 +129,20 @@ export function renderCalBookingTherapistNotification(params: CalBookingTherapis
   lines.push('<div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important; padding:16px 20px; border-radius:12px; border:1px solid rgba(16, 185, 129, 0.3); margin-top:16px;">');
   lines.push('<p style="margin:0; color:#064e3b !important; font-size:14px; line-height:1.6;"><strong>📅 Kalender:</strong> Du hast auch eine Buchungsbestätigung von Cal.com erhalten – dort findest du den Video-Link und kannst den Termin verwalten.</p>');
   lines.push('</div>');
+
+  // Rebooking CTA - therapist-initiated booking for follow-up sessions
+  if (params.rebookUrl) {
+    const ctaLabel = isIntro
+      ? 'Nach dem Kennenlernen: Folgetermin vereinbaren'
+      : 'Nach der Sitzung: Nächsten Termin vereinbaren';
+    const clientLabel = pName || 'diese:n Klient:in';
+
+    lines.push('<div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important; padding:16px 20px; border-radius:12px; border:1px solid rgba(245, 158, 11, 0.4); margin-top:16px;">');
+    lines.push(`<p style="margin:0 0 12px; color:#92400e !important; font-size:14px; line-height:1.6;"><strong>📝 ${ctaLabel}</strong></p>`);
+    lines.push(`<p style="margin:0 0 12px; color:#78350f !important; font-size:14px; line-height:1.6;">Buche ${esc(clientLabel)} direkt für den nächsten Termin ein – der Termin landet in beiden Kalendern, Erinnerungen gehen automatisch raus.</p>`);
+    lines.push(`<a href="${esc(params.rebookUrl)}" style="display:inline-block; background:#f59e0b; color:#ffffff !important; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:14px;">Termin für ${esc(clientLabel)} buchen</a>`);
+    lines.push('</div>');
+  }
 
   // Footer
   lines.push('<p style="margin:16px 0 0; font-size:14px; color:#64748b !important;">Bei Fragen antworte einfach auf diese E-Mail.</p>');

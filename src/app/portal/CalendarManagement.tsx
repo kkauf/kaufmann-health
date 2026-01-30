@@ -1,16 +1,246 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, ExternalLink, BookOpen, GraduationCap, Video } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Calendar, ExternalLink, BookOpen, GraduationCap, Video, UserPlus, Users, ChevronDown, Loader2 } from "lucide-react";
+
+interface RecentClient {
+  patient_id: string;
+  name: string | null;
+  email: string;
+  last_session: string;
+  session_count: number;
+}
 
 interface Props {
   therapistId: string;
+  calUsername?: string;
 }
 
-export default function CalendarManagement({ therapistId: _therapistId }: Props) {
+const CAL_ORIGIN = 'https://cal.kaufmann.health';
+
+function buildBookingUrl(calUsername: string, name?: string, email?: string): string {
+  const url = new URL(`/${calUsername}/full-session`, CAL_ORIGIN);
+  if (name) url.searchParams.set('name', name);
+  if (email) url.searchParams.set('email', email);
+  url.searchParams.set('metadata[kh_source]', 'therapist_portal');
+  return url.toString();
+}
+
+function formatDate(isoDate: string): string {
+  try {
+    const date = new Date(isoDate);
+    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  } catch {
+    return isoDate;
+  }
+}
+
+export default function CalendarManagement({ therapistId: _therapistId, calUsername }: Props) {
+  const [clients, setClients] = useState<RecentClient[]>([]);
+  const [loadingClients, setLoadingClients] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<RecentClient | null>(null);
+  const [manualEmail, setManualEmail] = useState('');
+  const [manualName, setManualName] = useState('');
+  const [useManualEntry, setUseManualEntry] = useState(false);
+
+  // Fetch recent clients on mount
+  useEffect(() => {
+    async function fetchClients() {
+      setLoadingClients(true);
+      try {
+        const res = await fetch('/api/portal/clients');
+        if (res.ok) {
+          const data = await res.json();
+          setClients(data.clients || []);
+        }
+      } catch (e) {
+        console.error('Failed to fetch clients:', e);
+      } finally {
+        setLoadingClients(false);
+      }
+    }
+    fetchClients();
+  }, []);
+
+  const handleClientSelect = (client: RecentClient) => {
+    setSelectedClient(client);
+    setUseManualEntry(false);
+    setShowDropdown(false);
+  };
+
+  const handleManualEntry = () => {
+    setSelectedClient(null);
+    setUseManualEntry(true);
+    setShowDropdown(false);
+  };
+
+  const handleBookClient = () => {
+    if (!calUsername) return;
+
+    let name: string | undefined;
+    let email: string | undefined;
+
+    if (useManualEntry) {
+      email = manualEmail.trim() || undefined;
+      name = manualName.trim() || undefined;
+    } else if (selectedClient) {
+      email = selectedClient.email;
+      name = selectedClient.name || undefined;
+    }
+
+    const url = buildBookingUrl(calUsername, name, email);
+    window.open(url, '_blank');
+  };
+
+  const canBook = calUsername && (
+    (useManualEntry && manualEmail.trim()) ||
+    selectedClient
+  );
+
+  const displayValue = useManualEntry
+    ? 'Neue:n Klient:in eingeben'
+    : selectedClient
+      ? `${selectedClient.name || 'Unbekannt'} (${selectedClient.email})`
+      : 'Klient:in auswählen...';
+
   return (
     <div className="space-y-6">
+      {/* Client Booking Card - NEW */}
+      {calUsername && (
+        <Card className="border border-amber-200/60 shadow-lg bg-gradient-to-br from-white to-amber-50/30 backdrop-blur-sm overflow-hidden">
+          <div className="p-6">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="p-3 bg-amber-100 rounded-lg">
+                <UserPlus className="h-6 w-6 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-gray-900 mb-1">
+                  Klient:in einbuchen
+                </h2>
+                <p className="text-gray-600 text-sm">
+                  Buche deine Klient:innen direkt für den nächsten Termin ein.
+                  Der Termin landet in beiden Kalendern und Erinnerungen gehen automatisch raus.
+                </p>
+              </div>
+            </div>
+
+            {/* Client Selector */}
+            <div className="space-y-3">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowDropdown(!showDropdown)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-white border border-gray-300 rounded-lg text-left hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+                >
+                  <span className={selectedClient || useManualEntry ? 'text-gray-900' : 'text-gray-500'}>
+                    {displayValue}
+                  </span>
+                  <ChevronDown className={`h-5 w-5 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+                </button>
+
+                {showDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-auto">
+                    {/* Manual Entry Option */}
+                    <button
+                      type="button"
+                      onClick={handleManualEntry}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-amber-50 border-b border-gray-100"
+                    >
+                      <UserPlus className="h-4 w-4 text-amber-600" />
+                      <span className="text-amber-700 font-medium">Neue:n Klient:in eingeben</span>
+                    </button>
+
+                    {/* Recent Clients */}
+                    {loadingClients ? (
+                      <div className="flex items-center justify-center py-4 text-gray-500">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Lade Klient:innen...
+                      </div>
+                    ) : clients.length > 0 ? (
+                      <>
+                        <div className="px-4 py-2 text-xs font-medium text-gray-500 bg-gray-50 flex items-center gap-2">
+                          <Users className="h-3 w-3" />
+                          Letzte Klient:innen
+                        </div>
+                        {clients.map((client) => (
+                          <button
+                            key={client.patient_id}
+                            type="button"
+                            onClick={() => handleClientSelect(client)}
+                            className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 text-left"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-900 truncate">
+                                {client.name || 'Unbekannt'}
+                              </p>
+                              <p className="text-sm text-gray-500 truncate">{client.email}</p>
+                            </div>
+                            <div className="text-right text-xs text-gray-400 ml-3">
+                              <p>{formatDate(client.last_session)}</p>
+                              <p>{client.session_count} {client.session_count === 1 ? 'Sitzung' : 'Sitzungen'}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </>
+                    ) : (
+                      <div className="px-4 py-3 text-sm text-gray-500">
+                        Noch keine Klient:innen vorhanden
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Manual Entry Fields */}
+              {useManualEntry && (
+                <div className="space-y-3 pt-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      E-Mail-Adresse <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      type="email"
+                      value={manualEmail}
+                      onChange={(e) => setManualEmail(e.target.value)}
+                      placeholder="klient@beispiel.de"
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Name <span className="text-gray-400">(optional)</span>
+                    </label>
+                    <Input
+                      type="text"
+                      value={manualName}
+                      onChange={(e) => setManualName(e.target.value)}
+                      placeholder="Max Mustermann"
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Book Button */}
+              <Button
+                type="button"
+                onClick={handleBookClient}
+                disabled={!canBook}
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Termin buchen
+                <ExternalLink className="h-4 w-4 ml-2 opacity-70" />
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Main Cal.com Card */}
       <Card className="border border-emerald-200/60 shadow-lg bg-gradient-to-br from-white to-emerald-50/30 backdrop-blur-sm overflow-hidden">
         <div className="p-8">
@@ -138,7 +368,7 @@ export default function CalendarManagement({ therapistId: _therapistId }: Props)
       <Card className="border border-amber-200/60 shadow-md bg-gradient-to-br from-white to-amber-50/20">
         <div className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            ❓ Häufige Fragen
+            Häufige Fragen
           </h3>
           <div className="space-y-4 text-sm">
             {/* Booking Notice */}
@@ -189,7 +419,7 @@ export default function CalendarManagement({ therapistId: _therapistId }: Props)
 
             {/* Critical Warning about slugs */}
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 -mx-1">
-              <h4 className="font-medium text-red-800 mb-1">⚠️ Wichtig: Bitte NICHT ändern!</h4>
+              <h4 className="font-medium text-red-800 mb-1">Wichtig: Bitte NICHT ändern!</h4>
               <p className="text-red-700 text-xs">
                 Ändere in Cal.com <strong>niemals</strong> folgende Einstellungen – sonst funktioniert die Buchung über Kaufmann Health nicht mehr:
               </p>

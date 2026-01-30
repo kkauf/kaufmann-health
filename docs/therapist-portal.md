@@ -50,8 +50,18 @@ Therapists can edit:
 
 ### 3. Calendar Management (`CalendarManagement.tsx`)
 For Cal.com-enabled therapists:
-- View upcoming bookings
-- Manage availability via Cal.com link
+
+#### Client Booking ("Klient:in einbuchen")
+Therapist-initiated booking feature to solve the problem of therapists scheduling ad-hoc instead of through Cal.com:
+- **Client Selector**: Dropdown showing recent clients (from `cal_bookings`) with name, email, last session date, session count
+- **Manual Entry**: Option to enter new client email/name
+- **Booking Flow**: Opens Cal.com `/full-session` with prefilled client data and `kh_source=therapist_portal` tracking
+- **API**: Fetches clients via `GET /api/portal/clients`
+
+#### Availability Management
+- Link to Cal.com dashboard for availability settings
+- Documentation links (beginner guide, advanced guide, video tutorial)
+- FAQ section about Cal.com settings
 
 ### 4. Native Slots Manager (`SlotsManager.tsx`)
 For non-Cal.com therapists (legacy):
@@ -67,6 +77,7 @@ For non-Cal.com therapists (legacy):
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/portal/auth` | GET | Verify magic link token, set session cookie |
+| `/api/portal/clients` | GET | List recent clients for therapist (from `cal_bookings`) |
 | `/api/public/therapist-portal/profile` | PATCH | Update profile fields |
 | `/api/public/therapist-portal/photo` | POST | Upload profile photo |
 | `/api/public/therapist-portal/slots` | GET/POST/DELETE | Manage availability slots |
