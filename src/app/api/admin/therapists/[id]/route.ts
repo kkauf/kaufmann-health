@@ -134,6 +134,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     const name = [row.first_name || '', row.last_name || ''].join(' ').trim() || null;
     const rowAny = row as Record<string, unknown>;
+    // Check if profile is hidden (metadata.hidden flag)
+    const isHidden = metadata['hidden'] === true || String(metadata['hidden']).toLowerCase() === 'true';
     return NextResponse.json({
       data: {
         id: row.id,
@@ -142,6 +144,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         phone: row.phone || null,
         city: row.city || null,
         status: row.status || 'pending_verification',
+        hidden: isHidden,
         profile: {
           photo_pending_url,
           approach_text: approachText,
@@ -222,9 +225,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     // Booking gating: require intro before full session booking
     const requires_intro_before_booking = typeof payload.requires_intro_before_booking === 'boolean' ? payload.requires_intro_before_booking : undefined;
 
+    // Hidden flag for hiding profiles from public directory (e.g., bouncing emails)
+    const hidden = typeof payload.hidden === 'boolean' ? payload.hidden : undefined;
+
     const hasCalFields = cal_username !== undefined || cal_enabled !== undefined;
     const hasBookingSettings = requires_intro_before_booking !== undefined;
-    if (!status && typeof verification_notes !== 'string' && !approve_profile && typeof approach_text !== 'string' && typeof practice_address !== 'string' && typeof city !== 'string' && !hasCalFields && !hasBookingSettings) {
+    const hasHiddenField = hidden !== undefined;
+    if (!status && typeof verification_notes !== 'string' && !approve_profile && typeof approach_text !== 'string' && typeof practice_address !== 'string' && typeof city !== 'string' && !hasCalFields && !hasBookingSettings && !hasHiddenField) {
       return NextResponse.json({ data: null, error: 'Missing fields' }, { status: 400 });
     }
     if (status && !['pending_verification', 'verified', 'rejected', 'declined'].includes(status)) {
@@ -325,6 +332,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     // Store verified_at timestamp when approving
     if (status === 'verified' && beforeStatus !== 'verified') {
       currMeta.verified_at = new Date().toISOString();
+    }
+
+    // Update hidden flag in metadata (for hiding profiles with bouncing emails, etc.)
+    if (hidden !== undefined) {
+      currMeta.hidden = hidden;
     }
 
     const newMeta: Record<string, unknown> = { ...currMeta, profile: profileMeta };

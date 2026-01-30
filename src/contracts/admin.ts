@@ -117,6 +117,8 @@ export const AdminTherapistPatchInput = z
     cal_enabled: z.boolean().optional(),
     // Booking gating: require intro session before full session booking
     requires_intro_before_booking: z.boolean().optional(),
+    // Hide profile from public directory (e.g., bouncing emails, inactive)
+    hidden: z.boolean().optional(),
   })
   .passthrough();
 

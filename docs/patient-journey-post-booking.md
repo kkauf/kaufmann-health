@@ -81,16 +81,15 @@ BOOKING ────────────────────────
 
 ---
 
-### 5. Intro Followup (Webhook + Cron Fallback)
+### 5. Intro Followup (Cron-only)
 
-**Primary Trigger:** Cal.com `MEETING_ENDED` webhook → `/api/public/cal/webhook`
-**Fallback Trigger:** Cron `/api/admin/cal/booking-followups?stage=intro_followup`
+**Trigger:** Cron `/api/admin/cal/booking-followups?stage=intro_followup` (runs every 5 min)
 
-**Timing:**
-- Webhook: Immediately after intro session ends (if Cal.com video used)
-- Fallback: 2-4 hours after `end_time` if `followup_sent_at` is NULL
+**Timing:** 10-30 minutes after intro session ends
 
 **Purpose:** Prompt patient to book a full session while experience is fresh
+
+**Skip Logic:** Automatically skipped if therapist has already booked a `full_session` for this patient (checked via `hasFutureFullSessionBooking()` in `src/lib/cal/booking-checks.ts`). This gives therapists ~15 minutes to book the client themselves before the nudge email goes out.
 
 **Template:** `calIntroFollowup`
 - Next available slot suggestion
@@ -99,10 +98,7 @@ BOOKING ────────────────────────
 
 **Idempotency:** `followup_sent_at` column
 
-**Note:** The cron fallback catches cases where:
-- Therapist didn't use Cal.com video (used Zoom, phone, etc.)
-- `MEETING_ENDED` webhook failed to fire
-- Webhook wasn't properly configured (historical bug, fixed Jan 2026)
+**Note:** Previously triggered immediately via webhook, changed to cron-based (Jan 2026) to allow therapists time to book clients before follow-up email is sent.
 
 ---
 
