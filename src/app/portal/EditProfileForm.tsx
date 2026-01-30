@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Lock, Target, Eye, Globe } from "lucide-react";
+import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Lock, Target, Eye, Globe, HelpCircle, ExternalLink } from "lucide-react";
 import { ImageCropper } from "@/components/ImageCropper";
 import { TherapistDetailModal } from "@/features/therapists/components/TherapistDetailModal";
 import type { TherapistData } from "@/features/therapists/components/TherapistDirectory";
@@ -39,6 +39,7 @@ type Props = {
     accepting_new: boolean;
     city: string;
     languages: string[];
+    requires_intro_before_booking: boolean;
   };
 };
 
@@ -188,6 +189,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
   const [acceptingNew, setAcceptingNew] = useState(initialData.accepting_new);
   const [city, setCity] = useState(initialData.city);
   const [languages, setLanguages] = useState<string[]>(initialData.languages);
+  const [requiresIntroBeforeBooking, setRequiresIntroBeforeBooking] = useState(initialData.requires_intro_before_booking);
 
   // Combine address fields for SlotsManager
   const _practiceAddress = [practiceStreet, practicePostalCode, practiceCity].filter(Boolean).join(', ');
@@ -217,6 +219,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     acceptingNew: initialData.accepting_new,
     city: initialData.city,
     languages: [...initialData.languages],
+    requiresIntroBeforeBooking: initialData.requires_intro_before_booking,
   });
 
   // Track if form has unsaved changes (compare to baseline, not initialData)
@@ -238,9 +241,10 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
     if (acceptingNew !== b.acceptingNew) return true;
     if (city !== b.city) return true;
     if (languages.length !== b.languages.length || languages.some((l, i) => l !== b.languages[i])) return true;
+    if (requiresIntroBeforeBooking !== b.requiresIntroBeforeBooking) return true;
     return false;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photoFile, whoComesToMe, sessionFocus, firstSession, aboutMe, schwerpunkte, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city, languages, saveCount]);
+  }, [photoFile, whoComesToMe, sessionFocus, firstSession, aboutMe, schwerpunkte, offersOnline, offersInPerson, typicalRate, practiceStreet, practicePostalCode, practiceCity, acceptingNew, city, languages, requiresIntroBeforeBooking, saveCount]);
 
   // Transform form state to TherapistData for preview modal
   const previewTherapistData: TherapistData = useMemo(() => ({
@@ -458,6 +462,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
       
       form.set('session_preferences', JSON.stringify(sessionPrefs));
       form.set('accepting_new', acceptingNew ? 'true' : 'false');
+      form.set('requires_intro_before_booking', requiresIntroBeforeBooking ? 'true' : 'false');
       // Use practiceCity as city when offering in-person; standalone city field only for online-only therapists
       form.set('city', offersInPerson ? practiceCity.trim() : city.trim());
 
@@ -510,6 +515,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
         acceptingNew,
         city,
         languages: [...languages],
+        requiresIntroBeforeBooking,
       };
       setSaveCount(c => c + 1); // Trigger hasUnsavedChanges re-evaluation
       setSaved(true);
@@ -927,6 +933,9 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
                     {(!practiceCity.trim() || !practicePostalCode.trim()) && (
                       <p className="text-xs text-amber-700 font-medium">PLZ und Stadt sind Pflichtfelder für Vor-Ort-Sitzungen.</p>
                     )}
+                    <p className="text-xs text-gray-500 mt-2">
+                      Wir unterstützen derzeit einen Hauptstandort pro Profil. Wähle den Standort, an dem du die meisten Klient:innen erwartest.
+                    </p>
                   </div>
                 </div>
               )}
@@ -944,6 +953,9 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
                     placeholder="z.B. Berlin"
                     className="border-gray-200"
                   />
+                  <p className="text-xs text-gray-500">
+                    Wir unterstützen derzeit einen Hauptstandort pro Profil. Wähle den Standort, an dem du die meisten Klient:innen erwartest.
+                  </p>
                 </div>
               )}
 
@@ -986,6 +998,36 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
                 ) : (
                   <p className="text-xs text-gray-500">Wird Klient:innen als Orientierung angezeigt. Bei unterschiedlichen Preisen (online/vor Ort) wähle einen Richtwert.</p>
                 )}
+              </div>
+            </div>
+          </Card>
+
+          {/* Booking Settings - control how clients can book */}
+          <Card className="border border-gray-200/60 shadow-md bg-white/80 backdrop-blur-sm">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Buchungseinstellungen</h2>
+              <p className="text-sm text-gray-500 mb-4">
+                Bestimme, wie neue Klient:innen dich kontaktieren können.
+              </p>
+              <div className="rounded-lg p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={requiresIntroBeforeBooking}
+                    onChange={(e) => setRequiresIntroBeforeBooking(e.target.checked)}
+                    className="mt-0.5 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-gray-900">
+                      Kennenlerngespräch vor Therapiesitzung erforderlich
+                    </span>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Wenn aktiviert, können Klient:innen nur ein kostenloses Kennenlerngespräch buchen.
+                      Therapiesitzungen werden erst nach dem Erstgespräch freigeschaltet.
+                      So lernst du neue Klient:innen erst kennen, bevor du dich auf eine Zusammenarbeit einlässt.
+                    </p>
+                  </div>
+                </label>
               </div>
             </div>
           </Card>
@@ -1097,6 +1139,37 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
         /* Calendar Management Tab */
         <CalendarManagement therapistId={therapistId} />
       )}
+
+      {/* FAQ & Documentation Section */}
+      <Card className="border border-gray-200/60 shadow-md bg-white/80 backdrop-blur-sm">
+        <div className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <HelpCircle className="h-5 w-5 text-emerald-600" />
+            Häufige Fragen
+          </h2>
+          <div className="space-y-3">
+            <a
+              href="https://docs.google.com/document/d/1wSJJ8_nJ5M3wg-eob4V1-aT3zVFZNnmpwFCzoA1ElbE/edit?usp=sharing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/50 transition-all group"
+            >
+              <div className="flex-shrink-0 p-2 rounded-lg bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200">
+                <Euro className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-gray-900 group-hover:text-emerald-700 transition-colors">
+                  Provision & Bezahlung
+                </h3>
+                <p className="text-sm text-gray-600 mt-0.5">
+                  Wie funktioniert die Abrechnung? Was kostet die Vermittlung?
+                </p>
+              </div>
+              <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-emerald-600 flex-shrink-0 mt-1" />
+            </a>
+          </div>
+        </div>
+      </Card>
 
       {/* Support & Logout Footer */}
       <div className="pt-6 border-t border-gray-200 space-y-4">

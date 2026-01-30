@@ -105,6 +105,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     let schwerpunkte: string[] | undefined;
     // Languages
     let languages: string[] | undefined;
+    // Booking settings
+    let requiresIntroBeforeBooking: boolean | undefined;
 
     // Character limits for profile fields (shared with client config)
     const LIMITS = SERVER_PROFILE_LIMITS;
@@ -146,6 +148,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const spkt = form.get('schwerpunkte');
       // Languages
       const lang = form.get('languages');
+      // Booking settings
+      const rib = form.get('requires_intro_before_booking');
 
       if (typeof g === 'string' && g.trim()) gender = g.trim();
       if (typeof c === 'string' && c.trim()) city = c.trim();
@@ -233,6 +237,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (typeof bStreet === 'string') billingStreet = bStreet.trim();
       if (typeof bPostal === 'string') billingPostalCode = bPostal.trim();
       if (typeof bCity === 'string') billingCity = bCity.trim();
+      // Parse booking settings
+      if (typeof rib === 'string') requiresIntroBeforeBooking = rib === 'true' || rib === '1';
     } else {
       // Assume JSON
       const parsed = await parseRequestBody(req, TherapistProfileUpdate);
@@ -274,7 +280,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const spkt = body['schwerpunkte'];
       // Languages
       const lang = body['languages'];
-      
+      // Booking settings
+      const rib = body['requires_intro_before_booking'];
+
       if (typeof g === 'string') gender = g;
       if (typeof c === 'string') city = c;
       if (typeof a === 'boolean') acceptingNew = a;
@@ -330,6 +338,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (typeof bStreet === 'string') billingStreet = bStreet.trim();
       if (typeof bPostal === 'string') billingPostalCode = bPostal.trim();
       if (typeof bCity === 'string') billingCity = bCity.trim();
+      // Parse booking settings (JSON)
+      if (typeof rib === 'boolean') requiresIntroBeforeBooking = rib;
     }
 
     // Validate gender if provided
@@ -413,6 +423,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (combinedBillingAddress) profile.billing_address = combinedBillingAddress;
     metaObj.profile = profile;
 
+    // Save booking settings (requires_intro_before_booking)
+    if (typeof requiresIntroBeforeBooking === 'boolean') {
+      const bookingSettingsUnknown = metaObj.booking_settings;
+      const bookingSettings: Record<string, unknown> = isObject(bookingSettingsUnknown)
+        ? (bookingSettingsUnknown as Record<string, unknown>)
+        : {};
+      bookingSettings.requires_intro_before_booking = requiresIntroBeforeBooking;
+      metaObj.booking_settings = bookingSettings;
+    }
+
     const updates: Record<string, unknown> = { metadata: metaObj };
     if (typeof gender === 'string') updates.gender = gender;
     if (typeof city === 'string') updates.city = city;
@@ -485,8 +505,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           billing_street: Boolean(billingStreet),
           billing_postal_code: Boolean(billingPostalCode),
           billing_city: Boolean(billingCity),
-        } 
-      } 
+          requires_intro_before_booking: typeof requiresIntroBeforeBooking === 'boolean',
+        }
+      }
     });
 
     // Response varies based on status
