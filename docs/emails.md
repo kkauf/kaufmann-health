@@ -116,7 +116,7 @@ curl "https://www.kaufmann-health.de/api/admin/emails/preview?template=all&send=
 open "https://www.kaufmann-health.de/api/admin/emails/preview?template=rich_therapist&token=YOUR_CRON_SECRET"
 ```
 
-Templates: `rich_therapist`, `selection_nudge`, `feedback_request`, `feedback_behavioral`, `email_confirmation`, `all`
+Templates: `rich_therapist`, `selection_nudge`, `feedback_behavioral`, `email_confirmation`, `all`
 
 Note: `feedback_behavioral` renders all 10 variants (4 segments + 7 rejection sub-variants) in one batch.
 
@@ -228,16 +228,15 @@ Post-verification nurture sequences are documented separately. See internal docu
 **For the complete post-booking patient journey (reminders, followups, recovery flows), see [`docs/patient-journey-post-booking.md`](./patient-journey-post-booking.md).**
 
 Key templates:
-- `richTherapistEmail` — Personalized therapist spotlight
-- `selectionNudge` — Reassurance about process
-- `feedbackRequest` — Generic feedback collection (fallback)
-- `feedbackBehavioral` — Behavior-aware Day 10 email with 4 variants:
-  - **D (almost_booked)**: Patient opened contact modal but didn't book. Shows therapist + direct booking CTA.
+- `richTherapistEmail` — Day 1: Personalized therapist spotlight with photo, profile, next available slot
+- `selectionNudge` — Day 5: Reassurance about free/unverbindlich intro call
+- `feedbackBehavioral` — Day 10: Behavior-aware email with 4 variants:
+  - **D (almost_booked)**: Patient opened contact modal but didn't book. Shows therapist card + direct booking CTA.
   - **A (never_visited)**: Never visited match page. Mini therapist card + slot scarcity.
   - **B (visited_no_action)**: Visited but took no action. Social proof + reassurance.
   - **C (rejected)**: Actively rejected a therapist. 7 sub-variants addressing specific objections (not_right_fit, method_wrong, too_expensive, wants_insurance, no_availability, location_wrong, other).
   - Classification: `src/lib/email/patientBehavior.ts` batch-classifies via events table.
-  - Falls back to generic `feedbackRequest` if no matches or classification fails.
+  - Falls back to `visited_no_action` if no matches or classification fails.
 
 ### Therapist Cal.com Onboarding
 - `therapistCalOnboarding` → `src/lib/email/templates/therapistCalOnboarding.ts`
@@ -267,7 +266,7 @@ Key templates:
 
 ## Complete Template Catalog
 
-All templates are located in `src/lib/email/templates/`. This is the authoritative list of all 27 email templates.
+All templates are located in `src/lib/email/templates/`. This is the authoritative list of all 26 email templates.
 
 ### Patient Templates
 
@@ -278,10 +277,9 @@ All templates are located in `src/lib/email/templates/`. This is the authoritati
 | `patientApology` | `patientApology.ts` | `POST /api/admin/matches/rebuild?send_notification=true` | Apology + re-sent matches after matching bugs |
 | `patientUpdates` | `patientUpdates.ts` | Manual admin trigger | General patient communication |
 | `matchLinkRefresh` | `matchLinkRefresh.ts` | When patient requests new link | Resend match page access link |
-| `richTherapistEmail` | `richTherapistEmail.ts` | Cron (Day 1) | Personalized spotlight of top match |
+| `richTherapistEmail` | `richTherapistEmail.ts` | Cron (Day 1) | Personalized spotlight of top match with photo/profile/slot |
 | `selectionNudge` | `selectionNudge.ts` | Cron (Day 5) | Reassurance about free intro call |
-| `feedbackRequest` | `feedbackRequest.ts` | Cron (Day 10) | Generic feedback + interview offer (fallback) |
-| `feedbackBehavioral` | `feedbackBehavioral.ts` | Cron (Day 10) | Behavior-aware feedback (4 variants) |
+| `feedbackBehavioral` | `feedbackBehavioral.ts` | Cron (Day 10) | Behavior-aware feedback (4 segments, 7 rejection sub-variants) |
 
 ### Booking Templates (Native)
 

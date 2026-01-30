@@ -303,15 +303,19 @@ export async function GET(req: Request) {
       const calSlotInfo = calSlotMap.get(bestMatch.therapist.id);
       const availableSlots = calSlotInfo?.slots_count || null;
       
-      // Format next slot date for subject line
+      // Format next slot date for subject line (requires 24h notice to avoid stale slots in unopened emails)
       let nextSlotDate: string | null = null;
       if (calSlotInfo?.next_intro_time_utc) {
         try {
-          const slotDate = new Date(calSlotInfo.next_intro_time_utc);
-          const weekday = slotDate.toLocaleDateString('de-DE', { weekday: 'short' });
-          const day = slotDate.getDate();
-          const month = slotDate.toLocaleDateString('de-DE', { month: 'short' });
-          nextSlotDate = `${weekday} ${day}. ${month}`;
+          const slotTime = new Date(calSlotInfo.next_intro_time_utc).getTime();
+          const MIN_NOTICE_MS = 24 * 60 * 60 * 1000; // 24 hours
+          if (slotTime >= Date.now() + MIN_NOTICE_MS) {
+            const slotDate = new Date(calSlotInfo.next_intro_time_utc);
+            const weekday = slotDate.toLocaleDateString('de-DE', { weekday: 'short' });
+            const day = slotDate.getDate();
+            const month = slotDate.toLocaleDateString('de-DE', { month: 'short' });
+            nextSlotDate = `${weekday} ${day}. ${month}`;
+          }
         } catch {}
       }
       
