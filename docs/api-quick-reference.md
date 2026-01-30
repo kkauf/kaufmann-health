@@ -58,6 +58,9 @@ This is a concise, high-signal overview. It complements the detailed `docs/api.m
 - Stats & Errors
   - `GET /api/admin/stats` → totals + 7-day trends + campaign stats
   - `GET /api/admin/errors` → error/event listing backend for `/admin/errors`
+- Broadcasts (Therapist Product Updates)
+  - `POST /api/admin/broadcasts/therapist-update` → sync audience, preview, send_test, send
+  - CLI: `npx tsx scripts/sync-therapist-audience.ts [--preview|--send-test|--send]`
 
 ## Therapist flows (public)
 - `POST /api/public/therapists/:id/profile` → basic profile + pending photo

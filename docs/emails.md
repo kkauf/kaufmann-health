@@ -159,10 +159,11 @@ Cal.com-enabled therapists use a different email flow triggered by the Cal.com w
   - Cron: `GET /api/admin/cal/booking-reminders` (runs daily at 09:00)
 
 - `calIntroFollowup` → `src/lib/email/templates/calIntroFollowup.ts`
-  - Sent ~2 hours after an intro session ends.
+  - Sent 10-30 minutes after an intro session ends (via cron, not webhook).
   - Purpose: Encourage booking a full session if the intro went well.
+  - **Skipped if therapist already booked a full session** for this patient (via `booking-checks.ts`).
   - Includes: next available slot suggestion, link to book full session, or browse other therapists.
-  - Triggered via: `MEETING_ENDED` webhook in `/api/public/cal/webhook`
+  - Cron: `GET /api/admin/cal/booking-followups?stage=intro_followup` (runs every 5 min)
 
 - `calSessionFollowup` → `src/lib/email/templates/calSessionFollowup.ts`
   - Sent the morning after a full session ends (10-30h window).
@@ -179,7 +180,7 @@ Cal.com-enabled therapists use a different email flow triggered by the Cal.com w
 | Patient books session | `POST /api/public/cal/webhook` (BOOKING_CREATED) | Client confirmation, Therapist notification |
 | 24h before booking | Cron `/api/admin/cal/booking-followups?stage=reminder_24h` | Client reminder |
 | 1h before booking | Cron `/api/admin/cal/booking-followups?stage=reminder_1h` | Client reminder (SMS if phone) |
-| Intro session ends | `POST /api/public/cal/webhook` (MEETING_ENDED) | Client followup (upsell) |
+| Intro session ends | Cron `/api/admin/cal/booking-followups?stage=intro_followup` (10-30m after) | Client followup (skipped if already booked) |
 | Morning after full session | Cron `/api/admin/cal/booking-followups?stage=session_followup` | Client followup (if slots available) |
 
 **Idempotency columns** (in `cal_bookings` table):
@@ -319,6 +320,56 @@ All templates are located in `src/lib/email/templates/`. This is the authoritati
 | `therapistNotification` | `therapistNotification.ts` | Patient selects/admin creates match | New patient request with magic link |
 | `therapistMagicLink` | `therapistMagicLink.ts` | Therapist requests portal access | Portal login magic link |
 | `therapistDecline` | `therapistDecline.ts` | Therapist declines match | Notify patient with alternatives |
+
+---
+
+## Therapist Broadcasts (Product Updates)
+
+For one-time product updates and announcements to therapists, we use Resend Audiences + Broadcasts.
+
+### Architecture
+
+- **Audience management**: `src/lib/resend/audiences.ts` wraps Resend's Audiences API
+- **Template**: `src/lib/email/templates/therapistProductUpdate.ts` — product update email
+- **CLI script**: `scripts/sync-therapist-audience.ts` — sync therapists and send broadcasts
+- **Admin API**: `POST /api/admin/broadcasts/therapist-update` — programmatic access
+
+### Audience
+
+- **Name**: `verified-therapists`
+- **Criteria**: All therapists with `verified_at IS NOT NULL` (approved therapists)
+- **Synced via**: CLI script or admin API with `action=sync`
+
+### Sending a Product Update
+
+```bash
+# 1. Sync audience (adds new verified therapists)
+npx tsx scripts/sync-therapist-audience.ts
+
+# 2. Preview (dry run)
+npx tsx scripts/sync-therapist-audience.ts --preview
+
+# 3. Send test email
+npx tsx scripts/send-test-product-update.ts your@email.com
+
+# 4. Send to all (after verification)
+npx tsx scripts/sync-therapist-audience.ts --send
+```
+
+### Admin API Actions
+
+`POST /api/admin/broadcasts/therapist-update`
+
+| Action | Description |
+|--------|-------------|
+| `sync` | Sync verified therapists to Resend audience |
+| `preview` | Create broadcast in draft mode (returns preview URL) |
+| `send_test` | Send test email to specified address |
+| `send` | Send broadcast to all audience members |
+
+### Template Customization
+
+To update the product update content, edit `src/lib/email/templates/therapistProductUpdate.ts`.
 
 ---
 

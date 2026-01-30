@@ -30,9 +30,7 @@ import {
   type CalWebhookTriggerEvent,
 } from '@/contracts/cal';
 import { warmCacheForTherapist } from '@/lib/cal/slots-cache';
-import { getCachedCalSlots } from '@/lib/cal/slots-cache';
-import { renderCalIntroFollowup } from '@/lib/email/templates/calIntroFollowup';
-import { getQaNotifyEmail, getAdminNotifyEmail } from '@/lib/email/notification-recipients';
+import { getAdminNotifyEmail, getQaNotifyEmail } from '@/lib/email/notification-recipients';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -239,112 +237,6 @@ async function sendCalBookingEmails(params: {
         .update({ therapist_notification_sent_at: now })
         .eq('cal_uid', calUid);
     }
-  }
-}
-
-/**
- * Send intro follow-up email after MEETING_ENDED.
- * Prompts patient to book a full session.
- */
-async function sendIntroFollowupEmail(params: {
-  calUid: string;
-  therapistId: string;
-  patientId: string;
-  matchId: string | null;
-  isTest: boolean;
-}): Promise<void> {
-  const { calUid, therapistId, patientId, matchId, isTest } = params;
-
-  // Check if already sent (idempotency)
-  const { data: booking } = await supabaseServer
-    .from('cal_bookings')
-    .select('followup_sent_at')
-    .eq('cal_uid', calUid)
-    .maybeSingle();
-
-  if (booking?.followup_sent_at) return;
-
-  // Fetch patient details
-  const { data: patient } = await supabaseServer
-    .from('people')
-    .select('email, first_name, phone')
-    .eq('id', patientId)
-    .maybeSingle();
-
-  if (!patient) return;
-
-  const hasEmail = patient.email && !patient.email.startsWith('temp_');
-  if (!hasEmail) return; // SMS follow-up could be added later
-
-  // Fetch therapist details
-  const { data: therapist } = await supabaseServer
-    .from('therapists')
-    .select('first_name, last_name, cal_username')
-    .eq('id', therapistId)
-    .maybeSingle();
-
-  const therapistName = therapist
-    ? `${therapist.first_name || ''} ${therapist.last_name || ''}`.trim()
-    : 'Ihr:e Therapeut:in';
-
-  // Build full session URL with proper metadata for tracking
-  const fullSessionUrl = therapist?.cal_username
-    ? buildCalBookingUrl({
-        calUsername: therapist.cal_username,
-        eventType: 'full_session',
-        metadata: {
-          kh_therapist_id: therapistId,
-          kh_patient_id: patientId,
-          kh_match_id: matchId || undefined,
-          kh_source: 'intro_followup_email',
-        },
-        prefillName: patient.first_name || undefined,
-        prefillEmail: patient.email || undefined,
-      })
-    : null;
-
-  // Fetch next full session slot from cache
-  let nextSlotDateIso: string | null = null;
-  let nextSlotTimeLabel: string | null = null;
-  const cachedSlots = await getCachedCalSlots([therapistId]);
-  const cached = cachedSlots.get(therapistId);
-  if (cached?.next_full_date_iso && cached?.next_full_time_label) {
-    nextSlotDateIso = cached.next_full_date_iso;
-    nextSlotTimeLabel = cached.next_full_time_label;
-  }
-
-  // Render and send email
-  const content = renderCalIntroFollowup({
-    patientName: patient.first_name || null,
-    therapistName,
-    fullSessionUrl,
-    nextSlotDateIso,
-    nextSlotTimeLabel,
-    matchUuid: matchId,
-  });
-
-  const recipient = isTest ? (getQaNotifyEmail() || null) : patient.email;
-  if (!recipient) return;
-
-  const result = await sendEmail({
-    to: recipient,
-    subject: content.subject,
-    html: content.html,
-    context: { kind: 'cal_intro_followup', cal_uid: calUid, is_test: isTest },
-  });
-
-  if (result.sent) {
-    await supabaseServer
-      .from('cal_bookings')
-      .update({ followup_sent_at: new Date().toISOString() })
-      .eq('cal_uid', calUid);
-
-    void track({
-      type: 'cal_intro_followup_sent',
-      level: 'info',
-      source: 'api.public.cal.webhook',
-      props: { cal_uid: calUid, therapist_id: therapistId, patient_id: patientId },
-    });
   }
 }
 
@@ -752,7 +644,10 @@ export async function POST(req: Request) {
       });
     }
 
-    // Handle MEETING_ENDED: Update status to completed and send intro follow-up
+    // Handle MEETING_ENDED: Update status to completed
+    // NOTE: Intro follow-up emails are now sent via cron (10-30 min delay) to allow
+    // therapists time to book the client themselves before we send the "book now" nudge.
+    // See: /api/admin/cal/booking-followups?stage=intro_followup
     if (triggerEvent === 'MEETING_ENDED' && !isTest) {
       // Update booking status to completed
       await supabaseServer
@@ -760,18 +655,18 @@ export async function POST(req: Request) {
         .update({ status: 'completed', updated_at: new Date().toISOString() })
         .eq('cal_uid', uid);
 
-      // Send intro follow-up email if this was an intro call
-      if (bookingKind === 'intro' && patientId && therapistId) {
-        void sendIntroFollowupEmail({
-          calUid: uid,
-          therapistId,
-          patientId,
-          matchId: typeof matchId === 'string' ? matchId : null,
-          isTest,
-        }).catch((err: unknown) => {
-          void logError('api.public.cal.webhook', err, { stage: 'intro_followup', cal_uid: uid });
-        });
-      }
+      void track({
+        type: 'cal_meeting_ended',
+        level: 'info',
+        source: 'api.public.cal.webhook',
+        props: {
+          cal_uid: uid,
+          booking_kind: bookingKind,
+          therapist_id: therapistId,
+          patient_id: patientId,
+          note: 'Follow-up email will be sent via cron in 10-30 min',
+        },
+      });
     }
 
     // Handle no-show events: Update status and send appropriate notifications
