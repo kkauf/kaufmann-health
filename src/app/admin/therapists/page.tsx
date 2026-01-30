@@ -81,6 +81,7 @@ type TherapistDetail = {
   phone: string | null;
   city: string | null;
   status: string;
+  hidden?: boolean;
   profile: {
     photo_pending_url?: string;
     approach_text?: string;
@@ -148,6 +149,8 @@ export default function AdminTherapistsPage() {
   // Cal.com integration state
   const [calUsername, setCalUsername] = useState<string>("");
   const [calEnabled, setCalEnabled] = useState<boolean>(false);
+  // Hidden profile state
+  const [profileHidden, setProfileHidden] = useState<boolean>(false);
   const [calStatus, setCalStatus] = useState<{
     provisioned: boolean;
     ready_for_bookings: boolean;
@@ -267,6 +270,7 @@ export default function AdminTherapistsPage() {
     setApprovePhoto(false);
     setCalUsername("");
     setCalEnabled(false);
+    setProfileHidden(false);
     try {
       const res = await fetch(`/api/admin/therapists/${id}`, { credentials: "include", cache: "no-store" });
       const json = await res.json();
@@ -277,6 +281,7 @@ export default function AdminTherapistsPage() {
       setEditedCity(d?.city || "");
       setCalUsername(d?.cal_username || "");
       setCalEnabled(Boolean(d?.cal_enabled));
+      setProfileHidden(Boolean(d?.hidden));
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
       setDetailError(msg);
@@ -297,6 +302,7 @@ export default function AdminTherapistsPage() {
     setCalUsername("");
     setCalEnabled(false);
     setCalStatus(null);
+    setProfileHidden(false);
   }, []);
 
   const openPreview = useCallback(async (therapistId: string) => {
@@ -864,6 +870,79 @@ export default function AdminTherapistsPage() {
                         {/* Approach text no longer required during onboarding - therapists complete in portal after verification */}
                       </div>
                     </div>
+
+                    {/* Hide Profile Toggle - distinct admin control */}
+                    {detail.status === 'verified' && (
+                      <div className={`rounded-md p-4 border-2 ${profileHidden ? 'bg-red-50 border-red-300' : 'bg-gray-50 border-gray-200'}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">{profileHidden ? '🚫' : '👁️'}</span>
+                            <div>
+                              <h4 className="font-medium text-sm text-gray-900">
+                                Profil {profileHidden ? 'versteckt' : 'sichtbar'}
+                              </h4>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {profileHidden
+                                  ? 'Profil wird im Verzeichnis nicht angezeigt'
+                                  : 'Profil ist im öffentlichen Verzeichnis sichtbar'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={updating}
+                              onClick={async () => {
+                                const newHiddenState = !profileHidden;
+                                const confirmMsg = newHiddenState
+                                  ? 'Profil verstecken? Das Profil wird aus dem öffentlichen Verzeichnis entfernt, aber nicht gelöscht.'
+                                  : 'Profil wieder sichtbar machen?';
+                                if (!window.confirm(confirmMsg)) return;
+
+                                try {
+                                  setUpdating(true);
+                                  setMessage(null);
+                                  const res = await fetch(`/api/admin/therapists/${detail.id}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    credentials: 'include',
+                                    body: JSON.stringify({ hidden: newHiddenState }),
+                                  });
+                                  const json = await res.json();
+                                  if (!res.ok) throw new Error(json?.error || 'Update fehlgeschlagen');
+                                  setProfileHidden(newHiddenState);
+                                  setMessage(newHiddenState ? 'Profil versteckt' : 'Profil wieder sichtbar');
+                                  void fetchTherapists();
+                                } catch (e) {
+                                  const msg = e instanceof Error ? e.message : 'Unbekannter Fehler';
+                                  setMessage(msg);
+                                } finally {
+                                  setUpdating(false);
+                                }
+                              }}
+                              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                                profileHidden
+                                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                                  : 'bg-red-600 hover:bg-red-700 text-white'
+                              }`}
+                              title={profileHidden
+                                ? 'Profil wieder im Verzeichnis anzeigen'
+                                : 'Profil aus dem Verzeichnis entfernen (z.B. bei Bounce-E-Mails, inaktiven Therapeuten)'}
+                            >
+                              {profileHidden ? '✓ Sichtbar machen' : '🚫 Verstecken'}
+                            </button>
+                            {/* Tooltip icon */}
+                            <div className="relative group">
+                              <span className="text-gray-400 cursor-help">ⓘ</span>
+                              <div className="absolute right-0 top-6 w-64 p-2 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                Versteckt das Profil aus dem öffentlichen Verzeichnis, ohne den Status zu ändern.
+                                Nützlich bei: Bounce-E-Mails, vorübergehend inaktiven Therapeuten, oder wenn Kontakt nicht möglich ist.
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Data Completeness Overview */}
                     {detail.data_completeness && (
