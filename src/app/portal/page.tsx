@@ -83,6 +83,10 @@ export default async function PortalPage({
 
   // Extract profile metadata
   const profileMeta = therapist.metadata?.profile as Record<string, unknown> | undefined;
+
+  // Extract booking settings
+  const bookingSettings = therapist.metadata?.booking_settings as Record<string, unknown> | undefined;
+  const requiresIntroBeforeBooking = bookingSettings?.requires_intro_before_booking === true;
   
   // Extract new structured profile fields
   const whoComesToMe = typeof profileMeta?.who_comes_to_me === 'string' ? profileMeta.who_comes_to_me : '';
@@ -146,6 +150,7 @@ export default async function PortalPage({
     accepting_new: therapist.accepting_new ?? true,
     city: therapist.city || '',
     languages: Array.isArray(therapist.languages) ? therapist.languages : ['Deutsch'],
+    requires_intro_before_booking: requiresIntroBeforeBooking,
   };
 
   const displayName = [therapist.first_name, therapist.last_name].filter(Boolean).join(' ') || therapist.email;
