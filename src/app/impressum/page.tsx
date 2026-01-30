@@ -49,22 +49,22 @@ export default function ImpressumPage() {
           <section aria-labelledby="eu-datenschutz">
             <h2 id="eu-datenschutz" className="text-xl font-semibold">EU-Datenschutzverantwortlicher nach Art. 27 Abs. 2 DSGVO</h2>
             <address className="not-italic mt-3 space-y-1">
-              <p>Josephine Kaufmann</p>
-              <p>Haydnstraße 4</p>
-              <p>12203 Berlin</p>
+              <p>Michael Strobel-Kaufmann</p>
+              <p>Bergischer Ring 31</p>
+              <p>58095 Hagen</p>
             </address>
           </section>
 
           <section aria-labelledby="zustellung">
-            <h2 id="zustellung" className="text-xl font-semibold">Zustellungsbevollmächtigte in Deutschland (gemäß § 5 DDG, Art. 27 DSGVO)</h2>
+            <h2 id="zustellung" className="text-xl font-semibold">Zustellungsbevollmächtigter in Deutschland (gemäß § 5 DDG, Art. 27 DSGVO)</h2>
             <address className="not-italic mt-3 space-y-1">
-              <p>Frau Josephine Kaufmann</p>
-              <p>Haydnstraße 4</p>
-              <p>12203 Berlin</p>
+              <p>Michael Strobel-Kaufmann</p>
+              <p>Bergischer Ring 31</p>
+              <p>58095 Hagen</p>
             </address>
             <p className="mt-3">
               Die vorgenannte Person ist bevollmächtigt, Zustellungen in gerichtlichen und außergerichtlichen Verfahren,
-              die den Betrieb der Plattform Kaufmann Health LLC betreffen, für die Gesellschaft entgegenzunehmen.
+              die den Betrieb der Plattform Kaufmann Earth LLC betreffen, für die Gesellschaft entgegenzunehmen.
             </p>
           </section>
 

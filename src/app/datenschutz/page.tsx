@@ -41,9 +41,9 @@ export default function DatenschutzPage() {
           <section aria-labelledby="eu-vertreter">
             <h2 id="eu-vertreter" className="text-xl font-semibold">3. EU-Datenschutzverantwortlicher nach Art. 27 Abs. 2 DSGVO</h2>
             <address className="not-italic mt-3 space-y-1">
-              <p className="font-medium">Josephine Kaufmann</p>
-              <p>Haydnstraße 4</p>
-              <p>12203 Berlin</p>
+              <p className="font-medium">Michael Strobel-Kaufmann</p>
+              <p>Bergischer Ring 31</p>
+              <p>58095 Hagen</p>
             </address>
           </section>
 
