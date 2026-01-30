@@ -28,7 +28,10 @@ Stores profile and qualification data for therapists. References `people(id)`.
 - `city text`
 - `address text`
 - `accepting_new boolean`
-- `metadata jsonb` — stores `profile` (photo paths, approach text, billing address), `documents` (license, certificates), and Cal.com event IDs.
+- `metadata jsonb` — stores `profile` (photo paths, approach text, billing address), `documents` (license, certificates), visibility flags, and Cal.com event IDs.
+  - `metadata.hidden` — boolean, admin toggle to hide from directory (e.g., bouncing emails)
+  - `metadata.is_test` — boolean, auto-set for test accounts (staging/localhost or +test email)
+  - `metadata.verified_at` — ISO timestamp when therapist was verified
   - `metadata.profile.billing_street` — Rechnungsadresse street (set during onboarding Step 1)
   - `metadata.profile.billing_postal_code` — Rechnungsadresse postal code
   - `metadata.profile.billing_city` — Rechnungsadresse city
@@ -44,9 +47,13 @@ Stores profile and qualification data for therapists. References `people(id)`.
 Therapists appear in the public directory, landing pages, and match results when ALL of the following are met:
 - `status = 'verified'`
 - `accepting_new != false`
+- `metadata.hidden != true` (admin can hide profiles via admin UI toggle)
+- `metadata.is_test != true` (test accounts auto-hidden)
 - Profile is complete: photo, 3 text fields >= 50 chars (`who_comes_to_me`, `session_focus`, `first_session`), `typical_rate` > 0, >= 1 schwerpunkt, >= 1 session format
 
-Enforced server-side via `hasCompleteProfile()` in `src/lib/therapist-mapper.ts`. See `docs/therapist-matching-algorithm-spec.md` for full eligibility rules.
+**Admin Hidden Toggle**: Verified therapists can be hidden from the directory without changing their status. Use cases: bouncing emails, temporarily inactive therapists, unreachable contacts. Toggle available in admin therapist detail modal.
+
+Enforced server-side via `hasCompleteProfile()` and `isTherapistHidden()` in `src/lib/therapist-mapper.ts`. See `docs/therapist-matching-algorithm-spec.md` for full eligibility rules.
 
 Notes:
 - `secure_uuid` on `matches` is unique and used for magic links. No PII in emails.
