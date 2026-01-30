@@ -15,13 +15,14 @@
  * - confirmation_recovery: Resend booking confirmations that failed during webhook
  * - reminder_24h: Send reminder 24h before appointment
  * - reminder_1h: Send reminder 1h before appointment
- * - intro_followup: FALLBACK for intro sessions where MEETING_ENDED webhook didn't fire
- *                   Sends 2-4h after end_time if followup_sent_at is NULL
+ * - intro_followup: Send "book full session" email 10-30 min after intro ends
+ *                   Skips if patient already has a future full_session booking (therapist booked them)
  * - session_followup: Send "book next session" email next morning after completed full session
- *                     (only if therapist has available slots)
+ *                     Skips if patient already has a future booking (therapist booked them)
+ *                     Also skips if therapist has no available slots
  *
- * NOTE: Intro follow-up emails are also sent via MEETING_ENDED webhook for immediate delivery.
- * This cron stage is a fallback for cases where the webhook doesn't fire (e.g., non-Cal video).
+ * NOTE: Intro follow-up emails are delayed (not sent immediately from webhook) to give
+ * therapists time to book the client themselves. If they do, we skip the follow-up.
  *
  * Idempotency: Uses client_confirmation_sent_at, reminder_*_sent_at, followup_sent_at, session_followup_sent_at columns
  */
@@ -37,6 +38,7 @@ import { renderCalBookingClientConfirmation } from '@/lib/email/templates/calBoo
 import { renderCalIntroFollowup } from '@/lib/email/templates/calIntroFollowup';
 import { getCachedCalSlots } from '@/lib/cal/slots-cache';
 import { buildCalBookingUrl } from '@/lib/cal/booking-url';
+import { hasFutureFullSessionBooking, hasAnyFutureBooking } from '@/lib/cal/booking-checks';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -81,6 +83,7 @@ type StageCounters = {
   skipped_no_patient: number;
   skipped_no_contact: number;
   skipped_no_availability: number;
+  skipped_already_booked: number;
   skipped_test: number;
   errors: number;
 };
@@ -98,6 +101,7 @@ async function processStage(
     skipped_no_patient: 0,
     skipped_no_contact: 0,
     skipped_no_availability: 0,
+    skipped_already_booked: 0,
     skipped_test: 0,
     errors: 0,
   };
@@ -152,10 +156,11 @@ async function processStage(
       if (error) throw error;
       bookings = (data || []) as CalBooking[];
     } else if (stage === 'intro_followup') {
-      // FALLBACK: Send intro followup 2-4h after session ended
-      // This catches cases where MEETING_ENDED webhook didn't fire
-      const windowStart = new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString();
-      const windowEnd = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
+      // Send intro followup 10-30 min after session ended
+      // This gives therapists time to book the client themselves before we send the nudge
+      // If status='completed', MEETING_ENDED webhook fired; otherwise it's a fallback
+      const windowStart = new Date(now.getTime() - 30 * 60 * 1000).toISOString(); // 30 min ago
+      const windowEnd = new Date(now.getTime() - 10 * 60 * 1000).toISOString();   // 10 min ago
       const { data, error } = await supabaseServer
         .from('cal_bookings')
         .select('*')
@@ -165,7 +170,7 @@ async function processStage(
         .is('followup_sent_at', null)
         .not('patient_id', 'is', null)
         .not('therapist_id', 'is', null)
-        .in('status', ['ACCEPTED', 'PENDING']) // Not cancelled
+        .in('status', ['ACCEPTED', 'PENDING', 'completed']) // completed = MEETING_ENDED fired
         .order('end_time', { ascending: true })
         .limit(limit);
       if (error) throw error;
@@ -354,7 +359,22 @@ async function processStage(
             }
           }
         } else if (stage === 'intro_followup') {
-          // FALLBACK: Send intro followup email
+          // Check if patient already has a future full_session booking with this therapist
+          // If so, skip the follow-up (therapist has already booked them)
+          const alreadyBooked = await hasFutureFullSessionBooking(
+            booking.patient_id!,
+            booking.therapist_id!
+          );
+          if (alreadyBooked) {
+            counters.skipped_already_booked++;
+            // Still mark as sent to prevent re-processing
+            await supabaseServer
+              .from('cal_bookings')
+              .update({ followup_sent_at: now.toISOString() })
+              .eq('id', booking.id);
+            continue;
+          }
+
           // Build full session booking URL
           const fullSessionUrl = therapist?.cal_username
             ? buildCalBookingUrl({
@@ -426,6 +446,22 @@ async function processStage(
 
           if (!hasAvailability) {
             counters.skipped_no_availability++;
+            continue;
+          }
+
+          // Check if patient already has ANY future booking with this therapist
+          // If so, skip the follow-up (therapist has already booked them)
+          const alreadyBooked = await hasAnyFutureBooking(
+            booking.patient_id!,
+            booking.therapist_id!
+          );
+          if (alreadyBooked) {
+            counters.skipped_already_booked++;
+            // Still mark as sent to prevent re-processing
+            await supabaseServer
+              .from('cal_bookings')
+              .update({ session_followup_sent_at: now.toISOString() })
+              .eq('id', booking.id);
             continue;
           }
 
@@ -589,10 +625,11 @@ export async function GET(req: NextRequest) {
         skipped_no_patient: acc.skipped_no_patient + r.counters.skipped_no_patient,
         skipped_no_contact: acc.skipped_no_contact + r.counters.skipped_no_contact,
         skipped_no_availability: acc.skipped_no_availability + r.counters.skipped_no_availability,
+        skipped_already_booked: acc.skipped_already_booked + r.counters.skipped_already_booked,
         skipped_test: acc.skipped_test + r.counters.skipped_test,
         errors: acc.errors + r.counters.errors,
       }),
-      { processed: 0, sent_email: 0, sent_sms: 0, skipped_already_sent: 0, skipped_no_patient: 0, skipped_no_contact: 0, skipped_no_availability: 0, skipped_test: 0, errors: 0 } as StageCounters
+      { processed: 0, sent_email: 0, sent_sms: 0, skipped_already_sent: 0, skipped_no_patient: 0, skipped_no_contact: 0, skipped_no_availability: 0, skipped_already_booked: 0, skipped_test: 0, errors: 0 } as StageCounters
     );
 
     void track({
