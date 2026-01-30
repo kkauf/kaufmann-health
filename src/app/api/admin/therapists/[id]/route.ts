@@ -59,7 +59,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const { id } = await ctx.params;
     const { data: row, error } = await supabaseServer
       .from('therapists')
-      .select('id, first_name, last_name, email, phone, city, status, metadata, photo_url, cal_username, cal_enabled, cal_user_id')
+      .select('id, first_name, last_name, email, phone, city, status, metadata, photo_url, cal_username, cal_enabled, cal_user_id, modalities')
       .eq('id', id)
       .single();
     if (error || !row) {
@@ -106,9 +106,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const specialization = isObject(documents.specialization) ? (documents.specialization as Record<string, string[]>) : {};
     const hasSpecialization = Object.keys(specialization).length > 0;
     
-    // Get selected modalities from metadata
-    const modalities = Array.isArray((metadata as Record<string, unknown>).specializations)
-      ? ((metadata as Record<string, unknown>).specializations as string[])
+    // Get selected modalities from the modalities column (not metadata)
+    const rowAnyForModalities = row as { modalities?: string[] | null };
+    const modalities = Array.isArray(rowAnyForModalities.modalities)
+      ? rowAnyForModalities.modalities
       : [];
 
     // Fetch rejection history from events table
