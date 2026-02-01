@@ -1,4 +1,4 @@
-import { EMAIL_FROM_DEFAULT, BASE_URL } from '@/lib/constants';
+import { EMAIL_FROM_DEFAULT, EMAIL_FROM_THERAPISTS, BASE_URL } from '@/lib/constants';
 import type { SendEmailParams, SendEmailResult } from './types';
 import { logError, track } from '@/lib/logger';
 import { createHash } from 'crypto';
@@ -310,4 +310,18 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
   }
   // If we exhausted all attempts without success, return failed
   return { sent: false, reason: 'failed' };
+}
+
+/**
+ * Wrapper for sending emails to therapists.
+ * Automatically sets from and replyTo to partners@kaufmann-health.de.
+ */
+export async function sendTherapistEmail(
+  params: Omit<SendEmailParams, 'from' | 'replyTo'>
+): Promise<SendEmailResult> {
+  return sendEmail({
+    ...params,
+    from: EMAIL_FROM_THERAPISTS,
+    replyTo: EMAIL_FROM_THERAPISTS,
+  });
 }

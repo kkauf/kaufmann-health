@@ -3,12 +3,12 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 import { createTherapistSessionToken } from '@/lib/auth/therapistSession';
 import { logError, track } from '@/lib/logger';
-import { sendEmail } from '@/lib/email/client';
+import { sendTherapistEmail } from '@/lib/email/client';
 import { renderTherapistApproval } from '@/lib/email/templates/therapistApproval';
 import { renderTherapistRejection } from '@/lib/email/templates/therapistRejection';
 import { renderTherapistDecline } from '@/lib/email/templates/therapistDecline';
 import { renderTherapistProfileHidden } from '@/lib/email/templates/therapistProfileHidden';
-import { BASE_URL, EMAIL_FROM_THERAPISTS } from '@/lib/constants';
+import { BASE_URL } from '@/lib/constants';
 import { provisionCalUser, isCalProvisioningEnabled, getSquareAvatarUrl, type CalProvisionResult } from '@/lib/cal/provision';
 import { AdminTherapistPatchInput } from '@/contracts/admin';
 import { parseRequestBody } from '@/lib/api-utils';
@@ -502,7 +502,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
           portalUrl,
         });
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.update', props: { stage: 'therapist_approval', therapist_id: id, subject: approval.subject } });
-        const approvalResult = await sendEmail({ to, subject: approval.subject, html: approval.html, context: { stage: 'therapist_approval', therapist_id: id } });
+        const approvalResult = await sendTherapistEmail({ to, subject: approval.subject, html: approval.html, context: { stage: 'therapist_approval', therapist_id: id } });
         if (!approvalResult.sent && approvalResult.reason === 'failed') {
           await logError('admin.api.therapists.update', new Error('Approval email send failed'), { stage: 'therapist_approval_send_failed', therapist_id: id, email: to });
         }
@@ -518,7 +518,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
           adminNotes: verification_notes || null,
         });
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.update', props: { stage: 'therapist_rejection', therapist_id: id, subject: rejection.subject, admin_notes: verification_notes || null, missing_documents: rejectionMissingDocuments, photo_issue: rejectionPhotoIssue, approach_issue: rejectionApproachIssue } });
-        const rejectionResult = await sendEmail({ to, subject: rejection.subject, html: rejection.html, context: { stage: 'therapist_rejection', therapist_id: id } });
+        const rejectionResult = await sendTherapistEmail({ to, subject: rejection.subject, html: rejection.html, context: { stage: 'therapist_rejection', therapist_id: id } });
         if (!rejectionResult.sent && rejectionResult.reason === 'failed') {
           await logError('admin.api.therapists.update', new Error('Rejection email send failed'), { stage: 'therapist_rejection_send_failed', therapist_id: id, email: to });
         }
@@ -529,7 +529,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
           reason: verification_notes || '',
         });
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.update', props: { stage: 'therapist_decline', therapist_id: id, subject: decline.subject } });
-        const declineResult = await sendEmail({ to, subject: decline.subject, html: decline.html, context: { stage: 'therapist_decline', therapist_id: id } });
+        const declineResult = await sendTherapistEmail({ to, subject: decline.subject, html: decline.html, context: { stage: 'therapist_decline', therapist_id: id } });
         if (!declineResult.sent && declineResult.reason === 'failed') {
           await logError('admin.api.therapists.update', new Error('Decline email send failed'), { stage: 'therapist_decline_send_failed', therapist_id: id, email: to });
         }
@@ -539,12 +539,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       if (to && newlyHidden) {
         const hiddenEmail = renderTherapistProfileHidden({ name });
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.update', props: { stage: 'therapist_profile_hidden', therapist_id: id, subject: hiddenEmail.subject } });
-        const hiddenResult = await sendEmail({
+        const hiddenResult = await sendTherapistEmail({
           to,
           subject: hiddenEmail.subject,
           html: hiddenEmail.html,
-          from: EMAIL_FROM_THERAPISTS,
-          replyTo: EMAIL_FROM_THERAPISTS,
           context: { stage: 'therapist_profile_hidden', therapist_id: id },
         });
         if (!hiddenResult.sent && hiddenResult.reason === 'failed') {

@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 import { logError, track } from '@/lib/logger';
-import { sendEmail } from '@/lib/email/client';
+import { sendTherapistEmail } from '@/lib/email/client';
 import { renderTherapistAvailabilityReminder } from '@/lib/email/templates/therapistAvailabilityReminder';
 import { isCronAuthorized as isCronAuthorizedShared, sameOrigin as sameOriginShared } from '@/lib/cron-auth';
 
@@ -196,11 +196,10 @@ export async function GET(req: Request) {
           },
         });
 
-        const result = await sendEmail({
+        const result = await sendTherapistEmail({
           to: t.email,
           subject: email.subject,
           html: email.html,
-          replyTo: 'kontakt@kaufmann-health.de',
           context: { stage: 'therapist_availability_reminder', therapist_id: t.id },
         });
 

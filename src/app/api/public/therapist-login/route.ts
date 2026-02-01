@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
-import { sendEmail } from '@/lib/email/client';
+import { sendTherapistEmail } from '@/lib/email/client';
 import { renderTherapistMagicLink } from '@/lib/email/templates/therapistMagicLink';
 import { createTherapistSessionToken } from '@/lib/auth/therapistSession';
 import { BASE_URL } from '@/lib/constants';
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
       magicLinkUrl,
     });
 
-    const loginResult = await sendEmail({
+    const loginResult = await sendTherapistEmail({
       to: therapist.email,
       subject: emailContent.subject,
       html: emailContent.html,

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
-import { sendEmail } from '@/lib/email/client';
+import { sendTherapistEmail } from '@/lib/email/client';
 import { renderTherapistDocumentReminder, type ReminderStage } from '@/lib/email/templates/therapistDocumentReminder';
 import { BASE_URL } from '@/lib/constants';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
@@ -205,7 +205,7 @@ async function processBatch(limit: number, req: Request) {
         props: { stage: emailStage, therapist_id: row.id, subject: content.subject },
       });
 
-      const emailResult = await sendEmail({
+      const emailResult = await sendTherapistEmail({
         to: email,
         subject: content.subject,
         html: content.html,

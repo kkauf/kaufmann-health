@@ -15,6 +15,10 @@ vi.mock('@/lib/email/client', () => {
       sentEmails.push({ to: params?.to, subject: params?.subject, html: params?.html });
       return { sent: true }; // Indicate successful send
     }),
+    sendTherapistEmail: vi.fn(async (params: any) => {
+      sentEmails.push({ to: params?.to, subject: params?.subject, html: params?.html });
+      return { sent: true }; // Indicate successful send
+    }),
   };
 });
 

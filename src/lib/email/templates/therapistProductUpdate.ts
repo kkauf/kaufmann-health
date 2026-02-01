@@ -66,8 +66,8 @@ export function renderTherapistProductUpdate(params: {
   // Section: Client follow-up emails
   lines.push('<div style="background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%) !important; padding:20px 24px; border-radius:12px; border:1px solid rgba(202, 138, 4, 0.2); margin:24px 0;">');
   lines.push('<p style="margin:0 0 12px; font-size:15px; font-weight:700; color:#854d0e !important;">📬 Was deine Klient:innen bekommen</p>');
-  lines.push('<p style="margin:0 0 8px; font-size:14px; line-height:1.65; color:#713f12 !important;">Nach jeder Sitzung erhält dein:e Klient:in ca. 15 Minuten später eine E-Mail mit der Einladung, den nächsten Termin zu buchen.</p>');
-  lines.push('<p style="margin:0; font-size:14px; line-height:1.65; color:#713f12 !important;"><strong>Automatisch:</strong> Wenn du den Folgetermin innerhalb dieser 15 Minuten selbst einbuchst, wird die E-Mail automatisch übersprungen – dein:e Klient:in bekommt dann nur die Buchungsbestätigung.</p>');
+  lines.push('<p style="margin:0 0 8px; font-size:14px; line-height:1.65; color:#713f12 !important;">Nach jeder Sitzung erhält dein:e Klient:in am nächsten Morgen eine E-Mail mit der Einladung, den nächsten Termin zu buchen.</p>');
+  lines.push('<p style="margin:0; font-size:14px; line-height:1.65; color:#713f12 !important;"><strong>Tipp:</strong> Wenn du den Folgetermin direkt nach der Sitzung selbst einbuchst, bekommt dein:e Klient:in stattdessen die Buchungsbestätigung – und nicht die Aufforderung zur Selbstbuchung.</p>');
   lines.push('</div>');
 
   // Section: Calendar sync note

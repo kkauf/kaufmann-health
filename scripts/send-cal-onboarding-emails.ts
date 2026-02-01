@@ -33,7 +33,7 @@ async function main() {
   console.log(`Mode: ${isDryRun ? '🔍 DRY RUN (no emails sent)' : '📧 SENDING EMAILS'}\n`);
 
   // Dynamic imports after env is loaded
-  const { sendEmail } = await import('../src/lib/email/client');
+  const { sendTherapistEmail } = await import('../src/lib/email/client');
   const { renderTherapistCalOnboarding } = await import('../src/lib/email/templates/therapistCalOnboarding');
   const { createTherapistSessionToken } = await import('../src/lib/auth/therapistSession');
 
@@ -131,7 +131,7 @@ async function main() {
         console.log(`     Portal URL: ${portalUrl.substring(0, 80)}...`);
         results.success.push(name);
       } else {
-        const sent = await sendEmail({
+        const sent = await sendTherapistEmail({
           to: t.email,
           subject: emailContent.subject,
           html: emailContent.html,
