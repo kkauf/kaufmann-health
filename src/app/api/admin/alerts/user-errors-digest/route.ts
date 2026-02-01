@@ -89,6 +89,10 @@ export async function GET(req: Request) {
       const statusNum = typeof status === 'string' ? parseInt(status, 10) : status;
       const errorType = props.error_type || '';
       const message = props.message || '';
+      const isTest = props.is_test === true || props.is_test === 'true';
+      
+      // Test errors are not actionable - filter them out entirely
+      if (isTest) return false;
       
       // 410 = expired sessions - expected behavior
       if (statusNum === 410) return false;
@@ -99,60 +103,40 @@ export async function GET(req: Request) {
       // ChunkLoadError = browser failed to load Next.js static chunks (network/CDN issues)
       if (errorType === 'unhandled' && message.includes('ChunkLoadError')) return false;
       
+      // ResizeObserver loop errors - benign browser warning, not actionable
+      if (message.includes('ResizeObserver loop')) return false;
+      
       return true;
     });
 
-    // If no errors, log but don't send email
+    // Track how many were filtered for observability
+    const filteredCount = rawEvents.length - events.length;
+
+    // If no actionable errors, log but don't send email
     if (events.length === 0) {
       void track({
         type: 'user_errors_digest_empty',
         source: 'admin.alerts.user-errors-digest',
-        props: { hours },
+        props: { hours, filtered: filteredCount },
       });
       return NextResponse.json({
-        data: { sent: false, reason: 'no_errors', count: 0 },
+        data: { sent: false, reason: 'no_actionable_errors', total: rawEvents.length, filtered: filteredCount },
         error: null,
       });
     }
 
-    // Count test vs real errors early to skip digest when all are test
-    const testOnlyCheck = events.every(e => {
-      const props = e.properties || {};
-      return props.is_test === true || props.is_test === 'true';
-    });
-    if (testOnlyCheck) {
-      void track({
-        type: 'user_errors_digest_skipped',
-        source: 'admin.alerts.user-errors-digest',
-        props: { hours, count: events.length, reason: 'all_test' },
-      });
-      return NextResponse.json({
-        data: { sent: false, reason: 'all_test', count: events.length, testCount: events.length },
-        error: null,
-      });
-    }
-
-    // Aggregate stats
+    // Aggregate stats (all events here are actionable - test/non-actionable already filtered)
     const byType: Record<string, number> = {};
     const byUrl: Record<string, number> = {};
     const authErrors: ErrorEvent[] = [];
-    let testCount = 0;
-    let realCount = 0;
 
     for (const e of events) {
       const props = e.properties || {};
       const errorType = props.error_type || 'unknown';
       const apiUrl = props.url || props.page_path || 'unknown';
-      const isTest = props.is_test === true || props.is_test === 'true';
 
       byType[errorType] = (byType[errorType] || 0) + 1;
       byUrl[apiUrl] = (byUrl[apiUrl] || 0) + 1;
-
-      if (isTest) {
-        testCount++;
-      } else {
-        realCount++;
-      }
 
       if (errorType === 'auth_error') {
         authErrors.push(e);
@@ -184,11 +168,9 @@ export async function GET(req: Request) {
       const props = e.properties || {};
       const time = new Date(e.created_at).toLocaleString('de-DE', { timeZone: 'Europe/Berlin' });
       const type = props.error_type || 'unknown';
-      const isTest = props.is_test === true || props.is_test === 'true';
       const typeColor = type === 'auth_error' ? '#dc2626' : type === 'api_error' ? '#d97706' : '#64748b';
-      const testBadge = isTest ? '<span style="background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-left:4px;">TEST</span>' : '';
       return `<tr>
-        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">${time}${testBadge}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">${time}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;"><span style="color:${typeColor};font-weight:600;font-size:13px;">${escapeHtml(type)}</span></td>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-family:monospace;font-size:12px;">${escapeHtml(props.url || props.page_path || '-')}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;">${escapeHtml(props.page_path || '-')}</td>
@@ -196,11 +178,10 @@ export async function GET(req: Request) {
     }).join('');
 
     const hasAuthErrors = authErrors.length > 0;
-    const hasRealErrors = realCount > 0;
-    const alertLevel = hasRealErrors ? (hasAuthErrors ? '🔴 CRITICAL' : '⚠️ WARNING') : '🧪 TEST ONLY';
+    const alertLevel = hasAuthErrors ? '🔴 CRITICAL' : '⚠️ WARNING';
 
-    const headerBg = !hasRealErrors ? '#e0f2fe' : (hasAuthErrors ? '#fef2f2' : '#fffbeb');
-    const headerBorder = !hasRealErrors ? '#7dd3fc' : (hasAuthErrors ? '#fecaca' : '#fde68a');
+    const headerBg = hasAuthErrors ? '#fef2f2' : '#fffbeb';
+    const headerBorder = hasAuthErrors ? '#fecaca' : '#fde68a';
 
     const contentHtml = `
       <div style="background:${headerBg};padding:16px 20px;border-radius:12px;border:1px solid ${headerBorder};margin-bottom:24px;">
@@ -209,10 +190,7 @@ export async function GET(req: Request) {
           <strong>${events.length} error${events.length === 1 ? '' : 's'}</strong> in the last ${hours} hours
           ${hasAuthErrors ? `<br><span style="color:#dc2626;font-weight:600;">${authErrors.length} auth error${authErrors.length === 1 ? '' : 's'} (session/verification failures)</span>` : ''}
         </p>
-        <p style="margin:8px 0 0;font-size:14px;">
-          <span style="background:#16a34a;color:#fff;padding:2px 8px;border-radius:4px;font-weight:600;">${realCount} real</span>
-          <span style="background:#0ea5e9;color:#fff;padding:2px 8px;border-radius:4px;font-weight:600;margin-left:8px;">${testCount} test</span>
-        </p>
+        ${filteredCount > 0 ? `<p style="margin:8px 0 0;font-size:13px;color:#64748b;">${filteredCount} non-actionable error${filteredCount === 1 ? '' : 's'} filtered out</p>` : ''}
       </div>
 
       <h2 style="margin:24px 0 12px;font-size:18px;color:#0f172a;">Summary by Type</h2>
@@ -257,21 +235,20 @@ export async function GET(req: Request) {
       preheader: `${events.length} user-facing errors in the last ${hours}h`,
     });
 
-    const subjectPrefix = !hasRealErrors ? '🧪' : (hasAuthErrors ? '🔴' : '⚠️');
-    const subjectSuffix = realCount > 0 ? ` (${realCount} real, ${testCount} test)` : ' (all test)';
-    const subject = `${subjectPrefix} ${events.length} User Error${events.length === 1 ? '' : 's'}${subjectSuffix}`;
+    const subjectPrefix = hasAuthErrors ? '🔴' : '⚠️';
+    const subject = `${subjectPrefix} ${events.length} User Error${events.length === 1 ? '' : 's'} in last ${hours}h`;
 
     const digestResult = await sendEmail({
       to: getAdminNotifyEmail() || 'kontakt@kaufmann-health.de',
       subject,
       html,
-      context: { kind: 'user_errors_digest', count: events.length, auth_errors: authErrors.length, real: realCount, test: testCount },
+      context: { kind: 'user_errors_digest', count: events.length, auth_errors: authErrors.length, filtered: filteredCount },
     });
 
     void track({
       type: 'user_errors_digest_sent',
       source: 'admin.alerts.user-errors-digest',
-      props: { count: events.length, auth_errors: authErrors.length, real: realCount, test: testCount, sent: digestResult.sent },
+      props: { count: events.length, auth_errors: authErrors.length, filtered: filteredCount, sent: digestResult.sent },
     });
 
     return NextResponse.json({
@@ -280,8 +257,7 @@ export async function GET(req: Request) {
         count: events.length,
         byType,
         authErrors: authErrors.length,
-        realCount,
-        testCount,
+        filtered: filteredCount,
       },
       error: null,
     });

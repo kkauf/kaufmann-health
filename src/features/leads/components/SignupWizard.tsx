@@ -206,6 +206,16 @@ export default function SignupWizard() {
     },
   });
 
+  // Keep verification hook state in sync with wizard data to avoid race conditions
+  // This ensures getContact() returns the correct value when sendCode is called
+  React.useEffect(() => {
+    if (data.phone_number) verification.setPhone(data.phone_number);
+  }, [data.phone_number, verification]);
+
+  React.useEffect(() => {
+    if (data.name) verification.setName(data.name);
+  }, [data.name, verification]);
+
   // Ensure a stable web analytics session id exists before any events
   React.useEffect(() => {
     try {
