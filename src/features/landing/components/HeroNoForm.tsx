@@ -34,8 +34,8 @@ export function HeroNoForm({
   backgroundBlurClass?: string;
 }) {
   const titleClass = noBackground
-    ? "text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl md:text-6xl lg:text-7xl leading-tight"
-    : "text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl leading-tight drop-shadow-lg";
+    ? "text-3xl font-bold tracking-tight text-gray-900 sm:text-5xl md:text-6xl lg:text-7xl leading-tight"
+    : "text-3xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl leading-tight drop-shadow-lg";
   const subtitleClass = noBackground
     ? "mt-5 max-w-3xl text-lg sm:text-xl md:text-2xl leading-relaxed text-gray-700"
     : "mt-5 max-w-3xl text-xl text-white/95 sm:text-2xl md:text-3xl leading-relaxed drop-shadow-md";

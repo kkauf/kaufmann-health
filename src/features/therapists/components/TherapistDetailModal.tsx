@@ -1300,7 +1300,7 @@ export function TherapistDetailModal({
             // Hide direct booking button if therapist requires intro and patient hasn't completed one
             const hideDirectBooking = requiresIntroBeforeBooking && !hasCompletedIntro;
             return (
-              <div className="sticky bottom-0 flex flex-col gap-3 pt-4 sm:flex-row">
+              <div className="sticky bottom-0 flex flex-col gap-3 pt-4 md:flex-row">
                 {/* Cal.com booking CTAs when enabled - open in-modal booking view (EARTH-256) */}
                 {isCalEnabled ? (
                   <>

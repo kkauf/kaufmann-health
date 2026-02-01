@@ -196,24 +196,27 @@ export async function POST(req: NextRequest) {
             .eq('id', person.id);
 
           // Create instant matches for phone-verified users
-          // Pass the merged metadata directly to avoid race condition with DB write
+          // Skip if user has draft_contact (directory flow) - they already chose a therapist
+          // and don't have questionnaire preferences to match against
           const variant = person.campaign_variant || undefined;
-          try {
-            const matchResult = await createInstantMatchesForPatient(person.id, variant, metadata);
-            if (matchResult) {
-              // Store matchesUrl in metadata for redirect after verification
-              const updatedMeta = { ...metadata, last_confirm_redirect_path: matchResult.matchesUrl };
-              await supabaseServer
-                .from('people')
-                .update({ metadata: updatedMeta })
-                .eq('id', person.id);
-              void ServerAnalytics.trackEventFromRequest(req, {
-                type: 'instant_match_created',
-                source: 'api.verification.verify-code',
-                props: { match_quality: matchResult.matchQuality, patient_id: person.id },
-              });
-            }
-          } catch { /* non-blocking */ }
+          if (!draftContact) {
+            try {
+              const matchResult = await createInstantMatchesForPatient(person.id, variant, metadata);
+              if (matchResult) {
+                // Store matchesUrl in metadata for redirect after verification
+                const updatedMeta = { ...metadata, last_confirm_redirect_path: matchResult.matchesUrl };
+                await supabaseServer
+                  .from('people')
+                  .update({ metadata: updatedMeta })
+                  .eq('id', person.id);
+                void ServerAnalytics.trackEventFromRequest(req, {
+                  type: 'instant_match_created',
+                  source: 'api.verification.verify-code',
+                  props: { match_quality: matchResult.matchQuality, patient_id: person.id },
+                });
+              }
+            } catch { /* non-blocking */ }
+          }
 
           // Process draft contact if present
           if (draftContact) {
@@ -488,23 +491,27 @@ export async function POST(req: NextRequest) {
         .eq('id', person.id);
       
       // Create instant matches
+      // Skip if user has draft_contact (directory flow) - they already chose a therapist
+      // and don't have questionnaire preferences to match against
       const variant = person.campaign_variant || undefined;
-      try {
-        const matchResult = await createInstantMatchesForPatient(person.id, variant, updatedMeta);
-        if (matchResult) {
-          const metaWithMatches = { ...updatedMeta, last_confirm_redirect_path: matchResult.matchesUrl };
-          await supabaseServer
-            .from('people')
-            .update({ metadata: metaWithMatches })
-            .eq('id', person.id);
-          void ServerAnalytics.trackEventFromRequest(req, {
-            type: 'instant_match_created',
-            source: 'api.verification.verify-code',
-            props: { match_quality: matchResult.matchQuality, patient_id: person.id },
-          });
-        }
-      } catch { /* non-blocking */ }
-      
+      if (!draftContact) {
+        try {
+          const matchResult = await createInstantMatchesForPatient(person.id, variant, updatedMeta);
+          if (matchResult) {
+            const metaWithMatches = { ...updatedMeta, last_confirm_redirect_path: matchResult.matchesUrl };
+            await supabaseServer
+              .from('people')
+              .update({ metadata: metaWithMatches })
+              .eq('id', person.id);
+            void ServerAnalytics.trackEventFromRequest(req, {
+              type: 'instant_match_created',
+              source: 'api.verification.verify-code',
+              props: { match_quality: matchResult.matchQuality, patient_id: person.id },
+            });
+          }
+        } catch { /* non-blocking */ }
+      }
+
       // Process draft contact if present
       if (draftContact) {
         try {

@@ -60,6 +60,7 @@ export function renderTherapistDemandDigest(params: {
   name?: string | null;
   city: string;
   topDemand: DemandItem[];
+  currentSchwerpunkte: string[];
   opportunityGap: OpportunityGap;
   profileUrl: string;
   optOutUrl: string;
@@ -69,6 +70,8 @@ export function renderTherapistDemandDigest(params: {
   // Report on PREVIOUS month's data (cron runs on 1st of month)
   const month = getPreviousMonthName();
   const year = getPreviousMonthYear();
+  const currentCount = params.currentSchwerpunkte.length;
+  const isAtMax = currentCount >= 5;
 
   const lines: string[] = [];
 
@@ -77,6 +80,12 @@ export function renderTherapistDemandDigest(params: {
 
   // Intro - explain what this data represents
   lines.push(`<p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">hier ist dein monatlicher Überblick: Diese Themen haben Klient:innen bei ihrer Anmeldung ausgewählt – verglichen mit deinen Spezialisierungen im Profil.</p>`);
+
+  // Show current Spezialisierungen
+  if (params.currentSchwerpunkte.length > 0) {
+    const schwerpunkteList = params.currentSchwerpunkte.map(s => capitalize(s)).join(', ');
+    lines.push(`<p style="margin:0 0 20px; font-size:14px; color:#64748b !important;"><strong>Deine aktuellen Spezialisierungen (${currentCount}/5):</strong> ${escapeHtml(schwerpunkteList)}</p>`);
+  }
 
   // Section: Top Demand
   lines.push('<div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important; padding:20px 24px; border-radius:12px; border:1px solid rgba(59, 130, 246, 0.2); margin:0 0 24px;">');
@@ -123,8 +132,12 @@ export function renderTherapistDemandDigest(params: {
     lines.push('</div>');
   }
 
-  // CTA - reference Spezialisierungen specifically
-  lines.push('<p style="margin:0 0 16px; font-size:15px; color:#475569 !important;">Du kannst bis zu 5 Spezialisierungen in deinem Profil auswählen. Falls sich dein Angebot geändert hat:</p>');
+  // CTA - adapt based on whether they're at max capacity
+  if (isAtMax) {
+    lines.push('<p style="margin:0 0 16px; font-size:15px; color:#475569 !important;">5 Spezialisierungen – deine Herzensthemen. Falls sich dein Fokus verändert hat:</p>');
+  } else {
+    lines.push(`<p style="margin:0 0 16px; font-size:15px; color:#475569 !important;">Du hast ${currentCount} von 5 Spezialisierungen gewählt. Falls sich dein Fokus verändert hat:</p>`);
+  }
   lines.push(renderButton(params.profileUrl, 'Spezialisierungen anpassen →'));
 
   // Founder signature
