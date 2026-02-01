@@ -19,7 +19,7 @@ type TherapistRow = {
   email?: string | null;
   city?: string | null;
   schwerpunkte?: string[] | null;
-  session_preferences?: { online?: boolean } | null;
+  session_preferences?: string[] | null;
   cal_enabled?: boolean | null;
   accepting_new?: boolean | null;
   metadata?: Record<string, unknown> | null;
@@ -243,15 +243,21 @@ export async function GET(req: Request) {
       // Build demand data for this therapist
       const therapistCity = t.city || '';
       const therapistSchwerpunkte = new Set(Array.isArray(t.schwerpunkte) ? t.schwerpunkte : []);
-      const offersOnline = t.session_preferences?.online === true;
+      const offersOnline = Array.isArray(t.session_preferences) && t.session_preferences.includes('online');
 
       // Combine city demand + online demand (avoid double-counting)
       const demandMap = new Map<string, number>();
 
       // Add city-specific demand
-      if (therapistCity && demandByCityAndSchwerpunkt.has(therapistCity)) {
-        for (const [sp, count] of demandByCityAndSchwerpunkt.get(therapistCity)!) {
-          demandMap.set(sp, (demandMap.get(sp) || 0) + count);
+      // Match therapist city to demand cities (handle variations like "Berlin - Tegel & Mitte" -> "Berlin")
+      for (const [demandCity, cityDemandMap] of demandByCityAndSchwerpunkt) {
+        // Check if therapist's city matches or contains the demand city
+        const cityMatches = therapistCity.toLowerCase().includes(demandCity.toLowerCase()) ||
+                           demandCity.toLowerCase().includes(therapistCity.toLowerCase());
+        if (cityMatches) {
+          for (const [sp, count] of cityDemandMap) {
+            demandMap.set(sp, (demandMap.get(sp) || 0) + count);
+          }
         }
       }
 
