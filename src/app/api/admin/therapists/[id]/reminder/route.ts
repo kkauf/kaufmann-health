@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 import { logError, track } from '@/lib/logger';
-import { sendEmail } from '@/lib/email/client';
+import { sendTherapistEmail } from '@/lib/email/client';
 import { renderTherapistReminder } from '@/lib/email/templates/therapistReminder';
 import { BASE_URL } from '@/lib/constants';
 import { createTherapistOptOutToken } from '@/lib/signed-links';
@@ -182,7 +182,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     });
 
     void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.reminder', props: { stage: 'therapist_profile_reminder', therapist_id: id, subject: reminder.subject } });
-    const reminderResult = await sendEmail({
+    const reminderResult = await sendTherapistEmail({
       to,
       subject: reminder.subject,
       html: reminder.html,

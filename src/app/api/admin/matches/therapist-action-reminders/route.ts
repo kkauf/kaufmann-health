@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 import { logError, track } from '@/lib/logger';
-import { sendEmail } from '@/lib/email/client';
+import { sendTherapistEmail } from '@/lib/email/client';
 import { renderTherapistNotification } from '@/lib/email/templates/therapistNotification';
 import { BASE_URL } from '@/lib/constants';
 import { createTherapistOptOutToken } from '@/lib/signed-links';
@@ -181,12 +181,11 @@ export async function GET(req: Request) {
             };
           }
         } catch {}
-        const emailResult = await sendEmail({
+        const emailResult = await sendTherapistEmail({
           to: therapistEmail,
           subject: notif.subject,
           html: notif.html,
           ...(headers ? { headers } : {}),
-          replyTo: 'kontakt@kaufmann-health.de',
           context: { kind: 'therapist_action_reminder', match_id },
         });
         if (emailResult.sent) {

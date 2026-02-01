@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
 import { logError, track } from '@/lib/logger';
-import { sendEmail } from '@/lib/email/client';
+import { sendTherapistEmail } from '@/lib/email/client';
 import { renderTherapistReminder } from '@/lib/email/templates/therapistReminder';
 import { BASE_URL } from '@/lib/constants';
 import { createTherapistOptOutToken } from '@/lib/signed-links';
@@ -252,7 +252,7 @@ export async function GET(req: Request) {
 
       try {
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.reminders.batch', props: { stage: 'therapist_profile_reminder', therapist_id: t.id, subject: reminder.subject } });
-        const emailResult = await sendEmail({
+        const emailResult = await sendTherapistEmail({
           to,
           subject: reminder.subject,
           html: reminder.html,
@@ -260,7 +260,6 @@ export async function GET(req: Request) {
             'List-Unsubscribe': `<${optOutUrl}>`,
             'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
           },
-          replyTo: 'kontakt@kaufmann-health.de',
           context: { stage: 'therapist_profile_reminder', therapist_id: t.id },
         });
         if (emailResult.sent) {
@@ -503,7 +502,7 @@ export async function POST(req: Request) {
 
       try {
         void track({ type: 'email_attempted', level: 'info', source: 'admin.api.therapists.reminders.batch', props: { stage: 'therapist_profile_reminder', therapist_id: t.id, subject: reminder.subject } });
-        const emailResult = await sendEmail({
+        const emailResult = await sendTherapistEmail({
           to,
           subject: reminder.subject,
           html: reminder.html,
@@ -511,7 +510,6 @@ export async function POST(req: Request) {
             'List-Unsubscribe': `<${optOutUrl}>`,
             'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
           },
-          replyTo: 'kontakt@kaufmann-health.de',
           context: { stage: 'therapist_profile_reminder', therapist_id: t.id },
         });
         if (emailResult.sent) {
