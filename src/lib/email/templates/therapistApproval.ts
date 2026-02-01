@@ -47,11 +47,11 @@ export function renderTherapistApproval(params: {
   lines.push('<div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; background-image: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; padding:20px 24px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); margin: 0 0 24px;">');
   lines.push('<p style="margin:0 0 12px; font-size:15px; font-weight:600; color:#0f172a !important;">Deine Onboarding-Checkliste:</p>');
   lines.push('<ul style="margin:0; padding-left:20px; color:#475569 !important; font-size:15px; line-height:1.8;">');
+  lines.push('<li><strong style="font-weight:600;">Profil-Texte schreiben</strong> – 3 kurze Abschnitte (je 2-3 Sätze) zu deinem Ansatz im Portal</li>');
+  lines.push('<li><strong style="font-weight:600;">Verfügbarkeit einrichten</strong> – Deine freien Termine im Kalender hinterlegen</li>');
   lines.push('<li><strong style="font-weight:600;">Kalender-Passwort ändern</strong> – Für deine Sicherheit</li>');
-  lines.push('<li><strong style="font-weight:600;">Profil vervollständigen</strong> – Beschreibe deinen Ansatz</li>');
-  lines.push('<li><strong style="font-weight:600;">Verfügbarkeit einrichten</strong> – Wann können Klient:innen buchen?</li>');
   lines.push('</ul>');
-  lines.push('<p style="margin:12px 0 0; font-size:14px; line-height:1.6; color:#64748b !important;">💡 Die Reihenfolge ist dir überlassen – hake einfach ab, was du erledigt hast.</p>');
+  lines.push('<p style="margin:12px 0 0; font-size:14px; line-height:1.6; color:#64748b !important;">💡 Sobald Profil und Verfügbarkeit eingerichtet sind, kannst du dein Profil im Portal aktivieren.</p>');
   lines.push('</div>');
 
   // Cal.com credentials box (if provisioned)
@@ -75,7 +75,7 @@ export function renderTherapistApproval(params: {
       <tr>
         <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; box-shadow: 0 2px 4px 0 rgba(16, 185, 129, 0.2);">
           <a href="${portalUrl}" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff !important; text-decoration: none; border-radius: 8px;">
-            Zum Therapeuten-Portal →
+            Profil-Texte im Portal schreiben →
           </a>
         </td>
       </tr>
