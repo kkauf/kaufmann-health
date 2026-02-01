@@ -308,6 +308,7 @@ export async function GET(req: Request) {
         name,
         city: therapistCity || 'deiner Region',
         topDemand,
+        currentSchwerpunkte: Array.from(therapistSchwerpunkte),
         opportunityGap,
         profileUrl,
         optOutUrl,
