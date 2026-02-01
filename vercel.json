@@ -11,7 +11,8 @@
     { "path": "/api/cron/evening-alerts", "schedule": "0 20 * * *" },
     { "path": "/api/cron/nightly", "schedule": "0 3 * * *" },
     { "path": "/api/cron/weekly-friday", "schedule": "0 9 * * 5" },
-    { "path": "/api/cron/weekly-monday", "schedule": "0 6 * * 1" }
+    { "path": "/api/cron/weekly-monday", "schedule": "0 6 * * 1" },
+    { "path": "/api/admin/therapists/demand-digest", "schedule": "0 9 1 * *" }
   ],
   "functions": {
     "app/therapie-finden/page.tsx": {
