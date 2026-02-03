@@ -74,15 +74,16 @@ For specific features:
 
 ## Cross-Boundary Contracts
 
-When a UI component emits values (event properties, enum codes, form fields) that a backend consumer reads, they form an implicit contract. Mismatches between producer and consumer silently degrade features without errors.
+When a UI component emits values (event properties, enum codes, form fields) that a backend consumer reads, they form an implicit contract. Mismatches silently degrade features without errors.
 
-**Rule: Define shared constants, don't duplicate strings.**
+**Rule: Use `src/contracts/` Zod schemas as the single source of truth.**
 
-- If a UI emits reason codes (e.g., rejection reasons, feedback types) and a backend template/cron switches on those codes, the valid values must come from a single shared source — not be independently hardcoded on both sides.
-- When adding a new enum value on the producer side, grep for all consumers of that value across the codebase. If a switch statement or map doesn't handle the new value, it will silently fall through to a default.
-- When building a consumer that branches on values from another system (UI events, webhook payloads, external APIs), always log or track which branch was taken. If `default/other` fires more than expected, the mapping is stale.
+- All API boundary values (enums, status codes, form fields) belong in `src/contracts/`. Both UI components and backend consumers import from there — never hardcode the same strings on both sides.
+- Validation helpers in `src/lib/api-utils.ts` (`parseBody`, `parseQuery`, `parseRequestBody`) enforce schemas at API boundaries. Use them for every endpoint.
+- When adding a new enum value, grep for all consumers (switch statements, maps, templates) across the codebase. An unhandled value silently falls through to a default.
+- When building a consumer that branches on values from another system (UI events, webhook payloads, external APIs), log which branch was taken. If `default/other` fires more than expected, the mapping is stale.
 
-This applies to: event type/reason codes, status enums, booking kinds, campaign variants, modality slugs — anywhere a string is written in one place and read in another.
+This applies to: event type/reason codes, status enums, booking kinds, rejection reasons, campaign variants, modality slugs — anywhere a string is written in one place and read in another.
 
 ## Resilience & Avoiding Silent Failures
 
