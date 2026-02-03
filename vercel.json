@@ -7,7 +7,7 @@
     { "path": "/api/cron/morning-alerts", "schedule": "0 8 * * *" },
     { "path": "/api/cron/lead-nurturing", "schedule": "0 9 * * *" },
     { "path": "/api/cron/lead-nurturing-late", "schedule": "30 10 * * *" },
-    { "path": "/api/admin/alerts/new-leads?hours=6", "schedule": "0 14 * * *" },
+    { "path": "/api/admin/alerts/new-leads?hours=20", "schedule": "0 14 * * *" },
     { "path": "/api/cron/evening-alerts", "schedule": "0 20 * * *" },
     { "path": "/api/cron/nightly", "schedule": "0 3 * * *" },
     { "path": "/api/cron/weekly-friday", "schedule": "0 9 * * 5" },
