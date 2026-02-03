@@ -190,6 +190,12 @@ export default function AdminLeadsPage() {
       if (!res.ok) throw new Error(json?.error || 'Fehler beim Laden der Matches');
       const active = new Set(['accepted', 'therapist_contacted', 'therapist_responded', 'session_booked', 'completed']);
       const leadIds = new Set(leadList.map((p) => p.id));
+      // Build a map of returning_concierge_at per patient to filter stale matches
+      const returningAt = new Map<string, string>();
+      for (const p of leadList) {
+        const rca = (p.metadata as Record<string, unknown>)?.returning_concierge_at;
+        if (typeof rca === 'string') returningAt.set(p.id, rca);
+      }
       const s = new Set<string>();
       const counts: Record<string, number> = {};
       const arr = Array.isArray(json?.data) ? json.data : [];
@@ -197,8 +203,11 @@ export default function AdminLeadsPage() {
         const pid = (m?.patient?.id ?? '') as string;
         const st = (m?.status ?? '') as string;
         if (pid && leadIds.has(pid)) {
-          if (active.has(st)) s.add(pid);
-          if (st === 'proposed') counts[pid] = (counts[pid] || 0) + 1;
+          // For returning concierge users, only count matches from after re-submission
+          const rca = returningAt.get(pid);
+          const isStale = rca && typeof m?.created_at === 'string' && m.created_at < rca;
+          if (active.has(st) && !isStale) s.add(pid);
+          if (st === 'proposed' && !isStale) counts[pid] = (counts[pid] || 0) + 1;
         }
       }
       setDeprioritizedPatients(s);
