@@ -25,7 +25,7 @@ const __dirname = path.dirname(__filename);
 // Load .env.local explicitly
 config({ path: path.join(__dirname, '../.env.local') });
 
-const METABASE_URL = 'https://metabase-production-c3d3.up.railway.app';
+const METABASE_URL = process.env.METABASE_SITE_URL || 'https://metabase-production-c3d3.up.railway.app';
 const METABASE_API_KEY = process.env.METABASE_API_KEY;
 const MARKDOWN_PATHS = [
   path.join(__dirname, '../docs/metabase-kpis.md'),

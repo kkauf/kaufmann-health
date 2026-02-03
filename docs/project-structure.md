@@ -101,7 +101,7 @@
     /therapy                # Therapy modality content/components
       /components
     /admin                  # Admin domain
-      /components           # AdminNav, AdminStats
+      /components           # AdminNav, AdminDashboard (Metabase embeds)
   /lib                      # Shared utilities (Supabase, analytics, email, auth, config)
   /content                  # Markdown/HTML content blocks
 /tests
@@ -349,7 +349,8 @@ Admin functionality is cleanly separated between pages, APIs, and components.
 **Structure**:
 - `components/` — Admin UI components
   - `AdminNav.tsx` — Navigation bar for admin pages
-  - `AdminStats.tsx` — Dashboard statistics and analytics display
+  - `AdminDashboard.tsx` — Tabbed Metabase dashboard embeds (KPIs, Funnels, Trends)
+  - `MetabaseDashboard.tsx` — Iframe wrapper for individual Metabase embeds
 
 **Usage**:
 - Import components: `import AdminNav from '@/features/admin/components/AdminNav'`
@@ -362,7 +363,7 @@ Admin functionality is cleanly separated between pages, APIs, and components.
 - **Components**: `/features/admin/components` — Reusable admin UI components
 
 **Key Admin APIs**:
-- `/api/admin/stats` — Dashboard analytics (totals, funnels, campaigns)
+- `/api/admin/metabase-embed` — Signed Metabase embed URL generator
 - `/api/admin/leads/[id]` — Lead status management
 - `/api/admin/matches` — Match creation, outreach, selection emails
 - `/api/admin/therapists` — Therapist verification, reminders

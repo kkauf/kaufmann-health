@@ -723,108 +723,21 @@ __UI Consistency__: Email templates reuse a small, inline-styled therapist previ
   - 200: `{ data: { ok: true }, error: null }`
   - 401: `{ data: null, error: 'Invalid signature' }` (when signature validation fails)
 
-## GET /api/admin/stats (EARTH-215)
+## GET /api/admin/metabase-embed
 
-- __Purpose__: Admin analytics dashboard showing funnel metrics, page traffic, conversion to activation (email & SMS), match conversion, and user journey analysis.
+- __Purpose__: Generate signed Metabase embed URLs for admin dashboard iframes.
 - __Auth__: Admin session cookie (`kh_admin`, Path=/admin).
 - __Query Params__:
-  - `days?` (number, optional) — Time window in days (default: 30, min: 1, max: 90)
-  - `since?` (ISO date or `YYYY-MM-DD`, optional) — Overrides the funnel/event window start for wizard/engagement analysis
-  - `cutoff?` (ISO date or `YYYY-MM-DD`, optional) — Global lower bound to ignore earlier data (useful for methodology changes); if not provided, a safe default cutoff is applied by the server
-- __Behavior__:
-  - Queries `events` table for analytics data within the specified time window.
-  - **Wizard Funnel** uses proper cohort-based tracking:
-    - Tracks the SAME sessions moving sequentially through steps 1-9.
-    - A session "reached step N" if it viewed ALL steps 1 through N (inclusive).
-    - This ensures funnel integrity: each step count is always ≤ previous step.
-    - Drop rates are guaranteed to be non-negative.
-    - Form completions are matched to sessions that reached step 9.
-  - **Page Traffic**: Top 10 pages by unique sessions + daily time series.
-  - **Journey Analysis**: Categorizes sessions by whether they visited /fragebogen, /therapeuten, both, or neither. UI simplified to distribution only.
-  - **Directory Engagement**: Tracks help clicks, contact modals, and message sends from /therapeuten.
-  - **Abandoned Fields**: Top 15 fields where users drop off.
-  - **Conversion Funnel (Lead Activation)**: Derives totals and rates from `people(type='patient')` using `status` and `metadata`:
-    - `email_only`, `email_confirmed`, confirmation rate
-    - `phone_only`, `phone_verified` (from metadata), verification rate
-    - `converted_to_new` (activation), overall activation rate
-  - **Match Conversion Funnel**: Aggregates `matches.status` into contacted → responded → selected → accepted/declined and rates.
-  - Removed low-signal UI blocks: “Segmented Funnel”, “Online OK”. “Abgebrochene Felder” merged under Wizard Funnel as a collapsible section.
+  - `dashboard` (string, required) — Dashboard key (e.g. `kpis`, `funnels`, `trends`). Must match a key in `METABASE_DASHBOARD_IDS` env var.
 - __Response__:
-  - 200: `{ data: StatsResponse, error: null }`
+  - 200: `{ data: { embedUrl: string }, error: null }`
+  - 400: `{ data: null, error: 'Missing ?dashboard= parameter' }` or unknown key
   - 401: `{ data: null, error: 'Unauthorized' }`
-  - 500: `{ data: null, error: 'Unexpected error' }`
-- __StatsResponse Schema__:
-  ```typescript
-  {
-    totals: { therapists: number; clients: number; matches: number };
-    pageTraffic: {
-      top: Array<{ page_path: string; sessions: number }>;
-      daily: Array<{ day: string; page_path: string; sessions: number }>;
-    };
-    wizardFunnel: {
-      page_views: number;              // Unique sessions that viewed /fragebogen
-      steps: Record<1-9, number>;      // Cohort size at each step (sequential filtering)
-      form_completed: number;          // Sessions that completed AND reached step 9
-      start_rate: number;              // (step 1 / page_views) * 100
-    };
-    wizardDropoffs: Array<{
-      step: number;                    // Transition from step N to N+1
-      from: number;                    // Cohort size at step N
-      to: number;                      // Cohort size at step N+1 (always ≤ from)
-      drop: number;                    // from - to (always ≥ 0)
-      drop_rate: number;               // (drop / from) * 100
-    }>;
-    abandonFieldsTop: Array<{ field: string; count: number }>;
-    directory: {
-      views: number;                   // Unique sessions on /therapeuten
-      helpClicks: number;              // Clicks on questionnaire CTA from /therapeuten
-      navClicks: number;               // "Alle Therapeuten ansehen" clicks site-wide
-      contactOpened: number;           // Contact modal opens on /therapeuten
-      contactSent: number;             // Messages sent via contact modal
-    };
-    journeyAnalysis: {
-      fragebogen_only: number;
-      therapeuten_only: number;
-      both_fragebogen_first: number;
-      both_therapeuten_first: number;
-      neither: number;
-      total_sessions: number;
-      questionnaire_preference_rate: number;
-      directory_to_questionnaire_rate: number;
-    };
-    conversionFunnel: {
-      total_leads: number;
-      email_only: number;
-      phone_only: number;
-      email_confirmed: number;
-      phone_verified: number;
-      converted_to_new: number;
-      email_confirmation_rate: number; // % of email_only
-      phone_verification_rate: number; // % of phone_only
-      overall_activation_rate: number; // % of total_leads
-    };
-    matchFunnel: {
-      total_matches: number;
-      therapist_contacted: number;
-      therapist_responded: number;
-      patient_selected: number;
-      accepted: number;
-      declined: number;
-      response_rate: number;   // responded / contacted * 100
-      acceptance_rate: number; // accepted / responded * 100
-      overall_conversion: number; // accepted / total_matches * 100
-    };
-  }
-  ```
+  - 500: `{ data: null, error: string }`
 - __Implementation Notes__:
-  - **Funnel Best Practice**: Uses cohort-based sequential filtering instead of independent step counts.
-  - **Why This Matters**: Previous implementation counted ANY session at each step, leading to negative drop rates when users jumped to later steps. The corrected approach ensures mathematical integrity and accurate conversion metrics.
-  - **Event Types Used**:
-    - `page_view` with `properties.page_path` for page traffic and wizard entry
-    - `screen_viewed` with `properties.step` (1-9) for wizard progression
-    - `form_completed` with `properties.session_id` for completion tracking
-    - `field_abandonment` with `properties.fields` for abandonment analysis
-    - `cta_click`, `contact_modal_opened`, `contact_message_sent` for directory engagement
+  - Embed tokens are signed JWTs (HS256) with 10-minute expiry using `METABASE_EMBEDDING_SECRET_KEY`.
+  - Dashboard IDs are parsed from `METABASE_DASHBOARD_IDS` env var (format: `key:id,key:id`).
+  - Replaces the previous `/api/admin/stats` endpoint — all analytics now served via embedded Metabase dashboards.
 
 ## EARTH-125: Patient Selection Flow
 

@@ -56,7 +56,7 @@ This is a concise, high-signal overview. It complements the detailed `docs/api.m
   - Day 10: `GET /api/admin/leads/feedback-request` → one-click feedback collection
   - QA: `GET /api/admin/emails/preview?template=all&send=true` → send templates to LEADS_NOTIFY_EMAIL
 - Stats & Errors
-  - `GET /api/admin/stats` → totals + 7-day trends + campaign stats
+  - `GET /api/admin/metabase-embed?dashboard=kpis` → signed Metabase embed URL
   - `GET /api/admin/errors` → error/event listing backend for `/admin/errors`
 - Broadcasts (Therapist Product Updates)
   - `POST /api/admin/broadcasts/therapist-update` → sync audience, preview, send_test, send
