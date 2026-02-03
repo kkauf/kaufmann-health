@@ -132,6 +132,37 @@ export async function GET(req: Request) {
         return meta.session_preference === sessionPref || arr.includes(sessionPref);
       });
     }
+
+    // Fetch active bookings for these leads to enable booking-aware deprioritization
+    const leadIds = result.map((r) => (r as Record<string, unknown>).id as string).filter(Boolean);
+    const bookingsByPatient = new Map<string, { booking_kind: string; start_time: string }>();
+
+    if (leadIds.length > 0) {
+      const { data: bookingRows } = await supabaseServer
+        .from('cal_bookings')
+        .select('patient_id, booking_kind, start_time, status')
+        .in('patient_id', leadIds)
+        .neq('last_trigger_event', 'BOOKING_CANCELLED')
+        .not('status', 'in', '("CANCELLED","no_show","no_show_guest","no_show_host")');
+
+      for (const b of (bookingRows || [])) {
+        const existing = bookingsByPatient.get(b.patient_id);
+        if (!existing || (b.start_time > existing.start_time)) {
+          bookingsByPatient.set(b.patient_id, {
+            booking_kind: b.booking_kind,
+            start_time: b.start_time,
+          });
+        }
+      }
+    }
+
+    result = result.map((r) => ({
+      ...r,
+      has_active_booking: bookingsByPatient.has((r as Record<string, unknown>).id as string),
+      active_booking_kind: bookingsByPatient.get((r as Record<string, unknown>).id as string)?.booking_kind || null,
+      active_booking_start: bookingsByPatient.get((r as Record<string, unknown>).id as string)?.start_time || null,
+    }));
+
     return NextResponse.json({ data: result, error: null });
   } catch (e) {
     await logError('admin.api.leads', e, { stage: 'exception' });

@@ -40,7 +40,7 @@ This is a concise, high-signal overview. It complements the detailed `docs/api.m
 
 ## Admin (protected)
 - Leads & Therapists
-  - `GET /api/admin/leads` → list patients (filters: city, session preference, status)
+  - `GET /api/admin/leads` → list patients (filters: city, session preference, status). Includes booking flags (`has_active_booking`, `active_booking_kind`, `active_booking_start`) from `cal_bookings` for deprioritization.
   - `PATCH /api/admin/leads/:id` → update lead status (`new`/`rejected`)
   - `GET /api/admin/therapists` → list therapists (filters)
   - `GET /api/admin/therapists/:id` → details incl. profile preview
@@ -70,6 +70,9 @@ This is a concise, high-signal overview. It complements the detailed `docs/api.m
 ## Cal.com Integration
 - `GET /api/public/cal/slots` → high-speed slot fetching via direct DB access
 - `POST /api/public/cal/webhook` → booking ingestion (create/reschedule/cancel)
+
+## Patient Contact (post-booking)
+- `POST /api/public/patient/update-contact` → add missing email/phone after booking (requires `kh_client` session cookie). If email + `booking_uid` provided, re-sends booking confirmation to new email.
 
 ## Therapist Portal (protected by `kh_therapist` cookie)
 - `GET /api/portal/clients` → recent clients from `cal_bookings` (patient_id, name, email, last_session, session_count)

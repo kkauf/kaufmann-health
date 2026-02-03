@@ -33,6 +33,8 @@ type PersonMeta = {
   // Selection email signals (patient-driven selection, Option B)
   selection_email_sent_at?: string; // ISO timestamp of last selection email sent
   selection_email_count?: number;   // optional: how many therapists were in that email
+  // Language preference
+  language_preference?: 'deutsch' | 'englisch' | 'any';
   // Test 4: Additional fields for matching
   schwerpunkte?: string[]; // Focus areas selected by client
   additional_info?: string; // Open text (Concierge variant)
@@ -55,10 +57,15 @@ type Person = {
   photo_url?: string | null; // public profile photo (if approved)
   campaign_variant?: string | null; // Test 4: concierge | self-service | marketplace
   is_test?: boolean; // Test account flag
+  has_active_booking?: boolean;
+  active_booking_kind?: 'intro' | 'full_session' | null;
+  active_booking_start?: string | null;
   // Enhanced therapist profile data
   schwerpunkte?: string[];
   typical_rate?: number | null;
   practice_address?: string | null;
+  languages?: string[];
+  is_hidden?: boolean;
   profile_data?: {
     who_comes_to_me?: string;
     session_focus?: string;
@@ -197,6 +204,10 @@ export default function AdminLeadsPage() {
         if (typeof rca === 'string') returningAt.set(p.id, rca);
       }
       const s = new Set<string>();
+      // Deprioritize patients with active bookings (strongest signal)
+      for (const p of leadList) {
+        if (p.has_active_booking) s.add(p.id);
+      }
       const counts: Record<string, number> = {};
       const arr = Array.isArray(json?.data) ? json.data : [];
       for (const m of arr) {
@@ -208,6 +219,12 @@ export default function AdminLeadsPage() {
           const isStale = rca && typeof m?.created_at === 'string' && m.created_at < rca;
           if (active.has(st) && !isStale) s.add(pid);
           if (st === 'proposed' && !isStale) counts[pid] = (counts[pid] || 0) + 1;
+        }
+      }
+      // Also deprioritize patients who already received a selection email
+      for (const p of leadList) {
+        if (typeof (p.metadata as Record<string, unknown>)?.selection_email_sent_at === 'string') {
+          s.add(p.id);
         }
       }
       setDeprioritizedPatients(s);
@@ -534,8 +551,11 @@ export default function AdminLeadsPage() {
       });
       return { t, city, specs, mm } as const;
     });
-    // Sort: perfect first, then by fewer reasons, then accepting_new true first, then newest first
+    // Sort: hidden to bottom, then perfect first, then by fewer reasons, then accepting_new true first, then newest first
     items.sort((a, b) => {
+      const aHidden = Boolean(a.t.is_hidden);
+      const bHidden = Boolean(b.t.is_hidden);
+      if (aHidden !== bHidden) return aHidden ? 1 : -1;
       if (a.mm.isPerfect !== b.mm.isPerfect) return a.mm.isPerfect ? -1 : 1;
       if (a.mm.reasons.length !== b.mm.reasons.length) return a.mm.reasons.length - b.mm.reasons.length;
       const aAvail = Boolean(a.t.accepting_new);
@@ -672,7 +692,15 @@ export default function AdminLeadsPage() {
                           <a className="underline font-mono" href={`tel:${p.phone}`}>{p.phone}</a>
                         </CardDescription>
                       )}
-                      {isDeprioritized && (
+                      {p.has_active_booking && (
+                        <div className="mt-1">
+                          <span className="inline-flex items-center rounded border border-green-200 bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-800">
+                            {p.active_booking_kind === 'full_session' ? 'Sitzung gebucht' : 'Erstgespräch gebucht'}
+                            {p.active_booking_start && ` · ${new Date(p.active_booking_start).toLocaleDateString('de-DE')}`}
+                          </span>
+                        </div>
+                      )}
+                      {isDeprioritized && !p.has_active_booking && (
                         <div className="mt-1">
                           <span className="inline-flex items-center rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-800">
                             Kein Handlungsbedarf
@@ -785,6 +813,7 @@ export default function AdminLeadsPage() {
                       <div><span className="text-gray-500">Thema:</span> {issue}</div>
                       <div><span className="text-gray-500">Sitzung:</span> {pref}</div>
                       <div><span className="text-gray-500">Methode:</span> {specs.length ? specs.join(', ') : '—'}</div>
+                      <div><span className="text-gray-500">Sprache:</span> {meta.language_preference === 'deutsch' ? 'Deutsch' : meta.language_preference === 'englisch' ? 'Englisch' : meta.language_preference === 'any' ? 'Egal' : '—'}</div>
                       {/* Test 4: Schwerpunkte */}
                       {meta.schwerpunkte && meta.schwerpunkte.length > 0 && (
                         <div className="col-span-2">
@@ -922,74 +951,96 @@ export default function AdminLeadsPage() {
             <p className="text-xs text-gray-500 mb-2">Hinweis: Online-Präferenz – Stadtfilter derzeit deaktiviert. Zum Eingrenzen bitte eine Stadt eingeben.</p>
           )}
 
-          {/* Selection email CTA when patient already has 2–3 proposed matches */}
-          {selectedPatient && (proposedCounts[selectedPatient.id] || 0) >= 2 && (proposedCounts[selectedPatient.id] || 0) <= 3 && (
-            <div className="mb-2 flex items-center justify-between sticky top-0 z-10 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b px-2 py-1 rounded">
-              <div className="text-sm text-gray-700">Bereits vorgeschlagen: {proposedCounts[selectedPatient.id]} / 3</div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={sendSelectionEmail} disabled={!selectedPatient || sendingSelection}>
-                  {sendingSelection ? 'Wird gesendet…' : 'Auswahl-E-Mail senden'}
-                </Button>
+          {/* Unified sticky container: patient summary + action bar + concierge options */}
+          {selectedPatient && (
+            <div className="sticky top-0 z-20 bg-white border-b shadow-sm rounded mb-2 space-y-2 px-3 py-2">
+              {/* Patient summary */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-700">
+                <span className="font-semibold text-sm text-gray-900">{selectedPatient.name || selectedPatient.email || '—'}</span>
+                {selectedPatient.metadata?.city && <span>📍 {selectedPatient.metadata.city}</span>}
+                <span>🖥 {formatSession(selectedPatient.metadata)}</span>
+                {selectedPatient.metadata?.gender_preference && selectedPatient.metadata.gender_preference !== 'no_preference' && (
+                  <span>{selectedPatient.metadata.gender_preference === 'female' ? '♀ Weiblich' : '♂ Männlich'}</span>
+                )}
+                {selectedPatient.metadata?.language_preference && selectedPatient.metadata.language_preference !== 'any' && (
+                  <span>🌐 {selectedPatient.metadata.language_preference === 'deutsch' ? 'Deutsch' : 'Englisch'}</span>
+                )}
+                {selectedPatient.metadata?.schwerpunkte && selectedPatient.metadata.schwerpunkte.length > 0 && (
+                  <span className="text-indigo-700">🎯 {selectedPatient.metadata.schwerpunkte.join(', ')}</span>
+                )}
+                {selectedPatient.metadata?.issue && (
+                  <span className="text-gray-600 truncate max-w-[200px]" title={selectedPatient.metadata.issue}>💬 {selectedPatient.metadata.issue}</span>
+                )}
               </div>
-            </div>
-          )}
 
-          {/* Selection state banner */}
-          {selectedPatient?.metadata?.selection_email_sent_at && (
-            <div className="mb-2 text-xs text-violet-800 bg-violet-50 border border-violet-200 rounded px-2 py-1">
-              Auswahl-E-Mail gesendet am {formatDate(String(selectedPatient.metadata.selection_email_sent_at))} – warte auf Rückmeldung
-            </div>
-          )}
+              {/* Selection state banner */}
+              {selectedPatient.metadata?.selection_email_sent_at && (
+                <div className="text-xs text-violet-800 bg-violet-50 border border-violet-200 rounded px-2 py-1">
+                  Auswahl-E-Mail gesendet am {formatDate(String(selectedPatient.metadata.selection_email_sent_at))} – warte auf Rückmeldung
+                </div>
+              )}
 
-          {/* Batch actions */}
-          {selectedTherapists.size > 0 && (
-            <div className="mb-2 sticky top-0 z-10 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b px-2 py-2 rounded space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-700">Ausgewählt: {selectedTherapists.size} / 3</div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={sendSelectionEmail} disabled={!selectedPatient || sendingSelection || (selectedTherapists.size < 2 && (proposedCounts[selectedPatient!.id] || 0) < 2)} title="Sendet E-Mail an Klient/in – Therapeuten werden NICHT kontaktiert">
+              {/* Already proposed CTA (no therapists selected yet) */}
+              {selectedTherapists.size === 0 && (proposedCounts[selectedPatient.id] || 0) >= 2 && (proposedCounts[selectedPatient.id] || 0) <= 3 && (
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-700">Bereits vorgeschlagen: {proposedCounts[selectedPatient.id]} / 3</div>
+                  <Button size="sm" onClick={sendSelectionEmail} disabled={!selectedPatient || sendingSelection}>
                     {sendingSelection ? 'Wird gesendet…' : 'Auswahl-E-Mail senden'}
                   </Button>
-                  <Button size="sm" variant="secondary" onClick={() => setSelectedTherapists(new Set())}>Auswahl leeren</Button>
                 </div>
-              </div>
-              
-              {/* Concierge personalization options */}
-              <div className="border-t pt-3 space-y-3">
-                <div className="text-xs font-medium text-gray-600 uppercase tracking-wide">Concierge-Optionen</div>
-                
-                {/* Highlighted therapist selection */}
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="highlighted-therapist" className="text-sm whitespace-nowrap">⭐ Beste Übereinstimmung:</Label>
-                  <Select value={highlightedTherapistId || '__auto__'} onValueChange={(v) => setHighlightedTherapistId(v === '__auto__' ? null : v)}>
-                    <SelectTrigger id="highlighted-therapist" className="h-8 text-sm flex-1">
-                      <SelectValue placeholder="Automatisch (erster)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__auto__">Automatisch (erster)</SelectItem>
-                      {Array.from(selectedTherapists).map((id) => {
-                        const t = therapists.find((th) => th.id === id);
-                        const name = t ? `${t.first_name || ''} ${t.last_name || t.name || ''}`.trim() : id;
-                        return <SelectItem key={id} value={id}>{name}</SelectItem>;
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
+              )}
 
-                {/* Personalized message */}
-                <div className="space-y-1">
-                  <Label htmlFor="personalized-message" className="text-sm">💬 Persönliche Nachricht (optional):</Label>
-                  <textarea
-                    id="personalized-message"
-                    className="w-full h-20 px-3 py-2 text-sm border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="z.B. &quot;Ich habe mir deine Anfrage persönlich angeschaut und...&quot;"
-                    value={personalizedMessage}
-                    onChange={(e) => setPersonalizedMessage(e.target.value)}
-                    maxLength={2000}
-                  />
-                  <div className="text-xs text-gray-500 text-right">{personalizedMessage.length}/2000</div>
+              {/* Batch actions when therapists are selected */}
+              {selectedTherapists.size > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-700">Ausgewählt: {selectedTherapists.size} / 3</div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={sendSelectionEmail} disabled={!selectedPatient || sendingSelection || (selectedTherapists.size < 2 && (proposedCounts[selectedPatient.id] || 0) < 2)} title="Sendet E-Mail an Klient/in – Therapeuten werden NICHT kontaktiert">
+                        {sendingSelection ? 'Wird gesendet…' : 'Auswahl-E-Mail senden'}
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => setSelectedTherapists(new Set())}>Auswahl leeren</Button>
+                    </div>
+                  </div>
+
+                  {/* Concierge personalization options */}
+                  <div className="border-t pt-3 space-y-3">
+                    <div className="text-xs font-medium text-gray-600 uppercase tracking-wide">Concierge-Optionen</div>
+
+                    {/* Highlighted therapist selection */}
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="highlighted-therapist" className="text-sm whitespace-nowrap">⭐ Beste Übereinstimmung:</Label>
+                      <Select value={highlightedTherapistId || '__auto__'} onValueChange={(v) => setHighlightedTherapistId(v === '__auto__' ? null : v)}>
+                        <SelectTrigger id="highlighted-therapist" className="h-8 text-sm flex-1">
+                          <SelectValue placeholder="Automatisch (erster)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__auto__">Automatisch (erster)</SelectItem>
+                          {Array.from(selectedTherapists).map((id) => {
+                            const t = therapists.find((th) => th.id === id);
+                            const name = t ? `${t.first_name || ''} ${t.last_name || t.name || ''}`.trim() : id;
+                            return <SelectItem key={id} value={id}>{name}</SelectItem>;
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Personalized message */}
+                    <div className="space-y-1">
+                      <Label htmlFor="personalized-message" className="text-sm">💬 Persönliche Nachricht (optional):</Label>
+                      <textarea
+                        id="personalized-message"
+                        className="w-full h-20 px-3 py-2 text-sm border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="z.B. &quot;Ich habe mir deine Anfrage persönlich angeschaut und...&quot;"
+                        value={personalizedMessage}
+                        onChange={(e) => setPersonalizedMessage(e.target.value)}
+                        maxLength={2000}
+                      />
+                      <div className="text-xs text-gray-500 text-right">{personalizedMessage.length}/2000</div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -1017,7 +1068,7 @@ export default function AdminLeadsPage() {
                 created_at: t.created_at || null,
               } as const;
               return (
-                <div key={t.id} className="flex items-start gap-2 cursor-pointer select-none" onClick={() => toggleTherapistSelection(t.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTherapistSelection(t.id); } }}>
+                <div key={t.id} className={`flex items-start gap-2 cursor-pointer select-none ${t.is_hidden ? 'opacity-50' : ''}`} onClick={() => toggleTherapistSelection(t.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTherapistSelection(t.id); } }}>
                   <div className="pt-2" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
@@ -1058,6 +1109,11 @@ export default function AdminLeadsPage() {
                                 {t.typical_rate}€/Sitzung
                               </Badge>
                             )}
+                            {t.languages && t.languages.length > 0 && t.languages.map((lang: string, idx: number) => (
+                              <Badge key={idx} variant="outline" className="border-violet-200 bg-violet-50 text-violet-700 px-1.5 py-0 text-[10px]">
+                                {lang === 'deutsch' ? 'DE' : lang === 'englisch' ? 'EN' : lang}
+                              </Badge>
+                            ))}
                           </div>
                           {/* Schwerpunkte */}
                           {t.schwerpunkte && t.schwerpunkte.length > 0 && (
@@ -1071,6 +1127,9 @@ export default function AdminLeadsPage() {
                           )}
                           {/* Match quality badges and actions */}
                           <div className="flex items-center gap-2">
+                            {t.is_hidden && (
+                              <Badge variant="outline" className="border-red-300 bg-red-50 text-red-700 px-1.5 py-0">Versteckt</Badge>
+                            )}
                             {mm.isPerfect ? (
                               <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 px-1.5 py-0">Perfekt</Badge>
                             ) : (
