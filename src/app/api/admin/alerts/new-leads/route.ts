@@ -176,10 +176,28 @@ export async function GET(req: Request) {
       return !(meta && typeof meta === 'object' && (meta as { is_test?: unknown }).is_test === true);
     });
 
+    // Exclude directory/phone contacts — they don't need manual matching
+    rows = rows.filter((r) => {
+      const meta = (r.metadata || {}) as Record<string, unknown>;
+      if (meta.contact_method === 'phone') return false;
+      if (meta.source === 'directory_contact') return false;
+      return true;
+    });
+
     // Filter to only include leads that need manual matching (verified but no matches yet)
     const leadIds = rows.map(r => r.id);
     const leadsNeedingMatches = await getLeadsWithoutMatches(leadIds);
-    const actionableRows = rows.filter(r => leadsNeedingMatches.has(r.id));
+
+    // Also exclude leads with active bookings (they auto-booked, don't need matching)
+    const { data: bookingData } = await supabaseServer
+      .from('cal_bookings')
+      .select('patient_id')
+      .in('patient_id', leadIds.length > 0 ? leadIds : ['__none__'])
+      .neq('last_trigger_event', 'BOOKING_CANCELLED')
+      .not('status', 'in', '("CANCELLED","no_show","no_show_guest","no_show_host")');
+    const hasBookings = new Set((bookingData || []).map((b: { patient_id: string }) => b.patient_id));
+
+    const actionableRows = rows.filter(r => leadsNeedingMatches.has(r.id) && !hasBookings.has(r.id));
     const autoMatchedCount = rows.length - actionableRows.length;
 
     if (actionableRows.length === 0) {
