@@ -198,6 +198,7 @@ export async function POST(req: NextRequest) {
             booking_kind: kind,
             source: 'native',
             is_test: isTest,
+            last_trigger_event: 'BOOKING_CREATED',
             start_time: result.booking.startTime,
             end_time: result.booking.endTime || null,
             organizer_username: therapist.cal_username,

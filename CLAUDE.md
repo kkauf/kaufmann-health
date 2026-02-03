@@ -78,7 +78,7 @@ When building features that involve async processes (webhooks, crons, emails):
 
 1. **Verify return types** - Don't assume. `if (result)` on `{sent: false}` is truthy! Always check the actual property: `if (result.sent)`.
 
-2. **Validate schema before querying** - Run your query against production data via Supabase MCP to confirm column names exist. Schema mismatches return empty results, not errors.
+2. **Validate schema before writing** - Before any INSERT/UPSERT, check the target table for NOT NULL constraints and required columns via Supabase MCP. Missing a NOT NULL column silently fails the insert. Before any UPDATE to a table with unique constraints, handle duplicate key errors (Postgres `23505`) with user-friendly messages instead of generic 500s.
 
 3. **Think in outcomes, not processes** - A cron that runs successfully but processes 0 items is often broken, not idle. Add sanity checks:
    - Expected N bookings to get emails → verify N emails were sent
@@ -100,6 +100,7 @@ When building features that involve async processes (webhooks, crons, emails):
 - After route changes → `npm run build`
 - After component changes → verify in browser
 - After utility changes → run relevant test file
+- **After new API + UI feature** → Playwright E2E through the real flow (catches constraint violations, missing columns, cookie issues that unit tests miss)
 - Before deploy → `npm run test:critical`
 
 ## Analytics (Critical)
