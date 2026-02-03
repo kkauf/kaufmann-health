@@ -62,9 +62,9 @@ describe('Admin API unauthorized', () => {
     expect(json).toEqual({ data: null, error: 'Unauthorized' });
   });
 
-  it('GET /api/admin/stats returns 401 without admin cookie', async () => {
-    const { GET } = await import('@/app/api/admin/stats/route');
-    const res = await GET(makeGet('http://localhost/api/admin/stats'));
+  it('GET /api/admin/metabase-embed returns 401 without admin cookie', async () => {
+    const { GET } = await import('@/app/api/admin/metabase-embed/route');
+    const res = await GET(makeGet('http://localhost/api/admin/metabase-embed?dashboard=kpis'));
     expect(res.status).toBe(401);
     const json = await res.json();
     expect(json).toEqual({ data: null, error: 'Unauthorized' });

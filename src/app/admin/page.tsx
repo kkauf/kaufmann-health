@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/adminSession';
-import AdminStats from '@/features/admin/components/AdminStats';
+import { AdminDashboard } from '@/features/admin/components/AdminDashboard';
 import { AdminQuickActions } from '@/features/admin/components/AdminQuickActions';
 
 export const dynamic = 'force-dynamic';
@@ -23,12 +23,8 @@ export default async function AdminHomePage() {
 
         <AdminQuickActions />
 
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-          <AdminStats />
-        </div>
+        <AdminDashboard />
       </div>
     </main>
   );
 }
-
-
