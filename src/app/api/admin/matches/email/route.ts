@@ -535,7 +535,7 @@ export async function POST(req: Request) {
       }
     } catch {}
 
-    await sendEmail({
+    const sendResult = await sendEmail({
       to: patientEmail,
       subject: content.subject,
       html: content.html,
@@ -543,7 +543,12 @@ export async function POST(req: Request) {
       context,
     });
 
-    // Mark email sent (best-effort) so Admin UI can highlight "done for now"
+    if (!sendResult.sent) {
+      await logError('admin.api.matches.email', new Error(`Email not sent: ${sendResult.reason}`), { stage: 'send_failed', patient_id, template, reason: sendResult.reason });
+      return NextResponse.json({ data: null, error: `E-Mail konnte nicht gesendet werden: ${sendResult.reason}` }, { status: 500 });
+    }
+
+    // Mark email sent so Admin UI can highlight "done for now"
     if (template === 'selection' || template === 'apology') {
       try {
         // Helper to merge JSON metadata
