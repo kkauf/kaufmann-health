@@ -53,23 +53,15 @@ function daysAgo(d: number) {
 async function alreadySentSelectionNudge(patientId: string): Promise<boolean> {
   try {
     const sinceIso = daysAgo(60);
-    const { data, error } = await supabaseServer
+    const { count, error } = await supabaseServer
       .from('events')
-      .select('id, properties')
+      .select('id', { count: 'exact', head: true })
       .eq('type', 'email_sent')
-      .gte('created_at', sinceIso)
-      .order('created_at', { ascending: false })
-      .limit(1000);
+      .eq('properties->>kind', 'selection_nudge_d5')
+      .eq('properties->>patient_id', patientId)
+      .gte('created_at', sinceIso);
     if (error) return false;
-    const arr = (data as Array<{ properties?: Record<string, unknown> | null }> | null) || [];
-    for (const e of arr) {
-      const p = (e.properties && typeof e.properties === 'object' ? e.properties : null) as Record<string, unknown> | null;
-      if (!p) continue;
-      const kind = typeof p['kind'] === 'string' ? (p['kind'] as string) : '';
-      const pid = typeof p['patient_id'] === 'string' ? (p['patient_id'] as string) : '';
-      if (kind === 'selection_nudge_d5' && pid === patientId) return true;
-    }
-    return false;
+    return (count ?? 0) > 0;
   } catch {
     return false;
   }
@@ -79,23 +71,15 @@ async function alreadySentSelectionNudge(patientId: string): Promise<boolean> {
 async function richTherapistEmailSent(patientId: string): Promise<boolean> {
   try {
     const sinceIso = daysAgo(60);
-    const { data, error } = await supabaseServer
+    const { count, error } = await supabaseServer
       .from('events')
-      .select('id, properties')
+      .select('id', { count: 'exact', head: true })
       .eq('type', 'email_sent')
-      .gte('created_at', sinceIso)
-      .order('created_at', { ascending: false })
-      .limit(1000);
+      .eq('properties->>kind', 'rich_therapist_d1')
+      .eq('properties->>patient_id', patientId)
+      .gte('created_at', sinceIso);
     if (error) return false;
-    const arr = (data as Array<{ properties?: Record<string, unknown> | null }> | null) || [];
-    for (const e of arr) {
-      const p = (e.properties && typeof e.properties === 'object' ? e.properties : null) as Record<string, unknown> | null;
-      if (!p) continue;
-      const kind = typeof p['kind'] === 'string' ? (p['kind'] as string) : '';
-      const pid = typeof p['patient_id'] === 'string' ? (p['patient_id'] as string) : '';
-      if (kind === 'rich_therapist_d1' && pid === patientId) return true;
-    }
-    return false;
+    return (count ?? 0) > 0;
   } catch {
     return false;
   }
@@ -130,6 +114,8 @@ export async function GET(req: Request) {
       .select('id, name, email, metadata')
       .eq('type', 'patient')
       .eq('status', 'new')
+      .gte('metadata->>email_confirmed_at', fromIso)
+      .lte('metadata->>email_confirmed_at', toIso)
       .limit(limit);
 
     if (pErr) {

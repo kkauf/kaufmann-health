@@ -72,6 +72,19 @@ For specific features:
 2. **Check patterns**: look at similar features, follow established conventions
 3. **Verify state**: `supabase migration list` if touching database
 
+## Cross-Boundary Contracts
+
+When a UI component emits values (event properties, enum codes, form fields) that a backend consumer reads, they form an implicit contract. Mismatches silently degrade features without errors.
+
+**Rule: Use `src/contracts/` Zod schemas as the single source of truth.**
+
+- All API boundary values (enums, status codes, form fields) belong in `src/contracts/`. Both UI components and backend consumers import from there — never hardcode the same strings on both sides.
+- Validation helpers in `src/lib/api-utils.ts` (`parseBody`, `parseQuery`, `parseRequestBody`) enforce schemas at API boundaries. Use them for every endpoint.
+- When adding a new enum value, grep for all consumers (switch statements, maps, templates) across the codebase. An unhandled value silently falls through to a default.
+- When building a consumer that branches on values from another system (UI events, webhook payloads, external APIs), log which branch was taken. If `default/other` fires more than expected, the mapping is stale.
+
+This applies to: event type/reason codes, status enums, booking kinds, rejection reasons, campaign variants, modality slugs — anywhere a string is written in one place and read in another.
+
 ## Resilience & Avoiding Silent Failures
 
 When building features that involve async processes (webhooks, crons, emails):

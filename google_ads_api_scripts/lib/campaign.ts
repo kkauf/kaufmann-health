@@ -4,6 +4,7 @@ import { requireEnv } from './util';
 type BiddingConfig = {
   strategy?: 'MANUAL_CPC' | 'MAXIMIZE_CLICKS' | 'MAXIMIZE_CONVERSIONS';
   cpc_ceiling_eur?: number;
+  target_cpa_eur?: number;
 };
 
 const eurosToMicros = (eur: number): number => Math.round((eur || 0) * 1_000_000);
@@ -74,7 +75,8 @@ export const createCampaign = async (
     
     if (strategy === 'MAXIMIZE_CONVERSIONS') {
       biddingStrategyType = enums.BiddingStrategyType.MAXIMIZE_CONVERSIONS;
-      maximizeConversions = {}; // No target CPA for pure maximize conversions
+      const tcpaMicros = typeof bidding?.target_cpa_eur === 'number' ? eurosToMicros(bidding.target_cpa_eur) : undefined;
+      maximizeConversions = tcpaMicros ? { target_cpa_micros: tcpaMicros } : {};
     } else if (strategy === 'MAXIMIZE_CLICKS') {
       biddingStrategyType = enums.BiddingStrategyType.TARGET_SPEND;
       targetSpend = cpcCeilMicros ? { cpc_bid_ceiling_micros: cpcCeilMicros } : {};
@@ -152,6 +154,78 @@ export const ensureBudgetAmount = async (customer: any, budgetRn: string, amount
   ], { partial_failure: true });
   console.log(`  ✓ Budget updated to €${(amountMicros/1_000_000).toFixed(2)}/day`);
 };
+
+export async function ensureCampaignBidding(customer: any, campaignRn: string, bidding: BiddingConfig | undefined, dryRun: boolean) {
+  if (!bidding?.strategy) return;
+
+  // Query current bidding settings
+  const rows: any[] = await customer.query(`
+    SELECT campaign.bidding_strategy_type, campaign.maximize_conversions.target_cpa_micros, campaign.target_spend.cpc_bid_ceiling_micros
+    FROM campaign
+    WHERE campaign.resource_name = '${campaignRn}'
+    LIMIT 1
+  `);
+  const c = (rows?.[0] as any)?.campaign || {};
+  const currentType = c.bidding_strategy_type;
+  const currentTcpaMicros = c.maximize_conversions?.target_cpa_micros ?? 0;
+  const currentCpcCeilMicros = c.target_spend?.cpc_bid_ceiling_micros ?? 0;
+
+  const desiredStrategy = bidding.strategy;
+  const desiredTcpaMicros = typeof bidding.target_cpa_eur === 'number' ? eurosToMicros(bidding.target_cpa_eur) : 0;
+  const desiredCpcCeilMicros = typeof bidding.cpc_ceiling_eur === 'number' ? eurosToMicros(bidding.cpc_ceiling_eur) : 0;
+
+  // Map strategy names to Google Ads enum values
+  const strategyMap: Record<string, number> = {
+    'MAXIMIZE_CONVERSIONS': enums.BiddingStrategyType.MAXIMIZE_CONVERSIONS,
+    'MAXIMIZE_CLICKS': enums.BiddingStrategyType.TARGET_SPEND,
+    'MANUAL_CPC': enums.BiddingStrategyType.MANUAL_CPC,
+  };
+  const desiredType = strategyMap[desiredStrategy];
+
+  // Check if anything needs changing
+  const strategyMatch = currentType === desiredType;
+  const tcpaMatch = desiredStrategy !== 'MAXIMIZE_CONVERSIONS' || currentTcpaMicros === desiredTcpaMicros;
+  const cpcMatch = desiredStrategy !== 'MAXIMIZE_CLICKS' || currentCpcCeilMicros === desiredCpcCeilMicros;
+
+  if (strategyMatch && tcpaMatch && cpcMatch) {
+    const label = desiredStrategy === 'MAXIMIZE_CONVERSIONS' && desiredTcpaMicros
+      ? `MAXIMIZE_CONVERSIONS (tCPA €${bidding.target_cpa_eur})`
+      : desiredStrategy === 'MAXIMIZE_CLICKS' && desiredCpcCeilMicros
+        ? `MAXIMIZE_CLICKS (ceiling €${bidding.cpc_ceiling_eur})`
+        : desiredStrategy;
+    console.log(`  • Bidding unchanged: ${label}`);
+    return;
+  }
+
+  // Build update payload
+  const update: any = { resource_name: campaignRn };
+  if (desiredStrategy === 'MAXIMIZE_CONVERSIONS') {
+    update.maximize_conversions = desiredTcpaMicros ? { target_cpa_micros: desiredTcpaMicros } : {};
+  } else if (desiredStrategy === 'MAXIMIZE_CLICKS') {
+    update.target_spend = desiredCpcCeilMicros ? { cpc_bid_ceiling_micros: desiredCpcCeilMicros } : {};
+  } else {
+    update.manual_cpc = {};
+  }
+
+  const label = desiredStrategy === 'MAXIMIZE_CONVERSIONS' && desiredTcpaMicros
+    ? `MAXIMIZE_CONVERSIONS (tCPA €${bidding.target_cpa_eur})`
+    : desiredStrategy === 'MAXIMIZE_CLICKS' && desiredCpcCeilMicros
+      ? `MAXIMIZE_CLICKS (ceiling €${bidding.cpc_ceiling_eur})`
+      : desiredStrategy;
+
+  if (dryRun) {
+    console.log(`  [DRY] Would update bidding to ${label}`);
+    return;
+  }
+
+  try {
+    await customer.campaigns.update([update], { partial_failure: true });
+    console.log(`  ✓ Bidding updated to ${label}`);
+  } catch (e: any) {
+    console.error(`  ✗ Bidding update failed`);
+    console.error('    Details:', e?.errors || String(e));
+  }
+}
 
 export const getCampaignBudgetRn = async (customer: any, campaignRn: string): Promise<string | undefined> => {
   const rows: any[] = await customer.query(`

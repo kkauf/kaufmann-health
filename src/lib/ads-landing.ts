@@ -35,6 +35,8 @@ const keywordToTitle: Record<string, string> = {
   'körperpsychotherapie berlin': 'Finde deine Körperpsychotherapie in Berlin',
   'somatische therapie berlin': 'Starte deine somatische Therapie in Berlin',
   'körperorientierte therapie berlin': 'Körperorientierte Therapie in Berlin – ohne Warteliste',
+  'traumatherapie in der nähe': 'Körperorientierte Traumatherapie in deiner Nähe',
+  'traumatherapie körper berlin': 'Körperorientierte Traumatherapie in Berlin',
   
   // Symptoms keywords → Keep strong performers, polish others
   'trauma körper': 'Trauma im Körper lösen', // Already a strong headline, keep as-is
@@ -57,6 +59,7 @@ const keywordToTitle: Record<string, string> = {
   'narm therapie online': 'Online NARM Therapie — deutschlandweit',
   'narm online': 'Online NARM Therapie — deutschlandweit',
   'narm therapie': 'NARM Therapie — ohne Warteliste',
+  'narm therapie deutschland': 'NARM Therapie — deutschlandweit verfügbar',
   'entwicklungstrauma therapie online': 'Online Entwicklungstrauma-Therapie — deutschlandweit',
   'hakomi therapie online': 'Online Hakomi Therapie — deutschlandweit',
   'hakomi therapie': 'Hakomi Therapie — ohne Warteliste',

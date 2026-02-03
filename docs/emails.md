@@ -236,6 +236,7 @@ Key templates:
   - **A (never_visited)**: Never visited match page. Mini therapist card + slot scarcity.
   - **B (visited_no_action)**: Visited but took no action. Social proof + reassurance.
   - **C (rejected)**: Actively rejected a therapist. 7 sub-variants addressing specific objections (not_right_fit, method_wrong, too_expensive, wants_insurance, no_availability, location_wrong, other).
+  - UI rejection reasons are normalized to template sub-variants via `normalizeRejectionReason()` in `feedbackBehavioral.ts`. See `docs/private/email-cadence.md` for the full mapping.
   - Classification: `src/lib/email/patientBehavior.ts` batch-classifies via events table.
   - Falls back to `visited_no_action` if no matches or classification fails.
 
