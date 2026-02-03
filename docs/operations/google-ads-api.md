@@ -49,26 +49,30 @@ npm run ads:test-access
 
 Verifies credentials and write permissions (creates and immediately deletes a temporary budget). See `google_ads_api_scripts/test-access.ts`.
 
-### Create Campaigns (Week 38 template)
+### Create / Update Campaigns
 
 ```bash
-# Validate-only (no writes)
-npm run ads:create:dry
+# Dry-run (no writes, shows what would change)
+npm run ads:create:dry -- --config=google_ads_api_scripts/private/<config>.json
 
-# Apply changes (creates resources)
-npm run ads:create
+# Apply changes
+CONFIRM_APPLY=true npm run ads:create -- --config=google_ads_api_scripts/private/<config>.json
+
+# Filter to specific campaigns
+npm run ads:create:dry -- --config=...json --nameLike="TherapieFinden"
 ```
 
 Details
-- Reads campaign definitions from `google_ads_api_scripts/campaign-config.ts` (Week 38 template).
-- Idempotent by campaign name (reuses budget if present, updates dates/network on existing campaign).
-- Applies safe defaults: PAUSED status, Germany location, German language, Search only (no partner/content), sitelinks (Preise, FAQ).
-- Creates ad groups per keyword tier and two RSA variants (A/B). Landing pages receive `?v=A` or `?v=B`.
+- Reads campaign definitions from JSON config files in `google_ads_api_scripts/private/`.
+- **Idempotent**: reuses existing budgets/campaigns by name, updates budget amounts and bidding strategy if config differs.
+- For new campaigns: creates with PAUSED status, Search only (no partner/content).
+- Creates ad groups per keyword tier with RSAs.
 - Optional: set `ADS_SELECTIVE_OPTIMIZATION_NAME` to link a conversion action for selective optimization.
 
 Environment
-- `ads:create:dry` sets `DRY_RUN=true`, which enables validate-only mode. No writes are performed.
-- For `ads:create`, ensure all required env vars are present. The script runs a preflight (billing, language constant) before mutations.
+- `ads:create:dry` sets `DRY_RUN=true`. No writes are performed.
+- `CONFIRM_APPLY=true` is required to actually write changes.
+- The script runs a preflight (billing, language constant) before mutations.
 
 ### Monitor Performance (Auto-Pause)
 
@@ -102,34 +106,67 @@ Safety
 
 ## Campaign Configuration
 
-Edit `google_ads_api_scripts/campaign-config.ts` to change:
+Campaign configs live in `google_ads_api_scripts/private/` as JSON files using a `{ base, variants }` structure. The base defines shared defaults; each variant is a campaign that inherits from base and can override any field.
 
-- Names: `CONSCIOUS WELLNESS SEEKERS - Week 38`, `DEPTH SEEKERS - Week 38`
-- Budgets: €200/day (wellness), €100/day (depth)
-- Schedules: Week 38 dates
-- Keyword tiers and negatives
-- Headlines/descriptions used for A/B RSA variants
+Active configs:
+- `acquisition-winners-self-service.config.json` — TherapieFinden Berlin, Start, NARM Berlin, NARM Online
+- `test5-online-restructured.config.json` — Online TherapieFinden (Germany-wide)
 
-Example (excerpt):
+### Config structure
 
-```ts
-export const WEEK38_CONFIG = {
-  wellness: {
-    name: 'CONSCIOUS WELLNESS SEEKERS - Week 38',
-    budget_euros: 200,
-    landing_page: 'https://www.kaufmann-health.de/ankommen-in-dir',
-    schedule: { start: '2025-09-18', end: '2025-09-22' },
-    // ...
+```json
+{
+  "base": {
+    "budget_euros": 10,
+    "landing_page": "https://...",
+    "schedule": { "start": "2026-01-17", "end": "2026-12-31" },
+    "languages": ["de"],
+    "geo": { "mode": "berlin_proximity", "radius_km": 50 },
+    "bidding": { "strategy": "MAXIMIZE_CONVERSIONS", "target_cpa_eur": 10.0 },
+    "negativeKeywords": ["krankenkasse", "..."],
+    "assets": { "sitelinks": [...], "structured_snippets": [...] },
+    "ads": { "rsas_per_adgroup": 1, "path1": "psychotherapie" }
   },
-  depth: {
-    name: 'DEPTH SEEKERS - Week 38',
-    budget_euros: 100,
-    landing_page: 'https://www.kaufmann-health.de/wieder-lebendig',
-    schedule: { start: '2025-09-20', end: '2025-09-21' },
-    // ...
-  }
+  "variants": [
+    {
+      "name": "KH_Campaign_Name",
+      "budget_euros": 25.0,
+      "bidding": { "strategy": "MAXIMIZE_CONVERSIONS", "target_cpa_eur": 15.0 },
+      "keywords": { "tier_name": { "maxCpc": 3.0, "terms": [...], "headlines": [...] } },
+      "ads": { "path2": "finden" }
+    }
+  ]
 }
 ```
+
+### Merge behavior
+
+| Field | Merge | Notes |
+|-------|-------|-------|
+| `bidding` | Replace | Variant fully replaces base bidding (must include strategy + CPA) |
+| `ads` | Spread | Variant overrides individual fields, base fills the rest |
+| `keywords`, `geo`, `languages` | Replace | Variant replaces base entirely |
+| `assets` | Replace | Variant replaces base entirely |
+| `budget_euros`, `name` | Replace | Per-variant |
+
+### Bidding strategies
+
+```json
+// Maximize conversions with target CPA (recommended)
+{ "strategy": "MAXIMIZE_CONVERSIONS", "target_cpa_eur": 10.0 }
+
+// Maximize clicks with CPC ceiling
+{ "strategy": "MAXIMIZE_CLICKS", "cpc_ceiling_eur": 3.0 }
+
+// Manual CPC
+{ "strategy": "MANUAL_CPC" }
+```
+
+The script ensures bidding matches config on every run — if the live campaign has different bidding, it updates to match. This makes the config the source of truth for bidding strategy and target CPA.
+
+### Keyword echo (Quality Score)
+
+Keywords landing on `/therapie-finden` or `/lp/narm` get their H1 echoed from the search term via `src/lib/ads-landing.ts`. This improves Quality Score by matching the landing page headline to the ad keyword. New keywords should be added to the `keywordToTitle` map in that file.
 
 ## Sitelinks
 
@@ -185,8 +222,7 @@ npx tsx google_ads_api_scripts/list-sitelinks.ts --nameLike="KH_Acq"
 
 ## Future Enhancements
 
-- Automated bid adjustments based on CPA/volume
+- Dedicated `/lp/traumatherapie` landing page for trauma keywords (PostClick QS fix)
 - Keyword harvesting (auto-add converting search terms)
 - Dayparting rules (pause during low-performing hours)
 - Slack notifications for scale signals
-- Reusable multi-week campaign templates

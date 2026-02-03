@@ -72,6 +72,11 @@ For specific features:
 2. **Check patterns**: look at similar features, follow established conventions
 3. **Verify state**: `supabase migration list` if touching database
 
+## After Writing Code
+
+1. **Update documentation**: If you changed behavior, configs, or APIs — update the relevant docs. Check `docs/`, `docs/private/`, `docs/operations/`, and any `*.local.md` files near what you touched. Stale docs are worse than no docs.
+2. **Sensitive docs go in `/private`**: Business-internal documentation (ads configs, conversion strategy, pricing, internal metrics) MUST go in gitignored `/private` folders (e.g., `docs/private/`, `google_ads_api_scripts/private/`). Never put business-sensitive information in public-facing docs.
+
 ## Cross-Boundary Contracts
 
 When a UI component emits values (event properties, enum codes, form fields) that a backend consumer reads, they form an implicit contract. Mismatches silently degrade features without errors.
