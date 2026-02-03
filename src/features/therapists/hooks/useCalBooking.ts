@@ -465,7 +465,7 @@ export function useCalBooking({
           kind: bookingKind,
           slot_utc: selectedSlot.time_utc,
           name: bookingName,
-          email: bookingEmail || `${Date.now()}@placeholder.kh`, // Fallback for phone-only
+          email: bookingEmail || `${session?.patient_id || Date.now()}@placeholder.kh`, // Phone-only fallback — real email collected on success screen
           location_type: locationType,
           metadata: {
             kh_patient_id: session?.patient_id,

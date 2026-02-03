@@ -48,10 +48,7 @@ export default function AdminNav() {
           <Link href="/admin/leads" className={linkCls('/admin/leads')} aria-current={isActive('/admin/leads') ? 'page' : undefined}>
             Leads
           </Link>
-          <Link href="/admin/matches" className={linkCls('/admin/matches')} aria-current={isActive('/admin/matches') ? 'page' : undefined}>
-            Matches
-          </Link>
-          <Link href="/admin/therapists" className={linkCls('/admin/therapists')} aria-current={isActive('/admin/therapists') ? 'page' : undefined}>
+<Link href="/admin/therapists" className={linkCls('/admin/therapists')} aria-current={isActive('/admin/therapists') ? 'page' : undefined}>
             <span className="inline-flex items-center gap-2">
               Therapeuten
               {typeof pendingCount === 'number' && pendingCount > 0 ? (

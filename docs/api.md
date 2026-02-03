@@ -439,8 +439,13 @@ __Note__: Native bookings are now secondary to Cal.com for most therapists. Cal.
   - `session_preference` (optional: `online` | `in_person`)
   - `status` (optional, default `new`)
   - `limit` (optional, default 50, max 200)
+- __Booking-aware deprioritization__: After fetching leads, queries `cal_bookings` for active (non-cancelled, non-no-show) bookings and appends per-lead flags:
+  - `has_active_booking` (boolean) — true if at least one active booking exists
+  - `active_booking_kind` (`'intro' | 'full_session' | null`) — kind of the most recent active booking
+  - `active_booking_start` (`string | null`) — ISO timestamp of the most recent booking's start time
+  - Excluded: `BOOKING_CANCELLED` trigger events, statuses `CANCELLED`, `no_show`, `no_show_guest`, `no_show_host`
 - __Response__:
-  - 200: `{ data: Array<Pick<people, 'id'|'name'|'email'|'phone'|'type'|'status'|'metadata'|'created_at'>>, error: null }`
+  - 200: `{ data: Array<Pick<people, 'id'|'name'|'email'|'phone'|'type'|'status'|'metadata'|'created_at'> & { has_active_booking, active_booking_kind, active_booking_start }>, error: null }`
   - 401: `{ data: null, error: 'Unauthorized' }`
   - 500: `{ data: null, error: 'Failed to fetch leads' }`
 
