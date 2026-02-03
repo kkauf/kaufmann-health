@@ -84,8 +84,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     // Extract additional profile text fields for completeness check
     const whoComesToMe = typeof profile.who_comes_to_me === 'string' ? (profile.who_comes_to_me as string) : undefined;
-    const sessionValues = typeof profile.session_values === 'string' ? (profile.session_values as string) : undefined;
-    const firstSessionExpectations = typeof profile.first_session_expectations === 'string' ? (profile.first_session_expectations as string) : undefined;
+    const sessionValues = typeof profile.session_focus === 'string' ? (profile.session_focus as string) : undefined;
+    const firstSessionExpectations = typeof profile.first_session === 'string' ? (profile.first_session as string) : undefined;
     const aboutMe = typeof profile.about_me === 'string' ? (profile.about_me as string) : undefined;
     const billingAddress = typeof profile.billing_address === 'string' ? (profile.billing_address as string) : undefined;
 
