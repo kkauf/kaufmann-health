@@ -204,7 +204,7 @@ function interviewDescription(segment: PatientBehaviorSegment): string {
 
 function isPrimaryInterviewRejection(reasons: { reason: string }[]): boolean {
   const primaryReasons = new Set(['method_wrong', 'too_expensive', 'wants_insurance']);
-  return reasons.some(r => primaryReasons.has(r.reason));
+  return reasons.some(r => primaryReasons.has(normalizeRejectionReason(r.reason)));
 }
 
 // ============================================================================
@@ -377,7 +377,7 @@ function renderNeverVisited(params: BehavioralFeedbackParams): { contentHtml: st
   const contentHtml = `
     <div style="margin:0 0 20px;">
       ${name ? `<p style="margin:0 0 12px; font-size:16px; line-height:1.65; color:#475569 !important;">Hallo ${escapeHtml(name)},</p>` : ''}
-      <p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;">wir haben ${therapistFirstName ? `<strong style="color:#0f172a !important;">${escapeHtml(therapistDisplay)}</strong>` : 'eine Therapeutin'} pers\u00F6nlich f\u00FCr dich ausgew\u00E4hlt. Schau dir ${therapistFirstName ? (therapistFirstName.endsWith('a') || therapistFirstName.endsWith('e') ? 'ihr' : 'sein') : 'das'} Profil an \u2014 der erste Termin ist kostenlos und unverbindlich.</p>
+      <p style="margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;">wir haben ${therapistFirstName ? `<strong style="color:#0f172a !important;">${escapeHtml(therapistDisplay)}</strong>` : 'eine Therapeutin'} pers\u00F6nlich f\u00FCr dich ausgew\u00E4hlt. Schau dir ${therapist?.gender === 'female' ? 'ihr' : therapist?.gender === 'male' ? 'sein' : 'das'} Profil an \u2014 der erste Termin ist kostenlos und unverbindlich.</p>
     </div>
 
     ${slotHtml}
@@ -474,12 +474,27 @@ type RejectionCopy = {
   feedbackReason: string;
 };
 
+// Map UI rejection reason codes to template sub-variant keys.
+// The rejection modal (MatchRejectionModal.tsx) uses different codes
+// than this template — keep in sync when adding new rejection reasons.
+function normalizeRejectionReason(reason: string): string {
+  switch (reason) {
+    case 'profile_not_convincing': return 'not_right_fit';
+    case 'vibe_method': return 'method_wrong';
+    case 'availability_issue': return 'no_availability';
+    case 'location_mismatch': return 'location_wrong';
+    case 'price_insurance': return 'wants_insurance';
+    case 'gender_mismatch': return 'not_right_fit';
+    default: return reason;
+  }
+}
+
 function getRejectionCopy(
   reasons: { reason: string; therapist_id: string; details?: string }[],
   name: string,
   matchesUrl: string,
 ): RejectionCopy {
-  const primaryReason = reasons[0]?.reason || 'other';
+  const primaryReason = normalizeRejectionReason(reasons[0]?.reason || 'other');
   const profileUrl = `${matchesUrl}?utm_source=email&utm_medium=transactional&utm_campaign=feedback_behavioral_d10`;
 
   const greeting = name ? `<p style="margin:0 0 12px; font-size:16px; line-height:1.65; color:#475569 !important;">Hallo ${escapeHtml(name)},</p>` : '';

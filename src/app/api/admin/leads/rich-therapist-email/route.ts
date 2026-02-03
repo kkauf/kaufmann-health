@@ -53,23 +53,15 @@ function hoursAgo(h: number) {
 async function alreadySentRichEmail(patientId: string): Promise<boolean> {
   try {
     const sinceIso = hoursAgo(24 * 30); // lookback 30 days
-    const { data, error } = await supabaseServer
+    const { count, error } = await supabaseServer
       .from('events')
-      .select('id, properties')
+      .select('id', { count: 'exact', head: true })
       .eq('type', 'email_sent')
-      .gte('created_at', sinceIso)
-      .order('created_at', { ascending: false })
-      .limit(1000);
+      .eq('properties->>kind', 'rich_therapist_d1')
+      .eq('properties->>patient_id', patientId)
+      .gte('created_at', sinceIso);
     if (error) return false;
-    const arr = (data as Array<{ properties?: Record<string, unknown> | null }> | null) || [];
-    for (const e of arr) {
-      const p = (e.properties && typeof e.properties === 'object' ? e.properties : null) as Record<string, unknown> | null;
-      if (!p) continue;
-      const kind = typeof p['kind'] === 'string' ? (p['kind'] as string) : '';
-      const pid = typeof p['patient_id'] === 'string' ? (p['patient_id'] as string) : '';
-      if (kind === 'rich_therapist_d1' && pid === patientId) return true;
-    }
-    return false;
+    return (count ?? 0) > 0;
   } catch {
     return false;
   }
@@ -122,6 +114,8 @@ export async function GET(req: Request) {
       .select('id, name, email, metadata')
       .eq('type', 'patient')
       .eq('status', 'new')
+      .gte('metadata->>email_confirmed_at', fromIso)
+      .lte('metadata->>email_confirmed_at', toIso)
       .limit(limit);
 
     if (pErr) {
@@ -205,6 +199,26 @@ export async function GET(req: Request) {
         continue;
       }
 
+      // Skip if patient already booked via Cal.com
+      const therapistIds = [...new Set(matches.map((m) => m.therapist_id).filter(Boolean))];
+      let hasCalBooking = false;
+      try {
+        const { data: calBookings } = await supabaseServer
+          .from('cal_bookings')
+          .select('id')
+          .eq('patient_id', patient.id)
+          .in('therapist_id', therapistIds)
+          .neq('status', 'CANCELLED')
+          .limit(1);
+        hasCalBooking = Array.isArray(calBookings) && calBookings.length > 0;
+      } catch {
+        // Table may not exist in test environment
+      }
+      if (hasCalBooking) {
+        skippedHasSelection++;
+        continue;
+      }
+
       // Get secure_uuid for matches page
       const secureUuid = matches.find((m) => m.secure_uuid)?.secure_uuid;
       if (!secureUuid) {
@@ -212,8 +226,7 @@ export async function GET(req: Request) {
         continue;
       }
 
-      // Get therapist IDs from matches
-      const therapistIds = [...new Set(matches.map((m) => m.therapist_id).filter(Boolean))];
+      // Check therapist IDs from matches
       if (therapistIds.length === 0) {
         skippedNoMatches++;
         continue;

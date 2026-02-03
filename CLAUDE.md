@@ -72,6 +72,18 @@ For specific features:
 2. **Check patterns**: look at similar features, follow established conventions
 3. **Verify state**: `supabase migration list` if touching database
 
+## Cross-Boundary Contracts
+
+When a UI component emits values (event properties, enum codes, form fields) that a backend consumer reads, they form an implicit contract. Mismatches between producer and consumer silently degrade features without errors.
+
+**Rule: Define shared constants, don't duplicate strings.**
+
+- If a UI emits reason codes (e.g., rejection reasons, feedback types) and a backend template/cron switches on those codes, the valid values must come from a single shared source — not be independently hardcoded on both sides.
+- When adding a new enum value on the producer side, grep for all consumers of that value across the codebase. If a switch statement or map doesn't handle the new value, it will silently fall through to a default.
+- When building a consumer that branches on values from another system (UI events, webhook payloads, external APIs), always log or track which branch was taken. If `default/other` fires more than expected, the mapping is stale.
+
+This applies to: event type/reason codes, status enums, booking kinds, campaign variants, modality slugs — anywhere a string is written in one place and read in another.
+
 ## Resilience & Avoiding Silent Failures
 
 When building features that involve async processes (webhooks, crons, emails):
