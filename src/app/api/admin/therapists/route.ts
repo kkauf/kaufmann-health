@@ -60,7 +60,7 @@ export async function GET(req: Request) {
 
     let query = supabaseServer
       .from('therapists')
-      .select('id, first_name, last_name, email, phone, gender, city, session_preferences, modalities, schwerpunkte, typical_rate, accepting_new, status, created_at, metadata, photo_url')
+      .select('id, first_name, last_name, email, phone, gender, city, session_preferences, modalities, schwerpunkte, typical_rate, accepting_new, status, created_at, metadata, photo_url, languages')
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -117,6 +117,7 @@ export async function GET(req: Request) {
       created_at?: string | null;
       metadata?: unknown;
       photo_url?: string | null;
+      languages?: unknown;
     };
     let rows = (data || []) as Row[];
 
@@ -229,6 +230,7 @@ export async function GET(req: Request) {
         requires_action,
         is_test,
         is_hidden,
+        languages: Array.isArray(r.languages) ? r.languages : [],
         // Cal.com slot counts from cache
         cal_slots: slotCountByTid.get(r.id) || { intro: 0, full: 0 },
       };

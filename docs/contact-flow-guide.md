@@ -121,6 +121,25 @@ Track in Supabase events:
 - **Pre-fetching**: Slots are loaded in the background as soon as the modal is opened.
 
 
+### Post-Booking Contact Collection
+
+After booking confirmation, the success screen collects missing contact info:
+
+- **Phone-only users** → asked for email (required, amber prompt). Triggers booking confirmation re-send to new email.
+- **Email users** → asked for phone number (optional, gray prompt with "Nein danke" skip). For SMS reminders.
+
+**API**: `POST /api/public/patient/update-contact` (requires `kh_client` session cookie)
+
+```json
+// Phone-only user adding email
+{ "email": "patient@example.com", "booking_uid": "cal-booking-uid" }
+
+// Email user adding phone
+{ "phone_number": "+4917612345678" }
+```
+
+Response: `{ data: { updated: true, confirmation_sent: true|false }, error: null }`
+
 ### Testing
 ```bash
 npm run test:critical
@@ -132,3 +151,4 @@ Tests cover:
 - Validation
 - 404 handling
 - JWT token lifecycle
+- Post-booking contact collection (API + UI)
