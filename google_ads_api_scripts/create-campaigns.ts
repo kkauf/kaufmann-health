@@ -45,6 +45,7 @@ import {
   addCampaignLanguages,
   addCampaignLocationIds,
   addCampaignProximity,
+  ensureCampaignBidding,
 } from './lib/campaign';
 
 // Load env from .env.local (project root) first, then fallback to .env
@@ -399,6 +400,8 @@ async function main() {
       if (attachedBudgetRn) {
         await ensureBudgetAmount(customer, attachedBudgetRn, amountMicros, dryRun || validateOnly);
       }
+      // Ensure bidding strategy matches config
+      await ensureCampaignBidding(customer, campaignRn, c.bidding, dryRun || validateOnly);
     } else {
       campaignRn = await createCampaign(
         customer,
