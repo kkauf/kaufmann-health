@@ -160,7 +160,7 @@ export type CampaignConfig = {
   languages?: string[]; // e.g., ['de']
   geo?: { mode: 'germany' | 'berlin_proximity' | 'country'; radius_km?: number; country?: string };
   replacements?: Record<string, string>;
-  bidding?: { strategy?: 'MANUAL_CPC' | 'MAXIMIZE_CLICKS' | 'MAXIMIZE_CONVERSIONS'; cpc_ceiling_eur?: number };
+  bidding?: { strategy?: 'MANUAL_CPC' | 'MAXIMIZE_CLICKS' | 'MAXIMIZE_CONVERSIONS'; cpc_ceiling_eur?: number; target_cpa_eur?: number };
   ads?: {
     final_url_params?: Record<string, string>;
     pinning_rules?: { price_regex?: string; privacy_phrase?: string };
