@@ -4,6 +4,7 @@ import { sendEmail } from '@/lib/email/client';
 import { logError, track } from '@/lib/logger';
 import { isCronAuthorized as isCronAuthorizedShared, sameOrigin as sameOriginShared } from '@/lib/cron-auth';
 import { getLeadsNotifyEmail } from '@/lib/email/notification-recipients';
+import { getPatientIdsWithNonStaleMatches } from '@/lib/matches/queries';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,21 +61,19 @@ type PersonRow = {
   updated_at?: string | null;
 };
 
-// Check if a lead needs manual matching based on match count
-// A lead needs action if they're verified (status=new) but have zero matches
-async function getLeadsWithoutMatches(leadIds: string[]): Promise<Set<string>> {
+// Returns the set of patient IDs that need manual matching (no non-stale matches).
+// Uses shared utility that respects returning_concierge_at for stale match filtering.
+async function getLeadsWithoutMatches(rows: PersonRow[]): Promise<Set<string>> {
+  const leadIds = rows.map(r => r.id);
   if (leadIds.length === 0) return new Set();
-  
-  // Get all patient IDs that have at least one match
-  const { data } = await supabaseServer
-    .from('matches')
-    .select('patient_id')
-    .in('patient_id', leadIds);
-  
-  const hasMatches = new Set((data || []).map(m => m.patient_id));
-  
-  // Return IDs that have NO matches
-  return new Set(leadIds.filter(id => !hasMatches.has(id)));
+
+  const metadataByPatientId = new Map(
+    rows.map(r => [r.id, (r.metadata || {}) as Record<string, unknown>])
+  );
+  const hasNonStaleMatches = await getPatientIdsWithNonStaleMatches(leadIds, metadataByPatientId);
+
+  // Return IDs that have NO non-stale matches
+  return new Set(leadIds.filter(id => !hasNonStaleMatches.has(id)));
 }
 
 function get(obj: unknown, path: string): unknown {
@@ -184,9 +183,9 @@ export async function GET(req: Request) {
       return true;
     });
 
-    // Filter to only include leads that need manual matching (verified but no matches yet)
+    // Filter to only include leads that need manual matching (verified but no non-stale matches)
     const leadIds = rows.map(r => r.id);
-    const leadsNeedingMatches = await getLeadsWithoutMatches(leadIds);
+    const leadsNeedingMatches = await getLeadsWithoutMatches(rows);
 
     // Also exclude leads with active bookings (they auto-booked, don't need matching)
     const { data: bookingData } = await supabaseServer

@@ -197,6 +197,7 @@ export default function AdminLeadsPage() {
       if (!res.ok) throw new Error(json?.error || 'Fehler beim Laden der Matches');
       const active = new Set(['accepted', 'therapist_contacted', 'therapist_responded', 'session_booked', 'completed']);
       const leadIds = new Set(leadList.map((p) => p.id));
+      // Stale match filtering — server-side source of truth: src/lib/matches/queries.ts
       // Build a map of returning_concierge_at per patient to filter stale matches
       const returningAt = new Map<string, string>();
       for (const p of leadList) {

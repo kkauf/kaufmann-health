@@ -22,6 +22,7 @@ import { logError, track } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { isCronAuthorized } from '@/lib/cron-auth';
 import { getLeadsNotifyEmail } from '@/lib/email/notification-recipients';
+import { getPatientIdsWithNonStaleMatches } from '@/lib/matches/queries';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -80,14 +81,12 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, unmatched: 0, alert_sent: false });
     }
 
-    // Check which leads have matches
+    // Check which leads have non-stale matches (respects returning_concierge_at)
     const leadIds = nonTestRows.map(r => r.id);
-    const { data: matchData } = await supabaseServer
-      .from('matches')
-      .select('patient_id')
-      .in('patient_id', leadIds);
-
-    const hasMatches = new Set((matchData || []).map(m => m.patient_id));
+    const metadataByPatientId = new Map(
+      nonTestRows.map(r => [r.id, r.metadata || {}])
+    );
+    const hasMatches = await getPatientIdsWithNonStaleMatches(leadIds, metadataByPatientId);
 
     // Check which leads have direct bookings (directory flow — don't need manual matching)
     const { data: bookingData } = await supabaseServer
