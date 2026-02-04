@@ -6,7 +6,7 @@
  */
 
 import { supabaseServer } from '@/lib/supabase-server';
-import { fetchCalSlotsFromDb, isCalDbEnabled } from './slots-db';
+import { fetchCalSlotsFromDb, isCalDbEnabled, getEventType } from './slots-db';
 import { fetchCalSlotsFromTrpc } from './slots-trpc';
 
 export interface CachedCalSlot {
@@ -101,17 +101,52 @@ export async function warmCacheForTherapist(
         full_slots_count: 0,
         intro_slots: [],
         full_slots: [],
+        intro_event_type_id: null,
+        full_event_type_id: null,
         cached_at: new Date().toISOString(),
         last_error: 'Failed to fetch slots from Cal DB',
       });
       return { success: false, error: 'Failed to fetch slots' };
     }
 
+    // Resolve eventTypeIds via Cal DB — validates that cal_username is correct
+    const [introEventType, fullEventType] = await Promise.all([
+      getEventType(calUsername, 'intro').catch(() => null),
+      getEventType(calUsername, 'full-session').catch(() => null),
+    ]);
+
+    // Username mismatch detection: slots fetched via tRPC (uses API key, no username lookup)
+    // but eventTypeId resolution failed (uses Cal DB username lookup).
+    // This means the cal_username doesn't match any Cal.com user — surface early.
+    const hasSlots = (introSlots && introSlots.length > 0) || (fullSlots && fullSlots.length > 0);
+    if (hasSlots && !introEventType && !fullEventType) {
+      const errMsg = `cal_username_mismatch: ${calUsername} — slots exist via tRPC but no Cal DB user found`;
+      console.error(`[cal/slots-cache] ${errMsg}`);
+      await supabaseServer.from('cal_slots_cache').upsert({
+        therapist_id: therapistId,
+        next_intro_date_iso: null,
+        next_intro_time_label: null,
+        next_intro_time_utc: null,
+        slots_count: 0,
+        next_full_date_iso: null,
+        next_full_time_label: null,
+        next_full_time_utc: null,
+        full_slots_count: 0,
+        intro_slots: [],
+        full_slots: [],
+        intro_event_type_id: null,
+        full_event_type_id: null,
+        cached_at: new Date().toISOString(),
+        last_error: errMsg,
+      });
+      return { success: false, error: errMsg };
+    }
+
     // Find first available slot for each type
     const firstIntroSlot = introSlots?.[0] || null;
     const firstFullSlot = fullSlots?.[0] || null;
 
-    // Upsert cache entry with both slot types AND full slot arrays
+    // Upsert cache entry with both slot types, full slot arrays, AND eventTypeIds
     const { error: upsertError } = await supabaseServer.from('cal_slots_cache').upsert({
       therapist_id: therapistId,
       next_intro_date_iso: firstIntroSlot?.date_iso || null,
@@ -125,6 +160,9 @@ export async function warmCacheForTherapist(
       // Store full slot arrays for booking modal (PERF optimization)
       intro_slots: introSlots || [],
       full_slots: fullSlots || [],
+      // Store eventTypeIds for booking endpoint (eliminates Cal DB from booking path)
+      intro_event_type_id: introEventType?.eventTypeId ?? null,
+      full_event_type_id: fullEventType?.eventTypeId ?? null,
       cached_at: new Date().toISOString(),
       last_error: null,
     });
@@ -153,6 +191,8 @@ export async function warmCacheForTherapist(
         full_slots_count: 0,
         intro_slots: [],
         full_slots: [],
+        intro_event_type_id: null,
+        full_event_type_id: null,
         cached_at: new Date().toISOString(),
         last_error: errMsg,
       });
