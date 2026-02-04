@@ -26,6 +26,7 @@ import {
 } from '@/contracts/cal';
 import { createCalBooking, buildBookingLocation } from '@/lib/cal/book';
 import { getEventType } from '@/lib/cal/slots-db';
+import { isCacheStale } from '@/lib/cal/slots-cache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -110,11 +111,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get event type ID from Cal.com database
+    // Get event type ID from cache (populated by cache warming cron)
+    // Falls back to Cal DB if cache miss — defensive, shouldn't happen in practice
     const eventSlug = kind === 'intro' ? 'intro' : 'full-session';
-    const eventType = await getEventType(therapist.cal_username, eventSlug);
+    let eventTypeId: number | null = null;
 
-    if (!eventType) {
+    const { data: cache } = await supabaseServer
+      .from('cal_slots_cache')
+      .select('intro_event_type_id, full_event_type_id, cached_at')
+      .eq('therapist_id', therapist_id)
+      .single();
+
+    if (cache && !isCacheStale(cache.cached_at, 60)) {
+      eventTypeId = kind === 'intro'
+        ? cache.intro_event_type_id
+        : cache.full_event_type_id;
+    }
+
+    // Fallback to direct Cal DB lookup if cache miss or stale
+    if (!eventTypeId) {
+      console.warn(`[api.cal.book] Cache miss for ${therapist_id}, falling back to Cal DB`);
+      const eventType = await getEventType(therapist.cal_username, eventSlug);
+      eventTypeId = eventType?.eventTypeId ?? null;
+    }
+
+    if (!eventTypeId) {
       void logError(
         'api.cal.book',
         new Error('Event type not found'),
@@ -140,13 +161,13 @@ export async function POST(req: NextRequest) {
         kind,
         slot_utc,
         location_type,
-        event_type_id: eventType.eventTypeId,
+        event_type_id: eventTypeId,
       },
     });
 
     // Call Cal.com's internal booking API
     const result = await createCalBooking({
-      eventTypeId: eventType.eventTypeId,
+      eventTypeId,
       start: slot_utc,
       responses: {
         name,
@@ -202,7 +223,7 @@ export async function POST(req: NextRequest) {
             start_time: result.booking.startTime,
             end_time: result.booking.endTime || null,
             organizer_username: therapist.cal_username,
-            event_type_id: eventType.eventTypeId,
+            event_type_id: eventTypeId,
             metadata: {
               kh_therapist_id: therapist_id,
               kh_booking_kind: kind,
