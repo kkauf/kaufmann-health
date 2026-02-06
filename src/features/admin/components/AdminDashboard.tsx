@@ -5,10 +5,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { MetabaseDashboard } from './MetabaseDashboard';
 
 /** Dashboard tab config — labels shown in UI, keys must match METABASE_DASHBOARD_IDS env var */
+/** Add more tabs here as dashboards are created in Metabase.
+ *  Keys must match METABASE_DASHBOARD_IDS env var (e.g. "kpis:5,funnels:6"). */
 const DASHBOARD_TABS = [
   { key: 'kpis', label: 'KPIs' },
-  { key: 'funnels', label: 'Funnels' },
-  { key: 'trends', label: 'Trends' },
 ] as const;
 
 export function AdminDashboard() {
