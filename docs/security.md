@@ -33,10 +33,12 @@
 
 ## Cookies, Consent, and Privacy
 
-- **Public site is cookie-free by default.** Functional cookies are limited to `/admin`.
+- **Public site is cookie-free by default** for tracking. Functional cookies:
+  - `kh_admin`: Admin session (HTTP-only, `Path=/admin`, 24h expiry)
+  - `kh_client`: Patient verification session (HTTP-only, `Path=/`, 30d expiry) — set only after successful identity verification for therapist contact flow. Not a tracking cookie.
 - **Consent Mode v2**: When `NEXT_PUBLIC_COOKIES=true`, only Google Ads conversion linker is enabled post-consent (no analytics/personalization cookies).
 - **Server-side measurement first**: Google Ads Enhanced Conversions (hashed email) run server-side. Minimal client signal fires only after Fragebogen completion and is deduped by lead id.
-- **PII handling**: No PII in `events.properties`. IPs are hashed with `IP_HASH_SALT`.
+- **PII handling**: No PII in `events.properties`. IPs are hashed with `IP_HASH_SALT` in both `events.hashed_ip` and `people.metadata.hashed_ip`.
 
 - **Consent storage (patients)**: API stores consent in `people.metadata`:
   - `consent_share_with_therapists: true`
@@ -70,11 +72,44 @@
 - **Image proxy**: All therapist profile images in emails are rewritten to the internal proxy (`/api/images/therapist-profiles/[...path]`) to avoid external hotlinks and enhance deliverability.
 - **Email templates**: Patient emails avoid external links; inline styles, local images only.
 
+## CSRF Protection
+
+- **Middleware-level Origin check**: All mutating API requests (POST/PUT/DELETE/PATCH) are validated against allowed origins in Edge Middleware.
+- **Allowed origins**: `kaufmann-health.de`, `www.kaufmann-health.de`, `localhost:3000`, Vercel preview deployments.
+- **Server-to-server / cron**: Requests without an `Origin` header pass through (they authenticate via cron secrets or admin cookies).
+- **SameSite=Lax**: Both `kh_admin` and `kh_client` cookies use `SameSite=Lax` as defense-in-depth.
+
 ## IP Hashing & Retention
 
-- **Hashing**: `sha256(IP_HASH_SALT + ip)` stored in `events.hashed_ip` for diagnostics; raw IPs are not persisted.
+- **Hashing**: `sha256(IP_HASH_SALT + ip)` stored in `events.hashed_ip` and `people.metadata.hashed_ip` for diagnostics; raw IPs are never persisted.
+- **Rate limiting**: Patient rate limiting queries `people.metadata.hashed_ip`; therapist rate limiting queries `therapist_contracts.ip_address` (also hashed).
 - **Rotation**: Rotate `IP_HASH_SALT` only if compromised; consider versioning if frequent rotations are required.
 - **Retention**: Revisit data retention windows as volume grows; start with 90-day rolling for `events` if needed.
+
+## Microsoft Clarity (Session Recording)
+
+- **Purpose**: UX analysis via anonymized session recordings (clicks, scrolls, mouse movements).
+- **Exclusions**: Admin pages, staging, localhost, Vercel previews, and `kh_test=1` cookie holders are excluded.
+- **Privacy**: Form inputs are auto-masked by Clarity. No PII is captured. IPs are anonymized by Microsoft.
+- **Legal basis**: Art. 6(1)(f) DSGVO (legitimate interest in UX optimization).
+- **Disclosed in**: Datenschutzerklärung §6 "Nutzungsanalyse mit Microsoft Clarity".
+
+## Data Pseudonymization & Deletion (Future)
+
+Approach for GDPR Art. 17 (right to erasure) when automated deletion is implemented:
+
+1. **Pseudonymize instead of hard-delete** to preserve aggregate statistics:
+   - Replace `email` → `deleted-{uuid}@redacted.local`
+   - Replace `name` → `[gelöscht]`
+   - Replace `phone` → `null`
+   - Clear `metadata` of all PII fields (keep only `hashed_ip`, `city`, `session_preference` for stats)
+   - Set `status` → `deleted`
+2. **Hard-delete** related records in:
+   - `matches` (cascade or nullify `patient_id`)
+   - `form_sessions` (delete by email)
+   - Storage files (therapist documents, if applicable)
+3. **Retain** contract records (`therapist_contracts`) per legal retention obligations (§ 147 AO, § 257 HGB).
+4. **Retention cron** (future): Auto-pseudonymize patients with no activity for 24 months and events older than 90 days.
 
 ## Incident Response (Runbook)
 
@@ -147,9 +182,12 @@ git log --all --full-history --diff-filter=D -- "google_ads_api_scripts/*.json"
 
 - [ ] Service role only in server routes; never in client code.
 - [ ] RLS enabled on privileged tables; storage buckets private by default.
-- [ ] Admin cookie scoped to `/admin`; no tracking cookies on public.
+- [ ] Admin cookie scoped to `/admin`; client cookie is functional only (no tracking).
+- [ ] CSRF: Origin check in middleware for all mutating API requests.
 - [ ] Consent Mode v2 honored; Ads linker only after consent.
-- [ ] No PII in analytics events; IPs hashed with salt.
+- [ ] No PII in analytics events; IPs hashed with salt in both events and people.metadata.
+- [ ] Enhanced Conversions disclosed in Datenschutz with dual legal basis (consent + legitimate interest).
+- [ ] Microsoft Clarity disclosed in Datenschutz; admin/staging excluded from recording.
 - [ ] Cron endpoints require `CRON_SECRET` or verified Vercel signature; never trust `x-vercel-cron` alone.
 - [ ] Secrets set in Vercel env; Node runtime for secret-using routes.
 - [ ] Campaign configs in `private/` folder; no real keywords in public files.

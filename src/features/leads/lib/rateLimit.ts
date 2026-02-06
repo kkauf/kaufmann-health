@@ -11,12 +11,13 @@ export async function isIpRateLimited(
   windowMs = 60_000,
 ): Promise<boolean> {
   const cutoff = new Date(Date.now() - windowMs).toISOString();
-  // Always check `people` for backward compatibility and patient submissions
+  // Check `people` by hashed IP in metadata (GDPR: raw IPs no longer stored)
   try {
+    const hashed = hashIP(ip);
     const { data, error } = await supabase
       .from('people')
       .select('id, created_at')
-      .contains('metadata', { ip })
+      .contains('metadata', { hashed_ip: hashed })
       .gte('created_at', cutoff)
       .limit(1);
     if (!error && Array.isArray(data) && data.length > 0) return true;

@@ -1,6 +1,6 @@
 import { supabaseServer } from '@/lib/supabase-server';
 import { safeJson } from '@/lib/http';
-import { logError, track } from '@/lib/logger';
+import { logError, track, hashIP } from '@/lib/logger';
 import { ServerAnalytics } from '@/lib/server-analytics';
 // NOTE: maybeFirePatientConversion is now triggered by the CLIENT
 // via fireLeadVerifiedWithEnhancement(). This ensures the gtag base conversion fires
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
     // Adopt fields from existing metadata if present (set at email submit)
     // Also stamp completion
     metadata.form_completed_at = new Date().toISOString();
-    if (ip && !metadata.ip) metadata.ip = ip;
+    if (ip && !metadata.hashed_ip) metadata.hashed_ip = hashIP(ip);
     if (ua && !metadata.user_agent) metadata.user_agent = ua;
 
     // If a form_session_id is linked, pull the latest data and persist a subset into metadata.

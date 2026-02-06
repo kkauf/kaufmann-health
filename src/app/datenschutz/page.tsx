@@ -5,7 +5,7 @@ export default function DatenschutzPage() {
     <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
       <section aria-labelledby="ds-title" className="rounded-2xl border bg-white p-6 sm:p-8">
         <h1 id="ds-title" className="text-3xl font-semibold tracking-tight sm:text-4xl">Datenschutzerklärung</h1>
-        <p className="mt-2 text-sm text-gray-500">Stand: 24. Januar 2026</p>
+        <p className="mt-2 text-sm text-gray-500">Stand: 27. Juni 2025</p>
 
         <div className="mt-6 space-y-10 text-gray-700">
           <section aria-labelledby="ueberblick">
@@ -118,8 +118,9 @@ export default function DatenschutzPage() {
                   <p><strong>Arten von Cookies:</strong></p>
                   <ul className="list-disc pl-6 space-y-1">
                     <li>
-                      <strong>Notwendige Cookies:</strong> Technisch erforderlich für Grundfunktionen (z. B. Sitzungsverwaltung
-                      im Admin‑Bereich). Rechtsgrundlage: § 25 Abs. 2 TDDDG.
+                      <strong>Notwendige Cookies:</strong> Technisch erforderlich für Grundfunktionen (z.&nbsp;B. Sitzungsverwaltung
+                      im Admin‑Bereich, Verifizierungsstatus für die Kontaktaufnahme mit Therapeut:innen). Diese Cookies
+                      enthalten keine Tracking-Informationen. Rechtsgrundlage: § 25 Abs. 2 TDDDG.
                     </li>
                     {COOKIES_ENABLED && (
                       <li>
@@ -189,14 +190,52 @@ export default function DatenschutzPage() {
               </div>
 
               <div>
-                <h3 className="font-medium">Erfolgsmessung unserer Werbung</h3>
+                <h3 className="font-medium">Nutzungsanalyse mit Microsoft Clarity</h3>
+                <div className="mt-2 space-y-2">
+                  <p>
+                    Zur Verbesserung der Benutzerfreundlichkeit nutzen wir Microsoft Clarity, einen Dienst der Microsoft
+                    Corporation (One Microsoft Way, Redmond, WA 98052, USA). Clarity zeichnet anonymisierte
+                    Nutzerinteraktionen auf (z.&nbsp;B. Klicks, Scrollverhalten, Mausbewegungen), um die Bedienbarkeit
+                    unserer Website zu analysieren.
+                  </p>
+                  <p>
+                    <strong>Datenschutzmaßnahmen:</strong>
+                  </p>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li>Formulareingaben und sensible Inhalte werden automatisch maskiert und nicht aufgezeichnet</li>
+                    <li>Admin-Bereiche, Staging-Umgebungen und Testnutzer werden vollständig ausgeschlossen</li>
+                    <li>Es werden keine personenbezogenen Profile erstellt</li>
+                    <li>IP-Adressen werden von Microsoft anonymisiert verarbeitet</li>
+                  </ul>
+                  <p>
+                    Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der Optimierung der
+                    Benutzerfreundlichkeit). Die Datenübermittlung in die USA erfolgt auf Grundlage des EU-US Data Privacy
+                    Frameworks. Weitere Informationen:{' '}
+                    <a
+                      className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900"
+                      href="https://learn.microsoft.com/en-us/clarity/setup-and-installation/privacy-disclosure"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Microsoft Clarity Datenschutzhinweise
+                    </a>.
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-medium">Erfolgsmessung unserer Werbung (Enhanced Conversions)</h3>
                 <p className="mt-2">
-                  Zur Optimierung unserer Werbekampagnen übermitteln wir verschlüsselte E-Mail-Adressen an Google Ads, wenn
-                  Sie unser Kontaktformular nutzen. Dies erfolgt serverseitig ohne Cookies auf Ihrem Gerät.
+                  Zur Optimierung unserer Werbekampagnen übermitteln wir verschlüsselte (gehashte) E-Mail-Adressen
+                  serverseitig an Google Ads, wenn Sie unser Kontaktformular absenden und dabei der Datenschutzerklärung
+                  zustimmen. Dies erfolgt ohne Cookies auf Ihrem Gerät und dient ausschließlich der Zuordnung von
+                  Werbeklicks zu erfolgreichen Formularsendungen.
                 </p>
                 <p className="mt-2">
-                  Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung).<br />
-                  Widerrufsrecht:{' '}
+                  Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung durch Absenden des Formulars mit Zustimmung
+                  zur Datenschutzerklärung) sowie Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an effizienter
+                  Werbeausgabenoptimierung).<br />
+                  Widerrufsrecht: Sie können Ihre Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen per E-Mail an{' '}
                   <a className="underline decoration-gray-300 underline-offset-4 hover:text-gray-900" href="mailto:kontakt@kaufmann-health.de">
                     kontakt@kaufmann-health.de
                   </a>
@@ -491,7 +530,7 @@ export default function DatenschutzPage() {
           </section>
 
           <div className="mt-8 pt-4 border-t text-sm text-gray-500">
-            <p>Version: v2.1 – Kalenderbuchungen (Cal.com & Google Calendar) hinzugefügt</p>
+            <p>Version: v2.2 – Microsoft Clarity, funktionale Cookies und Enhanced Conversions ergänzt</p>
           </div>
         </div>
       </section>
