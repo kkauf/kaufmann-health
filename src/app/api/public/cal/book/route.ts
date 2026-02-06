@@ -27,6 +27,7 @@ import {
 import { createCalBooking, buildBookingLocation } from '@/lib/cal/book';
 import { getEventType } from '@/lib/cal/slots-db';
 import { isCacheStale } from '@/lib/cal/slots-cache';
+import { isTestEmail } from '@/lib/test-mode';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -208,7 +209,7 @@ export async function POST(req: NextRequest) {
       // Cal.com's webhook doesn't include our metadata, so we must insert first.
       // The webhook will upsert and preserve our values.
       // Use cookie-based test detection (kh_test=1) OR metadata flag
-      const isTest = isTestCookie || Boolean(metadata?.kh_test);
+      const isTest = isTestCookie || Boolean(metadata?.kh_test) || isTestEmail(email) || email === therapist.email;
       void supabaseServer
         .from('cal_bookings')
         .upsert(

@@ -32,6 +32,7 @@ import {
 import { warmCacheForTherapist } from '@/lib/cal/slots-cache';
 import { getAdminNotifyEmail, getQaNotifyEmail } from '@/lib/email/notification-recipients';
 import { maybeFireBookingConversion } from '@/lib/conversion';
+import { isTestEmail } from '@/lib/test-mode';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -495,7 +496,7 @@ export async function POST(req: Request) {
     const bookingKind: string | null = typeof bookingKindRaw === 'string' ? bookingKindRaw : null;
     const sourceRaw = 'kh_source' in khMeta ? khMeta.kh_source : null;
     const source: string | null = typeof sourceRaw === 'string' ? sourceRaw : null;
-    const isTest = Boolean('kh_test' in khMeta ? khMeta.kh_test : false);
+    let isTest = Boolean('kh_test' in khMeta ? khMeta.kh_test : false);
     const matchIdFromMeta = 'kh_match_id' in khMeta ? khMeta.kh_match_id : null;
     const patientIdFromMeta = 'kh_patient_id' in khMeta && typeof khMeta.kh_patient_id === 'string' 
       ? khMeta.kh_patient_id 
@@ -520,6 +521,11 @@ export async function POST(req: Request) {
     const patientIdFromEmail = await lookupPatientId(attendeeEmail);
     const patientId = patientIdFromEmail || patientIdFromMeta;
 
+    // Heuristic test detection: catch test bookings that bypass kh_test cookie
+    if (!isTest && attendeeEmail) {
+      isTest = isTestEmail(attendeeEmail);
+    }
+
     // Match ID from metadata
     const matchId = matchIdFromMeta || null;
 
@@ -542,7 +548,8 @@ export async function POST(req: Request) {
     // Only set these if webhook has values (preserve native booking pre-insert)
     if (bookingKind) upsertData.booking_kind = bookingKind;
     if (source) upsertData.source = source;
-    if (isTest) upsertData.is_test = isTest;
+    // Always write is_test — heuristic detection may upgrade false→true
+    if (isTest) upsertData.is_test = true;
     if (Object.keys(khMeta).length > 0) upsertData.metadata = khMeta;
 
     const { error: upsertError } = await supabaseServer
