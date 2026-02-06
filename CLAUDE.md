@@ -2,11 +2,147 @@
 
 German-language therapy matching platform connecting patients with body-oriented therapists (NARM, Hakomi, Somatic Experiencing, Core Energetics).
 
+## Context Layers
+
+This file covers the **WHAT** — tech stack, patterns, commands.
+
+| File | Purpose | Loaded |
+|------|---------|--------|
+| This file | Tech stack, conventions, workflows | Always |
+| `CLAUDE.local.md` | Private: German copy, integrations, Kraken mode | Always |
+| `~/.claude/.../memory/MEMORY.md` | Auto-learnings from past sessions | Always |
+| `docs/private/*` | Deep context (ads, crons, pricing) | On-demand |
+
+For WHO + universal behavior, see `~/.claude/CLAUDE.md`.
+
+## Database Schema (Core Tables)
+
+```
+people (leads/patients)
+├── id, email, name, phone_number
+├── type: 'patient' | 'therapist'
+├── status: 'new' | 'email_confirmation_sent' | 'email_confirmed' | 'matched' | 'rejected' | ...
+├── campaign_source, campaign_variant (attribution)
+└── metadata (jsonb)
+
+therapists
+├── id, first_name, last_name, email, phone, city, slug
+├── status: 'active' | 'inactive' | 'pending'
+├── modalities, schwerpunkte, languages (jsonb arrays)
+├── cal_username, cal_enabled, cal_intro_event_type_id, cal_full_session_event_type_id
+└── accepting_new, typical_rate
+
+matches (patient ↔ therapist)
+├── id, patient_id → people, therapist_id → therapists
+├── status: 'proposed' | 'accepted' | 'therapist_contacted' | 'therapist_responded' | 'session_booked' | 'completed' | 'rejected'
+├── timestamps: created_at, therapist_contacted_at, therapist_responded_at, patient_confirmed_at
+└── secure_uuid (for public links)
+
+cal_bookings (Cal.com webhooks)
+├── id, cal_uid, therapist_id, patient_id, match_id
+├── booking_kind: 'intro' | 'full_session'
+├── source: 'concierge' | 'directory'
+├── status, start_time, end_time
+├── email flags: client_confirmation_sent_at, therapist_notification_sent_at, followup_sent_at, reminder_*_sent_at
+└── is_test
+
+events (analytics/errors)
+├── id, type, level, properties (jsonb)
+├── hashed_ip, user_agent, created_at
+└── Common types: 'user_facing_error', 'conversion', 'funnel_*'
+```
+
 ## Core Philosophy
 
 - Ship fast, refactor when patterns emerge (3x rule)
 - Document only the "why" (business rules, security decisions, weird workarounds)
 - Discover before coding: grep existing patterns, check docs, verify state
+
+## Standard Workflows
+
+When starting work, identify the task type and follow the corresponding workflow:
+
+### Task Type Detection
+| Signal | Task Type | Workflow |
+|--------|-----------|----------|
+| "X is broken", "not working", error reports | **Bug** | Investigate → Fix → Test |
+| "Add X", "implement Y", new capability | **Feature** | Clarify → Plan → Implement → Test → Document |
+| "Clean up", "improve", "simplify" | **Refactor** | Scope → Test coverage → Refactor → Verify |
+| "Change schema", "add column", "migrate" | **Migration** | Schema review → Migration → Backfill → Verify |
+| "Review", "analyze", "what's happening with" | **Research** | Gather data → Analyze → Summarize |
+
+### Workflow: Bug Fix
+1. **Investigate** — Use `/investigate` skill or: check errors in `events` table, recent git changes, reproduce the issue
+2. **Identify root cause** — Form hypotheses, test each, confirm the actual cause
+3. **Fix** — Minimal change that addresses root cause
+4. **Test** — Run affected tests, verify in browser if UI-related
+5. **Verify** — Confirm original error no longer occurs
+6. **Document** — If non-obvious, add to MEMORY.md
+
+### Workflow: Feature
+1. **Clarify** — What's the user-facing outcome? What's out of scope?
+2. **Check existing patterns** — Grep for similar features, follow conventions
+3. **Plan** — For multi-file changes, outline the approach first
+4. **Implement** — Edit existing files > create new ones. Type-check after each file.
+5. **Test** — Unit tests for logic, E2E for user flows
+6. **Document** — Update docs if behavior changed, add to MEMORY.md if learnings
+
+### Workflow: Database Migration (Self-Healing Pipeline)
+1. **Review schema** — Query current state via `mcp__supabase__execute_sql`
+   ```sql
+   SELECT column_name, data_type, is_nullable
+   FROM information_schema.columns
+   WHERE table_name = '[table]';
+   ```
+
+2. **Create branch** — Isolate changes for safe testing
+   ```
+   mcp__supabase__create_branch → get branch_id
+   ```
+
+3. **Write & apply migration** — On the branch
+   ```
+   mcp__supabase__apply_migration with branch project_id
+   ```
+
+4. **Validate** — Run integrity checks on branch
+   - Row counts match expectations
+   - No orphaned foreign keys
+   - Constraints don't block existing data
+   - Sample queries return expected results
+
+5. **If validation fails** → Analyze error, rollback branch, try alternative approach
+   ```
+   mcp__supabase__reset_branch or mcp__supabase__delete_branch
+   ```
+   Loop back to step 3 with revised migration (max 3 attempts)
+
+6. **If validation passes** → Output final migration SQL for production
+   - Document any edge cases discovered
+   - Note backfill requirements if applicable
+
+7. **Promote to production** — Only after explicit approval
+   ```
+   mcp__supabase__apply_migration on main project_id
+   ```
+
+8. **Verify production** — Re-run validation queries against live data
+
+### When to Use Agent Teams
+Use agent teams (not subagents) when:
+- **UX + Backend split** — One teammate on components, one on API
+- **Multiple hypotheses** — Parallel investigation of competing theories
+- **Cross-layer changes** — Frontend, backend, tests owned by different teammates
+- **Research + Implementation** — One researches while another implements
+
+Skip teams for: single-file fixes, sequential dependencies, quick lookups.
+
+### Checkpoints (Automatic)
+After every significant change:
+- [ ] Type-check passes (hook runs automatically)
+- [ ] Relevant tests pass
+- [ ] No regressions in related functionality
+- [ ] If stuck 2-3 attempts → surface constraint, ask
 
 ## Tech Stack
 

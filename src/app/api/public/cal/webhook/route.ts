@@ -31,6 +31,7 @@ import {
 } from '@/contracts/cal';
 import { warmCacheForTherapist } from '@/lib/cal/slots-cache';
 import { getAdminNotifyEmail, getQaNotifyEmail } from '@/lib/email/notification-recipients';
+import { maybeFireBookingConversion } from '@/lib/conversion';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -642,6 +643,23 @@ export async function POST(req: Request) {
       }).catch((err: unknown) => {
         void logError('api.public.cal.webhook', err, { stage: 'send_emails', cal_uid: uid });
       });
+
+      // Fire server-side enhanced conversion for Google Ads (fire-and-forget)
+      // The client-side gtag base conversion fires with transaction_id = cal_uid.
+      // This enhancement adds hashed email/phone so Google can match it for attribution.
+      if (bookingKind && (bookingKind === 'intro' || bookingKind === 'full_session')) {
+        void maybeFireBookingConversion({
+          cal_uid: uid,
+          booking_kind: bookingKind,
+          patient_id: patientId,
+          email: attendeeEmail,
+          is_test: isTest,
+          ip,
+          ua,
+        }).catch((err: unknown) => {
+          void logError('api.public.cal.webhook', err, { stage: 'booking_conversion', cal_uid: uid });
+        });
+      }
     }
 
     // Handle MEETING_ENDED: Update status to completed
