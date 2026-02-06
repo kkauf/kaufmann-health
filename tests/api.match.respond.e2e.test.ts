@@ -266,9 +266,9 @@ describe('EARTH-205: End-to-End Therapist Response Flow', () => {
         therapistName: 'Julia Hoffmann',
       });
 
-      expect(rejectionContent.subject).toBe('Ihre Anfrage bei Julia Hoffmann');
-      expect(rejectionContent.html).toContain('Guten Tag Sarah'); // First name only
-      expect(rejectionContent.html).toContain('Leider kann ich aktuell keine neuen Klienten aufnehmen');
+      expect(rejectionContent.subject).toBe('Deine Anfrage bei Julia Hoffmann');
+      expect(rejectionContent.html).toContain('Hallo Sarah'); // First name only
+      expect(rejectionContent.html).toContain('Leider kann ich aktuell keine neuen Klient:innen aufnehmen');
       expect(rejectionContent.html).toContain('/therapeuten'); // Directory link
       expect(rejectionContent.html).toContain('Therapeuten-Verzeichnis ansehen');
       expect(rejectionContent.html).toContain('Julia Hoffmann'); // Signature

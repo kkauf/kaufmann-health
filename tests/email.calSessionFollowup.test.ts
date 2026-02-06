@@ -9,7 +9,7 @@ describe('calSessionFollowup email template', () => {
       fullSessionUrl: 'https://cal.kaufmann.health/dr-schmidt/full-session',
     });
 
-    expect(result.subject).toBe('Für Ihre nächste Sitzung mit Dr. Schmidt');
+    expect(result.subject).toBe('Für deine nächste Sitzung mit Dr. Schmidt');
     expect(result.html).toContain('Hallo Anna');
     expect(result.html).toContain('Dr. Schmidt');
     expect(result.html).toContain('Nächsten Termin buchen');
@@ -47,7 +47,7 @@ describe('calSessionFollowup email template', () => {
       fullSessionUrl: 'https://cal.kaufmann.health/dr-fischer/full-session',
     });
 
-    expect(result.html).toContain('Regelmäßige Sitzungen können Ihren Fortschritt unterstützen');
+    expect(result.html).toContain('Regelmäßige Sitzungen können deinen Fortschritt unterstützen');
     expect(result.html).not.toContain('Nächster freier Termin');
   });
 
@@ -58,7 +58,7 @@ describe('calSessionFollowup email template', () => {
     });
 
     expect(result.html).toContain('Pause einlegen?');
-    expect(result.html).toContain('Sie entscheiden über Ihr Tempo');
+    expect(result.html).toContain('du entscheidest über dein Tempo');
   });
 
   it('escapes HTML in patient and therapist names', () => {
@@ -79,6 +79,6 @@ describe('calSessionFollowup email template', () => {
       fullSessionUrl: 'https://example.com',
     });
 
-    expect(result.html).toContain('Bei Fragen antworten Sie einfach auf diese E-Mail');
+    expect(result.html).toContain('Bei Fragen antworte einfach auf diese E-Mail');
   });
 });
