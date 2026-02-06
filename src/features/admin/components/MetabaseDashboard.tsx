@@ -59,7 +59,7 @@ export function MetabaseDashboard({ dashboardKey }: MetabaseDashboardProps) {
     <iframe
       src={embedUrl}
       className="w-full min-h-[800px] border-0 rounded-lg"
-      sandbox="allow-scripts allow-same-origin"
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
       title={`Metabase Dashboard: ${dashboardKey}`}
     />
   );
