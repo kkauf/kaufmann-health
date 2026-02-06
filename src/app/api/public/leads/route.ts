@@ -239,6 +239,13 @@ async function handleTherapistMultipart(req: Request) {
     .single();
 
   if (err || !ins?.id) {
+    // Handle duplicate email gracefully — therapist already registered
+    if ((err as { code?: string } | null)?.code === '23505') {
+      return safeJson(
+        { data: null, error: 'Diese E-Mail-Adresse ist bereits registriert. Bitte melde dich an.', code: 'duplicate_email' },
+        { status: 409, headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
     console.error('Supabase error:', err);
     void logError('api.leads', err, { stage: 'insert_lead', lead_type: 'therapist', city }, ip, ua);
     return safeJson(
