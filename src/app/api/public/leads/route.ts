@@ -18,7 +18,7 @@ import { isTestRequest } from '@/lib/test-mode';
 import { safeJson } from '@/lib/http';
 import { getClientSession } from '@/lib/auth/clientSession';
 import { createInstantMatchesForPatient } from '@/features/leads/lib/match';
-import { getPartnersNotifyEmail, getLeadsNotifyEmail } from '@/lib/email/notification-recipients';
+import { getPartnersNotifyEmail, getLeadsNotifyEmail, getQaNotifyEmail } from '@/lib/email/notification-recipients';
 
 export const runtime = 'nodejs';
 
@@ -463,20 +463,21 @@ async function handleTherapistMultipart(req: Request) {
 
   // Google Ads conversion moved to documents submission endpoint (see /api/therapists/:id/documents)
 
-  // Internal notification (PII-free) - therapist signups go to partner team
+  // Internal notification (PII-free) - therapist signups go to partner team (test → QA sink)
   try {
-    const to = getPartnersNotifyEmail();
+    const to = isTest ? getQaNotifyEmail() : getPartnersNotifyEmail();
     if (to) {
       const notif = buildInternalLeadNotification({ id: therapistId, metadata: { lead_type: 'therapist', city: city ?? null } });
+      const subject = isTest ? `[TEST] ${notif.subject}` : notif.subject;
       void track({
         type: 'email_attempted',
         level: 'info',
         source: 'api.leads',
         ip,
         ua,
-        props: { stage: 'internal_notification', lead_id: therapistId, lead_type: 'therapist', subject: notif.subject },
+        props: { stage: 'internal_notification', lead_id: therapistId, lead_type: 'therapist', subject },
       });
-      void sendEmail({ to, subject: notif.subject, text: notif.text, context: { stage: 'internal_notification', lead_id: therapistId, lead_type: 'therapist' } }).catch(() => { });
+      void sendEmail({ to, subject, text: notif.text, context: { stage: 'internal_notification', lead_id: therapistId, lead_type: 'therapist' } }).catch(() => { });
     } else {
       void track({ type: 'notify_skipped', level: 'warn', source: 'api.leads', ip, ua, props: { reason: 'missing_recipient', lead_id: therapistId, lead_type: 'therapist' } });
     }

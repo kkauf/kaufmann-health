@@ -11,7 +11,7 @@ import { hashIP } from './validation';
 import { isTestRequest } from '@/lib/test-mode';
 import type { HandlerContext } from './types';
 import { safeJson } from '@/lib/http';
-import { getPartnersNotifyEmail } from '@/lib/email/notification-recipients';
+import { getPartnersNotifyEmail, getQaNotifyEmail } from '@/lib/email/notification-recipients';
 
 export type TherapistHandlerInput = {
   data: { name?: string; email: string; phone?: string; notes?: string };
@@ -84,13 +84,14 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
 
   // Google Ads conversion moved to documents submission endpoint (see /api/therapists/:id/documents)
 
-  // Internal notification (PII-free) - therapist signups go to partner team
+  // Internal notification (PII-free) - therapist signups go to partner team (test → QA sink)
   try {
-    const to = getPartnersNotifyEmail();
+    const to = isTest ? getQaNotifyEmail() : getPartnersNotifyEmail();
     if (to) {
       const notif = buildInternalLeadNotification({ id: therapistId, metadata: { lead_type: 'therapist', city: city ?? null } });
-      void track({ type: 'email_attempted', level: 'info', source: 'api.leads', ip, ua, props: { stage: 'internal_notification', lead_id: therapistId, lead_type: 'therapist', subject: notif.subject, ...(session_id ? { session_id } : {}) } });
-      void sendEmail({ to, subject: notif.subject, text: notif.text, context: { stage: 'internal_notification', lead_id: therapistId, lead_type: 'therapist', ...(session_id ? { session_id } : {}) } }).catch(() => {});
+      const subject = isTest ? `[TEST] ${notif.subject}` : notif.subject;
+      void track({ type: 'email_attempted', level: 'info', source: 'api.leads', ip, ua, props: { stage: 'internal_notification', lead_id: therapistId, lead_type: 'therapist', subject, ...(session_id ? { session_id } : {}) } });
+      void sendEmail({ to, subject, text: notif.text, context: { stage: 'internal_notification', lead_id: therapistId, lead_type: 'therapist', ...(session_id ? { session_id } : {}) } }).catch(() => {});
     } else {
       void track({ type: 'notify_skipped', level: 'warn', source: 'api.leads', ip, ua, props: { reason: 'missing_recipient', lead_id: therapistId, lead_type: 'therapist', ...(session_id ? { session_id } : {}) } });
     }
