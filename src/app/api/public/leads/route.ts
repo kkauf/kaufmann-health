@@ -395,7 +395,7 @@ async function handleTherapistMultipart(req: Request) {
   if (experience) profileMeta.experience = experience;
   if (website) profileMeta.website = website;
 
-  const metadata: Record<string, unknown> = { ...(isTest ? { is_test: true } : {}), documents };
+  const metadata: Record<string, unknown> = { ...(isTest ? { is_test: true } : {}), trace_id: randomUUID(), documents };
   if (Object.keys(profileMeta).length > 0) {
     metadata.profile = profileMeta;
   }
@@ -737,8 +737,10 @@ export async function POST(req: Request) {
         submitted_at: new Date().toISOString(),
         confirm_token: confirmToken,
         confirm_sent_at: new Date().toISOString(),
-        // Basic context for debugging/ops
-        ...(ip ? { ip } : {}),
+        // Random trace ID for session investigation (not PII, replaces raw IP)
+        trace_id: randomUUID(),
+        // Basic context for debugging/ops (hashed for GDPR)
+        ...(ip ? { hashed_ip: hashIP(ip) } : {}),
         ...(ua ? { user_agent: ua } : {}),
         // Google Ads click ID for conversion attribution (critical for tracking)
         ...(gclid ? { gclid } : {}),

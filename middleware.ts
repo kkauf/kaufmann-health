@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ADMIN_SESSION_COOKIE, verifySessionTokenWithReason } from '@/lib/auth/adminSession';
 
+// CSRF: allowed origins for mutating API requests
+const ALLOWED_ORIGINS = new Set([
+  'https://www.kaufmann-health.de',
+  'https://kaufmann-health.de',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+]);
+
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   
@@ -9,6 +19,16 @@ export async function middleware(req: NextRequest) {
     const url = req.nextUrl.clone();
     url.hostname = 'www.kaufmann-health.de';
     return NextResponse.redirect(url, 308);
+  }
+
+  // CSRF protection for mutating API requests
+  if (pathname.startsWith('/api/') && MUTATING_METHODS.has(req.method)) {
+    const origin = req.headers.get('origin');
+    // No Origin = server-to-server / cron (they authenticate separately)
+    if (origin && !ALLOWED_ORIGINS.has(origin) && !origin.endsWith('.vercel.app')) {
+      console.warn('[middleware] CSRF blocked', { origin, pathname });
+      return NextResponse.json({ data: null, error: 'Forbidden' }, { status: 403 });
+    }
   }
 
   // Edge cache for the therapie-finden page
@@ -62,6 +82,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin', '/admin/:path*'],
+  matcher: ['/admin', '/admin/:path*', '/api/:path*'],
 };
 
