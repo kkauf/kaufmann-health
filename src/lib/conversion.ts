@@ -19,6 +19,17 @@ export interface ConversionContext {
   ua?: string;
 }
 
+export interface BookingConversionContext {
+  cal_uid: string;
+  booking_kind: 'intro' | 'full_session';
+  patient_id?: string | null;
+  email?: string | null;
+  phone_number?: string | null;
+  is_test?: boolean;
+  ip?: string;
+  ua?: string;
+}
+
 /**
  * Fire Google Ads conversion for verified patient lead (server-side Enhanced Conversion)
  * Idempotent: checks metadata.google_ads_conversion_fired_at to prevent duplicates
@@ -141,6 +152,129 @@ export async function maybeFirePatientConversion(ctx: ConversionContext): Promis
       stage: 'maybe_fire_patient_conversion',
       patient_id: ctx.patient_id,
       verification_method: ctx.verification_method,
+    }, ctx.ip, ctx.ua);
+    return { fired: false, reason: 'error' };
+  }
+}
+
+const BOOKING_CONVERSION_MAP = {
+  intro: { action: 'intro_booked', value: 60 },
+  full_session: { action: 'session_booked', value: 125 },
+} as const;
+
+/**
+ * Fire Google Ads enhanced conversion for a Cal.com booking.
+ *
+ * The client-side gtag fires the base conversion with transaction_id = cal_uid.
+ * This function sends the server-side enhancement with hashed email/phone so
+ * Google can match it back via orderId.
+ *
+ * Idempotent: checks cal_bookings.metadata.google_ads_conversion_fired_at
+ */
+export async function maybeFireBookingConversion(ctx: BookingConversionContext): Promise<{ fired: boolean; reason?: string }> {
+  try {
+    if (ctx.is_test) {
+      return { fired: false, reason: 'test_booking' };
+    }
+
+    const mapping = BOOKING_CONVERSION_MAP[ctx.booking_kind];
+    if (!mapping) {
+      return { fired: false, reason: 'unknown_booking_kind' };
+    }
+
+    // Fetch the booking record to check dedup and get metadata
+    type BookingRow = {
+      id: string;
+      cal_uid: string;
+      patient_id?: string | null;
+      metadata?: Record<string, unknown> | null;
+    };
+
+    const { data: booking, error: fetchErr } = await supabaseServer
+      .from('cal_bookings')
+      .select('id,cal_uid,patient_id,metadata')
+      .eq('cal_uid', ctx.cal_uid)
+      .maybeSingle<BookingRow>();
+
+    if (fetchErr || !booking) {
+      return { fired: false, reason: 'booking_not_found' };
+    }
+
+    const metadata = (booking.metadata || {}) as Record<string, unknown>;
+    if (metadata.google_ads_conversion_fired_at) {
+      return { fired: false, reason: 'already_fired' };
+    }
+
+    // Resolve patient email/phone for enhanced matching
+    let email = ctx.email || '';
+    let phone = ctx.phone_number || '';
+    let gclid: string | undefined;
+
+    const patientId = ctx.patient_id || booking.patient_id;
+    if (patientId) {
+      type PersonRow = { email?: string | null; phone_number?: string | null; metadata?: Record<string, unknown> | null };
+      const { data: person } = await supabaseServer
+        .from('people')
+        .select('email,phone_number,metadata')
+        .eq('id', patientId)
+        .maybeSingle<PersonRow>();
+
+      if (person) {
+        email = email || person.email || '';
+        phone = phone || person.phone_number || '';
+        const personMeta = (person.metadata || {}) as Record<string, unknown>;
+        gclid = typeof personMeta.gclid === 'string' ? personMeta.gclid : undefined;
+      }
+    }
+
+    if (!email && !phone) {
+      return { fired: false, reason: 'no_identifier' };
+    }
+
+    // Fire server-side enhanced conversion — orderId must match the gtag transaction_id (cal_uid)
+    await googleAdsTracker.trackConversion({
+      ...(email ? { email } : {}),
+      ...(phone ? { phoneNumber: phone } : {}),
+      conversionAction: mapping.action,
+      conversionValue: mapping.value,
+      orderId: ctx.cal_uid,
+      gclid,
+    });
+
+    // Stamp dedup flag
+    const updatedMetadata = {
+      ...metadata,
+      google_ads_conversion_fired_at: new Date().toISOString(),
+      google_ads_conversion_action: mapping.action,
+    };
+
+    await supabaseServer
+      .from('cal_bookings')
+      .update({ metadata: updatedMetadata })
+      .eq('cal_uid', ctx.cal_uid);
+
+    void track({
+      type: 'conversion_fired',
+      level: 'info',
+      source: 'lib.conversion',
+      ip: ctx.ip,
+      ua: ctx.ua,
+      props: {
+        cal_uid: ctx.cal_uid,
+        booking_kind: ctx.booking_kind,
+        patient_id: patientId || null,
+        conversion_action: mapping.action,
+        value: mapping.value,
+        has_gclid: !!gclid,
+      },
+    });
+
+    return { fired: true };
+  } catch (e) {
+    await logError('conversion', e, {
+      stage: 'maybe_fire_booking_conversion',
+      cal_uid: ctx.cal_uid,
+      booking_kind: ctx.booking_kind,
     }, ctx.ip, ctx.ua);
     return { fired: false, reason: 'error' };
   }
