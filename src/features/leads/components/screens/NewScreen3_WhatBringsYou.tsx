@@ -18,12 +18,14 @@ export default function NewScreen3_WhatBringsYou({
   onNext,
   onBack,
   disabled,
+  isReturning,
 }: {
   values: NewScreen3Values;
   onChange: (patch: Partial<NewScreen3Values>) => void;
   onNext: () => void;
   onBack?: () => void;  // Optional - may be first step
   disabled?: boolean;
+  isReturning?: boolean;
 }) {
   const text = values.additional_info?.trim() || '';
   const isValid = text.length >= MIN_LENGTH;
@@ -51,6 +53,13 @@ export default function NewScreen3_WhatBringsYou({
           </p>
         </div>
       </div>
+
+      {/* Returning user context note */}
+      {isReturning && (
+        <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
+          Schön, dass du dich für unsere persönliche Begleitung entscheidest. Erzähl uns kurz, was dich beschäftigt — wir schlagen dir innerhalb von 24&nbsp;Stunden passende Therapeut:innen vor.
+        </p>
+      )}
 
       {/* Input section */}
       <div className="space-y-3">

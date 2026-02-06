@@ -343,7 +343,19 @@ export default function SignupWizard() {
       // Use startStep if provided, otherwise use saved step
       const targetStep = startStepParam ? Number(startStepParam) : savedStep;
       // Clamp to valid range: 2-9 (step 1 removed), redirect step 1 to appropriate first step
-      const clampedStep = targetStep <= 1 ? minStep : Math.min(maxStep, targetStep);
+      let clampedStep = targetStep <= 1 ? minStep : Math.min(maxStep, targetStep);
+
+      // Returning concierge user detection: if concierge + has saved schwerpunkte + has contact info,
+      // skip to step 2 ("What Brings You") regardless of saved step.
+      // The user already filled the form — they only need the concierge-specific step.
+      const parsedSaved = saved ? JSON.parse(saved) : null;
+      const hasSavedSchwerpunkte = Array.isArray(parsedSaved?.schwerpunkte) && parsedSaved.schwerpunkte.length > 0;
+      const hasSavedContact = !!(parsedSaved?.email || parsedSaved?.phone_number);
+      if (isConcierge && !startStepParam && hasSavedSchwerpunkte && hasSavedContact) {
+        clampedStep = 2;
+        void trackEvent('concierge_returning_skip', { skipped_to: 2 });
+      }
+
       setStep(clampedStep);
       
       // Clean up startStep from URL to avoid re-triggering on refresh
@@ -371,6 +383,18 @@ export default function SignupWizard() {
             }
             if (Object.keys(updates).length > 0) {
               setData(prev => ({ ...prev, ...updates }));
+            }
+            // Async returning concierge detection: if user had saved schwerpunkte but no contact
+            // in localStorage (so synchronous check didn't trigger), the verified session provides
+            // the contact info. Skip to step 2 if not already there.
+            if (isConcierge && !startStepParam && hasSavedSchwerpunkte && !hasSavedContact) {
+              setStep(prev => {
+                if (prev !== 2) {
+                  void trackEvent('concierge_returning_skip', { skipped_to: 2, source: 'session' });
+                  return 2;
+                }
+                return prev;
+              });
             }
           }
         })
@@ -911,6 +935,7 @@ export default function SignupWizard() {
             onBack={() => safeGoToStep(2.6)}
             onNext={() => safeGoToStep(3)}
             disabled={navLock || submitting}
+            isReturning={isConcierge && !!(data.schwerpunkte && data.schwerpunkte.length > 0)}
           />
         );
       case 2.5:
