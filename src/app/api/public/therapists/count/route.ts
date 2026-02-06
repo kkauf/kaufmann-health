@@ -102,13 +102,13 @@ export async function GET(req: NextRequest) {
       // Check eligibility (hard filters: accepting_new, gender, session format)
       if (!isEligible(tRow, patientMeta)) continue;
 
-      // Additional soft filter: schwerpunkte overlap (at least 1 match if specified)
+      // Hard filter: schwerpunkte overlap (at least 1 match if specified)
       if (patientMeta.schwerpunkte && patientMeta.schwerpunkte.length > 0) {
         const therapistSchwerpunkte = new Set(
           Array.isArray(row.schwerpunkte) ? (row.schwerpunkte as string[]) : []
         );
-        const _hasOverlap = patientMeta.schwerpunkte.some(s => therapistSchwerpunkte.has(s));
-        // Don't hard-filter on schwerpunkte - count all eligible, but this could be used for "exact match" count
+        const hasOverlap = patientMeta.schwerpunkte.some(s => therapistSchwerpunkte.has(s));
+        if (!hasOverlap) continue;
       }
 
       // Additional soft filter: modality overlap

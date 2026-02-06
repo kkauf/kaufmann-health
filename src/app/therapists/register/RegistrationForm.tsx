@@ -94,6 +94,10 @@ export default function RegistrationForm() {
     }
 
     // Validation
+    if (!name.trim()) {
+      setErrors({ name: 'Bitte gib deinen Namen ein.' });
+      return;
+    }
     const emailErr = getEmailError(email);
     if (emailErr) {
       setErrors({ email: emailErr });
@@ -253,14 +257,17 @@ export default function RegistrationForm() {
       {/* Form fields */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="name">Dein Name</Label>
+          <Label htmlFor="name">Dein Name *</Label>
           <Input
             id="name"
             name="name"
             placeholder="Vor- und Nachname"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => { setName(e.target.value); if (errors.name) setErrors((prev) => { const { name: _, ...rest } = prev; return rest; }); }}
+            aria-invalid={Boolean(errors.name)}
+            className={errors.name ? 'border-red-500 focus-visible:ring-red-500' : undefined}
           />
+          {errors.name && <p className="text-xs text-red-600">{errors.name}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="phone">Telefonnummer</Label>

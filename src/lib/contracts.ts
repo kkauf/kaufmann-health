@@ -6,8 +6,8 @@ import { safeJson } from '@/lib/http';
 export const leadSubmissionSchema = z.object({
   // Contact: either email OR phone_number required (validated with refine below)
   email: z.string().email().optional(),
-  // Phone validation: E.164 format (e.g., +4915212345678), min 12 chars
-  phone_number: z.string().min(12).startsWith('+').optional(),
+  // Phone validation: E.164 format (e.g., +4915212345678), min 9 chars (+ plus 8 digits)
+  phone_number: z.string().min(9).startsWith('+').optional(),
   contact_method: z.enum(['email', 'phone']).optional(),
   consent_share_with_therapists: z.literal(true),
   privacy_version: z.string().min(1),

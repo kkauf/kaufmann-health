@@ -1681,8 +1681,21 @@ export default function SignupWizard() {
       };
       const submission = leadSubmissionSchema.safeParse(submissionPayload);
       if (!submission.success) {
-        console.error('[SignupWizard] Validation failed:', submission.error.flatten());
-        setSubmitError('Fehlgeschlagen. Bitte Seite aktualisieren und erneut versuchen.');
+        const flat = submission.error.flatten();
+        console.error('[SignupWizard] Validation failed:', flat, 'payload keys:', Object.keys(submissionPayload), 'phone raw:', data.phone_number);
+        // Show field-specific message when possible
+        const fieldKeys = Object.keys(flat.fieldErrors);
+        if (fieldKeys.includes('phone_number')) {
+          setSubmitError('Bitte gib eine gültige Handynummer ein.');
+        } else if (fieldKeys.includes('email')) {
+          setSubmitError('Bitte gib eine gültige E-Mail-Adresse ein.');
+        } else if (flat.formErrors.length > 0 && (flat.formErrors as string[]).some(e => e.includes('email or phone'))) {
+          setSubmitError(data.contact_method === 'phone'
+            ? 'Bitte gib eine gültige Handynummer ein.'
+            : 'Bitte gib eine gültige E-Mail-Adresse ein.');
+        } else {
+          setSubmitError('Fehlgeschlagen. Bitte Seite aktualisieren und erneut versuchen.');
+        }
         return;
       }
 
