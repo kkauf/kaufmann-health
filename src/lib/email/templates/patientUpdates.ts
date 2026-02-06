@@ -63,24 +63,24 @@ export function renderTherapistRejection(params: {
   const directoryUrl = `${baseUrl}/therapeuten`;
 
   const lines: string[] = [];
-  lines.push('<h1 style="color:#0f172a !important; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Update zu Ihrer Anfrage</h1>');
-  lines.push(`<p style=\"margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;\">Guten Tag${firstName ? ` ${escapeHtml(firstName)}` : ''},</p>`);
-  lines.push('<p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">vielen Dank für Ihr Interesse. Leider kann ich aktuell keine neuen Klienten aufnehmen.</p>');
-  lines.push('<p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">Über Kaufmann Health finden Sie andere qualifizierte Therapeut:innen:</p>');
+  lines.push('<h1 style="color:#0f172a !important; font-size:28px; font-weight:700; margin:0 0 16px; line-height:1.3; letter-spacing:-0.02em;">Update zu deiner Anfrage</h1>');
+  lines.push(`<p style=\"margin:0 0 16px; font-size:16px; line-height:1.65; color:#475569 !important;\">Hallo${firstName ? ` ${escapeHtml(firstName)}` : ''},</p>`);
+  lines.push('<p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">vielen Dank für dein Interesse. Leider kann ich aktuell keine neuen Klient:innen aufnehmen.</p>');
+  lines.push('<p style="margin:0 0 20px; font-size:16px; line-height:1.65; color:#475569 !important;">Über Kaufmann Health findest du andere qualifizierte Therapeut:innen:</p>');
 
   lines.push('<div style="margin:24px 0; text-align:center;">');
   lines.push(`<a href="${directoryUrl}" style="display:inline-block; padding:14px 28px; background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; background-image: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; color:#ffffff !important; text-decoration:none; border-radius:8px; font-weight:700; font-size:16px; box-shadow: 0 4px 12px 0 rgba(16, 185, 129, 0.2);">Therapeuten-Verzeichnis ansehen</a>`);
   lines.push('</div>');
 
-  lines.push(`<p style=\"margin:24px 0 0; font-size:16px; line-height:1.65; color:#475569 !important;\">Alles Gute für Sie${therapist ? `,<br/><strong style=\"color:#0f172a !important;\">${escapeHtml(therapist)}</strong>` : ''}</p>`);
+  lines.push(`<p style=\"margin:24px 0 0; font-size:16px; line-height:1.65; color:#475569 !important;\">Alles Gute${therapist ? `,<br/><strong style=\"color:#0f172a !important;\">${escapeHtml(therapist)}</strong>` : ''}</p>`);
 
   const html = renderLayout({
-    title: 'Update zu Ihrer Anfrage',
+    title: 'Update zu deiner Anfrage',
     contentHtml: lines.join(''),
   });
 
   return {
-    subject: therapist ? `Ihre Anfrage bei ${therapist}` : 'Update zu Ihrer Anfrage',
+    subject: therapist ? `Deine Anfrage bei ${therapist}` : 'Update zu deiner Anfrage',
     html,
   };
 }

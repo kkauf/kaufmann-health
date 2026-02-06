@@ -94,12 +94,12 @@ describe('EARTH-205: Therapist Response Flow', () => {
         therapistName: 'Dr. Anna Müller',
       });
 
-      expect(result.subject).toBe('Ihre Anfrage bei Dr. Anna Müller');
-      expect(result.html).toContain('Guten Tag Maria');
-      expect(result.html).toContain('Leider kann ich aktuell keine neuen Klienten aufnehmen');
+      expect(result.subject).toBe('Deine Anfrage bei Dr. Anna Müller');
+      expect(result.html).toContain('Hallo Maria');
+      expect(result.html).toContain('Leider kann ich aktuell keine neuen Klient:innen aufnehmen');
       expect(result.html).toContain('Therapeuten-Verzeichnis ansehen');
       expect(result.html).toContain('/therapeuten');
-      expect(result.html).toContain('Alles Gute für Sie');
+      expect(result.html).toContain('Alles Gute');
       expect(result.html).toContain('Dr. Anna Müller');
     });
 
@@ -108,8 +108,8 @@ describe('EARTH-205: Therapist Response Flow', () => {
         patientName: 'Maria Schmidt',
       });
 
-      expect(result.subject).toBe('Update zu Ihrer Anfrage');
-      expect(result.html).toContain('Alles Gute für Sie');
+      expect(result.subject).toBe('Update zu deiner Anfrage');
+      expect(result.html).toContain('Alles Gute');
       expect(result.html).not.toContain(',<br/>');
     });
 
@@ -119,8 +119,8 @@ describe('EARTH-205: Therapist Response Flow', () => {
         therapistName: 'Dr. Müller',
       });
 
-      expect(result.html).toContain('Guten Tag Maria,');
-      expect(result.html).not.toContain('Guten Tag Maria Anna');
+      expect(result.html).toContain('Hallo Maria,');
+      expect(result.html).not.toContain('Hallo Maria Anna');
     });
   });
 
