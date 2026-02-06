@@ -11,7 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { TherapistPreview } from '@/components/TherapistPreview';
 import { TherapistDetailModal } from '@/features/therapists/components/TherapistDetailModal';
 import type { TherapistData } from '@/features/therapists/components/TherapistDirectory';
-import { computeMismatches } from '@/features/leads/lib/match';
+import { computeMismatches, calculateMatchScore, calculatePlatformScore, calculateTotalScore } from '@/features/leads/lib/match';
+import type { PatientMeta, TherapistRowForMatch, MismatchResult } from '@/features/leads/lib/match';
 import { getSchwerpunktLabel } from '@/lib/schwerpunkte';
 import { Video, User, MapPin, Eye } from 'lucide-react';
 
@@ -60,8 +61,11 @@ type Person = {
   has_active_booking?: boolean;
   active_booking_kind?: 'intro' | 'full_session' | null;
   active_booking_start?: string | null;
-  // Enhanced therapist profile data
+  // Enhanced therapist profile data (from admin/therapists API)
+  city?: string | null; // therapist's city (top-level from DB)
   schwerpunkte?: string[];
+  modalities?: string[]; // alias for specializations from therapists table
+  session_preferences?: ('online' | 'in_person')[]; // from therapists table
   typical_rate?: number | null;
   practice_address?: string | null;
   languages?: string[];
@@ -73,6 +77,8 @@ type Person = {
     about_me?: string;
     approach_text?: string;
   };
+  // Cal.com slot data (from cal_slots_cache via admin/therapists API)
+  cal_slots?: { intro: number; full: number };
 };
 
 function formatDate(iso?: string) {
@@ -537,31 +543,98 @@ export default function AdminLeadsPage() {
     return sessionPref === 'online' && !therCity;
   }, [therCity, therSessionPref, selectedPatient]);
 
-  // Prepare therapist items with mismatch computation and sorting for better usability
+  // Type for therapist items with computed scores
+  type TherapistWithScore = {
+    t: Person;
+    city: string;
+    specs: string[];
+    mm: MismatchResult;
+    matchScore: number;
+    platformScore: number;
+    totalScore: number;
+  };
+
+  // Prepare therapist items with mismatch computation and scoring for better usability
   const therapistItems = useMemo(() => {
-    const items = therapists.map((t) => {
+    // Build patient metadata for scoring (convert PersonMeta to PatientMeta)
+    const patientMeta: PatientMeta | null = selectedPatient?.metadata ? {
+      city: selectedPatient.metadata.city,
+      session_preference: selectedPatient.metadata.session_preference,
+      session_preferences: selectedPatient.metadata.session_preferences,
+      specializations: selectedPatient.metadata.specializations,
+      schwerpunkte: selectedPatient.metadata.schwerpunkte,
+      gender_preference: selectedPatient.metadata.gender_preference,
+      language_preference: selectedPatient.metadata.language_preference,
+    } : null;
+
+    const items: TherapistWithScore[] = therapists.map((t) => {
       const meta: PersonMeta = t.metadata || {};
-      const city = String(meta.city || '');
-      const specs: string[] = Array.isArray(meta.specializations) ? meta.specializations : [];
-      const mm = computeMismatches(selectedPatient?.metadata || {}, {
+      const city = t.city || String(meta.city || '');
+      const specs: string[] = t.modalities || (Array.isArray(meta.specializations) ? meta.specializations : []);
+      const sessionPrefs = t.session_preferences || (Array.isArray(meta.session_preferences) ? meta.session_preferences : []);
+
+      // Build TherapistRowForMatch with full data including schwerpunkte
+      const tRow: TherapistRowForMatch = {
         id: t.id,
         gender: t.gender || null,
         city: city || null,
-        session_preferences: Array.isArray(meta.session_preferences) ? meta.session_preferences : [],
+        session_preferences: sessionPrefs,
         modalities: specs,
-      });
-      return { t, city, specs, mm } as const;
+        schwerpunkte: t.schwerpunkte || [],
+        accepting_new: t.accepting_new,
+        photo_url: t.photo_url,
+        approach_text: t.profile_data?.approach_text,
+        who_comes_to_me: t.profile_data?.who_comes_to_me,
+        metadata: {
+          hide_from_directory: t.is_hidden,
+          profile: t.profile_data,
+        },
+      };
+
+      // Compute mismatches (now includes schwerpunkte)
+      const mm = computeMismatches(patientMeta, tRow);
+
+      // Compute scores (only meaningful when a patient is selected)
+      let matchScore = 0;
+      let platformScore = 0;
+      let totalScore = 0;
+
+      if (patientMeta) {
+        matchScore = calculateMatchScore(tRow, patientMeta);
+
+        // Get slot counts from cal_slots (API returns { intro, full })
+        const calSlots = t.cal_slots || { intro: 0, full: 0 };
+        const intakeSlots7Days = Math.round(calSlots.intro / 2); // cal_slots_cache is 14-day, estimate 7-day
+        const intakeSlots14Days = calSlots.intro;
+
+        // Generate daily shuffle seed for fair rotation
+        const today = new Date().toISOString().split('T')[0];
+        const dailyShuffleSeed = `${t.id}-${today}`;
+
+        platformScore = calculatePlatformScore(tRow, intakeSlots7Days, intakeSlots14Days, {
+          fullSlotsCount: calSlots.full,
+          createdAt: t.created_at,
+          dailyShuffleSeed,
+        });
+
+        totalScore = calculateTotalScore(matchScore, platformScore);
+      }
+
+      return { t, city, specs, mm, matchScore, platformScore, totalScore };
     });
-    // Sort: hidden to bottom, then perfect first, then by fewer reasons, then accepting_new true first, then newest first
+
+    // Sort: hidden to bottom, then by totalScore desc, then accepting_new true first, then newest first
     items.sort((a, b) => {
       const aHidden = Boolean(a.t.is_hidden);
       const bHidden = Boolean(b.t.is_hidden);
       if (aHidden !== bHidden) return aHidden ? 1 : -1;
-      if (a.mm.isPerfect !== b.mm.isPerfect) return a.mm.isPerfect ? -1 : 1;
-      if (a.mm.reasons.length !== b.mm.reasons.length) return a.mm.reasons.length - b.mm.reasons.length;
+      // Primary sort: totalScore descending (when patient selected)
+      if (a.totalScore !== b.totalScore) return b.totalScore - a.totalScore;
+      // Fallback: accepting_new
       const aAvail = Boolean(a.t.accepting_new);
       const bAvail = Boolean(b.t.accepting_new);
       if (aAvail !== bAvail) return aAvail ? -1 : 1;
+      // Fallback: newest first
       return (new Date(b.t.created_at).getTime()) - (new Date(a.t.created_at).getTime());
     });
     return items;
@@ -1046,12 +1119,12 @@ export default function AdminLeadsPage() {
           )}
 
           <div className="space-y-3">
-            {(therapistItems.filter((it) => (onlyPerfect ? it.mm.isPerfect : true))).map(({ t, city, specs, mm }) => {
+            {(therapistItems.filter((it) => (onlyPerfect ? it.mm.isPerfect : true))).map(({ t, city, specs, mm, matchScore, platformScore }) => {
               const checked = selectedTherapists.has(t.id);
               // Map Admin API shape to TherapistPreview props
               const firstName = t.first_name || (t.name || '').trim().split(/\s+/)[0] || '';
               const lastName = t.last_name || (t.name || '').trim().split(/\s+/).slice(1).join(' ') || '';
-              const sessionPrefs = t.metadata?.session_preferences || [];
+              const sessionPrefs = t.session_preferences || t.metadata?.session_preferences || [];
               const offersOnline = Array.isArray(sessionPrefs) && sessionPrefs.includes('online');
               const offersInPerson = Array.isArray(sessionPrefs) && sessionPrefs.includes('in_person');
               const previewTherapistData = {
@@ -1126,24 +1199,57 @@ export default function AdminLeadsPage() {
                               ))}
                             </div>
                           )}
-                          {/* Match quality badges and actions */}
-                          <div className="flex items-center gap-2">
+                          {/* Match scores and actions */}
+                          <div className="flex flex-wrap items-center gap-2">
                             {t.is_hidden && (
                               <Badge variant="outline" className="border-red-300 bg-red-50 text-red-700 px-1.5 py-0">Versteckt</Badge>
                             )}
-                            {mm.isPerfect ? (
-                              <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 px-1.5 py-0">Perfekt</Badge>
-                            ) : (
+                            {/* Show scores when a patient is selected */}
+                            {selectedPatient && (
                               <>
-                                <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 px-1.5 py-0">Teilweise</Badge>
-                                {mm.reasons.map((r) => {
-                                  const map: Record<string, string> = { gender: 'Geschlecht', location: 'Ort/Sitzung', modality: 'Methode' };
-                                  const label = map[r] || r;
-                                  return (
-                                    <Badge key={r} variant="secondary" className="px-1.5 py-0 text-[10px]" title="Nicht passend zur Klientenpräferenz">{label}</Badge>
-                                  );
-                                })}
+                                <Badge
+                                  variant="outline"
+                                  className={`px-1.5 py-0 text-[10px] font-medium ${
+                                    matchScore >= 60
+                                      ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                                      : matchScore >= 30
+                                        ? 'border-amber-300 bg-amber-50 text-amber-700'
+                                        : 'border-slate-300 bg-slate-50 text-slate-600'
+                                  }`}
+                                  title={`Match Score: Relevanz für diesen Patienten (Schwerpunkte, Ort, Methode, Geschlecht). Max: 100`}
+                                >
+                                  Match: {matchScore}
+                                </Badge>
+                                <Badge
+                                  variant="outline"
+                                  className={`px-1.5 py-0 text-[10px] font-medium ${
+                                    platformScore >= 45
+                                      ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                                      : platformScore >= 25
+                                        ? 'border-amber-300 bg-amber-50 text-amber-700'
+                                        : 'border-slate-300 bg-slate-50 text-slate-600'
+                                  }`}
+                                  title={`Platform Score: Investition in die Plattform (Slots, Profilvollständigkeit, Tenure). Max: 65`}
+                                >
+                                  Plattform: {platformScore}
+                                </Badge>
                               </>
+                            )}
+                            {/* Show mismatch reasons in smaller text if any exist */}
+                            {mm.reasons.length > 0 && (
+                              <span className="text-[10px] text-amber-600 flex items-center gap-1" title="Abweichungen von Patientenpräferenzen">
+                                ⚠️
+                                {mm.reasons.map((r) => {
+                                  const map: Record<string, string> = {
+                                    gender: 'Geschlecht',
+                                    location: 'Ort/Sitzung',
+                                    city: 'Stadt',
+                                    modality: 'Methode',
+                                    schwerpunkte: 'Schwerpunkte',
+                                  };
+                                  return map[r] || r;
+                                }).join(', ')}
+                              </span>
                             )}
                             <Button
                               size="sm"
