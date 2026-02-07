@@ -156,3 +156,21 @@ export const AdminErrorsQueryInput = z
   .passthrough();
 
 export type AdminErrorsQueryInput = z.infer<typeof AdminErrorsQueryInput>;
+
+// ============================================================================
+// GET /api/admin/interactions
+// Admin interactions list (patient journey observability)
+// ============================================================================
+
+export const AdminInteractionsQueryInput = z
+  .object({
+    filter: z.enum(['all', 'messaging_only', 'booked_only', 'has_upcoming']).optional(),
+    search: z.string().trim().optional(),
+    created_after: z.string().trim().optional(),
+    created_before: z.string().trim().optional(),
+    limit: z.coerce.number().int().min(1).max(500).optional(),
+    offset: z.coerce.number().int().min(0).optional(),
+  })
+  .passthrough();
+
+export type AdminInteractionsQueryInput = z.infer<typeof AdminInteractionsQueryInput>;

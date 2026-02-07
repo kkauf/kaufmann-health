@@ -48,6 +48,9 @@ export default function AdminNav() {
           <Link href="/admin/leads" className={linkCls('/admin/leads')} aria-current={isActive('/admin/leads') ? 'page' : undefined}>
             Leads
           </Link>
+          <Link href="/admin/interactions" className={linkCls('/admin/interactions')} aria-current={isActive('/admin/interactions') ? 'page' : undefined}>
+            Interaktionen
+          </Link>
 <Link href="/admin/therapists" className={linkCls('/admin/therapists')} aria-current={isActive('/admin/therapists') ? 'page' : undefined}>
             <span className="inline-flex items-center gap-2">
               Therapeuten
