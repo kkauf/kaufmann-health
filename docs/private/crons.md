@@ -58,9 +58,9 @@ All times are UTC.
 
 ### `/api/cron/evening-alerts` — Daily 8pm
 - `ads-monitor-evening` → `/api/admin/ads/monitor?apply=false&lookback=1`
-- `new-leads` → `/api/admin/alerts/new-leads?hours=6` (second daily check)
 - `user-errors-digest` → `/api/admin/alerts/user-errors-digest`
 - `match-quality-report` → `/api/admin/alerts/match-quality-report?days=1`
+- ~~`new-leads`~~ — removed; covered by immediate notifications + daily `unmatched-leads` safety net
 
 ### `/api/cron/nightly` — Daily 3am
 - `reconcile-bookings` → `/api/admin/cal/reconcile-bookings?days=7`

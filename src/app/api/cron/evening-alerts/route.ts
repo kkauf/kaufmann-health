@@ -5,11 +5,12 @@ import { NextResponse } from 'next/server';
  * 
  * Runs daily at 8pm (20:00). Combines:
  * - ads/monitor (evening check with 1-day lookback)
- * - alerts/new-leads (also runs at 2pm separately if needed)
  * - alerts/user-errors-digest
  * - alerts/match-quality-report (moved from 7pm)
- * 
+ *
  * Evening monitoring, reporting, and digest.
+ * Note: new-leads alert removed — covered by immediate notifications
+ * (returning concierge) + daily unmatched-leads safety net (morning-alerts).
  */
 export async function POST(req: Request) {
   const authHeader = req.headers.get('authorization');
@@ -24,7 +25,6 @@ export async function POST(req: Request) {
 
   const jobs = [
     { name: 'ads-monitor-evening', path: '/api/admin/ads/monitor?apply=false&lookback=1&excludeToday=false&minSpendNoConv=30&budgetMultiple=1.5' },
-    { name: 'new-leads', path: '/api/admin/alerts/new-leads?hours=6' },
     { name: 'user-errors-digest', path: '/api/admin/alerts/user-errors-digest' },
     { name: 'match-quality-report', path: '/api/admin/alerts/match-quality-report?days=1' },
   ];

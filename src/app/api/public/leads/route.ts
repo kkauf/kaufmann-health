@@ -886,7 +886,7 @@ export async function POST(req: Request) {
                 updateData.name = data.name;
               }
               if (campaign_source && !existing.campaign_source) updateData.campaign_source = campaign_source;
-              if (campaign_variant && !existing.campaign_variant) updateData.campaign_variant = campaign_variant;
+              if (campaign_variant && (isReturningConcierge || !existing.campaign_variant)) updateData.campaign_variant = campaign_variant;
               const meta: Record<string, unknown> = { ...(existing.metadata || {}) };
               let metaChanged = false;
               if (formSessionId && !('form_session_id' in meta)) { meta['form_session_id'] = formSessionId; metaChanged = true; }
