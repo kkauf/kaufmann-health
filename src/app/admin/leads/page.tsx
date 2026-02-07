@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { track } from '@vercel/analytics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -120,7 +120,11 @@ export default function AdminLeadsPage() {
     setIsStaging(host === 'staging.kaufmann-health.de' || host === 'localhost' || host === '127.0.0.1');
   }, []);
 
-  const [selectedPatient, setSelectedPatient] = useState<Person | null>(null);
+  const [selectedPatient, setSelectedPatientRaw] = useState<Person | null>(null);
+  const [isScoringPending, startScoringTransition] = useTransition();
+  const setSelectedPatient = useCallback((p: Person | null) => {
+    startScoringTransition(() => setSelectedPatientRaw(p));
+  }, []);
 
   const [therCity, setTherCity] = useState('');
   const [therSessionPref, setTherSessionPref] = useState<string>('');
@@ -1118,7 +1122,7 @@ export default function AdminLeadsPage() {
             </div>
           )}
 
-          <div className="space-y-3">
+          <div className={`space-y-3${isScoringPending ? ' opacity-60' : ''}`} style={isScoringPending ? { transition: 'opacity 0.2s' } : undefined}>
             {(therapistItems.filter((it) => (onlyPerfect ? it.mm.isPerfect : true))).map(({ t, city, specs, mm, matchScore, platformScore }) => {
               const checked = selectedTherapists.has(t.id);
               // Map Admin API shape to TherapistPreview props
