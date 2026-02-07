@@ -414,6 +414,59 @@ FROM customer_sessions;
 
 ---
 
+## Match Quality
+
+### M-BestMatchScore
+
+```sql
+-- Average match score of the BEST match per patient (highest total_score).
+-- This is what patients actually experience - their #1 recommendation.
+-- Each patient gets ~3 matches; averaging all 3 drags the score down.
+-- Target: >70. Below 50 = matching algorithm or supply issues.
+WITH scored AS (
+  SELECT
+    patient_id,
+    (metadata->>'match_score')::numeric AS match_score,
+    (metadata->>'total_score')::numeric AS total_score,
+    ROW_NUMBER() OVER (PARTITION BY patient_id ORDER BY (metadata->>'total_score')::numeric DESC) AS rn
+  FROM matches
+  WHERE therapist_id IS NOT NULL
+    AND metadata->>'match_score' IS NOT NULL
+    AND metadata->>'total_score' IS NOT NULL
+    AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+    AND created_at >= {{start_date}} AND created_at <= NOW()
+)
+SELECT ROUND(AVG(match_score)) AS best_match_score_avg
+FROM scored
+WHERE rn = 1;
+```
+
+### M-BestPlatformScore
+
+```sql
+-- Average platform score of the BEST match per patient (highest total_score).
+-- Platform score = therapist quality (availability, profile completeness, experience).
+-- Target: >45. Below 30 = therapist quality or onboarding issues.
+WITH scored AS (
+  SELECT
+    patient_id,
+    (metadata->>'platform_score')::numeric AS platform_score,
+    (metadata->>'total_score')::numeric AS total_score,
+    ROW_NUMBER() OVER (PARTITION BY patient_id ORDER BY (metadata->>'total_score')::numeric DESC) AS rn
+  FROM matches
+  WHERE therapist_id IS NOT NULL
+    AND metadata->>'platform_score' IS NOT NULL
+    AND metadata->>'total_score' IS NOT NULL
+    AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+    AND created_at >= {{start_date}} AND created_at <= NOW()
+)
+SELECT ROUND(AVG(platform_score)) AS best_platform_score_avg
+FROM scored
+WHERE rn = 1;
+```
+
+---
+
 ## Metabase Setup
 
 1. **Create one card per query** above
@@ -423,6 +476,7 @@ FROM customer_sessions;
    - Row 2: Demand metrics (6 cards)
    - Row 3: Supply metrics (3 cards)
    - Row 4: Unit Economics (3 cards)
+   - Row 5: Match Quality (2 cards)
 
 ---
 

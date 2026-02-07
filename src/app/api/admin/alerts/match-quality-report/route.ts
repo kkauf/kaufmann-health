@@ -48,6 +48,8 @@ type ReportData = {
   matchScoreStats: ScoreStats;
   platformScoreStats: ScoreStats;
   totalScoreStats: ScoreStats;
+  bestMatchScoreStats: ScoreStats;
+  bestPlatformScoreStats: ScoreStats;
   fallbackCount: number;
   fallbackRate: number;
   zeroMatchCount: number;
@@ -78,6 +80,9 @@ function analyzeMatches(matches: MatchRow[]): ReportData {
   let unscoredMatches = 0;
   const mismatchReasons: Record<string, number> = {};
 
+  // Group scored matches by patient for best-match extraction
+  const scoredByPatient = new Map<string, { matchScore: number; platformScore: number; totalScore: number }[]>();
+
   for (const match of matches) {
     const meta = match.metadata;
 
@@ -99,6 +104,13 @@ function analyzeMatches(matches: MatchRow[]): ReportData {
     platformScores.push(platformScore);
     totalScores.push(totalScore);
 
+    // Track per-patient for best-match stats
+    if (match.patient_id) {
+      const existing = scoredByPatient.get(match.patient_id) || [];
+      existing.push({ matchScore, platformScore, totalScore });
+      scoredByPatient.set(match.patient_id, existing);
+    }
+
     if (meta?.used_fallback === true) fallbackCount++;
 
     const reasons = meta?.mismatch_reasons as string[] | undefined;
@@ -109,6 +121,15 @@ function analyzeMatches(matches: MatchRow[]): ReportData {
     }
   }
 
+  // Extract best match per patient (highest total_score)
+  const bestMatchScores: number[] = [];
+  const bestPlatformScores: number[] = [];
+  for (const patientMatches of scoredByPatient.values()) {
+    const best = patientMatches.reduce((a, b) => a.totalScore >= b.totalScore ? a : b);
+    bestMatchScores.push(best.matchScore);
+    bestPlatformScores.push(best.platformScore);
+  }
+
   const scoredMatches = matchScores.length;
   const matchesWithTherapist = scoredMatches + unscoredMatches;
 
@@ -116,6 +137,8 @@ function analyzeMatches(matches: MatchRow[]): ReportData {
     matchScoreStats: computeStats(matchScores),
     platformScoreStats: computeStats(platformScores),
     totalScoreStats: computeStats(totalScores),
+    bestMatchScoreStats: computeStats(bestMatchScores),
+    bestPlatformScoreStats: computeStats(bestPlatformScores),
     fallbackCount,
     fallbackRate: matchesWithTherapist > 0 ? Math.round((fallbackCount / matchesWithTherapist) * 100) : 0,
     zeroMatchCount,
@@ -174,9 +197,11 @@ function buildEmailHtml(
   dateLabel: string,
   affectedPatients: Array<{ name: string | null; email: string | null; matchId: string }>,
 ): string {
-  const matchEmoji = getMatchScoreEmoji(data.matchScoreStats.avg);
-  const platformEmoji = getPlatformScoreEmoji(data.platformScoreStats.avg);
-  const overallEmoji = getOverallEmoji(data.matchScoreStats.avg, data.zeroMatchCount);
+  const bestMatchEmoji = getMatchScoreEmoji(data.bestMatchScoreStats.avg);
+  const bestPlatformEmoji = getPlatformScoreEmoji(data.bestPlatformScoreStats.avg);
+  const allMatchEmoji = getMatchScoreEmoji(data.matchScoreStats.avg);
+  const allPlatformEmoji = getPlatformScoreEmoji(data.platformScoreStats.avg);
+  const overallEmoji = getOverallEmoji(data.bestMatchScoreStats.avg, data.zeroMatchCount);
 
   const reasonRows = Object.entries(data.mismatchReasons)
     .sort((a, b) => b[1] - a[1])
@@ -212,9 +237,12 @@ function buildEmailHtml(
         h1 { color: #1a1a2e; font-size: 20px; }
         h2 { color: #16213e; margin-top: 24px; font-size: 16px; }
         h3 { color: #0f3460; margin-top: 20px; font-size: 14px; }
-        .scores { display: flex; gap: 12px; margin: 16px 0; }
+        .section-label { color: #666; font-size: 13px; font-weight: 600; margin: 20px 0 4px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .scores { display: flex; gap: 12px; margin: 4px 0 16px 0; }
         .score-box { flex: 1; background: #f8f9fa; border-radius: 8px; padding: 16px; text-align: center; }
+        .score-box-secondary { flex: 1; background: #f8f9fa; border-radius: 8px; padding: 12px; text-align: center; }
         .score-value { font-size: 36px; font-weight: bold; }
+        .score-value-sm { font-size: 24px; font-weight: bold; color: #666; }
         .score-label { color: #666; font-size: 12px; margin-top: 4px; }
         .score-range { color: #999; font-size: 11px; }
         .breakdown { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin: 16px 0; }
@@ -231,16 +259,31 @@ function buildEmailHtml(
       <h1>${overallEmoji} Täglicher Match-Bericht</h1>
       <p><strong>Zeitraum:</strong> ${dateLabel}</p>
 
+      <div class="section-label">Bester Match (pro Patient)</div>
       <div class="scores">
         <div class="score-box">
-          <div class="score-value">${matchEmoji} ${data.matchScoreStats.avg}</div>
+          <div class="score-value">${bestMatchEmoji} ${data.bestMatchScoreStats.avg}</div>
           <div class="score-label">Match-Score (Relevanz)</div>
-          <div class="score-range">${data.matchScoreStats.min}–${data.matchScoreStats.max} · max 100</div>
+          <div class="score-range">${data.bestMatchScoreStats.min}–${data.bestMatchScoreStats.max} · max 100</div>
         </div>
         <div class="score-box">
-          <div class="score-value">${platformEmoji} ${data.platformScoreStats.avg}</div>
+          <div class="score-value">${bestPlatformEmoji} ${data.bestPlatformScoreStats.avg}</div>
           <div class="score-label">Platform-Score (Therapeut)</div>
-          <div class="score-range">${data.platformScoreStats.min}–${data.platformScoreStats.max} · max 65</div>
+          <div class="score-range">${data.bestPlatformScoreStats.min}–${data.bestPlatformScoreStats.max} · max 65</div>
+        </div>
+      </div>
+
+      <div class="section-label">Alle Matches (Ø ${data.scoredMatches} Matches)</div>
+      <div class="scores">
+        <div class="score-box-secondary">
+          <div class="score-value-sm">${allMatchEmoji} ${data.matchScoreStats.avg}</div>
+          <div class="score-label">Match-Score</div>
+          <div class="score-range">${data.matchScoreStats.min}–${data.matchScoreStats.max}</div>
+        </div>
+        <div class="score-box-secondary">
+          <div class="score-value-sm">${allPlatformEmoji} ${data.platformScoreStats.avg}</div>
+          <div class="score-label">Platform-Score</div>
+          <div class="score-range">${data.platformScoreStats.min}–${data.platformScoreStats.max}</div>
         </div>
       </div>
 
@@ -249,10 +292,6 @@ function buildEmailHtml(
         <div class="breakdown-row">
           <span>Matches gesamt</span>
           <span><strong>${data.totalMatches}</strong></span>
-        </div>
-        <div class="breakdown-row">
-          <span>Davon mit Scores</span>
-          <span><strong>${data.scoredMatches}</strong></span>
         </div>
         <div class="breakdown-row">
           <span>Fallback-Rate</span>
@@ -283,8 +322,8 @@ function buildEmailHtml(
 
       <hr style="margin: 24px 0; border: none; border-top: 1px solid #e0e0e0;">
       <p style="color: #666; font-size: 12px;">
-        Match-Score = Relevanz für Patient (Schwerpunkte, Geschlecht, Standort, Modalität).
-        Platform-Score = Therapeuten-Qualität (Verfügbarkeit, Profil, Erfahrung).
+        Bester Match = #1 Empfehlung pro Patient (höchster Gesamtscore).
+        Match-Score = Relevanz für Patient. Platform-Score = Therapeuten-Qualität.
       </p>
     </body>
     </html>
@@ -355,6 +394,8 @@ export async function GET(req: Request) {
       source: 'admin.alerts.match-quality-report',
       props: {
         days,
+        best_match_score_avg: data.bestMatchScoreStats.avg,
+        best_platform_score_avg: data.bestPlatformScoreStats.avg,
         match_score_avg: data.matchScoreStats.avg,
         platform_score_avg: data.platformScoreStats.avg,
         total_matches: data.totalMatches,
@@ -367,8 +408,8 @@ export async function GET(req: Request) {
 
     // Build email
     const html = buildEmailHtml(data, label, affectedPatients);
-    const overallEmoji = getOverallEmoji(data.matchScoreStats.avg, data.zeroMatchCount);
-    const subject = `${overallEmoji} Match-Score: ${data.matchScoreStats.avg}/100 · Platform: ${data.platformScoreStats.avg}/65 - ${label}`;
+    const overallEmoji = getOverallEmoji(data.bestMatchScoreStats.avg, data.zeroMatchCount);
+    const subject = `${overallEmoji} Match-Score (best): ${data.bestMatchScoreStats.avg}/100 · Ø alle: ${data.matchScoreStats.avg}/100 - ${label}`;
 
     const notifyEmail = getAdminNotifyEmail();
 
@@ -379,6 +420,8 @@ export async function GET(req: Request) {
         data: {
           days,
           dateRange: label,
+          bestMatchScoreStats: data.bestMatchScoreStats,
+          bestPlatformScoreStats: data.bestPlatformScoreStats,
           matchScoreStats: data.matchScoreStats,
           platformScoreStats: data.platformScoreStats,
           totalScoreStats: data.totalScoreStats,
@@ -413,7 +456,7 @@ export async function GET(req: Request) {
       to: notifyEmail,
       subject,
       html,
-      context: { kind: 'match_quality_report', days, match_score_avg: data.matchScoreStats.avg },
+      context: { kind: 'match_quality_report', days, best_match_score_avg: data.bestMatchScoreStats.avg, match_score_avg: data.matchScoreStats.avg },
     });
 
     return NextResponse.json({
@@ -421,6 +464,8 @@ export async function GET(req: Request) {
       data: {
         days,
         dateRange: label,
+        bestMatchScoreStats: data.bestMatchScoreStats,
+        bestPlatformScoreStats: data.bestPlatformScoreStats,
         matchScoreStats: data.matchScoreStats,
         platformScoreStats: data.platformScoreStats,
         totalScoreStats: data.totalScoreStats,

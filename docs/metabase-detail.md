@@ -715,6 +715,41 @@ WHERE created_at >= {{start_date}} AND created_at <= NOW()
   AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true');
 ```
 
+### M-ScoreDaily
+
+```sql
+-- Daily match score trend: best match per patient vs all matches average.
+-- "best" = the #1 recommendation per patient (highest total_score).
+-- Compare best vs all to see how much #2/#3 picks drag down the average.
+-- Best viewed as dual-line chart. Target: best_match_score > 70.
+WITH scored AS (
+  SELECT
+    DATE(created_at) AS day,
+    patient_id,
+    (metadata->>'match_score')::numeric AS match_score,
+    (metadata->>'platform_score')::numeric AS platform_score,
+    (metadata->>'total_score')::numeric AS total_score,
+    ROW_NUMBER() OVER (PARTITION BY patient_id, DATE(created_at) ORDER BY (metadata->>'total_score')::numeric DESC) AS rn
+  FROM matches
+  WHERE therapist_id IS NOT NULL
+    AND metadata->>'match_score' IS NOT NULL
+    AND metadata->>'total_score' IS NOT NULL
+    AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+    AND created_at >= {{start_date}} AND created_at <= NOW()
+    AND DATE(created_at) < CURRENT_DATE
+)
+SELECT
+  day,
+  COUNT(*) FILTER (WHERE rn = 1) AS patients,
+  ROUND(AVG(match_score) FILTER (WHERE rn = 1)) AS best_match_score,
+  ROUND(AVG(match_score)) AS all_match_score,
+  ROUND(AVG(platform_score) FILTER (WHERE rn = 1)) AS best_platform_score,
+  ROUND(AVG(platform_score)) AS all_platform_score
+FROM scored
+GROUP BY day
+ORDER BY day DESC;
+```
+
 ### M-LowQualityPatients
 
 ```sql
