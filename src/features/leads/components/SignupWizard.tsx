@@ -1328,7 +1328,8 @@ export default function SignupWizard() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              phone_number: phone,
+              contact: phone,
+              contact_type: 'phone',
               form_session_id: sessionIdRef.current || undefined,
               lead_id: localStorage.getItem('leadId') || undefined,
             }),
@@ -1361,7 +1362,8 @@ export default function SignupWizard() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              phone_number: smsFallbackPhone.trim(),
+              contact: smsFallbackPhone.trim(),
+              contact_type: 'phone',
               code,
               form_session_id: sessionIdRef.current || undefined,
               lead_id: localStorage.getItem('leadId') || undefined,
