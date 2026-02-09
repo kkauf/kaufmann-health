@@ -1,8 +1,7 @@
 import { supabaseServer } from '@/lib/supabase-server';
 import { TERMS_VERSION } from '@/content/therapist-terms';
 import { ACTIVE_CITIES } from '@/lib/constants';
-import { sendEmail } from '@/lib/email/client';
-import { buildInternalLeadNotification } from '@/lib/email/internalNotification';
+import { sendTherapistEmail } from '@/lib/email/client';
 import { renderTherapistWelcome } from '@/lib/email/templates/therapistWelcome';
 import { BASE_URL } from '@/lib/constants';
 import { logError, track } from '@/lib/logger';
@@ -11,7 +10,6 @@ import { hashIP } from './validation';
 import { isTestRequest } from '@/lib/test-mode';
 import type { HandlerContext } from './types';
 import { safeJson } from '@/lib/http';
-import { getPartnersNotifyEmail, getQaNotifyEmail } from '@/lib/email/notification-recipients';
 
 export type TherapistHandlerInput = {
   data: { name?: string; email: string; phone?: string; notes?: string };
@@ -83,29 +81,14 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
     const uploadUrl = `${BASE_URL}/therapists/complete-profile/${therapistId}`;
     const welcome = renderTherapistWelcome({ name: data.name, city, isActiveCity, termsVersion: TERMS_VERSION, uploadUrl });
     void track({ type: 'email_attempted', level: 'info', source: 'api.leads', ip, ua, props: { stage: 'therapist_welcome', lead_id: therapistId, lead_type: 'therapist', subject: welcome.subject, ...(session_id ? { session_id } : {}) } });
-    await sendEmail({ to: data.email, subject: welcome.subject, html: welcome.html, context: { stage: 'therapist_welcome', lead_id: therapistId, lead_type: 'therapist', ...(session_id ? { session_id } : {}) } });
+    await sendTherapistEmail({ to: data.email, subject: welcome.subject, html: welcome.html, context: { stage: 'therapist_welcome', lead_id: therapistId, lead_type: 'therapist', ...(session_id ? { session_id } : {}) } });
   } catch (e) {
     console.error('[welcome-email] Failed to render/send therapist welcome', e);
     void logError('api.leads', e, { stage: 'welcome_email' }, ip, ua);
   }
 
   // Google Ads conversion moved to documents submission endpoint (see /api/therapists/:id/documents)
-
-  // Internal notification (PII-free) - therapist signups go to partner team (test → QA sink)
-  try {
-    const to = isTest ? getQaNotifyEmail() : getPartnersNotifyEmail();
-    if (to) {
-      const notif = buildInternalLeadNotification({ id: therapistId, metadata: { lead_type: 'therapist', city: city ?? null } });
-      const subject = isTest ? `[TEST] ${notif.subject}` : notif.subject;
-      void track({ type: 'email_attempted', level: 'info', source: 'api.leads', ip, ua, props: { stage: 'internal_notification', lead_id: therapistId, lead_type: 'therapist', subject, ...(session_id ? { session_id } : {}) } });
-      void sendEmail({ to, subject, text: notif.text, context: { stage: 'internal_notification', lead_id: therapistId, lead_type: 'therapist', ...(session_id ? { session_id } : {}) } }).catch(() => {});
-    } else {
-      void track({ type: 'notify_skipped', level: 'warn', source: 'api.leads', ip, ua, props: { reason: 'missing_recipient', lead_id: therapistId, lead_type: 'therapist', ...(session_id ? { session_id } : {}) } });
-    }
-  } catch (e) {
-    console.error('[notify] Failed to build/send notification', e);
-    void logError('api.leads', e, { stage: 'notify' }, ip, ua);
-  }
+  // Internal notification moved to documents submission endpoint — nothing to review until docs are uploaded
 
   // Track successful submission
   const attr = parseAttributionFromRequest(req);

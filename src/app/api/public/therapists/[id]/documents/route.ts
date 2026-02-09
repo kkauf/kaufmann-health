@@ -3,8 +3,9 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { logError, track } from '@/lib/logger';
 import { googleAdsTracker } from '@/lib/google-ads';
 import { isTestRequest } from '@/lib/test-mode';
-import { sendEmail } from '@/lib/email/client';
+import { sendEmail, sendTherapistEmail } from '@/lib/email/client';
 import { renderTherapistUploadConfirmation } from '@/lib/email/templates/therapistUploadConfirmation';
+import { getPartnersNotifyEmail, getQaNotifyEmail } from '@/lib/email/notification-recipients';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -231,10 +232,30 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (to) {
         const confirmation = renderTherapistUploadConfirmation({ name });
         void track({ type: 'email_attempted', level: 'info', source: 'api.therapists.documents', ip, ua, props: { stage: 'therapist_upload_confirmation', therapist_id: id, subject: confirmation.subject } });
-        await sendEmail({ to, subject: confirmation.subject, html: confirmation.html, context: { stage: 'therapist_upload_confirmation', therapist_id: id } });
+        await sendTherapistEmail({ to, subject: confirmation.subject, html: confirmation.html, context: { stage: 'therapist_upload_confirmation', therapist_id: id } });
       }
     } catch (e) {
       await logError('api.therapists.documents', e, { stage: 'send_upload_confirmation', therapist_id: id }, ip, ua);
+    }
+
+    // Internal notification — documents uploaded, ready for admin review
+    try {
+      const toEmail = (therapist as { email?: string | null }).email || '';
+      const isTest = isTestRequest(req, toEmail);
+      const notifyTo = isTest ? getQaNotifyEmail() : getPartnersNotifyEmail();
+      if (notifyTo) {
+        const city = (therapist as { city?: string | null } | undefined)?.city || 'unknown';
+        const subject = isTest ? `[TEST] Therapeut: Dokumente eingereicht · ${city}` : `Therapeut: Dokumente eingereicht · ${city}`;
+        const text = [
+          `Dokumente eingereicht – bereit zur Prüfung`,
+          `Therapist ID: ${id}`,
+          `Review: /admin/therapists`,
+        ].join('\n');
+        void track({ type: 'email_attempted', level: 'info', source: 'api.therapists.documents', ip, ua, props: { stage: 'internal_notification', therapist_id: id, subject } });
+        void sendEmail({ to: notifyTo, subject, text, context: { stage: 'internal_notification', therapist_id: id } }).catch(() => {});
+      }
+    } catch (e) {
+      void logError('api.therapists.documents', e, { stage: 'internal_notification', therapist_id: id }, ip, ua);
     }
 
     return safeJson({ data: { ok: true }, error: null }, { status: 200 });

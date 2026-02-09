@@ -47,7 +47,7 @@ Step 0: Registrierung → Step 1: Profil → Step 2: Dokumente → Step 3: Ferti
 1. **Therapist record created** in `therapists` table with `status: 'pending_verification'`
 2. **Contract signed** automatically (stored in `therapist_contracts` table)
 3. **Welcome email sent** with link to complete profile
-4. **Internal notification** sent to admin
+4. ~~Internal notification~~ — **not sent here** (nothing to review yet; notification fires after document upload)
 
 ### Key Notes
 
@@ -95,6 +95,11 @@ Step 0: Registrierung → Step 1: Profil → Step 2: Dokumente → Step 3: Ferti
 |----------|----------|--------|-----------|
 | Staatliche Zulassung (Heilpraktiker-Erlaubnis) | **Yes** | PDF, JPG, PNG (max 4MB) | Supabase Storage → `metadata.documents.license` |
 | Spezialisierungs-Zertifikat (NARM, Hakomi, SE, Core Energetics) | **Yes** (≥1) | PDF, JPG, PNG (max 4MB) | Supabase Storage → `metadata.documents.specialization` |
+
+**On document upload:**
+- Upload confirmation email sent to therapist
+- **Internal notification sent to admin** ("Dokumente eingereicht – bereit zur Prüfung")
+- Google Ads enhanced conversion fired
 
 ### Step 3: Confirmation
 
@@ -224,12 +229,15 @@ Verified therapists who haven't completed their profile receive automated remind
 | Trigger | Email Template | When Sent |
 |---------|---------------|-----------|
 | Signup | `therapistWelcome` | Immediately after registration |
+| Documents uploaded | `therapistUploadConfirmation` | After document upload |
+| Documents uploaded | Internal notification to admin | After document upload (ready for review) |
 | Day 3 without docs | `therapistDocumentReminder` (day3) | 3 days after signup |
 | Day 10 without docs | `therapistDocumentReminder` (day10) | 10 days after signup |
 | Day 21 without docs | `therapistDocumentReminder` (day21) | 21 days after signup |
 | Admin: Rückfrage | `therapistRejection` | When admin requests changes |
 | Admin: Approve | `therapistApproval` | When admin approves |
 | Admin: Decline | `therapistDecline` | When admin declines |
+| Admin: Hide profile | `therapistProfileHidden` | When admin hides profile |
 | Portal login | `therapistMagicLink` | When therapist requests login |
 | Post-approval (profile incomplete) | `therapistReminder` | 3+ days after approval, every 7 days, max 3 |
 
