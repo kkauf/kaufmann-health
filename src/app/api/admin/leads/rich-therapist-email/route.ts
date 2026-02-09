@@ -113,7 +113,7 @@ export async function GET(req: Request) {
       .from('people')
       .select('id, name, email, metadata')
       .eq('type', 'patient')
-      .eq('status', 'new')
+      .in('status', ['new', 'matched'])
       .gte('metadata->>email_confirmed_at', fromIso)
       .lte('metadata->>email_confirmed_at', toIso)
       .limit(limit);

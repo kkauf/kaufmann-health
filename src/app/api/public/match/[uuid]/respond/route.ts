@@ -163,12 +163,14 @@ export async function POST(req: Request) {
         props: { match_id: m.id, action: current },
       });
       // EARTH-131: ensure patient lead is marked as matched when already accepted (best-effort)
+      // Only upgrade from 'new' — don't downgrade from 'active'
       if (current === 'accepted') {
         try {
           await supabaseServer
             .from('people')
             .update({ status: 'matched' })
-            .eq('id', m.patient_id);
+            .eq('id', m.patient_id)
+            .eq('status', 'new');
         } catch (e) {
           void logError('api.match.respond', e, { stage: 'update_patient_status_idempotent', match_id: m.id });
         }
@@ -222,12 +224,14 @@ export async function POST(req: Request) {
     });
 
     // EARTH-131: when a therapist accepts, mark patient lead as 'matched' (best-effort)
+    // Only upgrade from 'new' — don't downgrade from 'active'
     if (nextStatus === 'accepted') {
       try {
         await supabaseServer
           .from('people')
           .update({ status: 'matched' })
-          .eq('id', m.patient_id);
+          .eq('id', m.patient_id)
+          .eq('status', 'new');
       } catch (e) {
         void logError('api.match.respond', e, { stage: 'update_patient_status', match_id: m.id });
       }

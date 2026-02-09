@@ -371,20 +371,26 @@ export function calculateMatchScore(
   }
   
   // Modality overlap (15 points)
+  // No modality preference = patient is open to any approach = full points for all
   const patientModalities = (patient.specializations || []).map(s => normalizeSpec(String(s)));
-  const therapistModalities = Array.isArray(therapist.modalities) 
+  const therapistModalities = Array.isArray(therapist.modalities)
     ? (therapist.modalities as string[]).map(s => normalizeSpec(String(s)))
     : [];
-  
-  if (patientModalities.length > 0) {
+
+  if (patientModalities.length === 0) {
+    score += 15; // No preference = full points for all
+  } else {
     const patientSet = new Set(patientModalities);
     const hasOverlap = therapistModalities.some(m => patientSet.has(m));
     if (hasOverlap) score += 15;
   }
   
   // Gender match bonus (10 points)
+  // "No preference" means every therapist is a perfect match on this dimension
   const gp = patient.gender_preference;
-  if (gp && gp !== 'any' && gp !== 'no_preference') {
+  if (!gp || gp === 'any' || gp === 'no_preference') {
+    score += 10; // No preference = full points for all
+  } else {
     const tGender = (therapist.gender || '').toLowerCase();
     if (tGender === gp) {
       score += 10;
@@ -692,6 +698,20 @@ export async function createInstantMatchesForPatient(
           .select('secure_uuid')
           .single();
         if (i === 0) secureUuid = (row as { secure_uuid?: string | null } | null)?.secure_uuid || secureUuid;
+      }
+    }
+
+    // Transition patient to 'matched' status (only from 'new' to avoid downgrading 'active')
+    if (chosen.length > 0) {
+      try {
+        await supabaseServer
+          .from('people')
+          .update({ status: 'matched' })
+          .eq('id', patientId)
+          .eq('status', 'new');
+      } catch (e) {
+        const { logError: le } = await import('@/lib/logger');
+        void le('matching.status_transition', e, { patient_id: patientId, target: 'matched' });
       }
     }
 

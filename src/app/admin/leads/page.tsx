@@ -802,7 +802,7 @@ export default function AdminLeadsPage() {
                           </span>
                         </div>
                       )}
-                      {/* EARTH-131: Matched status badge */}
+                      {/* Status badges: matched and active */}
                       {p.status === 'matched' && (
                         <div className="mt-1">
                           <Badge
@@ -811,6 +811,17 @@ export default function AdminLeadsPage() {
                             title="Lead vermittelt"
                           >
                             Vermittelt
+                          </Badge>
+                        </div>
+                      )}
+                      {p.status === 'active' && (
+                        <div className="mt-1">
+                          <Badge
+                            variant="outline"
+                            className="border-green-200 bg-green-50 text-green-700"
+                            title="Patient aktiv (Termin gebucht)"
+                          >
+                            Aktiv
                           </Badge>
                         </div>
                       )}
@@ -842,7 +853,7 @@ export default function AdminLeadsPage() {
                       <div className="flex items-center gap-2">
                         <Label className="text-xs text-gray-600">Status</Label>
                         <Select
-                          value={p.status === 'rejected' ? 'rejected' : (p.status === 'matched' ? 'matched' : 'new')}
+                          value={p.status === 'rejected' ? 'rejected' : (p.status === 'active' ? 'active' : (p.status === 'matched' ? 'matched' : 'new'))}
                           onValueChange={(v) => updateLeadStatus(p.id, v as 'new' | 'rejected')}
                           disabled={updatingLeadId === p.id}
                         >
@@ -850,13 +861,18 @@ export default function AdminLeadsPage() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {/* Display-only option for matched */}
+                            {/* Display-only options for matched/active */}
+                            {p.status === 'active' && (
+                              <SelectItem value="active" disabled>
+                                Aktiv
+                              </SelectItem>
+                            )}
                             {p.status === 'matched' && (
                               <SelectItem value="matched" disabled>
                                 Vermittelt
                               </SelectItem>
                             )}
-                            <SelectItem value="new" disabled={p.status === 'matched'}>Neu</SelectItem>
+                            <SelectItem value="new" disabled={p.status === 'matched' || p.status === 'active'}>Neu</SelectItem>
                             <SelectItem value="rejected">Verloren</SelectItem>
                           </SelectContent>
                         </Select>

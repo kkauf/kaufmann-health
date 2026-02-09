@@ -651,6 +651,19 @@ export async function POST(req: Request) {
         void logError('api.public.cal.webhook', err, { stage: 'send_emails', cal_uid: uid });
       });
 
+      // Transition patient to 'active' on booking (from 'new' or 'matched', not downgrading)
+      if (patientId) {
+        try {
+          await supabaseServer
+            .from('people')
+            .update({ status: 'active' })
+            .eq('id', patientId)
+            .in('status', ['new', 'matched']);
+        } catch (e) {
+          void logError('api.public.cal.webhook', e, { stage: 'patient_active_transition', patient_id: patientId });
+        }
+      }
+
       // Fire server-side enhanced conversion for Google Ads (fire-and-forget)
       // The client-side gtag base conversion fires with transaction_id = cal_uid.
       // This enhancement adds hashed email/phone so Google can match it for attribution.

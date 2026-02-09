@@ -79,10 +79,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       return NextResponse.json({ data: null, error: 'Only patient leads can be updated' }, { status: 400 });
     }
 
-    // EARTH-131: Prevent reverting a matched lead back to new via admin UI/API
+    // Prevent reverting a matched/active lead back to new via admin UI/API
     const currentStatus = (person as { status?: string | null })?.status || null;
-    if (currentStatus === 'matched' && status === 'new') {
-      return NextResponse.json({ data: null, error: 'Cannot change matched lead back to new' }, { status: 400 });
+    if ((currentStatus === 'matched' || currentStatus === 'active') && status === 'new') {
+      return NextResponse.json({ data: null, error: 'Cannot change matched/active lead back to new' }, { status: 400 });
     }
 
     // Merge metadata with optional lost_reason when rejecting

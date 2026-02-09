@@ -106,7 +106,7 @@ export async function GET(req: Request) {
     // If the email has already been confirmed previously (or the lead is already actionable as 'new'),
     // send the user directly back to the intended UI context instead of showing an invalid link.
     const statusLower = (person.status || '').toLowerCase();
-    if (statusLower === 'email_confirmed' || statusLower === 'new') {
+    if (statusLower === 'email_confirmed' || statusLower === 'new' || statusLower === 'matched' || statusLower === 'active') {
       // If this lead is actionable (directory draft action or completed questionnaire), promote to 'new'
       // so admin views treat it as verified/actionable.
       if (statusLower === 'email_confirmed' && (personHasDraftAction || personFormIsCompleted || redirectSuggestsDraftAction)) {

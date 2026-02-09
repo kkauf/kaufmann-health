@@ -137,6 +137,8 @@ export async function GET(req: Request) {
       .from('people')
       .select('metadata')
       .eq('type', 'patient')
+      .not('metadata->>is_test', 'eq', 'true')
+      .not('status', 'in', '("pre_confirmation","anonymous","email_confirmation_sent")')
       .gte('created_at', monthStart.toISOString())
       .lt('created_at', monthEnd.toISOString());
 

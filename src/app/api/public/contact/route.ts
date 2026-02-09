@@ -248,7 +248,7 @@ export async function POST(req: Request) {
         patientId = existing.id;
         // Patient exists - check if they're already verified (status = 'new' or better)
         const existingStatus = (existing as { status?: string }).status || '';
-        isNewPatient = existingStatus !== 'new' && existingStatus !== 'email_confirmed';
+        isNewPatient = existingStatus !== 'new' && existingStatus !== 'email_confirmed' && existingStatus !== 'matched' && existingStatus !== 'active';
         try {
           const meta = (existing.metadata || {}) as Record<string, unknown>;
           const v = meta['is_test'];

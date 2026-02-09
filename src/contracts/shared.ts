@@ -13,7 +13,7 @@ export type TherapistGender = z.infer<typeof TherapistGender>;
 export const TherapistStatus = z.enum(['pending_verification', 'verified', 'rejected']);
 export type TherapistStatus = z.infer<typeof TherapistStatus>;
 
-export const PatientStatus = z.enum(['pre_confirmation', 'new', 'email_confirmed', 'matched', 'rejected']);
+export const PatientStatus = z.enum(['pre_confirmation', 'new', 'email_confirmed', 'matched', 'active', 'rejected']);
 export type PatientStatus = z.infer<typeof PatientStatus>;
 
 export const SessionPreference = z.enum(['online', 'in_person']);

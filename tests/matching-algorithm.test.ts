@@ -145,7 +145,7 @@ describe('Platform Score', () => {
 });
 
 describe('Match Score', () => {
-  it('M1: Perfect schwerpunkte match (2 overlaps) = 30', () => {
+  it('M1: Perfect schwerpunkte match (2 overlaps) = 30 + 25 baseline', () => {
     const therapist: TherapistRowForMatch = {
       id: '1',
       schwerpunkte: ['trauma', 'angst'],
@@ -153,12 +153,12 @@ describe('Match Score', () => {
     const patient: PatientMeta = {
       schwerpunkte: ['trauma', 'angst', 'depression'],
     };
-    // 30 (2 schwerpunkte overlaps)
+    // 30 (2 schwerpunkte overlaps) + 15 (no modality pref) + 10 (no gender pref)
     const score = calculateMatchScore(therapist, patient);
-    expect(score).toBe(30);
+    expect(score).toBe(55);
   });
 
-  it('M2: No schwerpunkte overlap = 0 (but not excluded)', () => {
+  it('M2: No schwerpunkte overlap = 0 + 25 baseline (but not excluded)', () => {
     const therapist: TherapistRowForMatch = {
       id: '1',
       schwerpunkte: ['beziehung'],
@@ -166,11 +166,12 @@ describe('Match Score', () => {
     const patient: PatientMeta = {
       schwerpunkte: ['trauma'],
     };
+    // 0 (no schwerpunkte overlap) + 15 (no modality pref) + 10 (no gender pref)
     const score = calculateMatchScore(therapist, patient);
-    expect(score).toBe(0);
+    expect(score).toBe(25);
   });
 
-  it('M3: In-person city bonus when patient accepts both = +20', () => {
+  it('M3: In-person city bonus when patient accepts both = +20 + 25 baseline', () => {
     const therapist: TherapistRowForMatch = {
       id: '1',
       city: 'Berlin',
@@ -180,11 +181,12 @@ describe('Match Score', () => {
       city: 'Berlin',
       session_preferences: ['online', 'in_person'],
     };
+    // 20 (city bonus) + 15 (no modality pref) + 10 (no gender pref)
     const score = calculateMatchScore(therapist, patient);
-    expect(score).toBe(20);
+    expect(score).toBe(45);
   });
 
-  it('M4: Online-only therapist when patient accepts both = no city bonus', () => {
+  it('M4: Online-only therapist when patient accepts both = no city bonus + 25 baseline', () => {
     const therapist: TherapistRowForMatch = {
       id: '1',
       city: 'Berlin',
@@ -194,11 +196,12 @@ describe('Match Score', () => {
       city: 'Berlin',
       session_preferences: ['online', 'in_person'],
     };
+    // 0 (no city bonus) + 15 (no modality pref) + 10 (no gender pref)
     const score = calculateMatchScore(therapist, patient);
-    expect(score).toBe(0);
+    expect(score).toBe(25);
   });
 
-  it('Modality overlap = +15', () => {
+  it('Modality overlap = +15 + 10 (no gender pref)', () => {
     const therapist: TherapistRowForMatch = {
       id: '1',
       modalities: ['narm', 'hakomi'],
@@ -206,11 +209,12 @@ describe('Match Score', () => {
     const patient: PatientMeta = {
       specializations: ['NARM'],
     };
+    // 15 (modality overlap) + 10 (no gender pref)
     const score = calculateMatchScore(therapist, patient);
-    expect(score).toBe(15);
+    expect(score).toBe(25);
   });
 
-  it('Gender match bonus = +10', () => {
+  it('Gender match bonus = +10 + 15 (no modality pref)', () => {
     const therapist: TherapistRowForMatch = {
       id: '1',
       gender: 'female',
@@ -218,8 +222,9 @@ describe('Match Score', () => {
     const patient: PatientMeta = {
       gender_preference: 'female',
     };
+    // 10 (gender match) + 15 (no modality pref)
     const score = calculateMatchScore(therapist, patient);
-    expect(score).toBe(10);
+    expect(score).toBe(25);
   });
 });
 

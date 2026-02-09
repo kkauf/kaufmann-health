@@ -39,7 +39,7 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const city = url.searchParams.get('city')?.trim() || undefined;
     const sessionPref = url.searchParams.get('session_preference') as 'online' | 'in_person' | null;
-    const statusParam = (url.searchParams.get('status') || 'new').trim();
+    const statusParam = (url.searchParams.get('status') || 'new,matched').trim();
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 200);
 
     // In non-production environments, show test leads for debugging
@@ -57,7 +57,14 @@ export async function GET(req: Request) {
       }
       q = q.order('created_at', { ascending: false })
         .limit(limit);
-      if (statusParam && statusParam !== 'all') q = q.eq('status', statusParam);
+      if (statusParam && statusParam !== 'all') {
+        const statuses = statusParam.split(',').map(s => s.trim()).filter(Boolean);
+        if (statuses.length === 1) {
+          q = q.eq('status', statuses[0]);
+        } else if (statuses.length > 1) {
+          q = q.in('status', statuses);
+        }
+      }
       if (city) {
         // Case-insensitive partial match on city from JSON metadata
         q = q.ilike('metadata->>city', `%${city}%`);

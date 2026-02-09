@@ -2,7 +2,7 @@
 
 ## State transitions (high-level)
 
-- People (patients): `pre_confirmation → email_confirmed → new → matched`
+- People (patients): `pre_confirmation → email_confirmed → new → matched → active`
 - People (therapists): `pending_verification → verified | rejected`
 - Matches: `proposed → therapist_contacted → therapist_responded → patient_selected → accepted/declined → session_booked → completed | failed`
 
@@ -12,7 +12,7 @@
 - `phone text`
 - `name text`
 - `type text check in ('patient','therapist')`
-- `status text default 'new'` — allowed values: `new`, `pre_confirmation`, `email_confirmed`, `pending_verification` (therapists default), `verified`, `rejected`, `matched`
+- `status text default 'new'` — allowed values: `new`, `pre_confirmation`, `email_confirmed`, `pending_verification` (therapists default), `verified`, `rejected`, `matched`, `active`
 - `metadata jsonb default '{}'::jsonb`
 - `created_at timestamptz default now()`
 - `campaign_source text`
@@ -58,6 +58,7 @@ Enforced server-side via `hasCompleteProfile()` and `isTherapistHidden()` in `sr
 Notes:
 - `secure_uuid` on `matches` is unique and used for magic links. No PII in emails.
 - Activation rules: patient becomes `new` after confirmation if `form_completed_at` exists; otherwise stays `email_confirmed`.
+- Patient lifecycle: `new` → `matched` (when matches are created) → `active` (when any booking is created via Cal.com webhook). Status only moves forward, never backward (e.g., `active` cannot revert to `matched`).
 
 Indexes:
 - JSONB GIN index on `metadata` recommended for IP/attributes lookups.

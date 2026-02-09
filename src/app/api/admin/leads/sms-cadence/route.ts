@@ -157,7 +157,7 @@ async function processStage(
     .select(`id, name, phone_number, email, status, metadata`)
     .eq('type', 'patient')
     .not('phone_number', 'is', null)
-    .in('status', ['new', 'email_confirmed'])
+    .in('status', ['new', 'email_confirmed', 'matched'])
     .gte('created_at', fromIso)
     .lte('created_at', toIso)
     .limit(limit * 2);
