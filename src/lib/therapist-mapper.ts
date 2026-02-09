@@ -193,6 +193,7 @@ export function mapTherapistRow(
     // Cal.com integration
     cal_username: row.cal_username || undefined,
     cal_enabled: row.cal_enabled || false,
+    credential_tier: row.credential_tier || 'licensed',
     // Booking gating
     requires_intro_before_booking: bookingSettings.requires_intro_before_booking,
   };

@@ -43,6 +43,7 @@ type Therapist = {
   };
   requires_action?: boolean;
   is_test?: boolean;
+  credential_tier?: 'licensed' | 'certified';
   is_hidden?: boolean;
   cal_slots?: {
     intro: number;
@@ -662,6 +663,7 @@ export default function AdminTherapistsPage() {
                   <div className="min-w-0">
                     <CardTitle className="truncate flex items-center gap-2" title={t.name || undefined}>
                       {t.name || "—"}
+                      {t.credential_tier === 'certified' && <Badge className="bg-violet-100 text-violet-700 border-violet-300 text-xs">ZERTIFIZIERT</Badge>}
                       {t.is_test && <Badge className="bg-orange-100 text-orange-700 border-orange-300 text-xs">TEST</Badge>}
                       {t.is_hidden && <Badge className="bg-red-100 text-red-700 border-red-300 text-xs">VERSTECKT</Badge>}
                     </CardTitle>

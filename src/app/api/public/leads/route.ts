@@ -182,6 +182,8 @@ async function handleTherapistMultipart(req: Request) {
     .map((v) => sanitize(String(v))?.toLowerCase())
     .filter((s): s is 'online' | 'in_person' => s === 'online' || s === 'in_person');
   const specializations = normalizeSpecializations(form.getAll('specializations') || []);
+  const qualificationRaw = sanitize(form.get('qualification')?.toString());
+  const multipartCredentialTier = qualificationRaw === 'Berater:in / Coach' ? 'certified' : 'licensed';
   const approachTextRaw = form.get('approach_text')?.toString();
   if (approachTextRaw && approachTextRaw.length > 500) {
     return safeJson(
@@ -232,6 +234,7 @@ async function handleTherapistMultipart(req: Request) {
       city: city || null,
       session_preferences: sessionPreferences,
       modalities,
+      credential_tier: multipartCredentialTier,
       ...(isTest ? { metadata: { is_test: true } as Record<string, unknown> } : {}),
       status: 'pending_verification',
     })
@@ -275,7 +278,7 @@ async function handleTherapistMultipart(req: Request) {
       break;
     }
   }
-  if (!licenseFile) {
+  if (!licenseFile && multipartCredentialTier === 'licensed') {
     missing.push('license');
   }
 
@@ -590,7 +593,8 @@ export async function POST(req: Request) {
     const consentShare = Boolean(payload.consent_share_with_therapists);
     const privacyVersion = sanitize(payload.privacy_version);
     const specializations = normalizeSpecializations(payload.specializations ?? []);
-    // Therapist profile fields (qualification/experience/website) not processed in JSON path
+    // Therapist qualification (used to derive credential_tier)
+    const therapistQualification = sanitize(payload.qualification as string | undefined);
     // Therapist's own gender (for identity verification)
     const therapistGenderRaw = sanitize(payload.gender as string | undefined);
     const therapistGender: 'male' | 'female' | 'non-binary' | undefined =
@@ -1119,6 +1123,7 @@ export async function POST(req: Request) {
           sessionPreferences,
           specializations,
           session_id: session_id || undefined,
+          qualification: therapistQualification || undefined,
         },
       );
     }

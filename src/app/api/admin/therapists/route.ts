@@ -60,7 +60,7 @@ export async function GET(req: Request) {
 
     let query = supabaseServer
       .from('therapists')
-      .select('id, first_name, last_name, email, phone, gender, city, session_preferences, modalities, schwerpunkte, typical_rate, accepting_new, status, created_at, metadata, photo_url, languages')
+      .select('id, first_name, last_name, email, phone, gender, city, session_preferences, modalities, schwerpunkte, typical_rate, accepting_new, status, created_at, metadata, photo_url, languages, credential_tier')
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -204,6 +204,7 @@ export async function GET(req: Request) {
         photo_url: (r as Row).photo_url || null,
         metadata,
         created_at: r.created_at || null,
+        credential_tier: (r as Record<string, unknown>).credential_tier || 'licensed',
         opted_out,
         // Enhanced profile data for admin display
         schwerpunkte: Array.isArray(r.schwerpunkte) ? (r.schwerpunkte as string[]) : [],

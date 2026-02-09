@@ -15,7 +15,7 @@ export default async function Page(props: { params: Promise<{ id: string }>; sea
   // Basic validation: therapist must exist and be in pending state
   const { data: row } = await supabaseServer
     .from('therapists')
-    .select('id, status, first_name, last_name, photo_url, metadata')
+    .select('id, status, first_name, last_name, photo_url, metadata, credential_tier')
     .eq('id', id)
     .single();
 
@@ -52,6 +52,8 @@ export default async function Page(props: { params: Promise<{ id: string }>; sea
     (row as { last_name?: string }).last_name || '',
   ].join(' ').trim();
 
+  const credentialTier = (row as { credential_tier?: string }).credential_tier || 'licensed';
+  const isCertifiedTier = credentialTier === 'certified';
   const forceCertsStep = step === 'certs';
 
   return (
@@ -73,7 +75,7 @@ export default async function Page(props: { params: Promise<{ id: string }>; sea
           </p>
         </div>
       ) : null}
-      {!hasLicense && !forceCertsStep ? (
+      {!hasLicense && !isCertifiedTier && !forceCertsStep ? (
         <>
           <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4">
             <p className="text-sm font-medium text-blue-900">📋 Staatliche Zulassung erforderlich</p>
@@ -88,9 +90,13 @@ export default async function Page(props: { params: Promise<{ id: string }>; sea
       ) : !hasCert ? (
         <>
           <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4">
-            <p className="text-sm font-medium text-blue-900">✅ Zulassung hochgeladen</p>
+            <p className="text-sm font-medium text-blue-900">
+              {isCertifiedTier ? '📋 Spezialisierungs-Zertifikat' : '✅ Zulassung hochgeladen'}
+            </p>
             <p className="mt-1 text-sm text-blue-800">
-              Jetzt bitte mindestens ein Abschlusszertifikat deiner Spezialisierung hochladen (NARM, Hakomi, Somatic Experiencing, Core Energetics). Je Datei max. 4MB.
+              {isCertifiedTier
+                ? 'Lade bitte mindestens ein Abschlusszertifikat deiner Spezialisierung hoch (z.B. NARM, Hakomi, Somatic Experiencing, Core Energetics). Je Datei max. 4MB.'
+                : 'Jetzt bitte mindestens ein Abschlusszertifikat deiner Spezialisierung hochladen (NARM, Hakomi, Somatic Experiencing, Core Energetics). Je Datei max. 4MB.'}
             </p>
           </div>
           <div className="mt-6">

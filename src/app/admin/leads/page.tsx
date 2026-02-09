@@ -1397,6 +1397,7 @@ export default function AdminLeadsPage() {
             },
           },
           availability: [],
+          credential_tier: (previewTherapist as Record<string, unknown>).credential_tier as 'licensed' | 'certified' || 'licensed',
         };
         return (
           <TherapistDetailModal

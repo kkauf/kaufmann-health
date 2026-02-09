@@ -213,6 +213,11 @@ For specific features:
 
 1. **Update documentation**: If you changed behavior, configs, or APIs — update the relevant docs. Check `docs/`, `docs/private/`, `docs/operations/`, and any `*.local.md` files near what you touched. Stale docs are worse than no docs.
 2. **Sensitive docs go in `/private`**: Business-internal documentation (ads configs, conversion strategy, pricing, internal metrics) MUST go in gitignored `/private` folders (e.g., `docs/private/`, `google_ads_api_scripts/private/`). Never put business-sensitive information in public-facing docs.
+3. **Update QA test cases**: If you changed user-facing behavior (signup flows, therapist registration, matching, booking, admin), update the QA testing guide at `docs/operations/qa-testing-guide.md`. After editing, re-upload to Google Drive as native Google Doc:
+   ```bash
+   cd /tmp && pandoc /path/to/qa-testing-guide.md -o "20260209 QA Testing Guide.docx" && rclone copy "20260209 QA Testing Guide.docx" "GDrive - KEARTH:QA/" --drive-import-formats docx
+   ```
+   Update the date prefix in the filename to today's date. The Google Drive copy is the source of truth for external testers.
 
 ## Cross-Boundary Contracts
 
