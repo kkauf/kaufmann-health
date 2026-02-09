@@ -8,7 +8,7 @@
 
 import { supabaseServer } from '@/lib/supabase-server';
 import { googleAdsTracker } from '@/lib/google-ads';
-import { logError, track } from '@/lib/logger';
+import { track } from '@/lib/logger';
 
 export interface ConversionContext {
   patient_id: string;
@@ -52,10 +52,8 @@ export async function maybeFirePatientConversion(ctx: ConversionContext): Promis
       .single<PersonRow>();
 
     if (fetchErr || !person) {
-      await logError('conversion', fetchErr || new Error('Person not found'), {
-        stage: 'fetch_person',
-        patient_id: ctx.patient_id,
-      }, ctx.ip, ctx.ua);
+      // Warn-level: transient Supabase failures are non-actionable (conversion retries naturally)
+      void track({ type: 'conversion_skipped', level: 'warn', source: 'lib.conversion', ip: ctx.ip, ua: ctx.ua, props: { stage: 'fetch_person', patient_id: ctx.patient_id, reason: 'person_not_found' } });
       return { fired: false, reason: 'person_not_found' };
     }
 
@@ -123,11 +121,8 @@ export async function maybeFirePatientConversion(ctx: ConversionContext): Promis
       .eq('id', ctx.patient_id);
 
     if (updateErr) {
-      await logError('conversion', updateErr, {
-        stage: 'update_conversion_flag',
-        patient_id: ctx.patient_id,
-      }, ctx.ip, ctx.ua);
-      // Conversion fired but flag not set - acceptable (prevents duplicate future fires via dedup check above)
+      // Warn-level: conversion fired but dedup flag not set — acceptable, next call will just re-fire (idempotent)
+      void track({ type: 'conversion_flag_failed', level: 'warn', source: 'lib.conversion', ip: ctx.ip, ua: ctx.ua, props: { stage: 'update_conversion_flag', patient_id: ctx.patient_id } });
     }
 
     // Analytics tracking
@@ -148,11 +143,8 @@ export async function maybeFirePatientConversion(ctx: ConversionContext): Promis
 
     return { fired: true };
   } catch (e) {
-    await logError('conversion', e, {
-      stage: 'maybe_fire_patient_conversion',
-      patient_id: ctx.patient_id,
-      verification_method: ctx.verification_method,
-    }, ctx.ip, ctx.ua);
+    // Warn-level: conversion is best-effort, failures don't affect UX
+    void track({ type: 'conversion_error', level: 'warn', source: 'lib.conversion', ip: ctx.ip, ua: ctx.ua, props: { stage: 'maybe_fire_patient_conversion', patient_id: ctx.patient_id, verification_method: ctx.verification_method, error: e instanceof Error ? e.message : String(e) } });
     return { fired: false, reason: 'error' };
   }
 }
@@ -271,11 +263,8 @@ export async function maybeFireBookingConversion(ctx: BookingConversionContext):
 
     return { fired: true };
   } catch (e) {
-    await logError('conversion', e, {
-      stage: 'maybe_fire_booking_conversion',
-      cal_uid: ctx.cal_uid,
-      booking_kind: ctx.booking_kind,
-    }, ctx.ip, ctx.ua);
+    // Warn-level: conversion is best-effort, failures don't affect UX
+    void track({ type: 'conversion_error', level: 'warn', source: 'lib.conversion', ip: ctx.ip, ua: ctx.ua, props: { stage: 'maybe_fire_booking_conversion', cal_uid: ctx.cal_uid, booking_kind: ctx.booking_kind, error: e instanceof Error ? e.message : String(e) } });
     return { fired: false, reason: 'error' };
   }
 }
