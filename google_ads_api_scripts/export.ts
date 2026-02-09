@@ -9,6 +9,7 @@
  *  - adgroups: adgroup_perf.csv
  *  - asset_labels: asset_labels.csv
  *  - quality_scores: quality_scores.csv (keyword-level)
+ *  - demographics: demo_age.csv + demo_gender.csv + demo_device.csv + demo_time.csv
  *
  * Defaults:
  *  - modules: keywords,assets,asset_labels
@@ -504,6 +505,137 @@ async function exportAssetLabels(customer: any, outDir: string, exportDatePrefix
   writeCsv(out, headers, rows);
 }
 
+async function exportDemographics(customer: any, outDir: string, exportDatePrefix: string, since: string, until: string, nameLike?: string) {
+  console.log('\n[DEMO] Demographics (age, gender, device, hour, day)…');
+  const nameClause = nameLike ? ` AND campaign.name LIKE '%${escapeLike(nameLike)}%'` : '';
+
+  // Age + Gender breakdown by campaign
+  const ageGenderRows: any[] = await customer.query(`
+    SELECT
+      campaign.name,
+      segments.ad_network_type,
+      segments.device,
+      metrics.clicks,
+      metrics.impressions,
+      metrics.cost_micros,
+      metrics.conversions
+    FROM campaign
+    WHERE campaign.advertising_channel_type = 'SEARCH'
+      AND segments.date BETWEEN '${since}' AND '${until}'
+      ${nameClause}
+  `);
+
+  // Device breakdown
+  const devicePath = path.join(outDir, `${exportDatePrefix}_demo_device.csv`);
+  const deviceHeaders = ['campaign_name', 'device', 'clicks', 'impressions', 'cost_eur', 'conversions', 'ctr', 'cpl_eur', 'date_range'];
+  const deviceOut: any[] = [];
+  for (const r of ageGenderRows) {
+    const campaignName = String(getField(r, ['campaign.name']) || '');
+    const device = String(getField(r, ['segments.device']) || '');
+    const clicks = Number(getField(r, ['metrics.clicks']) || 0);
+    const impressions = Number(getField(r, ['metrics.impressions']) || 0);
+    const costMicros = Number(getField(r, ['metrics.cost_micros']) || 0);
+    const conversions = Number(getField(r, ['metrics.conversions']) || 0);
+    const cost = eurosFromMicros(costMicros);
+    const ctr = impressions > 0 ? Math.round((clicks / impressions) * 10000) / 100 : 0;
+    const cpl = conversions > 0 ? Math.round((cost / conversions) * 100) / 100 : '';
+    deviceOut.push([campaignName, device, clicks, impressions, cost, conversions, ctr, cpl, `${since}..${until}`]);
+  }
+  writeCsv(devicePath, deviceHeaders, deviceOut);
+
+  // Age range breakdown (uses age_range_view resource)
+  const ageRows: any[] = await customer.query(`
+    SELECT
+      campaign.name,
+      ad_group_criterion.age_range.type,
+      metrics.clicks,
+      metrics.impressions,
+      metrics.cost_micros,
+      metrics.conversions
+    FROM age_range_view
+    WHERE campaign.advertising_channel_type = 'SEARCH'
+      AND segments.date BETWEEN '${since}' AND '${until}'
+      ${nameClause}
+  `);
+  const agePath = path.join(outDir, `${exportDatePrefix}_demo_age.csv`);
+  const ageHeaders = ['campaign_name', 'age_range', 'clicks', 'impressions', 'cost_eur', 'conversions', 'ctr', 'cpl_eur', 'date_range'];
+  const ageOut: any[] = [];
+  for (const r of ageRows) {
+    const campaignName = String(getField(r, ['campaign.name']) || '');
+    const ageRange = String(getField(r, ['ad_group_criterion.age_range.type', 'adGroupCriterion.ageRange.type']) || '');
+    const clicks = Number(getField(r, ['metrics.clicks']) || 0);
+    const impressions = Number(getField(r, ['metrics.impressions']) || 0);
+    const costMicros = Number(getField(r, ['metrics.cost_micros']) || 0);
+    const conversions = Number(getField(r, ['metrics.conversions']) || 0);
+    const cost = eurosFromMicros(costMicros);
+    const ctr = impressions > 0 ? Math.round((clicks / impressions) * 10000) / 100 : 0;
+    const cpl = conversions > 0 ? Math.round((cost / conversions) * 100) / 100 : '';
+    ageOut.push([campaignName, ageRange, clicks, impressions, cost, conversions, ctr, cpl, `${since}..${until}`]);
+  }
+  writeCsv(agePath, ageHeaders, ageOut);
+
+  // Gender breakdown (uses gender_view resource)
+  const genderRows: any[] = await customer.query(`
+    SELECT
+      campaign.name,
+      ad_group_criterion.gender.type,
+      metrics.clicks,
+      metrics.impressions,
+      metrics.cost_micros,
+      metrics.conversions
+    FROM gender_view
+    WHERE campaign.advertising_channel_type = 'SEARCH'
+      AND segments.date BETWEEN '${since}' AND '${until}'
+      ${nameClause}
+  `);
+  const genderPath = path.join(outDir, `${exportDatePrefix}_demo_gender.csv`);
+  const genderHeaders = ['campaign_name', 'gender', 'clicks', 'impressions', 'cost_eur', 'conversions', 'ctr', 'cpl_eur', 'date_range'];
+  const genderOut: any[] = [];
+  for (const r of genderRows) {
+    const campaignName = String(getField(r, ['campaign.name']) || '');
+    const gender = String(getField(r, ['ad_group_criterion.gender.type', 'adGroupCriterion.gender.type']) || '');
+    const clicks = Number(getField(r, ['metrics.clicks']) || 0);
+    const impressions = Number(getField(r, ['metrics.impressions']) || 0);
+    const costMicros = Number(getField(r, ['metrics.cost_micros']) || 0);
+    const conversions = Number(getField(r, ['metrics.conversions']) || 0);
+    const cost = eurosFromMicros(costMicros);
+    const ctr = impressions > 0 ? Math.round((clicks / impressions) * 10000) / 100 : 0;
+    const cpl = conversions > 0 ? Math.round((cost / conversions) * 100) / 100 : '';
+    genderOut.push([campaignName, gender, clicks, impressions, cost, conversions, ctr, cpl, `${since}..${until}`]);
+  }
+  writeCsv(genderPath, genderHeaders, genderOut);
+
+  // Hour of day + Day of week
+  const timeRows: any[] = await customer.query(`
+    SELECT
+      campaign.name,
+      segments.hour,
+      segments.day_of_week,
+      metrics.clicks,
+      metrics.impressions,
+      metrics.cost_micros,
+      metrics.conversions
+    FROM campaign
+    WHERE campaign.advertising_channel_type = 'SEARCH'
+      AND segments.date BETWEEN '${since}' AND '${until}'
+      ${nameClause}
+  `);
+  const timePath = path.join(outDir, `${exportDatePrefix}_demo_time.csv`);
+  const timeHeaders = ['campaign_name', 'hour', 'day_of_week', 'clicks', 'impressions', 'cost_eur', 'conversions', 'date_range'];
+  const timeOut: any[] = [];
+  for (const r of timeRows) {
+    const campaignName = String(getField(r, ['campaign.name']) || '');
+    const hour = String(getField(r, ['segments.hour']) ?? '');
+    const dow = String(getField(r, ['segments.day_of_week']) || '');
+    const clicks = Number(getField(r, ['metrics.clicks']) || 0);
+    const impressions = Number(getField(r, ['metrics.impressions']) || 0);
+    const costMicros = Number(getField(r, ['metrics.cost_micros']) || 0);
+    const conversions = Number(getField(r, ['metrics.conversions']) || 0);
+    timeOut.push([campaignName, hour, dow, clicks, impressions, eurosFromMicros(costMicros), conversions, `${since}..${until}`]);
+  }
+  writeCsv(timePath, timeHeaders, timeOut);
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const modules = typeof args.modules === 'string' ? args.modules.split(',').map((s) => s.trim()) : ['keywords','assets','asset_labels'];
@@ -534,6 +666,7 @@ async function main() {
   if (modules.includes('adgroups')) await exportAdgroupPerf(customer, outDir, exportDatePrefix, since, until, nameLike);
   if (modules.includes('asset_labels')) await exportAssetLabels(customer, outDir, exportDatePrefix, since, until, nameLike);
   if (modules.includes('quality_scores')) await exportQualityScores(customer, outDir, exportDatePrefix, since, until, nameLike);
+  if (modules.includes('demographics')) await exportDemographics(customer, outDir, exportDatePrefix, since, until, nameLike);
 
   console.log('\n✅ Unified export complete.');
 }

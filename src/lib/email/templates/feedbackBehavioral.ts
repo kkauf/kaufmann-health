@@ -116,7 +116,7 @@ export type BehavioralFeedbackParams = {
 
 function renderInterviewCta(segment: PatientBehaviorSegment, patientId: string, source: string, buttonVariant: 'primary' | 'outline' = 'primary'): string {
   const calendarUrl = process.env.NEXT_PUBLIC_BOOKING_URL || 'https://cal.com/kkauf/15min';
-  const feedbackUrl = `${BASE_URL}/feedback/quick?patient=${encodeURIComponent(patientId)}&reason=${encodeURIComponent(interviewReason(segment))}&utm_source=email&utm_campaign=${encodeURIComponent(source)}`;
+  const feedbackUrl = `${BASE_URL}/feedback/quick?patient=${encodeURIComponent(patientId)}&reason=${encodeURIComponent(interviewReason(segment))}&utm_source=email&utm_medium=transactional&utm_campaign=${encodeURIComponent(source)}`;
 
   const isPrimary = segment.segment === 'almost_booked' ||
     (segment.segment === 'rejected' && isPrimaryInterviewRejection(segment.reasons));

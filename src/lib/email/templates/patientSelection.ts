@@ -94,7 +94,7 @@ export function renderPatientSelectionEmail(params: {
   ` : '';
  
   // Legacy elements (for backward compatibility when no Cal booking)
-  const matchesCtaUrl = params.matchesUrl ? `${params.matchesUrl}?direct=1` : null;
+  const matchesCtaUrl = params.matchesUrl ? `${params.matchesUrl}?direct=1&utm_source=email&utm_medium=transactional&utm_campaign=patient_selection` : null;
   const matchesCta = (!hasCalBooking && matchesCtaUrl)
     ? `
       <div style="margin: 24px 0; text-align: center;">

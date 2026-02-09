@@ -257,6 +257,14 @@ When building features that involve async processes (webhooks, crons, emails):
 - **After new API + UI feature** → Playwright E2E through the real flow (catches constraint violations, missing columns, cookie issues that unit tests miss)
 - Before deploy → `npm run test:critical`
 
+## Metric Queries
+
+`docs/metabase-kpis.md` and `docs/metabase-detail.md` are the **source of truth** for metric definitions.
+When running analytics SQL via `mcp__supabase__execute_sql`:
+- Copy the relevant query from these files rather than writing from scratch
+- Replace `{{start_date}}` with a date literal (e.g., `'2026-01-01'`)
+- These are canonical definitions — don't duplicate metric logic elsewhere
+
 ## Analytics (Critical)
 
 Two systems, different purposes:

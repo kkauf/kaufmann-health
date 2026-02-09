@@ -33,43 +33,38 @@ test.describe('Email Booking Links - Staging E2E', () => {
     // Navigate to therapist directory
     await page.goto(`${STAGING_URL}/therapeuten`);
     await page.waitForLoadState('networkidle');
-    
+
     // Dismiss cookie banner if present
     const cookieRejectBtn = page.getByRole('button', { name: 'Ablehnen' });
     if (await cookieRejectBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await cookieRejectBtn.click();
     }
-    
+
     // Find a Cal-enabled therapist (has "Online-Kennenlernen" button directly on card)
     const calButton = page.getByRole('button', { name: /Online-Kennenlernen/ }).first();
     await expect(calButton).toBeVisible({ timeout: 20000 });
-    
+
     // Click the Online-Kennenlernen button directly (no modal needed - button is on card)
     await calButton.click();
-    
+
     // Wait for modal/slot picker to open
     await page.waitForSelector('[role="dialog"], [class*="modal"], [class*="Modal"]', { timeout: 10000 });
-    
+
     // Wait for slots to load
     await page.waitForTimeout(2000);
-    
-    // Check that day chips show scarcity-filtered counts (should be 1-3 per day, not 10+)
-    const dayChips = page.locator('button').filter({ hasText: /Termin/ });
-    const chipCount = await dayChips.count();
-    
-    if (chipCount > 0) {
-      // Get the text of the first chip to check slot count
-      const firstChipText = await dayChips.first().textContent();
-      console.log('First day chip text:', firstChipText);
-      
-      // Extract the number from "X Termine" or "X Termin"
-      const match = firstChipText?.match(/(\d+)\s*Termin/);
-      if (match) {
-        const slotCount = parseInt(match[1], 10);
-        // Scarcity filter should show 1-3 slots per day, not 10+
-        expect(slotCount).toBeLessThanOrEqual(3);
-        console.log(`✓ Scarcity filtering working: ${slotCount} slots shown (max 3 expected)`);
-      }
+
+    // Day chips show the FULL (unfiltered) slot count — this is intentional so patients
+    // see actual availability. Scarcity filtering applies to the TIME SLOTS displayed
+    // below the day chips (max 3: one per morning/afternoon/evening block).
+    // Verify that the displayed time slot buttons are scarcity-filtered (1-3 per day).
+    const timeSlots = page.locator('button').filter({ hasText: /^\d{1,2}:\d{2}$/ });
+    const displayedSlotCount = await timeSlots.count();
+
+    if (displayedSlotCount > 0) {
+      console.log(`Displayed time slots: ${displayedSlotCount}`);
+      // Scarcity filter picks 1 slot per time-of-day block (morning/afternoon/evening) = max 3
+      expect(displayedSlotCount).toBeLessThanOrEqual(3);
+      console.log(`✓ Scarcity filtering working: ${displayedSlotCount} time slots shown (max 3 expected)`);
     }
   });
 
