@@ -88,12 +88,13 @@ export function hashIP(ip: string): string {
 }
 
 function normalizeError(err: unknown) {
-  const e = err as { name?: unknown; message?: unknown; stack?: unknown; cause?: unknown };
+  const e = err as { name?: unknown; message?: unknown; stack?: unknown; cause?: unknown; code?: unknown };
   const out: Record<string, unknown> = {
     name: typeof e?.name === 'string' ? (e.name as string) : undefined,
     message: truncateString(String(e?.message ?? err ?? 'Unknown error')),
     stack: typeof e?.stack === 'string' ? truncateString(e.stack as string, 2000) : undefined,
   };
+  if (e?.code != null) out.code = String(e.code);
   if (e?.cause) out.cause = truncateString(String(e.cause));
   return out;
 }

@@ -70,5 +70,6 @@ tests/e2e/.auth/
 
 # Local Claude context (private business docs)
 CLAUDE.local.md
+.claude/*.local.md
 /docs/private/
 scripts/outreach/data/

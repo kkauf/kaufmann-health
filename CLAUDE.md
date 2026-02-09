@@ -81,11 +81,12 @@ When starting work, identify the task type and follow the corresponding workflow
 
 ### Workflow: Feature
 1. **Clarify** — What's the user-facing outcome? What's out of scope?
-2. **Check existing patterns** — Grep for similar features, follow conventions
-3. **Plan** — For multi-file changes, outline the approach first
-4. **Implement** — Edit existing files > create new ones. Type-check after each file.
-5. **Test** — Unit tests for logic, E2E for user flows
-6. **Document** — Update docs if behavior changed, add to MEMORY.md if learnings
+2. **Explore** — Launch parallel agents to map the territory: existing patterns, related features, architecture boundaries. For complex features, use 2-3 Explore agents targeting different aspects (e.g., "how does the existing booking flow work?" + "what API patterns do we use for X?").
+3. **Clarifying questions** — After exploration, consolidate all ambiguities into one organized list. Ask the user in a single round — don't drip-feed questions across steps.
+4. **Plan** — For multi-file changes, outline the approach first. For complex features, present 2-3 competing approaches with trade-offs (e.g., minimal change vs. clean architecture vs. pragmatic middle ground). Get explicit approval before implementing.
+5. **Implement** — Edit existing files > create new ones. Type-check after each file.
+6. **Test** — Unit tests for logic, E2E for user flows
+7. **Document** — Update docs if behavior changed, add to MEMORY.md if learnings
 
 ### Workflow: Database Migration (Self-Healing Pipeline)
 1. **Review schema** — Query current state via `mcp__supabase__execute_sql`

@@ -52,7 +52,8 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
 
   if (err || !ins?.id) {
     // Handle duplicate email gracefully — therapist already registered
-    if ((err as { code?: string } | null)?.code === '23505') {
+    const errCode = (err as { code?: string } | null)?.code;
+    if (errCode === '23505' || err?.message?.includes('therapists_email_key')) {
       return safeJson(
         { data: null, error: 'Diese E-Mail-Adresse ist bereits registriert. Bitte melde dich an.', code: 'duplicate_email' },
         { status: 409, headers: { 'Cache-Control': 'no-store' } },
