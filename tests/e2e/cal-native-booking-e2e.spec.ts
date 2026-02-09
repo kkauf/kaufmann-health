@@ -186,9 +186,10 @@ test.describe('Cal.com Native Booking E2E', () => {
     // Verify we got slots
     expect(ourSlotsResponse).not.toBeNull();
     if (!ourSlotsResponse) return;
-    
-    expect(ourSlotsResponse.data?.slots).toBeDefined();
-    const slots = ourSlotsResponse.data?.slots || [];
+    const slotsResponse = ourSlotsResponse as SlotsResponse;
+
+    expect(slotsResponse.data?.slots).toBeDefined();
+    const slots = slotsResponse.data?.slots || [];
     
     // If there are slots, verify they have valid structure
     if (slots.length > 0) {
@@ -278,12 +279,13 @@ test.describe('Cal.com Native Booking E2E', () => {
 
     // If we made a booking request, verify it wasn't a 409
     if (bookingResponse) {
+      const resp = bookingResponse as BookingResponse;
       // 409 = slot conflict, which means we showed a phantom slot
-      expect(bookingResponse.status).not.toBe(409);
+      expect(resp.status).not.toBe(409);
 
-      if (bookingResponse.status === 409) {
+      if (resp.status === 409) {
         console.error('CRITICAL: Booking returned 409 - slot synchronization issue!');
-        console.error('Response:', JSON.stringify(bookingResponse.body, null, 2));
+        console.error('Response:', JSON.stringify(resp.body, null, 2));
       }
     }
   });

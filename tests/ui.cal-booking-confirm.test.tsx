@@ -41,7 +41,7 @@ function makeState(overrides: Partial<CalBookingState> = {}): CalBookingState {
     slotsLoading: false,
     slotsError: null,
     slotsUnavailable: false,
-    selectedSlot: { date_iso: '2026-02-10', time_label: '14:00', time_utc: '2026-02-10T13:00:00Z', format: 'online' },
+    selectedSlot: { date_iso: '2026-02-10', time_label: '14:00', time_utc: '2026-02-10T13:00:00Z' },
     hasAttemptedFetch: true,
     session: null,
     sessionLoading: false,
