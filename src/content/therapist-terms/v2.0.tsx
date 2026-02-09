@@ -12,7 +12,7 @@ export default function TermsBody() {
           <h2 className="text-xl font-semibold">§ 1 Vertragsgegenstand</h2>
           <p className="mt-3">
             Kaufmann Earth LLC, handelnd als Kaufmann Health, stellt eine Plattform zur Verfügung, in deren Umgebung
-            Kontakt zwischen dem Anbieter (Heilpraktiker für Psychotherapie/Psychotherapeut) und interessierten
+            Kontakt zwischen dem Anbieter (zugelassene:r Therapeut:in oder zertifizierte:r Fachberater:in) und interessierten
             Klienten hergestellt werden kann. Für die erfolgreiche Vermittlung von Klienten an Anbieter erhält die
             Plattform eine Provision.
           </p>
@@ -261,7 +261,7 @@ export default function TermsBody() {
           <h2 className="text-xl font-semibold">§ 4 Pflichten des Anbieters</h2>
           <p className="mt-3">Der Anbieter versichert und gewährleistet, dass er:</p>
           <ul className="mt-2 list-disc pl-6 space-y-1">
-            <li>über eine aktuelle Heilpraktiker-Erlaubnis (Erlaubnisbescheinigung) oder Approbation verfügt (Nachweis bei Vertragsschluss),</li>
+            <li>über die für seine Tätigkeit erforderlichen Qualifikationen verfügt — bei zugelassenen Therapeut:innen: eine aktuelle Heilpraktiker-Erlaubnis oder Approbation (Nachweis bei Vertragsschluss); bei zertifizierten Fachberater:innen: ein anerkanntes Ausbildungszertifikat in der jeweiligen Modalität,</li>
             <li>alle gesetzlich vorgeschriebenen Versicherungen, Anmeldungen und Genehmigungen für seine Tätigkeit besitzt,</li>
             <li>wahrheitsgemäße Angaben in Profil und Qualifikationen macht,</li>
             <li>alle berufsrechtlichen und steuerrechtlichen Bestimmungen einhält,</li>
@@ -330,7 +330,7 @@ export default function TermsBody() {
             <li>wiederholten oder schwerwiegenden Verstößen gegen diese AGB,</li>
             <li>Verletzung der Meldepflichten trotz Abmahnung,</li>
             <li>Umgehung der Plattform zur Vermeidung von Vergütungszahlungen,</li>
-            <li>Verlust der Erlaubnis zur Ausübung der Heilkunde (Heilpraktikererlaubnis) oder der Approbation,</li>
+            <li>Verlust der für die Tätigkeit erforderlichen Zulassung oder Zertifizierung,</li>
             <li>Zahlungsverzug von mehr als zwei Monaten.</li>
           </ul>
 

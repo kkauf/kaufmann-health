@@ -18,11 +18,12 @@ export type TherapistHandlerInput = {
   sessionPreferences: ('online' | 'in_person')[];
   specializations: string[];
   session_id?: string;
+  qualification?: string;
 };
 
 export async function handleTherapistLead(ctx: HandlerContext, input: TherapistHandlerInput) {
   const { req, ip, ua } = ctx;
-  const { data, city, gender, sessionPreferences, specializations, session_id } = input;
+  const { data, city, gender, sessionPreferences, specializations, session_id, qualification } = input;
   const isTest = isTestRequest(req, data.email);
 
   const fullName = (data.name || '').trim();
@@ -30,8 +31,14 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
   const last_name = fullName ? fullName.replace(/^\S+\s*/, '').trim() || null : null;
   const modalities = specializations;
 
-  // Build metadata (test-only marker)
+  // Derive credential tier from qualification
+  const credential_tier = qualification === 'Berater:in / Coach' ? 'certified' : 'licensed';
+
+  // Build metadata (test-only marker + qualification)
   const meta: Record<string, unknown> = isTest ? { is_test: true } : {};
+  if (qualification) {
+    meta.profile = { qualification };
+  }
 
   const { data: ins, error: err } = await supabaseServer
     .from('therapists')
@@ -44,6 +51,7 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
       gender: gender || null,
       session_preferences: sessionPreferences,
       modalities,
+      credential_tier,
       status: 'pending_verification',
       ...(Object.keys(meta).length ? { metadata: meta } : {}),
     })

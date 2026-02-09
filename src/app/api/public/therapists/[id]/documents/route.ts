@@ -49,7 +49,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     // Validate therapist exists and is pending verification
     const { data: therapist, error: fetchErr } = await supabaseServer
       .from('therapists')
-      .select('id, status, metadata, first_name, last_name, email')
+      .select('id, status, metadata, first_name, last_name, email, credential_tier')
       .eq('id', id)
       .single();
 
@@ -78,11 +78,19 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const existingDocsUnknown = (existingMetaObj as { documents?: unknown }).documents;
     const existingDocs: { license?: string } = isObject(existingDocsUnknown) ? (existingDocsUnknown as { license?: string }) : {};
     const hasExistingLicense = typeof existingDocs.license === 'string' && existingDocs.license.length > 0;
+    const therapistCredentialTier = (therapist as { credential_tier?: string }).credential_tier || 'licensed';
+    const licenseNotRequired = therapistCredentialTier === 'certified';
 
     const specializationFiles = specAll.filter((x): x is File => x instanceof File && x.size > 0);
     if (!(license instanceof File) || license.size === 0) {
-      // Allow certificate-only upload if license already exists; otherwise require license first
-      if (specializationFiles.length > 0) {
+      // Coach tier: license not required, allow cert-only uploads
+      if (licenseNotRequired) {
+        if (specializationFiles.length === 0) {
+          return safeJson({ data: null, error: 'Missing specialization_cert' }, { status: 400 });
+        }
+        // proceed with specialization-only upload path
+      } else if (specializationFiles.length > 0) {
+        // HP tier: allow cert-only upload if license already exists
         if (!hasExistingLicense) {
           return safeJson({ data: null, error: 'License must be uploaded first' }, { status: 400 });
         }

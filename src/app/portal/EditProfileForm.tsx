@@ -276,6 +276,7 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
           : undefined,
       },
     },
+    credential_tier: 'licensed',
     availability: [], // No slots in preview - therapist manages these separately
   }), [
     therapistId,

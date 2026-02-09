@@ -264,22 +264,20 @@ Expected: Never an empty results page
 Precondition: Verified patient with matches
 Steps:
   1. On matches page, click booking/contact button on a therapist
-  2. ContactModal opens → verify patient info pre-filled
-  3. Write message in reason field
+  2. ContactModal opens → verify pre-composed message with patient context
+  3. Optionally edit the message (the template includes a placeholder for your concern)
   4. Click send → verify confirmation shown
   5. Therapist receives email with link (check sink on staging)
 Expected: Contact request sent, therapist notified
+Note: There is no separate "reason field" — the reason is embedded in the pre-composed message template.
 ```
 
-**TC-I.3.2: Contact rate limiting**
+**TC-I.3.2: Contact rate limiting** *(automated — skip for manual QA)*
 ```
-Precondition: Verified patient session
-Steps:
-  1. Contact therapist #1 via directory or matches → success
-  2. Contact therapist #2 → success
-  3. Contact therapist #3 → success
-  4. Attempt to contact therapist #4 → verify rate limit error shown
-Expected: Maximum 3 therapist contacts per 24 hours enforced
+Coverage: Unit test in tests/api.public.contact.test.ts
+  - Verifies 429 response after 3 contacts per 24h
+  - Verifies RATE_LIMIT_EXCEEDED error code
+Manual verification not needed — requires 4+ test therapist accounts for marginal value.
 ```
 
 **TC-I.3.3: Contact requires verification**
@@ -349,7 +347,19 @@ Steps:
 Expected: Format filter works correctly
 ```
 
-**TC-I.5.4: Directory — Responsive design**
+**TC-I.5.4: Directory — Credential tier filtering**
+```
+Steps:
+  1. Navigate to /therapeuten (default directory)
+  2. Verify only licensed therapists shown (badge: "Heilpraktiker (Psychotherapie)" or similar)
+  3. Verify NO certified-tier therapists shown in default view
+  4. Note: Certified therapists will appear on modality-specific pages (future feature)
+Expected: Default directory shows licensed practitioners only
+Note: This is by design — TherapieFinden is for licensed psychotherapy practitioners.
+      Certified practitioners (coaches/Berater) will have separate visibility later.
+```
+
+**TC-I.5.5: Directory — Responsive design**
 ```
 Steps:
   1. View /therapeuten on desktop (1440px width)
@@ -419,12 +429,13 @@ Expected: All legal pages accessible
 
 The therapist onboarding is a 4-step flow. Profile completion and document upload are **separate steps** (by design, to reduce dropout).
 
-**TC-II.1.1: Full registration flow (happy path)**
+**TC-II.1.1: Full registration flow — Licensed tier (happy path)**
 ```
 Steps:
   1. Navigate to /fuer-therapeuten → click "Jetzt registrieren"
   2. Step 1 — Registration (/therapists/register):
      → Fill: first name, last name, email, city (all required)
+     → Select Qualifikation: "Heilpraktiker für Psychotherapie" (or "Approbierte:r Psychotherapeut:in" or "Heilpraktiker:in")
      → Optionally: phone, gender, modalities, accepting_new, session preferences, languages
      → Submit
   3. Verify redirect to /therapists/complete-profile/{id}
@@ -435,8 +446,9 @@ Steps:
      → Submit
   5. Verify redirect to /therapists/upload-documents/{id}
   6. Step 3 — Documents:
-     → Upload license/certification (required)
-     → Optionally: additional certificates
+     → Verify "Staatliche Zulassung erforderlich" heading shown
+     → Upload license (required for licensed tier)
+     → Optionally: additional specialization certificates
      → Submit
   7. Verify redirect to /therapists/onboarding-complete/{id}
   8. Verify confirmation page shown with next steps
@@ -444,7 +456,40 @@ Steps:
 Expected: 4-step flow completes without errors
 ```
 
-**TC-II.1.2: Registration — Field validation**
+**TC-II.1.1b: Full registration flow — Certified tier (coach/Berater)**
+```
+Steps:
+  1. Navigate to /fuer-therapeuten → click "Jetzt registrieren"
+  2. Step 1 — Registration:
+     → Fill required fields
+     → Select Qualifikation: "Berater:in / Coach"
+     → Select at least one modality
+     → Submit
+  3. Complete Step 2 (Profile) as above
+  4. Verify redirect to /therapists/upload-documents/{id}
+  5. Step 3 — Documents:
+     → Verify "Spezialisierungs-Zertifikat" heading shown (NOT "Staatliche Zulassung")
+     → Verify NO license upload field — only specialization certificate upload
+     → Upload specialization certificate → Submit
+  6. Verify redirect to /therapists/onboarding-complete/{id}
+Expected: Certified tier skips license requirement, only needs specialization cert
+```
+
+**TC-II.1.2: Registration — Qualification dropdown**
+```
+Steps:
+  1. Navigate to /therapists/register
+  2. Click "Qualifikation" dropdown
+  3. Verify 4 options shown:
+     → "Heilpraktiker für Psychotherapie"
+     → "Approbierte:r Psychotherapeut:in"
+     → "Heilpraktiker:in"
+     → "Berater:in / Coach"
+  4. Select each option → verify form accepts selection
+Expected: All 4 qualification options available and selectable
+```
+
+**TC-II.1.3: Registration — Field validation**
 ```
 Steps:
   1. Step 1: Leave first name empty → verify validation error
@@ -453,11 +498,12 @@ Steps:
   4. Step 1: Leave city empty → verify validation error
   5. Step 2: Skip photo upload → verify validation error
   6. Step 2: Skip approach text → verify validation error
-  7. Step 3: Skip license upload → verify validation error
-Expected: Required fields enforced at each step
+  7. Step 3 (licensed tier): Skip license upload → verify validation error
+  8. Step 3 (certified tier): Verify license upload NOT required
+Expected: Required fields enforced at each step, conditional on credential tier
 ```
 
-**TC-II.1.3: Registration — Progress indicator**
+**TC-II.1.4: Registration — Progress indicator**
 ```
 Steps:
   1. At each step, verify progress indicator shows correct state
@@ -466,7 +512,7 @@ Steps:
 Expected: Progress indicator accurately reflects current position
 ```
 
-**TC-II.1.4: Registration — Navigation links**
+**TC-II.1.5: Registration — Navigation links**
 ```
 Steps:
   1. On /therapists/register: verify "Zurück zur Übersicht" links to /fuer-therapeuten

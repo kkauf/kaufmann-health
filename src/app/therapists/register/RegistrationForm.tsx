@@ -330,7 +330,9 @@ export default function RegistrationForm() {
           >
             <option value="" disabled>Bitte wählen</option>
             <option value="Heilpraktiker für Psychotherapie">Heilpraktiker für Psychotherapie</option>
-            <option value="Approbierter Psychotherapeut">Approbierter Psychotherapeut</option>
+            <option value="Approbierte:r Psychotherapeut:in">Approbierte:r Psychotherapeut:in</option>
+            <option value="Heilpraktiker:in">Heilpraktiker:in</option>
+            <option value="Berater:in / Coach">Berater:in / Coach</option>
           </select>
           {errors.qualification && <p className="text-xs text-red-600">{errors.qualification}</p>}
         </div>

@@ -18,15 +18,24 @@ import type { NextIntroSlot, NextFullSlot } from '@/contracts/therapist';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const hideIds = getHiddenTherapistIds();
+    const url = new URL(req.url);
+    const tierParam = url.searchParams.get('tier') || 'licensed';
 
-    const { data, error } = await supabaseServer
+    let query = supabaseServer
       .from('therapists')
       .select(THERAPIST_SELECT_COLUMNS)
       .eq('status', 'verified')
       .order('created_at', { ascending: false });
+
+    // Default: licensed-only (TherapieFinden). tier=all shows all tiers (for modality pages later).
+    if (tierParam !== 'all') {
+      query = query.eq('credential_tier', 'licensed');
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('[api.public.therapists] Database error:', error);

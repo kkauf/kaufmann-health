@@ -94,9 +94,10 @@ export const TherapistRowSchema = z.object({
   cal_user_id: z.number().int().nullable().optional(),
   cal_username: z.string().nullable().optional(),
   cal_enabled: z.boolean().nullable().optional(),
-  languages: z.unknown().transform((v): string[] => 
+  languages: z.unknown().transform((v): string[] =>
     Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
   ),
+  credential_tier: z.enum(['licensed', 'certified']).default('licensed'),
 }).passthrough(); // Preserve unknown fields from DB to avoid silent data loss
 
 export type TherapistRow = z.infer<typeof TherapistRowSchema>;
@@ -160,6 +161,8 @@ export const TherapistDataSchema = z.object({
   requires_intro_before_booking: z.boolean().optional(),
   // Match-specific: whether this patient has completed an intro with this therapist
   has_completed_intro: z.boolean().optional(),
+  // Credential tier
+  credential_tier: z.enum(['licensed', 'certified']).default('licensed'),
   // Admin-only fields
   gender: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
@@ -236,7 +239,7 @@ export function parseTherapistRows(data: unknown[]): TherapistRow[] {
 // ============================================================================
 
 export const THERAPIST_SELECT_COLUMNS =
-  'id, first_name, last_name, slug, city, modalities, schwerpunkte, session_preferences, accepting_new, photo_url, status, metadata, typical_rate, cal_username, cal_enabled, languages, created_at';
+  'id, first_name, last_name, slug, city, modalities, schwerpunkte, session_preferences, accepting_new, photo_url, status, metadata, typical_rate, cal_username, cal_enabled, languages, created_at, credential_tier';
 
 export const THERAPIST_SELECT_COLUMNS_WITH_GENDER = 
   THERAPIST_SELECT_COLUMNS + ', gender';

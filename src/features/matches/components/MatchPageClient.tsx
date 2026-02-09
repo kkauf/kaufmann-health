@@ -730,6 +730,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
           cal_username: t.cal_username,
           cal_enabled: t.cal_enabled,
           typical_rate: t.typical_rate,
+          credential_tier: 'licensed',
         };
 
         return (
@@ -823,6 +824,7 @@ export function MatchPageClient({ uuid }: { uuid: string }) {
               languages: t.languages,
               availability: Array.isArray(t.availability) ? t.availability as { date_iso: string; time_label: string; format: 'online' | 'in_person'; address?: string }[] : [],
               metadata: t.metadata,
+              credential_tier: 'licensed',
             };
 
             return (
