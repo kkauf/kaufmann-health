@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import PageAnalytics from "@/components/PageAnalytics";
 import FaqAccordion from "@/components/FaqAccordion";
-import { CheckCircle2, TrendingUp, ChevronRight, LogIn, ArrowRight, Users, Heart } from "lucide-react";
+import { CheckCircle2, TrendingUp, ChevronRight, LogIn, ArrowRight, Users, Heart, ShieldCheck, Award } from "lucide-react";
 import FairPricingModal from "@/components/FairPricingModal";
 import Link from "next/link";
 import CtaLink from "@/components/CtaLink";
@@ -33,7 +33,7 @@ const faqItems = [
     id: "fuer-therapeuten-faq-who",
     question: "Welche Therapeut:innen nehmt ihr auf?",
     answer:
-      "Heilpraktiker:innen für Psychotherapie oder approbierte Psychotherapeut:innen mit Spezialisierung auf körperorientierte Verfahren – NARM, Somatic Experiencing, Hakomi oder Core Energetics.",
+      "Wir arbeiten mit zwei Qualifikationsstufen: (1) Heilpraktiker:innen für Psychotherapie, Psychologische Psychotherapeut:innen oder andere Approbierte mit Spezialisierung auf körperorientierte Verfahren, und (2) zertifizierte Körpertherapeut:innen mit fundierter Ausbildung in NARM, Somatic Experiencing, Hakomi oder Core Energetics. Beide Gruppen werden auf der Plattform entsprechend gekennzeichnet.",
   },
   {
     id: "fuer-therapeuten-faq-volume",
@@ -229,11 +229,51 @@ export default function TherapistsPage() {
         <h2 id="requirements" className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
           Voraussetzungen
         </h2>
-        <div className="mt-6 rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6">
+
+        {/* Two qualification tiers */}
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          {/* Licensed tier */}
+          <div className="rounded-xl border border-emerald-200/60 bg-emerald-50/40 p-5 sm:p-6">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-emerald-600" />
+              <h3 className="text-base font-semibold text-gray-900">Heilpraktiker:innen &amp; Approbierte</h3>
+            </div>
+            <ul className="mt-3 space-y-2">
+              <li className="flex items-start gap-2 text-sm text-gray-700">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+                <span>Heilpraktiker:in für Psychotherapie, Psychologische:r Psychotherapeut:in oder andere Approbation</span>
+              </li>
+              <li className="flex items-start gap-2 text-sm text-gray-700">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+                <span>Spezialisierung in NARM, SE, Hakomi oder Core Energetics</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Certified tier */}
+          <div className="rounded-xl border border-indigo-200/60 bg-indigo-50/40 p-5 sm:p-6">
+            <div className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-indigo-600" />
+              <h3 className="text-base font-semibold text-gray-900">Zertifizierte Körpertherapeut:innen</h3>
+            </div>
+            <ul className="mt-3 space-y-2">
+              <li className="flex items-start gap-2 text-sm text-gray-700">
+                <CheckCircle2 className="h-4 w-4 text-indigo-600 mt-0.5 flex-shrink-0" />
+                <span>Zertifizierte Ausbildung in NARM, SE, Hakomi oder Core Energetics</span>
+              </li>
+              <li className="flex items-start gap-2 text-sm text-gray-700">
+                <CheckCircle2 className="h-4 w-4 text-indigo-600 mt-0.5 flex-shrink-0" />
+                <span>Keine HP-Zulassung erforderlich</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Shared requirements */}
+        <div className="mt-4 rounded-xl border border-gray-200/60 bg-slate-50/60 p-5 sm:p-6">
+          <p className="text-sm font-medium text-gray-500 mb-3">Für alle Therapeut:innen</p>
           <ul className="grid gap-3 sm:grid-cols-2">
             {[
-              "Heilpraktiker:in für Psychotherapie oder approbiert",
-              "NARM, Somatic Experiencing, Hakomi oder Core Energetics",
               "Mindestens 2 Jahre Praxiserfahrung",
               "Verfügbarkeit für neue Klient:innen",
             ].map((item, i) => (

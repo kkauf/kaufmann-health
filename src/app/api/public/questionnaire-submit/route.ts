@@ -298,11 +298,39 @@ export async function POST(req: Request) {
       }
     }
 
+    // Fetch top 3 match previews (first_name, modalities, city) for progressive flow
+    let matchPreviews: { firstName: string; modalities: string[]; city: string | null }[] | undefined;
+    let matchCount: number | undefined;
+    try {
+      const { data: matchRows, count } = await supabaseServer
+        .from('matches')
+        .select('therapists!inner(first_name, modalities, city)', { count: 'exact' })
+        .eq('patient_id', patient.id)
+        .neq('status', 'failed')
+        .order('score', { ascending: false })
+        .limit(3);
+      if (matchRows && matchRows.length > 0) {
+        matchPreviews = matchRows.map((row) => {
+          const t = row.therapists as unknown as { first_name: string | null; modalities: string[] | null; city: string | null };
+          return {
+            firstName: t.first_name || 'Therapeut:in',
+            modalities: t.modalities || [],
+            city: t.city || null,
+          };
+        });
+        matchCount = count ?? matchRows.length;
+      }
+    } catch {
+      // Non-blocking: previews are optional enhancement
+    }
+
     return safeJson({
       data: {
         patientId: patient.id,
         matchesUrl: matchResult?.matchesUrl || null,
         matchQuality: matchResult?.matchQuality || 'none',
+        ...(matchPreviews ? { matchPreviews } : {}),
+        ...(matchCount !== undefined ? { matchCount } : {}),
       },
       error: null,
     });

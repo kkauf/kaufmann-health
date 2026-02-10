@@ -30,6 +30,7 @@ function mapStep(calStep: CalBookingState['step']): VerificationStep {
     case 'verify': return 'input';
     case 'code': return 'code';
     case 'email-sent': return 'link';
+    case 'name-collect': return 'name-collect';
     default: return 'input';
   }
 }
@@ -54,6 +55,7 @@ export function CalVerificationForm({ state, actions, slotSummary, therapistFirs
     setPhone: (phone: string) => actions.setContactValue(phone),
     setCode: actions.setVerificationCode,
     setContactMethod: actions.setContactMethod,
+    setStep: () => {}, // Step is controlled by CalBookingState mapping
     setError: () => {}, // Not directly exposed in CalBookingActions
     sendCode: async () => {
       await actions.sendCode();
@@ -81,9 +83,11 @@ export function CalVerificationForm({ state, actions, slotSummary, therapistFirs
       onBack={actions.backToSlots}
       backLabel="Zurück"
       showContactMethodToggle={true}
+      phoneFirst={true}
       notes={state.notes}
       onNotesChange={actions.setNotes}
       notesLabel={therapistFirstName}
+      onNameCollectComplete={() => actions.createNativeBooking()}
     />
   );
 }

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
-import { SlidersHorizontal, X, ShieldCheck, CalendarCheck2, HeartHandshake, Shell, Wind, Target, Video, User, Award } from 'lucide-react';
+import { SlidersHorizontal, X, ShieldCheck, CalendarCheck2, HeartHandshake, Shell, Wind, Target, Video, User, Award, ChevronDown } from 'lucide-react';
 import { MemoizedCardWrapper } from './MemoizedCardWrapper';
 import { getAttribution } from '@/lib/attribution';
 import { TherapistDetailModal } from './TherapistDetailModal';
@@ -24,6 +24,9 @@ const BASE_MODALITY_STYLE: Record<string, { cls: string; Icon: React.ElementType
 };
 
 const DEFAULT_MODALITY_STYLE = { cls: 'border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100', Icon: Target };
+
+// Only show high-traffic modalities by default on desktop (NARM 9 clicks, SE 6 clicks on heatmap)
+const PRIMARY_MODALITIES = new Set(['narm', 'somatic-experiencing']);
 
 export function TherapistDirectory({ initialTherapists = [] }: { initialTherapists?: TherapistData[] }) {
   const [therapists, setTherapists] = useState<TherapistData[]>(initialTherapists);
@@ -48,6 +51,8 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
   const [contactType, setContactType] = useState<'booking' | 'consultation'>('booking');
   const [contactSelectedSlot, setContactSelectedSlot] = useState<{ date_iso: string; time_label: string; format: 'online' | 'in_person' } | undefined>(undefined);
   
+  // Desktop: expand/collapse secondary modalities
+  const [showAllModalities, setShowAllModalities] = useState(false);
   // Mobile filter sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
   const [draftModality, setDraftModality] = useState<string>('all');
@@ -408,55 +413,96 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
       </div>
 
       {/* Desktop: Inline filters (sticky) */}
-      <div className="mb-8 hidden md:flex flex-col gap-4 md:flex-row md:items-center md:gap-6 md:sticky md:top-0 md:z-20 md:bg-white/95 md:backdrop-blur supports-[backdrop-filter]:md:bg-white/70 md:py-3 md:border-b overflow-visible">
-        <div className="flex-1">
+      <div className="mb-8 hidden md:flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end md:gap-6 md:sticky md:top-0 md:z-20 md:bg-white/95 md:backdrop-blur supports-[backdrop-filter]:md:bg-white/70 md:py-3 md:border-b overflow-visible">
+        <div className="shrink-0">
           <label className="mb-2 block text-sm font-medium text-gray-700">
             Modalität
           </label>
-          <div className="relative -mx-1">
-            <div className="min-h-[48px] overflow-x-auto overflow-y-visible whitespace-nowrap px-1 py-1 [scrollbar-width:none] [-ms-overflow-style:none]">
-              <div className="inline-flex gap-2">
-                {/* All pill */}
+          <div className="flex gap-2">
+            {/* All pill */}
+            <Badge
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedModality('all')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedModality('all'); }}
+              className={cn(
+                'h-11 px-4 py-2.5 text-sm font-medium rounded-full cursor-pointer shadow-sm hover:shadow-md transition',
+                selectedModality === 'all'
+                  ? 'bg-indigo-100 text-indigo-700 border-indigo-200 ring-2 ring-indigo-300'
+                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100'
+              )}
+            >
+              Alle
+            </Badge>
+            {allModalities.filter(m => PRIMARY_MODALITIES.has(normalizeModality(m))).map((m) => {
+              const key = normalizeModality(m);
+              const conf = getModalityStyle(m);
+              const Icon = conf.Icon;
+              const selected = selectedModality === key;
+              return (
                 <Badge
+                  key={m}
                   role="button"
                   tabIndex={0}
-                  onClick={() => setSelectedModality('all')}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedModality('all'); }}
+                  onClick={() => setSelectedModality(key)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedModality(key); }}
+                  variant="outline"
                   className={cn(
-                    'h-11 px-4 py-2.5 text-sm font-medium rounded-full cursor-pointer shadow-sm hover:shadow-md transition',
-                    selectedModality === 'all'
-                      ? 'bg-indigo-100 text-indigo-700 border-indigo-200 ring-2 ring-indigo-300'
-                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100'
+                    'h-11 px-4 py-2.5 text-sm font-medium rounded-full cursor-pointer gap-2 shadow-sm hover:shadow-md transition',
+                    conf.cls,
+                    selected && 'ring-2 ring-emerald-300'
                   )}
                 >
-                  Alle
+                  <Icon className="h-4 w-4 opacity-90" aria-hidden="true" />
+                  {getModalityLabel(m)}
                 </Badge>
-                {allModalities.map((m) => {
-                  const key = normalizeModality(m);
-                  const conf = getModalityStyle(m);
-                  const Icon = conf.Icon;
-                  const selected = selectedModality === key;
-                  return (
-                    <Badge
-                      key={m}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setSelectedModality(key)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedModality(key); }}
-                      variant="outline"
-                      className={cn(
-                        'h-11 px-4 py-2.5 text-sm font-medium rounded-full cursor-pointer gap-2 shadow-sm hover:shadow-md transition',
-                        conf.cls,
-                        selected && 'ring-2 ring-emerald-300'
-                      )}
-                    >
-                      <Icon className="h-4 w-4 opacity-90" aria-hidden="true" />
-                      {getModalityLabel(m)}
-                    </Badge>
-                  );
-                })}
-              </div>
-            </div>
+              );
+            })}
+            {/* Secondary modalities behind toggle */}
+            {(() => {
+              const secondary = allModalities.filter(m => !PRIMARY_MODALITIES.has(normalizeModality(m)));
+              if (secondary.length === 0) return null;
+              // If a secondary modality is selected, always show expanded
+              const secondarySelected = secondary.some(m => selectedModality === normalizeModality(m));
+              if (!showAllModalities && !secondarySelected) {
+                return (
+                  <Badge
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setShowAllModalities(true)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setShowAllModalities(true); }}
+                    className="h-11 px-4 py-2.5 text-sm font-medium rounded-full cursor-pointer shadow-sm hover:shadow-md transition border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100 gap-1"
+                  >
+                    +{secondary.length}
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Badge>
+                );
+              }
+              return secondary.map((m) => {
+                const key = normalizeModality(m);
+                const conf = getModalityStyle(m);
+                const Icon = conf.Icon;
+                const selected = selectedModality === key;
+                return (
+                  <Badge
+                    key={m}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedModality(key)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedModality(key); }}
+                    variant="outline"
+                    className={cn(
+                      'h-11 px-4 py-2.5 text-sm font-medium rounded-full cursor-pointer gap-2 shadow-sm hover:shadow-md transition',
+                      conf.cls,
+                      selected && 'ring-2 ring-emerald-300'
+                    )}
+                  >
+                    <Icon className="h-4 w-4 opacity-90" aria-hidden="true" />
+                    {getModalityLabel(m)}
+                  </Badge>
+                );
+              });
+            })()}
           </div>
         </div>
 
@@ -469,7 +515,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
           </div>
         </div>
 
-        <div className="flex-1">
+        <div className="shrink-0">
           <label className="mb-2 block text-sm font-medium text-gray-700">
             Therapieformat
           </label>
@@ -477,7 +523,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
             <Button
               variant={onlineOnly === null ? 'default' : 'outline'}
               onClick={() => setOnlineOnly(null)}
-              className="flex-1 h-11"
+              className="h-11"
             >
               Alle
             </Button>
@@ -485,7 +531,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
               variant="outline"
               onClick={() => setOnlineOnly(true)}
               className={cn(
-                'flex-1 h-11 gap-2',
+                'h-11 gap-2',
                 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100',
                 onlineOnly === true && 'ring-2 ring-emerald-300'
               )}
@@ -497,7 +543,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
               variant="outline"
               onClick={() => setOnlineOnly(false)}
               className={cn(
-                'flex-1 h-11 gap-2',
+                'h-11 gap-2',
                 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100',
                 onlineOnly === false && 'ring-2 ring-emerald-300'
               )}
