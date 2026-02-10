@@ -462,7 +462,7 @@ Steps:
   1. Navigate to /fuer-therapeuten → click "Jetzt registrieren"
   2. Step 1 — Registration:
      → Fill required fields
-     → Select Qualifikation: "Berater:in / Coach"
+     → Select Qualifikation: "Psychologische:r Berater:in"
      → Select at least one modality
      → Submit
   3. Complete Step 2 (Profile) as above
@@ -484,7 +484,7 @@ Steps:
      → "Heilpraktiker für Psychotherapie"
      → "Approbierte:r Psychotherapeut:in"
      → "Heilpraktiker:in"
-     → "Berater:in / Coach"
+     → "Psychologische:r Berater:in"
   4. Select each option → verify form accepts selection
 Expected: All 4 qualification options available and selectable
 ```

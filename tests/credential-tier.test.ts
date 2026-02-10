@@ -75,7 +75,7 @@ beforeEach(() => {
 });
 
 describe('Credential Tier: Handler', () => {
-  it('derives credential_tier=certified for Berater:in / Coach', async () => {
+  it('derives credential_tier=certified for Psychologische:r Berater:in', async () => {
     const { handleTherapistLead } = await import('@/features/leads/lib/handlers');
     const req = new Request('http://localhost/test', { method: 'POST' });
     const ctx = { req, ip: '127.0.0.1', ua: 'test-agent' };
@@ -84,7 +84,7 @@ describe('Credential Tier: Handler', () => {
       data: { email: 'coach@example.com', name: 'Test Coach' },
       sessionPreferences: ['online'],
       specializations: ['narm'],
-      qualification: 'Berater:in / Coach',
+      qualification: 'Psychologische:r Berater:in',
     });
 
     expect(lastInsertedPayload).toBeTruthy();
@@ -164,11 +164,11 @@ describe('Credential Tier: Handler', () => {
       data: { email: 'metacheck@example.com', name: 'Test Meta' },
       sessionPreferences: ['online'],
       specializations: ['narm'],
-      qualification: 'Berater:in / Coach',
+      qualification: 'Psychologische:r Berater:in',
     });
 
     expect(lastInsertedPayload).toBeTruthy();
-    expect(lastInsertedPayload.metadata?.profile?.qualification).toBe('Berater:in / Coach');
+    expect(lastInsertedPayload.metadata?.profile?.qualification).toBe('Psychologische:r Berater:in');
   });
 });
 

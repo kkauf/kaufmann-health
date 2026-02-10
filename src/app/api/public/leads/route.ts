@@ -183,7 +183,7 @@ async function handleTherapistMultipart(req: Request) {
     .filter((s): s is 'online' | 'in_person' => s === 'online' || s === 'in_person');
   const specializations = normalizeSpecializations(form.getAll('specializations') || []);
   const qualificationRaw = sanitize(form.get('qualification')?.toString());
-  const multipartCredentialTier = qualificationRaw === 'Berater:in / Coach' ? 'certified' : 'licensed';
+  const multipartCredentialTier = qualificationRaw === 'Psychologische:r Berater:in' ? 'certified' : 'licensed';
   const approachTextRaw = form.get('approach_text')?.toString();
   if (approachTextRaw && approachTextRaw.length > 500) {
     return safeJson(

@@ -32,7 +32,7 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
   const modalities = specializations;
 
   // Derive credential tier from qualification
-  const credential_tier = qualification === 'Berater:in / Coach' ? 'certified' : 'licensed';
+  const credential_tier = qualification === 'Psychologische:r Berater:in' ? 'certified' : 'licensed';
 
   // Build metadata (test-only marker + qualification)
   const meta: Record<string, unknown> = isTest ? { is_test: true } : {};
