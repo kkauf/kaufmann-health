@@ -29,6 +29,9 @@ vi.mock('@/lib/supabase-server', () => {
       }
       if (table === 'therapists') {
         return {
+          select: () => ({
+            like: () => Promise.resolve({ data: [], error: null }),
+          }),
           insert: (_payload: any) => ({
             select: () => ({
               single: () =>
