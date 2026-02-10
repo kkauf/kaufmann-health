@@ -55,7 +55,7 @@ export function renderTherapistDocumentReminder(params: {
   lines.push('<p style="margin:0 0 12px; font-size:15px; font-weight:600; color:#92400e !important;">📋 Was du jetzt tun musst:</p>');
   lines.push('<ol style="margin:0; padding-left:20px; color:#78350f !important; font-size:15px; line-height:1.8;">');
   lines.push('<li><strong style="font-weight:600;">Klicke auf den Button unten</strong></li>');
-  lines.push('<li><strong style="font-weight:600;">Lade deine Qualifikationsnachweise hoch</strong> (Heilpraktiker-Erlaubnis, Zertifikate)</li>');
+  lines.push('<li><strong style="font-weight:600;">Lade deine Qualifikationsnachweise hoch</strong> (Zulassung oder Spezialisierungs‑Zertifikat)</li>');
   lines.push('<li><strong style="font-weight:600;">Ergänze dein Profilfoto</strong></li>');
   lines.push('</ol>');
   lines.push('<p style="margin:12px 0 0; font-size:14px; line-height:1.6; color:#92400e !important;">⏱️ Dauert nur 5–10 Minuten. Danach prüfen wir alles innerhalb von 2 Werktagen.</p>');
@@ -78,7 +78,7 @@ export function renderTherapistDocumentReminder(params: {
   lines.push('<div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; background-image: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; padding:20px 24px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8); margin: 0 0 24px;">');
   lines.push('<p style="margin:0 0 12px; font-size:15px; font-weight:600; color:#0f172a !important;">Diese Unterlagen benötigen wir:</p>');
   lines.push('<ul style="margin:0; padding-left:20px; color:#475569 !important; font-size:15px; line-height:1.8;">');
-  lines.push('<li><strong style="font-weight:600;">Heilpraktiker-Erlaubnis</strong> (Pflicht)</li>');
+  lines.push('<li><strong style="font-weight:600;">Qualifikationsnachweis</strong> (Zulassung oder Spezialisierungs‑Zertifikat)</li>');
   lines.push('<li><strong style="font-weight:600;">Spezialisierungs-Zertifikat</strong> – NARM, Hakomi, SE oder Core Energetics</li>');
   lines.push('<li><strong style="font-weight:600;">Profilfoto</strong> – Professionell, für dein Verzeichnisprofil</li>');
   lines.push('</ul>');

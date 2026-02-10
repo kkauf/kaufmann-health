@@ -38,7 +38,7 @@ export function renderTherapistWelcome(params: {
         <div style="margin:12px 0 0;">
           <div style="font-weight:700; color:#0f172a !important; font-size:15px; margin-bottom:8px;">📋 QUALIFIKATIONSNACHWEISE:</div>
           <ul style="margin:0 0 0 20px; color:#475569 !important; font-size:15px; line-height:1.65;">
-            <li style="margin:6px 0;"> Staatlich anerkannte Psychotherapie‑Berechtigung (erforderlich)</li>
+            <li style="margin:6px 0;"> Qualifikationsnachweis (Zulassung oder Spezialisierungs‑Zertifikat)</li>
             <li style="margin:6px 0;"> Spezialisierungs‑Zertifikat (NARM, Hakomi, Core Energetics, Somatic Experiencing)</li>
             <li style="margin:6px 0;"> Berufshaftpflicht (optional)</li>
           </ul>
