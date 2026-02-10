@@ -83,6 +83,7 @@ export async function POST(req: Request) {
       gender,
       time_slots,
       form_session_id,
+      accept_certified,
     } = body;
 
     // Rate limiting
@@ -140,6 +141,7 @@ export async function POST(req: Request) {
       ...(normalizedSession.session_preferences ? { session_preferences: normalizedSession.session_preferences } : {}),
       gender_preference: normalizedGender,
       time_slots: time_slots || [],
+      accept_certified: accept_certified ?? false,
       ...(isTest ? { is_test: true } : {}),
     };
 

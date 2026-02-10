@@ -163,6 +163,8 @@ export const TherapistDataSchema = z.object({
   has_completed_intro: z.boolean().optional(),
   // Credential tier
   credential_tier: z.enum(['licensed', 'certified']).default('licensed'),
+  professional_title: z.string().optional(),
+  service_descriptor: z.string().optional(),
   // Admin-only fields
   gender: z.string().nullable().optional(),
   email: z.string().nullable().optional(),

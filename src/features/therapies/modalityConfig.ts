@@ -39,7 +39,7 @@ export const MODALITIES: Record<ModalityId, ModalityConfig> = {
     therapistFilter: {
       modalities: ['narm'],
     },
-    directoryFilterParams: '?modality=narm',
+    directoryFilterParams: '?modality=narm&tier=all',
     therapistSectionTitle: 'Unsere NARM-Therapeut:innen',
     therapistSectionSubtitle: 'Zertifiziert in NeuroAffektivem Beziehungsmodell – für Entwicklungstrauma',
   },
@@ -54,7 +54,7 @@ export const MODALITIES: Record<ModalityId, ModalityConfig> = {
     therapistFilter: {
       modalities: ['somatic-experiencing'],
     },
-    directoryFilterParams: '?modality=somatic-experiencing',
+    directoryFilterParams: '?modality=somatic-experiencing&tier=all',
     therapistSectionTitle: 'Unsere Somatic Experiencing Therapeut:innen',
     therapistSectionSubtitle: 'Zertifizierte SE-Praktiker:innen (SEP) – nach Dr. Peter Levine',
   },
@@ -69,7 +69,7 @@ export const MODALITIES: Record<ModalityId, ModalityConfig> = {
     therapistFilter: {
       modalities: ['hakomi'],
     },
-    directoryFilterParams: '?modality=hakomi',
+    directoryFilterParams: '?modality=hakomi&tier=all',
     therapistSectionTitle: 'Unsere Hakomi-Therapeut:innen',
     therapistSectionSubtitle: 'Zertifiziert in achtsamkeitsbasierter Körperpsychotherapie',
   },
@@ -84,7 +84,7 @@ export const MODALITIES: Record<ModalityId, ModalityConfig> = {
     therapistFilter: {
       modalities: ['core-energetics'],
     },
-    directoryFilterParams: '?modality=core-energetics',
+    directoryFilterParams: '?modality=core-energetics&tier=all',
     therapistSectionTitle: 'Unsere Core Energetics Therapeut:innen',
     therapistSectionSubtitle: 'Zertifiziert in körperorientierter Charakterarbeit',
   },

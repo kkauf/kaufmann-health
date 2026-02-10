@@ -14,6 +14,7 @@ export type PatientMeta = {
   schwerpunkte?: string[]; // focus area selections
   gender_preference?: 'male' | 'female' | 'no_preference' | 'any';
   language_preference?: 'deutsch' | 'englisch' | 'any'; // session language preference
+  accept_certified?: boolean; // opt-in for certified (non-HP) practitioners
 };
 
 export type TherapistRowForMatch = {
@@ -449,24 +450,26 @@ export async function createInstantMatchesForPatient(
     const schwerpunkte = Array.isArray(meta['schwerpunkte']) ? (meta['schwerpunkte'] as string[]) : undefined;
     const gender_preference = typeof meta['gender_preference'] === 'string' ? (meta['gender_preference'] as 'male' | 'female' | 'no_preference') : undefined;
     const language_preference = typeof meta['language_preference'] === 'string' ? (meta['language_preference'] as 'deutsch' | 'englisch' | 'any') : undefined;
-    const pMeta: PatientMeta = { city, session_preference, session_preferences, specializations, schwerpunkte, gender_preference, language_preference };
+    const accept_certified = meta['accept_certified'] === true;
+    const pMeta: PatientMeta = { city, session_preference, session_preferences, specializations, schwerpunkte, gender_preference, language_preference, accept_certified };
 
-    type TR = { 
-      id: string; 
-      gender?: string | null; 
-      city?: string | null; 
-      session_preferences?: unknown; 
-      modalities?: unknown; 
-      schwerpunkte?: unknown; 
+    type TR = {
+      id: string;
+      gender?: string | null;
+      city?: string | null;
+      session_preferences?: unknown;
+      modalities?: unknown;
+      schwerpunkte?: unknown;
       languages?: unknown;
-      accepting_new?: boolean | null; 
+      accepting_new?: boolean | null;
       photo_url?: string | null;
       approach_text?: string | null;
       metadata?: Record<string, unknown> | null;
+      credential_tier?: string | null;
     };
     const { data: trows } = await supabaseServer
       .from('therapists')
-      .select('id, gender, city, session_preferences, modalities, schwerpunkte, languages, accepting_new, photo_url, approach_text, metadata')
+      .select('id, gender, city, session_preferences, modalities, schwerpunkte, languages, accepting_new, photo_url, approach_text, metadata, credential_tier')
       .eq('status', 'verified')
       .limit(5000);
     const allTherapists = Array.isArray(trows) ? (trows as TR[]) : [];
@@ -476,7 +479,7 @@ export async function createInstantMatchesForPatient(
       const { logError } = await import('@/lib/logger');
       await logError('matching.critical', new Error('Therapist query returned 0 verified therapists - possible schema mismatch'), {
         patient_id: patientId,
-        query_columns: 'id, gender, city, session_preferences, modalities, schwerpunkte, languages, accepting_new, photo_url, approach_text, metadata',
+        query_columns: 'id, gender, city, session_preferences, modalities, schwerpunkte, languages, accepting_new, photo_url, approach_text, metadata, credential_tier',
         filter: 'status=verified',
       });
       console.error('[InstantMatch] CRITICAL: Therapist query returned 0 rows. Check for schema mismatches or RLS issues.');
@@ -484,7 +487,7 @@ export async function createInstantMatchesForPatient(
     
     // Filter out hidden/test therapists (HIDE_THERAPIST_IDS env var + metadata flags)
     const hiddenIds = getHiddenTherapistIds();
-    const therapists = allTherapists.filter(t => {
+    let therapists = allTherapists.filter(t => {
       if (hiddenIds.has(t.id)) return false;
       // Also filter by metadata flags (hidden, is_test)
       const md = t.metadata || {};
@@ -492,6 +495,11 @@ export async function createInstantMatchesForPatient(
       if (md.is_test === true) return false;
       return true;
     });
+
+    // Tier filter: only include certified-tier therapists if patient opted in
+    if (!accept_certified) {
+      therapists = therapists.filter(t => (t.credential_tier || 'licensed') !== 'certified');
+    }
 
     const tIds = therapists.map(t => t.id);
     

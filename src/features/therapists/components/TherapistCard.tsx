@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, Calendar, MessageCircle, User, ShieldCheck, ChevronRight, Languages, Info } from 'lucide-react';
+import { MapPin, Video, Calendar, MessageCircle, User, ShieldCheck, ChevronRight, Languages, Info, Award } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { TherapistData } from './TherapistDirectory';
 import { ContactModal } from './ContactModal';
@@ -239,10 +239,23 @@ export function TherapistCard({
                 /* Trust + Availability */
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   {/* Trust + Qualification Badge */}
-                  <Badge variant="outline" title="Profil geprüft: Qualifikation & Lizenzen verifiziert" className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700 whitespace-nowrap">
-                    <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate max-w-[200px] sm:max-w-none">{therapist.metadata?.profile?.qualification || 'Verifiziert'}</span>
-                  </Badge>
+                  {(() => {
+                    const isCertified = therapist.credential_tier === 'certified';
+                    const BadgeIcon = isCertified ? Award : ShieldCheck;
+                    const badgeLabel = therapist.professional_title || therapist.metadata?.profile?.qualification || 'Verifiziert';
+                    const badgeTooltip = isCertified
+                      ? 'Profil geprüft: Spezialisierungs-Zertifizierung verifiziert'
+                      : 'Profil geprüft: Qualifikation & Lizenzen verifiziert';
+                    const badgeClasses = isCertified
+                      ? 'gap-1.5 border-slate-200 bg-slate-50 text-slate-700 whitespace-nowrap'
+                      : 'gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700 whitespace-nowrap';
+                    return (
+                      <Badge variant="outline" title={badgeTooltip} className={badgeClasses}>
+                        <BadgeIcon className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate max-w-[200px] sm:max-w-none">{badgeLabel}</span>
+                      </Badge>
+                    );
+                  })()}
                   {therapist.accepting_new ? (
                     <Badge className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
                       <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
