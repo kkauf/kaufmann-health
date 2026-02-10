@@ -141,8 +141,10 @@ async function handler(req: Request) {
       const therapistId = therapistMap.get(booking.username) || null;
       const rawPatientId = typeof meta.kh_patient_id === 'string' ? meta.kh_patient_id : null;
       const patientId = rawPatientId && validPatientIds.has(rawPatientId) ? rawPatientId : null;
-      const bookingKind = typeof meta.kh_booking_kind === 'string' ? meta.kh_booking_kind : null;
-      const source = typeof meta.kh_source === 'string' ? meta.kh_source : null;
+      const rawKind = typeof meta.kh_booking_kind === 'string' ? meta.kh_booking_kind : null;
+      const bookingKind = rawKind && ['intro', 'full_session'].includes(rawKind) ? rawKind : null;
+      const rawSource = typeof meta.kh_source === 'string' ? meta.kh_source : null;
+      const source = rawSource && ['directory', 'questionnaire'].includes(rawSource) ? rawSource : null;
       const isTest = meta.kh_test === true || meta.kh_test === 'true';
 
       toSync.push({
