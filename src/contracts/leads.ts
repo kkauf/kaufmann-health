@@ -19,16 +19,16 @@ import {
  * Patient lead from signup form (German strings from UI)
  */
 export const PatientLeadInput = z.object({
-  name: NonEmptyString,
+  name: NonEmptyString.optional(),
   email: Email.optional(),
   phone_number: Phone.optional(),
   city: City.optional(),
   issue: OptionalString,
-  
+
   // These come in German from the form
   gender: GermanGenderPreference.optional(),
   session_preference: GermanSessionPreference.optional(),
-  
+
   // UTM tracking
   utm_source: OptionalString,
   utm_medium: OptionalString,
@@ -37,14 +37,17 @@ export const PatientLeadInput = z.object({
   campaign_variant: OptionalString,
   landing_page: OptionalString,
   gclid: OptionalString,
-  
+
   // Form session reference
   form_session_id: UUID.optional(),
   confirm_redirect_path: OptionalString,
-  
+
   // Direct booking flow
   therapist_id: UUID.optional(),
   slot_id: UUID.optional(),
+
+  // Progressive flow: upgrade anonymous patient to full lead
+  anonymous_patient_id: UUID.optional(),
 }).refine(data => data.email || data.phone_number, {
   message: 'E-Mail oder Telefonnummer erforderlich',
 });
@@ -161,6 +164,12 @@ export const QuestionnaireSubmitOutput = z.object({
   patientId: UUID,
   matchesUrl: z.string().nullable(),
   matchQuality: z.enum(['exact', 'partial', 'none']),
+  matchPreviews: z.array(z.object({
+    firstName: z.string(),
+    modalities: z.array(z.string()),
+    city: z.string().nullable(),
+  })).optional(),
+  matchCount: z.number().optional(),
 });
 
 export type QuestionnaireSubmitOutput = z.infer<typeof QuestionnaireSubmitOutput>;

@@ -26,7 +26,7 @@ interface SessionData {
   patient_id?: string;
 }
 
-type BookingStep = 'slots' | 'verify' | 'code' | 'email-sent' | 'confirm' | 'booking' | 'success' | 'fallback';
+type BookingStep = 'slots' | 'verify' | 'code' | 'email-sent' | 'name-collect' | 'confirm' | 'booking' | 'success' | 'fallback';
 
 // Location type for booking
 export type BookingLocationType = 'video' | 'in_person';
@@ -590,23 +590,15 @@ export function useCalBooking({
     }
   }, [verification, selectedSlot, therapistId, emailRedirectPath, calUsername, bookingKind]);
 
-  // Verify code and proceed to native booking or redirect
+  // Verify code and proceed to name-collect (phone-first) or booking
   const verifyCode = useCallback(async () => {
     const result = await verification.verifyCode();
 
     if (result.success) {
-      // EARTH-272: Use native booking when feature flag is enabled
-      if (USE_NATIVE_BOOKING) {
-        // Skip confirm step - book directly after verification
-        createNativeBooking();
-      } else {
-        const email = verification.state.contactMethod === 'email'
-          ? verification.state.email
-          : undefined;
-        redirectToCal(verification.state.name, email, result.patientId);
-      }
+      // Phone-first flow: collect name before booking
+      setStep('name-collect');
     }
-  }, [verification, redirectToCal, createNativeBooking]);
+  }, [verification]);
 
   // EARTH-262: Go to fallback (contact form)
   const goToFallback = useCallback(() => {

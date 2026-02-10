@@ -31,6 +31,8 @@ export type LeadPayload = {
   // EARTH-191: SMS verification support
   verification_code?: string; // 6-digit SMS code for verification
   contact_method?: 'email' | 'phone'; // Which method user chose
+  // Progressive flow: upgrade anonymous patient record
+  anonymous_patient_id?: string;
 };
 
 export type HandlerContext = {

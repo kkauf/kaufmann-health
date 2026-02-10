@@ -18,6 +18,7 @@ import { isTestRequest } from '@/lib/test-mode';
 import { safeJson } from '@/lib/http';
 import { getClientSession } from '@/lib/auth/clientSession';
 import { createInstantMatchesForPatient } from '@/features/leads/lib/match';
+import { handleAnonymousUpgrade } from '@/features/leads/lib/anonymousUpgrade';
 import { getPartnersNotifyEmail, getLeadsNotifyEmail, getQaNotifyEmail } from '@/lib/email/notification-recipients';
 
 export const runtime = 'nodejs';
@@ -607,6 +608,8 @@ export async function POST(req: Request) {
     const formSessionId = sanitize(payload.form_session_id as string | undefined);
     const confirmRedirectPathRaw = sanitize(payload.confirm_redirect_path as string | undefined);
     const confirmRedirectPath = isSafeRelativePath(confirmRedirectPathRaw) ? confirmRedirectPathRaw : undefined;
+    // Progressive flow: upgrade anonymous patient to full lead
+    const anonymousPatientId = sanitize(payload.anonymous_patient_id as string | undefined);
 
     // Fetch form session data to extract schwerpunkte and other wizard preferences
     let formSessionSchwerpunkte: string[] | undefined;
@@ -776,6 +779,16 @@ export async function POST(req: Request) {
         consent_privacy_version: privacyVersion,
         consent_terms_version: TERMS_VERSION,
       };
+      // Progressive flow: upgrade anonymous patient record instead of creating new one
+      if (anonymousPatientId) {
+        const upgraded = await handleAnonymousUpgrade({
+          anonymousPatientId, baseMetadata, data, email, phoneNumber, cookieVerifiedPhone,
+          campaign_source, campaign_variant, contactMethod, confirmToken, formSessionId,
+          confirmRedirectPath, isTest, ip, ua, req,
+        });
+        if (upgraded) return upgraded;
+      }
+
       const insertPayload = {
         ...(data.name ? { name: data.name } : {}),
         ...(email ? { email } : {}),
