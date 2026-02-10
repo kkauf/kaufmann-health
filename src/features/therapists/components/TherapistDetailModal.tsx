@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
-import { MapPin, Video, User, Calendar, MessageCircle, Languages, ShieldCheck, CalendarCheck2, X, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, Euro, Link2, ExternalLink } from 'lucide-react';
+import { MapPin, Video, User, Calendar, MessageCircle, Languages, ShieldCheck, Award, CalendarCheck2, X, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, Euro, Link2, ExternalLink } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { TherapistData } from './TherapistDirectory';
 import { getAttribution } from '@/lib/attribution';
@@ -575,10 +575,19 @@ export function TherapistDetailModal({
 
             {/* Trust + Availability badges */}
             <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-              <Badge variant="outline" className="gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Verifiziert
-              </Badge>
+              {(() => {
+                const isCertified = therapist.credential_tier === 'certified';
+                const BadgeIcon = isCertified ? Award : ShieldCheck;
+                const badgeColor = isCertified
+                  ? 'border-slate-200 bg-slate-50 text-slate-700'
+                  : 'border-emerald-200 bg-emerald-50 text-emerald-700';
+                return (
+                  <Badge variant="outline" className={`gap-1.5 ${badgeColor}`} title={isCertified ? 'Profil geprüft: Spezialisierungs-Zertifizierung verifiziert' : 'Profil geprüft: Qualifikation & Lizenzen verifiziert'}>
+                    <BadgeIcon className="h-3.5 w-3.5" />
+                    {therapist.professional_title || 'Verifiziert'}
+                  </Badge>
+                );
+              })()}
               {therapist.accepting_new ? (
                 <Badge className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
                   <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -768,10 +777,17 @@ export function TherapistDetailModal({
             {therapist.modalities && therapist.modalities.length > 0 && (
               <div className="border-b pb-6">
                 <h3 className="mb-2 text-lg font-semibold text-gray-900">Methoden, mit denen {therapist.first_name} arbeitet</h3>
-                <p className="mb-5 text-sm font-medium text-emerald-700/90 flex items-center gap-1.5">
-                  <ShieldCheck className="h-4 w-4" />
-                  {profile?.qualification || 'Therapeut:in'} · Ausbildungen verifiziert
-                </p>
+                {(() => {
+                  const isCertified = therapist.credential_tier === 'certified';
+                  const QualIcon = isCertified ? Award : ShieldCheck;
+                  const qualColor = isCertified ? 'text-slate-600' : 'text-emerald-700/90';
+                  return (
+                    <p className={`mb-5 text-sm font-medium ${qualColor} flex items-center gap-1.5`}>
+                      <QualIcon className="h-4 w-4" />
+                      {therapist.professional_title || profile?.qualification || 'Therapeut:in'} · Ausbildungen verifiziert
+                    </p>
+                  );
+                })()}
                 <div className="space-y-5">
                   {therapist.modalities.map((modality, idx) => {
                     const modalityInfo = getModalityInfo(modality);

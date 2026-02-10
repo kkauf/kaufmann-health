@@ -898,9 +898,9 @@ export default function AdminTherapistsPage() {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           {detail.documents.has_license ? (
-                            <Badge variant="default" className="bg-green-600 border-transparent text-white">✓ Lizenz vorhanden</Badge>
+                            <Badge variant="default" className="bg-green-600 border-transparent text-white">✓ Qualifikationsnachweis vorhanden</Badge>
                           ) : (
-                            <Badge variant="secondary" className="bg-red-600 text-white border-transparent">✗ Lizenz fehlt</Badge>
+                            <Badge variant="secondary" className="bg-red-600 text-white border-transparent">✗ Qualifikationsnachweis fehlt</Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-2">
@@ -997,14 +997,14 @@ export default function AdminTherapistsPage() {
                     <div className="space-y-4">
                       <div className="bg-white rounded-lg border p-4">
                         <h4 className="font-semibold text-base mb-3 flex items-center gap-2">
-                          📄 Lizenz-Dokument
+                          📄 Qualifikationsnachweis
                           {detail.documents.has_license && <Badge variant="outline" className="text-green-700 border-green-700">Vorhanden</Badge>}
                         </h4>
                         {detail.documents.has_license ? (
                           <>
                             <div className="border-2 border-dashed border-gray-300 rounded-md p-8 text-center bg-gray-50">
                               <div className="text-sm text-gray-700 mb-3">
-                                📄 Lizenz-Dokument vorhanden
+                                📄 Qualifikationsnachweis vorhanden
                               </div>
                               <p className="text-xs text-gray-500 mb-4">
                                 Aus Sicherheitsgründen kann das Dokument nicht direkt angezeigt werden.
@@ -1024,7 +1024,7 @@ export default function AdminTherapistsPage() {
                           </>
                         ) : (
                           <div className="border-2 border-dashed border-gray-300 rounded-md p-8 text-center">
-                            <p className="text-sm text-gray-500 mb-2">Kein Lizenz-Dokument hochgeladen</p>
+                            <p className="text-sm text-gray-500 mb-2">Kein Qualifikationsnachweis hochgeladen</p>
                             {(detail.status === "pending_verification" || detail.status === "rejected") && (
                               <div className="mt-3 pt-3 border-t">
                                 <input
@@ -1041,7 +1041,7 @@ export default function AdminTherapistsPage() {
                                     className="w-full"
                                     onClick={() => document.getElementById('licenseFile')?.click()}
                                   >
-                                    📤 Lizenz hochladen
+                                    📤 Nachweis hochladen
                                   </Button>
                                 ) : (
                                   <div className="flex items-center gap-2">
@@ -1059,7 +1059,7 @@ export default function AdminTherapistsPage() {
                                           const res = await fetch(`/api/public/therapists/${detail.id}/documents`, { method: 'POST', body: fd });
                                           const json = await res.json();
                                           if (!res.ok) throw new Error(json?.error || 'Upload fehlgeschlagen');
-                                          setMessage('Lizenz hochgeladen');
+                                          setMessage('Nachweis hochgeladen');
                                           setLicenseFile(null);
                                           await openDetail(detail.id);
                                         } catch (e) {

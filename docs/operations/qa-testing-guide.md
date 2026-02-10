@@ -171,18 +171,21 @@ Steps:
      → If "Vor Ort" or "Beides": verify city field appears and is required
      → Select language preference
   6. Step 5 (Gender): Select preference (male / female / no preference)
-  7. Step 6 (Contact): Enter name + email, select email method
-  8. Verify confirmation screen: "Bestätigung ausstehend"
-  9. Receive confirmation email (<30 seconds)
-  10. Click confirmation link
-  11. Verify redirect to /matches/{uuid} with therapist recommendations
-Expected: All steps complete, instant matches shown
+  7. Step 5.5 (Credential opt-in): "Weitere Therapeut:innen verfügbar" screen shown
+     → Verify checkbox "Auch zertifizierte Körpertherapeut:innen anzeigen" appears
+     → Default: unchecked. Leave unchecked for this test.
+  8. Step 6 (Contact): Enter name + email, select email method
+  9. Verify confirmation screen: "Bestätigung ausstehend"
+  10. Receive confirmation email (<30 seconds)
+  11. Click confirmation link
+  12. Verify redirect to /matches/{uuid} with therapist recommendations
+Expected: All steps complete, instant matches shown (licensed-tier only when opt-in unchecked)
 ```
 
 **TC-I.1.2: Questionnaire — Phone verification path**
 ```
 Steps:
-  1. Complete steps 2.5-5 as above
+  1. Complete steps 2.5-5.5 as above
   2. Step 6: Enter name + phone number, select phone method
   3. Step 6.5: Receive 6-digit SMS code (use 000000 on staging)
   4. Enter code → verify "Handynummer bestätigt" screen
@@ -209,6 +212,33 @@ Steps:
   3. Step 6: Enter invalid phone (e.g., "12345") → verify validation error
   4. Step 4: Select "Vor Ort" but leave city empty → verify validation
 Expected: Required fields enforced, clear error messages shown
+```
+
+**TC-I.1.5a: Questionnaire — Credential opt-in (TherapieFinden origin)**
+```
+Steps:
+  1. Navigate to /start or /therapie-finden (TherapieFinden entry)
+  2. Complete steps 2.5-5
+  3. Step 5.5: Verify "Weitere Therapeut:innen verfügbar" screen appears
+     → Verify explanatory text about certified practitioners shown
+     → Verify checkbox "Auch zertifizierte Körpertherapeut:innen anzeigen" (default unchecked)
+  4. Check the checkbox → proceed to Step 6
+  5. Complete verification
+  6. Verify matches include both licensed AND certified therapists
+Expected: Opt-in step appears for TherapieFinden leads, checking it widens match pool
+```
+
+**TC-I.1.5b: Questionnaire — Credential opt-in skipped (modality page origin)**
+```
+Steps:
+  1. Navigate to a modality page (e.g., /therapie/narm or /lp/narm)
+  2. Click CTA to start questionnaire
+  3. Complete steps 2.5-5
+  4. Verify Step 5.5 (credential opt-in) is SKIPPED entirely
+  5. Verify you go directly from Step 5 to Step 6
+  6. Complete verification
+  7. Verify matches include both licensed AND certified therapists
+Expected: Modality page leads skip opt-in, automatically get both tiers
 ```
 
 **TC-I.1.5: Questionnaire — Concierge path**
@@ -351,12 +381,28 @@ Expected: Format filter works correctly
 ```
 Steps:
   1. Navigate to /therapeuten (default directory)
-  2. Verify only licensed therapists shown (badge: "Heilpraktiker (Psychotherapie)" or similar)
-  3. Verify NO certified-tier therapists shown in default view
-  4. Note: Certified therapists will appear on modality-specific pages (future feature)
-Expected: Default directory shows licensed practitioners only
-Note: This is by design — TherapieFinden is for licensed psychotherapy practitioners.
-      Certified practitioners (coaches/Berater) will have separate visibility later.
+  2. Verify only licensed therapists shown (badge shows qualification like "Heilpraktikerin für Psychotherapie")
+  3. Verify licensed therapists have emerald/green ShieldCheck badge
+  4. Verify NO certified-tier therapists shown in default view
+  5. Navigate to /therapeuten?modality=narm&tier=all (modality page link)
+  6. Verify BOTH licensed and certified therapists with NARM modality shown
+  7. Verify certified therapists have distinct badge: "Zertifizierte/r NARM-Therapeut:in" with slate/gray Award icon
+Expected: Default directory = licensed only; modality page links = both tiers
+```
+
+**TC-I.5.4b: Directory — Tier-specific badge display**
+```
+Steps:
+  1. Find a licensed therapist in directory
+  2. Click to open profile modal
+     → Verify emerald ShieldCheck badge with qualification title
+     → Verify modalities section shows qualification with ShieldCheck icon
+  3. Find a certified therapist (via /therapeuten?tier=all or modality page)
+  4. Click to open profile modal
+     → Verify slate Award badge with "Zertifizierte/r {Modality}-Therapeut:in"
+     → Verify modalities section shows professional title with Award icon
+     → Verify legal disclaimer shown: "[Name] bietet körpertherapeutische Begleitung an. Dies ist keine Psychotherapie im Sinne des Heilpraktikergesetzes."
+Expected: Distinct visual treatment per tier, legal disclaimer for certified only
 ```
 
 **TC-I.5.5: Directory — Responsive design**
@@ -391,7 +437,9 @@ Steps:
   4. Navigate to /therapie/somatic-experiencing → verify SE content
   5. Navigate to /therapie/core-energetics → verify CE content
   6. On each page: verify CTAs navigate correctly, images load
-Expected: All therapy pages accessible with correct content
+  7. On each modality page: verify "Alle Therapeut:innen ansehen" button links to
+     /therapeuten?modality={slug}&tier=all (should include both licensed + certified)
+Expected: All therapy pages accessible with correct content; modality CTAs show all tiers
 ```
 
 **TC-I.6.3: Über uns page**
