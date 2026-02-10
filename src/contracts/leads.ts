@@ -100,6 +100,7 @@ export const FormSessionData = z.object({
   methods: z.array(z.string()).optional(),
   time_slots: z.array(z.string()).optional(),
   start_timing: OptionalString,
+  accept_certified: z.boolean().optional(),
   completed_at: z.string().optional(),
 });
 
@@ -151,6 +152,7 @@ export const QuestionnaireSubmitInput = z.object({
   gender: z.string().optional(),
   time_slots: z.array(z.string()).optional(),
   form_session_id: UUID.optional(),
+  accept_certified: z.boolean().optional(),
 });
 
 export type QuestionnaireSubmitInput = z.infer<typeof QuestionnaireSubmitInput>;

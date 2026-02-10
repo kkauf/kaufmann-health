@@ -175,6 +175,36 @@ export function mapTherapistRow(
   // Extract booking settings from metadata
   const bookingSettings = extractBookingSettings(row.metadata);
 
+  // Derive professional title and service descriptor based on credential tier
+  const credentialTier = row.credential_tier || 'licensed';
+  const primaryModality = Array.isArray(row.modalities) && row.modalities.length > 0 ? row.modalities[0] : null;
+
+  const MODALITY_LABELS: Record<string, string> = {
+    'narm': 'NARM',
+    'somatic-experiencing': 'Somatic Experiencing',
+    'hakomi': 'Hakomi',
+    'core-energetics': 'Core Energetics',
+  };
+  const primaryModalityLabel = primaryModality ? (MODALITY_LABELS[primaryModality] || primaryModality) : null;
+
+  let professional_title: string | undefined;
+  let service_descriptor: string | undefined;
+
+  if (credentialTier === 'certified') {
+    professional_title = primaryModalityLabel
+      ? `Zertifizierte/r ${primaryModalityLabel}-Therapeut:in`
+      : profile.qualification || 'Zertifizierte/r Therapeut:in';
+    service_descriptor = primaryModalityLabel
+      ? `Körpertherapeutische Begleitung · ${primaryModalityLabel}`
+      : 'Körpertherapeutische Begleitung';
+  } else {
+    // Licensed tier: use qualification as-is
+    professional_title = profile.qualification || undefined;
+    service_descriptor = primaryModalityLabel
+      ? `Körperpsychotherapie · ${primaryModalityLabel}`
+      : 'Körperpsychotherapie';
+  }
+
   const result: TherapistData = {
     id: row.id,
     first_name: String(row.first_name || ''),
@@ -194,6 +224,8 @@ export function mapTherapistRow(
     cal_username: row.cal_username || undefined,
     cal_enabled: row.cal_enabled || false,
     credential_tier: row.credential_tier || 'licensed',
+    professional_title,
+    service_descriptor,
     // Booking gating
     requires_intro_before_booking: bookingSettings.requires_intro_before_booking,
   };

@@ -12,6 +12,7 @@ import NewScreen3_WhatBringsYou, { type NewScreen3Values } from './screens/NewSc
 import NewScreen5_Modality from './screens/NewScreen5_Modality';
 import ScreenSchwerpunkte, { type ScreenSchwerpunkteValues } from './screens/ScreenSchwerpunkte';
 import ScreenPaymentInfo, { type ScreenPaymentInfoValues } from './screens/ScreenPaymentInfo';
+import ScreenCredentialOptIn, { type ScreenCredentialOptInValues } from './screens/ScreenCredentialOptIn';
 import { Button } from '@/components/ui/button';
 import { leadSubmissionSchema } from '@/lib/contracts';
 import { PRIVACY_VERSION } from '@/lib/privacy';
@@ -30,7 +31,7 @@ const LS_KEYS = {
   sessionId: 'kh_form_session_id',
 } as const;
 
-export type WizardData = Omit<Screen1Values, 'email'> & Screen1_5Values & ScreenSchwerpunkteValues & ScreenPaymentInfoValues & {
+export type WizardData = Omit<Screen1Values, 'email'> & Screen1_5Values & ScreenSchwerpunkteValues & ScreenPaymentInfoValues & ScreenCredentialOptInValues & {
   email?: string; // Make email optional since we might use phone instead
   // Step 2: What Brings You (optional) - now first step for Concierge
   additional_info?: NewScreen3Values['additional_info'];
@@ -61,6 +62,7 @@ const PROGRESS_MAP: Record<number, number> = {
   3: 17,            // Modality
   4: 33,            // Location
   5: 50,            // Preferences
+  5.5: 58,          // Credential opt-in
   6: 67,            // Contact
   6.5: 83,          // SMS verification
   7: 100, 8: 100, 8.5: 100, 9: 100,  // Confirmation (legacy step numbers)
@@ -1016,6 +1018,27 @@ export default function SignupWizard() {
             }}
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
             onBack={() => safeGoToStep(4)}
+            onNext={() => {
+              // Modality page leads get both tiers automatically (skip opt-in)
+              const src = campaignSourceOverrideRef.current || '';
+              const isModalityPage = src.startsWith('/lp/') || src.startsWith('/therapie/');
+              if (isModalityPage) {
+                saveLocal({ accept_certified: true });
+                safeGoToStep(6);
+              } else {
+                safeGoToStep(5.5);
+              }
+            }}
+            disabled={navLock || submitting}
+          />
+        );
+      case 5.5:
+        // Step 5.5: Credential tier opt-in (TherapieFinden leads only)
+        return (
+          <ScreenCredentialOptIn
+            values={{ accept_certified: data.accept_certified }}
+            onChange={saveLocal}
+            onBack={() => safeGoToStep(5)}
             onNext={() => safeGoToStep(6)}
             disabled={navLock || submitting}
           />
@@ -1587,6 +1610,7 @@ export default function SignupWizard() {
         session_preference: sessionPref,
         gender: backendGender, // Use mapped value
         form_session_id: sessionIdRef.current || undefined,
+        accept_certified: data.accept_certified,
       };
 
       const res = await fetch('/api/public/questionnaire-submit', {
