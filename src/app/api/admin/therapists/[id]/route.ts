@@ -60,7 +60,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const { id } = await ctx.params;
     const { data: row, error } = await supabaseServer
       .from('therapists')
-      .select('id, first_name, last_name, email, phone, city, status, metadata, photo_url, cal_username, cal_enabled, cal_user_id, modalities')
+      .select('id, first_name, last_name, email, phone, city, status, metadata, photo_url, cal_username, cal_enabled, cal_user_id, modalities, credential_tier')
       .eq('id', id)
       .single();
     if (error || !row) {
@@ -158,6 +158,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           specialization_certs: specialization, // { slug: [paths] }
         },
         modalities, // Selected modalities from signup
+        credential_tier: (row as Record<string, unknown>).credential_tier || 'licensed',
         // Cal.com integration
         cal_username: typeof rowAny.cal_username === 'string' ? rowAny.cal_username : null,
         cal_enabled: Boolean(rowAny.cal_enabled),
