@@ -45,17 +45,20 @@ Test both landing pages:
 
 ### Verification Options
 
-After completing the questionnaire, you'll need to verify via email or phone.
+The platform uses **phone-first verification** across all flows (questionnaire, directory booking, contact modal). Phone is the default; email is available via a "Lieber per E-Mail?" toggle.
 
 #### Option A: SMS Verification (Recommended for QA)
 
-1. Choose "Per Telefon verifizieren"
-2. Enter any phone number (it won't receive real SMS on staging)
-3. **Use code `000000`** (six zeros) to bypass verification
+1. Enter any phone number in the phone input step (it won't receive real SMS on staging)
+2. **Use code `000000`** (six zeros) to bypass verification
+3. Then enter your name (and optionally email) in the following step
 
 This works because staging has `E2E_SMS_BYPASS` enabled.
 
 #### Option B: Email Verification
+
+1. Click "Lieber per E-Mail?" toggle on the phone input step
+2. Enter an email address
 
 **Important**: On staging, confirmation emails are routed to an internal sink address, not your actual email.
 
@@ -103,13 +106,15 @@ To test booking functionality, use the **designated test therapist** only:
 
 ### What to Test in Each Phase
 
-| Phase 1 (Matching) | Phase 2 (Booking) |
+| Phase 1 (Matching) | Phase 2 (Booking & Contact) |
 |--------------------|-------------------|
-| Questionnaire all steps | Slot selection UI |
-| SMS/email verification | Booking form submission |
-| Matches display & sorting | Confirmation emails (via preview) |
-| Therapist profile views | Calendar integration |
-| Filter/preference matching | Booking notifications |
+| Questionnaire all steps (incl. match preview) | Slot selection UI |
+| Phone-first verification + email toggle | Booking phone verification flow |
+| Match preview (Step 5.75) display | Contact modal compose → verify → send |
+| Name + Email + Consent collection | Confirmation emails (via preview) |
+| Matches display & sorting | Calendar integration |
+| Therapist profile views | Booking notifications |
+| Filter/preference matching | |
 
 ### If No Test Therapist is Available
 
@@ -158,7 +163,7 @@ Below are all test cases organized by flow and priority. Each test case has an I
 
 The questionnaire has multiple steps. Step 1 (Timeline) was removed — the wizard now starts at Step 2.5.
 
-**TC-I.1.1: Complete Self-Service questionnaire (happy path)**
+**TC-I.1.1: Complete Self-Service questionnaire — Phone path (happy path)**
 ```
 Steps:
   1. Navigate to /start or click "Therapeut:in finden" CTA on homepage
@@ -174,24 +179,40 @@ Steps:
   7. Step 5.5 (Credential opt-in): "Weitere Therapeut:innen verfügbar" screen shown
      → Verify checkbox "Auch zertifizierte Körpertherapeut:innen anzeigen" appears
      → Default: unchecked. Leave unchecked for this test.
-  8. Step 6 (Contact): Enter name + email, select email method
-  9. Verify confirmation screen: "Bestätigung ausstehend"
-  10. Receive confirmation email (<30 seconds)
-  11. Click confirmation link
+  8. Step 5.75 (Match Preview): Verify anonymized therapist cards shown
+     → Heading: "X passende Therapeut:innen warten auf dich"
+     → CTA button: "Ergebnisse freischalten"
+     → Click CTA to proceed
+  9. Step 6 (Phone): Verify ONLY phone number input shown (no name/email fields)
+     → Enter phone number
+     → Verify "Lieber per E-Mail?" toggle is visible
+  10. Step 6.5 (SMS Verification): Receive 6-digit SMS code (use 000000 on staging)
+     → Enter code → verify confirmation
+  11. Step 6.75 (Name + Email + Consent):
+     → Enter name (required)
+     → Enter email (optional — leave blank for this test)
+     → Verify consent checkbox shown → check it
+     → Submit
   12. Verify redirect to /matches/{uuid} with therapist recommendations
 Expected: All steps complete, instant matches shown (licensed-tier only when opt-in unchecked)
 ```
 
-**TC-I.1.2: Questionnaire — Phone verification path**
+**TC-I.1.2: Questionnaire — Email verification path**
 ```
 Steps:
-  1. Complete steps 2.5-5.5 as above
-  2. Step 6: Enter name + phone number, select phone method
-  3. Step 6.5: Receive 6-digit SMS code (use 000000 on staging)
-  4. Enter code → verify "Handynummer bestätigt" screen
-  5. Verify instant matches shown (Self-Service)
-  6. Optionally: Click "E-Mail hinzufügen" and add email
-Expected: Phone verification works, matches shown
+  1. Complete steps 2.5-5.75 as above (through match preview)
+  2. Step 6 (Phone): Click "Lieber per E-Mail?" toggle
+     → Verify phone field is replaced by email input
+     → Enter email address
+  3. Step 6.75 (Name + Consent):
+     → Enter name (required)
+     → Verify consent checkbox shown → check it
+     → Submit
+  4. Verify confirmation screen: "Bestätigung ausstehend"
+  5. Receive confirmation email (<30 seconds)
+  6. Click confirmation link
+  7. Verify redirect to /matches/{uuid} with therapist recommendations
+Expected: Email toggle works, confirmation email flow completes, matches shown
 ```
 
 **TC-I.1.3: Questionnaire — Navigation**
@@ -200,18 +221,24 @@ Steps:
   1. Start questionnaire, advance to Step 4
   2. Click "Zurück" → verify Step 3 shown with data preserved
   3. Use browser back button → verify previous step shown, data preserved
-  4. Close browser, reopen with same ?fs= URL parameter → verify form state restored
-Expected: Navigation preserves data, form sessions allow resume
+  4. From Step 5.75 (Match Preview): click back → verify Step 5.5 shown with data preserved
+  5. From Step 6 (Phone): click back → verify match preview shown
+  6. From Step 6.75 (Name + Email): click back → verify Step 6 shown
+  7. Close browser, reopen with same ?fs= URL parameter → verify form state restored
+Expected: Navigation preserves data at every step, form sessions allow resume
 ```
 
 **TC-I.1.4: Questionnaire — Field validation**
 ```
 Steps:
-  1. Step 6: Leave name empty → click "Weiter" → verify validation error
-  2. Step 6: Enter invalid email (e.g., "abc") → verify validation error
-  3. Step 6: Enter invalid phone (e.g., "12345") → verify validation error
-  4. Step 4: Select "Vor Ort" but leave city empty → verify validation
-Expected: Required fields enforced, clear error messages shown
+  1. Step 6 (Phone): Enter invalid phone (e.g., "12345") → verify validation error
+  2. Step 6 (Phone): Leave phone empty → verify cannot proceed
+  3. Step 6 (Email toggle): Toggle to email → enter invalid email (e.g., "abc") → verify validation error
+  4. Step 6.75 (Name + Email): Leave name empty → click submit → verify validation error
+  5. Step 6.75 (Name + Email): Enter invalid email format → verify validation error
+  6. Step 6.75 (Name + Email): Leave consent unchecked → verify cannot proceed
+  7. Step 4: Select "Vor Ort" but leave city empty → verify validation
+Expected: Required fields enforced at each step, clear error messages shown
 ```
 
 **TC-I.1.5a: Questionnaire — Credential opt-in (TherapieFinden origin)**
@@ -222,8 +249,8 @@ Steps:
   3. Step 5.5: Verify "Weitere Therapeut:innen verfügbar" screen appears
      → Verify explanatory text about certified practitioners shown
      → Verify checkbox "Auch zertifizierte Körpertherapeut:innen anzeigen" (default unchecked)
-  4. Check the checkbox → proceed to Step 6
-  5. Complete verification
+  4. Check the checkbox → proceed to Step 5.75 (Match Preview)
+  5. Complete remaining steps (phone/email → verification → name + consent)
   6. Verify matches include both licensed AND certified therapists
 Expected: Opt-in step appears for TherapieFinden leads, checking it widens match pool
 ```
@@ -235,8 +262,8 @@ Steps:
   2. Click CTA to start questionnaire
   3. Complete steps 2.5-5
   4. Verify Step 5.5 (credential opt-in) is SKIPPED entirely
-  5. Verify you go directly from Step 5 to Step 6
-  6. Complete verification
+  5. Verify you go directly from Step 5 to Step 5.75 (Match Preview)
+  6. Complete remaining steps (phone/email → verification → name + consent)
   7. Verify matches include both licensed AND certified therapists
 Expected: Modality page leads skip opt-in, automatically get both tiers
 ```
@@ -248,10 +275,13 @@ Steps:
   2. Step 2.5: Select Schwerpunkte
   3. Step 2.6: Select insurance/Krankenkasse option
   4. Verify Step 2 appears: open text field "Was führt dich her?"
-  5. Complete remaining steps, verify via SMS
-  6. Verify confirmation screen says matches will be curated (NOT instant matches)
-  7. Verify NO instant matches page shown
-Expected: Concierge path correctly separates from Self-Service
+  5. Complete remaining preference steps (modality, location, gender)
+  6. Step 5.75 (Match Preview): Verify match preview still appears
+  7. Complete verification via phone (SMS code 000000) or email toggle
+  8. Step 6.75: Enter name, optional email, consent
+  9. Verify confirmation screen says matches will be curated (NOT instant matches)
+  10. Verify NO instant matches page shown
+Expected: Concierge path correctly separates from Self-Service, progressive disclosure steps still apply
 ```
 
 **TC-I.1.6: Verification — Negative cases**
@@ -262,6 +292,46 @@ Steps:
   3. Phone: Request resend 3+ times → verify rate limit message
   4. Email: Click confirmation link with invalid ID → verify error page
 Expected: All error states handled gracefully
+```
+
+**TC-I.1.7: Match Preview step — Zero matches**
+```
+Steps:
+  1. Start questionnaire with very unusual preferences (rare combination)
+  2. Reach Step 5.75 (Match Preview)
+  3. Verify an encouraging message is shown even when 0 exact matches found
+     → Should NOT show "0 passende Therapeut:innen"
+     → Should still show CTA to proceed ("Ergebnisse freischalten" or similar)
+  4. Click CTA → verify flow continues to Step 6 (phone input)
+  5. Complete remaining steps
+  6. Verify matches page still shows therapists (fallback behavior)
+Expected: Zero-match scenario does not block the flow or discourage the user
+```
+
+**TC-I.1.8: Match Preview step — Display quality**
+```
+Steps:
+  1. Complete questionnaire preferences with common selections (e.g., Berlin, NARM)
+  2. Reach Step 5.75 (Match Preview)
+  3. Verify therapist cards are anonymized (no real names, no clickable profiles)
+  4. Verify card content gives a sense of therapist fit (modalities, format, location hints)
+  5. Verify count in heading matches the number of cards shown
+  6. Verify progress bar reflects current position in the flow
+Expected: Preview builds trust and motivation to complete signup
+```
+
+**TC-I.1.9: Questionnaire — Progress bar through new steps**
+```
+Steps:
+  1. Start questionnaire, note progress bar at each step:
+     → Steps 2.5-5.5: progress bar advances as before
+     → Step 5.75 (Match Preview): bar advances
+     → Step 6 (Phone/Email): bar advances
+     → Step 6.5 (SMS Verification): bar advances (phone path only)
+     → Step 6.75 (Name + Email + Consent): bar advances
+  2. Verify progress bar never jumps backward or skips positions
+  3. Verify progress bar reaches end just before redirect to matches
+Expected: Smooth, continuous progress indication through all steps
 ```
 
 #### I.2. Matches & Therapist Recommendations
@@ -289,17 +359,50 @@ Expected: Never an empty results page
 
 #### I.3. Therapist Contact Flow
 
-**TC-I.3.1: Contact therapist from matches (happy path)**
+**TC-I.3.1: Contact therapist — Phone verification path (happy path)**
 ```
-Precondition: Verified patient with matches
+Precondition: No active session (clear cookies or use incognito with ?tt=1)
 Steps:
-  1. On matches page, click booking/contact button on a therapist
-  2. ContactModal opens → verify pre-composed message with patient context
-  3. Optionally edit the message (the template includes a placeholder for your concern)
-  4. Click send → verify confirmation shown
-  5. Therapist receives email with link (check sink on staging)
-Expected: Contact request sent, therapist notified
+  1. On matches page or directory, click contact button on a therapist
+  2. ContactModal opens → Step 1 (Compose):
+     → Verify pre-composed message with patient context shown
+     → Optionally edit the message
+     → Click send/continue
+  3. Step 2 (Phone): Verify phone number input shown
+     → Enter phone number
+     → Verify "Lieber per E-Mail?" toggle is visible
+  4. Step 3 (SMS Verification): Enter code 000000 (staging bypass)
+  5. Step 4 (Name): Verify name input shown
+     → Enter name → submit
+  6. Verify confirmation: message sent to therapist
+  7. Check email sink: therapist receives email with patient message
+Expected: Compose → phone → SMS → name → sent. Full flow completes.
 Note: There is no separate "reason field" — the reason is embedded in the pre-composed message template.
+```
+
+**TC-I.3.1b: Contact therapist — Email verification path**
+```
+Precondition: No active session (clear cookies or use incognito with ?tt=1)
+Steps:
+  1. Click contact button on a therapist
+  2. ContactModal opens → compose message → continue
+  3. Step 2 (Phone): Click "Lieber per E-Mail?" toggle
+     → Verify phone field replaced by email input
+     → Enter email address → submit
+  4. Step 3 (Name): Enter name → submit
+  5. Verify message sent (email verification may be required before delivery)
+Expected: Email toggle works in contact modal flow
+```
+
+**TC-I.3.1c: Contact therapist — Already verified (pre-authenticated)**
+```
+Precondition: Patient already verified in current session (has kh_client cookie)
+Steps:
+  1. Click contact button on a therapist
+  2. ContactModal opens → compose message
+  3. Verify phone/SMS steps are SKIPPED (already verified)
+  4. Click send → verify confirmation shown immediately
+Expected: Pre-authenticated users skip verification, go straight to compose → send
 ```
 
 **TC-I.3.2: Contact rate limiting** *(automated — skip for manual QA)*
@@ -313,26 +416,57 @@ Manual verification not needed — requires 4+ test therapist accounts for margi
 **TC-I.3.3: Contact requires verification**
 ```
 Steps:
-  1. Clear cookies / use incognito browser
+  1. Clear cookies / use incognito browser (add ?tt=1 for test mode)
   2. Navigate to /therapeuten, click contact on a therapist
-  3. Verify verification step required before contact form is accessible
-Expected: Unverified users cannot contact therapists
+  3. Verify compose step shown, then phone verification required before message is sent
+  4. Verify cannot skip verification step
+Expected: Unverified users must verify before message is delivered
 ```
 
 #### I.4. Booking via Cal.com
 
-**TC-I.4.1: Book intro session (happy path)**
+**TC-I.4.1: Book intro session — Phone verification (happy path)**
 ```
-Precondition: Test therapist with Cal.com enabled and available slots
+Precondition: Test therapist with Cal.com enabled and available slots. No active session.
 Steps:
-  1. Find test therapist in directory or matches
-  2. Click booking button → Cal.com modal opens
+  1. Find test therapist in directory (/therapeuten)
+  2. Click booking button → booking modal opens
   3. Select available intro slot (15-minute, free)
-  4. Confirm booking
+  4. Step: Phone input → enter phone number
+     → Verify "Lieber per E-Mail?" toggle visible
+  5. Step: SMS Verification → enter code 000000 (staging bypass)
+  6. Step: Name + Email → enter name (required), email (optional)
+  7. Verify Cal.com booking is created
+  8. Verify booking confirmation shown
+  9. Check email sink: patient confirmation email sent (date, time, format, link if online)
+  10. Check email sink: therapist notification email sent
+Expected: Slot selection → phone → SMS → name → booking confirmed. Both parties notified.
+```
+
+**TC-I.4.1b: Book intro session — Email verification path**
+```
+Precondition: Test therapist with Cal.com enabled and available slots. No active session.
+Steps:
+  1. Find test therapist in directory
+  2. Click booking button → select available intro slot
+  3. Step: Phone input → click "Lieber per E-Mail?" toggle
+     → Verify phone field replaced by email input
+     → Enter email address
+  4. Step: Name → enter name
+  5. Verify booking proceeds (email confirmation may be required)
+Expected: Email toggle works in booking flow
+```
+
+**TC-I.4.1c: Book intro session — Already verified (pre-authenticated)**
+```
+Precondition: Patient already verified in current session (has kh_client cookie)
+Steps:
+  1. Find test therapist in directory
+  2. Click booking button → select available intro slot
+  3. Verify phone/SMS steps are SKIPPED (already verified)
+  4. Verify booking is created immediately after slot selection
   5. Verify booking confirmation shown
-  6. Check email sink: patient confirmation email sent (date, time, format, link if online)
-  7. Check email sink: therapist notification email sent
-Expected: Booking created, both parties notified
+Expected: Pre-authenticated users skip verification in booking flow
 ```
 
 **TC-I.4.2: Booking — No available slots**
@@ -653,16 +787,19 @@ Expected: Complete isolation of test data from public views
 
 | ID | Scenario | Expected Result |
 |----|----------|-----------------|
-| NEG-1 | Submit questionnaire with empty required fields (name) | Validation error, form not submitted |
-| NEG-2 | Enter invalid email format at Step 6 | Validation error |
-| NEG-3 | Enter invalid phone number (not E.164 format) | Validation error |
-| NEG-4 | Enter wrong SMS code | Error message shown |
-| NEG-5 | SMS code expired (>10 minutes) | "Code expired" message, must resend |
-| NEG-6 | Resend SMS code >3 times in 24h | Rate limit error |
+| NEG-1 | Step 6.75: Leave name empty and submit | Validation error, form not submitted |
+| NEG-2 | Step 6 (email toggle): Enter invalid email format | Validation error |
+| NEG-3 | Step 6: Enter invalid phone number (not E.164 format) | Validation error |
+| NEG-4 | Step 6.5: Enter wrong SMS code | Error message shown |
+| NEG-5 | Step 6.5: SMS code expired (>10 minutes) | "Code expired" message, must resend |
+| NEG-6 | Step 6.5: Resend SMS code >3 times in 24h | Rate limit error |
 | NEG-7 | Access /matches/{uuid} with invalid UUID | 404 or error page |
 | NEG-8 | Therapist registration with duplicate email | Error: email already exists |
 | NEG-9 | Close questionnaire mid-flow, reopen with ?fs= param | Form state restored from session |
 | NEG-10 | Access therapist portal without valid session | Redirect to login |
+| NEG-11 | Step 6.75: Leave consent checkbox unchecked and submit | Cannot proceed, validation error |
+| NEG-12 | Directory booking: Enter wrong SMS code in booking modal | Error message, cannot proceed to name step |
+| NEG-13 | Contact modal: Skip compose step (empty message) | Validation error or send disabled |
 
 ---
 
@@ -671,7 +808,8 @@ Expected: Complete isolation of test data from public views
 | Task | How |
 |------|-----|
 | Enable test mode | Add `?tt=1` to any URL once |
-| Bypass SMS verification | Use code `000000` |
+| Bypass SMS verification | Use code `000000` (all flows: questionnaire, booking, contact) |
+| Switch to email verification | Click "Lieber per E-Mail?" toggle on phone input step |
 | Test matching | Safe with any preferences (Phase 1) |
 | Test booking | Use designated test therapist only (Phase 2) |
 | Preview emails | Use `/api/admin/emails/preview` endpoint |
