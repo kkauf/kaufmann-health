@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Video, User, MessageCircle, Globe, ShieldCheck, CalendarCheck2, Euro, ArrowRight, Award } from 'lucide-react';
+import { MapPin, Video, User, MessageCircle, Globe, ShieldCheck, CalendarCheck2, Euro, ArrowRight, Award, Info } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { TherapistData } from './TherapistDirectory';
 import { getModalityInfo } from '@/lib/modalities';
 import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpunkte';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { formatSessionPrice } from '@/lib/pricing';
 import { isCalBookingEnabled } from '@/lib/cal/booking-url';
@@ -436,16 +437,40 @@ export function TherapistProfile({
             </Button>
           )}
 
-          {onBookSession && !hideDirectBooking && (
-            <Button
-              variant="outline"
-              className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
-              onClick={onBookSession}
-              disabled={!therapist.accepting_new}
-            >
-              <CalendarCheck2 className="mr-2 h-5 w-5 shrink-0" />
-              <span className="break-words">Sitzung buchen</span>
-            </Button>
+          {onBookSession && (
+            hideDirectBooking ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="flex-1 min-w-0" tabIndex={0}>
+                      <Button
+                        variant="outline"
+                        className="h-12 sm:h-14 w-full px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 opacity-50 cursor-not-allowed pointer-events-none rounded-md"
+                        disabled
+                        tabIndex={-1}
+                      >
+                        <CalendarCheck2 className="mr-2 h-5 w-5 shrink-0" />
+                        <span className="break-words">Direkt buchen</span>
+                        <Info className="ml-2 h-4 w-4 text-gray-400" />
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[220px] text-center">
+                    <p>Erst nach Kennenlernen buchbar</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <Button
+                variant="outline"
+                className="h-12 sm:h-14 min-w-0 flex-1 px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-md"
+                onClick={onBookSession}
+                disabled={!therapist.accepting_new}
+              >
+                <CalendarCheck2 className="mr-2 h-5 w-5 shrink-0" />
+                <span className="break-words">Sitzung buchen</span>
+              </Button>
+            )
           )}
         </div>
       )}
