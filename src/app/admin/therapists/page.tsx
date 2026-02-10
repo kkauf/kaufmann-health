@@ -95,6 +95,7 @@ type TherapistDetail = {
     specialization_certs?: Record<string, string[]>; // { slug: [paths] }
   };
   modalities?: string[]; // Selected modalities from signup (e.g., ['narm', 'se'])
+  credential_tier?: 'licensed' | 'certified';
   // Cal.com integration
   cal_username?: string | null;
   cal_enabled?: boolean;
@@ -899,6 +900,8 @@ export default function AdminTherapistsPage() {
                         <div className="flex items-center gap-2">
                           {detail.documents.has_license ? (
                             <Badge variant="default" className="bg-green-600 border-transparent text-white">✓ Qualifikationsnachweis vorhanden</Badge>
+                          ) : detail.credential_tier === 'certified' ? (
+                            <Badge variant="secondary" className="bg-gray-400 text-white border-transparent">– Zulassung nicht erforderlich</Badge>
                           ) : (
                             <Badge variant="secondary" className="bg-red-600 text-white border-transparent">✗ Qualifikationsnachweis fehlt</Badge>
                           )}
@@ -997,10 +1000,16 @@ export default function AdminTherapistsPage() {
                     <div className="space-y-4">
                       <div className="bg-white rounded-lg border p-4">
                         <h4 className="font-semibold text-base mb-3 flex items-center gap-2">
-                          📄 Qualifikationsnachweis
+                          📄 {detail.credential_tier === 'certified' ? 'Staatliche Zulassung' : 'Qualifikationsnachweis'}
                           {detail.documents.has_license && <Badge variant="outline" className="text-green-700 border-green-700">Vorhanden</Badge>}
+                          {!detail.documents.has_license && detail.credential_tier === 'certified' && <Badge variant="outline" className="text-gray-500 border-gray-400">Nicht erforderlich</Badge>}
                         </h4>
-                        {detail.documents.has_license ? (
+                        {detail.credential_tier === 'certified' && !detail.documents.has_license ? (
+                          <div className="border-2 border-dashed border-gray-200 rounded-md p-6 text-center bg-gray-50">
+                            <p className="text-sm text-gray-500">Zertifizierte/r Therapeut:in — keine staatliche Zulassung erforderlich.</p>
+                            <p className="text-xs text-gray-400 mt-1">Spezialisierungs-Zertifikat wird im Abschnitt unten geprüft.</p>
+                          </div>
+                        ) : detail.documents.has_license ? (
                           <>
                             <div className="border-2 border-dashed border-gray-300 rounded-md p-8 text-center bg-gray-50">
                               <div className="text-sm text-gray-700 mb-3">
