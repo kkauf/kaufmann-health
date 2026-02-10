@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import type React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,7 +53,7 @@ function hashCode(s: string) {
 }
 
 
-export function TherapistCard({
+export const TherapistCard = memo(function TherapistCard({
   therapist,
   onViewDetails,
   showModalities: _legacyShowModalities,
@@ -521,4 +521,4 @@ export function TherapistCard({
       />
     </Card>
   );
-}
+});

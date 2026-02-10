@@ -10,6 +10,7 @@ import { hashIP } from './validation';
 import { isTestRequest } from '@/lib/test-mode';
 import type { HandlerContext } from './types';
 import { safeJson } from '@/lib/http';
+import { generateUniqueSlugFromDb } from '@/lib/therapist-slug';
 
 export type TherapistHandlerInput = {
   data: { name?: string; email: string; phone?: string; notes?: string };
@@ -40,6 +41,9 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
     meta.profile = { qualification };
   }
 
+  // Generate unique slug for profile URL
+  const slug = await generateUniqueSlugFromDb(first_name || '', last_name || '', supabaseServer);
+
   const { data: ins, error: err } = await supabaseServer
     .from('therapists')
     .insert({
@@ -52,6 +56,7 @@ export async function handleTherapistLead(ctx: HandlerContext, input: TherapistH
       session_preferences: sessionPreferences,
       modalities,
       credential_tier,
+      slug,
       status: 'pending_verification',
       ...(Object.keys(meta).length ? { metadata: meta } : {}),
     })

@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
-import { SlidersHorizontal, X, ShieldCheck, CalendarCheck2, HeartHandshake, Shell, Wind, Target, Video, User } from 'lucide-react';
-import { TherapistCard } from './TherapistCard';
+import { SlidersHorizontal, X, ShieldCheck, CalendarCheck2, HeartHandshake, Shell, Wind, Target, Video, User, Award } from 'lucide-react';
+import { MemoizedCardWrapper } from './MemoizedCardWrapper';
 import { getAttribution } from '@/lib/attribution';
 import { TherapistDetailModal } from './TherapistDetailModal';
 import { ContactModal } from './ContactModal';
@@ -29,6 +29,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
   const [therapists, setTherapists] = useState<TherapistData[]>(initialTherapists);
   const [loading, setLoading] = useState(initialTherapists.length === 0);
   const [selectedModality, setSelectedModality] = useState<string>('all');
+  const [selectedTier, setSelectedTier] = useState<'all' | 'licensed' | 'certified'>('all');
   const [onlineOnly, setOnlineOnly] = useState<boolean | null>(null);
   const [selectedTherapist, setSelectedTherapist] = useState<TherapistData | null>(null);
   const [initialModalViewMode, setInitialModalViewMode] = useState<'profile' | 'booking' | 'cal-booking'>('profile');
@@ -50,6 +51,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
   // Mobile filter sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
   const [draftModality, setDraftModality] = useState<string>('all');
+  const [draftTier, setDraftTier] = useState<'all' | 'licensed' | 'certified'>('all');
   const [draftOnlineOnly, setDraftOnlineOnly] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -266,6 +268,11 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
         return false;
       }
 
+      // Filter by credential tier
+      if (selectedTier !== 'all' && t.credential_tier !== selectedTier) {
+        return false;
+      }
+
       // Filter by online availability (strict)
       if (onlineOnly !== null) {
         const raw = Array.isArray(t.session_preferences) ? (t.session_preferences as string[]) : [];
@@ -291,7 +298,7 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
     // Trust the API's Platform Score ranking - don't re-sort here
     // Platform Score already accounts for: Cal.com live (+30), intake slots, profile completeness
     return filtered;
-  }, [therapists, selectedModality, onlineOnly]);
+  }, [therapists, selectedModality, selectedTier, onlineOnly]);
 
   const _availabilityTherapistsCount = useMemo(() =>
     filteredTherapists.filter(t => Array.isArray(t.availability) && t.availability.length > 0).length
@@ -321,33 +328,39 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (selectedModality !== 'all') count++;
+    if (selectedTier !== 'all') count++;
     if (onlineOnly !== null) count++;
     return count;
-  }, [selectedModality, onlineOnly]);
+  }, [selectedModality, selectedTier, onlineOnly]);
 
   // Sheet handlers
   const handleOpenSheet = () => {
     setDraftModality(selectedModality);
+    setDraftTier(selectedTier);
     setDraftOnlineOnly(onlineOnly);
     setSheetOpen(true);
   };
 
   const handleApplyFilters = () => {
     setSelectedModality(draftModality);
+    setSelectedTier(draftTier);
     setOnlineOnly(draftOnlineOnly);
     setSheetOpen(false);
   };
 
   const handleResetFilters = () => {
     setDraftModality('all');
+    setDraftTier('all');
     setDraftOnlineOnly(null);
     setSelectedModality('all');
+    setSelectedTier('all');
     setOnlineOnly(null);
     setSheetOpen(false);
   };
 
   const handleClearAllFilters = () => {
     setSelectedModality('all');
+    setSelectedTier('all');
     setOnlineOnly(null);
   };
 
@@ -447,6 +460,15 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
           </div>
         </div>
 
+        <div className="shrink-0">
+          <label className="mb-2 block text-sm font-medium text-gray-700">Qualifikation</label>
+          <div className="flex gap-2">
+            <Badge role="button" tabIndex={0} onClick={() => setSelectedTier('all')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedTier('all'); }} className={cn('h-11 px-4 py-2.5 text-sm font-medium rounded-full cursor-pointer shadow-sm hover:shadow-md transition', selectedTier === 'all' ? 'bg-indigo-100 text-indigo-700 border-indigo-200 ring-2 ring-indigo-300' : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100')}>Alle</Badge>
+            <Badge role="button" tabIndex={0} onClick={() => setSelectedTier('licensed')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedTier('licensed'); }} variant="outline" className={cn('h-11 px-4 py-2.5 text-sm font-medium rounded-full cursor-pointer gap-2 shadow-sm hover:shadow-md transition', 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100', selectedTier === 'licensed' && 'ring-2 ring-emerald-300')}><ShieldCheck className="h-4 w-4 opacity-90" aria-hidden="true" />Mit Therapiezulassung</Badge>
+            <Badge role="button" tabIndex={0} onClick={() => setSelectedTier('certified')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedTier('certified'); }} variant="outline" className={cn('h-11 px-4 py-2.5 text-sm font-medium rounded-full cursor-pointer gap-2 shadow-sm hover:shadow-md transition', 'border-indigo-200 bg-indigo-50 text-indigo-800 hover:border-indigo-300 hover:bg-indigo-100', selectedTier === 'certified' && 'ring-2 ring-indigo-300')}><Award className="h-4 w-4 opacity-90" aria-hidden="true" />Fachspezialist:in</Badge>
+          </div>
+        </div>
+
         <div className="flex-1">
           <label className="mb-2 block text-sm font-medium text-gray-700">
             Therapieformat
@@ -503,23 +525,12 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
       {/* Therapist grid */}
       <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
         {visibleTherapists.map(therapist => (
-          <TherapistCard
+          <MemoizedCardWrapper
             key={therapist.id}
             therapist={therapist}
-            showSchwerpunkte
-            onViewDetails={() => {
-              setInitialModalViewMode('profile');
-              setSelectedTherapist(therapist);
-            }}
-            onContactClick={(type) => {
-              // For Cal-enabled therapists, open modal in cal-booking mode
-              const isCal = therapist.cal_enabled && therapist.cal_username;
-              setInitialModalViewMode(isCal ? 'cal-booking' : 'booking');
-              // Map contact type to Cal booking kind: 'consultation' = 'intro', 'booking' = 'full_session'
-              setInitialCalBookingKind(type === 'consultation' ? 'intro' : 'full_session');
-              setSelectedTherapist(therapist);
-            }}
-            requiresIntroBeforeBooking={therapist.requires_intro_before_booking}
+            setInitialModalViewMode={setInitialModalViewMode}
+            setInitialCalBookingKind={setInitialCalBookingKind}
+            setSelectedTherapist={setSelectedTherapist}
           />
         ))}
         {/* Desktop/Tablet: Load more tile occupies a grid cell */}
@@ -644,6 +655,16 @@ export function TherapistDirectory({ initialTherapists = [] }: { initialTherapis
                       </Badge>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Qualification tier filter */}
+              <div>
+                <label className="mb-3 block text-sm font-semibold text-gray-900">Qualifikation</label>
+                <div className="flex flex-wrap gap-2">
+                  <Badge role="button" tabIndex={0} onClick={() => setDraftTier('all')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setDraftTier('all'); }} className={cn('h-12 px-5 py-3 text-sm font-medium rounded-full cursor-pointer shadow-sm hover:shadow-md transition', draftTier === 'all' ? 'bg-indigo-100 text-indigo-700 border-indigo-200 ring-2 ring-indigo-300' : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100')}>Alle</Badge>
+                  <Badge role="button" tabIndex={0} onClick={() => setDraftTier('licensed')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setDraftTier('licensed'); }} variant="outline" className={cn('h-12 px-5 py-3 text-sm font-medium rounded-full cursor-pointer gap-2 shadow-sm hover:shadow-md transition', 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100', draftTier === 'licensed' && 'ring-2 ring-emerald-300')}><ShieldCheck className="h-4 w-4 opacity-90" aria-hidden="true" />Mit Therapiezulassung</Badge>
+                  <Badge role="button" tabIndex={0} onClick={() => setDraftTier('certified')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setDraftTier('certified'); }} variant="outline" className={cn('h-12 px-5 py-3 text-sm font-medium rounded-full cursor-pointer gap-2 shadow-sm hover:shadow-md transition', 'border-indigo-200 bg-indigo-50 text-indigo-800 hover:border-indigo-300 hover:bg-indigo-100', draftTier === 'certified' && 'ring-2 ring-indigo-300')}><Award className="h-4 w-4 opacity-90" aria-hidden="true" />Fachspezialist:in</Badge>
                 </div>
               </div>
 

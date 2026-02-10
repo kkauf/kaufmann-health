@@ -16,12 +16,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
-import { MapPin, Video, User, Calendar, MessageCircle, Languages, ShieldCheck, Award, CalendarCheck2, X, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, Euro, Link2, ExternalLink } from 'lucide-react';
+import { MapPin, Video, User, Calendar, MessageCircle, Languages, ShieldCheck, Award, CalendarCheck2, X, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, Euro, Link2, ExternalLink, Info } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { TherapistData } from './TherapistDirectory';
 import { getAttribution } from '@/lib/attribution';
 import { getModalityInfo } from '@/lib/modalities';
 import { getSchwerpunktLabel, getSchwerpunktColorClasses } from '@/lib/schwerpunkte';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { formatSessionPrice } from '@/lib/pricing';
 import { isCalBookingEnabled } from '@/lib/cal/booking-url';
@@ -1341,9 +1342,27 @@ export function TherapistDetailModal({
                         <span className="break-words">Sitzung buchen</span>
                       </Button>
                     ) : (
-                      <div className="flex-1 flex items-center justify-center px-4 py-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm text-center">
-                        <span>Bitte buche ein kostenloses Kennenlernen mit {therapist.first_name}, bevor du eine vollständige Therapiesitzung buchen kannst.</span>
-                      </div>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="flex-1 min-w-0" tabIndex={0}>
+                              <Button
+                                variant="outline"
+                                className="h-12 sm:h-14 w-full px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 opacity-50 cursor-not-allowed pointer-events-none rounded-md"
+                                disabled
+                                tabIndex={-1}
+                              >
+                                <CalendarCheck2 className="mr-2 h-5 w-5 shrink-0" />
+                                <span className="break-words">Direkt buchen</span>
+                                <Info className="ml-2 h-4 w-4 text-gray-400" />
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[220px] text-center">
+                            <p>Erst nach Kennenlernen buchbar</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                   </>
                 ) : (
@@ -1370,9 +1389,27 @@ export function TherapistDetailModal({
                         <span className="break-words">Nachricht senden</span>
                       </Button>
                     ) : (
-                      <div className="flex-1 flex items-center justify-center px-4 py-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm text-center">
-                        <span>Bitte buche ein kostenloses Kennenlernen mit {therapist.first_name}, bevor du eine vollständige Therapiesitzung buchen kannst.</span>
-                      </div>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="flex-1 min-w-0" tabIndex={0}>
+                              <Button
+                                variant="outline"
+                                className="h-12 sm:h-14 w-full px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 opacity-50 cursor-not-allowed pointer-events-none rounded-md"
+                                disabled
+                                tabIndex={-1}
+                              >
+                                <CalendarCheck2 className="mr-2 h-5 w-5 shrink-0" />
+                                <span className="break-words">Direkt buchen</span>
+                                <Info className="ml-2 h-4 w-4 text-gray-400" />
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[220px] text-center">
+                            <p>Erst nach Kennenlernen buchbar</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                   </>
                 )}
