@@ -94,6 +94,27 @@ async function handler(req: Request) {
       ORDER BY b."createdAt" DESC
     `);
 
+    // Collect candidate patient IDs to validate against people table
+    const candidatePatientIds = new Set<string>();
+    for (const booking of result.rows) {
+      const meta = booking.metadata || {};
+      if (typeof meta.kh_patient_id === 'string') {
+        candidatePatientIds.add(meta.kh_patient_id);
+      }
+    }
+
+    // Validate which patient IDs actually exist
+    const validPatientIds = new Set<string>();
+    if (candidatePatientIds.size > 0) {
+      const { data: existingPatients } = await supabaseServer
+        .from('people')
+        .select('id')
+        .in('id', Array.from(candidatePatientIds));
+      for (const p of existingPatients || []) {
+        validPatientIds.add(p.id);
+      }
+    }
+
     // Filter to KH bookings not yet synced
     const toSync: Array<{
       cal_uid: string;
@@ -118,7 +139,8 @@ async function handler(req: Request) {
       if (!isKhBooking) continue;
 
       const therapistId = therapistMap.get(booking.username) || null;
-      const patientId = typeof meta.kh_patient_id === 'string' ? meta.kh_patient_id : null;
+      const rawPatientId = typeof meta.kh_patient_id === 'string' ? meta.kh_patient_id : null;
+      const patientId = rawPatientId && validPatientIds.has(rawPatientId) ? rawPatientId : null;
       const bookingKind = typeof meta.kh_booking_kind === 'string' ? meta.kh_booking_kind : null;
       const source = typeof meta.kh_source === 'string' ? meta.kh_source : null;
       const isTest = meta.kh_test === true || meta.kh_test === 'true';
@@ -151,18 +173,21 @@ async function handler(req: Request) {
     }
 
     let synced = 0;
-    if (toSync.length > 0) {
-      const { data: inserted, error } = await supabaseServer
+    const errors: Array<{ cal_uid: string; error: string }> = [];
+    for (const row of toSync) {
+      const { error } = await supabaseServer
         .from('cal_bookings')
-        .upsert(toSync, { onConflict: 'cal_uid' })
-        .select('cal_uid');
+        .upsert(row, { onConflict: 'cal_uid' });
 
       if (error) {
-        await logError('admin.cal.reconcile-bookings', error, { toSync: toSync.length });
-        return NextResponse.json({ error: 'Insert failed', details: error.message }, { status: 500 });
+        errors.push({ cal_uid: row.cal_uid, error: error.message });
+      } else {
+        synced++;
       }
+    }
 
-      synced = inserted?.length || 0;
+    if (errors.length > 0) {
+      await logError('admin.cal.reconcile-bookings', new Error(`${errors.length}/${toSync.length} inserts failed`), { errors });
     }
 
     void track({
