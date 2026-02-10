@@ -445,7 +445,7 @@ export function TherapistProfile({
                     <span className="flex-1 min-w-0" tabIndex={0}>
                       <Button
                         variant="outline"
-                        className="h-12 sm:h-14 w-full px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 opacity-50 cursor-not-allowed pointer-events-none rounded-md"
+                        className="h-12 sm:h-14 w-full px-6 sm:px-8 text-base sm:text-lg font-semibold border-2 border-gray-200 bg-white text-gray-400 cursor-not-allowed pointer-events-none rounded-md"
                         disabled
                         tabIndex={-1}
                       >

@@ -463,7 +463,7 @@ export const TherapistCard = memo(function TherapistCard({
                         <Button
                           size="lg"
                           variant="outline"
-                          className="w-full text-sm opacity-50 cursor-not-allowed pointer-events-none"
+                          className="w-full text-sm border-gray-200 bg-white text-gray-400 cursor-not-allowed pointer-events-none"
                           disabled
                           tabIndex={-1}
                         >
