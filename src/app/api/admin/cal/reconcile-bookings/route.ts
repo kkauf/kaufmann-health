@@ -16,6 +16,7 @@ import { Pool } from 'pg';
 import { supabaseServer } from '@/lib/supabase-server';
 import { track, logError } from '@/lib/logger';
 import { isCronAuthorized } from '@/lib/cron-auth';
+import { CalBookingSource } from '@/contracts/cal';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -144,7 +145,7 @@ async function handler(req: Request) {
       const rawKind = typeof meta.kh_booking_kind === 'string' ? meta.kh_booking_kind : null;
       const bookingKind = rawKind && ['intro', 'full_session'].includes(rawKind) ? rawKind : null;
       const rawSource = typeof meta.kh_source === 'string' ? meta.kh_source : null;
-      const source = rawSource && ['directory', 'questionnaire'].includes(rawSource) ? rawSource : null;
+      const source = rawSource && CalBookingSource.safeParse(rawSource).success ? rawSource : null;
       const isTest = meta.kh_test === true || meta.kh_test === 'true';
 
       // Scrub invalid patient ID from metadata too — a DB trigger copies
