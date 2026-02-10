@@ -129,14 +129,23 @@ When starting work, identify the task type and follow the corresponding workflow
 
 8. **Verify production** — Re-run validation queries against live data
 
-### When to Use Agent Teams
-Use agent teams (not subagents) when:
-- **UX + Backend split** — One teammate on components, one on API
-- **Multiple hypotheses** — Parallel investigation of competing theories
-- **Cross-layer changes** — Frontend, backend, tests owned by different teammates
-- **Research + Implementation** — One researches while another implements
+### Agent Teams vs. Subagents (Decision Rule)
 
-Skip teams for: single-file fixes, sequential dependencies, quick lookups.
+**Default to agent teams** (TeamCreate + SendMessage) for any task that involves **parallel implementation work** — i.e., multiple agents that need to write code, not just report findings. Teams give each agent a full independent session with file editing, and agents can coordinate with each other directly.
+
+**Use teams when:**
+- **2+ files need parallel edits** — e.g., frontend + backend, or feature + tests
+- **Cross-layer changes** — Frontend, backend, tests owned by different teammates
+- **Multiple hypotheses** — Parallel investigation where agents may need to try fixes
+- **Research + Implementation** — One researches while another starts implementing
+- **Complex features** — Anything touching 3+ files that could be split into independent streams
+
+**Use subagents (Task tool) only for:**
+- Pure read-only research that reports back findings
+- Quick lookups, grep searches, doc reading
+- Single focused questions ("what pattern does X use?")
+
+**Rule of thumb:** If agents need to *edit files* or *run commands*, use a team. If they just need to *read and report*, use subagents.
 
 ### Checkpoints (Automatic)
 After every significant change:
