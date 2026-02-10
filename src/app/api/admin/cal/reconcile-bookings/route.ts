@@ -147,6 +147,13 @@ async function handler(req: Request) {
       const source = rawSource && ['directory', 'questionnaire'].includes(rawSource) ? rawSource : null;
       const isTest = meta.kh_test === true || meta.kh_test === 'true';
 
+      // Scrub invalid patient ID from metadata too — a DB trigger copies
+      // metadata.kh_patient_id into patient_id, bypassing our validation.
+      const cleanMeta = { ...meta };
+      if (rawPatientId && !patientId) {
+        delete cleanMeta.kh_patient_id;
+      }
+
       toSync.push({
         cal_uid: booking.uid,
         last_trigger_event: 'RECONCILED',
@@ -159,7 +166,7 @@ async function handler(req: Request) {
         source: source,
         status: booking.status,
         is_test: isTest,
-        metadata: meta,
+        metadata: cleanMeta,
       });
     }
 
