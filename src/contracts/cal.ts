@@ -4,7 +4,16 @@ import { OptionalString, UUID } from './shared';
 export const CalBookingKind = z.enum(['intro', 'full_session']);
 export type CalBookingKind = z.infer<typeof CalBookingKind>;
 
-export const CalBookingSource = z.enum(['directory', 'questionnaire']);
+export const CalBookingSource = z.enum([
+  'directory',
+  'questionnaire',
+  'email_confirm',
+  'intro_followup_email',
+  'session_followup_email',
+  'therapist_notification_email',
+  'therapist_portal',
+  'native',
+]);
 export type CalBookingSource = z.infer<typeof CalBookingSource>;
 
 const CalBool = z

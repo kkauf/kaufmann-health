@@ -442,8 +442,11 @@ export async function POST(req: Request) {
 
     const result = CalWebhookBody.safeParse(parsed);
     if (!result.success) {
+      const flat = result.error.flatten();
       await logError('api.public.cal.webhook', new Error('Validation failed'), {
-        errors: result.error.flatten(),
+        // Serialize nested objects as strings so logger truncation doesn't lose them
+        field_errors: JSON.stringify(flat.fieldErrors),
+        form_errors: JSON.stringify(flat.formErrors),
         raw_keys: Object.keys(parsed as Record<string, unknown>),
       });
       return NextResponse.json({ error: 'Validation failed' }, { status: 400 });
