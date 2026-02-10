@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   try {
     const hideIds = getHiddenTherapistIds();
     const url = new URL(req.url);
-    const tierParam = url.searchParams.get('tier') || 'licensed';
+    const tierParam = url.searchParams.get('tier');
 
     let query = supabaseServer
       .from('therapists')
@@ -30,9 +30,9 @@ export async function GET(req: Request) {
       .eq('status', 'verified')
       .order('created_at', { ascending: false });
 
-    // Default: licensed-only (TherapieFinden). tier=all shows all tiers (for modality pages later).
-    if (tierParam !== 'all') {
-      query = query.eq('credential_tier', 'licensed');
+    // Default: show all tiers. Optionally filter by tier (e.g. tier=licensed).
+    if (tierParam && tierParam !== 'all') {
+      query = query.eq('credential_tier', tierParam);
     }
 
     const { data, error } = await query;
