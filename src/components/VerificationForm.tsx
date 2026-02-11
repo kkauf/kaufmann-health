@@ -95,7 +95,7 @@ export function VerificationForm({
   };
 
   const canSubmitInput = phoneFirst
-    ? phone.trim().length > 0
+    ? name.trim().length > 0 && phone.trim().length > 0
     : name.trim() && (
         (contactMethod === 'email' && email.trim()) ||
         (contactMethod === 'phone' && phone.trim())
@@ -115,6 +115,19 @@ export function VerificationForm({
           </div>
 
           {slotSummary}
+
+          <div>
+            <Label htmlFor="verification-name" className="text-sm font-medium text-gray-700">Name *</Label>
+            <Input
+              id="verification-name"
+              type="text"
+              placeholder="Dein Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="mt-1"
+              required
+            />
+          </div>
 
           <div>
             <Label htmlFor="verification-contact" className="text-sm font-medium text-gray-700">Handynummer</Label>
