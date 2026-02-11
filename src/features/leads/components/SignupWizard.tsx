@@ -13,8 +13,6 @@ import NewScreen5_Modality from './screens/NewScreen5_Modality';
 import ScreenSchwerpunkte, { type ScreenSchwerpunkteValues } from './screens/ScreenSchwerpunkte';
 import ScreenPaymentInfo, { type ScreenPaymentInfoValues } from './screens/ScreenPaymentInfo';
 import ScreenCredentialOptIn, { type ScreenCredentialOptInValues } from './screens/ScreenCredentialOptIn';
-import ScreenMatchPreview from './screens/ScreenMatchPreview';
-import ScreenNameEmail from './screens/ScreenNameEmail';
 import { Button } from '@/components/ui/button';
 import { leadSubmissionSchema } from '@/lib/contracts';
 import { PRIVACY_VERSION } from '@/lib/privacy';
@@ -65,10 +63,8 @@ const PROGRESS_MAP: Record<number, number> = {
   4: 33,            // Location
   5: 50,            // Preferences
   5.5: 58,          // Credential opt-in
-  5.75: 62,         // Match preview (progressive disclosure)
-  6: 72,            // Contact (phone-only)
-  6.5: 82,          // SMS verification
-  6.75: 92,         // Name + email (post-verification)
+  6: 67,            // Contact
+  6.5: 83,          // SMS verification
   7: 100, 8: 100, 8.5: 100, 9: 100,  // Confirmation (legacy step numbers)
 };
 
@@ -165,12 +161,6 @@ export default function SignupWizard() {
 
   // Progressive filtering: therapist count based on current filters
   const [therapistCount, setTherapistCount] = React.useState<number | null>(null);
-
-  // Progressive disclosure: match preview data from questionnaire-submit
-  const [anonymousPatientId, setAnonymousPatientId] = React.useState<string | null>(null);
-  const [matchPreviews, setMatchPreviews] = React.useState<Array<{ firstName: string; modalities: string[]; city: string | null }>>([]);
-  const [matchCount, setMatchCount] = React.useState(0);
-  const [matchQuality, setMatchQuality] = React.useState<'exact' | 'partial' | 'none'>('none');
 
   // Fetch therapist count on mount and when filters change
   React.useEffect(() => {
@@ -288,19 +278,17 @@ export default function SignupWizard() {
         return [];
       }
       case 6: {
-        // Step 6: Phone/email only (progressive disclosure — name collected in 6.75)
+        // Step 6: Contact Info (name, email/phone required)
         const miss: string[] = [];
+        if (!d.name || !d.name.trim()) miss.push('name');
+        // Check contact info based on method
         if (d.contact_method === 'email') {
           if (!d.email) miss.push('email');
         } else if (d.contact_method === 'phone') {
           if (!d.phone_number) miss.push('phone_number');
+          if (!d.phone_verified) miss.push('phone_verified');
         }
         return miss;
-      }
-      case 6.75: {
-        // Step 6.75: Name required (post-verification)
-        if (!d.name || !d.name.trim()) return ['name'];
-        return [];
       }
       case 6.5: {
         // Step 6.5: SMS verification (no required fields - verification happens in component)
@@ -1031,15 +1019,9 @@ export default function SignupWizard() {
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
             onBack={() => safeGoToStep(4)}
             onNext={() => {
-              // Modality page leads get both tiers automatically (skip opt-in)
-              const src = campaignSourceOverrideRef.current || '';
-              const isModalityPage = src.startsWith('/lp/') || src.startsWith('/therapie/');
-              if (isModalityPage) {
-                saveLocal({ accept_certified: true });
-                void handleQuestionnaireAndPreview();
-              } else {
-                safeGoToStep(5.5);
-              }
+              // Include certified therapists and skip to contact
+              saveLocal({ accept_certified: true });
+              safeGoToStep(6);
             }}
             disabled={navLock || submitting}
           />
@@ -1051,23 +1033,12 @@ export default function SignupWizard() {
             values={{ accept_certified: data.accept_certified }}
             onChange={saveLocal}
             onBack={() => safeGoToStep(5)}
-            onNext={() => { void handleQuestionnaireAndPreview(); }}
+            onNext={() => safeGoToStep(6)}
             disabled={navLock || submitting}
           />
         );
-      case 5.75:
-        // Step 5.75: Match preview (progressive disclosure — show value before asking for PII)
-        return (
-          <ScreenMatchPreview
-            matchCount={matchCount}
-            matchQuality={matchQuality}
-            matchPreviews={matchPreviews}
-            onNext={() => safeGoToStep(6)}
-            onBack={() => safeGoToStep(5.5)}
-          />
-        );
       case 6:
-        // Step 6: Phone-only contact (progressive disclosure)
+        // Step 6: Contact Info
         return (
           <Screen1
             values={{
@@ -1077,21 +1048,25 @@ export default function SignupWizard() {
               contact_method: data.contact_method,
             }}
             initialized={initialized}
+            isConcierge={isConcierge}
+            therapistCount={therapistCount}
             onChange={saveLocal}
-            onBack={() => safeGoToStep(5.75)}
+            onBack={() => safeGoToStep(5)}
             onNext={async () => {
-              void trackEvent('phone_submitted', { step: 6, contact_method: data.contact_method });
+              void trackEvent('submit_clicked', { step: 6, contact_method: data.contact_method });
               if (data.contact_method === 'phone' && data.phone_number) {
-                // Phone: send SMS code, then go to 6.5 for verification
-                try {
-                  const sent = await handleSendSmsCode();
-                  if (sent) safeGoToStep(6.5);
-                } catch (err) {
-                  console.error('Failed to send SMS:', err);
+                if (data.phone_verified) {
+                  await handleSubmit();
+                } else {
+                  try {
+                    const sent = await handleSendSmsCode();
+                    if (sent) safeGoToStep(6.5);
+                  } catch (err) {
+                    console.error('Failed to send SMS:', err);
+                  }
                 }
               } else {
-                // Email: skip SMS, go directly to name+email step (6.75)
-                safeGoToStep(6.75);
+                await handleSubmit();
               }
             }}
             disabled={navLock || submitting}
@@ -1109,31 +1084,12 @@ export default function SignupWizard() {
             onVerify={async (code: string) => {
               const result = await handleVerifySmsCode(code);
               if (result.success) {
-                // After verification, go to name+email collection (step 6.75)
-                safeGoToStep(6.75);
+                await handleSubmit();
               }
               return result;
             }}
             onResend={async () => { await handleSendSmsCode(); }}
             onBack={() => safeGoToStep(6)}
-            disabled={navLock || submitting}
-          />
-        );
-      case 6.75:
-        // Step 6.75: Name + email collection (post-verification, progressive disclosure)
-        return (
-          <ScreenNameEmail
-            values={{ name: data.name, email: data.email }}
-            onChange={saveLocal}
-            onBack={() => safeGoToStep(6)}
-            onNext={async () => {
-              void trackEvent('name_email_submitted', {
-                has_name: !!(data.name && data.name.trim()),
-                has_email: !!(data.email && data.email.trim()),
-              });
-              await handleSubmit();
-            }}
-            emailAlreadyCollected={data.contact_method === 'email'}
             disabled={navLock || submitting}
           />
         );
@@ -1612,94 +1568,7 @@ export default function SignupWizard() {
     })();
   }
 
-  // Submit questionnaire after preferences — create anonymous patient, fetch match previews, navigate to 5.75
-  async function handleQuestionnaireAndPreview() {
-    if (submitting) return;
-    setSubmitting(true);
-    setSubmitError(null);
-    setSubmitSlow(false);
-    const slowTimer = setTimeout(() => setSubmitSlow(true), 3000);
-
-    try {
-      void trackEvent('questionnaire_submitted', {
-        step: 5,
-        has_city: !!data.city,
-      });
-
-      const sidHeader = webSessionIdRef.current || getOrCreateSessionId() || undefined;
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (sidHeader) headers['X-Session-Id'] = sidHeader;
-      if (campaignSourceOverrideRef.current) headers['X-Campaign-Source-Override'] = campaignSourceOverrideRef.current;
-      if (campaignVariantOverrideRef.current) headers['X-Campaign-Variant-Override'] = campaignVariantOverrideRef.current;
-
-      const sessionPref = data.session_preference;
-      // Map UI gender values to database enum values
-      let backendGender: string | undefined = data.gender;
-      if (data.gender === 'Frau') backendGender = 'female';
-      else if (data.gender === 'Mann') backendGender = 'male';
-      else if (data.gender === 'Keine Präferenz') backendGender = 'no_preference';
-
-      const payload = {
-        additional_info: data.additional_info,
-        modality_matters: data.modality_matters,
-        methods: data.methods || [],
-        schwerpunkte: data.schwerpunkte || [],
-        city: data.city,
-        session_preference: sessionPref,
-        gender: backendGender, // Use mapped value
-        form_session_id: sessionIdRef.current || undefined,
-        accept_certified: data.accept_certified,
-      };
-
-      const res = await fetch('/api/public/questionnaire-submit', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-      });
-
-      const json = await res.json().catch(() => ({}));
-
-      if (!res.ok || json?.error) {
-        throw new Error(json?.error || 'Questionnaire submission failed');
-      }
-
-      const patientId = json?.data?.patientId;
-      const previews = json?.data?.matchPreviews || [];
-      const count = json?.data?.matchCount || 0;
-      const quality = json?.data?.matchQuality || 'none';
-
-      // Store match preview data for step 5.75
-      if (patientId) setAnonymousPatientId(patientId);
-      setMatchPreviews(previews);
-      setMatchCount(count);
-      setMatchQuality(quality);
-
-      // Persist patient ID for analytics and later linking
-      if (patientId && typeof window !== 'undefined') {
-        try {
-          window.localStorage.setItem('anonymousPatientId', patientId);
-        } catch { }
-      }
-
-      void trackEvent('questionnaire_completed', {
-        match_quality: quality,
-        match_count: count,
-        patient_id: patientId,
-      });
-
-      // Navigate to match preview (step 5.75) instead of redirecting
-      safeGoToStep(5.75);
-
-    } catch (err) {
-      console.error('Questionnaire submit error:', err);
-      setSubmitError('Senden fehlgeschlagen. Bitte überprüfe deine Verbindung und versuche es erneut.');
-    } finally {
-      clearTimeout(slowTimer);
-      setSubmitting(false);
-    }
-  }
-
-  // Submit for manual curation flow (9-step with contact collection)
+  // Submit for manual curation flow (contact collection then submit)
   async function handleSubmit() {
     if (submitting) return;
     setSubmitting(true);
@@ -1764,7 +1633,6 @@ export default function SignupWizard() {
         confirm_redirect_path: '/fragebogen' as const,
         consent_share_with_therapists: true as const,
         privacy_version: PRIVACY_VERSION,
-        ...(anonymousPatientId ? { anonymous_patient_id: anonymousPatientId } : {}),
         ...(sessionPref === 'either'
           ? { session_preferences: ['online', 'in_person'] }
           : sessionPref
