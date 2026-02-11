@@ -197,7 +197,10 @@ async function handler(req: Request) {
     }
 
     if (errors.length > 0) {
-      await logError('admin.cal.reconcile-bookings', new Error(`${errors.length}/${toSync.length} inserts failed`), { errors });
+      // Stringify error objects to avoid shallowSanitize depth truncation ("[object]")
+      await logError('admin.cal.reconcile-bookings', new Error(`${errors.length}/${toSync.length} inserts failed`), {
+        errors: errors.map(e => `${e.cal_uid}: ${e.error}`),
+      });
     }
 
     void track({
