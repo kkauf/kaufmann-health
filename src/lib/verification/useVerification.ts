@@ -15,13 +15,12 @@ import { fireLeadVerifiedWithEnhancement } from '@/lib/gtag';
 
 export type ContactMethod = 'email' | 'phone';
 
-export type VerificationStep =
-  | 'input'         // Collecting name + contact info
-  | 'code'          // Entering SMS verification code
-  | 'link'          // Waiting for email magic link
-  | 'name-collect'  // Post-verify name+email collection (phone-first flow)
-  | 'verified'      // Successfully verified
-  | 'error';        // Error state
+export type VerificationStep = 
+  | 'input'      // Collecting name + contact info
+  | 'code'       // Entering SMS verification code
+  | 'link'       // Waiting for email magic link
+  | 'verified'   // Successfully verified
+  | 'error';     // Error state
 
 export interface VerificationState {
   step: VerificationStep;
@@ -105,14 +104,12 @@ export interface UseVerificationOptions {
   onTrackEvent?: (event: string, props?: Record<string, unknown>) => void;
   /** Initial contact method */
   initialContactMethod?: ContactMethod;
-  /** When true, name is not required for sendCode (collected post-verification) */
-  phoneFirst?: boolean;
 }
 
 export interface UseVerificationReturn {
   // State
   state: VerificationState;
-
+  
   // Setters
   setName: (name: string) => void;
   setEmail: (email: string) => void;
@@ -120,7 +117,6 @@ export interface UseVerificationReturn {
   setCode: (code: string) => void;
   setContactMethod: (method: ContactMethod) => void;
   setError: (error: string | null) => void;
-  setStep: (step: VerificationStep) => void;
   
   // Actions
   sendCode: (options: Omit<SendCodeOptions, 'contact' | 'contactType'>) => Promise<SendCodeResult>;
@@ -146,7 +142,7 @@ const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 // ============================================================================
 
 export function useVerification(options: UseVerificationOptions = {}): UseVerificationReturn {
-  const { onVerified, onTrackEvent, initialContactMethod = 'phone', phoneFirst = false } = options;
+  const { onVerified, onTrackEvent, initialContactMethod = 'phone' } = options;
   
   // State
   const [step, setStep] = useState<VerificationStep>('input');
@@ -192,11 +188,10 @@ export function useVerification(options: UseVerificationOptions = {}): UseVerifi
   }, [contactMethod, email, phone, isEmailValid]);
   
   const validateInputs = useCallback((): { valid: boolean; error?: string } => {
-    // In phoneFirst mode, name is collected after verification
-    if (!phoneFirst && !name.trim()) {
+    if (!name.trim()) {
       return { valid: false, error: 'Bitte gib deinen Namen an.' };
     }
-
+    
     if (contactMethod === 'email') {
       if (!isEmailValid()) {
         return { valid: false, error: 'Bitte gib eine gültige E-Mail-Adresse ein.' };
@@ -207,9 +202,9 @@ export function useVerification(options: UseVerificationOptions = {}): UseVerifi
         return { valid: false, error: validation.error || 'Bitte gib eine gültige Handynummer ein.' };
       }
     }
-
+    
     return { valid: true };
-  }, [name, contactMethod, phone, isEmailValid, phoneFirst]);
+  }, [name, contactMethod, phone, isEmailValid]);
   
   // Send verification code
   const sendCode = useCallback(async (
@@ -240,11 +235,10 @@ export function useVerification(options: UseVerificationOptions = {}): UseVerifi
       if (opts.campaignVariant) headers['X-Campaign-Variant-Override'] = opts.campaignVariant;
       if (opts.gclid) headers['X-Gclid'] = opts.gclid;
       
-      const resolvedName = opts.name || name.trim() || (phoneFirst ? 'Anonym' : '');
       const body: Record<string, unknown> = {
         contact,
         contact_type: contactMethod,
-        name: resolvedName,
+        name: opts.name || name.trim(),
       };
       
       if (opts.redirect) body.redirect = opts.redirect;
@@ -414,7 +408,6 @@ export function useVerification(options: UseVerificationOptions = {}): UseVerifi
     setCode,
     setContactMethod,
     setError,
-    setStep,
     sendCode,
     verifyCode,
     resendCode,

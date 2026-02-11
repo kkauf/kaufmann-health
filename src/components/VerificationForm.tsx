@@ -19,7 +19,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Mail, Phone, Loader2, MailCheck, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { VerifiedPhoneInput } from '@/components/VerifiedPhoneInput';
-import ConsentSection from '@/components/ConsentSection';
 import type { UseVerificationReturn } from '@/lib/verification/useVerification';
 
 export interface VerificationFormProps {
@@ -41,10 +40,6 @@ export interface VerificationFormProps {
   onNotesChange?: (notes: string) => void;
   /** Label for notes field (e.g., therapist first name) */
   notesLabel?: string;
-  /** When true, shows phone-only input step, then name+email after verify */
-  phoneFirst?: boolean;
-  /** Called when name-collect step is completed (user clicks "Weiter") */
-  onNameCollectComplete?: () => void;
   /** Options to pass when sending code */
   sendCodeOptions?: {
     redirect?: string;
@@ -79,11 +74,9 @@ export function VerificationForm({
   notes,
   onNotesChange,
   notesLabel,
-  phoneFirst = false,
-  onNameCollectComplete,
   sendCodeOptions = {},
 }: VerificationFormProps) {
-  const { state, setName, setEmail, setPhone, setCode, setContactMethod, setStep, sendCode, verifyCode, resendCode } = verification;
+  const { state, setName, setEmail, setPhone, setCode, setContactMethod, sendCode, verifyCode, resendCode } = verification;
   const { step, contactMethod, name, email, phone, code, loading, error } = state;
 
   const handleSendCode = async () => {
@@ -94,87 +87,13 @@ export function VerificationForm({
     await resendCode(sendCodeOptions);
   };
 
-  const canSubmitInput = phoneFirst
-    ? phone.trim().length > 0
-    : name.trim() && (
-        (contactMethod === 'email' && email.trim()) ||
-        (contactMethod === 'phone' && phone.trim())
-      );
+  const canSubmitInput = name.trim() && (
+    (contactMethod === 'email' && email.trim()) ||
+    (contactMethod === 'phone' && phone.trim())
+  );
 
-  // Input step: Collect name + contact info (or phone-only when phoneFirst)
+  // Input step: Collect name + contact info
   if (step === 'input') {
-    // Phone-first mode: phone only, no name, no contact method toggle
-    if (phoneFirst) {
-      return (
-        <div className={`space-y-4 ${className}`}>
-          <div>
-            <h4 className="text-sm font-semibold text-gray-900 mb-1">Handynummer bestätigen</h4>
-            <p className="text-xs text-gray-600">
-              Deine Nummer wird nur zur Verifizierung verwendet.
-            </p>
-          </div>
-
-          {slotSummary}
-
-          <div>
-            <Label htmlFor="verification-contact" className="text-sm font-medium text-gray-700">Handynummer</Label>
-            <VerifiedPhoneInput
-              value={phone}
-              onChange={setPhone}
-            />
-          </div>
-
-          {/* Optional notes for therapist */}
-          {onNotesChange && (
-            <div>
-              <Label htmlFor="verification-notes" className="text-sm font-medium text-gray-700">
-                Notiz{notesLabel ? ` für ${notesLabel}` : ''} (optional)
-              </Label>
-              <Textarea
-                id="verification-notes"
-                value={notes || ''}
-                onChange={(e) => onNotesChange(e.target.value)}
-                placeholder="z.B. Ich interessiere mich besonders für Somatic Experiencing..."
-                maxLength={500}
-                rows={2}
-                className="mt-1 resize-none text-sm"
-              />
-              <p className="text-xs text-gray-500 mt-1 text-right">
-                {(notes || '').length}/500
-              </p>
-            </div>
-          )}
-
-          {error && <p className="text-sm text-red-600">{error}</p>}
-
-          <div className="flex gap-2 pt-1">
-            {onBack && (
-              <Button variant="outline" onClick={onBack} className="flex-1" size="sm">
-                {backLabel}
-              </Button>
-            )}
-            <Button
-              onClick={handleSendCode}
-              disabled={loading || !canSubmitInput}
-              className={`${onBack ? 'flex-1' : 'w-full'} bg-emerald-600 hover:bg-emerald-700`}
-              size="sm"
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Code senden'}
-            </Button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setContactMethod('email')}
-            className="text-xs text-gray-500 hover:text-gray-700 hover:underline w-full text-center transition-colors"
-          >
-            Lieber per E-Mail?
-          </button>
-        </div>
-      );
-    }
-
-    // Standard mode: full name + contact method
     return (
       <div className={`space-y-4 ${className}`}>
         <div>
@@ -402,62 +321,6 @@ export function VerificationForm({
             )}
           </Button>
         </div>
-      </div>
-    );
-  }
-
-  // Name-collect step: post-verification name + optional email
-  if (step === 'name-collect') {
-    return (
-      <div className={`space-y-4 ${className}`}>
-        <div>
-          <h4 className="text-sm font-semibold text-gray-900 mb-1">Fast geschafft!</h4>
-          <p className="text-xs text-gray-600">
-            Wie dürfen wir dich ansprechen?
-          </p>
-        </div>
-
-        <div>
-          <Label htmlFor="name-collect-name" className="text-sm font-medium text-gray-700">Name *</Label>
-          <Input
-            id="name-collect-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Vorname oder Spitzname"
-            className="mt-1"
-            autoFocus
-          />
-        </div>
-
-        {/* Email optional - show only if phone was used for verification */}
-        {contactMethod === 'phone' && (
-          <div>
-            <Label htmlFor="name-collect-email" className="text-sm font-medium text-gray-700">E-Mail (optional)</Label>
-            <Input
-              id="name-collect-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="deine@email.de"
-              className="mt-1"
-            />
-            <p className="text-xs text-gray-500 mt-1">Damit deine Therapeut:in dich erreichen kann</p>
-          </div>
-        )}
-
-        <ConsentSection actor="directory" />
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
-        <Button
-          onClick={() => onNameCollectComplete?.()}
-          disabled={!name.trim()}
-          className="w-full bg-emerald-600 hover:bg-emerald-700"
-          size="sm"
-        >
-          Weiter
-        </Button>
       </div>
     );
   }

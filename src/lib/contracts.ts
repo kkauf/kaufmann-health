@@ -20,8 +20,6 @@ export const leadSubmissionSchema = z.object({
   session_preferences: z.array(z.enum(['online', 'in_person'])).min(1).max(2).optional(),
   form_session_id: z.string().optional(),
   confirm_redirect_path: z.string().optional(),
-  // Progressive disclosure: link anonymous patient from questionnaire-submit
-  anonymous_patient_id: z.string().uuid().optional(),
 }).refine(
   (data) => data.email || data.phone_number,
   { message: 'Either email or phone_number is required' }

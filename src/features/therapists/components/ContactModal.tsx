@@ -48,7 +48,7 @@ interface ContactModalProps {
   requireVerification?: boolean;
 }
 
-type Step = 'verify' | 'verify-code' | 'verify-link' | 'name-collect' | 'compose' | 'success';
+type Step = 'verify' | 'verify-code' | 'verify-link' | 'compose' | 'success';
 
 interface PreAuthParams {
   /** Secure match UUID proving pre-authenticated access */
@@ -63,17 +63,18 @@ interface PreAuthParams {
 
 export function ContactModal({ therapist, contactType, open, onClose, onSuccess, preAuth, verified, confirmed, selectedSlot, requireVerification }: ContactModalProps & { preAuth?: PreAuthParams }) {
   // Decide starting step
-  // All users start in 'compose' - compose first, then verify
-  const initialStep: Step = confirmed ? 'success' : 'compose';
+  // For preAuth (matches) we always start in 'compose' to mirror directory behavior
+  const needsVerification = Boolean(requireVerification);
+  const initialStep: Step = confirmed
+    ? 'success'
+    : (preAuth ? 'compose' : (needsVerification ? 'verify' : (contactType === 'booking' && selectedSlot ? 'verify' : 'compose')));
   const [step, setStep] = useState<Step>(initialStep);
   const [_messageLoading, setMessageLoading] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
 
   // Use shared verification hook for name/email/phone/code state and send/verify logic
-  // Phone-first: name is collected after verification in 'name-collect' step
   const verification = useVerification({
-    initialContactMethod: 'phone',
-    phoneFirst: true,
+    initialContactMethod: 'email',
     onTrackEvent: (event, props) => {
       try { trackEvent(event, props); } catch { }
     },
@@ -630,23 +631,17 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
   // Verify code using shared hook
   const handleVerifyCode = useCallback(async () => {
     const result = await verifyCode();
-
+    
     if (result.success) {
-      // Mark verified; server processes draft_contact and sends message
+      // Mark verified and show success; server processes draft_contact and sends message
       setIsVerified(true);
       if (result.patientId) {
         setPatientId(result.patientId);
       }
-      // Phone-first flow: collect name after verification
-      // If user already has a name (e.g. from session), skip to success
-      if (name.trim()) {
-        setStep('success');
-      } else {
-        setStep('name-collect');
-      }
+      setStep('success');
     }
     // Error handling is done by the hook (sets error state)
-  }, [verifyCode, name]);
+  }, [verifyCode]);
 
   useEffect(() => {
     async function maybeFireClientConv() {
@@ -686,19 +681,17 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
 
       e.preventDefault();
       if (step === 'verify') {
-        const canSubmit = contactMethod === 'email' ? email.trim() : phone.trim();
+        const canSubmit = name.trim() && (contactMethod === 'email' ? email.trim() : phone.trim());
         if (canSubmit) handleSendCode();
       } else if (step === 'verify-code') {
         if (verificationCode.length >= 4) handleVerifyCode();
       } else if (step === 'compose') {
         if (reason.trim()) handleSendMessage();
-      } else if (step === 'name-collect') {
-        if (name.trim()) setStep('success');
       }
     }
   }, [step, loading, name, contactMethod, email, phone, verificationCode, reason, handleSendCode, handleVerifyCode, handleSendMessage]);
 
-  // Render verification step (phone-only in phone-first flow)
+  // Render verification step
   const renderVerifyStep = () => (
     <div className="space-y-5" onKeyDown={handleKeyDown}>
       {contactType === 'booking' && selectedBookingSlot && (
@@ -714,19 +707,74 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
         </div>
       )}
       <p className="text-sm leading-relaxed text-gray-600">
-        Zur Bestätigung senden wir dir einen Code per SMS. Deine Nummer wird nur zur Verifizierung verwendet.
+        Wie dürfen dich Therapeut:innen erreichen? <strong>Wir schützen vor Spam</strong> und stellen sicher,
+        dass deine Nachricht beantwortet werden kann. Deine Daten bleiben <strong>privat & DSGVO‑konform</strong>.
       </p>
 
       <div className="space-y-2">
-        <Label htmlFor="phone" className="text-sm font-medium">Handynummer *</Label>
-        <VerifiedPhoneInput
-          value={phone}
-          onChange={setPhone}
+        <Label htmlFor="name" className="text-sm font-medium">Name *</Label>
+        <Input
+          id="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Dein Name"
           disabled={loading}
-          inputClassName="h-11"
-          helpText="Wir senden dir einen Bestätigungscode per SMS"
+          className="h-11"
+          autoComplete="name"
+          autoFocus
         />
       </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-medium">Kontaktmethode *</Label>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant={contactMethod === 'email' ? 'default' : 'outline'}
+            onClick={() => setContactMethod('email')}
+            disabled={loading}
+            className="flex-1 h-11"
+          >
+            E-Mail
+          </Button>
+          <Button
+            type="button"
+            variant={contactMethod === 'phone' ? 'default' : 'outline'}
+            onClick={() => setContactMethod('phone')}
+            disabled={loading}
+            className="flex-1 h-11"
+          >
+            Telefon
+          </Button>
+        </div>
+      </div>
+
+      {contactMethod === 'email' ? (
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-sm font-medium">E-Mail *</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="deine@email.de"
+            disabled={loading}
+            className="h-11"
+            autoComplete="email"
+          />
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <Label htmlFor="phone" className="text-sm font-medium">Telefonnummer *</Label>
+          <VerifiedPhoneInput
+            value={phone}
+            onChange={setPhone}
+            disabled={loading}
+            inputClassName="h-11"
+            helpText="Wir senden dir einen Bestätigungscode per SMS"
+          />
+        </div>
+      )}
 
       {error && (
         <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
@@ -734,35 +782,34 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           <span>{error}</span>
         </div>
       )}
+      {contactType === 'booking' && selectedBookingSlot && (
+        <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/70 p-3 text-sm text-emerald-900 shadow-sm">
+          <div className="font-medium">Ausgewählter Termin</div>
+          <div className="mt-1">{formatSlotLabel(selectedBookingSlot)} · {sessionFormat === 'in_person' ? 'Vor‑Ort' : 'Online'} · {therapistName}</div>
+        </div>
+      )}
 
       <div className="flex gap-3 pt-2">
         <Button
           variant="outline"
-          onClick={() => setStep('compose')}
+          onClick={handleClose}
           disabled={loading}
           className="flex-1 h-11"
         >
-          Zurück
+          Abbrechen
         </Button>
         <Button
           onClick={handleSendCode}
-          disabled={loading || !phone.trim()}
+          disabled={loading || !name.trim() || (contactMethod === 'email' ? !email.trim() : !phone.trim())}
           className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700"
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Code senden'}
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (contactType === 'booking' ? 'Termin buchen' : 'Bestätigen')}
         </Button>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setContactMethod('email')}
-        className="text-xs text-gray-500 hover:text-gray-700 hover:underline w-full text-center transition-colors"
-      >
-        Lieber per E-Mail?
-      </button>
-
       <p className="text-xs text-gray-500 text-center leading-relaxed">
         Deine Angaben werden ausschließlich für diese Kontaktaufnahme genutzt – privat & DSGVO‑konform.
+        Mit dem Absenden stimmst du unserer <a href="/datenschutz" className="underline hover:text-gray-700">Datenschutzerklärung</a> zu.
       </p>
     </div>
   );
@@ -1379,70 +1426,6 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
     );
   };
 
-  // Render name-collect step (post-verification, phone-first flow)
-  const renderNameCollectStep = () => (
-    <div className="space-y-5" onKeyDown={handleKeyDown}>
-      <div>
-        <h4 className="text-sm font-semibold text-gray-900 mb-1">Fast geschafft!</h4>
-        <p className="text-xs text-gray-600">
-          Wie dürfen wir dich ansprechen?
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="name-collect" className="text-sm font-medium">Name *</Label>
-        <Input
-          id="name-collect"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Vorname oder Spitzname"
-          disabled={loading}
-          className="h-11"
-          autoFocus
-        />
-      </div>
-
-      {contactMethod === 'phone' && (
-        <div className="space-y-2">
-          <Label htmlFor="name-collect-email" className="text-sm font-medium">E-Mail (optional)</Label>
-          <Input
-            id="name-collect-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="deine@email.de"
-            disabled={loading}
-            className="h-11"
-          />
-          <p className="text-xs text-gray-500">Damit deine Therapeut:in dich erreichen kann</p>
-        </div>
-      )}
-
-      <ConsentSection actor="directory" />
-
-      {error && (
-        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      <Button
-        onClick={() => {
-          if (!name.trim()) {
-            setError('Bitte gib deinen Namen an.');
-            return;
-          }
-          setStep('success');
-        }}
-        disabled={!name.trim()}
-        className="w-full h-11 bg-emerald-600 hover:bg-emerald-700"
-      >
-        Weiter
-      </Button>
-    </div>
-  );
-
   // Render success step
   const renderSuccessStep = () => {
     const isBooking = contactType === 'booking' && selectedBookingSlot;
@@ -1494,7 +1477,6 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
             {step === 'verify-code' && 'Code bestätigen'}
             {step === 'compose' && (contactType === 'booking' && therapist.availability?.length ? 'Termin buchen' : 'Nachricht schreiben')}
             {step === 'verify-link' && 'E‑Mail bestätigen'}
-            {step === 'name-collect' && 'Noch ein Schritt'}
             {step === 'success' && 'Erfolgreich!'}
           </DialogTitle>
         </DialogHeader>
@@ -1503,7 +1485,6 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           {step === 'verify-code' && renderVerifyCodeStep()}
           {step === 'compose' && renderComposeStep()}
           {step === 'verify-link' && renderVerifyLinkStep()}
-          {step === 'name-collect' && renderNameCollectStep()}
           {step === 'success' && renderSuccessStep()}
         </div>
       </DialogContent>
