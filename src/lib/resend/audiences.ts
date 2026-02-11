@@ -132,6 +132,28 @@ export async function addContact(
 }
 
 /**
+ * Add a therapist to the "Verified Therapists" audience.
+ * Called automatically when a therapist is approved (status → verified).
+ * Fire-and-forget: logs errors but never throws.
+ */
+export async function addContactToTherapistAudience(
+  email: string,
+  firstName?: string,
+  lastName?: string
+): Promise<void> {
+  const audienceResult = await getOrCreateTherapistAudience();
+  if (audienceResult.error || !audienceResult.data) {
+    console.error('[resend] Failed to get therapist audience:', audienceResult.error);
+    return;
+  }
+
+  const result = await addContact(audienceResult.data, email, firstName, lastName);
+  if (result.error && !result.error.includes('already exists') && !result.error.includes('409')) {
+    console.error(`[resend] Failed to add ${email} to therapist audience:`, result.error);
+  }
+}
+
+/**
  * Remove a contact from an audience.
  */
 export async function removeContact(

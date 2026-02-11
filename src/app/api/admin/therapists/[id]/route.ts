@@ -10,6 +10,7 @@ import { renderTherapistDecline } from '@/lib/email/templates/therapistDecline';
 import { renderTherapistProfileHidden } from '@/lib/email/templates/therapistProfileHidden';
 import { BASE_URL } from '@/lib/constants';
 import { provisionCalUser, isCalProvisioningEnabled, getSquareAvatarUrl, type CalProvisionResult } from '@/lib/cal/provision';
+import { addContactToTherapistAudience } from '@/lib/resend/audiences';
 import { AdminTherapistPatchInput } from '@/contracts/admin';
 import { parseRequestBody } from '@/lib/api-utils';
 
@@ -507,6 +508,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         if (!approvalResult.sent && approvalResult.reason === 'failed') {
           await logError('admin.api.therapists.update', new Error('Approval email send failed'), { stage: 'therapist_approval_send_failed', therapist_id: id, email: to });
         }
+
+        // Add to Resend "Verified Therapists" audience for broadcasts (fire-and-forget)
+        void addContactToTherapistAudience(to, name.split(' ')[0], name.split(' ').slice(1).join(' '));
       } else if (to && status === 'rejected' && finalStatus === 'rejected' && beforeStatus !== 'rejected') {
         // Transient rejection - needs fixes, can resubmit
         const uploadUrl = rejectionLink || `${BASE_URL}/therapists/complete-profile/${id}`;
