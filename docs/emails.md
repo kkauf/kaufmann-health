@@ -322,6 +322,12 @@ All templates are located in `src/lib/email/templates/`. This is the authoritati
 | `therapistMagicLink` | `therapistMagicLink.ts` | Therapist requests portal access | Portal login magic link |
 | `therapistDecline` | `therapistDecline.ts` | Therapist declines match | Notify patient with alternatives |
 
+### Therapist Broadcast Templates
+
+| Template | File | Trigger | Purpose |
+|----------|------|---------|---------|
+| `therapistProductUpdate` | `therapistProductUpdate.ts` | Manual broadcast via Resend | Product updates and feature announcements |
+
 ---
 
 ## Therapist Broadcasts (Product Updates)
@@ -337,9 +343,10 @@ For one-time product updates and announcements to therapists, we use Resend Audi
 
 ### Audience
 
-- **Name**: `verified-therapists`
-- **Criteria**: All therapists with `verified_at IS NOT NULL` (approved therapists)
-- **Synced via**: CLI script or admin API with `action=sync`
+- **Name**: `Verified Therapists` (Resend audience ID: `ff5ef866-25be-42f0-af2f-0e9b654d1942`)
+- **Criteria**: All therapists with `status = 'verified'`
+- **Auto-sync**: New therapists are automatically added to the audience when approved via `PATCH /api/admin/therapists/[id]` (status → verified). Uses `addContactToTherapistAudience()` from `src/lib/resend/audiences.ts`.
+- **Manual sync**: CLI script or admin API with `action=sync` for bulk reconciliation
 
 ### Sending a Product Update
 
@@ -415,7 +422,59 @@ When creating a new template:
 2. **No external links** — Only use `BASE_URL` links (spam prevention)
 3. **Proxied images** — Therapist photos via `/api/images/therapist-profiles/`
 4. **Single primary CTA** — One clear action per email
-5. **Human sender** — Always `kontakt@kaufmann-health.de`
+5. **Human sender** — `kontakt@kaufmann-health.de` for patient emails, `partners@kaufmann-health.de` for therapist broadcasts
 6. **List-Unsubscribe** — Add for recurring therapist emails only
 7. **Plain text fallback** — Auto-generated if not provided
 8. **Preheader text** — Use for better open rates
+
+---
+
+## Broadcasts & Product Updates
+
+For one-off announcements to therapists (product updates, feature launches), we use Resend broadcasts.
+
+### Setup
+
+**Resend API Key Requirement**: The default API key is restricted to sending emails only. To use audience/broadcast features, you need a full-access key or use the Resend dashboard directly.
+
+### Available Templates
+
+| Template | File | Purpose |
+|----------|------|---------|
+| `therapistProductUpdate` | `therapistProductUpdate.ts` | Product update announcements to verified therapists |
+
+### How to Send a Broadcast
+
+**Option 1: CLI Script** (recommended for one-offs)
+```bash
+# Send test email
+npx tsx scripts/send-test-product-update.ts your@email.com
+
+# Sync therapists to Resend audience (requires full API key)
+npx tsx scripts/sync-therapist-audience.ts
+
+# Send to all (requires full API key or use Resend dashboard)
+npx tsx scripts/sync-therapist-audience.ts --send
+```
+
+**Option 2: Admin API**
+```
+POST /api/admin/broadcasts/therapist-update?action=preview    # Preview HTML
+POST /api/admin/broadcasts/therapist-update?action=send_test  # Send to LEADS_NOTIFY_EMAIL
+POST /api/admin/broadcasts/therapist-update?action=sync       # Sync audience
+POST /api/admin/broadcasts/therapist-update?action=send       # Send broadcast
+```
+
+**Option 3: Resend Dashboard** (if API key is restricted)
+1. Create audience manually in Resend dashboard
+2. Export therapist emails via SQL: `SELECT email, first_name, last_name FROM therapists WHERE status = 'verified'`
+3. Import contacts to audience
+4. Create broadcast with HTML from `?action=preview`
+
+### Code Location
+
+- `src/lib/resend/audiences.ts` — Resend audience management utilities
+- `src/lib/email/templates/therapistProductUpdate.ts` — Product update email template
+- `src/app/api/admin/broadcasts/therapist-update/route.ts` — Admin API endpoint
+- `scripts/sync-therapist-audience.ts` — CLI script for syncing and sending
+- `scripts/send-test-product-update.ts` — Quick test email script
