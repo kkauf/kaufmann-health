@@ -7,7 +7,8 @@ import { NextResponse } from 'next/server';
  * - leads/conversions/backfill - Track conversion events
  * - alerts/system - System health monitoring
  * - cal/warm-cache - Keep Cal.com slot cache warm
- * 
+ * - cal/webhook-triggers - Fire Cal.com MEETING_ENDED/MEETING_STARTED events
+ *
  * These are lightweight, frequent operations that benefit from batching.
  */
 export async function POST(req: Request) {
@@ -21,35 +22,56 @@ export async function POST(req: Request) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.kaufmann-health.de';
   const results: Record<string, { success: boolean; error?: string }> = {};
 
-  // Run jobs in parallel since they're independent
-  const jobs = [
+  // Internal KH jobs — use baseUrl + CRON_SECRET auth
+  const internalJobs = [
     { name: 'conversions-backfill', path: '/api/admin/leads/conversions/backfill?limit=200' },
     { name: 'system-alerts', path: '/api/admin/alerts/system?minutes=15' },
     { name: 'cal-warm-cache', path: '/api/admin/cal/warm-cache' },
   ];
 
-  await Promise.all(
-    jobs.map(async (job) => {
-      try {
-        const res = await fetch(`${baseUrl}${job.path}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${cronSecret}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        results[job.name] = { success: res.ok };
-        if (!res.ok) {
-          results[job.name].error = `HTTP ${res.status}`;
-        }
-      } catch (err) {
-        results[job.name] = { 
-          success: false, 
-          error: err instanceof Error ? err.message : 'Unknown error' 
-        };
+  const internalPromises = internalJobs.map(async (job) => {
+    try {
+      const res = await fetch(`${baseUrl}${job.path}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${cronSecret}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      results[job.name] = { success: res.ok };
+      if (!res.ok) {
+        results[job.name].error = `HTTP ${res.status}`;
       }
-    })
-  );
+    } catch (err) {
+      results[job.name] = {
+        success: false,
+        error: err instanceof Error ? err.message : 'Unknown error'
+      };
+    }
+  });
+
+  // Cal.com webhook triggers: fires MEETING_ENDED/MEETING_STARTED to subscribers
+  // based on booking end/start times. Self-hosted Cal.com needs an external cron for this.
+  const calCronPromise = (async () => {
+    if (!process.env.CAL_CRON_API_KEY) return;
+    try {
+      const res = await fetch(
+        `https://cal.kaufmann.health/api/cron/webhookTriggers?apiKey=${process.env.CAL_CRON_API_KEY}`,
+        { method: 'POST' }
+      );
+      results['cal-webhook-triggers'] = { success: res.ok };
+      if (!res.ok) {
+        results['cal-webhook-triggers'] = { success: false, error: `HTTP ${res.status}` };
+      }
+    } catch (err) {
+      results['cal-webhook-triggers'] = {
+        success: false,
+        error: err instanceof Error ? err.message : 'Unknown error'
+      };
+    }
+  })();
+
+  await Promise.all([...internalPromises, calCronPromise]);
 
   const allSuccess = Object.values(results).every(r => r.success);
   console.log('[cron/frequent]', JSON.stringify(results));
