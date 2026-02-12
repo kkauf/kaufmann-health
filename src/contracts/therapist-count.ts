@@ -19,6 +19,8 @@ export const TherapistCountQuery = z.object({
   schwerpunkte: z.string().optional(),
   // Modality preference
   modality: z.string().optional(),
+  // Whether patient opted in to see certified (non-HP) practitioners
+  accept_certified: z.enum(['true', 'false']).optional(),
 });
 
 export type TherapistCountQuery = z.infer<typeof TherapistCountQuery>;

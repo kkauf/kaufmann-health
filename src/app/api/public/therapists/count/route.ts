@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
       gender_preference: searchParams.get('gender_preference') || undefined,
       schwerpunkte: searchParams.get('schwerpunkte') || undefined,
       modality: searchParams.get('modality') || undefined,
+      accept_certified: searchParams.get('accept_certified') || undefined,
     });
 
     if (!queryResult.success) {
@@ -30,12 +31,13 @@ export async function GET(req: NextRequest) {
     }
 
     const filters = queryResult.data;
+    const acceptCertified = filters.accept_certified === 'true';
     const hideIds = new Set(getHiddenTherapistIds());
 
     // Fetch all verified therapists (lightweight query - only fields needed for filtering)
     const { data, error } = await supabaseServer
       .from('therapists')
-      .select('id, gender, city, session_preferences, modalities, schwerpunkte, accepting_new, metadata')
+      .select('id, gender, city, session_preferences, modalities, schwerpunkte, accepting_new, metadata, credential_tier')
       .eq('status', 'verified')
       .limit(1000);
 
@@ -86,6 +88,10 @@ export async function GET(req: NextRequest) {
       if (metadata?.hide_from_directory === true) continue;
       if (metadata?.hidden === true) continue;
       if (metadata?.is_test === true) continue;
+
+      // Credential tier filter: exclude certified-tier unless patient opted in
+      const tier = (row as Record<string, unknown>).credential_tier as string | null;
+      if (!acceptCertified && (tier === 'certified')) continue;
 
       // Build therapist row for eligibility check
       const tRow: TherapistRowForMatch = {

@@ -146,7 +146,7 @@ const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 // ============================================================================
 
 export function useVerification(options: UseVerificationOptions = {}): UseVerificationReturn {
-  const { onVerified, onTrackEvent, initialContactMethod = 'phone' } = options;
+  const { onVerified, onTrackEvent, initialContactMethod = 'phone', phoneFirst = false } = options;
   
   // State
   const [step, setStep] = useState<VerificationStep>('input');
@@ -192,7 +192,8 @@ export function useVerification(options: UseVerificationOptions = {}): UseVerifi
   }, [contactMethod, email, phone, isEmailValid]);
   
   const validateInputs = useCallback((): { valid: boolean; error?: string } => {
-    if (!name.trim()) {
+    // phoneFirst mode: name is collected post-verification (step 6.75), skip name check
+    if (!phoneFirst && !name.trim()) {
       return { valid: false, error: 'Bitte gib deinen Namen an.' };
     }
 
@@ -208,7 +209,7 @@ export function useVerification(options: UseVerificationOptions = {}): UseVerifi
     }
 
     return { valid: true };
-  }, [name, contactMethod, phone, isEmailValid]);
+  }, [name, contactMethod, phone, isEmailValid, phoneFirst]);
   
   // Send verification code
   const sendCode = useCallback(async (
