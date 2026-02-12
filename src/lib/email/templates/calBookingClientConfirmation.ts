@@ -2,7 +2,9 @@ import { renderLayout } from '../layout';
 import type { EmailContent } from '../types';
 import { formatEmailPrice } from '@/lib/pricing';
 
-const CAL_ORIGIN = process.env.NEXT_PUBLIC_CAL_ORIGIN || 'https://cal.kaufmann.health';
+function getCalOrigin() {
+  return process.env.NEXT_PUBLIC_CAL_ORIGIN || 'https://cal.kaufmann.health';
+}
 
 function esc(s: string) {
   return String(s)
@@ -135,8 +137,8 @@ export function renderCalBookingClientConfirmation(params: CalBookingClientConfi
 
   // === Reschedule/Cancel Links ===
   if (params.bookingUid && params.patientEmail) {
-    const rescheduleUrl = `${CAL_ORIGIN}/reschedule/${params.bookingUid}?rescheduledBy=${encodeURIComponent(params.patientEmail)}`;
-    const cancelUrl = `${CAL_ORIGIN}/booking/${params.bookingUid}?cancel=true&cancelledBy=${encodeURIComponent(params.patientEmail)}`;
+    const rescheduleUrl = `${getCalOrigin()}/reschedule/${params.bookingUid}?rescheduledBy=${encodeURIComponent(params.patientEmail)}`;
+    const cancelUrl = `${getCalOrigin()}/booking/${params.bookingUid}?cancel=true&cancelledBy=${encodeURIComponent(params.patientEmail)}`;
     
     lines.push('<div style="border-top:1px solid #e2e8f0; padding-top:20px; margin-top:8px;">');
     lines.push('<p style="margin:0 0 12px; font-size:14px; color:#64748b !important;"><strong>Änderungen?</strong></p>');
