@@ -440,6 +440,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
     }
 
+    // Cal.com cron-triggered webhooks (MEETING_ENDED, MEETING_STARTED) use a FLAT format:
+    //   { triggerEvent, uid, startTime, endTime, ... }
+    // Real-time webhooks (BOOKING_CREATED, etc.) use a NESTED format:
+    //   { triggerEvent, payload: { uid, startTime, endTime, ... } }
+    // Normalize flat format into nested before validation.
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      'triggerEvent' in parsed &&
+      !('payload' in parsed) &&
+      'uid' in parsed
+    ) {
+      const { triggerEvent, createdAt, ...rest } = parsed as Record<string, unknown>;
+      parsed = { triggerEvent, createdAt, payload: rest };
+    }
+
     const result = CalWebhookBody.safeParse(parsed);
     if (!result.success) {
       const flat = result.error.flatten();
