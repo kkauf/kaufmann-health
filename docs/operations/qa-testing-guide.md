@@ -6,17 +6,28 @@ This guide is for freelancers and external QA testers working on Kaufmann Health
 
 | Environment | URL | Purpose |
 |-------------|-----|---------|
-| **Staging** | `staging.kaufmann-health.de` | Safe testing environment |
+| **Feature Preview** | Shared per feature (Vercel preview URL) | QA testing for specific features |
+| **Staging** | `staging.kaufmann-health.de` | General testing, always-on |
 | **Production** | `www.kaufmann-health.de` | Live site (do not test here) |
 
-**Always use staging for testing.**
+### Which environment to use
+
+**For specific feature testing:** The project owner will share a **Vercel preview URL** for the feature branch. This URL looks like `kaufmann-health-git-feature-xyz-*.vercel.app`. Use this URL for all testing of that feature.
+
+**For general testing:** Use `staging.kaufmann-health.de`.
+
+**Never test on production** (`www.kaufmann-health.de`).
 
 ## Test Mode Setup
 
-Before testing, enable test mode by adding `?tt=1` to any staging URL once:
+Before testing, enable test mode by adding `?tt=1` to the URL once:
 
 ```
+# On staging:
 https://staging.kaufmann-health.de/start?tt=1
+
+# On a feature preview (replace with the URL shared by the project owner):
+https://kaufmann-health-git-feature-xyz-team.vercel.app/start?tt=1
 ```
 
 This sets a `kh_test=1` cookie that:
@@ -39,9 +50,9 @@ You can also use `+test` in email addresses (e.g., `marta+test1@gmail.com`) for 
 
 ### Entry Points
 
-Test both landing pages:
-- `staging.kaufmann-health.de/therapie-finden` — Concierge flow
-- `staging.kaufmann-health.de/start` — Self-service flow
+Test both landing pages (replace `{base}` with your test environment URL):
+- `{base}/therapie-finden` — Concierge flow
+- `{base}/start` — Self-service flow
 
 ### Verification Options
 
@@ -93,7 +104,7 @@ The entire signup and matching flow is **safe to test without restriction**:
 
 To test booking functionality, use the **designated test therapist** only:
 
-**Test therapist portal**: `staging.kaufmann-health.de/therapeuten`
+**Test therapist portal**: `{base}/therapeuten`
 
 1. Navigate directly to the public therapist directory
 2. Find the designated test therapist (ask project owner for name/ID)
@@ -130,7 +141,7 @@ Use the admin preview endpoint to see email templates without triggering real se
 
 ```bash
 # View in browser (no send)
-https://staging.kaufmann-health.de/api/admin/emails/preview?template=email_confirmation&token=CRON_SECRET
+{base}/api/admin/emails/preview?template=email_confirmation&token=CRON_SECRET
 
 # Available templates:
 # - email_confirmation
@@ -816,6 +827,7 @@ Expected: Complete isolation of test data from public views
 | Accidental real booking | Cancel via Cal.com email, notify project owner |
 | Register test therapist | Register on staging — auto-flagged as test |
 | Find test accounts in admin | Use "Nur Test-Accounts" toggle |
+| Test a feature branch | Use the Vercel preview URL shared by the project owner |
 
 ## Reporting Issues
 

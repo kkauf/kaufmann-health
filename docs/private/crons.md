@@ -7,7 +7,7 @@ All cron jobs are configured in `vercel.json` and route through aggregator endpo
 | Cron | Schedule | Frequency | Purpose |
 |------|----------|-----------|---------|
 | `cal-cache` | `*/10 * * * *` | Every 10 min | **CRITICAL**: Cal.com slot cache warming |
-| `frequent` | `*/15 * * * *` | Every 15 min | Conversions backfill, system alerts |
+| `frequent` | `*/15 * * * *` | Every 15 min | Conversions backfill, system alerts, Cal.com webhook triggers |
 | `cal-followups` | `*/30 * * * *` | Every 30 min | Booking follow-ups, cancellation recovery |
 | `business-hours` | `0 7-20 * * *` | Hourly 7am-8pm | Therapist reminders, confirmation nudges |
 | `morning-alerts` | `0 8 * * *` | Daily 8am | Ads monitoring, error digest, unmatched leads |
@@ -32,6 +32,12 @@ All times are UTC.
 ### `/api/cron/frequent` — Every 15 minutes
 - `conversions-backfill` → `/api/admin/leads/conversions/backfill?limit=200`
 - `system-alerts` → `/api/admin/alerts/system?minutes=15`
+- `cal-webhook-triggers` → `https://cal.kaufmann.health/api/cron/webhookTriggers?apiKey=$CAL_CRON_API_KEY`
+  - External call to self-hosted Cal.com (not an internal KH route)
+  - Fires MEETING_ENDED/MEETING_STARTED webhooks based on booking end/start times
+  - Required because self-hosted Cal.com doesn't have its own cron scheduler
+  - Processes `WebhookScheduledTriggers` table rows where `startAfter <= NOW()`
+  - Skipped silently if `CAL_CRON_API_KEY` env var not set
 
 ### `/api/cron/cal-followups` — Every 30 minutes
 - `booking-followups` → `/api/admin/cal/booking-followups?limit=50`
@@ -84,10 +90,15 @@ All times are UTC.
 
 ## Authentication
 
-All cron endpoints require `Authorization: Bearer ${CRON_SECRET}` header.
+All KH cron endpoints require `Authorization: Bearer ${CRON_SECRET}` header.
+
+The Cal.com webhook trigger uses a separate `CAL_CRON_API_KEY` (set in both Vercel and Railway).
 
 ```bash
-# Manual testing
+# Manual testing - KH crons
 curl -X POST "https://www.kaufmann-health.de/api/cron/frequent" \
   -H "Authorization: Bearer $CRON_SECRET"
+
+# Manual testing - Cal.com webhook triggers directly
+curl -X POST "https://cal.kaufmann.health/api/cron/webhookTriggers?apiKey=$CAL_CRON_API_KEY"
 ```
