@@ -270,15 +270,20 @@ WHERE cb.booking_kind = 'intro'
 ### S-CalLive
 
 ```sql
--- Total verified therapists with Cal.com booking enabled.
--- This is our active supply - therapists who can receive bookings.
--- Target: Growing. If stagnant, focus on therapist onboarding or Cal activation.
--- Low numbers relative to demand = supply constraint, check G-TopGaps.
+-- Verified therapists eligible for directory (can receive bookings).
+-- Filters: verified, cal-enabled, accepting new, not hidden/test.
+-- May slightly overcount vs /therapeuten (directory also checks profile completeness:
+-- photo, rate, schwerpunkte, session_preferences, 3 text fields ≥50 chars).
+-- Gap between this count and directory = therapists needing profile completion nudge.
+-- Target: Growing. If stagnant, focus on therapist onboarding or profile completion.
 SELECT COUNT(*) AS cal_live_count
 FROM therapists
 WHERE status = 'verified'
   AND cal_enabled = true
-  AND cal_username IS NOT NULL;
+  AND cal_username IS NOT NULL
+  AND accepting_new = true
+  AND (metadata->>'hidden' IS NULL OR metadata->>'hidden' != 'true')
+  AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true');
 ```
 
 ### S-AvailabilityThreshold
@@ -477,6 +482,70 @@ WHERE rn = 1;
    - Row 3: Supply metrics (3 cards)
    - Row 4: Unit Economics (3 cards)
    - Row 5: Match Quality (2 cards)
+
+---
+
+## A/B Test: Progressive vs Classic
+
+### AB-FunnelByVariant
+
+```sql
+-- A/B Test: Progressive vs Classic — Funnel comparison
+-- Segments leads by campaign_variant to compare progressive disclosure vs classic contact form.
+-- Key metrics: form completion rate, verification rate.
+-- Run weekly minimum; need ~150-200 leads per variant for significance (~3-4 weeks at 10-15/day).
+WITH leads AS (
+  SELECT id, campaign_variant, status, created_at
+  FROM people
+  WHERE type = 'patient'
+    AND created_at >= {{start_date}} AND created_at <= NOW()
+    AND campaign_variant IN ('progressive', 'classic')
+    AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+)
+SELECT
+  campaign_variant,
+  COUNT(*) AS total_leads,
+  COUNT(*) FILTER (WHERE status NOT IN ('anonymous', 'pre_confirmation')) AS completed_form,
+  COUNT(*) FILTER (WHERE status IN ('email_confirmed', 'new', 'matched', 'active')) AS verified,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE status NOT IN ('anonymous', 'pre_confirmation')) / NULLIF(COUNT(*), 0), 1) AS completion_rate,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE status IN ('email_confirmed', 'new', 'matched', 'active')) / NULLIF(COUNT(*), 0), 1) AS verification_rate
+FROM leads
+GROUP BY campaign_variant
+ORDER BY campaign_variant;
+```
+
+### AB-BookingsByVariant
+
+```sql
+-- A/B Test: Lead-to-booking rate by variant
+-- Compares how well each variant converts verified leads into intro bookings.
+WITH variant_leads AS (
+  SELECT id, campaign_variant
+  FROM people
+  WHERE type = 'patient'
+    AND created_at >= {{start_date}} AND created_at <= NOW()
+    AND campaign_variant IN ('progressive', 'classic')
+    AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
+    AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+),
+bookings AS (
+  SELECT DISTINCT cb.patient_id
+  FROM cal_bookings cb
+  WHERE cb.booking_kind = 'intro'
+    AND LOWER(cb.status) != 'cancelled'
+    AND (cb.is_test = false OR cb.is_test IS NULL)
+    AND cb.created_at >= {{start_date}} AND cb.created_at <= NOW()
+)
+SELECT
+  vl.campaign_variant,
+  COUNT(*) AS verified_leads,
+  COUNT(*) FILTER (WHERE b.patient_id IS NOT NULL) AS booked_intro,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE b.patient_id IS NOT NULL) / NULLIF(COUNT(*), 0), 1) AS lead_to_intro_pct
+FROM variant_leads vl
+LEFT JOIN bookings b ON b.patient_id = vl.id
+GROUP BY vl.campaign_variant
+ORDER BY vl.campaign_variant;
+```
 
 ---
 
