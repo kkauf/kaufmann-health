@@ -350,7 +350,7 @@ export function VerificationForm({
             </Button>
           )}
           <Button
-            onClick={verifyCode}
+            onClick={() => verifyCode()}
             disabled={loading || !code.trim()}
             className={`${onBack ? 'flex-1' : 'w-full'} bg-emerald-600 hover:bg-emerald-700`}
             size="sm"

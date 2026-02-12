@@ -169,7 +169,7 @@ export default function SignupWizard() {
 
   // Progressive disclosure: match preview data from questionnaire-submit
   const [anonymousPatientId, setAnonymousPatientId] = React.useState<string | null>(null);
-  const [matchPreviews, setMatchPreviews] = React.useState<Array<{ firstName: string; modalities: string[]; city: string | null }>>([]);
+  const [matchPreviews, setMatchPreviews] = React.useState<Array<{ firstName: string; photoUrl: string | null; schwerpunkte: string[] }>>([]);
   const [matchCount, setMatchCount] = React.useState(0);
   const [matchQuality, setMatchQuality] = React.useState<'exact' | 'partial' | 'none'>('none');
 
@@ -234,6 +234,14 @@ export default function SignupWizard() {
   React.useEffect(() => {
     if (data.name) verification.setName(data.name);
   }, [data.name, verification]);
+
+  React.useEffect(() => {
+    if (data.email) verification.setEmail(data.email);
+  }, [data.email, verification]);
+
+  React.useEffect(() => {
+    if (data.contact_method) verification.setContactMethod(data.contact_method);
+  }, [data.contact_method, verification]);
 
   // Ensure a stable web analytics session id exists before any events
   React.useEffect(() => {
@@ -648,29 +656,30 @@ export default function SignupWizard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, data.contact_method]);
 
-  // Fetch matchesUrl for verified users (phone or email) on confirmation screen
+  // Fetch matchesUrl for verified users (phone, email-confirmed, or email-code-verified) on confirmation screen
   const [matchesUrl, setMatchesUrl] = React.useState<string | null>(null);
   const confirmParam = searchParams?.get('confirm');
   const isEmailConfirmed = confirmParam === '1' || confirmParam === 'success';
+  const isEmailCodeVerified = data.contact_method === 'email' && verification.state.verified;
   React.useEffect(() => {
     if (step < 7) return;
-    // Fetch for phone-verified users OR email-confirmed users
+    // Fetch for phone-verified users, email-confirmed users (magic link), or email-code-verified users
     const isPhoneVerified = data.contact_method === 'phone' && data.phone_verified;
-    if (!isPhoneVerified && !isEmailConfirmed) return;
+    if (!isPhoneVerified && !isEmailConfirmed && !isEmailCodeVerified) return;
 
     fetch('/api/public/session')
       .then(res => res.ok ? res.json() : null)
       .then(json => {
         if (json?.data?.matchesUrl) {
           setMatchesUrl(json.data.matchesUrl);
-          // Auto-redirect confirmed email users to matches (skip intermediate CTA screen)
-          if (isEmailConfirmed && !isConcierge) {
+          // Auto-redirect verified email users to matches (skip intermediate CTA screen)
+          if ((isEmailConfirmed || isEmailCodeVerified) && !isConcierge) {
             window.location.assign(json.data.matchesUrl);
           }
         }
       })
       .catch(() => { });
-  }, [step, data.contact_method, data.phone_verified, isEmailConfirmed, isConcierge]);
+  }, [step, data.contact_method, data.phone_verified, isEmailConfirmed, isEmailCodeVerified, isConcierge]);
 
   // If we have a session id (possibly from URL), try to load remote state once
   React.useEffect(() => {
@@ -931,9 +940,8 @@ export default function SignupWizard() {
   const handleVerifySmsCode = React.useCallback(async (code: string): Promise<{ success: boolean; error?: string }> => {
     if (!data.phone_number) return { success: false, error: 'Keine Telefonnummer' };
 
-    // Sync code to hook state and verify
-    verification.setCode(code);
-    const result = await verification.verifyCode();
+    // Pass code directly to avoid stale-closure issue (setCode is async)
+    const result = await verification.verifyCode(code);
 
     if (result.success) {
       saveLocal({ phone_verified: true });
@@ -943,6 +951,37 @@ export default function SignupWizard() {
 
     return { success: false, error: result.error || 'Ungültiger Code' };
   }, [data.phone_number, verification, saveLocal]);
+
+  // Email code sending using shared verification hook
+  // NOTE: email, name, and contactMethod are synced to verification hook via useEffects above.
+  // By the time the user clicks submit, the hook state is already up-to-date.
+  const handleSendEmailCode = React.useCallback(async (): Promise<boolean> => {
+    if (!data.email) return false;
+
+    const confirmRedirect = variant ? `/fragebogen?variant=${encodeURIComponent(variant)}` : '/fragebogen';
+    const result = await verification.sendCode({
+      name: data.name?.trim(),
+      formSessionId: sessionId || undefined,
+      redirect: confirmRedirect,
+    });
+
+    return result.success;
+  }, [data.email, data.name, sessionId, variant, verification]);
+
+  // Email code verification using shared verification hook
+  const handleVerifyEmailCode = React.useCallback(async (code: string): Promise<{ success: boolean; error?: string }> => {
+    if (!data.email) return { success: false, error: 'Keine E-Mail-Adresse' };
+
+    // contactMethod and email are synced via useEffects above.
+    // Pass code directly to avoid stale-closure issue (setCode is async).
+    const result = await verification.verifyCode(code);
+
+    if (result.success) {
+      return { success: true };
+    }
+
+    return { success: false, error: result.error || 'Ungültiger Code' };
+  }, [data.email, verification]);
 
   // Simple screen renderers
   function renderScreen() {
@@ -1088,6 +1127,7 @@ export default function SignupWizard() {
             matchCount={matchCount}
             matchQuality={matchQuality}
             matchPreviews={matchPreviews}
+            patientSchwerpunkte={data.schwerpunkte || []}
             onNext={() => safeGoToStep(6)}
             onBack={() => safeGoToStep(5.5)}
           />
@@ -1120,9 +1160,19 @@ export default function SignupWizard() {
                     console.error('Failed to send SMS:', err);
                     setSubmitError('SMS konnte nicht gesendet werden. Bitte versuche es erneut.');
                   }
-                } else {
-                  // Email: skip SMS, go directly to name+email step (6.75)
-                  safeGoToStep(6.75);
+                } else if (data.email) {
+                  // Email: send email code, then go to code entry (step 6.5)
+                  try {
+                    const sent = await handleSendEmailCode();
+                    if (sent) {
+                      safeGoToStep(6.5);
+                    } else {
+                      setSubmitError('E-Mail konnte nicht gesendet werden. Bitte versuche es erneut.');
+                    }
+                  } catch (err) {
+                    console.error('Failed to send email code:', err);
+                    setSubmitError('E-Mail konnte nicht gesendet werden. Bitte versuche es erneut.');
+                  }
                 }
               }}
               disabled={navLock || submitting}
@@ -1156,26 +1206,42 @@ export default function SignupWizard() {
                   console.error('Failed to send SMS:', err);
                   setSubmitError('SMS konnte nicht gesendet werden. Bitte versuche es erneut.');
                 }
-              } else {
-                // Email: submit directly (name already collected in this form)
-                await handleSubmit();
+              } else if (data.email) {
+                // Email: send email code, then go to code entry (step 6.5)
+                try {
+                  const sent = await handleSendEmailCode();
+                  if (sent) {
+                    safeGoToStep(6.5);
+                  } else {
+                    setSubmitError('E-Mail konnte nicht gesendet werden. Bitte versuche es erneut.');
+                  }
+                } catch (err) {
+                  console.error('Failed to send email code:', err);
+                  setSubmitError('E-Mail konnte nicht gesendet werden. Bitte versuche es erneut.');
+                }
               }
             }}
             disabled={navLock || submitting}
             therapistCount={therapistCount}
           />
         );
-      case 6.5:
-        // Step 6.5: SMS verification (phone users only)
-        if (data.contact_method !== 'phone' || !data.phone_number) {
+      case 6.5: {
+        // Step 6.5: Verification code entry (SMS or email)
+        const isPhoneVerification = data.contact_method === 'phone' && !!data.phone_number;
+        const isEmailVerification = data.contact_method === 'email' && !!data.email;
+        if (!isPhoneVerification && !isEmailVerification) {
           safeGoToStep(6);
           return null;
         }
         return (
           <Screen1_5
-            phoneNumber={data.phone_number}
+            phoneNumber={data.phone_number || ''}
+            contactMethod={data.contact_method || 'phone'}
+            contactDisplay={isEmailVerification ? data.email : undefined}
             onVerify={async (code: string) => {
-              const result = await handleVerifySmsCode(code);
+              const result = isPhoneVerification
+                ? await handleVerifySmsCode(code)
+                : await handleVerifyEmailCode(code);
               if (result.success) {
                 if (isProgressive) {
                   // Progressive: go to name+email collection (step 6.75)
@@ -1187,11 +1253,18 @@ export default function SignupWizard() {
               }
               return result;
             }}
-            onResend={async () => { await handleSendSmsCode(); }}
+            onResend={async () => {
+              if (isPhoneVerification) {
+                await handleSendSmsCode();
+              } else {
+                await handleSendEmailCode();
+              }
+            }}
             onBack={() => safeGoToStep(6)}
             disabled={navLock || submitting}
           />
         );
+      }
       case 6.75:
         // Step 6.75: Name + email collection (post-verification, progressive disclosure)
         return (
@@ -1941,7 +2014,9 @@ export default function SignupWizard() {
         return;
       }
 
-      // Email users: go to confirmation screen (step 7) to wait for email verification
+      // Email users (both code-verified and not-yet-verified): go to confirmation screen (step 7).
+      // If email was verified via 6-digit code, the useEffect at step 7 will detect
+      // verification.state.verified, fetch matchesUrl from session, and auto-redirect.
       goToStep(7);
     } catch {
       setSubmitError('Senden fehlgeschlagen. Bitte überprüfe deine Verbindung und versuche es erneut.');

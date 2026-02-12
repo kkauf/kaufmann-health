@@ -11,18 +11,24 @@ export type Screen1_5Values = {
 };
 
 /**
- * Screen1.5 - SMS Code Verification
- * Only shown for phone users (contact_method === 'phone')
- * Email users skip this screen
+ * Screen1.5 - Verification Code Entry
+ * Supports both SMS and email 6-digit code verification.
+ * For email, the code is sent alongside a magic link (fallback).
  */
 export default function Screen1_5({
   phoneNumber,
+  contactMethod = 'phone',
+  contactDisplay,
   onVerify,
   onResend,
   onBack,
   disabled,
 }: {
   phoneNumber: string;
+  /** Which channel the code was sent to */
+  contactMethod?: 'phone' | 'email';
+  /** Formatted contact info for display (email address or formatted phone). Falls back to phoneNumber for SMS. */
+  contactDisplay?: string;
   onVerify: (code: string) => Promise<{ success: boolean; error?: string }>;
   onResend: () => Promise<void>;
   onBack?: () => void;
@@ -117,17 +123,20 @@ export default function Screen1_5({
     }
   }, [resending, onResend]);
 
-  // Format phone for display
-  const displayPhone = phoneNumber.startsWith('+49') 
+  // Format phone for display (only if showing phone)
+  const displayPhone = phoneNumber.startsWith('+49')
     ? phoneNumber.replace('+49', '0').replace(/(\d{4})(\d{3})(\d)/, '$1 $2 $3')
     : phoneNumber;
+
+  const isEmail = contactMethod === 'email';
+  const displayContact = contactDisplay || displayPhone;
 
   return (
     <div className="space-y-6">
       <div className="space-y-2 text-center">
-        <h3 className="text-lg font-semibold">SMS-Code eingeben</h3>
+        <h3 className="text-lg font-semibold">{isEmail ? 'E-Mail-Code eingeben' : 'SMS-Code eingeben'}</h3>
         <p className="text-sm text-muted-foreground">
-          Wir haben dir einen 6-stelligen Code an <strong>{displayPhone}</strong> gesendet
+          Wir haben dir einen 6-stelligen Code an <strong>{displayContact}</strong> gesendet
         </p>
       </div>
 

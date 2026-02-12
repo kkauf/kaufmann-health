@@ -124,7 +124,8 @@ export interface UseVerificationReturn {
   
   // Actions
   sendCode: (options: Omit<SendCodeOptions, 'contact' | 'contactType'>) => Promise<SendCodeResult>;
-  verifyCode: () => Promise<VerifyCodeResult>;
+  /** Verify entered code. Pass overrideCode to avoid stale-closure issues when code was just set via setCode(). */
+  verifyCode: (overrideCode?: string) => Promise<VerifyCodeResult>;
   resendCode: (options?: Omit<SendCodeOptions, 'contact' | 'contactType' | 'name'>) => Promise<SendCodeResult>;
   reset: () => void;
   
@@ -297,26 +298,28 @@ export function useVerification(options: UseVerificationOptions = {}): UseVerifi
     return sendCode({ name: name.trim(), ...opts });
   }, [sendCode, name]);
   
-  // Verify entered code
-  const verifyCode = useCallback(async (): Promise<VerifyCodeResult> => {
+  // Verify entered code. Pass overrideCode to avoid stale-closure issues
+  // when code was just set via setCode() in the same event handler.
+  const verifyCode = useCallback(async (overrideCode?: string): Promise<VerifyCodeResult> => {
+    const codeToUse = overrideCode || code;
     const contact = getContact();
     if (!contact) {
       const err = 'Kontaktinformation fehlt.';
       setError(err);
       return { success: false, error: err };
     }
-    
-    if (!code.trim()) {
+
+    if (!codeToUse.trim()) {
       const err = 'Bitte gib den Bestätigungscode ein.';
       setError(err);
       return { success: false, error: err };
     }
-    
+
     setError(null);
     setLoading(true);
-    
+
     trackEvent('verification_verify_started', { contact_method: contactMethod });
-    
+
     try {
       const res = await fetch('/api/public/verification/verify-code', {
         method: 'POST',
@@ -324,7 +327,7 @@ export function useVerification(options: UseVerificationOptions = {}): UseVerifi
         body: JSON.stringify({
           contact,
           contact_type: contactMethod,
-          code: code.trim(),
+          code: codeToUse.trim(),
         }),
       });
       
