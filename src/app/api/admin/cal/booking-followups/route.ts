@@ -384,6 +384,7 @@ async function processStage(
                   kh_therapist_id: booking.therapist_id!,
                   kh_patient_id: booking.patient_id!,
                   kh_match_id: booking.match_id || undefined,
+                  kh_booking_kind: 'full_session',
                   kh_source: 'intro_followup_email',
                 },
                 prefillName: patient.name || undefined,
@@ -474,6 +475,7 @@ async function processStage(
                   kh_therapist_id: booking.therapist_id!,
                   kh_patient_id: booking.patient_id!,
                   kh_match_id: booking.match_id || undefined,
+                  kh_booking_kind: 'full_session',
                   kh_source: 'session_followup_email',
                 },
                 prefillName: patient.name || undefined,
@@ -527,6 +529,12 @@ async function processStage(
           let emailSent = false;
           let smsSent = false;
 
+          // Extract video URL from booking metadata
+          const bookingMeta = booking.metadata as Record<string, unknown> | null;
+          const videoUrl = bookingMeta && typeof bookingMeta.videoCallUrl === 'string'
+            ? bookingMeta.videoCallUrl
+            : null;
+
           if (hasEmail) {
             const content = renderCalBookingReminder({
               patientName: patient.name || null,
@@ -535,6 +543,10 @@ async function processStage(
               timeStr,
               isOnline: booking.booking_kind !== 'in_person',
               hoursUntil: stage === 'reminder_24h' ? 24 : 1,
+              videoUrl,
+              bookingUid: booking.cal_uid,
+              patientEmail: patient.email,
+              bookingKind: booking.booking_kind,
             });
             const result = await sendEmail({
               to: patient.email!,

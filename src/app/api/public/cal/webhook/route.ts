@@ -565,7 +565,23 @@ export async function POST(req: Request) {
       updated_at: new Date().toISOString(),
     };
     // Only set these if webhook has values (preserve native booking pre-insert)
-    if (bookingKind) upsertData.booking_kind = bookingKind;
+    // Fallback: infer booking_kind from event_type_id if metadata didn't provide it
+    let resolvedBookingKind = bookingKind;
+    if (!resolvedBookingKind && therapistId && typeof eventTypeId === 'number') {
+      const { data: therapistCal } = await supabaseServer
+        .from('therapists')
+        .select('cal_intro_event_type_id, cal_full_session_event_type_id')
+        .eq('id', therapistId)
+        .maybeSingle();
+      if (therapistCal) {
+        if (eventTypeId === therapistCal.cal_intro_event_type_id) {
+          resolvedBookingKind = 'intro';
+        } else if (eventTypeId === therapistCal.cal_full_session_event_type_id) {
+          resolvedBookingKind = 'full_session';
+        }
+      }
+    }
+    if (resolvedBookingKind) upsertData.booking_kind = resolvedBookingKind;
     if (source) upsertData.source = source;
     // Always write is_test — heuristic detection may upgrade false→true
     if (isTest) upsertData.is_test = true;
@@ -594,7 +610,7 @@ export async function POST(req: Request) {
         therapist_id: therapistId,
         patient_id: patientId,
         match_id: matchId,
-        booking_kind: bookingKind,
+        booking_kind: resolvedBookingKind,
         source: source,
         is_test: isTest,
         organizer_username: organizerUsername,
@@ -615,7 +631,7 @@ export async function POST(req: Request) {
     if (triggerEvent === 'BOOKING_CREATED' && therapistId) {
       // Check if location is NOT Cal.com Video - alert if so (we won't get MEETING_ENDED)
       const location = typeof payload.location === 'string' ? payload.location : '';
-      const isCalVideo = location.includes('daily') || location.includes('cal.com') || location.includes('integrations:daily');
+      const isCalVideo = location.includes('daily') || location.includes('cal.com') || location.includes('integrations:daily') || location.includes('kaufmann.health/video');
       if (!isCalVideo && location) {
         void track({
           type: 'cal_booking_non_cal_video',
@@ -660,7 +676,7 @@ export async function POST(req: Request) {
         attendeeEmail,
         attendeeName: attendees?.[0]?.name || null,
         startTime: startTime || null,
-        bookingKind,
+        bookingKind: resolvedBookingKind,
         isTest,
         // EARTH-273: Enhanced email fields
         videoUrl: videoCallUrl,
@@ -686,10 +702,10 @@ export async function POST(req: Request) {
       // Fire server-side enhanced conversion for Google Ads (fire-and-forget)
       // The client-side gtag base conversion fires with transaction_id = cal_uid.
       // This enhancement adds hashed email/phone so Google can match it for attribution.
-      if (bookingKind && (bookingKind === 'intro' || bookingKind === 'full_session')) {
+      if (resolvedBookingKind && (resolvedBookingKind === 'intro' || resolvedBookingKind === 'full_session')) {
         void maybeFireBookingConversion({
           cal_uid: uid,
-          booking_kind: bookingKind,
+          booking_kind: resolvedBookingKind,
           patient_id: patientId,
           email: attendeeEmail,
           is_test: isTest,
@@ -718,7 +734,7 @@ export async function POST(req: Request) {
         source: 'api.public.cal.webhook',
         props: {
           cal_uid: uid,
-          booking_kind: bookingKind,
+          booking_kind: resolvedBookingKind,
           therapist_id: therapistId,
           patient_id: patientId,
           note: 'Follow-up email will be sent via cron in 10-30 min',
