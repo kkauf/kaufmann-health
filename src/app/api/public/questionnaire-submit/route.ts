@@ -298,14 +298,14 @@ export async function POST(req: Request) {
       }
     }
 
-    // Fetch top 3 match previews (first_name, modalities, city) for progressive flow
+    // Fetch top 3 match previews for progressive flow
     // Matches are inserted in score-descending order, so created_at ASC = highest score first
-    let matchPreviews: { firstName: string; modalities: string[]; city: string | null }[] | undefined;
+    let matchPreviews: { firstName: string; photoUrl: string | null; schwerpunkte: string[] }[] | undefined;
     let matchCount: number | undefined;
     try {
       const { data: matchRows, count, error: previewError } = await supabaseServer
         .from('matches')
-        .select('therapists!inner(first_name, modalities, city)', { count: 'exact' })
+        .select('therapists!inner(first_name, photo_url, schwerpunkte)', { count: 'exact' })
         .eq('patient_id', patient.id)
         .neq('status', 'failed')
         .order('created_at', { ascending: true })
@@ -315,11 +315,11 @@ export async function POST(req: Request) {
       }
       if (matchRows && matchRows.length > 0) {
         matchPreviews = matchRows.map((row) => {
-          const t = row.therapists as unknown as { first_name: string | null; modalities: string[] | null; city: string | null };
+          const t = row.therapists as unknown as { first_name: string | null; photo_url: string | null; schwerpunkte: string[] | null };
           return {
             firstName: t.first_name || 'Therapeut:in',
-            modalities: t.modalities || [],
-            city: t.city || null,
+            photoUrl: t.photo_url || null,
+            schwerpunkte: t.schwerpunkte || [],
           };
         });
         matchCount = count ?? matchRows.length;

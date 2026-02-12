@@ -54,8 +54,8 @@ describe('ScreenMatchPreview', () => {
 
   it('renders match count and therapist previews when matches exist', () => {
     const previews = [
-      { firstName: 'Anna', modalities: ['NARM', 'SE'], city: 'Berlin' },
-      { firstName: 'Bettina', modalities: ['Hakomi'], city: 'Hamburg' },
+      { firstName: 'Anna', photoUrl: 'https://example.com/anna.jpg', schwerpunkte: ['trauma', 'angst'] },
+      { firstName: 'Bettina', photoUrl: null, schwerpunkte: ['depression'] },
     ];
 
     const { container, unmount } = render(
@@ -63,6 +63,7 @@ describe('ScreenMatchPreview', () => {
         matchCount={2}
         matchPreviews={previews}
         matchQuality="exact"
+        patientSchwerpunkte={['trauma', 'depression']}
         onNext={vi.fn()}
       />
     );
@@ -76,19 +77,9 @@ describe('ScreenMatchPreview', () => {
       expect(container.textContent).toContain('Anna');
       expect(container.textContent).toContain('Bettina');
 
-      // Modality badges
-      expect(container.textContent).toContain('NARM');
-      expect(container.textContent).toContain('SE');
-      expect(container.textContent).toContain('Hakomi');
-
-      // City displayed (blurred but present in DOM)
-      expect(container.textContent).toContain('Berlin');
-      expect(container.textContent).toContain('Hamburg');
-
-      // Avatar initials
+      // Fallback initial shown for Bettina (no photo)
       const avatars = container.querySelectorAll('.rounded-full');
-      const avatarTexts = Array.from(avatars).map((el) => el.textContent);
-      expect(avatarTexts).toContain('A');
+      const avatarTexts = Array.from(avatars).map((el) => el.textContent?.trim()).filter(Boolean);
       expect(avatarTexts).toContain('B');
     } finally {
       unmount();
@@ -101,6 +92,7 @@ describe('ScreenMatchPreview', () => {
         matchCount={0}
         matchPreviews={[]}
         matchQuality="none"
+        patientSchwerpunkte={[]}
         onNext={vi.fn()}
       />
     );
@@ -122,9 +114,10 @@ describe('ScreenMatchPreview', () => {
       <ScreenMatchPreview
         matchCount={3}
         matchPreviews={[
-          { firstName: 'Anna', modalities: ['NARM'], city: 'Berlin' },
+          { firstName: 'Anna', photoUrl: null, schwerpunkte: ['trauma'] },
         ]}
         matchQuality="exact"
+        patientSchwerpunkte={['trauma']}
         onNext={onNext}
       />
     );
@@ -152,9 +145,10 @@ describe('ScreenMatchPreview', () => {
       <ScreenMatchPreview
         matchCount={2}
         matchPreviews={[
-          { firstName: 'Anna', modalities: ['NARM'], city: 'Berlin' },
+          { firstName: 'Anna', photoUrl: null, schwerpunkte: ['trauma'] },
         ]}
         matchQuality="exact"
+        patientSchwerpunkte={['trauma']}
         onNext={vi.fn()}
         onBack={onBack}
       />
@@ -181,9 +175,10 @@ describe('ScreenMatchPreview', () => {
       <ScreenMatchPreview
         matchCount={5}
         matchPreviews={[
-          { firstName: 'Anna', modalities: ['NARM'], city: 'Berlin' },
+          { firstName: 'Anna', photoUrl: null, schwerpunkte: ['trauma'] },
         ]}
         matchQuality="partial"
+        patientSchwerpunkte={['trauma']}
         onNext={vi.fn()}
       />
     );
@@ -206,11 +201,11 @@ describe('ScreenMatchPreview', () => {
 
   it('shows "+N weitere" text when more than 3 matches', () => {
     const previews = [
-      { firstName: 'Anna', modalities: ['NARM'], city: 'Berlin' },
-      { firstName: 'Bettina', modalities: ['SE'], city: 'Hamburg' },
-      { firstName: 'Clara', modalities: ['Hakomi'], city: 'Munchen' },
-      { firstName: 'Daria', modalities: ['CE'], city: 'Koln' },
-      { firstName: 'Elena', modalities: ['NARM'], city: 'Frankfurt' },
+      { firstName: 'Anna', photoUrl: null, schwerpunkte: ['trauma'] },
+      { firstName: 'Bettina', photoUrl: null, schwerpunkte: ['angst'] },
+      { firstName: 'Clara', photoUrl: null, schwerpunkte: ['depression'] },
+      { firstName: 'Daria', photoUrl: null, schwerpunkte: ['trauma'] },
+      { firstName: 'Elena', photoUrl: null, schwerpunkte: ['angst'] },
     ];
 
     const { container, unmount } = render(
@@ -218,6 +213,7 @@ describe('ScreenMatchPreview', () => {
         matchCount={5}
         matchPreviews={previews}
         matchQuality="exact"
+        patientSchwerpunkte={['trauma']}
         onNext={vi.fn()}
       />
     );
@@ -242,9 +238,10 @@ describe('ScreenMatchPreview', () => {
       <ScreenMatchPreview
         matchCount={1}
         matchPreviews={[
-          { firstName: 'Anna', modalities: ['NARM'], city: 'Berlin' },
+          { firstName: 'Anna', photoUrl: null, schwerpunkte: ['trauma'] },
         ]}
         matchQuality="exact"
+        patientSchwerpunkte={['trauma']}
         onNext={vi.fn()}
       />
     );

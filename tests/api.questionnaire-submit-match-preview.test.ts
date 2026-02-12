@@ -29,9 +29,9 @@ const VALID_MATCHES_COLUMNS = [
 ];
 
 const MOCK_MATCH_PREVIEWS = [
-  { therapists: { first_name: 'Anna', modalities: ['NARM'], city: 'Berlin' } },
-  { therapists: { first_name: 'Levent', modalities: ['Hakomi', 'SE'], city: 'Berlin' } },
-  { therapists: { first_name: 'Luise', modalities: ['Core Energetics'], city: null } },
+  { therapists: { first_name: 'Anna', photo_url: 'https://example.supabase.co/storage/v1/object/public/anna.jpg', schwerpunkte: ['trauma', 'angst'] } },
+  { therapists: { first_name: 'Levent', photo_url: null, schwerpunkte: ['depression', 'trauma'] } },
+  { therapists: { first_name: 'Luise', photo_url: 'https://example.supabase.co/storage/v1/object/public/luise.jpg', schwerpunkte: [] } },
 ];
 
 function createMatchesTableMock() {
@@ -167,13 +167,13 @@ describe('questionnaire-submit: match preview data flow', () => {
     // Verify preview shape
     expect(json.data.matchPreviews[0]).toEqual({
       firstName: 'Anna',
-      modalities: ['NARM'],
-      city: 'Berlin',
+      photoUrl: 'https://example.supabase.co/storage/v1/object/public/anna.jpg',
+      schwerpunkte: ['trauma', 'angst'],
     });
     expect(json.data.matchPreviews[1]).toEqual({
       firstName: 'Levent',
-      modalities: ['Hakomi', 'SE'],
-      city: 'Berlin',
+      photoUrl: null,
+      schwerpunkte: ['depression', 'trauma'],
     });
   });
 
@@ -209,15 +209,13 @@ describe('questionnaire-submit: match preview data flow', () => {
     // Verify the select references the therapists FK correctly
     expect(matchPreviewSelectArg).toContain('therapists');
     expect(matchPreviewSelectArg).toContain('first_name');
-    expect(matchPreviewSelectArg).toContain('modalities');
-    expect(matchPreviewSelectArg).toContain('city');
+    expect(matchPreviewSelectArg).toContain('photo_url');
+    expect(matchPreviewSelectArg).toContain('schwerpunkte');
   });
 
-  it('handles null first_name gracefully (fallback to "Therapeut:in")', async () => {
+  it('handles null photo_url and empty schwerpunkte gracefully', async () => {
     const { POST } = await import('@/app/api/public/questionnaire-submit/route');
 
-    // Override mock will use MOCK_MATCH_PREVIEWS which has real names,
-    // but verify the fallback logic exists in the mapping code
     const req = new Request('http://localhost/api/public/questionnaire-submit', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -227,7 +225,9 @@ describe('questionnaire-submit: match preview data flow', () => {
     const res = await POST(req);
     const json = await res.json();
 
-    // Online therapist (city: null) should pass through as null
-    expect(json.data.matchPreviews[2].city).toBeNull();
+    // Therapist with null photo_url should pass through as null
+    expect(json.data.matchPreviews[1].photoUrl).toBeNull();
+    // Therapist with empty schwerpunkte should pass through as empty array
+    expect(json.data.matchPreviews[2].schwerpunkte).toEqual([]);
   });
 });

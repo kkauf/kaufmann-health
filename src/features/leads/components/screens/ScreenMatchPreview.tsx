@@ -1,19 +1,22 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft, Sparkles, Check } from 'lucide-react';
+import { getSchwerpunktLabel } from '@/lib/schwerpunkte';
 
 interface MatchPreview {
   firstName: string;
-  modalities: string[];
-  city: string | null;
+  photoUrl: string | null;
+  schwerpunkte: string[];
 }
 
 interface ScreenMatchPreviewProps {
   matchCount: number;
   matchPreviews: MatchPreview[];
   matchQuality: 'exact' | 'partial' | 'none';
+  patientSchwerpunkte: string[];
   onNext: () => void;
   onBack?: () => void;
   disabled?: boolean;
@@ -28,10 +31,20 @@ function sendEvent(type: string, properties: Record<string, unknown>) {
   } catch {}
 }
 
+/** Find overlapping schwerpunkte between patient and therapist, return human labels */
+function getOverlapLabels(patientIds: string[], therapistIds: string[]): string[] {
+  const patientSet = new Set(patientIds);
+  return therapistIds
+    .filter((id) => patientSet.has(id))
+    .slice(0, 2)
+    .map(getSchwerpunktLabel);
+}
+
 export default function ScreenMatchPreview({
   matchCount,
   matchPreviews,
   matchQuality,
+  patientSchwerpunkte,
   onNext,
   onBack,
   disabled = false,
@@ -64,37 +77,47 @@ export default function ScreenMatchPreview({
 
           {/* Therapist preview cards */}
           <div className="space-y-3">
-            {matchPreviews.slice(0, 3).map((preview, i) => (
-              <div
-                key={i}
-                className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-              >
-                <div className="flex items-center gap-3">
-                  {/* Avatar placeholder */}
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700">
-                    {preview.firstName.charAt(0)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900">{preview.firstName}</p>
-                    {preview.city && (
-                      <p className="text-sm text-gray-500 blur-[2px]">{preview.city}</p>
+            {matchPreviews.slice(0, 3).map((preview, i) => {
+              const overlapLabels = getOverlapLabels(patientSchwerpunkte, preview.schwerpunkte);
+              return (
+                <div
+                  key={i}
+                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="flex items-center gap-3.5">
+                    {/* Photo or initial fallback */}
+                    {preview.photoUrl ? (
+                      <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-full ring-2 ring-emerald-100">
+                        <Image
+                          src={preview.photoUrl}
+                          alt={preview.firstName}
+                          fill
+                          className="object-cover"
+                          sizes="56px"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 text-lg font-semibold text-emerald-700 ring-2 ring-emerald-100">
+                        {preview.firstName.charAt(0)}
+                      </div>
                     )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-semibold text-gray-900">{preview.firstName}</p>
+                      {overlapLabels.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                          {overlapLabels.map((label) => (
+                            <span key={label} className="inline-flex items-center gap-1 text-sm text-emerald-700">
+                              <Check className="h-3.5 w-3.5" />
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-                {preview.modalities.length > 0 && (
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    {preview.modalities.map((mod) => (
-                      <span
-                        key={mod}
-                        className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700 opacity-75"
-                      >
-                        {mod}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {matchCount > 3 && (
