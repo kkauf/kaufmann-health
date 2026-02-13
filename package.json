@@ -41,6 +41,7 @@
     "smoke": "tsx scripts/smoke-test.ts",
     "smoke:local": "tsx scripts/smoke-test.ts --base-url=http://localhost:3000",
     "smoke:preview": "tsx scripts/smoke-test.ts --base-url=$PREVIEW_URL",
+    "gen:types": "tsx scripts/gen-types.ts",
     "prepare": "husky install"
   },
   "dependencies": {

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Database } from '../types/database';
 
 // ============================================================================
 // THERAPIST DATA CONTRACTS
@@ -101,6 +102,33 @@ export const TherapistRowSchema = z.object({
 }).passthrough(); // Preserve unknown fields from DB to avoid silent data loss
 
 export type TherapistRow = z.infer<typeof TherapistRowSchema>;
+
+// =============================================================================
+// DB DRIFT CHECK
+// Compile-time assertion: every field declared in TherapistRowSchema must exist
+// in the actual DB schema. If a column is renamed or removed in a migration,
+// TypeScript will error here — telling you the Zod schema needs updating.
+//
+// NOTE: This checks field *names*, not exact types. The Zod schema intentionally
+// uses transforms (e.g., Json → string[]) which won't match the raw DB types.
+// For Json/array columns, the Zod transform is the source of truth for app code.
+//
+// To regenerate DB types: npm run gen:types
+// =============================================================================
+type TherapistDbRow = Database['public']['Tables']['therapists']['Row'];
+
+// Extract the declared keys from the Zod schema shape (not from z.infer which
+// includes the passthrough index signature). These are the columns we explicitly
+// validate — if any of them don't exist in the DB, something has drifted.
+type TherapistRowSchemaKeys = keyof typeof TherapistRowSchema.shape;
+
+// This type resolves to `never` if all schema keys exist in the DB row.
+// If a key exists in the Zod schema but NOT in the DB, it appears here and
+// the assignment below will fail with a type error naming the drifted field.
+type _DriftedKeys = Exclude<TherapistRowSchemaKeys, keyof TherapistDbRow>;
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _driftCheck: Record<_DriftedKeys, never> = {} as Record<never, never>;
 
 // ============================================================================
 // AVAILABILITY SLOT
