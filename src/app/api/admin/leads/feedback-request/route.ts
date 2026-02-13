@@ -162,6 +162,12 @@ export async function GET(req: Request) {
 
       const meta = (patient.metadata || {}) as Record<string, unknown>;
 
+      // Check if patient opted out of emails
+      if (meta['email_opted_out'] === true || meta['email_opted_out'] === 'true') {
+        skippedNoEmail++;
+        continue;
+      }
+
       // Check email_confirmed_at is within window
       const confirmedAt = typeof meta['email_confirmed_at'] === 'string' ? meta['email_confirmed_at'] : null;
       if (!confirmedAt) {
