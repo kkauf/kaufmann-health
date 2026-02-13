@@ -77,6 +77,12 @@ This is a concise, high-signal overview. It complements the detailed `docs/api.m
 ## Therapist Portal (protected by `kh_therapist` cookie)
 - `GET /api/portal/clients` → recent clients from `cal_bookings` (patient_id, name, email, last_session, session_count)
 
+## Broadcasts (admin only)
+- `POST /api/admin/broadcasts/therapist-update?action=sync` → sync verified therapists to Resend audience
+- `POST /api/admin/broadcasts/therapist-update?action=preview` → preview email HTML
+- `POST /api/admin/broadcasts/therapist-update?action=send_test` → send test to LEADS_NOTIFY_EMAIL
+- `POST /api/admin/broadcasts/therapist-update?action=send` → send broadcast to all verified therapists
+
 
 ## Conversions (Google Ads)
 - Server Enhanced Conversions (`src/lib/google-ads.ts`) for `client_registration` and `therapist_registration`.

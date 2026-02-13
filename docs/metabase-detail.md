@@ -565,6 +565,127 @@ GROUP BY date ORDER BY date DESC;
 
 ---
 
+## Acquisition Efficiency
+
+### T-CPLDaily
+
+```sql
+-- Daily Cost per Lead with 7-day rolling average.
+-- Joins ad spend with verified leads per day — "your data" CPL vs Google's.
+-- Raw daily CPL is noisy; the 7d rolling average shows the real trend.
+-- Best viewed as dual-line chart: thin line for daily, bold for 7d avg.
+-- Target: €10-15. Sustained >€20 = check campaigns or landing page.
+WITH daily_spend AS (
+  SELECT date AS day, SUM(spend_eur) AS spend_eur
+  FROM ad_spend_log
+  WHERE date >= {{start_date}} AND date < CURRENT_DATE
+  GROUP BY date
+),
+daily_leads AS (
+  SELECT DATE(created_at) AS day, COUNT(*) AS leads
+  FROM people
+  WHERE type = 'patient'
+    AND status NOT IN ('pre_confirmation', 'anonymous', 'email_confirmation_sent')
+    AND (metadata->>'is_test' IS NULL OR metadata->>'is_test' != 'true')
+    AND created_at >= {{start_date}} AND DATE(created_at) < CURRENT_DATE
+  GROUP BY DATE(created_at)
+),
+combined AS (
+  SELECT
+    COALESCE(s.day, l.day) AS day,
+    COALESCE(s.spend_eur, 0) AS spend_eur,
+    COALESCE(l.leads, 0) AS leads
+  FROM daily_spend s
+  FULL OUTER JOIN daily_leads l ON s.day = l.day
+)
+SELECT
+  day,
+  spend_eur,
+  leads,
+  ROUND(spend_eur / NULLIF(leads, 0), 2) AS cpl_eur,
+  ROUND(
+    SUM(spend_eur) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)
+    / NULLIF(SUM(leads) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW), 0),
+    2
+  ) AS cpl_7d_avg
+FROM combined
+ORDER BY day;
+```
+
+### T-CostPerIntroWeekly
+
+```sql
+-- Weekly cost per intro booking.
+-- At ~5-6 intros/week, weekly granularity gives meaningful data points.
+-- Shows what it costs to get a human talking to a therapist.
+-- Best viewed as bar chart. Target: <€100/intro.
+-- High values = funnel inefficiency (leads not converting to intros).
+WITH weekly_spend AS (
+  SELECT date_trunc('week', date)::date AS week_start, SUM(spend_eur) AS spend_eur
+  FROM ad_spend_log
+  WHERE date >= {{start_date}} AND date < CURRENT_DATE
+  GROUP BY 1
+),
+weekly_intros AS (
+  SELECT date_trunc('week', cb.created_at)::date AS week_start, COUNT(*) AS intros
+  FROM cal_bookings cb
+  LEFT JOIN people p ON p.id = cb.patient_id
+  WHERE cb.booking_kind = 'intro'
+    AND LOWER(cb.status) != 'cancelled'
+    AND (cb.is_test = false OR cb.is_test IS NULL)
+    AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+    AND cb.created_at >= {{start_date}} AND DATE(cb.created_at) < CURRENT_DATE
+  GROUP BY 1
+)
+SELECT
+  COALESCE(s.week_start, i.week_start) AS week_start,
+  COALESCE(s.spend_eur, 0) AS spend_eur,
+  COALESCE(i.intros, 0) AS intros,
+  ROUND(COALESCE(s.spend_eur, 0) / NULLIF(COALESCE(i.intros, 0), 0), 2) AS cost_per_intro_eur
+FROM weekly_spend s
+FULL OUTER JOIN weekly_intros i ON s.week_start = i.week_start
+ORDER BY week_start;
+```
+
+### T-CACRolling
+
+```sql
+-- Rolling 30-day Customer Acquisition Cost.
+-- For each day: sum(spend last 30d) / count(distinct paying customers last 30d).
+-- "Paying customer" = completed at least one paid session (start_time in past).
+-- Smooths out the extreme noise from daily session bookings (0-2/day).
+-- Best viewed as line chart. Trend direction matters more than absolute value.
+-- Note: Lagging indicator — uses completed sessions, not booked.
+-- At low volumes (<10 customers/month), each new customer causes a visible step-down.
+SELECT
+  d.day::date AS day,
+  spend.total_30d AS spend_30d,
+  cust.cnt_30d AS customers_30d,
+  ROUND(spend.total_30d / NULLIF(cust.cnt_30d, 0), 2) AS cac_30d
+FROM generate_series({{start_date}}::date, CURRENT_DATE - 1, '1 day'::interval) AS d(day)
+CROSS JOIN LATERAL (
+  SELECT COALESCE(SUM(spend_eur), 0) AS total_30d
+  FROM ad_spend_log
+  WHERE date BETWEEN (d.day::date - 29) AND d.day::date
+) spend
+CROSS JOIN LATERAL (
+  SELECT COUNT(DISTINCT cb.patient_id) AS cnt_30d
+  FROM cal_bookings cb
+  LEFT JOIN people p ON p.id = cb.patient_id
+  WHERE cb.booking_kind = 'full_session'
+    AND LOWER(cb.status) != 'cancelled'
+    AND cb.start_time >= (d.day::date - 29)::timestamp
+    AND cb.start_time < (d.day::date + 1)::timestamp
+    AND cb.start_time < NOW()
+    AND (cb.is_test = false OR cb.is_test IS NULL)
+    AND (p.metadata->>'is_test' IS NULL OR p.metadata->>'is_test' != 'true')
+) cust
+WHERE cust.cnt_30d > 0  -- Only show days with at least 1 customer (avoids empty rows)
+ORDER BY d.day;
+```
+
+---
+
 ## Supply Gap Analysis
 
 ### G-TopGaps
@@ -1164,11 +1285,16 @@ LIMIT 50;
    - T-SessionsDaily → Line chart
    - T-FormCompletionDaily → Line chart (completion_rate_pct)
 
-4. **Operations Dashboard** (this file, G-*, M-* queries)
+4. **Acquisition Efficiency Dashboard** (this file, T-CPL/CPI/CAC queries)
+   - T-CPLDaily → Dual-line chart (daily CPL thin, 7d avg bold). Set start_date ~30d back.
+   - T-CostPerIntroWeekly → Bar chart (cost_per_intro_eur). Set start_date ~90d back.
+   - T-CACRolling → Line chart (cac_30d). Set start_date to ad_spend_log start (~Jan 7).
+
+5. **Operations Dashboard** (this file, G-*, M-* queries)
    - Supply gaps tables
    - Match quality charts
 
-5. **Feedback Dashboard** (this file, FB-* queries)
+6. **Feedback Dashboard** (this file, FB-* queries)
    - FB-ResponseRate → Single value card
    - FB-BehavioralVariants → Table (variant performance)
    - FB-ByReason → Horizontal bar chart

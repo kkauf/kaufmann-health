@@ -137,7 +137,7 @@ function renderInterviewCta(segment: PatientBehaviorSegment, patientId: string, 
             </td>
             <td style="vertical-align:top;">
               <p style="margin:0 0 8px; font-size:17px; font-weight:700; color:#0f172a !important;">${escapeHtml(heading)}</p>
-              <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#4338ca !important;">${escapeHtml(description)} <strong style="color:#312e81 !important;">25\u20AC Amazon-Gutschein</strong>.</p>
+              <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#4338ca !important;">${escapeHtml(description)} <strong style="color:#312e81 !important;">50\u20AC Amazon-Gutschein</strong>.</p>
               ${renderButton(calendarUrl, 'Termin vereinbaren')}
             </td>
           </tr>
@@ -162,7 +162,7 @@ function renderInterviewCta(segment: PatientBehaviorSegment, patientId: string, 
             </td>
             <td style="vertical-align:top;">
               <p style="margin:0 0 8px; font-size:17px; font-weight:700; color:#0f172a !important;">${escapeHtml(heading)}</p>
-              <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#4338ca !important;">${escapeHtml(description)} <strong style="color:#312e81 !important;">25\u20AC Amazon-Gutschein</strong>.</p>
+              <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#4338ca !important;">${escapeHtml(description)} <strong style="color:#312e81 !important;">50\u20AC Amazon-Gutschein</strong>.</p>
               ${renderButton(calendarUrl, 'Termin vereinbaren', buttonVariant)}
             </td>
           </tr>
@@ -184,12 +184,12 @@ function interviewReason(segment: PatientBehaviorSegment): string {
 
 function interviewHeading(segment: PatientBehaviorSegment): string {
   switch (segment.segment) {
-    case 'almost_booked': return 'Was hat dich gestoppt? 15 Min + 25\u20AC';
+    case 'almost_booked': return 'Was hat dich gestoppt? 15 Min + 50\u20AC';
     case 'rejected': return isPrimaryInterviewRejection(segment.reasons)
-      ? 'Wir w\u00FCrden gern verstehen warum \u2014 15 Min + 25\u20AC'
+      ? 'Wir w\u00FCrden gern verstehen warum \u2014 15 Min + 50\u20AC'
       : 'Hast du 15 Minuten f\u00FCr ein kurzes Gespr\u00E4ch?';
-    case 'visited_no_action': return 'Noch unsicher? Wir helfen bei der Entscheidung \u2014 15 Min + 25\u20AC';
-    case 'never_visited': return 'Hast du Fragen? Wir erkl\u00E4ren dir alles \u2014 15 Min + 25\u20AC';
+    case 'visited_no_action': return 'Noch unsicher? Wir helfen bei der Entscheidung \u2014 15 Min + 50\u20AC';
+    case 'never_visited': return 'Hast du Fragen? Wir erkl\u00E4ren dir alles \u2014 15 Min + 50\u20AC';
     default: return 'Hast du 15 Minuten f\u00FCr ein kurzes Gespr\u00E4ch?';
   }
 }

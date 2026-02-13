@@ -27,7 +27,7 @@ people (leads/patients)
 
 therapists
 ├── id, first_name, last_name, email, phone, city, slug
-├── status: 'active' | 'inactive' | 'pending'
+├── status: 'pending_verification' | 'verified' | 'rejected' | 'declined'
 ├── modalities, schwerpunkte, languages (jsonb arrays)
 ├── cal_username, cal_enabled, cal_intro_event_type_id, cal_full_session_event_type_id
 └── accepting_new, typical_rate
@@ -311,4 +311,5 @@ git ship    # merges staging→main, syncs staging, keeps you on staging
 2. Flag if business docs may need updates (Google Drive: Partner Support, etc.)
 3. **If touching funnels/analytics**: Check if Metabase queries need updating (`docs/metabase-*.md`), then run `npx tsx scripts/metabase-sync.ts --sync`
 4. Run `npm run test:critical` and verify in browser
-5. `git ship` when confident
+5. **Major features (3+ files or 500+ lines)**: Ensure a Linear issue exists (create one after the fact if needed). This creates an audit trail and keeps the roadmap honest. Include: what shipped, what it unblocks, any follow-up needed.
+6. `git ship` when confident

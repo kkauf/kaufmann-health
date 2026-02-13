@@ -8,15 +8,25 @@ import type { EmailContent } from '../types';
 export function renderEmailVerificationCode(params: {
   code: string;
   isBooking?: boolean;
+  /** Optional magic link URL — shown as fallback button alongside the code */
+  confirmUrl?: string;
 }): EmailContent {
-  const { code, isBooking = false } = params;
-  
+  const { code, isBooking = false, confirmUrl } = params;
+
   const bodyText = isBooking
     ? 'Fast geschafft! Gib diesen Code ein, um deine Buchung abzuschließen.'
     : 'Fast geschafft! Gib diesen Code ein, um fortzufahren.';
-  
+
   const subjectPrefix = isBooking ? 'Buchungsbestätigung' : 'Bestätigungscode';
-  
+
+  // Magic link section (shown below code when confirmUrl is provided)
+  const magicLinkHtml = confirmUrl ? `
+    <div style="text-align:center; margin: 0 0 24px;">
+      <p style="color:#64748b; font-size:14px; margin:0 0 12px;">Oder bestätige direkt per Klick:</p>
+      ${renderButton(confirmUrl, 'E-Mail bestätigen')}
+    </div>
+  ` : '';
+
   // Apple Mail auto-fill: code must be in plain text, ideally with specific format
   // iOS looks for patterns like "Your code is: 123456" or just the number
   const contentHtml = `
@@ -29,26 +39,40 @@ export function renderEmailVerificationCode(params: {
         <span style="font-family: 'SF Mono', Monaco, 'Courier New', monospace; font-size:36px; font-weight:700; letter-spacing:8px; color:#0f172a;">${code}</span>
       </div>
     </div>
+    ${magicLinkHtml}
     <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; background-image: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important; padding:16px 20px; border-radius:12px; border:1px solid rgba(226, 232, 240, 0.8);">
       <p style="color:#64748b !important; font-size:14px; margin:0; line-height:1.6;">Der Code ist <strong style="color:#475569 !important;">10 Minuten</strong> gültig. Falls du diese E-Mail nicht angefordert hast, kannst du sie ignorieren.</p>
     </div>
   `;
-  
+
   // Schema.org markup for email clients
-  const schema = {
+  const schema = confirmUrl ? {
+    '@context': 'http://schema.org',
+    '@type': 'EmailMessage',
+    potentialAction: {
+      '@type': 'ConfirmAction',
+      name: 'E-Mail bestätigen',
+      handler: {
+        '@type': 'HttpActionHandler',
+        url: confirmUrl,
+        method: 'HttpRequestMethod.GET',
+      },
+    },
+    description: 'Dein Bestätigungscode für Kaufmann Health',
+  } as const : {
     '@context': 'http://schema.org',
     '@type': 'EmailMessage',
     description: 'Dein Bestätigungscode für Kaufmann Health',
   } as const;
-  
+
   return {
     // Include code in subject for Apple Mail auto-fill (pattern: "123456 is your code")
     subject: `${code} – ${subjectPrefix} | Kaufmann Health`,
-    html: renderLayout({ 
-      title: 'Bestätigungscode', 
-      contentHtml, 
+    html: renderLayout({
+      title: 'Bestätigungscode',
+      contentHtml,
       preheader: `Dein Code: ${code}`,
-      schema 
+      schema
     }),
   };
 }

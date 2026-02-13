@@ -638,6 +638,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
       if (result.patientId) {
         setPatientId(result.patientId);
       }
+      // Name is always collected before verification now
       setStep('success');
     }
     // Error handling is done by the hook (sets error state)
@@ -1275,6 +1276,21 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
           </div>
         )}
 
+        {!showBookingPicker && !isVerified && (
+          <div className="space-y-2">
+            <Label htmlFor="compose-name" className="text-sm font-medium">Name *</Label>
+            <Input
+              id="compose-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Dein Name"
+              disabled={loading}
+              className="h-11"
+            />
+          </div>
+        )}
+
         {!showBookingPicker && (
           <div className="space-y-2">
             <Label htmlFor="message" className="text-sm font-medium">Nachricht (optional)</Label>
@@ -1411,7 +1427,7 @@ export function ContactModal({ therapist, contactType, open, onClose, onSuccess,
                   }
                   setStep('verify');
                 }}
-                disabled={loading || (!reason.trim() && !message.trim())}
+                disabled={loading || (!reason.trim() && !message.trim()) || !name.trim()}
                 className={`flex-1 h-11 ${contactType === 'booking' && !sessionFormat
                   ? 'bg-gray-400 hover:bg-gray-500'
                   : 'bg-emerald-600 hover:bg-emerald-700'

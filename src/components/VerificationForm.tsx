@@ -40,6 +40,8 @@ export interface VerificationFormProps {
   onNotesChange?: (notes: string) => void;
   /** Label for notes field (e.g., therapist first name) */
   notesLabel?: string;
+  /** Whether phone-first mode is active (name collected after verification) */
+  phoneFirst?: boolean;
   /** Options to pass when sending code */
   sendCodeOptions?: {
     redirect?: string;
@@ -74,6 +76,7 @@ export function VerificationForm({
   notes,
   onNotesChange,
   notesLabel,
+  phoneFirst = false,
   sendCodeOptions = {},
 }: VerificationFormProps) {
   const { state, setName, setEmail, setPhone, setCode, setContactMethod, sendCode, verifyCode, resendCode } = verification;
@@ -87,13 +90,100 @@ export function VerificationForm({
     await resendCode(sendCodeOptions);
   };
 
-  const canSubmitInput = name.trim() && (
-    (contactMethod === 'email' && email.trim()) ||
-    (contactMethod === 'phone' && phone.trim())
-  );
+  const canSubmitInput = phoneFirst
+    ? name.trim().length > 0 && phone.trim().length > 0
+    : name.trim() && (
+        (contactMethod === 'email' && email.trim()) ||
+        (contactMethod === 'phone' && phone.trim())
+      );
 
   // Input step: Collect name + contact info
   if (step === 'input') {
+    // Phone-first mode: phone only, no name, no contact method toggle
+    if (phoneFirst) {
+      return (
+        <div className={`space-y-4 ${className}`}>
+          <div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-1">Handynummer bestätigen</h4>
+            <p className="text-xs text-gray-600">
+              Deine Nummer wird nur zur Verifizierung verwendet.
+            </p>
+          </div>
+
+          {slotSummary}
+
+          <div>
+            <Label htmlFor="verification-name" className="text-sm font-medium text-gray-700">Name *</Label>
+            <Input
+              id="verification-name"
+              type="text"
+              placeholder="Dein Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="mt-1"
+              required
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="verification-contact" className="text-sm font-medium text-gray-700">Handynummer</Label>
+            <VerifiedPhoneInput
+              value={phone}
+              onChange={setPhone}
+            />
+          </div>
+
+          {/* Optional notes for therapist */}
+          {onNotesChange && (
+            <div>
+              <Label htmlFor="verification-notes" className="text-sm font-medium text-gray-700">
+                Notiz{notesLabel ? ` für ${notesLabel}` : ''} (optional)
+              </Label>
+              <Textarea
+                id="verification-notes"
+                value={notes || ''}
+                onChange={(e) => onNotesChange(e.target.value)}
+                placeholder="z.B. Ich interessiere mich besonders für Somatic Experiencing..."
+                maxLength={500}
+                rows={2}
+                className="mt-1 resize-none text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1 text-right">
+                {(notes || '').length}/500
+              </p>
+            </div>
+          )}
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+
+          <div className="flex gap-2 pt-1">
+            {onBack && (
+              <Button variant="outline" onClick={onBack} className="flex-1" size="sm">
+                {backLabel}
+              </Button>
+            )}
+            <Button
+              onClick={handleSendCode}
+              disabled={loading || !canSubmitInput}
+              className={`${onBack ? 'flex-1' : 'w-full'} bg-emerald-600 hover:bg-emerald-700`}
+              size="sm"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Code senden'}
+            </Button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setContactMethod('email')}
+            className="text-xs text-gray-500 hover:text-gray-700 hover:underline w-full text-center transition-colors"
+          >
+            Lieber per E-Mail?
+          </button>
+        </div>
+      );
+    }
+
+    // Standard mode: full name + contact method
     return (
       <div className={`space-y-4 ${className}`}>
         <div>
@@ -256,7 +346,7 @@ export function VerificationForm({
             </Button>
           )}
           <Button
-            onClick={verifyCode}
+            onClick={() => verifyCode()}
             disabled={loading || !code.trim()}
             className={`${onBack ? 'flex-1' : 'w-full'} bg-emerald-600 hover:bg-emerald-700`}
             size="sm"

@@ -11,7 +11,8 @@ import { isValidGermanMobile, normalizePhoneNumber } from '@/lib/verification/ph
 import { ServerAnalytics } from '@/lib/server-analytics';
 import { renderEmailVerificationCode } from '@/lib/email/templates/emailConfirmation';
 import { sendEmail } from '@/lib/email/client';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
+import { BASE_URL } from '@/lib/constants';
 import { supabaseServer } from '@/lib/supabase-server';
 import { track } from '@/lib/logger';
 import { getFixedWindowLimiter, extractIpFromHeaders } from '@/lib/rate-limit';
@@ -673,9 +674,33 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Generate confirm token for magic link fallback (alongside the 6-digit code)
+      const confirmToken = randomUUID();
+      // Store confirm_token in metadata so the magic link confirm endpoint can validate it
+      try {
+        const { data: personForToken } = await supabaseServer
+          .from('people')
+          .select('metadata')
+          .eq('id', personId)
+          .single<{ metadata: Record<string, unknown> | null }>();
+        const tokenMeta = { ...(personForToken?.metadata || {}), confirm_token: confirmToken, confirm_sent_at: new Date().toISOString() };
+        await supabaseServer.from('people').update({ metadata: tokenMeta }).eq('id', personId);
+      } catch {
+        // Non-blocking: magic link won't work but code still will
+      }
+
+      // Build magic link URL (same endpoint as legacy email confirmation)
+      const origin = (() => {
+        try { return new URL(req.url).origin || BASE_URL; } catch { return BASE_URL; }
+      })();
+      const confirmBase = `${origin}/api/public/leads/confirm?token=${encodeURIComponent(confirmToken)}&id=${encodeURIComponent(personId)}`;
+      const withFs = form_session_id ? `${confirmBase}&fs=${encodeURIComponent(form_session_id)}` : confirmBase;
+      const safeRedirect = redirect && typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('/api') && !redirect.startsWith('//') ? redirect : undefined;
+      const confirmUrl = safeRedirect ? `${withFs}&redirect=${encodeURIComponent(safeRedirect)}` : withFs;
+
       // Check if this is a booking flow (draft_booking present)
       const isBooking = !!draft_booking;
-      const emailContent = renderEmailVerificationCode({ code: emailCode, isBooking });
+      const emailContent = renderEmailVerificationCode({ code: emailCode, isBooking, confirmUrl });
 
       let emailResult: { success: boolean; error?: string } = { success: true };
       try {

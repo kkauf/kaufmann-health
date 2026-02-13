@@ -4,6 +4,7 @@ import React from 'react';
 import { useSearchParams } from 'next/navigation';
 import ProgressBar from './ProgressBar';
 import Screen1, { type Screen1Values } from './screens/Screen1';
+import ScreenContactClassic from './screens/ScreenContactClassic';
 import Screen1_5, { type Screen1_5Values } from './screens/Screen1_5';
 import Screen3 from './screens/Screen3';
 import Screen4 from './screens/Screen4';
@@ -13,6 +14,8 @@ import NewScreen5_Modality from './screens/NewScreen5_Modality';
 import ScreenSchwerpunkte, { type ScreenSchwerpunkteValues } from './screens/ScreenSchwerpunkte';
 import ScreenPaymentInfo, { type ScreenPaymentInfoValues } from './screens/ScreenPaymentInfo';
 import ScreenCredentialOptIn, { type ScreenCredentialOptInValues } from './screens/ScreenCredentialOptIn';
+import ScreenMatchPreview from './screens/ScreenMatchPreview';
+import ScreenNameEmail from './screens/ScreenNameEmail';
 import { Button } from '@/components/ui/button';
 import { leadSubmissionSchema } from '@/lib/contracts';
 import { PRIVACY_VERSION } from '@/lib/privacy';
@@ -63,8 +66,10 @@ const PROGRESS_MAP: Record<number, number> = {
   4: 33,            // Location
   5: 50,            // Preferences
   5.5: 58,          // Credential opt-in
-  6: 67,            // Contact
-  6.5: 83,          // SMS verification
+  5.75: 62,         // Match preview (progressive disclosure)
+  6: 72,            // Contact (phone-only)
+  6.5: 82,          // SMS verification
+  6.75: 92,         // Name + email (post-verification)
   7: 100, 8: 100, 8.5: 100, 9: 100,  // Confirmation (legacy step numbers)
 };
 
@@ -99,11 +104,11 @@ export default function SignupWizard() {
     } catch { /* ignore */ }
   }, [capturedVariant]);
 
-  // Fallback to live searchParams if capturedVariant not yet set (hydration)
-  const variant = capturedVariant || searchParams.get('variant') || searchParams.get('v');
+  // Resolve flow variant: raw URL param → getFlowVariant handles randomization + localStorage
+  const urlVariant = capturedVariant || searchParams.get('variant') || searchParams.get('v');
+  const variant = getFlowVariant(urlVariant);
+  const isProgressive = variant === 'progressive';
   const isConcierge = variant === 'concierge';
-  const _isMarketplace = variant === 'marketplace'; // Kept for potential future use
-  const isSelfService = variant === 'self-service';
   
   // Test 5: Online mode - skips location step and pre-selects online
   const isOnlineMode = searchParams.get('mode') === 'online';
@@ -162,6 +167,12 @@ export default function SignupWizard() {
   // Progressive filtering: therapist count based on current filters
   const [therapistCount, setTherapistCount] = React.useState<number | null>(null);
 
+  // Progressive disclosure: match preview data from questionnaire-submit
+  const [anonymousPatientId, setAnonymousPatientId] = React.useState<string | null>(null);
+  const [matchPreviews, setMatchPreviews] = React.useState<Array<{ firstName: string; photoUrl: string | null; schwerpunkte: string[] }>>([]);
+  const [matchCount, setMatchCount] = React.useState(0);
+  const [matchQuality, setMatchQuality] = React.useState<'exact' | 'partial' | 'none'>('none');
+
   // Fetch therapist count on mount and when filters change
   React.useEffect(() => {
     async function fetchCount() {
@@ -186,6 +197,9 @@ export default function SignupWizard() {
         if (data.schwerpunkte && data.schwerpunkte.length > 0) {
           params.set('schwerpunkte', data.schwerpunkte.join(','));
         }
+        if (data.accept_certified) {
+          params.set('accept_certified', 'true');
+        }
 
         const res = await fetch(`/api/public/therapists/count?${params.toString()}`);
         if (res.ok) {
@@ -198,11 +212,14 @@ export default function SignupWizard() {
     }
     
     void fetchCount();
-  }, [data.session_preference, data.city, data.gender, data.schwerpunkte]);
+  }, [data.session_preference, data.city, data.gender, data.schwerpunkte, data.accept_certified]);
 
   // Shared verification hook for SMS code sending/verification
+  // phoneFirst: only in progressive flow (name collected at step 6.75, after verification)
+  // Classic flow collects name in step 6 (before verification), so name is required for sendCode
   const verification = useVerification({
     initialContactMethod: 'phone',
+    phoneFirst: isProgressive,
     onTrackEvent: (event, props) => {
       void trackEvent(event, props);
     },
@@ -217,6 +234,14 @@ export default function SignupWizard() {
   React.useEffect(() => {
     if (data.name) verification.setName(data.name);
   }, [data.name, verification]);
+
+  React.useEffect(() => {
+    if (data.email) verification.setEmail(data.email);
+  }, [data.email, verification]);
+
+  React.useEffect(() => {
+    if (data.contact_method) verification.setContactMethod(data.contact_method);
+  }, [data.contact_method, verification]);
 
   // Ensure a stable web analytics session id exists before any events
   React.useEffect(() => {
@@ -278,17 +303,25 @@ export default function SignupWizard() {
         return [];
       }
       case 6: {
-        // Step 6: Contact Info (name, email/phone required)
+        // Step 6 validation depends on flow variant:
+        // Progressive: phone/email only (name collected later in step 6.75)
+        // Classic: name + phone/email (full contact form)
         const miss: string[] = [];
-        if (!d.name || !d.name.trim()) miss.push('name');
-        // Check contact info based on method
+        if (!isProgressive) {
+          // Classic requires name in step 6
+          if (!d.name || !d.name.trim()) miss.push('name');
+        }
         if (d.contact_method === 'email') {
           if (!d.email) miss.push('email');
         } else if (d.contact_method === 'phone') {
           if (!d.phone_number) miss.push('phone_number');
-          if (!d.phone_verified) miss.push('phone_verified');
         }
         return miss;
+      }
+      case 6.75: {
+        // Step 6.75: Name required (post-verification)
+        if (!d.name || !d.name.trim()) return ['name'];
+        return [];
       }
       case 6.5: {
         // Step 6.5: SMS verification (no required fields - verification happens in component)
@@ -484,13 +517,14 @@ export default function SignupWizard() {
       // Capture campaign source/variant from URL or referrer
       try {
         let src: string | null = null;
-        let variant: string | undefined = undefined;
+        let campaignVariant: string | undefined = undefined;
         const vParam = searchParams?.get('variant') || searchParams?.get('v') || undefined;
         const ref = (typeof document !== 'undefined' ? document.referrer : '') || '';
         const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
 
         if (vParam) {
-          variant = vParam;
+          // Resolve through getFlowVariant so ?v=self-service → progressive/classic (not raw 'self-service')
+          campaignVariant = getFlowVariant(vParam);
           // Determine source from referrer - /therapie-finden for concierge, /start for marketplace
           if (ref.includes('/therapie-finden')) {
             src = '/therapie-finden';
@@ -504,7 +538,7 @@ export default function SignupWizard() {
           }
         }
         // Fallback to document.referrer for cases without variant param
-        if (!src && !variant) {
+        if (!src && !campaignVariant) {
           try {
             if (ref.includes('/therapie-finden')) {
               src = '/therapie-finden';
@@ -512,21 +546,21 @@ export default function SignupWizard() {
               try {
                 const u = new URL(ref);
                 const vp = u.searchParams.get('variant') || u.searchParams.get('v') || undefined;
-                variant = vp || undefined;
+                campaignVariant = vp ? getFlowVariant(vp) : undefined;
               } catch { }
             } else if (ref.includes('/start')) {
               src = '/start';
               try {
                 const u = new URL(ref);
                 const vp = u.searchParams.get('variant') || u.searchParams.get('v') || undefined;
-                variant = vp || undefined;
+                campaignVariant = vp ? getFlowVariant(vp) : undefined;
               } catch { }
             } else if (ref.includes('/lp/')) {
               src = ref.match(/\/lp\/[^/?#]+/)?.[0] || '/lp';
               try {
                 const u = new URL(ref);
                 const vp = u.searchParams.get('variant') || u.searchParams.get('v') || undefined;
-                variant = vp || undefined;
+                campaignVariant = vp ? getFlowVariant(vp) : undefined;
               } catch { }
             }
           } catch { }
@@ -537,7 +571,7 @@ export default function SignupWizard() {
           if (currentPath.includes('/fragebogen')) {
             src = '/fragebogen';
             // Mark as direct visit for analytics clarity
-            variant = variant || 'direct';
+            campaignVariant = campaignVariant || 'direct';
           } else if (currentPath.includes('/therapie-finden')) {
             src = '/therapie-finden';
           } else if (currentPath.includes('/start')) {
@@ -545,19 +579,18 @@ export default function SignupWizard() {
           }
         }
         // Ensure variant has a sensible default when source is known but variant wasn't captured
-        // This handles cases where browsers strip query params from referrer
-        // Test 4: Use flow randomization (concierge/self-service) for consistent attribution
-        if (src && !variant) {
+        // Use flow randomization for consistent attribution (resolves to progressive/classic)
+        if (src && !campaignVariant) {
           try {
-            variant = getFlowVariant(null);
+            campaignVariant = getFlowVariant(null);
           } catch { }
         }
         // Final fallback: mark as direct only if truly unknown
-        if (src && !variant && src === '/fragebogen') {
-          variant = 'direct';
+        if (src && !campaignVariant && src === '/fragebogen') {
+          campaignVariant = 'direct';
         }
         if (src) campaignSourceOverrideRef.current = src;
-        if (variant) campaignVariantOverrideRef.current = variant;
+        if (campaignVariant) campaignVariantOverrideRef.current = campaignVariant;
         // Online campaign override: distinguish online campaign leads from self-service
         if (searchParams?.get('mode') === 'online') {
           campaignVariantOverrideRef.current = 'online';
@@ -623,29 +656,30 @@ export default function SignupWizard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, data.contact_method]);
 
-  // Fetch matchesUrl for verified users (phone or email) on confirmation screen
+  // Fetch matchesUrl for verified users (phone, email-confirmed, or email-code-verified) on confirmation screen
   const [matchesUrl, setMatchesUrl] = React.useState<string | null>(null);
   const confirmParam = searchParams?.get('confirm');
   const isEmailConfirmed = confirmParam === '1' || confirmParam === 'success';
+  const isEmailCodeVerified = data.contact_method === 'email' && verification.state.verified;
   React.useEffect(() => {
     if (step < 7) return;
-    // Fetch for phone-verified users OR email-confirmed users
+    // Fetch for phone-verified users, email-confirmed users (magic link), or email-code-verified users
     const isPhoneVerified = data.contact_method === 'phone' && data.phone_verified;
-    if (!isPhoneVerified && !isEmailConfirmed) return;
+    if (!isPhoneVerified && !isEmailConfirmed && !isEmailCodeVerified) return;
 
     fetch('/api/public/session')
       .then(res => res.ok ? res.json() : null)
       .then(json => {
         if (json?.data?.matchesUrl) {
           setMatchesUrl(json.data.matchesUrl);
-          // Auto-redirect confirmed email users to matches (skip intermediate CTA screen)
-          if (isEmailConfirmed && !isConcierge) {
+          // Auto-redirect verified email users to matches (skip intermediate CTA screen)
+          if ((isEmailConfirmed || isEmailCodeVerified) && !isConcierge) {
             window.location.assign(json.data.matchesUrl);
           }
         }
       })
       .catch(() => { });
-  }, [step, data.contact_method, data.phone_verified, isEmailConfirmed, isConcierge]);
+  }, [step, data.contact_method, data.phone_verified, isEmailConfirmed, isEmailCodeVerified, isConcierge]);
 
   // If we have a session id (possibly from URL), try to load remote state once
   React.useEffect(() => {
@@ -906,9 +940,8 @@ export default function SignupWizard() {
   const handleVerifySmsCode = React.useCallback(async (code: string): Promise<{ success: boolean; error?: string }> => {
     if (!data.phone_number) return { success: false, error: 'Keine Telefonnummer' };
 
-    // Sync code to hook state and verify
-    verification.setCode(code);
-    const result = await verification.verifyCode();
+    // Pass code directly to avoid stale-closure issue (setCode is async)
+    const result = await verification.verifyCode(code);
 
     if (result.success) {
       saveLocal({ phone_verified: true });
@@ -918,6 +951,37 @@ export default function SignupWizard() {
 
     return { success: false, error: result.error || 'Ungültiger Code' };
   }, [data.phone_number, verification, saveLocal]);
+
+  // Email code sending using shared verification hook
+  // NOTE: email, name, and contactMethod are synced to verification hook via useEffects above.
+  // By the time the user clicks submit, the hook state is already up-to-date.
+  const handleSendEmailCode = React.useCallback(async (): Promise<boolean> => {
+    if (!data.email) return false;
+
+    const confirmRedirect = variant ? `/fragebogen?variant=${encodeURIComponent(variant)}` : '/fragebogen';
+    const result = await verification.sendCode({
+      name: data.name?.trim(),
+      formSessionId: sessionId || undefined,
+      redirect: confirmRedirect,
+    });
+
+    return result.success;
+  }, [data.email, data.name, sessionId, variant, verification]);
+
+  // Email code verification using shared verification hook
+  const handleVerifyEmailCode = React.useCallback(async (code: string): Promise<{ success: boolean; error?: string }> => {
+    if (!data.email) return { success: false, error: 'Keine E-Mail-Adresse' };
+
+    // contactMethod and email are synced via useEffects above.
+    // Pass code directly to avoid stale-closure issue (setCode is async).
+    const result = await verification.verifyCode(code);
+
+    if (result.success) {
+      return { success: true };
+    }
+
+    return { success: false, error: result.error || 'Ungültiger Code' };
+  }, [data.email, verification]);
 
   // Simple screen renderers
   function renderScreen() {
@@ -1019,28 +1083,105 @@ export default function SignupWizard() {
             onChange={(patch) => saveLocal(patch as Partial<WizardData>)}
             onBack={() => safeGoToStep(4)}
             onNext={() => {
-              // Include certified therapists and skip to contact
-              saveLocal({ accept_certified: true });
-              safeGoToStep(6);
+              // Modality page leads get both tiers automatically (skip opt-in)
+              const src = campaignSourceOverrideRef.current || '';
+              const isModalityPage = src.startsWith('/lp/') || src.startsWith('/therapie/');
+              if (isModalityPage) {
+                saveLocal({ accept_certified: true });
+                // Progressive: anonymous submit + match preview; Classic: straight to contact
+                if (isProgressive) {
+                  void handleQuestionnaireAndPreview();
+                } else {
+                  safeGoToStep(6);
+                }
+              } else {
+                safeGoToStep(5.5); // Credential opt-in for ALL variants
+              }
             }}
             disabled={navLock || submitting}
           />
         );
       case 5.5:
-        // Step 5.5: Credential tier opt-in (TherapieFinden leads only)
+        // Step 5.5: Credential tier opt-in (ALL variants)
         return (
           <ScreenCredentialOptIn
             values={{ accept_certified: data.accept_certified }}
             onChange={saveLocal}
             onBack={() => safeGoToStep(5)}
-            onNext={() => safeGoToStep(6)}
+            onNext={() => {
+              if (isProgressive) {
+                // Progressive: anonymous submit → match preview at 5.75
+                void handleQuestionnaireAndPreview();
+              } else {
+                // Classic: skip match preview, go straight to contact form
+                safeGoToStep(6);
+              }
+            }}
             disabled={navLock || submitting}
           />
         );
-      case 6:
-        // Step 6: Contact Info
+      case 5.75:
+        // Step 5.75: Match preview (progressive disclosure — show value before asking for PII)
         return (
-          <Screen1
+          <ScreenMatchPreview
+            matchCount={matchCount}
+            matchQuality={matchQuality}
+            matchPreviews={matchPreviews}
+            patientSchwerpunkte={data.schwerpunkte || []}
+            onNext={() => safeGoToStep(6)}
+            onBack={() => safeGoToStep(5.5)}
+          />
+        );
+      case 6:
+        if (isProgressive) {
+          // Progressive: Phone-only contact (name collected in step 6.75 after verification)
+          return (
+            <Screen1
+              values={{
+                name: data.name,
+                email: data.email,
+                phone_number: data.phone_number,
+                contact_method: data.contact_method,
+              }}
+              initialized={initialized}
+              onChange={saveLocal}
+              onBack={() => safeGoToStep(5.75)}
+              onNext={async () => {
+                void trackEvent('phone_submitted', { step: 6, contact_method: data.contact_method, flow_variant: variant });
+                if (data.contact_method === 'phone' && data.phone_number) {
+                  try {
+                    const sent = await handleSendSmsCode();
+                    if (sent) {
+                      safeGoToStep(6.5);
+                    } else {
+                      setSubmitError('SMS konnte nicht gesendet werden. Bitte versuche es erneut.');
+                    }
+                  } catch (err) {
+                    console.error('Failed to send SMS:', err);
+                    setSubmitError('SMS konnte nicht gesendet werden. Bitte versuche es erneut.');
+                  }
+                } else if (data.email) {
+                  // Email: send email code, then go to code entry (step 6.5)
+                  try {
+                    const sent = await handleSendEmailCode();
+                    if (sent) {
+                      safeGoToStep(6.5);
+                    } else {
+                      setSubmitError('E-Mail konnte nicht gesendet werden. Bitte versuche es erneut.');
+                    }
+                  } catch (err) {
+                    console.error('Failed to send email code:', err);
+                    setSubmitError('E-Mail konnte nicht gesendet werden. Bitte versuche es erneut.');
+                  }
+                }
+              }}
+              disabled={navLock || submitting}
+            />
+          );
+        }
+        // Classic: Full contact form (name + email/phone toggle + consent + trust badges)
+        return (
+          <ScreenContactClassic
             values={{
               name: data.name,
               email: data.email,
@@ -1048,48 +1189,98 @@ export default function SignupWizard() {
               contact_method: data.contact_method,
             }}
             initialized={initialized}
-            isConcierge={isConcierge}
-            therapistCount={therapistCount}
             onChange={saveLocal}
-            onBack={() => safeGoToStep(5)}
+            onBack={() => safeGoToStep(5.5)}
             onNext={async () => {
-              void trackEvent('submit_clicked', { step: 6, contact_method: data.contact_method });
+              void trackEvent('submit_clicked', { step: 6, contact_method: data.contact_method, flow_variant: variant });
               if (data.contact_method === 'phone' && data.phone_number) {
-                if (data.phone_verified) {
-                  await handleSubmit();
-                } else {
-                  try {
-                    const sent = await handleSendSmsCode();
-                    if (sent) safeGoToStep(6.5);
-                  } catch (err) {
-                    console.error('Failed to send SMS:', err);
+                // Phone: send SMS code, then verify
+                try {
+                  const sent = await handleSendSmsCode();
+                  if (sent) {
+                    safeGoToStep(6.5);
+                  } else {
+                    setSubmitError('SMS konnte nicht gesendet werden. Bitte versuche es erneut.');
                   }
+                } catch (err) {
+                  console.error('Failed to send SMS:', err);
+                  setSubmitError('SMS konnte nicht gesendet werden. Bitte versuche es erneut.');
                 }
-              } else {
-                await handleSubmit();
+              } else if (data.email) {
+                // Email: send email code, then go to code entry (step 6.5)
+                try {
+                  const sent = await handleSendEmailCode();
+                  if (sent) {
+                    safeGoToStep(6.5);
+                  } else {
+                    setSubmitError('E-Mail konnte nicht gesendet werden. Bitte versuche es erneut.');
+                  }
+                } catch (err) {
+                  console.error('Failed to send email code:', err);
+                  setSubmitError('E-Mail konnte nicht gesendet werden. Bitte versuche es erneut.');
+                }
               }
             }}
             disabled={navLock || submitting}
+            therapistCount={therapistCount}
           />
         );
-      case 6.5:
-        // Step 6.5: SMS verification (phone users only)
-        if (data.contact_method !== 'phone' || !data.phone_number) {
+      case 6.5: {
+        // Step 6.5: Verification code entry (SMS or email)
+        const isPhoneVerification = data.contact_method === 'phone' && !!data.phone_number;
+        const isEmailVerification = data.contact_method === 'email' && !!data.email;
+        if (!isPhoneVerification && !isEmailVerification) {
           safeGoToStep(6);
           return null;
         }
         return (
           <Screen1_5
-            phoneNumber={data.phone_number}
+            phoneNumber={data.phone_number || ''}
+            contactMethod={data.contact_method || 'phone'}
+            contactDisplay={isEmailVerification ? data.email : undefined}
             onVerify={async (code: string) => {
-              const result = await handleVerifySmsCode(code);
+              const result = isPhoneVerification
+                ? await handleVerifySmsCode(code)
+                : await handleVerifyEmailCode(code);
               if (result.success) {
-                await handleSubmit();
+                if (isProgressive) {
+                  // Progressive: go to name+email collection (step 6.75)
+                  safeGoToStep(6.75);
+                } else {
+                  // Classic: name already collected, submit directly
+                  await handleSubmit();
+                }
               }
               return result;
             }}
-            onResend={async () => { await handleSendSmsCode(); }}
+            onResend={async () => {
+              if (isPhoneVerification) {
+                await handleSendSmsCode();
+              } else {
+                await handleSendEmailCode();
+              }
+            }}
             onBack={() => safeGoToStep(6)}
+            disabled={navLock || submitting}
+          />
+        );
+      }
+      case 6.75:
+        // Step 6.75: Name + email collection (post-verification, progressive disclosure)
+        return (
+          <ScreenNameEmail
+            values={{ name: data.name, email: data.email }}
+            onChange={saveLocal}
+            onBack={() => safeGoToStep(6)}
+            onNext={async () => {
+              void trackEvent('name_email_submitted', {
+                has_name: !!(data.name && data.name.trim()),
+                has_email: !!(data.email && data.email.trim()),
+                flow_variant: variant,
+              });
+              await handleSubmit();
+            }}
+            emailAlreadyCollected={data.contact_method === 'email'}
             disabled={navLock || submitting}
           />
         );
@@ -1568,7 +1759,96 @@ export default function SignupWizard() {
     })();
   }
 
-  // Submit for manual curation flow (contact collection then submit)
+  // Submit questionnaire after preferences — create anonymous patient, fetch match previews, navigate to 5.75
+  async function handleQuestionnaireAndPreview() {
+    if (submitting) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    setSubmitSlow(false);
+    const slowTimer = setTimeout(() => setSubmitSlow(true), 3000);
+
+    try {
+      void trackEvent('questionnaire_submitted', {
+        step: 5,
+        has_city: !!data.city,
+        flow_variant: variant,
+      });
+
+      const sidHeader = webSessionIdRef.current || getOrCreateSessionId() || undefined;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (sidHeader) headers['X-Session-Id'] = sidHeader;
+      if (campaignSourceOverrideRef.current) headers['X-Campaign-Source-Override'] = campaignSourceOverrideRef.current;
+      if (campaignVariantOverrideRef.current) headers['X-Campaign-Variant-Override'] = campaignVariantOverrideRef.current;
+
+      const sessionPref = data.session_preference;
+      // Map UI gender values to database enum values
+      let backendGender: string | undefined = data.gender;
+      if (data.gender === 'Frau') backendGender = 'female';
+      else if (data.gender === 'Mann') backendGender = 'male';
+      else if (data.gender === 'Keine Präferenz') backendGender = 'no_preference';
+
+      const payload = {
+        additional_info: data.additional_info,
+        modality_matters: data.modality_matters,
+        methods: data.methods || [],
+        schwerpunkte: data.schwerpunkte || [],
+        city: data.city,
+        session_preference: sessionPref,
+        gender: backendGender, // Use mapped value
+        form_session_id: sessionIdRef.current || undefined,
+        accept_certified: data.accept_certified,
+      };
+
+      const res = await fetch('/api/public/questionnaire-submit', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok || json?.error) {
+        throw new Error(json?.error || 'Questionnaire submission failed');
+      }
+
+      const patientId = json?.data?.patientId;
+      const previews = json?.data?.matchPreviews || [];
+      const count = json?.data?.matchCount || 0;
+      const quality = json?.data?.matchQuality || 'none';
+
+      // Store match preview data for step 5.75
+      if (patientId) setAnonymousPatientId(patientId);
+      setMatchPreviews(previews);
+      setMatchCount(count);
+      setMatchQuality(quality);
+
+      // Persist patient ID for analytics and later linking
+      if (patientId && typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem('anonymousPatientId', patientId);
+        } catch { }
+      }
+
+      void trackEvent('questionnaire_completed', {
+        match_quality: quality,
+        match_count: count,
+        patient_id: patientId,
+        flow_variant: variant,
+      });
+
+      // Navigate to match preview (step 5.75) instead of redirecting
+      safeGoToStep(5.75);
+
+    } catch (err) {
+      console.error('Questionnaire submit error:', err);
+      setSubmitError('Senden fehlgeschlagen. Bitte überprüfe deine Verbindung und versuche es erneut.');
+    } finally {
+      clearTimeout(slowTimer);
+      setSubmitting(false);
+    }
+  }
+
+  // Submit for manual curation flow (9-step with contact collection)
   async function handleSubmit() {
     if (submitting) return;
     setSubmitting(true);
@@ -1624,15 +1904,19 @@ export default function SignupWizard() {
       const phone = data.phone_number ? (normalizePhoneNumber(data.phone_number) || undefined) : undefined;
 
       // Only include the contact field matching the selected method
+      // Preserve variant in confirmation link so wizard knows the flow type on return
+      const confirmRedirect = variant ? `/fragebogen?variant=${encodeURIComponent(variant)}` : '/fragebogen';
+
       const submissionPayload = {
         type: 'patient' as const,
         ...(data.name && data.name.trim() ? { name: data.name.trim() } : {}),
         ...(data.contact_method === 'email' ? { email } : { phone_number: phone }),
         contact_method: data.contact_method,
         form_session_id: sessionIdRef.current || undefined,
-        confirm_redirect_path: '/fragebogen' as const,
+        confirm_redirect_path: confirmRedirect,
         consent_share_with_therapists: true as const,
         privacy_version: PRIVACY_VERSION,
+        ...(anonymousPatientId ? { anonymous_patient_id: anonymousPatientId } : {}),
         ...(sessionPref === 'either'
           ? { session_preferences: ['online', 'in_person'] }
           : sessionPref
@@ -1710,7 +1994,7 @@ export default function SignupWizard() {
 
       {
         const currentStep2 = data.contact_method === 'phone' ? 8.5 : 8;
-        void trackEvent('submit_succeeded', { step: currentStep2, contact_method: data.contact_method });
+        void trackEvent('submit_succeeded', { step: currentStep2, contact_method: data.contact_method, flow_variant: variant });
       }
 
       // Test 3: Always require verification before showing matches
@@ -1718,10 +2002,10 @@ export default function SignupWizard() {
       // After email/phone verification, user will be redirected to their matches
       const matchesUrl = (j?.data?.matchesUrl as string | undefined) || undefined;
       if (matchesUrl) {
-        void trackEvent('matches_created_pending_verification', { instant_match: true });
+        void trackEvent('matches_created_pending_verification', { instant_match: true, flow_variant: variant });
       }
 
-      void trackEvent('form_completed', { steps: 8 });
+      void trackEvent('form_completed', { steps: 8, flow_variant: variant });
 
       // Phone users: already verified via SMS, redirect to matches immediately
       if (data.contact_method === 'phone' && data.phone_verified && matchesUrl) {
@@ -1730,7 +2014,9 @@ export default function SignupWizard() {
         return;
       }
 
-      // Email users: go to confirmation screen (step 7) to wait for email verification
+      // Email users (both code-verified and not-yet-verified): go to confirmation screen (step 7).
+      // If email was verified via 6-digit code, the useEffect at step 7 will detect
+      // verification.state.verified, fetch matchesUrl from session, and auto-redirect.
       goToStep(7);
     } catch {
       setSubmitError('Senden fehlgeschlagen. Bitte überprüfe deine Verbindung und versuche es erneut.');
@@ -1753,7 +2039,7 @@ export default function SignupWizard() {
           Du bist offline. Wir speichern deine Eingaben lokal und synchronisieren sie automatisch, sobald du wieder online bist.
         </div>
       )}
-      <ProgressBar value={progressValue} showLabel={step >= 5} />
+      <ProgressBar value={progressValue} showLabel={step >= 2.5 && step < 7} />
       {renderScreen()}
       {/* Footer status with restart option */}
       <div className="flex items-center justify-between pt-2">

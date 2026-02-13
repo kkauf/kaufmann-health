@@ -163,7 +163,7 @@ describe('New Email Cadence Templates', () => {
         therapist: null,
       });
 
-      expect(result.html).toContain('25\u20AC Amazon-Gutschein');
+      expect(result.html).toContain('50\u20AC Amazon-Gutschein');
       expect(result.html).toContain('Termin vereinbaren');
     });
 
