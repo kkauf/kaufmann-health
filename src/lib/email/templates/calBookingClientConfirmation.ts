@@ -121,7 +121,7 @@ export function renderCalBookingClientConfirmation(params: CalBookingClientConfi
     } else {
       lines.push('<div style="background:#f0f9ff !important; padding:12px 16px; border-radius:8px; border:1px solid rgba(14,165,233,0.3);">');
       lines.push('<p style="margin:0; font-size:14px; color:#0369a1 !important;">📹 Online-Videogespräch</p>');
-      lines.push('<p style="margin:8px 0 0; font-size:13px; color:#0c4a6e !important;">Der Video-Link wird dir mit der Kalendereinladung zugesendet.</p>');
+      lines.push('<p style="margin:8px 0 0; font-size:13px; color:#0c4a6e !important;">Der Video-Link findest du in der angehängten Kalendereinladung (.ics).</p>');
       lines.push('</div>');
     }
   } else {
@@ -151,7 +151,7 @@ export function renderCalBookingClientConfirmation(params: CalBookingClientConfi
 
   // === Calendar invite note ===
   lines.push('<div style="margin-top:20px; padding:12px 16px; background:#fefce8 !important; border-radius:8px; border:1px solid rgba(250,204,21,0.4);">');
-  lines.push('<p style="margin:0; font-size:13px; color:#854d0e !important;">📅 Eine Kalendereinladung folgt separat per E-Mail.</p>');
+  lines.push('<p style="margin:0; font-size:13px; color:#854d0e !important;">📅 Diese E-Mail enthält eine Kalendereinladung (.ics) — öffne den Anhang, um den Termin zu deinem Kalender hinzuzufügen.</p>');
   lines.push('</div>');
 
   // Future session pricing context (only for intro sessions)

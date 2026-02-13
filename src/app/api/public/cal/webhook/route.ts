@@ -22,6 +22,7 @@ import { sendEmail } from '@/lib/email/client';
 import { renderCalBookingClientConfirmation } from '@/lib/email/templates/calBookingClientConfirmation';
 import { renderCalBookingTherapistNotification } from '@/lib/email/templates/calBookingTherapistNotification';
 import { buildCalBookingUrl } from '@/lib/cal/booking-url';
+import { generateIcs } from '@/lib/email/ics';
 import {
   CalWebhookBody,
   CalWebhookProcessableEvent,
@@ -56,6 +57,7 @@ async function sendCalBookingEmails(params: {
   attendeeEmail: string | null;
   attendeeName: string | null;
   startTime: string | null;
+  endTime: string | null;
   bookingKind: string | null;
   isTest: boolean;
   // EARTH-273: Enhanced email fields
@@ -63,7 +65,7 @@ async function sendCalBookingEmails(params: {
   locationType?: 'video' | 'in_person';
   locationAddress?: string | null;
 }): Promise<void> {
-  const { calUid, therapistId, patientId, attendeeEmail, attendeeName, startTime, bookingKind, isTest, videoUrl, locationType, locationAddress } = params;
+  const { calUid, therapistId, patientId, attendeeEmail, attendeeName, startTime, endTime, bookingKind, isTest, videoUrl, locationType, locationAddress } = params;
   
   // Check if emails already sent (idempotency) + get match_id for rebooking URL
   const { data: booking } = await supabaseServer
@@ -175,10 +177,38 @@ async function sendCalBookingEmails(params: {
       locationAddress,
     });
     
+    // Generate .ics calendar invite attachment
+    const icsAttachments = startTime && endTime ? (() => {
+      try {
+        const icsContent = generateIcs({
+          uid: calUid,
+          startTimeIso: startTime,
+          endTimeIso: endTime,
+          summary: isIntro
+            ? `Kennenlerngespräch – ${therapistName}`
+            : `Therapiesitzung – ${therapistName}`,
+          description: videoUrl
+            ? `Video-Link: ${videoUrl}`
+            : locationType === 'in_person' && locationAddress
+              ? `Adresse: ${locationAddress}`
+              : undefined,
+          location: videoUrl || locationAddress || undefined,
+          organizerName: therapistName,
+          organizerEmail: therapistEmail,
+          attendeeName: patientName || undefined,
+          attendeeEmail: clientRecipient,
+        });
+        return [{ filename: 'termin.ics', content: Buffer.from(icsContent).toString('base64') }];
+      } catch {
+        return undefined;
+      }
+    })() : undefined;
+
     const result = await sendEmail({
       to: clientRecipient,
       subject: content.subject,
       html: content.html,
+      attachments: icsAttachments,
       context: { kind: 'cal_booking_client_confirmation', cal_uid: calUid, is_test: isTest },
     });
 
@@ -226,10 +256,38 @@ async function sendCalBookingEmails(params: {
       rebookUrl,
     });
     
+    // Reuse ics attachment for therapist (same event, therapist is organizer)
+    const therapistIcsAttachments = startTime && endTime ? (() => {
+      try {
+        const icsContent = generateIcs({
+          uid: calUid,
+          startTimeIso: startTime,
+          endTimeIso: endTime,
+          summary: isIntro
+            ? `Kennenlerngespräch – ${patientName || 'Gast'}`
+            : `Therapiesitzung – ${patientName || 'Klient:in'}`,
+          description: videoUrl
+            ? `Video-Link: ${videoUrl}`
+            : locationType === 'in_person' && locationAddress
+              ? `Adresse: ${locationAddress}`
+              : undefined,
+          location: videoUrl || locationAddress || undefined,
+          organizerName: therapistName,
+          organizerEmail: therapistRecipient,
+          attendeeName: patientName || undefined,
+          attendeeEmail: patientEmail || therapistRecipient,
+        });
+        return [{ filename: 'termin.ics', content: Buffer.from(icsContent).toString('base64') }];
+      } catch {
+        return undefined;
+      }
+    })() : undefined;
+
     const result = await sendEmail({
       to: therapistRecipient,
       subject: content.subject,
       html: content.html,
+      attachments: therapistIcsAttachments,
       context: { kind: 'cal_booking_therapist_notification', cal_uid: calUid, is_test: isTest },
     });
 
@@ -676,6 +734,7 @@ export async function POST(req: Request) {
         attendeeEmail,
         attendeeName: attendees?.[0]?.name || null,
         startTime: startTime || null,
+        endTime: endTime || null,
         bookingKind: resolvedBookingKind,
         isTest,
         // EARTH-273: Enhanced email fields

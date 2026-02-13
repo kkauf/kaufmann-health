@@ -176,6 +176,7 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
           ...(finalText ? { text: finalText } : {}),
           ...(params.replyTo ? { reply_to: params.replyTo } : {}),
           ...(params.headers && Object.keys(params.headers).length > 0 ? { headers: params.headers } : {}),
+          ...(params.attachments && params.attachments.length > 0 ? { attachments: params.attachments } : {}),
         }),
         signal: controller.signal,
       });

@@ -61,7 +61,7 @@ describe('Cal.com Booking Email Templates', () => {
       });
       
       expect(result.html).toContain('Online-Videogespräch');
-      expect(result.html).toContain('Der Video-Link wird dir');
+      expect(result.html).toContain('Der Video-Link findest du in der angehängten Kalendereinladung');
     });
 
     it('shows in-person location when locationType is in_person', () => {
