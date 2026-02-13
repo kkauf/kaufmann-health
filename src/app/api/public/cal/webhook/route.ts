@@ -21,8 +21,9 @@ import { logError, track } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/client';
 import { renderCalBookingClientConfirmation } from '@/lib/email/templates/calBookingClientConfirmation';
 import { renderCalBookingTherapistNotification } from '@/lib/email/templates/calBookingTherapistNotification';
-import { buildCalBookingUrl } from '@/lib/cal/booking-url';
 import { generateIcs } from '@/lib/email/ics';
+import { createTherapistSessionToken } from '@/lib/auth/therapistSession';
+import { BASE_URL } from '@/lib/constants';
 import {
   CalWebhookBody,
   CalWebhookProcessableEvent,
@@ -76,11 +77,10 @@ async function sendCalBookingEmails(params: {
 
   const clientAlreadySent = Boolean(booking?.client_confirmation_sent_at);
   const therapistAlreadySent = Boolean(booking?.therapist_notification_sent_at);
-  const matchId = booking?.match_id || null;
 
   if (clientAlreadySent && therapistAlreadySent) return;
   
-  // Fetch therapist details (including cal_username for rebooking URL)
+  // Fetch therapist details
   const { data: therapist } = await supabaseServer
     .from('therapists')
     .select('email, first_name, last_name, typical_rate, cal_username')
@@ -222,22 +222,18 @@ async function sendCalBookingEmails(params: {
   
   // Send therapist notification
   if (!therapistAlreadySent && therapistRecipient) {
-    // Build rebooking URL for therapist-initiated follow-up booking
-    // This lets therapist book the next session for this client directly
-    const rebookUrl = therapist.cal_username
-      ? buildCalBookingUrl({
-          calUsername: therapist.cal_username,
-          eventType: 'full_session',
-          prefillName: patientName || undefined,
-          prefillEmail: patientEmail || undefined,
-          metadata: {
-            kh_therapist_id: therapistId,
-            kh_patient_id: patientId || undefined,
-            kh_match_id: matchId || undefined,
-            kh_source: 'therapist_notification_email',
-          },
-        })
-      : null;
+    // Generate portal magic link for therapist rebooking
+    let portalUrl: string | null = null;
+    try {
+      const token = await createTherapistSessionToken({
+        therapist_id: therapistId,
+        name: therapistName,
+        email: therapistEmail,
+      });
+      portalUrl = `${BASE_URL}/portal/auth?token=${encodeURIComponent(token)}`;
+    } catch {
+      // Non-critical: portal link is a convenience, not required
+    }
 
     const content = renderCalBookingTherapistNotification({
       therapistName,
@@ -252,8 +248,8 @@ async function sendCalBookingEmails(params: {
       patientConcerns,
       patientSchwerpunkte,
       patientSessionPreference,
-      // Therapist-initiated rebooking
-      rebookUrl,
+      // Portal magic link for rebooking
+      portalUrl,
     });
     
     // Reuse ics attachment for therapist (same event, therapist is organizer)
