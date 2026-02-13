@@ -2,6 +2,9 @@
 
 ## What Changed (Latest)
 
+**Feb 13, 2026:**
+- **NEW: Therapist Portal — Bookings & Rebooking** (Job 6). Termine tab is the new default view. Therapists can see upcoming/past bookings, client list, and rebook clients with one click. Old "Klient:in einbuchen" card removed from Kalender tab.
+
 **Feb 12, 2026:**
 - Email verification now uses **6-digit code entry** (same UX as SMS) instead of magic-link-only. The email still includes a magic link button as fallback.
 - Match preview redesign: shows **therapist photos + Schwerpunkt overlap labels** instead of modality badges + city.
@@ -157,6 +160,41 @@ The questionnaire has two A/B test variants. Test both:
 - [ ] `/therapeuten?tier=all`: both licensed + certified shown
 - [ ] Certified therapists: slate Award badge + legal disclaimer in profile
 - [ ] Responsive: mobile (375px), tablet (768px), desktop (1440px)
+
+---
+
+## Job 6: Therapist Portal — Bookings & Rebooking
+
+**What it is:** Therapists can now view their bookings and rebook existing clients directly from the portal. The "Termine" tab is the new default view.
+
+**Setup:** Log in as a test therapist at `{base}/portal/login`. Use `kgm@kaufmann.earth` to receive the magic link.
+
+### Phase 1: Bookings View
+
+- [ ] Portal loads → "Termine" tab is selected by default
+- [ ] Upcoming sessions show correct date/time (Berlin timezone), client name, kind badge (Kennenlernen = green, Sitzung = blue)
+- [ ] Past sessions section: collapsible, shows historical bookings
+- [ ] Client list: unique clients with session counts + status dots (green = active, gray = idle, blue = new)
+- [ ] Video link opens Cal.com video room
+- [ ] Test bookings (`is_test = true`) do NOT appear
+- [ ] Empty state: therapist with no bookings sees message + booking page link
+
+### Phase 2: Rebooking
+
+- [ ] "Buchen" button on a client → dialog opens with slot picker, client pre-filled
+- [ ] "Neuen Termin" button → dialog with client dropdown (existing clients listed, "Neue:n Klient:in hinzufügen (kostenlos)" option)
+- [ ] If "Neue:n Klient:in" selected → name + email form → slot picker
+- [ ] Slots load for 14 days (extends to 28 if sparse)
+- [ ] Pick slot → "Termin buchen" → success → booking appears in upcoming list
+- [ ] No slots: "Keine freien Termine" + Cal.com link
+- [ ] New booking has `source: 'therapist_portal'` in database
+
+### Edge Cases
+
+- [ ] Same slot race condition → error message + slot re-fetch
+- [ ] Empty name/email blocks "Weiter" button
+- [ ] Close dialog mid-booking → no orphan booking
+- [ ] Tab switching works: Termine → Profil → Kalender and back
 
 ---
 
