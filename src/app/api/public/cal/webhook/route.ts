@@ -248,6 +248,10 @@ async function sendCalBookingEmails(params: {
       patientConcerns,
       patientSchwerpunkte,
       patientSessionPreference,
+      // Location details
+      locationType: locationType || 'video',
+      locationAddress,
+      videoUrl,
       // Portal magic link for rebooking
       portalUrl,
     });
@@ -581,8 +585,21 @@ export async function POST(req: Request) {
       : null;
     
     // EARTH-273: Extract location type from payload.location
+    // Cal.com sends location as:
+    //   - "integrations:daily" or video URL → video
+    //   - "inPerson" or an actual address string → in-person
+    //   - "phone" → phone (treated as video for now)
+    //   - "link" with URL → external video link (treated as video)
     const locationStr = typeof payload.location === 'string' ? payload.location : '';
-    const isInPerson = locationStr.includes('inPerson') || locationStr.includes('attendeeAddress');
+    const VIDEO_PATTERNS = ['daily', 'cal.com', 'integrations:', 'kaufmann.health/video', 'zoom.us', 'meet.google', 'teams.microsoft'];
+    const isVideoLocation = !locationStr || VIDEO_PATTERNS.some(p => locationStr.includes(p)) || locationStr === 'phone';
+    const isInPerson = !isVideoLocation && (
+      locationStr.includes('inPerson') ||
+      locationStr.includes('attendeeAddress') ||
+      locationStr.includes('attendeeInPerson') ||
+      // If it's not a video type and not empty, it's likely an address string
+      (locationStr.length > 0 && !locationStr.startsWith('http'))
+    );
     const locationType: 'video' | 'in_person' = isInPerson ? 'in_person' : 'video';
 
     // Look up therapist by cal_username
@@ -683,10 +700,11 @@ export async function POST(req: Request) {
     // Send confirmation emails for new bookings (fire-and-forget)
     // Only for BOOKING_CREATED to avoid duplicate emails on reschedule
     if (triggerEvent === 'BOOKING_CREATED' && therapistId) {
-      // Check if location is NOT Cal.com Video - alert if so (we won't get MEETING_ENDED)
+      // Check if location is NOT Cal.com Video and NOT in-person — alert for external video (Zoom, etc.)
+      // We won't get MEETING_ENDED for non-Cal.com video. In-person is expected to not have it.
       const location = typeof payload.location === 'string' ? payload.location : '';
       const isCalVideo = location.includes('daily') || location.includes('cal.com') || location.includes('integrations:daily') || location.includes('kaufmann.health/video');
-      if (!isCalVideo && location) {
+      if (!isCalVideo && !isInPerson && location) {
         void track({
           type: 'cal_booking_non_cal_video',
           level: 'warn',
@@ -712,15 +730,22 @@ export async function POST(req: Request) {
         }
       }
 
-      // EARTH-273: Fetch therapist's practice address for in-person emails
+      // EARTH-273: Get address for in-person bookings
+      // Primary: use address from webhook payload (Cal.com sends the actual address as location)
+      // Fallback: fetch from therapist profile metadata
       let locationAddress: string | null = null;
-      if (locationType === 'in_person' && therapistId) {
-        const { data: therapistData } = await supabaseServer
-          .from('therapists')
-          .select('metadata')
-          .eq('id', therapistId)
-          .maybeSingle();
-        locationAddress = therapistData?.metadata?.profile?.practice_address || null;
+      if (locationType === 'in_person') {
+        // The webhook location string IS the address for in-person bookings
+        locationAddress = locationStr || null;
+        // Fallback to therapist profile if webhook didn't include address
+        if (!locationAddress && therapistId) {
+          const { data: therapistData } = await supabaseServer
+            .from('therapists')
+            .select('metadata')
+            .eq('id', therapistId)
+            .maybeSingle();
+          locationAddress = therapistData?.metadata?.profile?.practice_address || null;
+        }
       }
 
       void sendCalBookingEmails({

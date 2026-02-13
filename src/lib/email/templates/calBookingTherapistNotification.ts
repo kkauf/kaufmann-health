@@ -32,6 +32,10 @@ export type CalBookingTherapistNotificationParams = {
   patientConcerns?: string | null; // additional_info free text
   patientSchwerpunkte?: string[]; // focus areas (Trauma, Burnout, etc.)
   patientSessionPreference?: 'online' | 'in_person' | null;
+  // Location details
+  locationType?: 'video' | 'in_person';
+  locationAddress?: string | null;
+  videoUrl?: string | null;
   // Portal magic link for therapist rebooking
   portalUrl?: string | null;
 };
@@ -78,7 +82,15 @@ export function renderCalBookingTherapistNotification(params: CalBookingTherapis
   lines.push('<ul style="margin:0; padding:0 0 0 20px; font-size:15px; line-height:1.65; color:#334155 !important;">');
   lines.push(`<li><strong>Datum:</strong> ${esc(date)}</li>`);
   lines.push(`<li><strong>Uhrzeit:</strong> ${esc(time)} Uhr</li>`);
-  lines.push('<li><strong>Format:</strong> Online-Videogespräch</li>');
+  if (params.locationType === 'in_person') {
+    lines.push(`<li><strong>Format:</strong> Vor Ort${params.locationAddress ? ` – ${esc(params.locationAddress)}` : ''}</li>`);
+  } else {
+    if (params.videoUrl) {
+      lines.push(`<li><strong>Format:</strong> <a href="${esc(params.videoUrl)}" style="color:#059669 !important; text-decoration:underline;">Online-Videogespräch</a></li>`);
+    } else {
+      lines.push('<li><strong>Format:</strong> Online-Videogespräch</li>');
+    }
+  }
   if (isIntro) {
     lines.push('<li><strong>Art:</strong> Kostenloses Kennenlernen (15 Min.)</li>');
   }

@@ -34,9 +34,27 @@ interface ClientSummary {
   email: string;
   total_intros: number;
   total_sessions: number;
+  has_completed_intro: boolean;
   last_session_date: string | null;
   next_session_date: string | null;
   status: 'active' | 'idle' | 'new';
+}
+
+/** Clean up email-prefix display names like "natalie.Heyligenstaed" */
+function formatDisplayName(name: string | null, email: string): string | null {
+  if (!name) return null;
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  // If name looks like an email prefix (contains dots but no spaces, matches email local part)
+  const emailLocal = email.split('@')[0] || '';
+  if (trimmed === emailLocal && trimmed.includes('.') && !trimmed.includes(' ')) {
+    // Capitalize parts: "natalie.Heyligenstaed" → "Natalie Heyligenstaed"
+    return trimmed
+      .split('.')
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  }
+  return trimmed;
 }
 
 export async function GET(_req: NextRequest) {
@@ -109,7 +127,7 @@ export async function GET(_req: NextRequest) {
         id: row.id,
         cal_uid: row.cal_uid,
         patient_id: row.patient_id,
-        patient_name: people?.name ?? null,
+        patient_name: people ? formatDisplayName(people.name, people.email) : null,
         patient_email: people?.email ?? null,
         booking_kind: row.booking_kind,
         start_time: row.start_time,
@@ -178,10 +196,11 @@ export async function GET(_req: NextRequest) {
 
         return {
           patient_id: patientId,
-          name: data.name,
+          name: formatDisplayName(data.name, data.email),
           email: data.email,
           total_intros: data.intros,
           total_sessions: data.sessions,
+          has_completed_intro: data.intros > 0,
           last_session_date: data.lastSessionDate,
           next_session_date: data.nextSessionDate,
           status,
