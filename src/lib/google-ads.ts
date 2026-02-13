@@ -132,9 +132,10 @@ export class GoogleAdsTracker {
 
   private resolveConversionAction(nameOrAlias: string): string | undefined {
     if (!nameOrAlias) return undefined;
-    if (nameOrAlias.startsWith('customers/')) return nameOrAlias; // already a resource name
+    if (nameOrAlias.startsWith('customers/')) return nameOrAlias.trim();
     const envKey = aliasToEnvKey(nameOrAlias);
-    return process.env[envKey] || undefined;
+    // .trim() prevents trailing newlines in env vars from producing malformed resource names
+    return process.env[envKey]?.trim() || undefined;
   }
 
   private async getAccessToken(): Promise<string | null> {
