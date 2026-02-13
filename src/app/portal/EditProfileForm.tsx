@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, Lock, Target, Eye, Globe, HelpCircle, ExternalLink } from "lucide-react";
+import { Camera, Save, CheckCircle2, LogOut, MapPin, Euro, Video, Building2, X, Mail, Calendar, CalendarCheck2, Lock, Target, Eye, Globe, HelpCircle, ExternalLink } from "lucide-react";
 import { ImageCropper } from "@/components/ImageCropper";
 import { TherapistDetailModal } from "@/features/therapists/components/TherapistDetailModal";
 import type { TherapistData } from "@/features/therapists/components/TherapistDirectory";
 import CalendarManagement from "./CalendarManagement";
+import BookingsView from "./BookingsView";
 import { SchwerpunkteSelector } from "@/components/SchwerpunkteSelector";
 import { LanguageInput } from "@/components/ui/language-input";
 import { THERAPIST_SCHWERPUNKTE_MIN, THERAPIST_SCHWERPUNKTE_MAX } from "@/lib/schwerpunkte";
@@ -165,10 +166,10 @@ const isValidPostalCode = (code: string): boolean => /^\d{5}$/.test(code.trim())
 
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4MB
 
-type Tab = 'profile' | 'calendar';
+type Tab = 'bookings' | 'profile' | 'calendar';
 
 export default function EditProfileForm({ therapistId, initialData }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>('profile');
+  const [activeTab, setActiveTab] = useState<Tab>('bookings');
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -643,6 +644,20 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
         <button
           type="button"
           role="tab"
+          aria-selected={activeTab === 'bookings'}
+          onClick={() => setActiveTab('bookings')}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md transition-all ${
+            activeTab === 'bookings'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+          }`}
+        >
+          <CalendarCheck2 className="h-4 w-4" />
+          Termine
+        </button>
+        <button
+          type="button"
+          role="tab"
           aria-selected={activeTab === 'profile'}
           onClick={() => setActiveTab('profile')}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md transition-all ${
@@ -671,7 +686,9 @@ export default function EditProfileForm({ therapistId, initialData }: Props) {
         </button>
       </div>
 
-      {activeTab === 'profile' ? (
+      {activeTab === 'bookings' ? (
+        <BookingsView therapistId={therapistId} calUsername={initialData.cal_username} />
+      ) : activeTab === 'profile' ? (
         <form onSubmit={onSubmit} className="space-y-6">
           {/* Profile Photo */}
           <Card className="border border-gray-200/60 shadow-md bg-white/80 backdrop-blur-sm">
