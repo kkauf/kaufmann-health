@@ -129,23 +129,30 @@ When starting work, identify the task type and follow the corresponding workflow
 
 8. **Verify production** — Re-run validation queries against live data
 
+### Custom Agents
+
+Delegate data-heavy and browser-heavy work to keep the main context clean:
+
+- **`sql-analyst`** — Delegate all Supabase queries. Don't run SQL in the main context. The agent runs the query, processes results, returns a summary.
+- **`qa-tester`** — Delegate Playwright browser testing. Don't run Playwright in the main context. The agent navigates, clicks, screenshots, returns a pass/fail report.
+
+These agents live in `.claude/agents/` and are available as `subagent_type` options in the Task tool.
+
 ### Agent Teams vs. Subagents (Decision Rule)
 
-**Default to agent teams** (TeamCreate + SendMessage) for any task that involves **parallel implementation work** — i.e., multiple agents that need to write code, not just report findings. Teams give each agent a full independent session with file editing, and agents can coordinate with each other directly.
+**Default to sequential work** in the main agent. Most features — even multi-file ones — are faster and cheaper done sequentially.
 
-**Use teams when:**
-- **2+ files need parallel edits** — e.g., frontend + backend, or feature + tests
-- **Cross-layer changes** — Frontend, backend, tests owned by different teammates
-- **Multiple hypotheses** — Parallel investigation where agents may need to try fixes
-- **Research + Implementation** — One researches while another starts implementing
-- **Complex features** — Anything touching 3+ files that could be split into independent streams
+**Use subagents (Task tool) for:**
+- Research, lookups, grep searches, doc reading
+- Focused single-file tasks that benefit from a clean context
+- SQL queries (→ `sql-analyst`) and browser testing (→ `qa-tester`)
 
-**Use subagents (Task tool) only for:**
-- Pure read-only research that reports back findings
-- Quick lookups, grep searches, doc reading
-- Single focused questions ("what pattern does X use?")
+**Use teams (TeamCreate) only when:**
+- **5+ files across multiple layers** — e.g., full-stack feature with frontend, backend, tests, and docs
+- **Genuinely independent parallel streams** — work that can't share a single agent without constant context-switching
+- **Long-running parallel tasks** — e.g., one agent refactors while another writes tests for the old behavior
 
-**Rule of thumb:** If agents need to *edit files* or *run commands*, use a team. If they just need to *read and report*, use subagents.
+**Rule of thumb:** If you're unsure, do it sequentially. Teams cost 3-5x the tokens. Reserve them for when the time savings clearly justify it.
 
 ### Checkpoints (Automatic)
 After every significant change:
